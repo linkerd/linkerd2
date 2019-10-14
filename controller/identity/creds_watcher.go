@@ -63,7 +63,8 @@ func (fscw *FsCredsWatcher) StartWatching() error {
 					return
 				}
 				log.Debugf("Received event: %v", event)
-				//TODO: Is this the best way to watch these really...? Not sure...
+				// Watching the folder for create events as this indicates
+				// that the secret has been updated.
 				if event.Op&fsnotify.Create == fsnotify.Create &&
 					event.Name == filepath.Join(fscw.issuerPath, dataDirectoryLnName) {
 					log.Debugf("Reloading issuer certificate")

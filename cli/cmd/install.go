@@ -659,6 +659,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 	installValues.ImagePullPolicy = options.imagePullPolicy
 	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	installValues.Namespace = controlPlaneNamespace
+	installValues.InstallNamespace = !options.identityOptions.identityExternalIssuer
 	installValues.NoInitContainer = options.noInitContainer
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
 	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))

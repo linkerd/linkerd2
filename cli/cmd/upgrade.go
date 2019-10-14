@@ -246,7 +246,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 		configs.GetGlobal().IdentityContext = toIdentityContext(identity)
 	} else {
-		identity, err = fetchIdentityValues(k, idctx)
+		identity, err = fetchIdentityValues(k, idctx, options.identityOptions.identityExternalIssuer)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to fetch the existing issuer credentials from Kubernetes: %s", err)
 		}
@@ -343,12 +343,12 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*charts.Identity, error) {
+func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext, externalIssuer bool) (*charts.Identity, error) {
 	if idctx == nil {
 		return nil, nil
 	}
 
-	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem())
+	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem(), externalIssuer)
 	if err != nil {
 		return nil, err
 	}
@@ -357,6 +357,7 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*ch
 		TrustDomain:     idctx.GetTrustDomain(),
 		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
 		Issuer: &charts.Issuer{
+			External:            externalIssuer,
 			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
 			IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
 			CrtExpiry:           expiry,
@@ -369,7 +370,15 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*ch
 	}, nil
 }
 
-func fetchIssuer(k kubernetes.Interface, trustPEM string) (string, string, time.Time, error) {
+func fetchIssuer(k kubernetes.Interface, trustPEM string, externalIssuer bool) (string, string, time.Time, error) {
+	crtName := k8s.IdentityIssuerCrtName
+	keyName := k8s.IdentityIssuerKeyName
+
+	if externalIssuer {
+		crtName = k8s.IdentityIssuerCrtNameExternal
+		keyName = k8s.IdentityIssuerKeyNameExternal
+	}
+
 	roots, err := tls.DecodePEMCertPool(trustPEM)
 	if err != nil {
 		return "", "", time.Time{}, err
@@ -382,13 +391,13 @@ func fetchIssuer(k kubernetes.Interface, trustPEM string) (string, string, time.
 		return "", "", time.Time{}, err
 	}
 
-	keyPEM := string(secret.Data[k8s.IdentityIssuerKeyName])
+	keyPEM := string(secret.Data[keyName])
 	key, err := tls.DecodePEMKey(keyPEM)
 	if err != nil {
 		return "", "", time.Time{}, err
 	}
 
-	crtPEM := string(secret.Data[k8s.IdentityIssuerCrtName])
+	crtPEM := string(secret.Data[crtName])
 	crt, err := tls.DecodePEMCrt(crtPEM)
 	if err != nil {
 		return "", "", time.Time{}, err
