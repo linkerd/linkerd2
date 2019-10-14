@@ -356,6 +356,7 @@ hard-coded SHA's:
 When Go dependencies change, run the following:
 
 ```bash
+go mod tidy
 bin/update-go-deps-shas
 ```
 

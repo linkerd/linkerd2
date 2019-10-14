@@ -7,11 +7,13 @@ cd "$(pwd -P)"
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rootdir="$( cd "$bindir/.." && pwd )"
 targetbin="${rootdir}"/target/bin
-goimportsbin=${targetbin}/goimports
+version="$( grep golang.org/x/tools go.mod | awk '{ print $2}' )"
+goimportsbin="${targetbin}/goimports-${version}"
 
 # install goimports if it does not exist
 if [ ! -f "$goimportsbin" ]; then
   GOBIN=$targetbin go install -mod=readonly golang.org/x/tools/cmd/goimports
+  mv "${targetbin}/goimports" "$goimportsbin"
 fi
 
 exec "$goimportsbin" "$@"
