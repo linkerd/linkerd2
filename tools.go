@@ -3,5 +3,6 @@
 package tools
 
 import (
+	_ "github.com/shurcooL/vfsgen"
 	_ "golang.org/x/tools/cmd/goimports"
 )

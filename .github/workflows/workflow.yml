@@ -109,8 +109,6 @@ jobs:
     - name: Format
       env:
         GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
-        # prevent OOM
-        GOGC: 20
       run: |
         echo "$GITCOOKIE_SH" | bash
         bin/fmt
