@@ -1,0 +1,72 @@
+\[
+  \{
+    "namespace": "{{.Ns}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8085,
+    "pod": "linkerd\-controller\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-controller\-api\.{{.Ns}}"
+  \},
+  \{
+    "namespace": "{{.Ns}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8086,
+    "pod": "linkerd\-controller\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-destination\.{{.Ns}}"
+  \},
+  \{
+    "namespace": "{{.Ns}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8086,
+    "pod": "linkerd\-destination\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-dst\.{{.Ns}}"
+  \},
+  \{
+    "namespace": "{{.Ns}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 3000,
+    "pod": "linkerd\-grafana\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-grafana\.{{.Ns}}"
+  \},
+  \{
+    "namespace": "{{.Ns}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8080,
+    "pod": "linkerd\-identity\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-identity\.{{.Ns}}"
+  \},
+  \{
+    "namespace": "{{.Ns}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 9090,
+    "pod": "linkerd\-prometheus-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-prometheus\.{{.Ns}}"
+  \},
+  \{
+    "namespace": "{{.Ns}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8443,
+    "pod": "linkerd\-proxy\-injector-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-proxy\-injector\.{{.Ns}}"
+  \},
+  \{
+    "namespace": "{{.Ns}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8443,
+    "pod": "linkerd\-sp\-validator-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-sp\-validator\.{{.Ns}}"
+  \},
+  \{
+    "namespace": "{{.Ns}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8088,
+    "pod": "linkerd\-tap\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-tap\.{{.Ns}}"
+  \},
+  \{
+    "namespace": "{{.Ns}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 8084,
+    "pod": "linkerd\-web\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-web\.{{.Ns}}"
+  \}
+\]

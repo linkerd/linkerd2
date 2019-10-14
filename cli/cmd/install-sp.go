@@ -7,6 +7,8 @@ import (
 	"text/template"
 
 	"github.com/linkerd/linkerd2/cli/installsp"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 )
 
@@ -20,20 +22,35 @@ This command installs Service Profiles into the Linkerd control plane. A
 cluster-wide Linkerd control-plane is a prerequisite. To confirm Service Profile
 support, verify "kubectl api-versions" outputs "linkerd.io/v1alpha2".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return renderSP(os.Stdout, controlPlaneNamespace)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
+			if err != nil {
+				return err
+			}
+
+			_, configs, err := healthcheck.FetchLinkerdConfigMap(k8sAPI, controlPlaneNamespace)
+			if err != nil {
+				return err
+			}
+
+			clusterDomain := configs.GetGlobal().GetClusterDomain()
+			if clusterDomain == "" {
+				clusterDomain = defaultClusterDomain
+			}
+
+			return renderSP(os.Stdout, controlPlaneNamespace, clusterDomain)
 		},
 	}
 
 	return cmd
 }
 
-func renderSP(w io.Writer, namespace string) error {
+func renderSP(w io.Writer, namespace, clusterDomain string) error {
 	template, err := template.New("linkerd").Parse(installsp.Template)
 	if err != nil {
 		return err
 	}
 	buf := &bytes.Buffer{}
-	err = template.Execute(buf, map[string]string{"Namespace": namespace})
+	err = template.Execute(buf, map[string]string{"Namespace": namespace, "ClusterDomain": clusterDomain})
 	if err != nil {
 		return err
 	}

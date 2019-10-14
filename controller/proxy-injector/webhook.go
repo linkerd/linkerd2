@@ -2,6 +2,7 @@ package injector
 
 import (
 	"fmt"
+	"strings"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -12,12 +13,21 @@ import (
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
+)
+
+const (
+	eventTypeSkipped  = "InjectionSkipped"
+	eventTypeInjected = "Injected"
+	eventTypeTracing  = "Tracing"
 )
 
 // Inject returns an AdmissionResponse containing the patch, if any, to apply
 // to the pod (proxy sidecar and eventually the init container to set it up)
 func Inject(api *k8s.API,
 	request *admissionv1beta1.AdmissionRequest,
+	recorder record.EventRecorder,
 ) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
@@ -53,30 +63,59 @@ func Inject(api *k8s.API,
 		Allowed: true,
 	}
 
-	if !report.Injectable() {
-		log.Infof("skipped %s", report.ResName())
+	configLabels := configToPrometheusLabels(resourceConfig)
+	var parent *runtime.Object
+	ownerKind := ""
+	if ownerRef := resourceConfig.GetOwnerRef(); ownerRef != nil {
+		objs, err := api.GetObjects(request.Namespace, ownerRef.Kind, ownerRef.Name)
+		if err != nil {
+			log.Warnf("couldn't retrieve parent object %s-%s-%s; error: %s", request.Namespace, ownerRef.Kind, ownerRef.Name, err)
+		} else if len(objs) == 0 {
+			log.Warnf("couldn't retrieve parent object %s-%s-%s", request.Namespace, ownerRef.Kind, ownerRef.Name)
+		} else {
+			parent = &objs[0]
+		}
+		ownerKind = strings.ToLower(ownerRef.Kind)
+	}
+	proxyInjectionAdmissionRequests.With(admissionRequestLabels(ownerKind, request.Namespace, report.InjectAnnotationAt, configLabels)).Inc()
+
+	if injectable, reasons := report.Injectable(); !injectable {
+		var readableReasons, metricReasons string
+		metricReasons = strings.Join(reasons, ",")
+		for _, reason := range reasons {
+			readableReasons = readableReasons + ", " + inject.Reasons[reason]
+		}
+		// removing the initial comma, space
+		readableReasons = readableReasons[2:]
+		if parent != nil {
+			recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Linkerd sidecar proxy injection skipped: %s", readableReasons)
+		}
+		log.Infof("skipped %s: %s", report.ResName(), readableReasons)
+		proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "true", metricReasons, report.InjectAnnotationAt, configLabels)).Inc()
 		return admissionResponse, nil
 	}
 
 	resourceConfig.AppendPodAnnotations(map[string]string{
 		pkgK8s.CreatedByAnnotation: fmt.Sprintf("linkerd/proxy-injector %s", version.Version),
 	})
-	p, err := resourceConfig.GetPatch(request.Object.Raw, true)
+	patchJSON, err := resourceConfig.GetPatch(true)
 	if err != nil {
 		return nil, err
 	}
 
-	if p.IsEmpty() {
+	if len(patchJSON) == 0 {
 		return admissionResponse, nil
 	}
 
-	patchJSON, err := p.Marshal()
-	if err != nil {
-		return nil, err
+	if parent != nil {
+		recorder.Event(*parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
+		if report.TracingEnabled {
+			recorder.Event(*parent, v1.EventTypeNormal, eventTypeTracing, "Tracing Enabled")
+		}
 	}
 	log.Infof("patch generated for: %s", report.ResName())
 	log.Debugf("patch: %s", patchJSON)
-
+	proxyInjectionAdmissionResponses.With(admissionResponseLabels(ownerKind, request.Namespace, "false", "", report.InjectAnnotationAt, configLabels)).Inc()
 	patchType := admissionv1beta1.PatchTypeJSONPatch
 	admissionResponse.Patch = patchJSON
 	admissionResponse.PatchType = &patchType

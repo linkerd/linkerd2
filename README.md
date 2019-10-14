@@ -1,6 +1,6 @@
 ![Linkerd][logo]
 
-[![Build Status][ci-badge]][ci]
+[![GitHub Actions Status][github-actions-badge]][github-actions]
 [![GitHub license][license-badge]](LICENSE)
 [![Go Report Card][go-report-card-badge]][go-report-card]
 [![Slack Status][slack-badge]][slack]
@@ -25,7 +25,7 @@ The complete list of Linkerd repos is:
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.9+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.12+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
@@ -45,6 +45,20 @@ contributing changes.
 [developer mailing list][linkerd-dev], and [announcements mailing list][linkerd-announce].
 * Follow [@linkerd][twitter] on Twitter.
 * Join the [Linkerd Slack][slack].
+* Join us in the regular online community meetings!
+
+## Community meetings
+
+We host regular online meetings for contributors, adopters, maintainers, and
+anyone else interested to connect in a synchronous fashion. These meetings take
+place the last Wednesday of the month at 9am Pacific / 4pm UTC.
+
+* [Zoom link](https://zoom.us/my/cncflinkerd)
+* [Google calendar](https://calendar.google.com/calendar/embed?src=buoyant.io_j28ik70vrl3418f4oldkdici7o%40group.calendar.google.com)
+* [Minutes from previous meetings](https://docs.google.com/document/d/1OvXYL5Q53klQFZPokQJas72YqkWXplkPQUguFbRW7Wo/edit)
+* [Recordings from previous meetings](https://www.youtube.com/playlist?list=PLI9FkLPXDscBHP91Ud3lyJScI4ZCjRG6F)
+
+We're a friendly group, so please feel free to join us!
 
 ## Code of conduct
 
@@ -73,8 +87,8 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 
 <!-- refs -->
-[ci]: https://travis-ci.org/linkerd/linkerd2
-[ci-badge]: https://travis-ci.org/linkerd/linkerd2.svg?branch=master
+[github-actions]: https://github.com/linkerd/linkerd2/actions
+[github-actions-badge]: https://github.com/linkerd/linkerd2/workflows/CI/badge.svg
 [cncf]: https://www.cncf.io/
 [coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [getting-started]: https://linkerd.io/2/getting-started/

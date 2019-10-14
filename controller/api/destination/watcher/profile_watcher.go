@@ -22,7 +22,7 @@ type (
 		profiles      map[ProfileID]*profilePublisher
 
 		log          *logging.Entry
-		sync.RWMutex // This mutex protects modifcation of the map itself.
+		sync.RWMutex // This mutex protects modification of the map itself.
 	}
 
 	profilePublisher struct {

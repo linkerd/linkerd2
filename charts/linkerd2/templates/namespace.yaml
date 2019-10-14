@@ -1,0 +1,18 @@
+{{with .Values -}}
+{{- if (.InstallNamespace) -}}
+---
+###
+### Linkerd Namespace
+###
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: {{ .Namespace }}
+  annotations:
+    {{.ProxyInjectAnnotation}}: {{.ProxyInjectDisabled}}
+  labels:
+    {{.LinkerdNamespaceLabel}}: "true"
+    config.linkerd.io/admission-webhooks: disabled
+{{ end -}}
+{{- end -}}

@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strings"
@@ -104,6 +105,7 @@ type TapRequestParams struct {
 	Method      string
 	Authority   string
 	Path        string
+	Extract     bool
 }
 
 // GRPCError generates a gRPC error code, as defined in
@@ -488,6 +490,15 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 		matches = append(matches, &match)
 	}
 
+	extract := &pb.TapByResourceRequest_Extract{}
+	if params.Extract {
+		extract = buildExtractHTTP(&pb.TapByResourceRequest_Extract_Http{
+			Extract: &pb.TapByResourceRequest_Extract_Http_Headers_{
+				Headers: &pb.TapByResourceRequest_Extract_Http_Headers{},
+			},
+		})
+	}
+
 	return &pb.TapByResourceRequest{
 		Target: &pb.ResourceSelection{
 			Resource: &target,
@@ -500,6 +511,7 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 				},
 			},
 		},
+		Extract: extract,
 	}, nil
 }
 
@@ -507,6 +519,14 @@ func buildMatchHTTP(match *pb.TapByResourceRequest_Match_Http) pb.TapByResourceR
 	return pb.TapByResourceRequest_Match{
 		Match: &pb.TapByResourceRequest_Match_Http_{
 			Http: match,
+		},
+	}
+}
+
+func buildExtractHTTP(extract *pb.TapByResourceRequest_Extract_Http) *pb.TapByResourceRequest_Extract {
+	return &pb.TapByResourceRequest_Extract{
+		Extract: &pb.TapByResourceRequest_Extract_Http_{
+			Http: extract,
 		},
 	}
 }
@@ -533,8 +553,12 @@ func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, prox
 		},
 		Destination: &pb.TcpAddress{
 			Ip: &pb.IPAddress{
-				Ip: &pb.IPAddress_Ipv4{
-					Ipv4: uint32(9),
+				Ip: &pb.IPAddress_Ipv6{
+					Ipv6: &pb.IPv6{
+						// All nodes address: https://www.iana.org/assignments/ipv6-multicast-addresses/ipv6-multicast-addresses.xhtml
+						First: binary.BigEndian.Uint64([]byte{0xff, 0x01, 0, 0, 0, 0, 0, 0}),
+						Last:  binary.BigEndian.Uint64([]byte{0, 0, 0, 0, 0, 0, 0, 0x01}),
+					},
 				},
 			},
 		},

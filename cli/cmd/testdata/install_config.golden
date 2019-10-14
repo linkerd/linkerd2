@@ -11,13 +11,14 @@ metadata:
     linkerd.io/inject: disabled
   labels:
     linkerd.io/is-control-plane: "true"
+    config.linkerd.io/admission-webhooks: disabled
 ---
 ###
 ### Identity Controller Service RBAC
 ###
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-identity
   labels:
@@ -29,7 +30,7 @@ rules:
   verbs: ["create"]
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-identity
   labels:
@@ -58,7 +59,7 @@ metadata:
 ###
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-controller
   labels:
@@ -82,7 +83,7 @@ rules:
   verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-controller
   labels:
@@ -104,6 +105,56 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: controller
+    linkerd.io/control-plane-ns: linkerd
+---
+###
+### Destination Controller Service
+###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-destination
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+rules:
+- apiGroups: ["apps"]
+  resources: ["replicasets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["pods", "endpoints", "services"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["linkerd.io"]
+  resources: ["serviceprofiles"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["split.smi-spec.io"]
+  resources: ["trafficsplits"]
+  verbs: ["list", "get", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-destination
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-linkerd-destination
+subjects:
+- kind: ServiceAccount
+  name: linkerd-destination
+  namespace: linkerd
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-destination
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd
 ---
 ###
@@ -151,6 +202,22 @@ metadata:
 ###
 ### Web RBAC
 ###
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-web-admin
+  labels:
+    linkerd.io/control-plane-component: web
+    linkerd.io/control-plane-ns: linkerd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-linkerd-tap-admin
+subjects:
+- kind: ServiceAccount
+  name: linkerd-web
+  namespace: linkerd
 ---
 kind: ServiceAccount
 apiVersion: v1
@@ -224,7 +291,7 @@ spec:
 ###
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-prometheus
   labels:
@@ -232,11 +299,11 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
-  resources: ["pods"]
+  resources: ["nodes", "nodes/proxy", "pods"]
   verbs: ["get", "list", "watch"]
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-prometheus
   labels:
@@ -286,13 +353,19 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
-  resources: ["namespaces"]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: [""]
+  resources: ["namespaces", "replicationcontrollers"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["pods"]
-  verbs: ["list"]
-- apiGroups: ["apps"]
-  resources: ["replicasets"]
+  verbs: ["list", "watch"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: ["extensions", "batch"]
+  resources: ["jobs"]
   verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
@@ -347,8 +420,10 @@ webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
     matchExpressions:
-    - key: linkerd.io/is-control-plane
-      operator: DoesNotExist
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
   clientConfig:
     service:
       name: linkerd-proxy-injector
@@ -417,8 +492,8 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 type: Opaque
 data:
-  crt.pem: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
-  key.pem: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
+  crt.pem: cHJveHkgaW5qZWN0b3IgY3J0
+  key.pem: cHJveHkgaW5qZWN0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -429,12 +504,18 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
   clientConfig:
     service:
       name: linkerd-sp-validator
       namespace: linkerd
       path: "/"
-    caBundle: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+    caBundle: cHJveHkgaW5qZWN0b3IgY3J0
   failurePolicy: Ignore
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
@@ -448,7 +529,7 @@ webhooks:
 ###
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-tap
   labels:
@@ -465,8 +546,20 @@ rules:
   resources: ["jobs"]
   verbs: ["list" , "get", "watch"]
 ---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-tap-admin
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
+rules:
+- apiGroups: ["tap.linkerd.io"]
+  resources: ["*"]
+  verbs: ["watch"]
+---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-linkerd-tap
   labels:
@@ -481,6 +574,22 @@ subjects:
   name: linkerd-tap
   namespace: linkerd
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-linkerd-tap-auth-delegator
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: linkerd-tap
+  namespace: linkerd
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -489,6 +598,55 @@ metadata:
   labels:
     linkerd.io/control-plane-component: tap
     linkerd.io/control-plane-ns: linkerd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-linkerd-tap-auth-reader
+  namespace: kube-system
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+- kind: ServiceAccount
+  name: linkerd-tap
+  namespace: linkerd
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-tap-tls
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+type: Opaque
+data:
+  crt.pem: dGFwIGNydA==
+  key.pem: dGFwIGtleQ==
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.tap.linkerd.io
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: tap.linkerd.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 100
+  service:
+    name: linkerd-tap
+    namespace: linkerd
+  caBundle: dGFwIGNydA==
 ---
 ###
 ### Control Plane PSP
@@ -561,6 +719,9 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-controller
+  namespace: linkerd
+- kind: ServiceAccount
+  name: linkerd-destination
   namespace: linkerd
 - kind: ServiceAccount
   name: linkerd-grafana

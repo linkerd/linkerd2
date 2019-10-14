@@ -1,6 +1,6 @@
 set -eu
 
-install_gcloud_kubectl() {
+install_gcloud() {
     dir="$1"
 
     export CLOUDSDK_CORE_DISABLE_PROMPTS=1
@@ -12,7 +12,6 @@ install_gcloud_kubectl() {
         curl https://sdk.cloud.google.com | bash
         . "$dir/path.bash.inc"
     fi
-    gcloud components install kubectl
 }
 
 set_gcloud_config() {

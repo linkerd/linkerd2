@@ -91,7 +91,7 @@ func newCmdMetrics() *cobra.Command {
   )`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 			if err != nil {
 				return err
 			}

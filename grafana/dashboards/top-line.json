@@ -990,7 +990,7 @@
       }
     }
   ],
-  "refresh": "5s",
+  "refresh": "1m",
   "schemaVersion": 18,
   "style": "dark",
   "tags": [

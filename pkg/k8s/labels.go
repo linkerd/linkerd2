@@ -169,6 +169,16 @@ const (
 	// injected.
 	ProxyEnableDebugAnnotation = ProxyConfigAnnotationsPrefix + "/enable-debug-sidecar"
 
+	// ProxyTraceCollectorSvcAddr can be used to enable tracing on a proxy.
+	// It takes the collector service name (e.g. oc-collector.tracing:55678) as
+	// its value.
+	ProxyTraceCollectorSvcAddr = ProxyConfigAnnotationsPrefix + "/trace-collector"
+
+	// ProxyTraceCollectorSvcAccount is used to specify the service account
+	// associated with the trace collector. It is used to create the service's
+	// mTLS identity.
+	ProxyTraceCollectorSvcAccount = "config.alpha.linkerd.io/trace-collector-service-account"
+
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
 	IdentityModeDefault = "default"
@@ -226,6 +236,9 @@ const (
 
 	// SPValidatorWebhookConfigName is the name of the validating webhook configuration
 	SPValidatorWebhookConfigName = SPValidatorWebhookServiceName + "-webhook-config"
+
+	// TapServiceName is the name of the tap APIService
+	TapServiceName = "linkerd-tap"
 
 	/*
 	 * Mount paths

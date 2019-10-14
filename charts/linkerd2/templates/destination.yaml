@@ -1,0 +1,105 @@
+{{with .Values -}}
+---
+###
+### Destination Controller Service
+###
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-dst
+  namespace: {{.Namespace}}
+  labels:
+    {{.ControllerComponentLabel}}: destination
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+  annotations:
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.ControllerComponentLabel}}: destination
+  ports:
+  - name: grpc
+    port: 8086
+    targetPort: 8086
+---
+{{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
+{{ $_ := set .Proxy "Component" "linkerd-destination" -}}
+{{ include "linkerd.proxy.validation" .Proxy -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
+  labels:
+    {{.ControllerComponentLabel}}: destination
+    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+  name: linkerd-destination
+  namespace: {{.Namespace}}
+spec:
+  replicas: {{.ControllerReplicas}}
+  selector:
+    matchLabels:
+      {{.ControllerComponentLabel}}: destination
+      {{.ControllerNamespaceLabel}}: {{.Namespace}}
+      {{- include "partials.proxy.labels" .Proxy | nindent 6}}
+  template:
+    metadata:
+      annotations:
+        {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
+        {{- include "partials.proxy.annotations" .Proxy| nindent 8}}
+      labels:
+        {{.ControllerComponentLabel}}: destination
+        {{.ControllerNamespaceLabel}}: {{.Namespace}}
+        {{- include "partials.proxy.labels" .Proxy | nindent 8}}
+    spec:
+      {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- if .EnablePodAntiAffinity -}}
+      {{- $local := dict "Component" "destination" "Label" .ControllerComponentLabel -}}
+      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
+      {{- end }}
+      containers:
+      - args:
+        - destination
+        - -addr=:8086
+        - -controller-namespace={{.Namespace}}
+        - -enable-h2-upgrade={{.EnableH2Upgrade}}
+        - -log-level={{.ControllerLogLevel}}
+        image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
+        imagePullPolicy: {{.ImagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9996
+          initialDelaySeconds: 10
+        name: destination
+        ports:
+        - containerPort: 8086
+          name: grpc
+        - containerPort: 9996
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9996
+        {{- if .DestinationResources -}}
+        {{- include "partials.resources" .DestinationResources | nindent 8 }}
+        {{- end }}
+        securityContext:
+          runAsUser: {{.ControllerUID}}
+        volumeMounts:
+        - mountPath: /var/run/linkerd/config
+          name: config
+      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if not .NoInitContainer -}}
+      initContainers:
+      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      serviceAccountName: linkerd-destination
+      volumes:
+      - configMap:
+          name: linkerd-config
+        name: config
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
+{{ end -}}

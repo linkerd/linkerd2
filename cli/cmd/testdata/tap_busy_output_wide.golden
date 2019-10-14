@@ -1,2 +1,2 @@
-req id=1:0 proxy=out src=0.0.0.1:0 dst=0.0.0.9:0 tls=true :method=GET :authority=localhost :path=/some/path dst_res=po/my-pod
-end id=1:0 proxy=out src=0.0.0.1:0 dst=0.0.0.9:0 tls= grpc-status=Code(666) duration=0µs response-length=1337B
+req id=1:0 proxy=out src=0.0.0.1:0 dst=[ff01::1]:0 tls=true :method=GET :authority=localhost :path=/some/path dst_res=po/my-pod
+end id=1:0 proxy=out src=0.0.0.1:0 dst=[ff01::1]:0 tls= grpc-status=Code(666) duration=0µs response-length=1337B

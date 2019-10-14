@@ -2,23 +2,23 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/addr"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"google.golang.org/grpc/codes"
 )
 
 const targetName = "pod-666"
 
-func busyTest(t *testing.T, wide bool) {
+func busyTest(t *testing.T, output string) {
 	resourceType := k8s.Pod
 	params := util.TapRequestParams{
 		Resource:  resourceType + "/" + targetName,
@@ -40,8 +40,34 @@ func busyTest(t *testing.T, wide bool) {
 					Id: &pb.TapEvent_Http_StreamId{
 						Base: 1,
 					},
+					Method: &pb.HttpMethod{
+						Type: &pb.HttpMethod_Registered_{
+							Registered: pb.HttpMethod_GET,
+						},
+					},
+					Scheme: &pb.Scheme{
+						Type: &pb.Scheme_Registered_{
+							Registered: pb.Scheme_HTTPS,
+						},
+					},
 					Authority: params.Authority,
 					Path:      params.Path,
+					Headers: &pb.Headers{
+						Headers: []*pb.Headers_Header{
+							{
+								Name: "header-name-1",
+								Value: &pb.Headers_Header_ValueStr{
+									ValueStr: "header-value-str-1",
+								},
+							},
+							{
+								Name: "header-name-2",
+								Value: &pb.Headers_Header_ValueBin{
+									ValueBin: []byte("header-value-bin-2"),
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -68,27 +94,56 @@ func busyTest(t *testing.T, wide bool) {
 						Seconds: 100,
 					},
 					ResponseBytes: 1337,
+					Trailers: &pb.Headers{
+						Headers: []*pb.Headers_Header{
+							{
+								Name: "trailer-name",
+								Value: &pb.Headers_Header_ValueBin{
+									ValueBin: []byte("header-value-bin"),
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 		map[string]string{},
 		pb.TapEvent_OUTBOUND,
 	)
-	mockAPIClient := &public.MockAPIClient{}
-	mockAPIClient.APITapByResourceClientToReturn = &public.MockAPITapByResourceClient{
-		TapEventsToReturn: []pb.TapEvent{event1, event2},
+	kubeAPI, err := k8s.NewFakeAPI()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
+	ts := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			for _, event := range []pb.TapEvent{event1, event2} {
+				event := event // pin
+				err = protohttp.WriteProtoToHTTPResponse(w, &event)
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+			}
+		}),
+	)
+	defer ts.Close()
+	kubeAPI.Config.Host = ts.URL
+
+	options := newTapOptions()
+	options.output = output
 
 	writer := bytes.NewBufferString("")
-	err = requestTapByResourceFromAPI(writer, mockAPIClient, req, wide)
+	err = requestTapByResourceFromAPI(writer, kubeAPI, req, options)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
 	var goldenFilePath string
-	if wide {
+	switch options.output {
+	case wideOutput:
 		goldenFilePath = "testdata/tap_busy_output_wide.golden"
-	} else {
+	case jsonOutput:
+		goldenFilePath = "testdata/tap_busy_output_json.golden"
+	default:
 		goldenFilePath = "testdata/tap_busy_output.golden"
 	}
 
@@ -97,19 +152,23 @@ func busyTest(t *testing.T, wide bool) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 	expectedContent := string(goldenFileBytes)
-	output := writer.String()
-	if expectedContent != output {
-		t.Fatalf("Expected function to render:\n%s\bbut got:\n%s", expectedContent, output)
+	actual := writer.String()
+	if expectedContent != actual {
+		t.Fatalf("Expected function to render:\n%s\bbut got:\n%s", expectedContent, actual)
 	}
 }
 
 func TestRequestTapByResourceFromAPI(t *testing.T) {
 	t.Run("Should render busy response if everything went well", func(t *testing.T) {
-		busyTest(t, false)
+		busyTest(t, "")
 	})
 
 	t.Run("Should render wide busy response if everything went well", func(t *testing.T) {
-		busyTest(t, true)
+		busyTest(t, "wide")
+	})
+
+	t.Run("Should render JSON busy response if everything went well", func(t *testing.T) {
+		busyTest(t, "json")
 	})
 
 	t.Run("Should render empty response if no events returned", func(t *testing.T) {
@@ -127,13 +186,19 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		mockAPIClient := &public.MockAPIClient{}
-		mockAPIClient.APITapByResourceClientToReturn = &public.MockAPITapByResourceClient{
-			TapEventsToReturn: []pb.TapEvent{},
+		kubeAPI, err := k8s.NewFakeAPI()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
 		}
+		ts := httptest.NewServer(http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {}),
+		)
+		defer ts.Close()
+		kubeAPI.Config.Host = ts.URL
 
+		options := newTapOptions()
 		writer := bytes.NewBufferString("")
-		err = requestTapByResourceFromAPI(writer, mockAPIClient, req, false)
+		err = requestTapByResourceFromAPI(writer, kubeAPI, req, options)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -165,13 +230,14 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		mockAPIClient := &public.MockAPIClient{}
-		mockAPIClient.APITapByResourceClientToReturn = &public.MockAPITapByResourceClient{
-			ErrorsToReturn: []error{errors.New("expected")},
+		kubeAPI, err := k8s.NewFakeAPI()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
 		}
 
+		options := newTapOptions()
 		writer := bytes.NewBufferString("")
-		err = requestTapByResourceFromAPI(writer, mockAPIClient, req, false)
+		err = requestTapByResourceFromAPI(writer, kubeAPI, req, options)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing but output [%s]", writer.String())
 		}

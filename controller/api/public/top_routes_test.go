@@ -14,7 +14,7 @@ import (
 
 // deployment/books
 var booksDeployConfig = []string{`kind: Deployment
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 metadata:
   name: books
   namespace: default
@@ -33,7 +33,7 @@ spec:
       containers:
       - image: buoyantio/booksapp:v0.0.2
 `, `
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
   uid: a1b2c3d4

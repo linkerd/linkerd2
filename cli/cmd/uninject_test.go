@@ -24,6 +24,12 @@ func TestUninjectYAML(t *testing.T) {
 			reportFileName: "inject_emojivoto_deployment_uninject.report",
 		},
 		{
+			// remove all the linkerd.io/* annotations
+			inputFileName:  "inject_emojivoto_deployment_overridden_noinject.golden.yml",
+			goldenFileName: "inject_emojivoto_deployment_uninjected.input.yml",
+			reportFileName: "inject_emojivoto_deployment_uninject.report",
+		},
+		{
 			inputFileName:  "inject_emojivoto_list.golden.yml",
 			goldenFileName: "inject_emojivoto_list.input.yml",
 			reportFileName: "inject_emojivoto_list_uninject.report",

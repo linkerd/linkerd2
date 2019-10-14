@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -eu
+
+helmversion=v2.14.3
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+targetbin="$( cd $bindir/.. && pwd )"/target/bin
+helmbin=$targetbin/helm-$helmversion
+
+if [ ! -f $helmbin ]; then
+    if [ "$(uname -s)" = "Darwin" ]; then
+        os=darwin
+        arch=amd64
+    else
+        os=linux
+        case $(uname -m) in
+            x86_64) arch="amd64" ;;
+            arm) dpkg --print-architecture | grep -q "arm64" && arch="arm64" || arch="arm" ;;
+        esac
+    fi
+    helmcurl="https://get.helm.sh/helm-${helmversion}-${os}-${arch}.tar.gz"
+    targetdir="${os}-${arch}"
+    tmp=$(mktemp -d -t helm.XXX)
+    mkdir -p "$targetbin"
+    (
+        cd "$tmp"
+        curl -Lsf -o "./helm.tar.gz" "$helmcurl"
+        tar zf "./helm.tar.gz" -x "$targetdir"
+        chmod +x "$targetdir/helm"
+    )
+    mv "$tmp/$targetdir/helm" "$helmbin"
+    rm -rf "$tmp"
+fi
+
+$helmbin "$@"

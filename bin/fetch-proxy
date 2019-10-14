@@ -12,33 +12,30 @@ rootdir="$( cd $bindir/.. && pwd )"
 builddir="$rootdir/target/proxy"
 
 version="${1:-latest}"
-latest_sha=""
-
 if [ "$version" == "latest" ]; then
-  out=$(curl -vsL https://build.l5d.io/linkerd2-proxy/latest.txt)
-  version=$(echo $out | awk '{print $2}' | sed 's/^linkerd2-proxy-//' | sed 's/\.tar\.gz//')
-  latest_sha=$(echo $out | awk '{print $1}')
+  version=$(curl -sL https://api.github.com/repos/linkerd/linkerd2-proxy/releases/latest |jq -r .tag_name | sed 's,^release/,,')
 fi
 
-filename="linkerd2-proxy-${version}.tar.gz"
-archive="$builddir/$filename"
+assetbase="https://github.com/linkerd/linkerd2-proxy/releases/download/release%2F${version}"
+pkgname="linkerd2-proxy-${version}"
+pkgfile="${pkgname}.tar.gz"
+shafile="${pkgname}.txt"
 
-if [ ! -f "$archive" ]; then
-  mkdir -p "$builddir"
-  curl -vsL "$builddir" "https://build.l5d.io/linkerd2-proxy/$filename" > "$archive"
+mkdir -p "$builddir"
+cd "$builddir"
+curl -sLO "$assetbase/$pkgfile"
+curl -sLO "$assetbase/$shafile"
+
+tar -zxvf "$pkgfile" >&2
+expected=$(awk '{print $1}' "$shafile")
+computed=$(sha256sum "$pkgfile" | awk '{print $1}')
+if [ "$computed" != "$expected" ]; then
+  echo "sha mismatch" >&2
+  exit 1
 fi
 
-if [ -n "$latest_sha" ]; then
-  sha=$(sha256sum "$archive" | awk '{print $1}')
-  if [ "$sha" != "$latest_sha" ]; then
-    echo "sha mismatch" >&2
-    exit 1
-  fi
-fi
-
-tar -C "$builddir" -zxvf "$archive" >&2
-mv "$builddir/linkerd2-proxy-$version/LICENSE" "$builddir"
-mv "$builddir/linkerd2-proxy-$version/bin/linkerd2-proxy" "$builddir"
-rm -r "$archive" "$builddir/linkerd2-proxy-$version"
-mv "$builddir/linkerd2-proxy" "$builddir/linkerd2-proxy-$version"
-echo "$builddir/linkerd2-proxy-$version"
+mv "$pkgname/LICENSE" .
+mv "$pkgname/bin/linkerd2-proxy" .
+rm -r "$pkgfile" "$pkgname"
+mv linkerd2-proxy "$pkgname"
+echo "$builddir/$pkgname"

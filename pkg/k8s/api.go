@@ -34,7 +34,7 @@ type KubernetesAPI struct {
 
 // NewAPI validates a Kubernetes config and returns a client for accessing the
 // configured cluster.
-func NewAPI(configPath, kubeContext string, timeout time.Duration) (*KubernetesAPI, error) {
+func NewAPI(configPath, kubeContext string, impersonate string, timeout time.Duration) (*KubernetesAPI, error) {
 	config, err := GetConfig(configPath, kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
@@ -46,6 +46,12 @@ func NewAPI(configPath, kubeContext string, timeout time.Duration) (*KubernetesA
 	config.Timeout = timeout
 	wt := config.WrapTransport
 	config.WrapTransport = prometheus.ClientWithTelemetry("k8s", wt)
+
+	if impersonate != "" {
+		config.Impersonate = rest.ImpersonationConfig{
+			UserName: impersonate,
+		}
+	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {

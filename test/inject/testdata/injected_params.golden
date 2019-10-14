@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   creationTimestamp: null
@@ -55,7 +55,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-destination.fake-ns.svc.cluster.local:8086
+          value: linkerd-dst.fake-ns.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:123
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -64,6 +64,8 @@ spec:
           value: 127.0.0.1:890
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:678
+        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+          value: .
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: .
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -76,10 +78,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
-        - name: LINKERD2_PROXY_TAP_DISABLED
-          value: "true"
         - name: LINKERD2_PROXY_IDENTITY_DISABLED
           value: disabled
+        - name: LINKERD2_PROXY_TAP_DISABLED
+          value: "true"
         image: proxy-image:proxy-version
         imagePullPolicy: Never
         livenessProbe:
@@ -119,7 +121,7 @@ spec:
         - --proxy-uid
         - "1337"
         - --inbound-ports-to-ignore
-        - 234,345,123,789
+        - 123,789,234,345
         - --outbound-ports-to-ignore
         - 456,567
         image: init-image:fake # this is replaced during testing

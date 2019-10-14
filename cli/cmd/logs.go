@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
 	"regexp"
+	"text/template"
 	"time"
 
 	"github.com/fatih/color"
@@ -97,10 +99,36 @@ func (o *logsOptions) toSternConfig(controlPlaneComponents, availableContainers 
 	if err != nil {
 		return nil, err
 	}
+
+	// Based on stern/cmd/cli.go
+	t := "{{color .PodColor .PodName}} {{color .ContainerColor .ContainerName}} {{.Message}}"
+	if o.noColor {
+		t = "{{.PodName}} {{.ContainerName}} {{.Message}}"
+	}
+	funs := map[string]interface{}{
+		"json": func(in interface{}) (string, error) {
+			b, err := json.Marshal(in)
+			if err != nil {
+				return "", err
+			}
+			return string(b), nil
+		},
+		"color": func(color color.Color, text string) string {
+			return color.SprintFunc()(text)
+		},
+	}
+	template, err := template.New("log").Funcs(funs).Parse(t)
+	if err != nil {
+		return nil, err
+	}
+
 	config.PodQuery = podFilterRgx
 	config.Since = o.sinceSeconds
 	config.Timestamps = o.timestamps
 	config.Namespace = controlPlaneNamespace
+	config.ContainerState = stern.RUNNING
+	config.ExcludeContainerQuery = nil
+	config.Template = template
 
 	return config, nil
 }
@@ -116,8 +144,8 @@ func getControlPlaneComponentsAndContainers(pods *corev1.PodList) ([]string, []s
 	return controlPlaneComponents, containers
 }
 
-func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext string) (*logCmdConfig, error) {
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
+func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext, impersonate string) (*logCmdConfig, error) {
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +190,7 @@ func newCmdLogs() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			color.NoColor = options.noColor
 
-			opts, err := newLogCmdConfig(options, kubeconfigPath, kubeContext)
+			opts, err := newLogCmdConfig(options, kubeconfigPath, kubeContext, impersonate)
 
 			if err != nil {
 				return err
@@ -192,11 +220,30 @@ func runLogOutput(opts *logCmdConfig) error {
 	podInterface := opts.clientset.CoreV1().Pods(opts.Namespace)
 	tails := make(map[string]*stern.Tail)
 
+	// This channel serializes all log output.
+	// It is intended to workaround https://github.com/wercker/stern/issues/96,
+	// and is based on
+	// https://github.com/oandrew/stern/commit/8723308e46b408e239ce369ced12706d01479532
+	logC := make(chan string, 1024)
+
+	go func() {
+		for {
+			select {
+			case str := <-logC:
+				fmt.Fprintf(os.Stdout, str)
+			case <-ctx.Done():
+				break
+			}
+		}
+	}()
+
 	added, _, err := stern.Watch(
 		ctx,
 		podInterface,
 		opts.PodQuery,
 		opts.ContainerQuery,
+		opts.ExcludeContainerQuery,
+		opts.ContainerState,
 		opts.LabelSelector,
 	)
 
@@ -210,14 +257,16 @@ func runLogOutput(opts *logCmdConfig) error {
 				SinceSeconds: int64(opts.Since.Seconds()),
 				Timestamps:   opts.Timestamps,
 				TailLines:    opts.TailLines,
+				Exclude:      opts.Exclude,
+				Include:      opts.Include,
 				Namespace:    true,
 			}
 
-			newTail := stern.NewTail(a.Namespace, a.Pod, a.Container, tailOpts)
+			newTail := stern.NewTail(a.Namespace, a.Pod, a.Container, opts.Template, tailOpts)
 			if _, ok := tails[a.GetID()]; !ok {
 				tails[a.GetID()] = newTail
 			}
-			newTail.Start(ctx, podInterface)
+			newTail.Start(ctx, podInterface, logC)
 		}
 	}()
 

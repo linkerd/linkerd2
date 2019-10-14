@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/filesonly"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -43,6 +44,9 @@ type (
 
 // this is called by the HTTP server to actually respond to a request
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+	w.Header().Set("X-XSS-Protection", "1; mode=block")
 	s.router.ServeHTTP(w, req)
 }
 
@@ -56,8 +60,10 @@ func NewServer(
 	staticDir string,
 	uuid string,
 	controllerNamespace string,
+	clusterDomain string,
 	reload bool,
 	apiClient public.APIClient,
+	k8sAPI *k8s.KubernetesAPI,
 ) *http.Server {
 	server := &Server{
 		templateDir: templateDir,
@@ -73,9 +79,11 @@ func NewServer(
 	wrappedServer := prometheus.WithTelemetry(server)
 	handler := &handler{
 		apiClient:           apiClient,
+		k8sAPI:              k8sAPI,
 		render:              server.RenderTemplate,
 		uuid:                uuid,
 		controllerNamespace: controllerNamespace,
+		clusterDomain:       clusterDomain,
 		grafanaProxy:        newGrafanaProxy(grafanaAddr),
 	}
 
@@ -88,23 +96,39 @@ func NewServer(
 
 	// webapp routes
 	server.router.GET("/", handler.handleIndex)
-	server.router.GET("/overview", handler.handleIndex)
-	server.router.GET("/servicemesh", handler.handleIndex)
+	server.router.GET("/controlplane", handler.handleIndex)
 	server.router.GET("/namespaces", handler.handleIndex)
-	server.router.GET("/namespaces/:namespace", handler.handleIndex)
+
+	// paths for a list of resources by namespace
+	server.router.GET("/namespaces/:namespace/daemonsets", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/statefulsets", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/trafficsplits", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/jobs", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/deployments", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/replicationcontrollers", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/pods", handler.handleIndex)
+
+	// legacy paths that are deprecated but should not 404
+	server.router.GET("/overview", handler.handleIndex)
 	server.router.GET("/daemonsets", handler.handleIndex)
 	server.router.GET("/statefulsets", handler.handleIndex)
+	server.router.GET("/trafficsplits", handler.handleIndex)
 	server.router.GET("/jobs", handler.handleIndex)
 	server.router.GET("/deployments", handler.handleIndex)
 	server.router.GET("/replicationcontrollers", handler.handleIndex)
 	server.router.GET("/pods", handler.handleIndex)
-	server.router.GET("/authorities", handler.handleIndex)
+
+	// paths for individual resource view
+	server.router.GET("/namespaces/:namespace", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/pods/:pod", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/daemonsets/:daemonset", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/statefulsets/:statefulset", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/trafficsplits/:trafficsplit", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/deployments/:deployment", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/jobs/:job", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/replicationcontrollers/:replicationcontroller", handler.handleIndex)
+
+	// tools and community paths
 	server.router.GET("/tap", handler.handleIndex)
 	server.router.GET("/top", handler.handleIndex)
 	server.router.GET("/community", handler.handleIndex)

@@ -39,7 +39,7 @@ func TestRoutes(t *testing.T) {
 		c int
 	}{
 		{"linkerd-controller-api", 9},
-		{"linkerd-destination", 3},
+		{"linkerd-destination", 4},
 		{"linkerd-grafana", 12},
 		{"linkerd-identity", 2},
 		{"linkerd-prometheus", 5},

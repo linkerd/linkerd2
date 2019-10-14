@@ -1,5 +1,6 @@
 import CloseIcon from '@material-ui/icons/Close';
 import IconButton from '@material-ui/core/IconButton';
+import Linkify from 'react-linkify';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Snackbar from '@material-ui/core/Snackbar';
@@ -63,12 +64,12 @@ class ErrorSnackbar extends React.Component {
             className: classNames(classes.error, classes.margin)
           }}
         message={(
-          <div id="message-id" >
+          <div id="message-id" className="errorMessage" >
             <div className={classes.message}>
               <WarningIcon className={classNames(classes.icon, classes.iconVariant)} />
               { !status ? null : status + " " }{ _isEmpty(statusText) ? defaultMessage : statusText }
             </div>
-            { !error ? null : <div>{error}</div> }
+            <Linkify>{ !error ? null : <div>{error}</div> }</Linkify>
             { !url ? null : <div>{url}</div> }
           </div>
           )}

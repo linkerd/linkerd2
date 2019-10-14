@@ -9,7 +9,7 @@ git_sha_head() {
 go_deps_sha() {
     bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     rootdir="$( cd $bindir/.. && pwd )"
-    cat $rootdir/Gopkg.lock $rootdir/Dockerfile-go-deps | shasum - | awk '{print $1}' |cut -c 1-8
+    cat $rootdir/go.mod $rootdir/Dockerfile-go-deps | shasum - | awk '{print $1}' |cut -c 1-8
 }
 
 clean_head() {

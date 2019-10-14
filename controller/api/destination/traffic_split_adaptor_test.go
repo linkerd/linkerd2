@@ -42,7 +42,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 
 	t.Run("Profile update", func(t *testing.T) {
 		listener := watcher.NewBufferingProfileListener()
-		adaptor := newTrafficSplitAdaptor(listener, watcher.ServiceID{Name: "foo", Namespace: "ns"}, watcher.Port(80))
+		adaptor := newTrafficSplitAdaptor(listener, watcher.ServiceID{Name: "foo", Namespace: "ns"}, watcher.Port(80), "cluster.local")
 
 		adaptor.Update(profile)
 
@@ -54,7 +54,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 
 	t.Run("Traffic split without profile", func(t *testing.T) {
 		listener := watcher.NewBufferingProfileListener()
-		adaptor := newTrafficSplitAdaptor(listener, watcher.ServiceID{Name: "foo", Namespace: "ns"}, watcher.Port(80))
+		adaptor := newTrafficSplitAdaptor(listener, watcher.ServiceID{Name: "foo", Namespace: "ns"}, watcher.Port(80), "cluster.local")
 
 		adaptor.UpdateTrafficSplit(split)
 
@@ -78,7 +78,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 
 	t.Run("Profile merged with traffic split", func(t *testing.T) {
 		listener := watcher.NewBufferingProfileListener()
-		adaptor := newTrafficSplitAdaptor(listener, watcher.ServiceID{Name: "foo", Namespace: "ns"}, watcher.Port(80))
+		adaptor := newTrafficSplitAdaptor(listener, watcher.ServiceID{Name: "foo", Namespace: "ns"}, watcher.Port(80), "cluster.local")
 
 		adaptor.Update(profile)
 		adaptor.UpdateTrafficSplit(split)

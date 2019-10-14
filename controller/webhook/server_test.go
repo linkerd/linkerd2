@@ -18,7 +18,7 @@ func TestServe(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		testServer := &Server{nil, k8sAPI, nil}
+		testServer := &Server{nil, k8sAPI, nil, nil}
 
 		in := bytes.NewReader(nil)
 		request := httptest.NewRequest(http.MethodGet, "/", in)
@@ -38,7 +38,7 @@ func TestServe(t *testing.T) {
 
 func TestShutdown(t *testing.T) {
 	server := &http.Server{Addr: ":0"}
-	testServer := &Server{server, nil, nil}
+	testServer := &Server{server, nil, nil, nil}
 
 	go func() {
 		if err := testServer.ListenAndServe(); err != nil {

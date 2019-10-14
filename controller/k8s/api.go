@@ -18,7 +18,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	appsv1 "k8s.io/api/apps/v1"
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -29,7 +28,6 @@ import (
 	"k8s.io/client-go/informers"
 	arinformers "k8s.io/client-go/informers/admissionregistration/v1beta1"
 	appv1informers "k8s.io/client-go/informers/apps/v1"
-	appv1beta2informers "k8s.io/client-go/informers/apps/v1beta2"
 	batchv1informers "k8s.io/client-go/informers/batch/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -63,7 +61,7 @@ type API struct {
 	Client kubernetes.Interface
 
 	cm       coreinformers.ConfigMapInformer
-	deploy   appv1beta2informers.DeploymentInformer
+	deploy   appv1informers.DeploymentInformer
 	ds       appv1informers.DaemonSetInformer
 	endpoint coreinformers.EndpointsInformer
 	job      batchv1informers.JobInformer
@@ -71,7 +69,7 @@ type API struct {
 	ns       coreinformers.NamespaceInformer
 	pod      coreinformers.PodInformer
 	rc       coreinformers.ReplicationControllerInformer
-	rs       appv1beta2informers.ReplicaSetInformer
+	rs       appv1informers.ReplicaSetInformer
 	sp       spinformers.ServiceProfileInformer
 	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
@@ -85,7 +83,7 @@ type API struct {
 
 // InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
 func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
-	k8sClient, err := k8s.NewAPI(kubeConfig, "", 0)
+	k8sClient, err := k8s.NewAPI(kubeConfig, "", "", 0)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +160,7 @@ func NewAPI(
 			api.cm = sharedInformers.Core().V1().ConfigMaps()
 			api.syncChecks = append(api.syncChecks, api.cm.Informer().HasSynced)
 		case Deploy:
-			api.deploy = sharedInformers.Apps().V1beta2().Deployments()
+			api.deploy = sharedInformers.Apps().V1().Deployments()
 			api.syncChecks = append(api.syncChecks, api.deploy.Informer().HasSynced)
 		case DS:
 			api.ds = sharedInformers.Apps().V1().DaemonSets()
@@ -186,7 +184,7 @@ func NewAPI(
 			api.rc = sharedInformers.Core().V1().ReplicationControllers()
 			api.syncChecks = append(api.syncChecks, api.rc.Informer().HasSynced)
 		case RS:
-			api.rs = sharedInformers.Apps().V1beta2().ReplicaSets()
+			api.rs = sharedInformers.Apps().V1().ReplicaSets()
 			api.syncChecks = append(api.syncChecks, api.rs.Informer().HasSynced)
 		case SP:
 			api.sp = spSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
@@ -231,7 +229,7 @@ func (api *API) NS() coreinformers.NamespaceInformer {
 }
 
 // Deploy provides access to a shared informer and lister for Deployments.
-func (api *API) Deploy() appv1beta2informers.DeploymentInformer {
+func (api *API) Deploy() appv1informers.DeploymentInformer {
 	if api.deploy == nil {
 		panic("Deploy informer not configured")
 	}
@@ -255,7 +253,7 @@ func (api *API) SS() appv1informers.StatefulSetInformer {
 }
 
 // RS provides access to a shared informer and lister for ReplicaSets.
-func (api *API) RS() appv1beta2informers.ReplicaSetInformer {
+func (api *API) RS() appv1informers.ReplicaSetInformer {
 	if api.rs == nil {
 		panic("RS informer not configured")
 	}
@@ -371,9 +369,9 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 // GetOwnerKindAndName returns the pod owner's kind and name, using owner
 // references from the Kubernetes API. The kind is represented as the Kubernetes
 // singular resource type (e.g. deployment, daemonset, job, etc.).
-// If skipCache is false we use the shared informer cache; otherwise we hit the
-// Kubernetes API directly.
-func (api *API) GetOwnerKindAndName(pod *corev1.Pod, skipCache bool) (string, string) {
+// If retry is true, when the shared informer cache doesn't return anything
+// we try again with a direct Kubernetes API call.
+func (api *API) GetOwnerKindAndName(pod *corev1.Pod, retry bool) (string, string) {
 	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		// pod without a parent
@@ -385,17 +383,16 @@ func (api *API) GetOwnerKindAndName(pod *corev1.Pod, skipCache bool) (string, st
 
 	parent := ownerRefs[0]
 	if parent.Kind == "ReplicaSet" {
-		var rs *appsv1beta2.ReplicaSet
+		var rs *appsv1.ReplicaSet
 		var err error
-		if skipCache {
-			rs, err = api.Client.AppsV1beta2().ReplicaSets(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
-			if err != nil {
-				log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
-			}
-		} else {
-			rs, err = api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
-			if err != nil {
-				log.Warnf("failed to retrieve replicaset from k8s %s/%s: %s", pod.Namespace, parent.Name, err)
+		rs, err = api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
+		if err != nil {
+			log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
+			if retry {
+				rs, err = api.Client.AppsV1().ReplicaSets(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
+				if err != nil {
+					log.Warnf("failed to retrieve replicaset from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
+				}
 			}
 		}
 
@@ -428,7 +425,7 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
 		ownerUID = typed.UID
 
-	case *appsv1beta2.Deployment:
+	case *appsv1.Deployment:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
 		ret, err := api.RS().Lister().ReplicaSets(namespace).List(selector)
@@ -446,7 +443,7 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 		}
 		return pods, nil
 
-	case *appsv1beta2.ReplicaSet:
+	case *appsv1.ReplicaSet:
 		namespace = typed.Namespace
 		selector = labels.Set(typed.Spec.Selector.MatchLabels).AsSelector()
 		ownerUID = typed.UID
@@ -527,13 +524,13 @@ func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
 	case *appsv1.DaemonSet:
 		return typed.Name, typed.Namespace, nil
 
-	case *appsv1beta2.Deployment:
+	case *appsv1.Deployment:
 		return typed.Name, typed.Namespace, nil
 
 	case *batchv1.Job:
 		return typed.Name, typed.Namespace, nil
 
-	case *appsv1beta2.ReplicaSet:
+	case *appsv1.ReplicaSet:
 		return typed.Name, typed.Namespace, nil
 
 	case *corev1.ReplicationController:
@@ -600,16 +597,16 @@ func (api *API) getNamespaces(name string) ([]runtime.Object, error) {
 
 func (api *API) getDeployments(namespace, name string) ([]runtime.Object, error) {
 	var err error
-	var deploys []*appsv1beta2.Deployment
+	var deploys []*appsv1.Deployment
 
 	if namespace == "" {
 		deploys, err = api.Deploy().Lister().List(labels.Everything())
 	} else if name == "" {
 		deploys, err = api.Deploy().Lister().Deployments(namespace).List(labels.Everything())
 	} else {
-		var deploy *appsv1beta2.Deployment
+		var deploy *appsv1.Deployment
 		deploy, err = api.Deploy().Lister().Deployments(namespace).Get(name)
-		deploys = []*appsv1beta2.Deployment{deploy}
+		deploys = []*appsv1.Deployment{deploy}
 	}
 
 	if err != nil {
@@ -867,8 +864,8 @@ func (api *API) getLeafServices(apex *corev1.Service) ([]*corev1.Service, error)
 // first look for a matching service profile in the client's namespace.  If not
 // found, we then look in the service's namespace.  If no service profile is
 // found, we return the default service profile.
-func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs string) *spv1alpha2.ServiceProfile {
-	dst := fmt.Sprintf("%s.%s.svc.cluster.local", svc.Name, svc.Namespace)
+func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs, clusterDomain string) *spv1alpha2.ServiceProfile {
+	dst := fmt.Sprintf("%s.%s.svc.%s", svc.Name, svc.Namespace, clusterDomain)
 	// First attempt to lookup profile in client namespace
 	if clientNs != "" {
 		p, err := api.SP().Lister().ServiceProfiles(clientNs).Get(dst)

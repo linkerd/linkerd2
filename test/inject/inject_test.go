@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -28,7 +31,7 @@ func TestMain(m *testing.M) {
 /// TEST EXECUTION ///
 //////////////////////
 
-func TestInject(t *testing.T) {
+func TestInjectManual(t *testing.T) {
 	cmd := []string{"inject",
 		"--manual",
 		"--linkerd-namespace=fake-ns",
@@ -50,7 +53,7 @@ func TestInject(t *testing.T) {
 	}
 }
 
-func TestInjectParams(t *testing.T) {
+func TestInjectManualParams(t *testing.T) {
 	// TODO: test config.linkerd.io/proxy-version
 	cmd := []string{"inject",
 		"--manual",
@@ -89,7 +92,73 @@ func TestInjectParams(t *testing.T) {
 	}
 }
 
-func TestAnnotationPermutations(t *testing.T) {
+func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
+	// Check for Namespace level override of proxy Configurations
+	injectYAML, err := testutil.ReadFile("testdata/inject_test.yaml")
+	if err != nil {
+		t.Fatalf("failed to read inject test file: %s", err)
+	}
+
+	injectNS := "inj-ns-override-test"
+	deployName := "inject-test-terminus"
+	nsProxyMemReq := "50Mi"
+	nsProxyCPUReq := "200m"
+
+	// Namespace level proxy configuration override
+	nsAnnotations := map[string]string{
+		k8s.ProxyInjectAnnotation:        k8s.ProxyInjectEnabled,
+		k8s.ProxyCPURequestAnnotation:    nsProxyCPUReq,
+		k8s.ProxyMemoryRequestAnnotation: nsProxyMemReq,
+	}
+
+	ns := TestHelper.GetTestNamespace(injectNS)
+	err = TestHelper.CreateNamespaceIfNotExists(ns, nsAnnotations)
+	if err != nil {
+		t.Fatalf("failed to create %s namespace: %s", ns, err)
+	}
+
+	// patch injectYAML with unique name and pod annotations
+	// Pod Level proxy configuration override
+	podProxyCPUReq := "600m"
+	podAnnotations := map[string]string{
+		k8s.ProxyCPURequestAnnotation: podProxyCPUReq,
+	}
+
+	patchedYAML, err := patchDeploy(injectYAML, deployName, podAnnotations)
+	if err != nil {
+		t.Fatalf("failed to patch inject test YAML in namespace %s for deploy/%s: %s", ns, deployName, err)
+	}
+
+	o, err := TestHelper.Kubectl(patchedYAML, "--namespace", ns, "create", "-f", "-")
+	if err != nil {
+		t.Fatalf("failed to create deploy/%s in namespace %s for  %s: %s", deployName, ns, err, o)
+	}
+
+	o, err = TestHelper.Kubectl("", "--namespace", ns, "wait", "--for=condition=available", "--timeout=30s", "deploy/"+deployName)
+	if err != nil {
+		t.Fatalf("failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", deployName, ns, err, o)
+	}
+
+	pods, err := TestHelper.GetPodsForDeployment(ns, deployName)
+	if err != nil {
+		t.Fatalf("failed to get pods for namespace %s: %s", ns, err)
+	}
+
+	containers := pods[0].Spec.Containers
+	proxyContainer := getProxyContainer(containers)
+
+	// Match the pod configuration with the namespace level overrides
+	if proxyContainer.Resources.Requests["memory"] != resource.MustParse(nsProxyMemReq) {
+		t.Fatalf("proxy memory resource request falied to match with namespace level override")
+	}
+
+	// Match with proxy level override
+	if proxyContainer.Resources.Requests["cpu"] != resource.MustParse(podProxyCPUReq) {
+		t.Fatalf("proxy cpu resource request falied to match with pod level override")
+	}
+}
+
+func TestInjectAutoAnnotationPermutations(t *testing.T) {
 	injectYAML, err := testutil.ReadFile("testdata/inject_test.yaml")
 	if err != nil {
 		t.Fatalf("failed to read inject test file: %s", err)
@@ -214,6 +283,48 @@ func TestAnnotationPermutations(t *testing.T) {
 	}
 }
 
+func TestInjectAutoPod(t *testing.T) {
+	podYAML, err := testutil.ReadFile("testdata/pod.yaml")
+	if err != nil {
+		t.Fatalf("failed to read inject test file: %s", err)
+	}
+
+	injectNS := "inject-pod-test"
+	podName := "inject-pod-test-terminus"
+	nsAnnotations := map[string]string{
+		k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
+	}
+
+	ns := TestHelper.GetTestNamespace(injectNS)
+	err = TestHelper.CreateNamespaceIfNotExists(ns, nsAnnotations)
+	if err != nil {
+		t.Fatalf("failed to create %s namespace: %s", ns, err)
+	}
+
+	o, err := TestHelper.Kubectl(podYAML, "--namespace", ns, "create", "-f", "-")
+	if err != nil {
+		t.Fatalf("failed to create pod/%s in namespace %s for %s: %s", podName, ns, err, o)
+	}
+
+	o, err = TestHelper.Kubectl("", "--namespace", ns, "wait", "--for=condition=initialized", "--timeout=30s", "pod/"+podName)
+	if err != nil {
+		t.Fatalf("failed to wait for condition=initialized for pod/%s in namespace %s: %s: %s", podName, ns, err, o)
+	}
+
+	pods, err := TestHelper.GetPods(ns, map[string]string{"app": podName})
+	if err != nil {
+		t.Fatalf("failed to get pods for namespace %s: %s", ns, err)
+	}
+	if len(pods) != 1 {
+		t.Fatalf("wrong number of pods returned for namespace %s: %d", ns, len(pods))
+	}
+
+	containers := pods[0].Spec.Containers
+	if proxyContainer := getProxyContainer(containers); proxyContainer == nil {
+		t.Fatalf("pod in namespaces %s wasn't injected", ns)
+	}
+}
+
 func applyPatch(in string, patchJSON []byte) (string, error) {
 	patch, err := jsonpatch.DecodePatch(patchJSON)
 	if err != nil {
@@ -283,6 +394,18 @@ func validateInject(actual, fixtureFile string) error {
 	if actualPatched != fixturePatched {
 		return fmt.Errorf(
 			"Expected:\n%s\nActual:\n%s", fixturePatched, actualPatched)
+	}
+
+	return nil
+}
+
+// Get Proxy Container from Containers
+func getProxyContainer(containers []v1.Container) *v1.Container {
+	for _, c := range containers {
+		container := c
+		if container.Name == k8s.ProxyContainerName {
+			return &container
+		}
 	}
 
 	return nil

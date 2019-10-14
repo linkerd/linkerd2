@@ -1,4 +1,4 @@
-package main
+package identity
 
 import (
 	"flag"
@@ -17,22 +17,27 @@ import (
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
 )
 
 // TODO watch trustAnchorsPath for changes
 // TODO watch issuerPath for changes
 // TODO restrict servicetoken audiences (and lifetimes)
-func main() {
-	addr := flag.String("addr", ":8080", "address to serve on")
-	adminAddr := flag.String("admin-addr", ":9990", "address of HTTP admin server")
-	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
-	issuerPath := flag.String("issuer",
+
+// Main executes the identity subcommand
+func Main(args []string) {
+	cmd := flag.NewFlagSet("identity", flag.ExitOnError)
+
+	addr := cmd.String("addr", ":8080", "address to serve on")
+	adminAddr := cmd.String("admin-addr", ":9990", "address of HTTP admin server")
+	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
+	issuerPath := cmd.String("issuer",
 		"/var/run/linkerd/identity/issuer",
 		"path to directory containing issuer credentials")
-	flags.ConfigureAndParse()
+
+	flags.ConfigureAndParse(cmd, args)
 
 	cfg, err := config.Global(consts.MountPathGlobalConfig)
 	if err != nil {
@@ -96,7 +101,7 @@ func main() {
 
 	ca := tls.NewCA(*creds, validity)
 
-	k8s, err := k8s.NewAPI(*kubeConfigPath, "", 0)
+	k8s, err := k8s.NewAPI(*kubeConfigPath, "", "", 0)
 	if err != nil {
 		log.Fatalf("Failed to load kubeconfig: %s: %s", *kubeConfigPath, err)
 	}
@@ -113,7 +118,7 @@ func main() {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	srv := grpc.NewServer()
+	srv := prometheus.NewGrpcServer()
 	identity.Register(srv, svc)
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)

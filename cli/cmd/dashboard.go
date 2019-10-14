@@ -28,11 +28,15 @@ const (
 	// webPort is the http port from the web pod spec in cli/install/template.go
 	webPort = 8084
 
+	// defaultHost is the default host used for port-forwarding via `linkerd dashboard`
+	defaultHost = "localhost"
+
 	// defaultPort is for port-forwarding via `linkerd dashboard`
 	defaultPort = 50750
 )
 
 type dashboardOptions struct {
+	host string
 	port int
 	show string
 	wait time.Duration
@@ -40,6 +44,7 @@ type dashboardOptions struct {
 
 func newDashboardOptions() *dashboardOptions {
 	return &dashboardOptions{
+		host: defaultHost,
 		port: defaultPort,
 		show: showLinkerd,
 		wait: 300 * time.Second,
@@ -66,7 +71,7 @@ func newCmdDashboard() *cobra.Command {
 			// ensure we can connect to the public API before starting the proxy
 			checkPublicAPIClientOrRetryOrExit(time.Now().Add(options.wait), true)
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, 0)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 			if err != nil {
 				return err
 			}
@@ -79,6 +84,7 @@ func newCmdDashboard() *cobra.Command {
 				k8sAPI,
 				controlPlaneNamespace,
 				webDeployment,
+				options.host,
 				options.port,
 				webPort,
 				verbose,
@@ -132,6 +138,7 @@ func newCmdDashboard() *cobra.Command {
 	}
 
 	// This is identical to what `kubectl proxy --help` reports, `--port 0` indicates a random port.
+	cmd.PersistentFlags().StringVar(&options.host, "address", options.host, "The address at which to serve requests")
 	cmd.PersistentFlags().IntVarP(&options.port, "port", "p", options.port, "The local port on which to serve requests (when set to 0, a random port will be used)")
 	cmd.PersistentFlags().StringVar(&options.show, "show", options.show, "Open a dashboard in a browser or show URLs in the CLI (one of: linkerd, grafana, url)")
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Wait for dashboard to become available if it's not available when the command is run")

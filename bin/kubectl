@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -eu
+
+kubectlversion=v1.15.3
+
+bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+targetbin="$( cd $bindir/.. && pwd )"/target/bin
+kubectlbin="${targetbin}/.kubectl-${kubectlversion}"
+
+if [ ! -f "$kubectlbin" ]; then
+  exe=
+  if [ "$(uname -s)" = "Darwin" ]; then
+    os=darwin
+    arch=amd64
+  elif [ "$(uname -o)" = "Msys" ]; then
+    os=windows
+    arch=amd64
+    exe=.exe
+  else
+    os=linux
+    case $(uname -m) in
+      x86_64) arch="amd64" ;;
+      arm) dpkg --print-architecture | grep -q "arm64" && arch="arm64" || arch="arm" ;;
+    esac
+  fi
+
+  mkdir -p "$targetbin"
+  curl -sfL -o "$kubectlbin" https://storage.googleapis.com/kubernetes-release/release/$kubectlversion/bin/$os/$arch/kubectl${exe}
+  chmod +x "$kubectlbin"
+fi
+
+$kubectlbin "$@"

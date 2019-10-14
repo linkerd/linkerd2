@@ -78,6 +78,7 @@ func TestHandleConfigDownload(t *testing.T) {
 		render:              server.RenderTemplate,
 		apiClient:           mockAPIClient,
 		controllerNamespace: "linkerd",
+		clusterDomain:       "mycluster.local",
 	}
 
 	recorder := httptest.NewRecorder()
@@ -109,7 +110,7 @@ func TestHandleConfigDownload(t *testing.T) {
 		t.Fatalf("Error parsing service profile: %v", err)
 	}
 
-	expectedServiceProfile := helpers.GenServiceProfile("authors", "booksns")
+	expectedServiceProfile := helpers.GenServiceProfile("authors", "booksns", "mycluster.local")
 
 	err = helpers.ServiceProfileYamlEquals(serviceProfile, expectedServiceProfile)
 	if err != nil {

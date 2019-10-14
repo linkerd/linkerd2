@@ -8,23 +8,24 @@ If you have a question about Linkerd2 or have encountered problems using it,
 start by [asking a question in the forums][discourse] or join us in the
 [#linkerd2 Slack channel][slack].
 
-## Certificate of Origin ##
+## Developer Certificate of Origin ##
 
-By contributing to this project you agree to the Developer Certificate of
-Origin (DCO). This document was created by the Linux Kernel community and is a
-simple statement that you, as a contributor, have the legal right to make the
-contribution. See the [DCO](DCO) file for details.
+To contribute to this project, you must agree to the Developer Certificate of
+Origin (DCO) for each commit you make. The DCO is a simple statement that you,
+as a contributor, have the legal right to make the contribution.
 
-In practice, just add a line to every git commit message:
+See the [DCO](DCO) file for the full text of what you must agree to.
+
+To signify that you agree to the DCO for a commit, you add a line to the
+git commit message:
 
 ```
 Signed-off-by: Jane Smith <jane.smith@example.com>
 ```
 
-Use your real name (sorry, no pseudonyms or anonymous contributions).
-
-If you set your `user.name` and `user.email` git configs, you can sign your
-commit automatically with `git commit -s`.
+In most cases, you can add this signoff to your commit automatically with the
+`-s` flag to `git commit`. You must use your real name and a reachable email
+address (sorry, no pseudonyms or anonymous contributions).
 
 ## Submitting a Pull Request ##
 

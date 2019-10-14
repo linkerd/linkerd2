@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/testutil"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -43,7 +44,8 @@ var (
 	}
 
 	linkerdDeployReplicas = map[string]deploySpec{
-		"linkerd-controller":     {1, []string{"destination", "public-api"}},
+		"linkerd-controller":     {1, []string{"public-api"}},
+		"linkerd-destination":    {1, []string{"destination"}},
 		"linkerd-tap":            {1, []string{"tap"}},
 		"linkerd-grafana":        {1, []string{}},
 		"linkerd-identity":       {1, []string{"identity"}},
@@ -84,8 +86,9 @@ var (
 		`(Liveness|Readiness) probe failed: HTTP probe failed with statuscode: 50(2|3)`,
 		`(Liveness|Readiness) probe failed: Get http://.*: dial tcp .*: connect: connection refused`,
 		`(Liveness|Readiness) probe failed: Get http://.*: read tcp .*: read: connection reset by peer`,
-		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled \(Client\.Timeout exceeded while awaiting headers\)`,
+		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled .*\(Client\.Timeout exceeded while awaiting headers\)`,
 		`Failed to update endpoint .*-upgrade/linkerd-.*: Operation cannot be fulfilled on endpoints "linkerd-.*": the object has been modified; please apply your changes to the latest version and try again`,
+		`error killing pod: failed to "KillPodSandbox" for ".*" with KillPodSandboxError: "rpc error: code = Unknown desc = failed to destroy network for sandbox \\".*\\": could not teardown ipv4 dnat: running \[/usr/sbin/iptables -t nat -X CNI-DN-.* --wait\]: exit status 1: iptables: No chain/target/match by that name\.\\n"`,
 	}, "|"))
 
 	injectionCases = []struct {
@@ -148,7 +151,11 @@ func TestCheckPreInstall(t *testing.T) {
 	}
 }
 
-func TestInstallOrUpgrade(t *testing.T) {
+func TestInstallOrUpgradeCli(t *testing.T) {
+	if TestHelper.GetHelmReleaseName() != "" {
+		return
+	}
+
 	var (
 		cmd  = "install"
 		args = []string{
@@ -168,7 +175,7 @@ func TestInstallOrUpgrade(t *testing.T) {
 		}
 
 		// apply stage 1
-		out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
+		out, err = TestHelper.KubectlApply(out, "")
 		if err != nil {
 			t.Fatalf("kubectl apply command failed\n%s", out)
 		}
@@ -200,17 +207,54 @@ func TestInstallOrUpgrade(t *testing.T) {
 		}
 
 		if out != upgradeFromManifests {
-			t.Fatalf("manifest upgrade differs from k8s upgrade.\nk8s upgrade:\n%s\nmanifest upgrade:\n%s", out, upgradeFromManifests)
+			// retry in case it's just a discrepancy in the heartbeat cron schedule
+			exec := append([]string{cmd}, args...)
+			out, _, err := TestHelper.LinkerdRun(exec...)
+			if err != nil {
+				t.Fatalf("command failed: %v\n%s", exec, out)
+			}
+
+			if out != upgradeFromManifests {
+				t.Fatalf("manifest upgrade differs from k8s upgrade.\nk8s upgrade:\n%s\nmanifest upgrade:\n%s", out, upgradeFromManifests)
+			}
 		}
 	}
 
-	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
+	out, err = TestHelper.KubectlApply(out, "")
 	if err != nil {
 		t.Fatalf("kubectl apply command failed\n%s", out)
 	}
+}
 
+func TestInstallHelm(t *testing.T) {
+	if TestHelper.GetHelmReleaseName() == "" {
+		return
+	}
+
+	cn := fmt.Sprintf("identity.%s.cluster.local", TestHelper.GetLinkerdNamespace())
+	root, err := tls.GenerateRootCAWithDefaults(cn)
+	if err != nil {
+		t.Fatalf("failed to generate root certificate for identity: %s", err)
+	}
+
+	args := []string{
+		"--set", "ControllerLogLevel=debug",
+		"--set", "LinkerdVersion=" + TestHelper.GetVersion(),
+		"--set", "Proxy.Image.Version=" + TestHelper.GetVersion(),
+		"--set", "Identity.TrustDomain=cluster.local",
+		"--set", "Identity.TrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "Identity.Issuer.TLS.CrtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "Identity.Issuer.TLS.KeyPEM=" + root.Cred.EncodePrivateKeyPEM(),
+		"--set", "Identity.Issuer.CrtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
+	}
+	if stdout, stderr, err := TestHelper.HelmRun("install", args...); err != nil {
+		t.Fatalf("helm install command failed\n%s\n%s", stdout, stderr)
+	}
+}
+
+func TestResourcesPostInstall(t *testing.T) {
 	// Tests Namespace
-	err = TestHelper.CheckIfNamespaceExists(TestHelper.GetLinkerdNamespace())
+	err := TestHelper.CheckIfNamespaceExists(TestHelper.GetLinkerdNamespace())
 	if err != nil {
 		t.Fatalf("Received unexpected output\n%s", err.Error())
 	}
@@ -303,7 +347,7 @@ func TestInstallSP(t *testing.T) {
 
 func TestDashboard(t *testing.T) {
 	dashboardPort := 52237
-	dashboardURL := fmt.Sprintf("http://127.0.0.1:%d", dashboardPort)
+	dashboardURL := fmt.Sprintf("http://localhost:%d", dashboardPort)
 
 	outputStream, err := TestHelper.LinkerdRunStream("dashboard", "-p",
 		strconv.Itoa(dashboardPort), "--show", "url")
@@ -457,6 +501,8 @@ func TestCheckProxy(t *testing.T) {
 func TestLogs(t *testing.T) {
 	controllerRegex := regexp.MustCompile("level=(panic|fatal|error|warn)")
 	proxyRegex := regexp.MustCompile(fmt.Sprintf("%s (ERR|WARN)", k8s.ProxyContainerName))
+	clientGoRegex := regexp.MustCompile("client-go@")
+	hasClientGoLogs := false
 
 	for deploy, spec := range linkerdDeployReplicas {
 		deploy := strings.TrimPrefix(deploy, "linkerd-")
@@ -489,7 +535,12 @@ func TestLogs(t *testing.T) {
 				// does not return 10,000 after 2 seconds. We don't need 10,000 log lines.
 				outputLines, _ := outputStream.ReadUntil(10000, 2*time.Second)
 				if len(outputLines) == 0 {
-					t.Errorf("No logs found for %s", name)
+					// Retry one time for 30 more seconds, in case the cluster is slow to
+					// produce log lines.
+					outputLines, _ = outputStream.ReadUntil(10000, 30*time.Second)
+					if len(outputLines) == 0 {
+						t.Errorf("No logs found for %s", name)
+					}
 				}
 
 				for _, line := range outputLines {
@@ -505,9 +556,15 @@ func TestLogs(t *testing.T) {
 							}
 						}
 					}
+					if clientGoRegex.MatchString((line)) {
+						hasClientGoLogs = true
+					}
 				}
 			})
 		}
+	}
+	if !hasClientGoLogs {
+		t.Errorf("Didn't find any client-go entries")
 	}
 }
 
@@ -539,7 +596,7 @@ func TestEvents(t *testing.T) {
 			continue
 		}
 
-		evtStr := fmt.Sprintf("%s %s %s", e.Reason, e.InvolvedObject.Name, e.Message)
+		evtStr := fmt.Sprintf("Reason: [%s] Object: [%s] Message: [%s]", e.Reason, e.InvolvedObject.Name, e.Message)
 		if knownEventWarningsRegex.MatchString(e.Message) {
 			t.Logf("Found known warning event: %s", evtStr)
 		} else {

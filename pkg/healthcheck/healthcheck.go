@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -91,7 +92,7 @@ const (
 	LinkerdAPIChecks CategoryID = "linkerd-api"
 
 	// LinkerdVersionChecks adds a series of checks to query for the latest
-	// version, and validate the the CLI is up to date.
+	// version, and validate the CLI is up to date.
 	LinkerdVersionChecks CategoryID = "linkerd-version"
 
 	// LinkerdControlPlaneVersionChecks adds a series of checks to validate that
@@ -103,12 +104,18 @@ const (
 	LinkerdControlPlaneVersionChecks CategoryID = "control-plane-version"
 
 	// LinkerdDataPlaneChecks adds data plane checks to validate that the data
-	// plane namespace exists, and that the the proxy containers are in a ready
+	// plane namespace exists, and that the proxy containers are in a ready
 	// state and running the latest available version.
 	// These checks are dependent on the output of KubernetesAPIChecks,
 	// `apiClient` from LinkerdControlPlaneExistenceChecks, and `latestVersions`
 	// from LinkerdVersionChecks, so those checks must be added first.
 	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
+
+	// linkerdCniResourceLabel is the label key that is used to identify
+	// whether a Kubernetes resource is related to the install-cni command
+	// The value is expected to be "true", "false" or "", where "false" and
+	// "" are equal, making "false" the default
+	linkerdCniResourceLabel = "linkerd.io/cni-resource"
 )
 
 // HintBaseURL is the base URL on the linkerd.io website that all check hints
@@ -127,6 +134,17 @@ const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
 var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
+
+	expectedServiceAccountNames = []string{
+		"linkerd-controller",
+		"linkerd-grafana",
+		"linkerd-identity",
+		"linkerd-prometheus",
+		"linkerd-proxy-injector",
+		"linkerd-sp-validator",
+		"linkerd-web",
+		"linkerd-tap",
+	}
 )
 
 // Resource provides a way to describe a Kubernetes object, kind, and name.
@@ -159,6 +177,26 @@ func (e *ResourceError) Error() string {
 		names = append(names, res.name)
 	}
 	return fmt.Sprintf("%s found but should not exist: %s", e.resourceName, strings.Join(names, " "))
+}
+
+// CategoryError provides a custom error type that also contains check category that emitted the error,
+// useful when needed to distinguish between errors from multiple categories
+type CategoryError struct {
+	Category CategoryID
+	Err      error
+}
+
+// Error satisfies the error interface for CategoryError.
+func (e *CategoryError) Error() string {
+	return e.Err.Error()
+}
+
+// IsCategoryError returns true if passed in error is of type CategoryError and belong to the given category
+func IsCategoryError(err error, categoryID CategoryID) bool {
+	if ce, ok := err.(*CategoryError); ok {
+		return ce.Category == categoryID
+	}
+	return false
 }
 
 type checker struct {
@@ -224,9 +262,11 @@ type Options struct {
 	DataPlaneNamespace    string
 	KubeConfig            string
 	KubeContext           string
+	Impersonate           string
 	APIAddr               string
 	VersionOverride       string
 	RetryDeadline         time.Time
+	NoInitContainer       bool
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -287,7 +327,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, requestTimeout)
+						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, requestTimeout)
 						return
 					},
 				},
@@ -384,7 +424,14 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "can create Deployments",
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "extensions", "v1beta1", "deployments")
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "apps", "v1", "deployments")
+					},
+				},
+				{
+					description: "can create CronJobs",
+					hintAnchor:  "pre-k8s",
+					check: func(context.Context) error {
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "batch", "v1beta1", "cronjobs")
 					},
 				},
 				{
@@ -503,7 +550,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-sa",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkServiceAccounts(true)
+						return hc.checkServiceAccounts(expectedServiceAccountNames)
 					},
 				},
 				{
@@ -550,6 +597,17 @@ func (hc *HealthChecker) allCategories() []category {
 					check: func(context.Context) (err error) {
 						hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
 						return
+					},
+				},
+				{
+					description: "heartbeat ServiceAccount exist",
+					hintAnchor:  "l5d-existence-sa",
+					fatal:       true,
+					check: func(context.Context) error {
+						if hc.isHeartbeatDisabled() {
+							return nil
+						}
+						return hc.checkServiceAccounts([]string{"linkerd-heartbeat"})
 					},
 				},
 				{
@@ -865,6 +923,9 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		err := c.check(ctx)
+		if err != nil {
+			err = &CategoryError{categoryID, err}
+		}
 		checkResult := &CheckResult{
 			Category:    categoryID,
 			Description: c.description,
@@ -894,6 +955,9 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	checkRsp, err := c.checkRPC(ctx)
+	if err != nil {
+		err = &CategoryError{categoryID, err}
+	}
 	observer(&CheckResult{
 		Category:    categoryID,
 		Description: c.description,
@@ -909,6 +973,9 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 		var err error
 		if check.Status != healthcheckPb.CheckStatus_OK {
 			err = fmt.Errorf(check.FriendlyMessageToUser)
+		}
+		if err != nil {
+			err = &CategoryError{categoryID, err}
 		}
 		observer(&CheckResult{
 			Category:    categoryID,
@@ -988,20 +1055,6 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 	}
 }
 
-func expectedServiceAccountNames() []string {
-	return []string{
-		"linkerd-controller",
-		"linkerd-grafana",
-		"linkerd-heartbeat",
-		"linkerd-identity",
-		"linkerd-prometheus",
-		"linkerd-proxy-injector",
-		"linkerd-sp-validator",
-		"linkerd-web",
-		"linkerd-tap",
-	}
-}
-
 func (hc *HealthChecker) checkClusterRoles(shouldExist bool) error {
 	options := metav1.ListOptions{
 		LabelSelector: k8s.ControllerNSLabel,
@@ -1012,7 +1065,12 @@ func (hc *HealthChecker) checkClusterRoles(shouldExist bool) error {
 	}
 
 	objects := []runtime.Object{}
+
 	for _, item := range crList.Items {
+
+		if hc.skipNoInitContainerResources(item.ObjectMeta.Labels) {
+			continue
+		}
 		item := item // pin
 		objects = append(objects, &item)
 	}
@@ -1030,7 +1088,12 @@ func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
 	}
 
 	objects := []runtime.Object{}
+
 	for _, item := range crbList.Items {
+		if hc.skipNoInitContainerResources(item.ObjectMeta.Labels) {
+			continue
+		}
+
 		item := item // pin
 		objects = append(objects, &item)
 	}
@@ -1038,7 +1101,16 @@ func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
 	return checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames(), shouldExist)
 }
 
-func (hc *HealthChecker) checkServiceAccounts(shouldExist bool) error {
+func (hc *HealthChecker) isHeartbeatDisabled() bool {
+	for _, flag := range hc.linkerdConfig.GetInstall().GetFlags() {
+		if flag.GetName() == "disable-heartbeat" && flag.GetValue() == "true" {
+			return true
+		}
+	}
+	return false
+}
+
+func (hc *HealthChecker) checkServiceAccounts(saNames []string) error {
 	options := metav1.ListOptions{
 		LabelSelector: k8s.ControllerNSLabel,
 	}
@@ -1053,7 +1125,7 @@ func (hc *HealthChecker) checkServiceAccounts(shouldExist bool) error {
 		objects = append(objects, &item)
 	}
 
-	return checkResources("ServiceAccounts", objects, expectedServiceAccountNames(), shouldExist)
+	return checkResources("ServiceAccounts", objects, saNames, true)
 }
 
 func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error {
@@ -1121,6 +1193,11 @@ func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 
 	objects := []runtime.Object{}
 	for _, item := range psp.Items {
+
+		if hc.skipNoInitContainerResources(item.ObjectMeta.Labels) {
+			continue
+		}
+
 		item := item // pin
 		objects = append(objects, &item)
 	}
@@ -1488,4 +1565,18 @@ func checkControlPlaneReplicaSets(rst []appsv1.ReplicaSet) error {
 	}
 
 	return nil
+}
+
+func (hc *HealthChecker) skipNoInitContainerResources(labelMap map[string]string) bool {
+
+	if hc.Options.NoInitContainer {
+		skip, err := strconv.ParseBool(labelMap[linkerdCniResourceLabel])
+		if err != nil {
+			log.Errorf("Error parsing %v, %v",
+				linkerdCniResourceLabel, err)
+		}
+		return skip
+	}
+
+	return false
 }

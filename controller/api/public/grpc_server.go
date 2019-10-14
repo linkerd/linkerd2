@@ -13,7 +13,6 @@ import (
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
-	tapPb "github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -37,11 +36,11 @@ type APIServer interface {
 
 type grpcServer struct {
 	prometheusAPI         promv1.API
-	tapClient             tapPb.TapClient
 	discoveryClient       discoveryPb.DiscoveryClient
 	destinationClient     destinationPb.DestinationClient
 	k8sAPI                *k8s.API
 	controllerNamespace   string
+	clusterDomain         string
 	ignoredNamespaces     []string
 	mountPathGlobalConfig string
 	mountPathProxyConfig  string
@@ -62,21 +61,21 @@ const (
 
 func newGrpcServer(
 	promAPI promv1.API,
-	tapClient tapPb.TapClient,
 	discoveryClient discoveryPb.DiscoveryClient,
 	destinationClient destinationPb.DestinationClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
+	clusterDomain string,
 	ignoredNamespaces []string,
 ) *grpcServer {
 
 	grpcServer := &grpcServer{
 		prometheusAPI:         promAPI,
-		tapClient:             tapClient,
 		discoveryClient:       discoveryClient,
 		destinationClient:     destinationClient,
 		k8sAPI:                k8sAPI,
 		controllerNamespace:   controllerNamespace,
+		clusterDomain:         clusterDomain,
 		ignoredNamespaces:     ignoredNamespaces,
 		mountPathGlobalConfig: pkgK8s.MountPathGlobalConfig,
 		mountPathProxyConfig:  pkgK8s.MountPathProxyConfig,
@@ -244,29 +243,11 @@ func (s *grpcServer) Config(ctx context.Context, req *pb.Empty) (*configPb.All, 
 }
 
 func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {
-	return status.Error(codes.Unimplemented, "Tap is deprecated, use TapByResource")
+	return status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
 }
 
-// Pass through to tap service
 func (s *grpcServer) TapByResource(req *pb.TapByResourceRequest, stream pb.Api_TapByResourceServer) error {
-	tapStream := stream.(tapServer)
-	tapClient, err := s.tapClient.TapByResource(tapStream.Context(), req)
-	if err != nil {
-		log.Errorf("Unexpected error tapping [%v]: %v", req, err)
-		return err
-	}
-	for {
-		select {
-		case <-tapStream.Context().Done():
-			return nil
-		default:
-			event, err := tapClient.Recv()
-			if err != nil {
-				return err
-			}
-			tapStream.Send(event)
-		}
-	}
+	return status.Error(codes.Unimplemented, "Tap is deprecated in public API, use tap APIServer")
 }
 
 // Pass through to Destination service

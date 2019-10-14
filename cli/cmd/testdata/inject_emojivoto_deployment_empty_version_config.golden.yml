@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   creationTimestamp: null
@@ -42,7 +42,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd2_proxy=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-destination.linkerd.svc.cluster.local:8086
+          value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -51,6 +51,8 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
+        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -94,7 +96,9 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
           value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-          value: linkerd-controller.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        - name: LINKERD2_PROXY_TAP_SVC_NAME
+          value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: gcr.io/linkerd-io/proxy:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -132,7 +136,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.0.0
+        image: gcr.io/linkerd-io/proxy-init:v1.2.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

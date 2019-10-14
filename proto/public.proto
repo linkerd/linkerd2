@@ -79,6 +79,8 @@ message TapRequest {
 }
 
 // A tap request over kubernetes resources.
+//
+// This is used only by the tap APIServer.
 message TapByResourceRequest {
   // Describes the kubernetes pods that should be tapped.
   ResourceSelection target = 1;
@@ -120,6 +122,24 @@ message TapByResourceRequest {
       }
     }
   }
+
+  // Conditionally extracts components from requests and responses to include
+  // in tap events
+  Extract extract = 4;
+
+  message Extract {
+    oneof extract {
+      Http http = 1;
+    }
+
+    message Http {
+      oneof extract {
+        Headers headers = 1;
+      }
+
+      message Headers {}
+    }
+  }
 }
 
 message HttpMethod {
@@ -153,6 +173,22 @@ message Scheme {
   }
 }
 
+message Headers {
+  message Header {
+    // The name of a header in a request.
+    string name = 1;
+    // The value of a header in a request. If the value consists entirely of
+    // UTF-8 encodings, `value` will be set; otherwise a binary value is
+    // assumed and `value_bin` will be set.
+    oneof value {
+      string value_str = 2;
+      bytes value_bin = 3;
+    }
+  }
+
+  repeated Header headers = 1;
+}
+
 message IPAddress {
   oneof ip {
     fixed32 ipv4 = 1;
@@ -177,6 +213,7 @@ message Eos {
   }
 }
 
+// This is used only by the tap APIServer.
 message TapEvent {
   TcpAddress source = 1;
   EndpointMeta source_meta = 5;
@@ -226,7 +263,7 @@ message TapEvent {
       Scheme scheme = 3;
       string authority = 4;
       string path = 5;
-      // TODO headers
+      Headers headers = 6;
     }
 
     message ResponseInit {
@@ -235,6 +272,7 @@ message TapEvent {
       google.protobuf.Duration since_request_init = 2;
 
       uint32 http_status = 3;
+      Headers headers = 4;
     }
 
     message ResponseEnd {
@@ -245,6 +283,7 @@ message TapEvent {
       uint64 response_bytes = 4;
 
       Eos eos = 5;
+      Headers trailers = 6;
     }
   }
 }
@@ -350,6 +389,12 @@ message TcpStats {
   uint64 write_bytes_total = 3;
 }
 
+message TrafficSplitStats {
+  string apex = 2;
+  string leaf = 3;
+  string weight = 4;
+}
+
 message StatTable {
   oneof table {
     PodGroup pod_group = 1;
@@ -373,6 +418,7 @@ message StatTable {
 
       BasicStats stats = 5;
       TcpStats tcp_stats = 8;
+      TrafficSplitStats ts_stats = 10;
 
       // Stores a set of errors for each pod name. If a pod has no errors, it may be omitted.
       map<string, PodErrors> errors_by_pod = 7;
@@ -451,8 +497,8 @@ service Api {
   // Superceded by `TapByResource`.
   rpc Tap(TapRequest) returns (stream TapEvent) { option deprecated = true; }
 
-  // Executes tapping over Kubernetes resources.
-  rpc TapByResource(TapByResourceRequest) returns (stream TapEvent) {}
+  // Superceded by tap APIServer.
+  rpc TapByResource(TapByResourceRequest) returns (stream TapEvent) { option deprecated = true; }
 
   rpc Version(Empty) returns (VersionInfo) {}
   rpc SelfCheck(common.healthcheck.SelfCheckRequest) returns (common.healthcheck.SelfCheckResponse) {}

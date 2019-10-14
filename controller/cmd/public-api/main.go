@@ -1,4 +1,4 @@
-package main
+package publicapi
 
 import (
 	"context"
@@ -12,32 +12,30 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/discovery"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	promApi "github.com/prometheus/client_golang/api"
 	log "github.com/sirupsen/logrus"
 )
 
-func main() {
-	addr := flag.String("addr", ":8085", "address to serve on")
-	kubeConfigPath := flag.String("kubeconfig", "", "path to kube config")
-	prometheusURL := flag.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
-	metricsAddr := flag.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
-	destinationAPIAddr := flag.String("destination-addr", "127.0.0.1:8086", "address of destination service")
-	tapAddr := flag.String("tap-addr", "127.0.0.1:8088", "address of tap service")
-	controllerNamespace := flag.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-	ignoredNamespaces := flag.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
-	flags.ConfigureAndParse()
+// Main executes the public-api subcommand
+func Main(args []string) {
+	cmd := flag.NewFlagSet("public-api", flag.ExitOnError)
+
+	addr := cmd.String("addr", ":8085", "address to serve on")
+	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
+	prometheusURL := cmd.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
+	metricsAddr := cmd.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
+	destinationAPIAddr := cmd.String("destination-addr", "127.0.0.1:8086", "address of destination service")
+	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
+
+	flags.ConfigureAndParse(cmd, args)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	tapClient, tapConn, err := tap.NewClient(*tapAddr)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	defer tapConn.Close()
 
 	discoveryClient, discoveryConn, err := discovery.NewClient(*destinationAPIAddr)
 	if err != nil {
@@ -64,14 +62,24 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
+	clusterDomain := globalConfig.GetClusterDomain()
+	if clusterDomain == "" {
+		clusterDomain = "cluster.local"
+	}
+	log.Info("Using cluster domain: ", clusterDomain)
+
 	server := public.NewServer(
 		*addr,
 		prometheusClient,
-		tapClient,
 		discoveryClient,
 		destinationClient,
 		k8sAPI,
 		*controllerNamespace,
+		clusterDomain,
 		strings.Split(*ignoredNamespaces, ","),
 	)
 

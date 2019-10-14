@@ -141,6 +141,11 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry) *EndpointsWatcher 
 // The provided listener will be updated each time the address set for the
 // given authority is changed.
 func (ew *EndpointsWatcher) Subscribe(id ServiceID, port Port, hostname string, listener EndpointUpdateListener) error {
+	svc, _ := ew.k8sAPI.Svc().Lister().Services(id.Namespace).Get(id.Name)
+	if svc != nil && svc.Spec.Type == corev1.ServiceTypeExternalName {
+		return invalidService(id.String())
+	}
+
 	if hostname == "" {
 		ew.log.Infof("Establishing watch on endpoint [%s:%d]", id, port)
 	} else {
@@ -341,13 +346,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		sp.log.Errorf("error getting service: %s", err)
 	}
 	exists := false
-	if err == nil && svc.Spec.Type != corev1.ServiceTypeExternalName {
-		// XXX: The proxy will use DNS to discover the service if it is told
-		// the service doesn't exist. An external service is represented in DNS
-		// as a CNAME, which the proxy will correctly resolve. Thus, there's no
-		// benefit (yet) to distinguishing between "the service exists but it
-		// is an ExternalName service so use DNS anyway" and "the service does
-		// not exist."
+	if err == nil {
 		targetPort = getTargetPort(svc, srcPort)
 		exists = true
 	}
@@ -418,6 +417,10 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 		resolvedPort := pp.resolveTargetPort(subset)
 		for _, endpoint := range subset.Addresses {
 			if pp.hostname != "" && pp.hostname != endpoint.Hostname {
+				continue
+			}
+			if endpoint.TargetRef == nil {
+				pp.log.Warnf("Endpoint missing TargetRef: %+v", endpoint)
 				continue
 			}
 			if endpoint.TargetRef.Kind == "Pod" {
@@ -517,7 +520,7 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 // present. If the service is present and it has a port spec matching the
 // specified port and a target port configured, it returns the name of the
 // service's port (not the name of the target pod port), so that it can be
-// looked up in the the endpoints API response, which uses service port names.
+// looked up in the endpoints API response, which uses service port names.
 func getTargetPort(service *corev1.Service, port Port) namedPort {
 	// Use the specified port as the target port by default
 	targetPort := intstr.FromInt(int(port))

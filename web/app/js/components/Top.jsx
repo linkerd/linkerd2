@@ -92,7 +92,7 @@ class Top extends React.Component {
       pendingRequests: true
     });
 
-    let url = this.api.urlsForResource("all");
+    let url = this.api.urlsForResourceNoStats("all");
     this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(rsp => {

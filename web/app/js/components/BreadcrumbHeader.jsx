@@ -8,7 +8,7 @@ import _takeWhile from 'lodash/takeWhile';
 import { withContext } from './util/AppContext.jsx';
 
 const routeToCrumbTitle = {
-  "servicemesh": "Service Mesh",
+  "controlplane": "Control Plane",
   "overview": "Overview",
   "tap": "Tap",
   "top": "Top",

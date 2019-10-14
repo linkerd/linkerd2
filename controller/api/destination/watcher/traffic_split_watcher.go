@@ -22,7 +22,7 @@ type (
 		publishers map[ServiceID]*trafficSplitPublisher
 
 		log          *logging.Entry
-		sync.RWMutex // This mutex protects modifcation of the map itself.
+		sync.RWMutex // This mutex protects modification of the map itself.
 	}
 
 	trafficSplitPublisher struct {
