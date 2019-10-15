@@ -37,7 +37,7 @@ func (s byResult) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 func (s byResult) Less(i, j int) bool {
-	return s[i].pod < s[i].pod
+	return s[i].pod < s[j].pod
 }
 
 func newMetricsOptions() *metricsOptions {
