@@ -49,5 +49,6 @@ linkerd-data-plane
 √ data plane proxy metrics are present in Prometheus
 √ data plane is up-to-date
 √ data plane and cli versions match
+√ data plane proxies certificate match CA
 
 Status check results are √
