@@ -353,12 +353,17 @@ status:
 			}
 
 			// TODO: mock out the underlying grpc tap events
+			errChan := make(chan error, 1)
 			go func() {
-				err := s.Serve(lis)
-				if err != nil {
+				errChan <- s.Serve(lis)
+			}()
+
+			defer func() {
+				if err := <-errChan; err != nil {
 					t.Fatalf("Failed to serve on %+v: %s", lis, err)
 				}
 			}()
+
 			defer s.GracefulStop()
 
 			_, port, err := net.SplitHostPort(lis.Addr().String())
@@ -390,6 +395,7 @@ status:
 					t.Fatalf("Unexpected l5d-require-id header [%+v] expected [%+v]", md.Get(requireIDHeader), []string{exp.requireID})
 				}
 			}
+
 		})
 	}
 }
