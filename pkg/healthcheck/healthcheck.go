@@ -15,6 +15,7 @@ import (
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/config"
+	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -849,6 +850,14 @@ func (hc *HealthChecker) allCategories() []category {
 						return nil
 					},
 				},
+				{
+					description: "data plane proxies certificate match CA",
+					hintAnchor:  "l5d-data-plane-proxies-certificate-match-ca",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkDataPlaneProxiesCertificate()
+					},
+				},
 			},
 		},
 	}
@@ -1203,6 +1212,46 @@ func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 	}
 
 	return checkResources("PodSecurityPolicies", objects, []string{fmt.Sprintf("linkerd-%s-control-plane", hc.ControlPlaneNamespace)}, shouldExist)
+}
+
+func (hc *HealthChecker) checkDataPlaneProxiesCertificate() error {
+	podList, err := hc.kubeAPI.CoreV1().Pods(hc.DataPlaneNamespace).List(metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
+	if err != nil {
+		return err
+	}
+	// Return early if no proxies are deployed on the cluster yet (or on the targeted namespace)
+	if len(podList.Items) == 0 {
+		return nil
+	}
+	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+	if err != nil {
+		return err
+	}
+	trustAnchorsPem := configPB.GetGlobal().GetIdentityContext().GetTrustAnchorsPem()
+	offendingPods := []string{}
+	for _, pod := range podList.Items {
+		for _, containerSpec := range pod.Spec.Containers {
+			if containerSpec.Name != k8s.ProxyContainerName {
+				continue
+			}
+			for _, envVar := range containerSpec.Env {
+				if envVar.Name != identity.EnvTrustAnchors {
+					continue
+				}
+				if envVar.Value != trustAnchorsPem {
+					if hc.DataPlaneNamespace == "" {
+						offendingPods = append(offendingPods, fmt.Sprintf("%s/%s", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name))
+					} else {
+						offendingPods = append(offendingPods, pod.ObjectMeta.Name)
+					}
+				}
+			}
+		}
+	}
+	if len(offendingPods) == 0 {
+		return nil
+	}
+	return fmt.Errorf("The following pods have old proxy certificate information; please, restart them:\n\t%s", strings.Join(offendingPods, "\n\t"))
 }
 
 func checkResources(resourceName string, objects []runtime.Object, expectedNames []string, shouldExist bool) error {
