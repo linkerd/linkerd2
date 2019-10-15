@@ -399,7 +399,6 @@ status:
 			fakeGrpcServer := newGrpcServer(
 				&mProm,
 				nil,
-				nil,
 				k8sAPI,
 				"linkerd",
 				"mycluster.local",
@@ -502,7 +501,6 @@ metadata:
 			fakeGrpcServer := newGrpcServer(
 				&MockProm{},
 				nil,
-				nil,
 				k8sAPI,
 				"linkerd",
 				"mycluster.local",
@@ -532,7 +530,6 @@ func TestConfig(t *testing.T) {
 
 		fakeGrpcServer := newGrpcServer(
 			&MockProm{},
-			nil,
 			nil,
 			k8sAPI,
 			"linkerd",
