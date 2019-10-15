@@ -454,7 +454,6 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		"Omit the sideEffects flag in the webhook manifests, This flag must be provided during install or upgrade for Kubernetes versions pre 1.12",
 	)
 
-	flags.StringVarP(&options.clusterDomain, "cluster-domain", "", options.clusterDomain, "Set custom cluster domain")
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
 
@@ -484,6 +483,10 @@ func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
 func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("install-only", pflag.ExitOnError)
 
+	flags.StringVar(
+		&options.clusterDomain, "cluster-domain", options.clusterDomain,
+		"Set custom cluster domain",
+	)
 	flags.StringVar(
 		&options.identityOptions.trustDomain, "identity-trust-domain", options.identityOptions.trustDomain,
 		"Configures the name suffix used for identities.",
