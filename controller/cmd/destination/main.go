@@ -48,18 +48,23 @@ func Main(args []string) {
 	}
 
 	global, err := config.Global(consts.MountPathGlobalConfig)
-	if err != nil {
-		log.Fatalf("Failed to load global config: %s", err)
-	}
 
 	trustDomain := ""
 	if *disableIdentity {
 		log.Info("Identity is disabled")
 	} else {
 		trustDomain = global.GetIdentityContext().GetTrustDomain()
+		if err != nil || trustDomain == "" {
+			trustDomain = "cluster.local"
+			log.Warnf("failed to load trust domain from global config: [%s] (falling back to %s)", err, trustDomain)
+		}
 	}
 
 	clusterDomain := global.GetClusterDomain()
+	if err != nil || clusterDomain == "" {
+		clusterDomain = "cluster.local"
+		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
+	}
 
 	server := destination.NewServer(
 		*addr,
