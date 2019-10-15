@@ -3,6 +3,7 @@ package watcher
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -420,7 +421,18 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 				continue
 			}
 			if endpoint.TargetRef == nil {
-				pp.log.Warnf("Endpoint missing TargetRef: %+v", endpoint)
+				id := ServiceID{
+					Name: strings.Join([]string{
+						endpoints.ObjectMeta.Name,
+						endpoint.IP,
+						fmt.Sprint(resolvedPort),
+					}, "-"),
+					Namespace: endpoints.ObjectMeta.Namespace,
+				}
+				pods[id] = Address{
+					IP:   endpoint.IP,
+					Port: resolvedPort,
+				}
 				continue
 			}
 			if endpoint.TargetRef.Kind == "Pod" {

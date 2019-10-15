@@ -47,7 +47,23 @@ func newEndpointTranslator(
 func (et *endpointTranslator) Add(set watcher.PodSet) {
 	addrs := []*pb.WeightedAddr{}
 	for _, address := range set {
-		wa, err := et.toWeightedAddr(address)
+		var (
+			wa  *pb.WeightedAddr
+			err error
+		)
+		if address.Pod != nil {
+			wa, err = et.toWeightedAddr(address)
+		} else {
+			// handling address with no associated pod, such as those
+			// belonging to headless services
+			var addr *net.TcpAddress
+			addr, err = et.toAddr(address)
+			wa = &pb.WeightedAddr{
+				Addr:   addr,
+				Weight: defaultWeight,
+			}
+		}
+
 		if err != nil {
 			et.log.Errorf("Failed to translate endpoints to weighted addr: %s", err)
 			continue
