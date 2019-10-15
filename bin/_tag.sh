@@ -24,7 +24,8 @@ head_root_tag() {
     if clean_head ; then
         clean_head_root_tag
     else
-        echo "dev-$(git_sha_head)-$(echo $USER | sed "s/[^[:alpha:].-]//g")"
+        name="$(echo $USER | sed "s/[^[:alnum:].-]//g")"
+        echo "dev-$(git_sha_head)-$name"
     fi
 }
 
