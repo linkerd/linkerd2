@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"github.com/linkerd/linkerd2/controller/api/destination"
-	"github.com/linkerd/linkerd2/controller/api/discovery"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -36,12 +35,6 @@ func Main(args []string) {
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	discoveryClient, discoveryConn, err := discovery.NewClient(*destinationAPIAddr)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	defer discoveryConn.Close()
 
 	destinationClient, destinationConn, err := destination.NewClient(*destinationAPIAddr)
 	if err != nil {
@@ -75,7 +68,6 @@ func Main(args []string) {
 	server := public.NewServer(
 		*addr,
 		prometheusClient,
-		discoveryClient,
 		destinationClient,
 		k8sAPI,
 		*controllerNamespace,

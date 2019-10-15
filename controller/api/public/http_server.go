@@ -8,7 +8,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -26,7 +25,6 @@ var (
 	listPodsPath     = fullURLPathFor("ListPods")
 	listServicesPath = fullURLPathFor("ListServices")
 	selfCheckPath    = fullURLPathFor("SelfCheck")
-	endpointsPath    = fullURLPathFor("Endpoints")
 	edgesPath        = fullURLPathFor("Edges")
 	destGetPath      = fullURLPathFor("DestinationGet")
 	configPath       = fullURLPathFor("Config")
@@ -60,8 +58,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleListServices(w, req)
 	case selfCheckPath:
 		h.handleSelfCheck(w, req)
-	case endpointsPath:
-		h.handleEndpoints(w, req)
 	case edgesPath:
 		h.handleEdges(w, req)
 	case destGetPath:
@@ -301,24 +297,10 @@ func fullURLPathFor(method string) string {
 	return apiRoot + apiPrefix + method
 }
 
-func (h *handler) handleEndpoints(w http.ResponseWriter, req *http.Request) {
-	rsp, err := h.grpcServer.Endpoints(req.Context(), &discoveryPb.EndpointsParams{})
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-}
-
 // NewServer creates a Public API HTTP server.
 func NewServer(
 	addr string,
 	prometheusClient promApi.Client,
-	discoveryClient discoveryPb.DiscoveryClient,
 	destinationClient destinationPb.DestinationClient,
 	k8sAPI *k8s.API,
 	controllerNamespace string,
@@ -328,7 +310,6 @@ func NewServer(
 	baseHandler := &handler{
 		grpcServer: newGrpcServer(
 			promv1.NewAPI(prometheusClient),
-			discoveryClient,
 			destinationClient,
 			k8sAPI,
 			controllerNamespace,

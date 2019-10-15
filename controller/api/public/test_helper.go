@@ -12,7 +12,6 @@ import (
 
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
-	"github.com/linkerd/linkerd2/controller/api/discovery"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -36,7 +35,6 @@ type MockAPIClient struct {
 	APITapClientToReturn           pb.Api_TapClient
 	APITapByResourceClientToReturn pb.Api_TapByResourceClient
 	DestinationGetClientToReturn   destinationPb.Destination_GetClient
-	*discovery.MockDiscoveryClient
 }
 
 // StatSummary provides a mock of a Public API method.
@@ -545,7 +543,6 @@ func newMockGrpcServer(exp expectedStatRPC) (*MockProm, *grpcServer, error) {
 	mockProm := &MockProm{Res: exp.mockPromResponse}
 	fakeGrpcServer := newGrpcServer(
 		mockProm,
-		nil,
 		nil,
 		k8sAPI,
 		"linkerd",

@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	discoveryPb "github.com/linkerd/linkerd2/controller/gen/controller/discovery"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 )
@@ -153,36 +152,6 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 			t.Fatal("Expecting error, got nothing")
 		}
 	})
-}
-
-func TestEndpointsRequest(t *testing.T) {
-	mockTransport := &mockTransport{}
-	mockTransport.responseToReturn = &http.Response{
-		StatusCode: 200,
-		Body:       ioutil.NopCloser(bufferedReader(t, &pb.Empty{})),
-	}
-	mockHTTPClient := &http.Client{
-		Transport: mockTransport,
-	}
-	apiURL := &url.URL{
-		Scheme: "http",
-		Host:   "some-hostname",
-		Path:   "/",
-	}
-	client, err := newClient(apiURL, mockHTTPClient, "linkerd")
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-
-	resp, err := client.Endpoints(context.Background(), &discoveryPb.EndpointsParams{})
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-
-	expectedResp := &discoveryPb.EndpointsResponse{}
-	if !proto.Equal(resp, expectedResp) {
-		t.Fatalf("Expected response [%v], got: [%v]", expectedResp, resp)
-	}
 }
 
 func bufferedReader(t *testing.T, msg proto.Message) *bufio.Reader {

@@ -225,11 +225,6 @@ You can send test requests to the destination service using the
 bin/go-run controller/script/destination-client -path hello.default.svc.cluster.local:80
 ```
 
-You can also send test requests to the destination's discovery interface:
-```bash
-bin/go-run controller/script/discovery-client
-```
-
 ##### Running the Tap APIService for development
 
 ```bash
