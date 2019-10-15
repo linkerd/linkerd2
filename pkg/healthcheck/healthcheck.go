@@ -1238,7 +1238,7 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate() error {
 				if envVar.Name != identity.EnvTrustAnchors {
 					continue
 				}
-				if envVar.Value != trustAnchorsPem {
+				if strings.TrimSpace(envVar.Value) != strings.TrimSpace(trustAnchorsPem) {
 					if hc.DataPlaneNamespace == "" {
 						offendingPods = append(offendingPods, fmt.Sprintf("%s/%s", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name))
 					} else {
