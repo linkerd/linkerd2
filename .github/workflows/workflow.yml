@@ -516,15 +516,15 @@ jobs:
           set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
         )
         . "$dir/path.bash.inc"
-    - name: Helm chart creation
-      if: startsWith(github.ref, 'refs/tags')
-      run: |
-        bin/helm-build package
-    - name: Edge Helm chart upload
+    - name: Edge Helm chart creation and upload
       if: startsWith(github.ref, 'refs/tags/edge')
       run: |
+        gsutil rsync cp gs://helm.linkerd.io/edge/index.yaml target/helm/index-pre.yaml
+        bin/helm-build package
         gsutil rsync target/helm gs://helm.linkerd.io/edge
-    - name: Stable Helm chart upload
+    - name: Stable Helm chart creation and upload
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
+        gsutil rsync cp gs://helm.linkerd.io/stable/index.yaml target/helm/index-pre.yaml
+        bin/helm-build package
         gsutil rsync target/helm gs://helm.linkerd.io/stable
