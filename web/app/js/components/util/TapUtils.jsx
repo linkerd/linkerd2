@@ -113,6 +113,11 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
       name: labels.pod,
       namespace: labels.namespace
     };
+  } else if (_has(labels, "node")) {
+    neighb = {
+      type: "node",
+      name: labels.node,
+    };
   } else {
     neighb = {
       type: "ip",

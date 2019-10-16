@@ -13,7 +13,7 @@ metadata:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
 rules:
 - apiGroups: [""]
-  resources: ["pods", "services", "replicationcontrollers", "namespaces"]
+  resources: ["pods", "services", "replicationcontrollers", "namespaces", "nodes"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
