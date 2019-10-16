@@ -201,7 +201,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			trustDomain:            defaults.Identity.TrustDomain,
 			issuanceLifetime:       issuanceLifetime,
 			clockSkewAllowance:     clockSkewAllowance,
-			identityExternalIssuer: false,
+			identityExternalIssuer: defaults.Identity.Issuer.External,
 		},
 
 		generateUUID: func() string {
@@ -262,6 +262,13 @@ resources for the Linkerd control plane. This command should be followed by
 				os.Exit(1)
 			}
 
+			shouldExist := options.identityOptions.identityExternalIssuer
+			if !options.ignoreCluster && shouldExist {
+				if err := errIfLinkerdIdentityIssuerSecretMissing(); err != nil && !options.ignoreCluster {
+					fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, err.Error())
+					os.Exit(1)
+				}
+			}
 			return installRunE(options, configStage, parentFlags)
 		},
 	}
@@ -363,9 +370,8 @@ control plane.`,
 			}
 
 			shouldExist := options.identityOptions.identityExternalIssuer
-
 			if !options.ignoreCluster && shouldExist {
-				if err := errIfLinkerdIdentityissuerSecretMissing(); err != nil && !options.ignoreCluster {
+				if err := errIfLinkerdIdentityIssuerSecretMissing(); err != nil && !options.ignoreCluster {
 					fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, err.Error())
 					os.Exit(1)
 				}
@@ -469,11 +475,6 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
 
-	flags.BoolVar(
-		&options.identityOptions.identityExternalIssuer, "identity-external-issuer", options.identityOptions.identityExternalIssuer,
-		"Whether to use an external identity issuer (default false)",
-	)
-
 	return flags
 }
 
@@ -490,6 +491,11 @@ func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
 	flags.BoolVar(
 		&options.restrictDashboardPrivileges, "restrict-dashboard-privileges", options.restrictDashboardPrivileges,
 		"Restrict the Linkerd Dashboard's default privileges to disallow Tap",
+	)
+
+	flags.BoolVar(
+		&options.identityOptions.identityExternalIssuer, "identity-external-issuer", options.identityOptions.identityExternalIssuer,
+		"Whether to use an external identity issuer (default false)",
 	)
 
 	return flags
@@ -916,7 +922,7 @@ func errIfLinkerdConfigConfigMapExists() error {
 	return fmt.Errorf("'linkerd-config' config map already exists")
 }
 
-func errIfLinkerdIdentityissuerSecretMissing() error {
+func errIfLinkerdIdentityIssuerSecretMissing() error {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 	if err != nil {
 		return err
@@ -1049,14 +1055,9 @@ func loadExternalIssuerData() (*externalIssuerData, error) {
 		return nil, fmt.Errorf("error fetching external issuer config: %s", err)
 	}
 
-	_, err = kubeAPI.CoreV1().Namespaces().Get(controlPlaneNamespace, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("error fetching external issuer config: %s", err)
-	}
-
 	secret, err := kubeAPI.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
-	if secret == nil || kerrors.IsNotFound(err) {
-		return nil, fmt.Errorf("'linkerd-identity-issuer' needs to exist upon install if external cert manager is used")
+	if err != nil {
+		return nil, err
 	}
 
 	keyMissingError := "key %s containing the %s needs to exist in secret %s if --identity-external-issuer=true"

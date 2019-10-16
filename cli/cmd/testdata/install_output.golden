@@ -838,6 +838,7 @@ spec:
       - args:
         - identity
         - -log-level=ControllerLogLevel
+        - -external-issuer=false
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

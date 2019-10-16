@@ -246,10 +246,14 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 		configs.GetGlobal().IdentityContext = toIdentityContext(identity)
 	} else {
-		identity, err = fetchIdentityValues(k, idctx, options.identityOptions.identityExternalIssuer)
+		identity, err = fetchIdentityValues(k, idctx)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to fetch the existing issuer credentials from Kubernetes: %s", err)
 		}
+	}
+
+	if idctx != nil {
+		options.identityOptions.identityExternalIssuer = idctx.ExternalIssuer
 	}
 
 	// Values have to be generated after any missing identity is generated,
@@ -343,12 +347,12 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext, externalIssuer bool) (*charts.Identity, error) {
+func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*charts.Identity, error) {
 	if idctx == nil {
 		return nil, nil
 	}
 
-	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem(), externalIssuer)
+	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem(), idctx.ExternalIssuer)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +361,7 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext, exte
 		TrustDomain:     idctx.GetTrustDomain(),
 		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
 		Issuer: &charts.Issuer{
-			External:            externalIssuer,
+			External:            idctx.ExternalIssuer,
 			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
 			IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
 			CrtExpiry:           expiry,
