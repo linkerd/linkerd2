@@ -14,6 +14,7 @@ $bindir/helm dep up $rootdir/charts/linkerd2
 $bindir/helm dep up $rootdir/charts/patch
 $bindir/helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.TLS.CrtPEM="fake-cert" --set Identity.Issuer.TLS.KeyPEM="fake-key" --set Identity.Issuer.CrtExpiry="fake-expiry-date" $rootdir/charts/linkerd2
 
+# `bin/helm-build package` assumes the presence of $rootdir/target/helm/index-pre.yaml which is downloaded in the chart_deploy CI job
 if [ "$1" == "package" ]; then
     . $bindir/_tag.sh
     tag=$(named_tag)
@@ -26,7 +27,7 @@ if [ "$1" == "package" ]; then
     fi;
     repo=${BASH_REMATCH[1]}
     version=${BASH_REMATCH[2]}
-    mkdir -p $rootdir/target/helm
-    $bindir/helm --version $version --app-version $tag -d $rootdir/target/helm package $rootdir/charts/linkerd2 \
-      && $bindir/helm repo index --url "https://helm.linkerd.io/$repo/" $rootdir/target/helm
+    $bindir/helm --version $version --app-version $tag -d $rootdir/target/helm package $rootdir/charts/linkerd2
+    mv $rootdir/target/helm/index-pre.yaml $rootdir/target/helm/index-pre-$version.yaml
+    $bindir/helm repo index --url "https://helm.linkerd.io/$repo/" --merge $rootdir/target/helm/index-pre-$version.yaml $rootdir/target/helm
 fi;
