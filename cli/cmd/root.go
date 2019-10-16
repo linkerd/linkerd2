@@ -295,8 +295,8 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	flags.StringVar(&options.proxyCPULimit, "proxy-cpu-limit", options.proxyCPULimit, "Maximum amount of CPU units that the proxy sidecar can use")
 	flags.StringVar(&options.proxyMemoryLimit, "proxy-memory-limit", options.proxyMemoryLimit, "Maximum amount of Memory that the proxy sidecar can use")
 	flags.BoolVar(&options.enableExternalProfiles, "enable-external-profiles", options.enableExternalProfiles, "Enable service profiles for non-Kubernetes services")
-	flags.StringVar(&options.traceCollector, "trace-collector", options.traceCollector, "Trace Collector Service address")
-	flags.StringVar(&options.traceCollectorSvcAccount, "trace-collector-svc-account", options.traceCollectorSvcAccount, "The service account associated with the Trace collector instance")
+	flags.StringVar(&options.traceCollector, "trace-collector", options.traceCollector, "Collector Service address for the proxies to send Trace Data")
+	flags.StringVar(&options.traceCollectorSvcAccount, "trace-collector-svc-account", options.traceCollectorSvcAccount, "Service account associated with the Trace collector instance")
 
 	// Deprecated flags
 	flags.StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
