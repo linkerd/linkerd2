@@ -82,9 +82,7 @@ spec:
       - args:
         - identity
         - -log-level={{.ControllerLogLevel}}
-        {{ if .Identity.Issuer.External -}}
-        - -external-issuer=true
-        {{ end -}}
+        - -external-issuer={{.Identity.Issuer.External}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
