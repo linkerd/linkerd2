@@ -178,25 +178,27 @@ func getSuccessRate(success, failure uint64) float64 {
 // install and inject commands. All fields in this struct should have
 // corresponding flags added in the addProxyConfigFlags func later in this file.
 type proxyConfigOptions struct {
-	proxyVersion           string
-	proxyImage             string
-	initImage              string
-	initImageVersion       string
-	dockerRegistry         string
-	imagePullPolicy        string
-	ignoreInboundPorts     []uint
-	ignoreOutboundPorts    []uint
-	proxyUID               int64
-	proxyLogLevel          string
-	proxyInboundPort       uint
-	proxyOutboundPort      uint
-	proxyControlPort       uint
-	proxyAdminPort         uint
-	proxyCPURequest        string
-	proxyMemoryRequest     string
-	proxyCPULimit          string
-	proxyMemoryLimit       string
-	enableExternalProfiles bool
+	proxyVersion             string
+	proxyImage               string
+	initImage                string
+	initImageVersion         string
+	dockerRegistry           string
+	imagePullPolicy          string
+	ignoreInboundPorts       []uint
+	ignoreOutboundPorts      []uint
+	proxyUID                 int64
+	proxyLogLevel            string
+	proxyInboundPort         uint
+	proxyOutboundPort        uint
+	proxyControlPort         uint
+	proxyAdminPort           uint
+	proxyCPURequest          string
+	proxyMemoryRequest       string
+	proxyCPULimit            string
+	proxyMemoryLimit         string
+	enableExternalProfiles   bool
+	traceCollector           string
+	traceCollectorSvcAccount string
 	// ignoreCluster is not validated by validate().
 	ignoreCluster   bool
 	disableIdentity bool
@@ -293,6 +295,8 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	flags.StringVar(&options.proxyCPULimit, "proxy-cpu-limit", options.proxyCPULimit, "Maximum amount of CPU units that the proxy sidecar can use")
 	flags.StringVar(&options.proxyMemoryLimit, "proxy-memory-limit", options.proxyMemoryLimit, "Maximum amount of Memory that the proxy sidecar can use")
 	flags.BoolVar(&options.enableExternalProfiles, "enable-external-profiles", options.enableExternalProfiles, "Enable service profiles for non-Kubernetes services")
+	flags.StringVar(&options.traceCollector, "trace-collector", options.traceCollector, "Trace Collector Service address")
+	flags.StringVar(&options.traceCollectorSvcAccount, "trace-collector-svc-account", options.traceCollectorSvcAccount, "The service account associated with the Trace collector instance")
 
 	// Deprecated flags
 	flags.StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")

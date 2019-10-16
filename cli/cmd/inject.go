@@ -412,6 +412,14 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 		configs.Proxy.Resource.LimitMemory = options.proxyMemoryLimit
 		overrideAnnotations[k8s.ProxyMemoryLimitAnnotation] = options.proxyMemoryLimit
 	}
+
+	if options.traceCollector != "" {
+		overrideAnnotations[k8s.ProxyTraceCollectorSvcAddr] = options.traceCollector
+	}
+
+	if options.traceCollectorSvcAccount != "" {
+		overrideAnnotations[k8s.ProxyTraceCollectorSvcAccount] = options.traceCollectorSvcAccount
+	}
 }
 
 func toPort(p uint) *cfg.Port {
