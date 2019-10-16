@@ -519,12 +519,12 @@ jobs:
     - name: Edge Helm chart creation and upload
       if: startsWith(github.ref, 'refs/tags/edge')
       run: |
-        gsutil rsync cp gs://helm.linkerd.io/edge/index.yaml target/helm/index-pre.yaml
+        gsutil cp gs://helm.linkerd.io/edge/index.yaml target/helm/index-pre.yaml
         bin/helm-build package
         gsutil rsync target/helm gs://helm.linkerd.io/edge
     - name: Stable Helm chart creation and upload
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
-        gsutil rsync cp gs://helm.linkerd.io/stable/index.yaml target/helm/index-pre.yaml
+        gsutil cp gs://helm.linkerd.io/stable/index.yaml target/helm/index-pre.yaml
         bin/helm-build package
         gsutil rsync target/helm gs://helm.linkerd.io/stable
