@@ -44,7 +44,7 @@ func (fscw *FsCredsWatcher) loadCredentials() (*tls.CA, error) {
 		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", fscw.expectedName, err)
 	}
 
-	log.Infof("Loaded issuer cert:\nCert: %s\nKey: %s", creds.EncodeCertificatePEM(), creds.EncodePrivateKeyPEM())
+	log.Infof("Loaded issuer cert: %s", creds.EncodeCertificatePEM())
 	return tls.NewCA(*creds, fscw.validity), nil
 }
 
