@@ -1,7 +1,7 @@
 /* global require, module, __dirname */
 
 const path = require('path');
-const CleanWebpackPlugin = require('clean-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const LodashModuleReplacementPlugin = require('lodash-webpack-plugin');
 const WebpackMvPlugin = require('./webpack-mv-plugin.js');
@@ -66,7 +66,9 @@ module.exports = {
   },
   plugins: [
     // new BundleAnalyzerPlugin(), // uncomment to analyze bundle size
-    new CleanWebpackPlugin(['dist']),
+    new CleanWebpackPlugin({
+      protectWebpackAssets: false
+    }),
     new LodashModuleReplacementPlugin({
       // 'chain': true,
       'collections': true,
