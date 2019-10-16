@@ -603,17 +603,24 @@ func (s *GRPCTapServer) hydrateIPLabels(ip *public.IPAddress, labels map[string]
 	return nil
 }
 
-// resourceForIP returns the pod or node corresponding to a given IP address.
+// resourceForIP returns the node or pod corresponding to a given IP address.
 //
-// If multiple pods exist with the same IP address, this may be because some
-// are terminating and the IP has been assigned to a new pod. In this case, we
-// select the running pod, if only one currently exists. If multiple exist, then
-// we return the node whose internal IP matches (if there's only one).
-//
-// If no pods or nodes were found for the provided IP address, it returns nil. Errors are
-// returned only in the event of an error searching the indices.
+// First it checks if the IP corresponds to a Node's internal IP and returns the
+// node if that's the case. Otherwise it checks the running pods that match the
+// IP. If exactly one is found, it's returned. Otherwise it returns nil. Errors
+// are returned only in the event of an error searching the indices.
 func (s *GRPCTapServer) resourceForIP(ip *public.IPAddress) (runtime.Object, error) {
 	ipStr := addr.PublicIPToString(ip)
+
+	nodes, err := s.k8sAPI.Node().Informer().GetIndexer().ByIndex(ipIndex, ipStr)
+	if err != nil {
+		return nil, err
+	}
+	if len(nodes) == 1 {
+		log.Debugf("found one node at IP %s", ipStr)
+		return nodes[0].(*corev1.Node), nil
+	}
+
 	pods, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(ipIndex, ipStr)
 	if err != nil {
 		return nil, err
@@ -621,9 +628,6 @@ func (s *GRPCTapServer) resourceForIP(ip *public.IPAddress) (runtime.Object, err
 
 	if len(pods) == 1 {
 		log.Debugf("found one pod at IP %s", ipStr)
-		// It's safe to cast elements of `objs` to a `Pod`s here (and in the
-		// loop below). If the object wasn't a pod, it should never have been
-		// indexed by the indexing func in the first place.
 		return pods[0].(*corev1.Pod), nil
 	}
 
@@ -637,14 +641,6 @@ func (s *GRPCTapServer) resourceForIP(ip *public.IPAddress) (runtime.Object, err
 					ipStr,
 					len(pods),
 				)
-
-				nodes, err := s.k8sAPI.Node().Informer().GetIndexer().ByIndex(ipIndex, ipStr)
-				if err != nil {
-					return nil, err
-				}
-				if len(nodes) == 1 {
-					return nodes[0].(*corev1.Node), nil
-				}
 				return nil, nil
 			}
 			singleRunningPod = pod
