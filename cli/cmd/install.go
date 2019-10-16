@@ -372,9 +372,12 @@ control plane.`,
 			}
 
 			shouldExist := options.identityOptions.identityExternalIssuer
-			if err := errIfLinkerdIdentityissuerSecretMissing(shouldExist); err != nil && !options.ignoreCluster {
-				fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, err.Error())
-				os.Exit(1)
+
+			if !options.ignoreCluster && shouldExist {
+				if err := errIfLinkerdIdentityissuerSecretMissing(); err != nil && !options.ignoreCluster {
+					fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, err.Error())
+					os.Exit(1)
+				}
 			}
 
 			return installRunE(options, "", flags)
@@ -477,7 +480,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 
 	flags.BoolVar(
 		&options.identityOptions.identityExternalIssuer, "identity-external-issuer", options.identityOptions.identityExternalIssuer,
-		"Whether to use an external identity issuer (false by default)",
+		"Whether to use an external identity issuer (default false)",
 	)
 
 	return flags
@@ -922,7 +925,7 @@ func errIfLinkerdConfigConfigMapExists() error {
 	return fmt.Errorf("'linkerd-config' config map already exists")
 }
 
-func errIfLinkerdIdentityissuerSecretMissing(shouldExist bool) error {
+func errIfLinkerdIdentityissuerSecretMissing() error {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 	if err != nil {
 		return err
@@ -934,8 +937,8 @@ func errIfLinkerdIdentityissuerSecretMissing(shouldExist bool) error {
 	}
 
 	secret, err := kubeAPI.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
-	if (secret == nil || kerrors.IsNotFound(err)) && shouldExist {
-		return fmt.Errorf("'linkerd-identity-issuer' needs to exist if --identity-external-issuer=true")
+	if secret == nil || kerrors.IsNotFound(err) {
+		return fmt.Errorf("'linkerd-identity-issuer' needs to exist upon install if external cert manager is used")
 	}
 	return nil
 }
@@ -1062,7 +1065,7 @@ func loadExternalIssuerData() (*externalIssuerData, error) {
 
 	secret, err := kubeAPI.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
 	if secret == nil || kerrors.IsNotFound(err) {
-		return nil, fmt.Errorf("'linkerd-identity-issuer' needs to exist if --identity-external-issuer=true")
+		return nil, fmt.Errorf("'linkerd-identity-issuer' needs to exist upon install if external cert manager is used")
 	}
 
 	keyMissingError := "key %s containing the %s needs to exist in secret %s if --identity-external-issuer=true"
@@ -1095,12 +1098,12 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*charts.Identity,
 	creds, err := tls.ValidateAndCreateCreds(externalIssuerData.issuerCrt, externalIssuerData.issuerKey)
 
 	if err != nil {
-		log.Fatalf("Failed to read CA from %s: %s", consts.IdentityIssuerSecretName, err)
+		return nil, fmt.Errorf("failed to read CA from %s: %s", consts.IdentityIssuerSecretName, err)
 	}
 
 	trustAnchors, err := tls.DecodePEMCertPool(externalIssuerData.trustAnchors)
 	if err != nil {
-		log.Fatalf("Failed to read trust anchors from %s: %s", consts.IdentityIssuerSecretName, err)
+		return nil, fmt.Errorf("failed to read trust anchors from %s: %s", consts.IdentityIssuerSecretName, err)
 	}
 
 	if err := creds.Crt.Verify(trustAnchors, idopts.issuerName()); err != nil {
