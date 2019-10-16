@@ -1,0 +1,18 @@
+#!/bin/sh
+
+set -eu
+
+# go list will exclude the vendor directory.  We use grep to exclude generated
+# code.
+dirs=$(go list -f \{\{.Dir\}\} ./... | grep -v controller/gen)
+# go list will list all subdirectories and goimports acts recursively.  This
+# results in certain files being reported multiple time.  Therefore, we must
+# dedup them.
+files=$(bin/goimports -l $dirs | sort | uniq)
+
+if [ ! -z "$files" ]; then
+  for file in $files; do
+    bin/goimports -d "$file"
+  done
+  exit 64
+fi

@@ -98,6 +98,21 @@ jobs:
         echo "$GITCOOKIE_SH" | bash
         bin/lint --verbose
 
+  go_fmt:
+    name: Go Format
+    runs-on: ubuntu-18.04
+    container:
+      image: golang:1.12.9
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v1
+    - name: Format
+      env:
+        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
+      run: |
+        echo "$GITCOOKIE_SH" | bash
+        bin/fmt
+
   js_unit_tests:
     name: JS unit tests
     runs-on: ubuntu-18.04
