@@ -66,8 +66,7 @@ func TestNewValues(t *testing.T) {
 		Tap:              &Tap{TLS: &TLS{}},
 
 		ControlPlaneTrace: &ControlPlaneTrace{
-			Enabled:             false,
-			SamplingProbability: 1,
+			Enabled: false,
 			ProxyTrace: &Trace{
 				CollectorSvcAddr:    "linkerd-collector.linkerd-tracing:55678",
 				CollectorSvcAccount: "linkerd-collector.linkerd-tracing",

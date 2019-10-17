@@ -77,9 +77,8 @@ type (
 
 	// ControlPlaneTrace contains fields to enable Control Plane Components Tracing
 	ControlPlaneTrace struct {
-		Enabled             bool
-		SamplingProbability float64
-		ProxyTrace          *Trace
+		Enabled    bool
+		ProxyTrace *Trace
 	}
 
 	// Proxy contains the fields to set the proxy sidecar container

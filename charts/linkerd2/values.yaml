@@ -59,7 +59,6 @@ PrometheusLogLevel: *controller_log_level
 # Control Plane Trace Configuration
 ControlPlaneTrace:
   Enabled: false
-  SamplingProbability: 1
   ProxyTrace:
     CollectorSvcAddr: linkerd-collector.linkerd-tracing:55678 # leave blank to disable tracing
     CollectorSvcAccount: linkerd-collector.linkerd-tracing
