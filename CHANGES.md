@@ -13,8 +13,6 @@ the `check` functionality to report invalid trust anchors.
 * Helm
   * Updated the helm build to retain previous releases
 
-Special thanks to @srv-twry for submitting bugfixes!
-
 ## stable-2.6.0
 
 This release introduces distributed tracing support, adds request and response
