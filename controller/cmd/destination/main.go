@@ -28,7 +28,7 @@ func Main(args []string) {
 	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 
-	traceCollector, probabilisticSamplingRate := flags.AddTraceFlags(cmd)
+	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -69,7 +69,7 @@ func Main(args []string) {
 		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
 	}
 
-	if err := util.InitializeTracing("linkerd-destination", *traceCollector, *probabilisticSamplingRate); err != nil {
+	if err := util.InitializeTracing("linkerd-destination", *traceCollector); err != nil {
 		log.Warnf("failed to initialize tracing: %s", err)
 	}
 

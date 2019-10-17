@@ -32,7 +32,7 @@ func Main(args []string) {
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
 
-	traceCollector, probabilisticSamplingRate := flags.AddTraceFlags(cmd)
+	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -68,7 +68,7 @@ func Main(args []string) {
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
 
-	if err := util.InitializeTracing("linkerd-public-api", *traceCollector, *probabilisticSamplingRate); err != nil {
+	if err := util.InitializeTracing("linkerd-public-api", *traceCollector); err != nil {
 		log.Warnf("failed to initialize tracing: %s", err)
 	}
 

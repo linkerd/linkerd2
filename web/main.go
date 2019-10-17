@@ -33,7 +33,7 @@ func main() {
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 
-	traceCollector, probabilisticSamplingRate := flags.AddTraceFlags(cmd)
+	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, os.Args[1:])
 
@@ -67,7 +67,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	if err := util.InitializeTracing("linkerd-web", *traceCollector, *probabilisticSamplingRate); err != nil {
+	if err := util.InitializeTracing("linkerd-web", *traceCollector); err != nil {
 		log.Warnf("failed to initialize tracing: %s", err)
 	}
 

@@ -31,7 +31,7 @@ func Main(args []string) {
 	tlsKeyPath := cmd.String("tls-key", pkgK8s.MountPathTLSKeyPEM, "path to TLS Key PEM")
 	disableCommonNames := cmd.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
 
-	traceCollector, probabilisticSamplingRate := flags.AddTraceFlags(cmd)
+	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -64,7 +64,7 @@ func Main(args []string) {
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
 
-	if err := util.InitializeTracing("linkerd-tap", *traceCollector, *probabilisticSamplingRate); err != nil {
+	if err := util.InitializeTracing("linkerd-tap", *traceCollector); err != nil {
 		log.Warnf("failed to initialize tracing: %s", err)
 	}
 

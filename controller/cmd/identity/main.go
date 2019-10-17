@@ -38,7 +38,7 @@ func Main(args []string) {
 		"/var/run/linkerd/identity/issuer",
 		"path to directory containing issuer credentials")
 
-	traceCollector, probabilisticSamplingRate := flags.AddTraceFlags(cmd)
+	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -121,7 +121,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	if err := util.InitializeTracing("linkerd-identity", *traceCollector, *probabilisticSamplingRate); err != nil {
+	if err := util.InitializeTracing("linkerd-identity", *traceCollector); err != nil {
 		log.Warnf("failed to initialize tracing: %s", err)
 	}
 

@@ -8,7 +8,7 @@ import (
 )
 
 // InitializeTracing initiates trace, exporter and the sampler
-func InitializeTracing(serviceName string, address string, probability float64) error {
+func InitializeTracing(serviceName string, address string) error {
 	if address != "" {
 		oce, err := ocagent.NewExporter(
 			ocagent.WithInsecure(),
@@ -19,7 +19,7 @@ func InitializeTracing(serviceName string, address string, probability float64) 
 		}
 		trace.RegisterExporter(oce)
 		trace.ApplyConfig(trace.Config{
-			DefaultSampler: trace.ProbabilitySampler(probability),
+			DefaultSampler: trace.AlwaysSample(),
 		})
 		return nil
 	}
