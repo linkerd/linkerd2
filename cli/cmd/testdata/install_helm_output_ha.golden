@@ -798,8 +798,7 @@ data:
         "trustDomain": "test.trust.domain",
         "trustAnchorsPem": "test-trust-anchor",
         "issuanceLifeTime": "",
-        "clockSkewAllowance": "20s",
-        "externalIssuer": false
+        "clockSkewAllowance": "20s"
       },
       "autoInjectContext": null,
       "omitWebhookSideEffects": false,
@@ -944,7 +943,6 @@ spec:
       - args:
         - identity
         - -log-level=info
-        - -external-issuer=false
         image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

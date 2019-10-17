@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -252,10 +254,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 	}
 
-	if idctx != nil {
-		options.identityOptions.identityExternalIssuer = idctx.ExternalIssuer
-	}
-
 	// Values have to be generated after any missing identity is generated,
 	// otherwise it will be missing from the generated configmap.
 	values, err := options.buildValuesWithoutIdentity(configs)
@@ -263,6 +261,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
 	values.Identity = identity
+	values.InstallNamespace = !identity.Issuer.External
 
 	// if exist, re-use the proxy injector, profile validator and tap TLS secrets.
 	// otherwise, let Helm generate them by creating an empty charts.TLS struct here.
@@ -352,7 +351,7 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*ch
 		return nil, nil
 	}
 
-	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem(), idctx.ExternalIssuer)
+	keyPEM, crtPEM, expiry, externalIssuer, err := fetchIssuer(k, idctx.GetTrustAnchorsPem())
 	if err != nil {
 		return nil, err
 	}
@@ -361,7 +360,7 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*ch
 		TrustDomain:     idctx.GetTrustDomain(),
 		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
 		Issuer: &charts.Issuer{
-			External:            idctx.ExternalIssuer,
+			External:            externalIssuer,
 			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
 			IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
 			CrtExpiry:           expiry,
@@ -374,45 +373,51 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*ch
 	}, nil
 }
 
-func fetchIssuer(k kubernetes.Interface, trustPEM string, externalIssuer bool) (string, string, time.Time, error) {
+func isExternal(secret *v1.Secret) bool {
+	_, externalCrt := secret.Data[k8s.IdentityIssuerCrtNameExternal]
+	_, externalKey := secret.Data[k8s.IdentityIssuerKeyNameExternal]
+	return externalCrt && externalKey
+}
+
+func fetchIssuer(k kubernetes.Interface, trustPEM string) (string, string, time.Time, bool, error) {
 	crtName := k8s.IdentityIssuerCrtName
 	keyName := k8s.IdentityIssuerKeyName
 
-	if externalIssuer {
-		crtName = k8s.IdentityIssuerCrtNameExternal
-		keyName = k8s.IdentityIssuerKeyNameExternal
-	}
-
 	roots, err := tls.DecodePEMCertPool(trustPEM)
 	if err != nil {
-		return "", "", time.Time{}, err
+		return "", "", time.Time{}, false, err
 	}
 
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
 	if err != nil {
-		return "", "", time.Time{}, err
+		return "", "", time.Time{}, false, err
+	}
+	externalIssuer := isExternal(secret)
+	if externalIssuer {
+		crtName = k8s.IdentityIssuerCrtNameExternal
+		keyName = k8s.IdentityIssuerKeyNameExternal
 	}
 
 	keyPEM := string(secret.Data[keyName])
 	key, err := tls.DecodePEMKey(keyPEM)
 	if err != nil {
-		return "", "", time.Time{}, err
+		return "", "", time.Time{}, false, err
 	}
 
 	crtPEM := string(secret.Data[crtName])
 	crt, err := tls.DecodePEMCrt(crtPEM)
 	if err != nil {
-		return "", "", time.Time{}, err
+		return "", "", time.Time{}, false, err
 	}
 
 	cred := &tls.Cred{PrivateKey: key, Crt: *crt}
 	if err = cred.Verify(roots, ""); err != nil {
-		return "", "", time.Time{}, fmt.Errorf("invalid issuer credentials: %s", err)
+		return "", "", time.Time{}, false, fmt.Errorf("invalid issuer credentials: %s", err)
 	}
 
-	return keyPEM, crtPEM, crt.Certificate.NotAfter, nil
+	return keyPEM, crtPEM, crt.Certificate.NotAfter, externalIssuer, nil
 }
 
 // upgradeErrorf prints the error message and quits the upgrade process

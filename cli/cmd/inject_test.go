@@ -60,7 +60,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 }
 
 func testInstallConfig() *pb.All {
-	installOptions, err := testInstallOptions(true)
+	installOptions, err := testInstallOptions()
 	if err != nil {
 		log.Fatalf("Unexpected error: %v", err)
 	}
