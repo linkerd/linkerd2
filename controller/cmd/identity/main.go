@@ -121,7 +121,9 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	util.InitializeTracing("linkerd-identity", *traceCollector, *probabilisticSamplingRate)
+	if err := util.InitializeTracing("linkerd-identity", *traceCollector, *probabilisticSamplingRate); err != nil {
+		log.Warnf("failed to initialize tracing: %s", err)
+	}
 
 	srv := prometheus.NewGrpcServer()
 	identity.Register(srv, svc)

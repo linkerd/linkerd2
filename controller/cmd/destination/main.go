@@ -69,7 +69,9 @@ func Main(args []string) {
 		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
 	}
 
-	util.InitializeTracing("linkerd-destination", *traceCollector, *probabilisticSamplingRate)
+	if err := util.InitializeTracing("linkerd-destination", *traceCollector, *probabilisticSamplingRate); err != nil {
+		log.Warnf("failed to initialize tracing: %s", err)
+	}
 
 	server := destination.NewServer(
 		*addr,

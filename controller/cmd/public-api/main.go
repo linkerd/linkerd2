@@ -68,7 +68,9 @@ func Main(args []string) {
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
 
-	util.InitializeTracing("linkerd-public-api", *traceCollector, *probabilisticSamplingRate)
+	if err := util.InitializeTracing("linkerd-public-api", *traceCollector, *probabilisticSamplingRate); err != nil {
+		log.Warnf("failed to initialize tracing: %s", err)
+	}
 
 	server := public.NewServer(
 		*addr,
