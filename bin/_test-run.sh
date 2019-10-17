@@ -166,7 +166,7 @@ function helm_cleanup() {
         # We wait for the namespace to be gone so the following call to `cleanup` doesn't fail when it attempts to delete
         # the same namespace that is already being deleted here (error thrown by the NamespaceLifecycle controller).
         # We don't have that problem with global resources, so no need to wait for them to be gone.
-        kubectl wait --for=delete ns/$linkerd_namespace-helm --timeout=40s
+        kubectl wait --for=delete ns/$linkerd_namespace-helm --timeout=60s
         # `helm reset` deletes the tiller pod in $tiller_namespace
         $helm_path --kube-context=$k8s_context --tiller-namespace=$tiller_namespace reset
         kubectl --context=$k8s_context delete clusterrolebinding ${tiller_namespace}:tiller-cluster-admin
