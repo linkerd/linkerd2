@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+    linkerd.io/identity-mode: default
+    linkerd.io/inject: enabled
+  creationTimestamp: null
+  name: emojivoto
+spec: {}
+status: {}
+---

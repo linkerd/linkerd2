@@ -48,6 +48,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 		configs:             tc.testInjectConfig,
 		overrideAnnotations: tc.overrideAnnotations,
 		enableDebugSidecar:  tc.enableDebugSidecarFlag,
+		allowNsInject:       true,
 	}
 
 	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, transformer); exitCode != 0 {
@@ -262,6 +263,24 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:            true,
 			testInjectConfig:       defaultConfig,
 			enableDebugSidecarFlag: true,
+		},
+		{
+			inputFileName:    "inject_emojivoto_namespace_good.input.yml",
+			goldenFileName:   "inject_emojivoto_namespace_good.golden.yml",
+			reportFileName:   "inject_emojivoto_namespace_good.golden.stderr",
+			injectProxy:      false,
+			testInjectConfig: defaultConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_namespace_good.input.yml",
+			goldenFileName:   "inject_emojivoto_namespace_overidden.good.golden.yml",
+			reportFileName:   "inject_emojivoto_namespace_good.golden.stderr",
+			injectProxy:      false,
+			testInjectConfig: defaultConfig,
+			overrideAnnotations: map[string]string{
+				k8s.IdentityModeAnnotation: "default",
+				k8s.CreatedByAnnotation:    "linkerd/cli dev-undefined",
+			},
 		},
 	}
 
