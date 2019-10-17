@@ -42,7 +42,7 @@ fi
     echo "proxy: ${new_proxy_version}"
     echo ""
     # Include the log message, stripping the version header and GPG trailer.
-    git tag -l --format='%(contents)' release/v2.76.0 | \
+    git tag -l --format='%(contents)' "release/$new_proxy_version" | \
         sed -e 1,2d -e '/^---*BEGIN /,$d'
     echo ""
     # Include the history, with references to pull requests.
