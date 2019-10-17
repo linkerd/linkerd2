@@ -96,10 +96,21 @@ thought of as being the motivation for your change.
 
 Describe the modifications you've made.
 
+If this PR changes a behavior, it is helpful to describe the difference between
+the old behavior and the new behavior. Provide before and after screenshots,
+example CLI output, or changed YAML where applicable.
+
+Describe any implementation changes which are particularly complex or
+unintuitive.
+
+List any follow-up work that will need to be done in a future PR and link to
+any relevant Github issues.
+
 #### Validation ####
 
-Describe the testing you've done to validate your change.  Performance-related
-changes should include before- and after- benchmark results.
+Describe the testing you've done to validate your change.  Give instructions
+for reviewers to replicate your tests.  Performance-related changes should
+include before- and after- benchmark results.
 
 [discourse]: https://discourse.linkerd.io/c/linkerd2
 [issue]: https://github.com/linkerd/linkerd2/issues/new
