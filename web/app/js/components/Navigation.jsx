@@ -297,7 +297,9 @@ class NavigationBase extends React.Component {
     this.props.history.push(`/namespaces/${this.state.newNamespace}`);
   }
 
-  handleNamespaceChange = namespace => {
+  handleNamespaceChange = (event, namespace) => {
+    // ensure that mobile drawer will not close on click
+    event.stopPropagation();
     this.setState({ namespaceMenuOpen: false });
     if (namespace === this.props.selectedNamespace) {
       return;
@@ -321,6 +323,8 @@ class NavigationBase extends React.Component {
   }
 
   handleNamespaceMenuClick = event => {
+    // ensure that mobile drawer will not close on click
+    event.stopPropagation();
     this.setState({ anchorEl: event.currentTarget });
     this.setState(state => ({ namespaceMenuOpen: !state.namespaceMenuOpen }));
   }
@@ -399,7 +403,7 @@ class NavigationBase extends React.Component {
             onClose={this.handleNamespaceMenuClick}>
             <MenuItem
               value="all"
-              onClick={() => this.handleNamespaceChange("_all")}>
+              onClick={e => this.handleNamespaceChange(e, "_all")}>
                   All Namespaces
             </MenuItem>
 
@@ -407,7 +411,7 @@ class NavigationBase extends React.Component {
 
             {namespaces.map(ns => (
               <MenuItem
-                onClick={() => this.handleNamespaceChange(ns.name)}
+                onClick={e => this.handleNamespaceChange(e, ns.name)}
                 key={ns.name}>
                 {ns.name}
               </MenuItem>
@@ -542,6 +546,7 @@ class NavigationBase extends React.Component {
           <Drawer
             className={classes.drawer}
             variant="temporary"
+            onClick={this.handleDrawerClick}
             onClose={this.handleDrawerClick}
             open={mobileSidebarOpen}>
             {drawer}
