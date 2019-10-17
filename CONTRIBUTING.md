@@ -97,13 +97,13 @@ thought of as being the motivation for your change.
 Describe the modifications you've made.
 
 If this PR changes a behavior, it is helpful to describe the difference between
-the old behavior and the new behavior. Providing samples of before and after
-output is great!
+the old behavior and the new behavior. Provide before and after screenshots,
+example CLI output, or changed YAML where applicable.
 
 Describe any implementation changes which are particularly complex or
 unintuitive.
 
-List any followup work that will need to be done in a future PR and link to
+List any follow-up work that will need to be done in a future PR and link to
 any relevant Github issues.
 
 #### Validation ####
