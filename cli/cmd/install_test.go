@@ -12,7 +12,7 @@ import (
 )
 
 func TestRender(t *testing.T) {
-	defaultOptions, err := testInstallOptions(true)
+	defaultOptions, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestRender(t *testing.T) {
 
 	// A configuration that shows that all config setting strings are honored
 	// by `render()`.
-	metaOptions, err := testInstallOptions(true)
+	metaOptions, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
@@ -121,7 +121,7 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	haOptions, err := testInstallOptions(true)
+	haOptions, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
@@ -131,7 +131,7 @@ func TestRender(t *testing.T) {
 	haValues, haConfig, _ := haOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(haValues)
 
-	haWithOverridesOptions, err := testInstallOptions(true)
+	haWithOverridesOptions, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
@@ -149,7 +149,7 @@ func TestRender(t *testing.T) {
 	haWithOverridesValues, haWithOverridesConfig, _ := haWithOverridesOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(haWithOverridesValues)
 
-	noInitContainerOptions, err := testInstallOptions(true)
+	noInitContainerOptions, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
@@ -187,7 +187,7 @@ func TestRender(t *testing.T) {
 	}
 }
 
-func testInstallOptions(addCertDataOptions bool) (*installOptions, error) {
+func testInstallOptions() (*installOptions, error) {
 	o, err := newInstallOptionsWithDefaults()
 	if err != nil {
 		return nil, err
@@ -200,17 +200,15 @@ func testInstallOptions(addCertDataOptions bool) (*installOptions, error) {
 		return "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
 	}
 	o.heartbeatSchedule = fakeHeartbeatSchedule
-	if addCertDataOptions {
-		o.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
-		o.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
-		o.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
-	}
+	o.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
+	o.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
+	o.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
 	return o, nil
 }
 
 func TestValidate(t *testing.T) {
 	t.Run("Accepts the default options as valid", func(t *testing.T) {
-		opts, err := testInstallOptions(true)
+		opts, err := testInstallOptions()
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
@@ -221,7 +219,7 @@ func TestValidate(t *testing.T) {
 	})
 
 	t.Run("Rejects invalid controller log level", func(t *testing.T) {
-		options, err := testInstallOptions(true)
+		options, err := testInstallOptions()
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
@@ -239,7 +237,7 @@ func TestValidate(t *testing.T) {
 	})
 
 	t.Run("Ensure log level input is converted to lower case before passing to prometheus", func(t *testing.T) {
-		underTest, err := testInstallOptions(true)
+		underTest, err := testInstallOptions()
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
@@ -280,7 +278,7 @@ func TestValidate(t *testing.T) {
 			{"warn,linkerd2_proxy=foobar", false},
 		}
 
-		options, err := testInstallOptions(true)
+		options, err := testInstallOptions()
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
@@ -306,7 +304,11 @@ func TestValidate(t *testing.T) {
 
 	t.Run("Rejects identity cert files data when external issuer is set", func(t *testing.T) {
 
-		options, err := testInstallOptions(false)
+		options, err := testInstallOptions()
+		options.identityOptions.crtPEMFile = ""
+		options.identityOptions.keyPEMFile = ""
+		options.identityOptions.trustPEMFile = ""
+
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}

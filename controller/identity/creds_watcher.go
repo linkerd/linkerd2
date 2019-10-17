@@ -3,7 +3,10 @@ package identity
 import (
 	"crypto/x509"
 	"fmt"
+	"os"
 	"path/filepath"
+
+	"github.com/linkerd/linkerd2/pkg/k8s"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -14,16 +17,16 @@ const dataDirectoryLnName = "..data"
 
 // FsCredsWatcher is used to monitor tls credentials on the filesystem
 type FsCredsWatcher struct {
-	issuerPath, keyName, crtName, expectedName string
-	roots                                      *x509.CertPool
-	validity                                   tls.Validity
-	issuerChan                                 chan tls.Issuer
+	issuerPath, expectedName string
+	roots                    *x509.CertPool
+	validity                 tls.Validity
+	issuerChan               chan tls.Issuer
 }
 
 // NewFsCredsWatcher constructs a FsCredsWatcher instance
-func NewFsCredsWatcher(issuerPath, keyName, crtName, expectedName string, roots *x509.CertPool, validity tls.Validity) *FsCredsWatcher {
+func NewFsCredsWatcher(issuerPath, expectedName string, roots *x509.CertPool, validity tls.Validity) *FsCredsWatcher {
 	ch := make(chan tls.Issuer, 100)
-	return &FsCredsWatcher{issuerPath, keyName, crtName, expectedName, roots, validity, ch}
+	return &FsCredsWatcher{issuerPath, expectedName, roots, validity, ch}
 }
 
 // Creds gives back a chan from which new issuers can be read
@@ -31,11 +34,34 @@ func (fscw *FsCredsWatcher) Creds() <-chan tls.Issuer {
 	return fscw.issuerChan
 }
 
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
+func (fscw *FsCredsWatcher) credPaths() (string, string) {
+	externalIssuerPathCrt := filepath.Join(fscw.issuerPath, k8s.IdentityIssuerCrtNameExternal)
+	externalIssuerPathKey := filepath.Join(fscw.issuerPath, k8s.IdentityIssuerKeyNameExternal)
+	issuerPathCrt := filepath.Join(fscw.issuerPath, k8s.IdentityIssuerCrtNameExternal)
+	issuerPathKey := filepath.Join(fscw.issuerPath, k8s.IdentityIssuerKeyNameExternal)
+
+	if fileExists(externalIssuerPathCrt) && fileExists(externalIssuerPathKey) {
+		return externalIssuerPathKey, externalIssuerPathCrt
+	}
+	return issuerPathKey, issuerPathCrt
+}
+
 func (fscw *FsCredsWatcher) loadCredentials() (*tls.CA, error) {
+
+	keyPath, crtPath := fscw.credPaths()
 	creds, err := tls.ReadPEMCreds(
-		filepath.Join(fscw.issuerPath, fscw.keyName),
-		filepath.Join(fscw.issuerPath, fscw.crtName),
+		keyPath,
+		crtPath,
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA from %s: %s", fscw.issuerPath, err)
 	}

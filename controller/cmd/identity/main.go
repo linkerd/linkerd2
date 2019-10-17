@@ -35,7 +35,6 @@ func Main(args []string) {
 	issuerPath := cmd.String("issuer",
 		"/var/run/linkerd/identity/issuer",
 		"path to directory containing issuer credentials")
-	externalMode := cmd.Bool("external-issuer", false, "whether we use external cert manager")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -65,14 +64,6 @@ func Main(args []string) {
 		log.Fatalf("Failed to read trust anchors: %s", err)
 	}
 
-	keyName := consts.IdentityIssuerKeyName
-	crtName := consts.IdentityIssuerCrtName
-
-	if *externalMode {
-		keyName = consts.IdentityIssuerKeyNameExternal
-		crtName = consts.IdentityIssuerCrtNameExternal
-	}
-
 	validity := tls.Validity{
 		ClockSkewAllowance: tls.DefaultClockSkewAllowance,
 		Lifetime:           identity.DefaultIssuanceLifetime,
@@ -95,7 +86,7 @@ func Main(args []string) {
 	}
 
 	expectedName := fmt.Sprintf("identity.%s.%s", controllerNS, trustDomain)
-	watcher := idctl.NewFsCredsWatcher(*issuerPath, keyName, crtName, expectedName, trustAnchors, validity)
+	watcher := idctl.NewFsCredsWatcher(*issuerPath, expectedName, trustAnchors, validity)
 
 	if err := watcher.StartWatching(); err != nil {
 		log.Fatalf("Failed to start creds watcher: %s", err)
