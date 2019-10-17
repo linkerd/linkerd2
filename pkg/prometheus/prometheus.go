@@ -89,7 +89,7 @@ func init() {
 	)
 }
 
-// NewGrpcServer returns a grpc server pre-configured with prometheus interceptors, and OcGrpc Stats handler
+// NewGrpcServer returns a grpc server pre-configured with prometheus interceptors and OcGrpc Stats handler
 func NewGrpcServer() *grpc.Server {
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
@@ -102,7 +102,7 @@ func NewGrpcServer() *grpc.Server {
 	return server
 }
 
-// WithTelemetry instruments the HTTP server with prometheus, and Trace handlers
+// WithTelemetry instruments the HTTP server with prometheus and Trace handlers
 func WithTelemetry(handler http.Handler) http.Handler {
 	return &ochttp.Handler{
 		Handler: promhttp.InstrumentHandlerDuration(serverLatency,

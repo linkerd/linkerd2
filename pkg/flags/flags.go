@@ -33,7 +33,7 @@ func ConfigureAndParse(cmd *flag.FlagSet, args []string) {
 	maybePrintVersionAndExit(*printVersion)
 }
 
-// AddTraceFlags adds the traceCollector and ProbabilisticSamplingRate flags
+// AddTraceFlags adds the trace-collector and sampling-probability flags
 // to the flagSet and returns their pointers for usage
 func AddTraceFlags(cmd *flag.FlagSet) (*string, *float64) {
 	traceCollector := cmd.String("trace-collector", "", "Enables OC Tracing with the specified endpoint as collector")
