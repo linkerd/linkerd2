@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
@@ -48,6 +49,8 @@ func Main(args []string) {
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	controllerNS := cfg.GetLinkerdNamespace()
 	idctx := cfg.GetIdentityContext()
@@ -89,23 +92,45 @@ func Main(args []string) {
 	}
 
 	expectedName := fmt.Sprintf("identity.%s.%s", controllerNS, trustDomain)
-	watcher := idctl.NewFsCredsWatcher(*issuerPath, expectedName, trustAnchors, validity)
+	issuerEvent := make(chan struct{})
+	issuerError := make(chan error)
 
-	if err := watcher.StartWatching(); err != nil {
-		log.Fatalf("Failed to start creds watcher: %s", err)
-	}
+	//
+	// Create and start FS creds watcher
+	//
+	watcher := idctl.NewFsCredsWatcher(*issuerPath, issuerEvent, issuerError)
+	go func() {
+		if err := watcher.StartWatching(ctx); err != nil {
+			log.Fatalf("Failed to start creds watcher: %s", err)
+		}
+	}()
 
-	k8s, err := k8s.NewAPI(*kubeConfigPath, "", "", 0)
+	//
+	// Create k8s API
+	//
+	k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", 0)
 	if err != nil {
 		log.Fatalf("Failed to load kubeconfig: %s: %s", *kubeConfigPath, err)
 	}
-	v, err := idctl.NewK8sTokenValidator(k8s, dom)
+	v, err := idctl.NewK8sTokenValidator(k8sAPI, dom)
 	if err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}
 
-	svc := identity.NewService(v, watcher.Creds())
+	//
+	// Create, initialize and Run service
+	//
+	svc := identity.NewService(v, *issuerPath, trustAnchors, expectedName, &validity)
+	if err = svc.Initialize(); err != nil {
+		log.Fatalf("Failed to initialize identity service: %s", err)
+	}
+	go func() {
+		svc.Run(issuerEvent, issuerError)
+	}()
 
+	//
+	// Bind and serve
+	//
 	go admin.StartServer(*adminAddr)
 	lis, err := net.Listen("tcp", *addr)
 	if err != nil {

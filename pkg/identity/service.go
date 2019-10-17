@@ -5,8 +5,12 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/linkerd/linkerd2/pkg/k8s"
 
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
@@ -30,9 +34,13 @@ const (
 type (
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
-		validator   Validator
-		issuer      *tls.Issuer
-		issuerMutex *sync.Mutex
+		validator    Validator
+		issuerPath   string
+		trustAnchors *x509.CertPool
+		expectedName string
+		issuer       *tls.Issuer
+		issuerMutex  *sync.Mutex
+		validity     *tls.Validity
 	}
 
 	// Validator implementors accept a bearer token, validates it, and returns a
@@ -58,22 +66,82 @@ type (
 	NotAuthenticated struct{}
 )
 
-// NewService creates a new identity service.
-func NewService(v Validator, issuerChan <-chan tls.Issuer) *Service {
+// Initialize loads the issuer certs from disk so it can start service CSRs
+func (svc *Service) Initialize() error {
+	credentials, err := svc.loadCredentials()
+	if err != nil {
+		return err
+	}
+	svc.updateIssuer(credentials)
+	return nil
+}
 
-	var issuerMutex = &sync.Mutex{}
-	service := &Service{v, nil, issuerMutex}
+func (svc *Service) updateIssuer(newIssuer tls.Issuer) {
+	svc.issuerMutex.Lock()
+	svc.issuer = &newIssuer
+	log.Debug("Issuer has been updated")
+	svc.issuerMutex.Unlock()
+}
 
-	go func() {
-		for is := range issuerChan {
-			newIssuer := is
-			issuerMutex.Lock()
-			service.issuer = &newIssuer
-			log.Debug("Issuer has been updated")
-			issuerMutex.Unlock()
+// Run reads from the issuer and error channels and reloads the issuer certs when necessary
+func (svc *Service) Run(issuerEvent <-chan struct{}, issuerError <-chan error) {
+	for {
+		select {
+		case <-issuerEvent:
+			credentials, err := svc.loadCredentials()
+			if err != nil {
+				svc.updateIssuer(credentials)
+			} else {
+				log.Warnf("Skipping issuer update as certs could not be read from disk: %s", err)
+			}
+		case err := <-issuerError:
+			log.Warnf("Received error from fs watcher: %s", err)
 		}
-	}()
-	return service
+	}
+}
+
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
+func (svc *Service) credPaths() (string, string) {
+	externalIssuerPathCrt := filepath.Join(svc.issuerPath, k8s.IdentityIssuerCrtNameExternal)
+	externalIssuerPathKey := filepath.Join(svc.issuerPath, k8s.IdentityIssuerKeyNameExternal)
+	issuerPathCrt := filepath.Join(svc.issuerPath, k8s.IdentityIssuerCrtNameExternal)
+	issuerPathKey := filepath.Join(svc.issuerPath, k8s.IdentityIssuerKeyNameExternal)
+
+	if fileExists(externalIssuerPathCrt) && fileExists(externalIssuerPathKey) {
+		return externalIssuerPathKey, externalIssuerPathCrt
+	}
+	return issuerPathKey, issuerPathCrt
+}
+
+func (svc *Service) loadCredentials() (tls.Issuer, error) {
+	keyPath, crtPath := svc.credPaths() //TODO: maybe cache that ?
+	creds, err := tls.ReadPEMCreds(
+		keyPath,
+		crtPath,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CA from %s: %s", svc.issuerPath, err)
+	}
+
+	if err := creds.Crt.Verify(svc.trustAnchors, svc.expectedName); err != nil {
+		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
+	}
+
+	log.Infof("Loaded issuer cert: %s", creds.EncodeCertificatePEM())
+	return tls.NewCA(*creds, *svc.validity), nil
+}
+
+// NewService creates a new identity service.
+func NewService(v Validator, issuerPath string, trustAnchors *x509.CertPool, expectedName string, validity *tls.Validity) *Service {
+	return &Service{v, issuerPath, trustAnchors, expectedName, nil, &sync.Mutex{}, validity}
 }
 
 // Register registers an identity service implementation in the provided gRPC
