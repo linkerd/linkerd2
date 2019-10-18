@@ -13,7 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/util"
+	"github.com/linkerd/linkerd2/pkg/trace"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -70,7 +70,7 @@ func Main(args []string) {
 	}
 
 	if *traceCollector != "" {
-		if err := util.InitializeTracing("linkerd-destination", *traceCollector); err != nil {
+		if err := trace.InitializeTracing("linkerd-destination", *traceCollector); err != nil {
 			log.Warnf("failed to initialize tracing: %s", err)
 		}
 	}

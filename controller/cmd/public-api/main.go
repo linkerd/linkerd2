@@ -15,7 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/util"
+	"github.com/linkerd/linkerd2/pkg/trace"
 	promApi "github.com/prometheus/client_golang/api"
 	log "github.com/sirupsen/logrus"
 )
@@ -69,7 +69,7 @@ func Main(args []string) {
 	log.Info("Using cluster domain: ", clusterDomain)
 
 	if *traceCollector != "" {
-		if err := util.InitializeTracing("linkerd-public-api", *traceCollector); err != nil {
+		if err := trace.InitializeTracing("linkerd-public-api", *traceCollector); err != nil {
 			log.Warnf("failed to initialize tracing: %s", err)
 		}
 	}

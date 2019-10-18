@@ -15,7 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/util"
+	"github.com/linkerd/linkerd2/pkg/trace"
 	"github.com/linkerd/linkerd2/web/srv"
 	log "github.com/sirupsen/logrus"
 )
@@ -68,7 +68,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	if *traceCollector != "" {
-		if err := util.InitializeTracing("linkerd-web", *traceCollector); err != nil {
+		if err := trace.InitializeTracing("linkerd-web", *traceCollector); err != nil {
 			log.Warnf("failed to initialize tracing: %s", err)
 		}
 	}

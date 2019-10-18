@@ -1,4 +1,4 @@
-package util
+package trace
 
 import (
 	"contrib.go.opencensus.io/exporter/ocagent"
