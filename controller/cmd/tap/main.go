@@ -64,10 +64,11 @@ func Main(args []string) {
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
 
-	if err := util.InitializeTracing("linkerd-tap", *traceCollector); err != nil {
-		log.Warnf("failed to initialize tracing: %s", err)
+	if *traceCollector != "" {
+		if err := util.InitializeTracing("linkerd-tap", *traceCollector); err != nil {
+			log.Warnf("failed to initialize tracing: %s", err)
+		}
 	}
-
 	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, clusterDomain, k8sAPI)
 
 	// TODO: make this configurable for local development

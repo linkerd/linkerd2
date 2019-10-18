@@ -67,8 +67,10 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	if err := util.InitializeTracing("linkerd-web", *traceCollector); err != nil {
-		log.Warnf("failed to initialize tracing: %s", err)
+	if *traceCollector != "" {
+		if err := util.InitializeTracing("linkerd-web", *traceCollector); err != nil {
+			log.Warnf("failed to initialize tracing: %s", err)
+		}
 	}
 
 	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid, *controllerNamespace, clusterDomain, *reload, client, k8sAPI)

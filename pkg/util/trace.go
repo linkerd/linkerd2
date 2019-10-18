@@ -1,27 +1,22 @@
 package util
 
 import (
-	"errors"
-
 	"contrib.go.opencensus.io/exporter/ocagent"
 	"go.opencensus.io/trace"
 )
 
 // InitializeTracing initiates trace, exporter and the sampler
 func InitializeTracing(serviceName string, address string) error {
-	if address != "" {
-		oce, err := ocagent.NewExporter(
-			ocagent.WithInsecure(),
-			ocagent.WithAddress(address),
-			ocagent.WithServiceName(serviceName))
-		if err != nil {
-			return err
-		}
-		trace.RegisterExporter(oce)
-		trace.ApplyConfig(trace.Config{
-			DefaultSampler: trace.AlwaysSample(),
-		})
-		return nil
+	oce, err := ocagent.NewExporter(
+		ocagent.WithInsecure(),
+		ocagent.WithAddress(address),
+		ocagent.WithServiceName(serviceName))
+	if err != nil {
+		return err
 	}
-	return errors.New("collector address is empty")
+	trace.RegisterExporter(oce)
+	trace.ApplyConfig(trace.Config{
+		DefaultSampler: trace.AlwaysSample(),
+	})
+	return nil
 }
