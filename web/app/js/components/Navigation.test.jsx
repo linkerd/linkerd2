@@ -19,6 +19,7 @@ const loc = {
 describe('Navigation', () => {
   let curVer = "edge-1.2.3";
   let newVer = "edge-2.3.4";
+  let selectedNamespace = "emojivoto"
 
   let component, fetchStub;
   let apiHelpers = ApiHelpers("");
@@ -37,38 +38,6 @@ describe('Navigation', () => {
     window.fetch.restore();
   });
 
-  const expandSidebar = component => {
-    // click trigger to expand the sidebar
-    component.find("button.drawer-toggle-btn").simulate('click', () => {});
-  };
-
-  it('is hidden when the sidebar is collapsed', () => {
-    fetchStub.resolves({
-      ok: true,
-      json: () => Promise.resolve({ edge: curVer })
-    });
-
-    component = mount(
-      <BrowserRouter>
-        <Navigation
-          ChildComponent={childComponent}
-          classes={{}}
-          theme={{}}
-          location={loc}
-          api={apiHelpers}
-          releaseVersion={curVer}
-          pathPrefix=""
-          uuid="fakeuuid" />
-      </BrowserRouter>
-    );
-
-    return withPromise(() => {
-      expect(component).toIncludeText("Linkerd is up to date");
-      expandSidebar(component);
-      expect(component).not.toIncludeText("Linkerd is up to date");
-    });
-  });
-
   it('renders up to date message when versions match', () => {
     fetchStub.resolves({
       ok: true,
@@ -84,6 +53,7 @@ describe('Navigation', () => {
           location={loc}
           api={apiHelpers}
           releaseVersion={curVer}
+          selectedNamespace={selectedNamespace}
           pathPrefix=""
           uuid="fakeuuid" />
       </BrowserRouter>
@@ -109,6 +79,7 @@ describe('Navigation', () => {
           location={loc}
           api={apiHelpers}
           releaseVersion={curVer}
+          selectedNamespace={selectedNamespace}
           pathPrefix=""
           uuid="fakeuuid" />
       </BrowserRouter>
@@ -139,6 +110,7 @@ describe('Navigation', () => {
           location={loc}
           api={apiHelpers}
           releaseVersion={curVer}
+          selectedNamespace={selectedNamespace}
           pathPrefix=""
           uuid="fakeuuid" />
       </BrowserRouter>

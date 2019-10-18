@@ -87,17 +87,13 @@ class BreadcrumbHeader extends React.Component {
 
   render() {
     let prefix = this.props.pathPrefix;
-    let PrefixedLink = this.api.PrefixedLink;
     let breadcrumbs = this.convertURLToBreadcrumbs(this.props.location.pathname.replace(prefix, ""));
     let shouldPluralizeFirstSegment = breadcrumbs.length === 1;
 
     return breadcrumbs.map((pathSegment, index) => {
       return (
-        <span key={pathSegment.segment} className="breadcrumb-link">
-          <PrefixedLink
-            to={pathSegment.link}>
-            {this.renderBreadcrumbSegment(pathSegment.segment, shouldPluralizeFirstSegment && index === 0)}
-          </PrefixedLink>
+        <span key={pathSegment.segment}>
+          {this.renderBreadcrumbSegment(pathSegment.segment, shouldPluralizeFirstSegment && index === 0)}
           { index < breadcrumbs.length - 1 ? " > " : null }
         </span>
       );

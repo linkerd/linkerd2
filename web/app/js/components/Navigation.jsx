@@ -4,16 +4,11 @@ import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import Badge from '@material-ui/core/Badge';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import Button from '@material-ui/core/Button';
-import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
-import Dialog from '@material-ui/core/Dialog';
-import DialogActions from '@material-ui/core/DialogActions';
-import DialogContent from '@material-ui/core/DialogContent';
-import DialogContentText from '@material-ui/core/DialogContentText';
-import DialogTitle from '@material-ui/core/DialogTitle';
 import Divider from '@material-ui/core/Divider';
 import Drawer from '@material-ui/core/Drawer';
 import EmailIcon from '@material-ui/icons/Email';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import Hidden from '@material-ui/core/Hidden';
 import IconButton from '@material-ui/core/IconButton';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { Link } from 'react-router-dom';
@@ -22,6 +17,7 @@ import ListItemText from '@material-ui/core/ListItemText';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
 import MenuList from '@material-ui/core/MenuList';
+import NamespaceConfirmationModal from './NamespaceConfirmationModal.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
@@ -29,7 +25,6 @@ import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
 import _maxBy from 'lodash/maxBy';
-import classNames from 'classnames';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faCloud } from '@fortawesome/free-solid-svg-icons/faCloud';
 import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons/faExternalLinkAlt';
@@ -49,8 +44,7 @@ const localStorageKey = "linkerd-updates-last-clicked";
 const minBrowserWidth = 960;
 
 const styles = theme => {
-  const drawerWidth = theme.spacing.unit * 36;
-  const drawerWidthClosed = theme.spacing.unit * 9;
+  const drawerWidth = theme.spacing.unit * 38;
   const navLogoWidth = theme.spacing.unit * 22.5;
   const contentPadding = theme.spacing.unit * 3;
 
@@ -71,34 +65,23 @@ const styles = theme => {
       display: 'flex',
     },
     appBar: {
-      position: "absolute",
+      alignItems: "center",
+      position: "permanent",
       color: 'white',
       transition: leaving,
     },
-    appBarShift: {
-      width: `calc(100% - ${drawerWidth}px)`,
-      transition: entering,
+    bars: {
+      color: 'white',
+      position: "fixed",
+      left: theme.spacing.unit * 2.5,
+    },
+    breadcrumbs: {
+      color: 'white',
+      marginLeft: `${drawerWidth}px`
     },
     drawer: {
       width: drawerWidth,
       transition: entering,
-    },
-    drawerClose: {
-      width: drawerWidthClosed,
-      transition: leaving,
-    },
-    drawerPaper: {
-      overflowX: 'hidden',
-      whiteSpace: 'nowrap',
-      width: drawerWidth,
-      transition: entering,
-    },
-    drawerPaperClose: {
-      transition: leaving,
-      width: drawerWidthClosed,
-      [theme.breakpoints.up('sm')]: {
-        width: drawerWidthClosed,
-      },
     },
     toolbar: theme.mixins.toolbar,
     navToolbar: {
@@ -116,18 +99,13 @@ const styles = theme => {
       padding: contentPadding,
       transition: entering,
     },
-    contentDrawerClose: {
-      width: `calc(100% - ${drawerWidthClosed}px)`,
-      transition: leaving,
-    },
     linkerdNavLogo: {
-      minWidth: `${navLogoWidth}px`,
+      margin: 'auto',
+      width: `${navLogoWidth}px`,
       transition: enteringFn(['margin', 'opacity']),
     },
-    linkerdNavLogoClose: {
-      opacity: "0",
-      marginLeft: `-${navLogoWidth+theme.spacing.unit/2}px`,
-      transition: leavingFn(['margin', 'opacity']),
+    linkerdMobileLogo: {
+      width: `${navLogoWidth}px`,
     },
     namespaceChangeButton: {
       marginLeft: `${drawerWidth * .075}px`,
@@ -158,9 +136,6 @@ const styles = theme => {
       paddingBottom: "9px",
       marginLeft: `${drawerWidth * .09}px`,
     },
-    toggleDrawerButton: {
-      marginRight: `${contentPadding}px`,
-    },
     badge: {
       backgroundColor: yellow[500],
     }
@@ -185,8 +160,9 @@ class NavigationBase extends React.Component {
   getInitialState() {
     return {
       anchorEl: null,
-      drawerOpen: true,
+      mobileSidebarOpen: false,
       namespaceMenuOpen: false,
+      newNamespace: '',
       hideUpdateBadge: true,
       latestVersion: '',
       isLatest: true,
@@ -300,7 +276,19 @@ class NavigationBase extends React.Component {
   }
 
   handleDrawerClick = () => {
-    this.setState(state => ({ drawerOpen: !state.drawerOpen }));
+    if (!this.state.mobileSidebarOpen) {
+      this.setState({ mobileSidebarOpen: true });
+    } else {
+      this.setState({ mobileSidebarOpen: false });
+      window.setTimeout(function() {
+        let linkerdHash = document.querySelector(".linkerd-word-logo #linkerd-hash");
+        linkerdHash.style.display='none';
+        window.setTimeout(function() {
+          linkerdHash.offsetHeight;
+          linkerdHash.style.display='';
+        }, 15);
+      }, 300);
+    }
   };
 
   handleConfirmNamespaceChange = () => {
@@ -309,7 +297,9 @@ class NavigationBase extends React.Component {
     this.props.history.push(`/namespaces/${this.state.newNamespace}`);
   }
 
-  handleNamespaceChange = namespace => {
+  handleNamespaceChange = (event, namespace) => {
+    // ensure that mobile drawer will not close on click
+    event.stopPropagation();
     this.setState({ namespaceMenuOpen: false });
     if (namespace === this.props.selectedNamespace) {
       return;
@@ -333,6 +323,8 @@ class NavigationBase extends React.Component {
   }
 
   handleNamespaceMenuClick = event => {
+    // ensure that mobile drawer will not close on click
+    event.stopPropagation();
     this.setState({ anchorEl: event.currentTarget });
     this.setState(state => ({ namespaceMenuOpen: !state.namespaceMenuOpen }));
   }
@@ -357,209 +349,215 @@ class NavigationBase extends React.Component {
 
   updateWindowDimensions() {
     let browserWidth = window.innerWidth;
-    if (browserWidth < minBrowserWidth) {
-      this.setState({ drawerOpen: false });
-    } else {
-      this.setState({ drawerOpen: true });
+    if (browserWidth > minBrowserWidth) {
+      this.setState({ mobileSidebarOpen: false });
     }
   }
 
   render() {
     const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
-    const { namespaces, anchorEl, drawerOpen, showNamespaceChangeDialog, newNamespace } = this.state;
+    const { namespaces, anchorEl, showNamespaceChangeDialog, newNamespace, mobileSidebarOpen } = this.state;
     let formattedNamespaceName = selectedNamespace;
     if (formattedNamespaceName === "_all") {
       formattedNamespaceName = "All Namespaces";
     }
 
-    return (
-      <div className={classes.root}>
-        <AppBar
-          className={classNames(classes.appBar, {[classes.appBarShift]: drawerOpen} )}>
-          <Toolbar>
-            <Typography variant="h6" color="inherit" noWrap>
-              { !drawerOpen &&
-              <IconButton className={classes.toggleDrawerButton}>
-                <FontAwesomeIcon icon={faBars} onClick={this.handleDrawerClick} />
-              </IconButton>
-              }
-              <BreadcrumbHeader {...this.props} />
-            </Typography>
-          </Toolbar>
-        </AppBar>
-
-        <Drawer
-          className={classNames(classes.drawer, {[classes.drawerClose]: !drawerOpen} )}
-          variant="persistent"
-          classes={{
-            paper: classNames(classes.drawerPaper, {[classes.drawerPaperClose]: !drawerOpen} ),
-          }}
-          open={drawerOpen}>
-          <div className={classNames(classes.navToolbar)}>
-            <div className={classNames(classes.linkerdNavLogo, {[classes.linkerdNavLogoClose]: !drawerOpen} )}>
-              <Link to="/namespaces">{linkerdWordLogo}</Link>
-            </div>
-            <IconButton className="drawer-toggle-btn" onClick={this.handleDrawerClick}>
-              <ChevronLeftIcon />
-            </IconButton>
+    const drawer = (
+      <div>
+        { !mobileSidebarOpen &&
+        <div className={classes.navToolbar}>
+          <div className={classes.linkerdNavLogo}>
+            <Link to="/namespaces">{linkerdWordLogo}</Link>
           </div>
-
-          <Divider />
-          <MenuList>
-            <Typography variant="button" className={classes.sidebarHeading}>
+        </div>
+        }
+        <Divider />
+        <MenuList>
+          <Typography variant="button" className={classes.sidebarHeading}>
                 Cluster
-            </Typography>
+          </Typography>
 
-            { this.menuItem("/namespaces", "Namespaces", namespaceIcon) }
+          { this.menuItem("/namespaces", "Namespaces", namespaceIcon) }
 
 
-            { this.menuItem("/controlplane", "Control Plane",
-              <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />) }
+          { this.menuItem("/controlplane", "Control Plane",
+            <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />) }
 
-          </MenuList>
+        </MenuList>
 
-          <Divider />
+        <Divider />
 
-          <MenuList>
-            <Button
-              variant="contained"
-              className={classes.namespaceChangeButton}
-              size="large"
-              onClick={this.handleNamespaceMenuClick}>
-              { formattedNamespaceName }
-              <ArrowDropDownIcon />
-            </Button>
-            <Menu
-              anchorEl={anchorEl}
-              open={this.state.namespaceMenuOpen}
-              keepMounted
-              onClose={this.handleNamespaceMenuClick}>
-              <MenuItem
-                value="all"
-                onClick={() => this.handleNamespaceChange("_all")}>
+        <MenuList>
+          <Button
+            variant="contained"
+            className={classes.namespaceChangeButton}
+            size="large"
+            onClick={this.handleNamespaceMenuClick}>
+            { formattedNamespaceName }
+            <ArrowDropDownIcon />
+          </Button>
+          <Menu
+            anchorEl={anchorEl}
+            open={this.state.namespaceMenuOpen}
+            keepMounted
+            onClose={this.handleNamespaceMenuClick}>
+            <MenuItem
+              value="all"
+              onClick={e => this.handleNamespaceChange(e, "_all")}>
                   All Namespaces
+            </MenuItem>
+
+            <Divider />
+
+            {namespaces.map(ns => (
+              <MenuItem
+                onClick={e => this.handleNamespaceChange(e, ns.name)}
+                key={ns.name}>
+                {ns.name}
               </MenuItem>
-
-              <Divider />
-
-              {namespaces.map(ns => (
-                <MenuItem
-                  onClick={() => this.handleNamespaceChange(ns.name)}
-                  key={ns.name}>
-                  {ns.name}
-                </MenuItem>
               ))}
-            </Menu>
-            <Dialog
-              open={showNamespaceChangeDialog}
-              onClose={this.handleClose}
-              aria-labelledby="form-dialog-title">
-              <DialogTitle id="form-dialog-title">
-                Change namespace?
-              </DialogTitle>
-              <DialogContent>
-                <DialogContentText>
-              The resource you are viewing is in a different namespace than the namespace you have selected. Do you want to change the namespace from { selectedNamespace } to { newNamespace }?
-                </DialogContentText>
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={this.handleConfirmNamespaceChange} color="primary">
-                    Yes
-                </Button>
-                <Button onClick={this.handleDialogCancel} variant="text">
-                  No
-                </Button>
-              </DialogActions>
-            </Dialog>
-          </MenuList>
+          </Menu>
+          <NamespaceConfirmationModal
+            open={showNamespaceChangeDialog}
+            selectedNamespace={selectedNamespace}
+            newNamespace={newNamespace}
+            handleDialogCancel={this.handleDialogCancel}
+            handleConfirmNamespaceChange={this.handleConfirmNamespaceChange} />
 
-          <MenuList>
-            <Typography variant="button" className={classes.sidebarHeading}>
+        </MenuList>
+
+        <MenuList>
+          <Typography variant="button" className={classes.sidebarHeading}>
                 Workloads
-            </Typography>
+          </Typography>
 
-            { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, "Daemon Sets", daemonsetIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, "Daemon Sets", daemonsetIcon) }
 
-            { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, "Deployments", deploymentIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, "Deployments", deploymentIcon) }
 
-            { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, "Jobs", jobIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, "Jobs", jobIcon) }
 
-            { this.menuItem(`/namespaces/${selectedNamespace}/pods`, "Pods", podIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/pods`, "Pods", podIcon) }
 
-            { this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, "Replication Controllers", replicaSetIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, "Replication Controllers", replicaSetIcon) }
 
-            { this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, "Stateful Sets", statefulSetIcon) }
-          </MenuList>
+          { this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, "Stateful Sets", statefulSetIcon) }
+        </MenuList>
 
-          <MenuList>
-            <Typography variant="button" className={classes.sidebarHeading}>
+        <MenuList>
+          <Typography variant="button" className={classes.sidebarHeading}>
                 Configuration
-            </Typography>
+          </Typography>
 
-            { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, "Traffic Splits", <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, "Traffic Splits", <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
 
-          </MenuList>
-          <Divider />
-          <MenuList >
-            <Typography variant="button" className={classes.sidebarHeading}>
+        </MenuList>
+        <Divider />
+        <MenuList >
+          <Typography variant="button" className={classes.sidebarHeading}>
                 Tools
-            </Typography>
+          </Typography>
 
-            { this.menuItem("/tap", "Tap", <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
-            { this.menuItem("/top", "Top", <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
-            { this.menuItem("/routes", "Routes", <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />) }
+          { this.menuItem("/tap", "Tap", <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
+          { this.menuItem("/top", "Top", <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
+          { this.menuItem("/routes", "Routes", <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />) }
 
-          </MenuList>
-          <Divider />
-          <MenuList>
-            { this.menuItem("/community", "Community",
-              <Badge
-                classes={{ badge: classes.badge }}
-                invisible={this.state.hideUpdateBadge}
-                badgeContent="1">
-                <FontAwesomeIcon icon={faSmile} className={classes.shrinkIcon} />
-              </Badge>, this.handleCommunityClick
+        </MenuList>
+        <Divider />
+        <MenuList>
+          { this.menuItem("/community", "Community",
+            <Badge
+              classes={{ badge: classes.badge }}
+              invisible={this.state.hideUpdateBadge}
+              badgeContent="1">
+              <FontAwesomeIcon icon={faSmile} className={classes.shrinkIcon} />
+            </Badge>, this.handleCommunityClick
               ) }
 
-            <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
-              <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
-              <ListItemText primary="Documentation" />
-              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
-            </MenuItem>
+          <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
+            <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
+            <ListItemText primary="Documentation" />
+            <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
+          </MenuItem>
 
-            <MenuItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.navMenuItem}>
-              <ListItemIcon>{githubIcon}</ListItemIcon>
-              <ListItemText primary="GitHub" />
-              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
-            </MenuItem>
+          <MenuItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.navMenuItem}>
+            <ListItemIcon>{githubIcon}</ListItemIcon>
+            <ListItemText primary="GitHub" />
+            <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
+          </MenuItem>
 
-            <MenuItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.navMenuItem}>
-              <ListItemIcon><EmailIcon className={classes.shrinkIcon} /></ListItemIcon>
-              <ListItemText primary="Mailing List" />
-              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
-            </MenuItem>
+          <MenuItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.navMenuItem}>
+            <ListItemIcon><EmailIcon className={classes.shrinkIcon} /></ListItemIcon>
+            <ListItemText primary="Mailing List" />
+            <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
+          </MenuItem>
 
-            <MenuItem component="a" href="https://slack.linkerd.io" target="_blank" className={classes.navMenuItem}>
-              <ListItemIcon>{slackIcon}</ListItemIcon>
-              <ListItemText primary="Slack" />
-              <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
-            </MenuItem>
+          <MenuItem component="a" href="https://slack.linkerd.io" target="_blank" className={classes.navMenuItem}>
+            <ListItemIcon>{slackIcon}</ListItemIcon>
+            <ListItemText primary="Slack" />
+            <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
+          </MenuItem>
 
-          </MenuList>
+          <Version
+            isLatest={this.state.isLatest}
+            latestVersion={this.state.latestVersion}
+            releaseVersion={this.props.releaseVersion}
+            error={this.state.error}
+            uuid={this.props.uuid} />
 
-          {
-            !drawerOpen ? null : <Version
-              isLatest={this.state.isLatest}
-              latestVersion={this.state.latestVersion}
-              releaseVersion={this.props.releaseVersion}
-              error={this.state.error}
-              uuid={this.props.uuid} />
-          }
-        </Drawer>
+        </MenuList>
 
-        <main className={classNames(classes.content, {[classes.contentDrawerClose]: !drawerOpen})}>
+      </div>
+    );
+
+    return (
+      <div className={classes.root}>
+
+        <Hidden smDown>
+          <Drawer
+            className={classes.drawer}
+            variant="permanent">
+            {drawer}
+          </Drawer>
+          <AppBar >
+            <Toolbar>
+              <Typography variant="h6" color="inherit"  className={classes.breadcrumbs} noWrap>
+                <BreadcrumbHeader  {...this.props} />
+              </Typography>
+            </Toolbar>
+          </AppBar>
+        </Hidden>
+
+        <Hidden mdUp>
+          <AppBar className={classes.appBar}>
+            <Toolbar>
+              <div className={classes.linkerdMobileLogo}>
+                {linkerdWordLogo}
+              </div>
+              { !mobileSidebarOpen && // mobile view but no sidebar
+              <React.Fragment>
+                <IconButton onClick={this.handleDrawerClick} className={classes.bars}>
+                  <FontAwesomeIcon icon={faBars}  />
+                </IconButton>
+              </React.Fragment>
+              }
+            </Toolbar>
+          </AppBar>
+          <Drawer
+            className={classes.drawer}
+            variant="temporary"
+            onClick={this.handleDrawerClick}
+            onClose={this.handleDrawerClick}
+            open={mobileSidebarOpen}>
+            {drawer}
+          </Drawer>
+        </Hidden>
+
+        <main className={classes.content}>
           <div className={classes.toolbar} />
-          <div className="main-content"><ChildComponent {...otherProps} /></div>
+          <div>
+            <ChildComponent {...otherProps} />
+          </div>
         </main>
       </div>
     );

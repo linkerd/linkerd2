@@ -23,7 +23,7 @@ describe('Tests for <BreadcrumbHeader>', () => {
       </BrowserRouter>
     );
 
-    const crumbs = component.find("a");
+    const crumbs = component.find("span");
     expect(crumbs).toHaveLength(3);
   });
 });
