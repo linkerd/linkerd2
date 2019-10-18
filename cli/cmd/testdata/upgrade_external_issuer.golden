@@ -750,7 +750,7 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"UPGRADE-PROXY-VERSION","proxyInitImageVersion":"v1.2.0"}
   install: |
-    {"uuid":"57af298c-58b0-43fc-8d88-3c338789bfbc","cliVersion":"dev-undefined","flags":[]}
+    {"uuid":"57af298c-58b0-43fc-8d88-3c338789bfbc","cliVersion":"dev-undefined","flags":[{"name":"identity-external-issuer","value":"true"}]}
 ---
 ###
 ### Identity Controller Service

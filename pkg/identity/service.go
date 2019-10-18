@@ -6,11 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/linkerd/linkerd2/pkg/k8s"
 
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
@@ -34,13 +31,12 @@ const (
 type (
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
-		validator    Validator
-		issuerPath   string
-		trustAnchors *x509.CertPool
-		expectedName string
-		issuer       *tls.Issuer
-		issuerMutex  *sync.Mutex
-		validity     *tls.Validity
+		validator                                                                                Validator
+		trustAnchors                                                                             *x509.CertPool
+		issuer                                                                                   *tls.Issuer
+		issuerMutex                                                                              *sync.Mutex
+		validity                                                                                 *tls.Validity
+		expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey string
 	}
 
 	// Validator implementors accept a bearer token, validates it, and returns a
@@ -66,7 +62,7 @@ type (
 	NotAuthenticated struct{}
 )
 
-// Initialize loads the issuer certs from disk so it can start service CSRs
+// Initialize loads the issuer certs from disk so it can start service CSRs to proxies
 func (svc *Service) Initialize() error {
 	credentials, err := svc.loadCredentials()
 	if err != nil {
@@ -109,15 +105,10 @@ func fileExists(filename string) bool {
 }
 
 func (svc *Service) credPaths() (string, string) {
-	externalIssuerPathCrt := filepath.Join(svc.issuerPath, k8s.IdentityIssuerCrtNameExternal)
-	externalIssuerPathKey := filepath.Join(svc.issuerPath, k8s.IdentityIssuerKeyNameExternal)
-	issuerPathCrt := filepath.Join(svc.issuerPath, k8s.IdentityIssuerCrtNameExternal)
-	issuerPathKey := filepath.Join(svc.issuerPath, k8s.IdentityIssuerKeyNameExternal)
-
-	if fileExists(externalIssuerPathCrt) && fileExists(externalIssuerPathKey) {
-		return externalIssuerPathKey, externalIssuerPathCrt
+	if fileExists(svc.externalIssuerPathCrt) && fileExists(svc.externalIssuerPathKey) {
+		return svc.externalIssuerPathKey, svc.externalIssuerPathCrt
 	}
-	return issuerPathKey, issuerPathCrt
+	return svc.issuerPathKey, svc.issuerPathCrt
 }
 
 func (svc *Service) loadCredentials() (tls.Issuer, error) {
@@ -128,7 +119,7 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CA from %s: %s", svc.issuerPath, err)
+		return nil, fmt.Errorf("failed to read CA from disk: %s", err)
 	}
 
 	if err := creds.Crt.Verify(svc.trustAnchors, svc.expectedName); err != nil {
@@ -140,8 +131,19 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 }
 
 // NewService creates a new identity service.
-func NewService(v Validator, issuerPath string, trustAnchors *x509.CertPool, expectedName string, validity *tls.Validity) *Service {
-	return &Service{v, issuerPath, trustAnchors, expectedName, nil, &sync.Mutex{}, validity}
+func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey string) *Service {
+	return &Service{
+		validator,
+		trustAnchors,
+		nil,
+		&sync.Mutex{},
+		validity,
+		expectedName,
+		externalIssuerPathCrt,
+		externalIssuerPathKey,
+		issuerPathCrt,
+		issuerPathKey,
+	}
 }
 
 // Register registers an identity service implementation in the provided gRPC

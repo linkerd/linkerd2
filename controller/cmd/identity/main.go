@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/golang/protobuf/ptypes"
@@ -39,6 +40,10 @@ func Main(args []string) {
 		"path to directory containing issuer credentials")
 
 	traceCollector := flags.AddTraceFlags(cmd)
+	externalIssuerPathCrt := filepath.Join(*issuerPath, k8s.IdentityIssuerCrtNameExternal)
+	externalIssuerPathKey := filepath.Join(*issuerPath, k8s.IdentityIssuerKeyNameExternal)
+	issuerPathCrt := filepath.Join(*issuerPath, k8s.IdentityIssuerCrtName)
+	issuerPathKey := filepath.Join(*issuerPath, k8s.IdentityIssuerKeyName)
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -118,9 +123,9 @@ func Main(args []string) {
 	}
 
 	//
-	// Create, initialize and Run service
+	// Create, initialize and run service
 	//
-	svc := identity.NewService(v, *issuerPath, trustAnchors, expectedName, &validity)
+	svc := identity.NewService(v, trustAnchors, &validity, expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey)
 	if err = svc.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}
