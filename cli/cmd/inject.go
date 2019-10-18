@@ -115,6 +115,13 @@ sub-folders, or coming from stdin.`,
 
 	flags.BoolVar(&enableDebugSidecar, "enable-debug-sidecar", enableDebugSidecar,
 		"Inject a debug sidecar for data plane debugging")
+
+	flags.StringVar(&options.traceCollector, "trace-collector", options.traceCollector,
+		"Collector Service address for the proxies to send Trace Data")
+
+	flags.StringVar(&options.traceCollectorSvcAccount, "trace-collector-svc-account", options.traceCollectorSvcAccount,
+		"Service account associated with the Trace collector instance")
+
 	cmd.PersistentFlags().AddFlagSet(flags)
 
 	return cmd
