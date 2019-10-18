@@ -6,8 +6,6 @@ import (
 	"os"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
-
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -194,6 +192,13 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	return nil
 }
 
+func  isIssuerExternal(flags *pflag.FlagSet) bool {
+	if f := flags.Lookup("identity-external-issuer"); f != nil {
+		return f.Value.String() == "true"
+	}
+	return false
+}
+
 func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Interface, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
@@ -248,7 +253,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 		configs.GetGlobal().IdentityContext = toIdentityContext(identity)
 	} else {
-		identity, err = fetchIdentityValues(k, idctx)
+		identity, err = fetchIdentityValues(k, idctx, isIssuerExternal(flags))
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to fetch the existing issuer credentials from Kubernetes: %s", err)
 		}
@@ -346,12 +351,12 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*charts.Identity, error) {
+func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext, externalIssuer bool) (*charts.Identity, error) {
 	if idctx == nil {
 		return nil, nil
 	}
 
-	keyPEM, crtPEM, expiry, externalIssuer, err := fetchIssuer(k, idctx.GetTrustAnchorsPem())
+	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem(), externalIssuer)
 	if err != nil {
 		return nil, err
 	}
@@ -373,28 +378,21 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*ch
 	}, nil
 }
 
-func isExternal(secret *v1.Secret) bool {
-	_, externalCrt := secret.Data[k8s.IdentityIssuerCrtNameExternal]
-	_, externalKey := secret.Data[k8s.IdentityIssuerKeyNameExternal]
-	return externalCrt && externalKey
-}
-
-func fetchIssuer(k kubernetes.Interface, trustPEM string) (string, string, time.Time, bool, error) {
+func fetchIssuer(k kubernetes.Interface, trustPEM string, externalIssuer bool) (string, string, time.Time, error) {
 	crtName := k8s.IdentityIssuerCrtName
 	keyName := k8s.IdentityIssuerKeyName
 
 	roots, err := tls.DecodePEMCertPool(trustPEM)
 	if err != nil {
-		return "", "", time.Time{}, false, err
+		return "", "", time.Time{}, err
 	}
 
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
 	if err != nil {
-		return "", "", time.Time{}, false, err
+		return "", "", time.Time{}, err
 	}
-	externalIssuer := isExternal(secret)
 	if externalIssuer {
 		crtName = k8s.IdentityIssuerCrtNameExternal
 		keyName = k8s.IdentityIssuerKeyNameExternal
@@ -403,21 +401,21 @@ func fetchIssuer(k kubernetes.Interface, trustPEM string) (string, string, time.
 	keyPEM := string(secret.Data[keyName])
 	key, err := tls.DecodePEMKey(keyPEM)
 	if err != nil {
-		return "", "", time.Time{}, false, err
+		return "", "", time.Time{}, err
 	}
 
 	crtPEM := string(secret.Data[crtName])
 	crt, err := tls.DecodePEMCrt(crtPEM)
 	if err != nil {
-		return "", "", time.Time{}, false, err
+		return "", "", time.Time{}, err
 	}
 
 	cred := &tls.Cred{PrivateKey: key, Crt: *crt}
 	if err = cred.Verify(roots, ""); err != nil {
-		return "", "", time.Time{}, false, fmt.Errorf("invalid issuer credentials: %s", err)
+		return "", "", time.Time{}, fmt.Errorf("invalid issuer credentials: %s", err)
 	}
 
-	return keyPEM, crtPEM, crt.Certificate.NotAfter, externalIssuer, nil
+	return keyPEM, crtPEM, crt.Certificate.NotAfter, nil
 }
 
 // upgradeErrorf prints the error message and quits the upgrade process
