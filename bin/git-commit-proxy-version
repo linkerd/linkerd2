@@ -37,18 +37,27 @@ if ! git rev-parse --verify --quiet "${old_proxy_rev}" ; then
     exit 2
 fi
 
-echo "proxy: Update to ${new_proxy_version}" >"$tmp/commit.template"
-echo "" >>"$tmp/commit.template"
-
-git log --pretty=oneline --abbrev-commit --reverse "${old_proxy_rev}..${new_proxy_rev}" | \
-    sed -E -e 's,^[a-f0-9]{7} ,* ,' \
-    -e 's, \((#[0-9]+)\), (linkerd/linkerd2-proxy\1),' \
-    >>"$tmp/commit.template"
+# Commit message
+(
+    echo "proxy: ${new_proxy_version}"
+    echo ""
+    # Include the log message, stripping the version header and GPG trailer.
+    git tag -l --format='%(contents)' "$new_proxy_rev" | \
+        sed -e 1,2d -e '/^---*BEGIN /,$d'
+    echo ""
+    # Include the history, with references to pull requests.
+    echo "---"
+    echo ""
+    refs="${old_proxy_rev}..${new_proxy_rev}"
+    git log --pretty=oneline --abbrev-commit --reverse "$refs" | \
+        sed -Ee 's,^[a-f0-9]{7} ,* ,' \
+            -e  's, \((#[0-9]+)\), (linkerd/linkerd2-proxy\1),'
+) >"$tmp/commit.txt"
 
 cd "$rootdir"
 echo "$new_proxy_version" >"$rootdir/.proxy-version"
 
-git commit --file="$tmp/commit.template" --edit -- "$rootdir/.proxy-version"
+git commit --file="$tmp/commit.txt" --edit -- "$rootdir/.proxy-version"
 
 rm -rf "$tmp"
 
