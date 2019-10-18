@@ -19,6 +19,7 @@ import (
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/trace"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -36,6 +37,8 @@ func Main(args []string) {
 	issuerPath := cmd.String("issuer",
 		"/var/run/linkerd/identity/issuer",
 		"path to directory containing issuer credentials")
+
+	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -118,6 +121,11 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
+	if *traceCollector != "" {
+		if err := trace.InitializeTracing("linkerd-identity", *traceCollector); err != nil {
+			log.Warnf("failed to initialize tracing: %s", err)
+		}
+	}
 	srv := prometheus.NewGrpcServer()
 	identity.Register(srv, svc)
 	go func() {

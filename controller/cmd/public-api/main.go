@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/trace"
 	promApi "github.com/prometheus/client_golang/api"
 	log "github.com/sirupsen/logrus"
 )
@@ -30,6 +31,8 @@ func Main(args []string) {
 	destinationAPIAddr := cmd.String("destination-addr", "127.0.0.1:8086", "address of destination service")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
+
+	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -64,6 +67,12 @@ func Main(args []string) {
 		clusterDomain = "cluster.local"
 	}
 	log.Info("Using cluster domain: ", clusterDomain)
+
+	if *traceCollector != "" {
+		if err := trace.InitializeTracing("linkerd-public-api", *traceCollector); err != nil {
+			log.Warnf("failed to initialize tracing: %s", err)
+		}
+	}
 
 	server := public.NewServer(
 		*addr,

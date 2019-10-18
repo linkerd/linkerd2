@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
+	"go.opencensus.io/trace"
 )
 
 type promType string
@@ -45,6 +46,10 @@ func extractSampleValue(sample *model.Sample) uint64 {
 
 func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector, error) {
 	log.Debugf("Query request:\n\t%+v", query)
+
+	_, span := trace.StartSpan(ctx, "query.prometheus")
+	defer span.End()
+	span.AddAttributes(trace.StringAttribute("queryString", query))
 
 	// single data point (aka summary) query
 	res, err := s.prometheusAPI.Query(ctx, query, time.Time{})
