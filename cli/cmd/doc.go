@@ -7,40 +7,58 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/cobra/doc"
+	cobradoc "github.com/spf13/cobra/doc"
 	"sigs.k8s.io/yaml"
+
+	"github.com/linkerd/linkerd2/pkg/k8s"
 )
+
+type references struct {
+	CLIReference         []cmdDoc
+	AnnotationsReference []annotationDoc
+}
 
 type cmdOption struct {
 	Name         string
-	Shorthand    string `yaml:",omitempty"`
-	DefaultValue string `yaml:"default_value,omitempty"`
-	Usage        string `yaml:",omitempty"`
+	Shorthand    string
+	DefaultValue string
+	Usage        string
 }
 
 type cmdDoc struct {
 	Name             string
-	Synopsis         string      `yaml:",omitempty"`
-	Description      string      `yaml:",omitempty"`
-	Options          []cmdOption `yaml:",omitempty"`
-	InheritedOptions []cmdOption `yaml:"inherited_options,omitempty"`
-	Example          string      `yaml:",omitempty"`
-	SeeAlso          []string    `yaml:"see_also,omitempty"`
+	Synopsis         string
+	Description      string
+	Options          []cmdOption
+	InheritedOptions []cmdOption
+	Example          string
+	SeeAlso          []string
+}
+
+type annotationDoc struct {
+	Name        string
+	Description string
 }
 
 func newCmdDoc() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "doc",
 		Hidden: true,
-		Short:  "Generate YAML documentation for the Linkerd CLI",
+		Short:  "Generate YAML documentation for the Linkerd CLI & Proxy annotations",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cmdList, err := generateDocs(RootCmd)
+			cmdList, err := generateCLIDocs(RootCmd)
 			if err != nil {
 				return err
 			}
 
-			out, err := yaml.Marshal(cmdList)
+			annotations := generateAnnotationsDocs(k8s.GetAnnotationsDocs(), cmdList)
+
+			ref := references{
+				CLIReference:         cmdList,
+				AnnotationsReference: annotations,
+			}
+			out, err := yaml.Marshal(ref)
 			if err != nil {
 				return err
 			}
@@ -54,9 +72,9 @@ func newCmdDoc() *cobra.Command {
 	return cmd
 }
 
-// generateDocs takes a command and recursively walks the tree of commands,
+// generateCliDocs takes a command and recursively walks the tree of commands,
 // adding each as an item to cmdList.
-func generateDocs(cmd *cobra.Command) ([]cmdDoc, error) {
+func generateCLIDocs(cmd *cobra.Command) ([]cmdDoc, error) {
 	var cmdList []cmdDoc
 
 	for _, c := range cmd.Commands() {
@@ -64,7 +82,7 @@ func generateDocs(cmd *cobra.Command) ([]cmdDoc, error) {
 			continue
 		}
 
-		subList, err := generateDocs(c)
+		subList, err := generateCLIDocs(c)
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +92,7 @@ func generateDocs(cmd *cobra.Command) ([]cmdDoc, error) {
 
 	var buf bytes.Buffer
 
-	if err := doc.GenYaml(cmd, io.Writer(&buf)); err != nil {
+	if err := cobradoc.GenYaml(cmd, io.Writer(&buf)); err != nil {
 		return nil, err
 	}
 
@@ -92,4 +110,43 @@ func generateDocs(cmd *cobra.Command) ([]cmdDoc, error) {
 	}
 
 	return cmdList, nil
+}
+
+// generateAnnotationsDocs takes a labels file, parse it, iterate over nodes,
+// recognize annotations, adding them to annotationsList.
+func generateAnnotationsDocs(annotationsMap map[string]string, cmdList []cmdDoc) []annotationDoc {
+	var annotationsList []annotationDoc
+
+	for _, cmd := range cmdList {
+		for _, flag := range cmd.Options {
+			annotationName := fmt.Sprintf("%s/%s", k8s.ProxyConfigAnnotationsPrefix, flag.Name)
+			desc, ok := annotationsMap[annotationName]
+			if !ok {
+				continue
+			}
+
+			if desc != "" {
+				continue
+			}
+
+			annotation := annotationDoc{
+				Name:        annotationName,
+				Description: flag.Usage,
+			}
+
+			annotationsList = append(annotationsList, annotation)
+			delete(annotationsMap, annotationName)
+		}
+	}
+
+	for name, desc := range annotationsMap {
+		annotation := annotationDoc{
+			Name:        name,
+			Description: desc,
+		}
+
+		annotationsList = append(annotationsList, annotation)
+	}
+
+	return annotationsList
 }

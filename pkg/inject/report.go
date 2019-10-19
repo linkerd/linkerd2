@@ -78,8 +78,10 @@ func newReport(conf *ResourceConfig) *Report {
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
-		report.TracingEnabled = conf.pod.meta.Annotations[k8s.ProxyTraceCollectorSvcAddr] != "" || conf.nsAnnotations[k8s.ProxyTraceCollectorSvcAddr] != ""
+		report.TracingEnabled = conf.pod.meta.Annotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != "" || conf.nsAnnotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != ""
 	} else if report.Kind != k8s.Namespace {
+		report.TracingEnabled = conf.pod.meta.Annotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != "" || conf.nsAnnotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != ""
+	} else {
 		report.UnsupportedResource = true
 	}
 
