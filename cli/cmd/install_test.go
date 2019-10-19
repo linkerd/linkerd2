@@ -8,7 +8,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/pkg/charts"
+	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 )
 
 func TestRender(t *testing.T) {

@@ -1,0 +1,8 @@
+apiVersion: v1
+appVersion: edge-19.9.2
+description: A helm chart containing the resources needed by the linkerd cni plugin.
+kubeVersion: ">=1.12.0-0"
+icon: https://linkerd.io/images/logo-only-200h.png
+name: "linkerd2-cni"
+version: 0.1.0
+

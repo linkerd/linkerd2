@@ -1,4 +1,4 @@
-package charts
+package linkerd2
 
 import (
 	"reflect"

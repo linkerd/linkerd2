@@ -1,4 +1,3 @@
-### Namespace ###
 kind: Namespace
 apiVersion: v1
 metadata:
@@ -67,8 +66,6 @@ subjects:
   name: linkerd-cni
   namespace: other
 ---
-# Include a clusterrole for the linkerd CNI DaemonSet,
-# and bind it to the linkerd-cni serviceaccount.
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
@@ -97,7 +94,6 @@ subjects:
   name: linkerd-cni
   namespace: other
 ---
-# This ConfigMap is used to configure a self-hosted linkerd CNI installation.
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -107,23 +103,15 @@ metadata:
     linkerd.io/control-plane-ns: other
     linkerd.io/cni-resource: "true"
 data:
-  incoming_proxy_port: "5143"
-  outgoing_proxy_port: "5140"
-  proxy_uid: "12102"
-  inbound_ports_to_ignore: "5190,5191"
-  outbound_ports_to_ignore: ""
-  simulate: "false"
-  log_level: "debug"
   dest_cni_net_dir: "/etc/kubernetes/cni/net.d"
   dest_cni_bin_dir: "/opt/my-cni/bin"
-  use_wait_flag: "false"
   # The CNI network configuration to install on each node. The special
   # values in this config will be automatically populated.
   cni_network_config: |-
     {
       "name": "linkerd-cni",
       "type": "linkerd-cni",
-      "log_level": "__LOG_LEVEL__",
+      "log_level": "debug",
       "policy": {
           "type": "k8s",
           "k8s_api_root": "https://__KUBERNETES_SERVICE_HOST__:__KUBERNETES_SERVICE_PORT__",
@@ -133,19 +121,17 @@ data:
           "kubeconfig": "__KUBECONFIG_FILEPATH__"
       },
       "linkerd": {
-        "incoming-proxy-port": __INCOMING_PROXY_PORT__,
-        "outgoing-proxy-port": __OUTGOING_PROXY_PORT__,
-        "proxy-uid": __PROXY_UID__,
-        "ports-to-redirect": [__PORTS_TO_REDIRECT__],
-        "inbound-ports-to-ignore": [__INBOUND_PORTS_TO_IGNORE__],
-        "outbound-ports-to-ignore": [__OUTBOUND_PORTS_TO_IGNORE__],
-        "simulate": __SIMULATE__,
-        "use-wait-flag": __USE_WAIT_FLAG__
+        "incoming-proxy-port": 5143,
+        "outgoing-proxy-port": 5140,
+        "proxy-uid": 12102,
+        "ports-to-redirect": [],
+        "inbound-ports-to-ignore": [5190,5191],
+        "outbound-ports-to-ignore": [],
+        "simulate": false,
+        "use-wait-flag": false
       }
     }
 ---
-# This manifest installs the linkerd CNI plugins and network config on
-# each master and worker node in a Kubernetes cluster.
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
@@ -194,41 +180,13 @@ spec:
             configMapKeyRef:
               name: linkerd-cni-config
               key: dest_cni_bin_dir
-        # The CNI network config to install on each node.
         - name: CNI_NETWORK_CONFIG
           valueFrom:
             configMapKeyRef:
               name: linkerd-cni-config
               key: cni_network_config
-        - name: INCOMING_PROXY_PORT
-          valueFrom:
-            configMapKeyRef:
-              name: linkerd-cni-config
-              key: incoming_proxy_port
-        - name: OUTGOING_PROXY_PORT
-          valueFrom:
-            configMapKeyRef:
-              name: linkerd-cni-config
-              key: outgoing_proxy_port
-        - name: PROXY_UID
-          valueFrom:
-            configMapKeyRef:
-              name: linkerd-cni-config
-              key: proxy_uid
-        - name: INBOUND_PORTS_TO_IGNORE
-          valueFrom:
-            configMapKeyRef:
-              name: linkerd-cni-config
-              key: inbound_ports_to_ignore
-        - name: LOG_LEVEL
-          valueFrom:
-            configMapKeyRef:
-              name: linkerd-cni-config
-              key: log_level
         - name: SLEEP
           value: "true"
-        - name: USE_WAIT_FLAG
-          value: "false"
         lifecycle:
           preStop:
             exec:
@@ -239,7 +197,6 @@ spec:
         - mountPath: /host/etc/kubernetes/cni/net.d
           name: cni-net-dir
       volumes:
-      # Used to install CNI.
       - name: cni-bin-dir
         hostPath:
           path: /opt/my-cni/bin

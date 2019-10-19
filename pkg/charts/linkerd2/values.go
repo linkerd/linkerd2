@@ -1,8 +1,10 @@
-package charts
+package linkerd2
 
 import (
 	"fmt"
 	"time"
+
+	"github.com/linkerd/linkerd2/pkg/charts"
 
 	"github.com/imdario/mergo"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -228,7 +230,7 @@ func readDefaults(chartDir string, ha bool) (*Values, error) {
 		})
 	}
 
-	if err := filesReader(chartDir, valuesFiles); err != nil {
+	if err := charts.FilesReader(chartDir, valuesFiles); err != nil {
 		return nil, err
 	}
 
