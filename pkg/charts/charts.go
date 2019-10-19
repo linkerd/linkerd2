@@ -109,7 +109,6 @@ func ReadFile(dir string, f *chartutil.BufferedFile) error {
 // FilesReader reads all the files from a directory
 func FilesReader(dir string, files []*chartutil.BufferedFile) error {
 	for _, f := range files {
-		println("Reading file " + f.Name)
 		if err := ReadFile(dir, f); err != nil {
 			return err
 		}
