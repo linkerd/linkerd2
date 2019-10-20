@@ -17,7 +17,7 @@ func TestRenderCniHelm(t *testing.T) {
 	// override most defaults with pinned values.
 	// use the Helm lib to render the templates.
 	// the golden file is generated using the following `helm template` command:
-	//  bin/helm template --set Namespace="linkerd-test" --set ControllerNamespaceLabel="linkerd.io/control-plane-ns-test" --set CniResourceAnnotation="linkerd.io/cni-resource-test" --set InboundProxyPort=1234 --set OutboundProxyPort=5678 --set CreatedByAnnotation="linkerd.io/created-by-test" --set CniPluginImage="gcr.io/linkerd-io/cni-plugin-test" --set CniPluginVersion="test-version" --set LogLevel="debug" --set ProxyUID=1111 --set DestCNINetDir="/etc/cni/net.d-test" --set DestCNIBinDir="/opt/cni/bin-test" --set UseWaitFlag=true --set CliVersion=test-version charts/linkerd2-cni
+	// bin/helm template --set Namespace="linkerd-test" --set ControllerNamespaceLabel="linkerd.io/control-plane-ns-test" --set CniResourceAnnotation="linkerd.io/cni-resource-test" --set InboundProxyPort=1234 --set OutboundProxyPort=5678 --set CreatedByAnnotation="linkerd.io/created-by-test" --set CniPluginImage="gcr.io/linkerd-io/cni-plugin-test" --set CniPluginVersion="test-version" --set LogLevel="debug" --set ProxyUID=1111 --set DestCNINetDir="/etc/cni/net.d-test" --set DestCNIBinDir="/opt/cni/bin-test" --set UseWaitFlag=true --set CliVersion=test-version charts/linkerd2-cni
 
 	t.Run("Cni Install", func(t *testing.T) {
 		chartCni := chartCniPlugin(t)
