@@ -34,7 +34,7 @@ type (
 		validator                                                                                Validator
 		trustAnchors                                                                             *x509.CertPool
 		issuer                                                                                   *tls.Issuer
-		issuerMutex                                                                              *sync.Mutex
+		issuerMutex                                                                              *sync.RWMutex
 		validity                                                                                 *tls.Validity
 		expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey string
 	}
@@ -136,7 +136,7 @@ func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.
 		validator,
 		trustAnchors,
 		nil,
-		&sync.Mutex{},
+		&sync.RWMutex{},
 		validity,
 		expectedName,
 		externalIssuerPathCrt,
@@ -154,8 +154,8 @@ func Register(g *grpc.Server, s *Service) {
 
 // Certify validates identity and signs certificates.
 func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.CertifyResponse, error) {
-	svc.issuerMutex.Lock()
-	defer svc.issuerMutex.Unlock()
+	svc.issuerMutex.RLock()
+	defer svc.issuerMutex.RUnlock()
 
 	if svc.issuer == nil {
 		log.Warn("Certificate issuer is not ready")

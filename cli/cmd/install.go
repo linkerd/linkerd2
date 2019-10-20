@@ -369,15 +369,7 @@ control plane.`,
 					os.Exit(1)
 				}
 			}
-
-			shouldExist := options.identityOptions.identityExternalIssuer
-			if !options.ignoreCluster && shouldExist {
-				if err := errIfLinkerdIdentityIssuerSecretMissing(); err != nil {
-					fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, err.Error())
-					os.Exit(1)
-				}
-			}
-
+			
 			return installRunE(options, "", flags)
 		},
 	}
@@ -920,24 +912,6 @@ func errIfLinkerdConfigConfigMapExists() error {
 	return fmt.Errorf("'linkerd-config' config map already exists")
 }
 
-func errIfLinkerdIdentityIssuerSecretMissing() error {
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
-	if err != nil {
-		return err
-	}
-
-	_, err = kubeAPI.CoreV1().Namespaces().Get(controlPlaneNamespace, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	secret, err := kubeAPI.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
-	if secret == nil || kerrors.IsNotFound(err) {
-		return fmt.Errorf("'linkerd-identity-issuer' needs to exist upon install if external cert manager is used")
-	}
-	return nil
-}
-
 func checkFiles(files []string) error {
 	for _, f := range files {
 		stat, err := os.Stat(f)
@@ -1078,6 +1052,18 @@ func loadExternalIssuerData() (*externalIssuerData, error) {
 	return &externalIssuerData{string(anchors), string(crt), string(key)}, nil
 }
 
+func (idopts *installIdentityOptions) verifyCred(creds *tls.Cred, trustAnchors string) error {
+	roots, err := tls.DecodePEMCertPool(trustAnchors)
+	if err != nil {
+		return  err
+	}
+
+	if err := creds.Verify(roots, idopts.issuerName()); err != nil {
+		return fmt.Errorf("invalid credentials: %s", err)
+	}
+	return nil
+}
+
 func (idopts *installIdentityOptions) readExternallyManaged() (*charts.Identity, error) {
 
 	externalIssuerData, err := loadExternalIssuerData()
@@ -1091,13 +1077,8 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*charts.Identity,
 		return nil, fmt.Errorf("failed to read CA from %s: %s", consts.IdentityIssuerSecretName, err)
 	}
 
-	trustAnchors, err := tls.DecodePEMCertPool(externalIssuerData.trustAnchors)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read trust anchors from %s: %s", consts.IdentityIssuerSecretName, err)
-	}
-
-	if err := creds.Crt.Verify(trustAnchors, idopts.issuerName()); err != nil {
-		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", idopts.issuerName(), err)
+	if err := idopts.verifyCred(creds, externalIssuerData.trustAnchors); err != nil {
+		return nil, err
 	}
 
 	return &charts.Identity{
@@ -1127,13 +1108,9 @@ func (idopts *installIdentityOptions) readValues() (*charts.Identity, error) {
 		return nil, err
 	}
 	trustAnchorsPEM := string(trustb)
-	roots, err := tls.DecodePEMCertPool(trustAnchorsPEM)
-	if err != nil {
-		return nil, err
-	}
 
-	if err := creds.Verify(roots, idopts.issuerName()); err != nil {
-		return nil, fmt.Errorf("invalid credentials: %s", err)
+	if err := idopts.verifyCred(creds, trustAnchorsPEM); err != nil {
+		return nil, err
 	}
 
 	return &charts.Identity{
