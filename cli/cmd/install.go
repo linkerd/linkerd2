@@ -250,13 +250,15 @@ resources for the Linkerd control plane. This command should be followed by
   # Install Linkerd into a non-default namespace.
   linkerd install config -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := errAfterRunningChecks(options); err != nil && !options.ignoreCluster {
-				if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
-					fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
-				} else {
-					fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
+			if !options.ignoreCluster {
+				if err := errAfterRunningChecks(options); err != nil {
+					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
+						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+					} else {
+						fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
+					}
+					os.Exit(1)
 				}
-				os.Exit(1)
 			}
 
 			return installRunE(options, configStage, parentFlags)
@@ -289,20 +291,24 @@ control plane. It should be run after "linkerd install config".`,
   # Install Linkerd into a non-default namespace.
   linkerd install control-plane -l linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// check if global resources exist to determine if the `install config`
-			// stage succeeded
-			if err := errAfterRunningChecks(options); err == nil && !options.skipChecks {
-				if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
-					fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
-				} else {
-					fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
+			if !options.skipChecks {
+				// check if global resources exist to determine if the `install config`
+				// stage succeeded
+				if err := errAfterRunningChecks(options); err == nil {
+					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
+						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+					} else {
+						fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
+					}
+					os.Exit(1)
 				}
-				os.Exit(1)
 			}
 
-			if err := errIfLinkerdConfigConfigMapExists(); err != nil && !options.ignoreCluster {
-				fmt.Fprintf(os.Stderr, errMsgLinkerdConfigConfigMapNotFound, controlPlaneNamespace, err.Error())
-				os.Exit(1)
+			if !options.ignoreCluster {
+				if err := errIfLinkerdConfigConfigMapExists(); err != nil {
+					fmt.Fprintf(os.Stderr, errMsgLinkerdConfigConfigMapNotFound, controlPlaneNamespace, err.Error())
+					os.Exit(1)
+				}
 			}
 
 			return installRunE(options, controlPlaneStage, flags)
@@ -350,13 +356,15 @@ control plane.`,
   # Installation may also be broken up into two stages by user privilege, via
   # subcommands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := errAfterRunningChecks(options); err != nil && !options.ignoreCluster {
-				if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
-					fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
-				} else {
-					fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
+			if !options.ignoreCluster {
+				if err := errAfterRunningChecks(options); err != nil {
+					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
+						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+					} else {
+						fmt.Fprintf(os.Stderr, errMsgGlobalResourcesExist, err)
+					}
+					os.Exit(1)
 				}
-				os.Exit(1)
 			}
 
 			return installRunE(options, "", flags)
