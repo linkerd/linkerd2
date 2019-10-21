@@ -10,6 +10,10 @@ import (
 	"path/filepath"
 	"syscall"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
+
 	"github.com/golang/protobuf/ptypes"
 	idctl "github.com/linkerd/linkerd2/controller/identity"
 	"github.com/linkerd/linkerd2/pkg/admin"
@@ -22,6 +26,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/trace"
 	log "github.com/sirupsen/logrus"
+	v1machinary "k8s.io/apimachinery/pkg/apis/meta/v1"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 // TODO watch trustAnchorsPath for changes
@@ -44,6 +50,7 @@ func Main(args []string) {
 	externalIssuerPathKey := filepath.Join(*issuerPath, k8s.IdentityIssuerKeyNameExternal)
 	issuerPathCrt := filepath.Join(*issuerPath, k8s.IdentityIssuerCrtName)
 	issuerPathKey := filepath.Join(*issuerPath, k8s.IdentityIssuerKeyName)
+	componentName := "linkerd-identity"
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -122,10 +129,26 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}
 
+	// Create K8s event recorder
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{
+		Interface: k8sAPI.CoreV1().Events(controllerNS),
+	})
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: componentName})
+	deployment, err := k8sAPI.ExtensionsV1beta1().Deployments(controllerNS).Get(componentName, v1machinary.GetOptions{})
+
+	if err != nil {
+		log.Fatalf("Failed to construct k8s event recorder: %s", err)
+	}
+
+	recordEventFunc := func(eventType, reason, message string) {
+		recorder.Event(deployment, eventType, reason, message)
+	}
+
 	//
 	// Create, initialize and run service
 	//
-	svc := identity.NewService(v, trustAnchors, &validity, expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey)
+	svc := identity.NewService(v, trustAnchors, &validity, recordEventFunc, expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey)
 	if err = svc.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}
@@ -143,7 +166,7 @@ func Main(args []string) {
 	}
 
 	if *traceCollector != "" {
-		if err := trace.InitializeTracing("linkerd-identity", *traceCollector); err != nil {
+		if err := trace.InitializeTracing(componentName, *traceCollector); err != nil {
 			log.Warnf("failed to initialize tracing: %s", err)
 		}
 	}

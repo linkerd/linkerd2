@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -25,7 +27,9 @@ const (
 
 	// EnvTrustAnchors is the environment variable holding the trust anchors for
 	// the proxy identity.
-	EnvTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
+	EnvTrustAnchors  = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
+	eventTypeSkipped = "IssuerUpdateSkipped"
+	eventTypeUpdated = "IssuerUpdated"
 )
 
 type (
@@ -36,6 +40,7 @@ type (
 		issuer                                                                                   *tls.Issuer
 		issuerMutex                                                                              *sync.RWMutex
 		validity                                                                                 *tls.Validity
+		recordEvent                                                                              func(eventType, reason, message string)
 		expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey string
 	}
 
@@ -84,14 +89,17 @@ func (svc *Service) Run(issuerEvent <-chan struct{}, issuerError <-chan error) {
 	for {
 		select {
 		case <-issuerEvent:
-			credentials, err := svc.loadCredentials()
-			if err != nil {
-				svc.updateIssuer(credentials)
+			if err := svc.Initialize(); err != nil {
+				message := fmt.Sprintf("skipping issuer update as certs could not be read from disk: %s", err)
+				log.Warn(message)
+				svc.recordEvent(v1.EventTypeWarning, eventTypeSkipped, message)
 			} else {
-				log.Warnf("Skipping issuer update as certs could not be read from disk: %s", err)
+				message := "updated identity issuer"
+				log.Infof(message)
+				svc.recordEvent(v1.EventTypeNormal, eventTypeUpdated, message)
 			}
 		case err := <-issuerError:
-			log.Warnf("Received error from fs watcher: %s", err)
+			log.Warnf("received error from fs watcher: %s", err)
 		}
 	}
 }
@@ -131,13 +139,14 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 }
 
 // NewService creates a new identity service.
-func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey string) *Service {
+func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(eventType, reason, message string), expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey string) *Service {
 	return &Service{
 		validator,
 		trustAnchors,
 		nil,
 		&sync.RWMutex{},
 		validity,
+		recordEvent,
 		expectedName,
 		externalIssuerPathCrt,
 		externalIssuerPathKey,

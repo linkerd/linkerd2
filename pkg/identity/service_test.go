@@ -29,7 +29,7 @@ func (fk *fakeValidator) Validate(context.Context, []byte) (string, error) {
 
 func TestServiceNotReady(t *testing.T) {
 	//ch := make(chan tls.Issuer, 1)
-	svc := NewService(&fakeValidator{"successful-result", nil}, nil, nil, "", "", "", "", "")
+	svc := NewService(&fakeValidator{"successful-result", nil}, nil, nil, nil, "", "", "", "", "")
 	req := &pb.CertifyRequest{
 		Identity:                  "some-identitiy",
 		Token:                     []byte{},
@@ -50,7 +50,7 @@ func TestServiceNotReady(t *testing.T) {
 }
 
 func TestInvalidRequestArguments(t *testing.T) {
-	svc := NewService(&fakeValidator{"successful-result", nil}, nil, nil, "", "", "", "", "")
+	svc := NewService(&fakeValidator{"successful-result", nil}, nil, nil, nil, "", "", "", "", "")
 	svc.updateIssuer(&fakeIssuer{tls.Crt{}, nil})
 	fakeData := "fake-data"
 	invalidCsr := pb.CertifyRequest{
