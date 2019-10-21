@@ -59,23 +59,26 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 }
 
 func uninjectObjectMeta(t *metav1.ObjectMeta, report *Report) {
-	newAnnotations := make(map[string]string)
-	for key, val := range t.Annotations {
-		if !strings.HasPrefix(key, k8s.Prefix) ||
-			(key == k8s.ProxyInjectAnnotation && val == k8s.ProxyInjectDisabled) {
-			newAnnotations[key] = val
-		} else {
-			report.Uninjected.Proxy = true
-		}
+	//do not uninject meta if this is a control plane component
+	if _, ok := t.Labels[k8s.ControllerComponentLabel]; !ok {
+		newAnnotations := make(map[string]string)
+		for key, val := range t.Annotations {
+			if !strings.HasPrefix(key, k8s.Prefix) ||
+				(key == k8s.ProxyInjectAnnotation && val == k8s.ProxyInjectDisabled) {
+				newAnnotations[key] = val
+			} else {
+				report.Uninjected.Proxy = true
+			}
 
-	}
-	t.Annotations = newAnnotations
-
-	labels := make(map[string]string)
-	for key, val := range t.Labels {
-		if !strings.HasPrefix(key, k8s.Prefix) {
-			labels[key] = val
 		}
+		t.Annotations = newAnnotations
+
+		labels := make(map[string]string)
+		for key, val := range t.Labels {
+			if !strings.HasPrefix(key, k8s.Prefix) {
+				labels[key] = val
+			}
+		}
+		t.Labels = labels
 	}
-	t.Labels = labels
 }
