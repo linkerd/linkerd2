@@ -36,14 +36,3 @@ func HasExistingSidecars(podSpec *corev1.PodSpec) bool {
 
 	return false
 }
-
-// HasExistingDebugSidecar returns true if the pod spec already has the
-// debug container present
-func HasExistingDebugSidecar(podSpec *corev1.PodSpec) bool {
-	for _, container := range podSpec.Containers {
-		if container.Name == k8s.DebugSidecarName && strings.HasPrefix(container.Image, k8s.DebugSidecarImage) {
-			return true
-		}
-	}
-	return false
-}

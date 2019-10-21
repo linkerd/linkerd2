@@ -135,13 +135,6 @@ func NewResourceConfig(configs *config.All, origin Origin) *ResourceConfig {
 	return config
 }
 
-// IsControlPlaneComponent will return true if the /control-plane-component annotation is
-// present on the pod
-func (conf *ResourceConfig) IsControlPlaneComponent() bool {
-	_, b := conf.pod.meta.Labels[k8s.ControllerComponentLabel]
-	return b
-}
-
 // WithKind enriches ResourceConfig with the workload kind
 func (conf *ResourceConfig) WithKind(kind string) *ResourceConfig {
 	conf.workload.metaType = metav1.TypeMeta{Kind: kind}

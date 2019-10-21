@@ -37,7 +37,6 @@ type Report struct {
 	Name                 string
 	HostNetwork          bool
 	Sidecar              bool
-	DebugSidecar         bool
 	UDP                  bool // true if any port in any container has `protocol: UDP`
 	UnsupportedResource  bool
 	InjectDisabled       bool
@@ -53,9 +52,6 @@ type Report struct {
 
 		// ProxyInit is true if a proxy-init container has been uninjected
 		ProxyInit bool
-
-		// DebugSidecar is true if a debug container has been uninjected
-		DebugSidecar bool
 	}
 }
 
@@ -81,7 +77,6 @@ func newReport(conf *ResourceConfig) *Report {
 		report.InjectDisabled, report.InjectDisabledReason, report.InjectAnnotationAt = report.disableByAnnotation(conf)
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
-		report.DebugSidecar = healthcheck.HasExistingDebugSidecar(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
 		report.TracingEnabled = conf.pod.meta.Annotations[k8s.ProxyTraceCollectorSvcAddr] != "" || conf.nsAnnotations[k8s.ProxyTraceCollectorSvcAddr] != ""
 	} else {
