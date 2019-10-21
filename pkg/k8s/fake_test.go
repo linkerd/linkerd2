@@ -36,7 +36,23 @@ spec:
     kind: FakeCRD
     shortNames:
     - fc
-`,
+`, `
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.tap.linkerd.io
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: tap.linkerd.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 100
+  service:
+    name: linkerd-tap
+    namespace: linkerd
+  caBundle: dGFwIGNydA==`,
 	}
 
 	api, err := NewFakeAPI(k8sConfigs...)
@@ -94,7 +110,23 @@ spec:
     kind: FakeCRD
     shortNames:
     - fc
-`,
+`, `
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.tap.linkerd.io
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: tap.linkerd.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 100
+  service:
+    name: linkerd-tap
+    namespace: linkerd
+  caBundle: dGFwIGNydA==`,
 	}
 
 	readers := []io.Reader{}
@@ -166,6 +198,27 @@ spec:
 			nil,
 		},
 		{
+			[]string{`
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.tap.linkerd.io
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: tap.linkerd.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 100
+  service:
+    name: linkerd-tap
+    namespace: linkerd
+  caBundle: dGFwIGNydA==`,
+			},
+			nil,
+		},
+		{
 			[]string{""},
 			runtime.NewMissingKindErr(""),
 		},
@@ -175,7 +228,7 @@ spec:
 		tc := tc // pin
 
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			_, _, _, _, err := NewFakeClientSets(tc.k8sConfigs...)
+			_, _, _, _, _, err := NewFakeClientSets(tc.k8sConfigs...)
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected error: %s, Got: %s", tc.err, err)
 			}
@@ -239,6 +292,27 @@ items:
 			nil,
 		},
 		{
+			[]string{`
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.tap.linkerd.io
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: tap.linkerd.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 100
+  service:
+    name: linkerd-tap
+    namespace: linkerd
+  caBundle: dGFwIGNydA==`,
+			},
+			nil,
+		},
+		{
 			[]string{"---"},
 			nil,
 		},
@@ -253,7 +327,7 @@ items:
 				readers = append(readers, strings.NewReader(m))
 			}
 
-			_, _, _, _, err := newFakeClientSetsFromManifests(readers)
+			_, _, _, _, _, err := newFakeClientSetsFromManifests(readers)
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected error: %s, Got: %s", tc.err, err)
 			}
@@ -323,6 +397,26 @@ spec:
     kind: FakeCRD
     shortNames:
     - fc`,
+			nil,
+		},
+		{
+			`
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.tap.linkerd.io
+  labels:
+    linkerd.io/control-plane-component: tap
+    linkerd.io/control-plane-ns: linkerd
+spec:
+  group: tap.linkerd.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 100
+  service:
+    name: linkerd-tap
+    namespace: linkerd
+  caBundle: dGFwIGNydA==`,
 			nil,
 		},
 	}
