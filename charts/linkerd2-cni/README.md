@@ -1,3 +1,4 @@
+
 # Linkerd2-cni Helm Chart
 
 Linkerd is a *service mesh*, designed to give platform-wide observability,
@@ -12,7 +13,7 @@ The following table lists the configurable parameters of the Linkerd2-cni chart 
 | Parameter                            | Description                                                           | Default                       |
 |--------------------------------------|-----------------------------------------------------------------------|-------------------------------|
 |`Namespace`                           | Control plane namespace                                               | `linkerd`|
-|`ControllerNamespaceLabel`            | Control plane label. Do not edit                                      |`linkerd.io/control-plane-component`|
+|`ControllerNamespaceLabel`            | Control plane label. Do not edit                                      |`linkerd.io/control-plane-ns`|
 |`CniResourceAnnotation`               | CNI resource annotation. Do not edit                                  |`linkerd.io/cni-resource`
 |`InboundProxyPort`                    | Inbound port for the proxy container                                  |`4143`|
 |`OutboundProxyPort`                   | Outbound port for the proxy container                                 |`4140`|
