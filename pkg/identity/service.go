@@ -90,16 +90,16 @@ func (svc *Service) Run(issuerEvent <-chan struct{}, issuerError <-chan error) {
 		select {
 		case <-issuerEvent:
 			if err := svc.Initialize(); err != nil {
-				message := fmt.Sprintf("skipping issuer update as certs could not be read from disk: %s", err)
+				message := fmt.Sprintf("Skipping issuer update as certs could not be read from disk: %s", err)
 				log.Warn(message)
 				svc.recordEvent(v1.EventTypeWarning, eventTypeSkipped, message)
 			} else {
-				message := "updated identity issuer"
+				message := "Updated identity issuer"
 				log.Infof(message)
 				svc.recordEvent(v1.EventTypeNormal, eventTypeUpdated, message)
 			}
 		case err := <-issuerError:
-			log.Warnf("received error from fs watcher: %s", err)
+			log.Warnf("Received error from fs watcher: %s", err)
 		}
 	}
 }
@@ -134,7 +134,7 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
 	}
 
-	log.Infof("Loaded issuer cert: %s", creds.EncodeCertificatePEM())
+	log.Debugf("Loaded issuer cert: %s", creds.EncodeCertificatePEM())
 	return tls.NewCA(*creds, *svc.validity), nil
 }
 

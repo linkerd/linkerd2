@@ -554,6 +554,10 @@ func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
 }
 
 func (options *installOptions) validate() error {
+	if options.ignoreCluster && options.identityOptions.identityExternalIssuer {
+		return errors.New("--ignore-cluster is not supported when --identity-external-issuer=true")
+	}
+
 	if options.controlPlaneVersion != "" && !alphaNumDashDot.MatchString(options.controlPlaneVersion) {
 		return fmt.Errorf("%s is not a valid version", options.controlPlaneVersion)
 	}
@@ -649,7 +653,6 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 	installValues.ImagePullPolicy = options.imagePullPolicy
 	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	installValues.Namespace = controlPlaneNamespace
-	installValues.InstallNamespace = !options.identityOptions.identityExternalIssuer
 	installValues.NoInitContainer = options.noInitContainer
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
 	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
