@@ -59,7 +59,15 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 }
 
 func uninjectObjectMeta(t *metav1.ObjectMeta, report *Report) {
-	//do not uninject meta if this is a control plane component
+	// We only uninject control plane components in the context
+	// of doing an inject --manual. This is done as a way to update
+	// something about the injection configuration - for example
+	// adding a debug sidecar to the identity service.
+	// With that in mind it is not really necessary to strip off
+	// the linkerd.io/*  metadata from the pod during uninjection.
+	// This is why we skip that part for control plane components.
+	// Furthermore the latter will never have linkerd.io/inject as
+	// they are always manually injected.
 	if _, ok := t.Labels[k8s.ControllerComponentLabel]; !ok {
 		newAnnotations := make(map[string]string)
 		for key, val := range t.Annotations {

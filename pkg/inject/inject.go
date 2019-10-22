@@ -859,6 +859,12 @@ func (conf *ResourceConfig) GetOverriddenConfiguration() map[string]string {
 	return proxyOverrideConfig
 }
 
+// IsControlPlaneComponent returns true if the component is part of linkerd control plane
+func (conf *ResourceConfig) IsControlPlaneComponent() bool {
+	_, b := conf.pod.meta.Labels[k8s.ControllerComponentLabel]
+	return b
+}
+
 func sortedKeys(m map[string]string) []string {
 	keys := []string{}
 	for k := range m {

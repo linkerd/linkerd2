@@ -283,6 +283,7 @@ type injectCmd struct {
 	stdErrGoldenFileName string
 	stdOutGoldenFileName string
 	exitCode             int
+	injectProxy          bool
 }
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
@@ -298,7 +299,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 	}
 
 	transformer := &resourceTransformerInject{
-		injectProxy: true,
+		injectProxy: tc.injectProxy,
 		configs:     testConfig,
 	}
 	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer)
@@ -321,12 +322,20 @@ func TestRunInjectCmd(t *testing.T) {
 			inputFileName:        "inject_gettest_deployment.bad.input.yml",
 			stdErrGoldenFileName: "inject_gettest_deployment.bad.golden",
 			exitCode:             1,
+			injectProxy:          true,
+		},
+		{
+			inputFileName:        "inject_tap_deployment.bad.input.yml",
+			stdErrGoldenFileName: "inject_tap_deployment.bad.golden",
+			exitCode:             1,
+			injectProxy:          false,
 		},
 		{
 			inputFileName:        "inject_gettest_deployment.good.input.yml",
 			stdOutGoldenFileName: "inject_gettest_deployment.good.golden.yml",
 			stdErrGoldenFileName: "inject_gettest_deployment.good.golden.stderr",
 			exitCode:             0,
+			injectProxy:          true,
 		},
 	}
 
