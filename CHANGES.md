@@ -1,16 +1,11 @@
 ## edge-19.10.4
 
-This edge release adds dashboard UX enhancements, Open Census tracing
-for the control plane components, and improves the speed of the CLI.
+This edge release adds dashboard UX enhancements, and improves the speed of the CLI.
 
 * CLI
   * Made `linkerd install --ignore-cluster` and `--skip-checks` faster
   * Fixed a bug causing `linkerd upgrade` to fail when used with 
   `--from-manifest`
-* Controller
-  * Added `--trace-collector` and `--sampling-probability` flags to the 
-    control plane components to enabled the export of Open Census tracing data
-    (thanks @Pothulapati!)
 * Web UI
   * Made the dashboard sidebar component responsive
   * Changed the navigation bar color to the one used on the [Linkerd](https://linkerd.io/) website
