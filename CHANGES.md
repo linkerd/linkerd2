@@ -1,3 +1,15 @@
+## edge-19.10.4
+
+This edge release adds dashboard UX enhancements, and improves the speed of the CLI.
+
+* CLI
+  * Made `linkerd install --ignore-cluster` and `--skip-checks` faster
+  * Fixed a bug causing `linkerd upgrade` to fail when used with 
+  `--from-manifest`
+* Web UI
+  * Made the dashboard sidebar component responsive
+  * Changed the navigation bar color to the one used on the [Linkerd](https://linkerd.io/) website
+
 ## edge-19.10.3
 
 This edge release adds support for headless services, improves the upgrade
