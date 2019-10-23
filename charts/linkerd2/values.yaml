@@ -63,7 +63,6 @@ ControlPlaneTrace:
     CollectorSvcAddr: linkerd-collector # leave blank to disable tracing
     CollectorSvcAccount: linkerd-collector
 
-
 # proxy configuration
 Proxy:
   EnableExternalProfiles: false

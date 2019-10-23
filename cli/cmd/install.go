@@ -713,13 +713,12 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 
 	if options.controlPlaneTrace {
 		installValues.ControlPlaneTrace.Enabled = options.controlPlaneTrace
-		// update the address to include the default namespace and port
+		// update the address to include the namespace and port
 		installValues.ControlPlaneTrace.ProxyTrace.CollectorSvcAddr = fmt.Sprintf("%s.%s:55678", installValues.ControlPlaneTrace.ProxyTrace.CollectorSvcAddr, installValues.Namespace)
 		installValues.Proxy.Trace = &charts.Trace{
 			CollectorSvcAddr:    installValues.ControlPlaneTrace.ProxyTrace.CollectorSvcAddr,
 			CollectorSvcAccount: fmt.Sprintf("%s.%s", installValues.ControlPlaneTrace.ProxyTrace.CollectorSvcAccount, installValues.Namespace),
 		}
-
 	}
 
 	return installValues, nil
