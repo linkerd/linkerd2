@@ -567,7 +567,7 @@ func (conf *ResourceConfig) trace() *charts.Trace {
 
 	var ns string
 	if len(hostname) == 1 {
-		ns = conf.workload.Meta.Namespace
+		ns = conf.pod.meta.Namespace
 	} else {
 		ns = hostname[1]
 	}
