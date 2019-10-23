@@ -42,6 +42,14 @@ jobs:
   # - every PR
   #
 
+  #
+  # download_src checks out the source with actions/checkout and then tars
+  # and uploads the .git directory into the build artifacts storage.
+  # Every job afterwards downloads that and clones from it to get the source
+  # again. We only use actions/checkout once because of
+  # https://github.com/actions/checkout/issues/27
+  #
+
   download_src:
     name: Checkout source
     runs-on: ubuntu-18.04
@@ -75,6 +83,8 @@ jobs:
     runs-on: ubuntu-18.04
     needs: [download_src]
     steps:
+    # TODO: when github actions adds support for anchors, use it here
+    # to avoid repeting these two steps on every job
     - name: Download .git artifact
       uses: actions/download-artifact@v1
       with:
