@@ -10,13 +10,17 @@ bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 rootdir="$( cd $bindir/.. && pwd )"
 . $bindir/_tag.sh
 
-current_platform=$(uname)
-host_platform="windows"
-if [ "${current_platform}" = 'Darwin' ]; then
-    host_platform="darwin"
-elif [ "${current_platform}" = 'Linux' ]; then
-    host_platform="linux"
-fi
+case $(uname) in
+	Darwin)
+		host_platform=darwin
+		;;
+	Linux)
+		host_platform=linux
+		;;
+	*)
+		host_platform=windows
+		;;
+esac
 
 (
     cd $rootdir
