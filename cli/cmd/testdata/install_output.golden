@@ -1571,6 +1571,7 @@ spec:
         - -grafana-addr=linkerd-grafana.Namespace.svc.cluster.local:3000
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
+        - -enforced-host=linkerd-web.Namespace.svc.cluster.local:8084
         image: WebImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

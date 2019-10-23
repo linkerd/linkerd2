@@ -36,19 +36,20 @@ type (
 	// in order to hold values for command line flags that apply to both inject and
 	// install.
 	installOptions struct {
-		clusterDomain               string
-		controlPlaneVersion         string
-		controllerReplicas          uint
-		controllerLogLevel          string
-		highAvailability            bool
-		controllerUID               int64
-		disableH2Upgrade            bool
-		disableHeartbeat            bool
-		noInitContainer             bool
-		skipChecks                  bool
-		omitWebhookSideEffects      bool
-		restrictDashboardPrivileges bool
-		identityOptions             *installIdentityOptions
+		clusterDomain                 string
+		controlPlaneVersion           string
+		controllerReplicas            uint
+		controllerLogLevel            string
+		highAvailability              bool
+		controllerUID                 int64
+		disableH2Upgrade              bool
+		disableHeartbeat              bool
+		noInitContainer               bool
+		skipChecks                    bool
+		omitWebhookSideEffects        bool
+		disableDNSRebindingProtection bool
+		restrictDashboardPrivileges   bool
+		identityOptions               *installIdentityOptions
 		*proxyConfigOptions
 
 		recordedFlags []*pb.Install_Flag
@@ -162,17 +163,18 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 	}
 
 	return &installOptions{
-		clusterDomain:               defaults.ClusterDomain,
-		controlPlaneVersion:         version.Version,
-		controllerReplicas:          defaults.ControllerReplicas,
-		controllerLogLevel:          defaults.ControllerLogLevel,
-		highAvailability:            defaults.HighAvailability,
-		controllerUID:               defaults.ControllerUID,
-		disableH2Upgrade:            !defaults.EnableH2Upgrade,
-		disableHeartbeat:            defaults.DisableHeartBeat,
-		noInitContainer:             defaults.NoInitContainer,
-		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
-		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
+		clusterDomain:                 defaults.ClusterDomain,
+		controlPlaneVersion:           version.Version,
+		controllerReplicas:            defaults.ControllerReplicas,
+		controllerLogLevel:            defaults.ControllerLogLevel,
+		highAvailability:              defaults.HighAvailability,
+		controllerUID:                 defaults.ControllerUID,
+		disableH2Upgrade:              !defaults.EnableH2Upgrade,
+		disableHeartbeat:              defaults.DisableHeartBeat,
+		noInitContainer:               defaults.NoInitContainer,
+		omitWebhookSideEffects:        defaults.OmitWebhookSideEffects,
+		disableDNSRebindingProtection: defaults.DisableDNSRebindingProtection,
+		restrictDashboardPrivileges:   defaults.RestrictDashboardPrivileges,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -461,6 +463,10 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.omitWebhookSideEffects, "omit-webhook-side-effects", options.omitWebhookSideEffects,
 		"Omit the sideEffects flag in the webhook manifests, This flag must be provided during install or upgrade for Kubernetes versions pre 1.12",
 	)
+	flags.BoolVar(
+		&options.disableDNSRebindingProtection, "disable-dns-rebinding-protection", options.disableDNSRebindingProtection,
+		"Set to false if you're exposing the dashboard directly (default false)",
+	)
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
@@ -646,6 +652,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 	installValues.Namespace = controlPlaneNamespace
 	installValues.NoInitContainer = options.noInitContainer
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
+	installValues.DisableDNSRebindingProtection = options.disableDNSRebindingProtection
 	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges

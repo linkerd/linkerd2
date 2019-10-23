@@ -1574,6 +1574,7 @@ spec:
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -controller-namespace=linkerd
         - -log-level=info
+        - -enforced-host=linkerd-web.linkerd.svc.cluster.local:8084
         image: gcr.io/linkerd-io/web:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

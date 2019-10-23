@@ -23,10 +23,11 @@ const (
 type (
 	// Server encapsulates the Linkerd control plane's web dashboard server.
 	Server struct {
-		templateDir string
-		reload      bool
-		templates   map[string]*template.Template
-		router      *httprouter.Router
+		templateDir  string
+		reload       bool
+		templates    map[string]*template.Template
+		router       *httprouter.Router
+		enforcedHost string
 	}
 
 	templatePayload struct {
@@ -44,6 +45,10 @@ type (
 
 // this is called by the HTTP server to actually respond to a request
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if s.enforcedHost != "" && req.Host != s.enforcedHost {
+		http.Error(w, "Invalid Host header", http.StatusNotFound)
+		return
+	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
@@ -62,12 +67,14 @@ func NewServer(
 	controllerNamespace string,
 	clusterDomain string,
 	reload bool,
+	enforcedHost string,
 	apiClient public.APIClient,
 	k8sAPI *k8s.KubernetesAPI,
 ) *http.Server {
 	server := &Server{
-		templateDir: templateDir,
-		reload:      reload,
+		templateDir:  templateDir,
+		reload:       reload,
+		enforcedHost: enforcedHost,
 	}
 
 	server.router = &httprouter.Router{

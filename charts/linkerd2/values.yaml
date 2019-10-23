@@ -11,6 +11,7 @@ LinkerdVersion: &linkerd_version edge-19.10.3
 
 Namespace: linkerd
 OmitWebhookSideEffects: false
+DisableDNSRebindingProtection: false
 WebhookFailurePolicy: Ignore
 
 # controller configuration

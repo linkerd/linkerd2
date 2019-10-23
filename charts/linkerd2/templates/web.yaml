@@ -63,6 +63,8 @@ spec:
         - -grafana-addr=linkerd-grafana.{{.Namespace}}.svc.{{.ClusterDomain}}:3000
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
+        {{- $webSvcAddr := printf "linkerd-web.%s.svc.%s:8084" .Namespace .ClusterDomain}}
+        - -enforced-host={{ternary "" $webSvcAddr .DisableDNSRebindingProtection}}
         image: {{.WebImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:

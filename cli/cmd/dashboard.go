@@ -1,11 +1,18 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/signal"
 	"time"
 
+	"github.com/linkerd/linkerd2/controller/gen/config"
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
@@ -31,8 +38,11 @@ const (
 	// defaultHost is the default host used for port-forwarding via `linkerd dashboard`
 	defaultHost = "localhost"
 
-	// defaultPort is for port-forwarding via `linkerd dashboard`
+	// defaultPort is the port the user will point his browser to
 	defaultPort = 50750
+
+	// targetPort is the port where the k8s' port-forward will be listening to
+	targetPort = 50760
 )
 
 type dashboardOptions struct {
@@ -69,7 +79,14 @@ func newCmdDashboard() *cobra.Command {
 			}
 
 			// ensure we can connect to the public API before starting the proxy
-			checkPublicAPIClientOrRetryOrExit(time.Now().Add(options.wait), true)
+			apiClient := checkPublicAPIClientOrRetryOrExit(time.Now().Add(options.wait), true)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			config, err := apiClient.Config(ctx, &pb.Empty{})
+			if err != nil {
+				return err
+			}
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 			if err != nil {
@@ -85,13 +102,19 @@ func newCmdDashboard() *cobra.Command {
 				controlPlaneNamespace,
 				webDeployment,
 				options.host,
-				options.port,
+				targetPort,
 				webPort,
 				verbose,
 			)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to initialize port-forward: %s\n", err)
 				os.Exit(1)
+			}
+			if options.port == 0 {
+				options.port, err = k8s.GetEphemeralPort()
+				if err != nil {
+					return err
+				}
 			}
 
 			if err = portforward.Init(); err != nil {
@@ -105,8 +128,8 @@ func newCmdDashboard() *cobra.Command {
 				portforward.Stop()
 			}()
 
-			webURL := portforward.URLFor("")
-			grafanaURL := portforward.URLFor("/grafana")
+			webURL := fmt.Sprintf("http://%s", setupLocalServer(config, options))
+			grafanaURL := fmt.Sprintf("%s/grafana", webURL)
 
 			fmt.Printf("Linkerd dashboard available at:\n%s\n", webURL)
 			fmt.Printf("Grafana dashboard available at:\n%s\n", grafanaURL)
@@ -144,4 +167,59 @@ func newCmdDashboard() *cobra.Command {
 	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Wait for dashboard to become available if it's not available when the command is run")
 
 	return cmd
+}
+
+// setupLocalServer creates a web server listening on
+// http://$options.host:$options.port (host and port can be set as CLI params)
+// that forwards the connection to the k8s port-forwarder listening on
+// http://$options.host:$targetPort (targetPort is fixed).
+// Any request received with the Host header different than $options.host:$options.port
+// will be rejected, thus preventing DNS rebinding attacks (see #3083).
+// This local web server will also rewrite the Host header to something like
+// "linkerd-web.linkerd.svc.cluster.local:8084" required by the linkerd-web service.
+func setupLocalServer(config *config.All, options *dashboardOptions) string {
+	localhost := fmt.Sprintf("%s:%d", options.host, options.port)
+
+	go func() {
+		rpURL, err := url.Parse(fmt.Sprintf("http://%s:%d", options.host, targetPort))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		targetHost := fmt.Sprintf(
+			"%s.%s.svc.%s:%d",
+			webDeployment,
+			config.GetGlobal().GetLinkerdNamespace(),
+			config.GetGlobal().GetClusterDomain(),
+			webPort,
+		)
+		proxy := newSingleHostReverseProxy(targetHost, rpURL)
+
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			if r.Host != localhost {
+				http.Error(w, "Invalid Host header", http.StatusNotFound)
+				return
+			}
+			proxy.ServeHTTP(w, r)
+		})
+		log.Fatal(http.ListenAndServe(localhost, nil))
+	}()
+
+	return localhost
+}
+
+// newSingleHostReverseProxy is modeled after http.httputil.NewSingleHostReverseProxy
+// using a custom Director that rewrites the Host and Origin headers
+func newSingleHostReverseProxy(host string, target *url.URL) *httputil.ReverseProxy {
+	director := func(req *http.Request) {
+		req.URL.Scheme = target.Scheme
+		req.URL.Host = target.Host
+		if _, ok := req.Header["User-Agent"]; !ok {
+			// explicitly disable User-Agent so it's not set to default value
+			req.Header.Set("User-Agent", "")
+		}
+		req.Host = host
+		req.Header.Set("Origin", fmt.Sprintf("http://%s", host))
+	}
+	return &httputil.ReverseProxy{Director: director}
 }

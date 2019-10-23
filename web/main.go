@@ -31,6 +31,7 @@ func main() {
 	staticDir := cmd.String("static-dir", "app/dist", "directory to search for static files")
 	reload := cmd.Bool("reload", true, "reloading set to true or false")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	enforcedHost := cmd.String("enforced-host", "", "protects from DNS-rebinding attacks; set to empty if this service is exposed directly")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 
 	traceCollector := flags.AddTraceFlags(cmd)
@@ -73,7 +74,8 @@ func main() {
 		}
 	}
 
-	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid, *controllerNamespace, clusterDomain, *reload, client, k8sAPI)
+	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid,
+		*controllerNamespace, clusterDomain, *reload, *enforcedHost, client, k8sAPI)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
