@@ -68,8 +68,8 @@ func TestNewValues(t *testing.T) {
 		ControlPlaneTrace: &ControlPlaneTrace{
 			Enabled: false,
 			ProxyTrace: &Trace{
-				CollectorSvcAddr:    "linkerd-collector.linkerd-tracing:55678",
-				CollectorSvcAccount: "linkerd-collector.linkerd-tracing",
+				CollectorSvcAddr:    "linkerd-collector",
+				CollectorSvcAccount: "linkerd-collector",
 			},
 		},
 
