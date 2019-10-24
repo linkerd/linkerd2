@@ -3,16 +3,16 @@
 set -eu
 
 if [ $# -ne 2 ]; then
-    echo "usage: $0 from-tag to-tag" >&2
+    echo "usage: ${0##*/} from-tag to-tag" >&2
     exit 64
 fi
-from="${1}"
-to="${2}"
+from=$1
+to=$2
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
-. $bindir/_docker.sh
+. "$bindir"/_docker.sh
 
-for img in cli-bin cni-plugin controller debug grafana proxy web  ; do
-    docker_retag "$img" "$from" "$to"
+for img in cli-bin cni-plugin controller debug grafana proxy web ; do
+    docker_retag $img "$from" "$to"
 done

@@ -3,16 +3,16 @@
 set -eu
 
 if [ $# -eq 1 ]; then
-    tag="${1:-}"
+    tag=${1:-}
 else
-    echo "usage: $(basename $0) tag" >&2
+    echo "usage: ${0##*/} tag" >&2
     exit 64
 fi
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
-. $bindir/_docker.sh
+. "$bindir"/_docker.sh
 
-for img in cli-bin cni-plugin controller debug grafana proxy web  ; do
-    docker_pull "$img" "$tag"
+for img in cli-bin cni-plugin controller debug grafana proxy web ; do
+    docker_pull $img "$tag"
 done
