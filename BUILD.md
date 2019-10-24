@@ -146,7 +146,7 @@ bin/linkerd -n emojivoto tap deploy voting
 
 Control Plane components have the `trace-collector` flag used to enable [Distributed Tracing](https://opentracing.io/docs/overview/what-is-tracing/) for development purposes. It can be enabled globally i.e Control plane components and their proxies by using the `--control-plane-tracing` installation flag.
 
-This will configure all the components to send the traces at `linkerd-collector.linkerd-tracing:55678`
+This will configure all the components to send the traces at `linkerd-collector.{{.Namespace}}.svc.{{.ClusterDomain}}:55678`
 
 ```bash
 
