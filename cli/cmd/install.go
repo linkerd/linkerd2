@@ -474,6 +474,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
+	flags.MarkHidden("control-plane-tracing")
 
 	return flags
 }
