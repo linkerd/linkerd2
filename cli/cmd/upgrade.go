@@ -192,13 +192,6 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	return nil
 }
 
-func isIssuerExternal(flags *pflag.FlagSet) bool {
-	if f := flags.Lookup("identity-external-issuer"); f != nil {
-		return f.Value.String() == "true"
-	}
-	return false
-}
-
 func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Interface, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
@@ -253,7 +246,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 		configs.GetGlobal().IdentityContext = toIdentityContext(identity)
 	} else {
-		identity, err = fetchIdentityValues(k, idctx, isIssuerExternal(flags))
+		identity, err = fetchIdentityValues(k, idctx)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to fetch the existing issuer credentials from Kubernetes: %s", err)
 		}
@@ -350,12 +343,19 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext, externalIssuer bool) (*charts.Identity, error) {
+func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*charts.Identity, error) {
 	if idctx == nil {
 		return nil, nil
 	}
 
-	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem(), externalIssuer)
+	if idctx.Scheme == "" {
+		// if this is empty, then we are upgrading from a version
+		// that did not support issuer schemes. Just default to the
+		// linkerd one.
+		idctx.Scheme = k8s.IdentityIssuerSchemeLinkerd
+	}
+
+	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem(), idctx.Scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +364,7 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext, exte
 		TrustDomain:     idctx.GetTrustDomain(),
 		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
 		Issuer: &charts.Issuer{
-			External:            externalIssuer,
+			Scheme:              idctx.Scheme,
 			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
 			IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
 			CrtExpiry:           expiry,
@@ -377,7 +377,7 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext, exte
 	}, nil
 }
 
-func fetchIssuer(k kubernetes.Interface, trustPEM string, externalIssuer bool) (string, string, time.Time, error) {
+func fetchIssuer(k kubernetes.Interface, trustPEM string, scheme string) (string, string, time.Time, error) {
 	crtName := k8s.IdentityIssuerCrtName
 	keyName := k8s.IdentityIssuerKeyName
 
@@ -392,7 +392,7 @@ func fetchIssuer(k kubernetes.Interface, trustPEM string, externalIssuer bool) (
 	if err != nil {
 		return "", "", time.Time{}, err
 	}
-	if externalIssuer {
+	if scheme != k8s.IdentityIssuerSchemeLinkerd {
 		crtName = k8s.IdentityIssuerCrtNameExternal
 		keyName = k8s.IdentityIssuerKeyNameExternal
 	}

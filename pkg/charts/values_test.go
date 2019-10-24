@@ -57,6 +57,7 @@ func TestNewValues(t *testing.T) {
 				IssuanceLifetime:    "86400s",
 				CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
 				TLS:                 &TLS{},
+				Scheme:              "linkerd.io/tls",
 			},
 		},
 

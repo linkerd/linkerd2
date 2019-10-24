@@ -156,7 +156,7 @@ type (
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		External            bool
+		Scheme              string
 		ClockSkewAllowance  string
 		IssuanceLifetime    string
 		CrtExpiryAnnotation string

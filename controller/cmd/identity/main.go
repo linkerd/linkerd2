@@ -45,11 +45,9 @@ func Main(args []string) {
 		"/var/run/linkerd/identity/issuer",
 		"path to directory containing issuer credentials")
 
+	var issuerPathCrt string
+	var issuerPathKey string
 	traceCollector := flags.AddTraceFlags(cmd)
-	externalIssuerPathCrt := filepath.Join(*issuerPath, k8s.IdentityIssuerCrtNameExternal)
-	externalIssuerPathKey := filepath.Join(*issuerPath, k8s.IdentityIssuerKeyNameExternal)
-	issuerPathCrt := filepath.Join(*issuerPath, k8s.IdentityIssuerCrtName)
-	issuerPathKey := filepath.Join(*issuerPath, k8s.IdentityIssuerKeyName)
 	componentName := "linkerd-identity"
 
 	flags.ConfigureAndParse(cmd, args)
@@ -69,6 +67,14 @@ func Main(args []string) {
 	if idctx == nil {
 		log.Infof("Identity disabled in control plane configuration.")
 		os.Exit(0)
+	}
+
+	if idctx.Scheme == k8s.IdentityIssuerSchemeLinkerd {
+		issuerPathCrt = filepath.Join(*issuerPath, k8s.IdentityIssuerCrtName)
+		issuerPathKey = filepath.Join(*issuerPath, k8s.IdentityIssuerKeyName)
+	} else {
+		issuerPathCrt = filepath.Join(*issuerPath, k8s.IdentityIssuerCrtNameExternal)
+		issuerPathKey = filepath.Join(*issuerPath, k8s.IdentityIssuerKeyNameExternal)
 	}
 
 	trustDomain := idctx.GetTrustDomain()
@@ -148,7 +154,7 @@ func Main(args []string) {
 	//
 	// Create, initialize and run service
 	//
-	svc := identity.NewService(v, trustAnchors, &validity, recordEventFunc, expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey)
+	svc := identity.NewService(v, trustAnchors, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey)
 	if err = svc.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}

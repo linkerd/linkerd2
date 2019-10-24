@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -35,13 +34,13 @@ const (
 type (
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
-		validator                                                                                Validator
-		trustAnchors                                                                             *x509.CertPool
-		issuer                                                                                   *tls.Issuer
-		issuerMutex                                                                              *sync.RWMutex
-		validity                                                                                 *tls.Validity
-		recordEvent                                                                              func(eventType, reason, message string)
-		expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey string
+		validator                                  Validator
+		trustAnchors                               *x509.CertPool
+		issuer                                     *tls.Issuer
+		issuerMutex                                *sync.RWMutex
+		validity                                   *tls.Validity
+		recordEvent                                func(eventType, reason, message string)
+		expectedName, issuerPathCrt, issuerPathKey string
 	}
 
 	// Validator implementors accept a bearer token, validates it, and returns a
@@ -104,26 +103,10 @@ func (svc *Service) Run(issuerEvent <-chan struct{}, issuerError <-chan error) {
 	}
 }
 
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
-}
-
-func (svc *Service) credPaths() (string, string) {
-	if fileExists(svc.externalIssuerPathCrt) && fileExists(svc.externalIssuerPathKey) {
-		return svc.externalIssuerPathKey, svc.externalIssuerPathCrt
-	}
-	return svc.issuerPathKey, svc.issuerPathCrt
-}
-
 func (svc *Service) loadCredentials() (tls.Issuer, error) {
-	keyPath, crtPath := svc.credPaths() //TODO: maybe cache that ?
 	creds, err := tls.ReadPEMCreds(
-		keyPath,
-		crtPath,
+		svc.issuerPathKey,
+		svc.issuerPathCrt,
 	)
 
 	if err != nil {
@@ -139,7 +122,7 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 }
 
 // NewService creates a new identity service.
-func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(eventType, reason, message string), expectedName, externalIssuerPathCrt, externalIssuerPathKey, issuerPathCrt, issuerPathKey string) *Service {
+func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
 	return &Service{
 		validator,
 		trustAnchors,
@@ -148,8 +131,6 @@ func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.
 		validity,
 		recordEvent,
 		expectedName,
-		externalIssuerPathCrt,
-		externalIssuerPathKey,
 		issuerPathCrt,
 		issuerPathKey,
 	}

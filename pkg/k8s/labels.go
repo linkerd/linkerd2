@@ -213,6 +213,12 @@ const (
 	// IdentityIssuerSecretName is the name of the Secret that stores issuer credentials.
 	IdentityIssuerSecretName = "linkerd-identity-issuer"
 
+	// IdentityIssuerSchemeLinkerd is the issuer secret scheme used by linkerd
+	IdentityIssuerSchemeLinkerd = "linkerd.io/tls"
+
+	// IdentityIssuerSchemeK8s is the issuer secret scheme used by k8s and cert-manager
+	IdentityIssuerSchemeK8s = "kubernetes.io/tls"
+
 	// IdentityIssuerKeyName is the issuer's private key file.
 	IdentityIssuerKeyName = "key.pem"
 

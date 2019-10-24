@@ -4,7 +4,7 @@
 ###
 ### Identity Controller Service
 ###
-{{ if and (.Identity.Issuer) (not .Identity.Issuer.External) -}}
+{{ if and (.Identity.Issuer) (eq .Identity.Issuer.Scheme "linkerd.io/tls") -}}
 ---
 kind: Secret
 apiVersion: v1
