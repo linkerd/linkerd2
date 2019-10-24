@@ -115,6 +115,13 @@ sub-folders, or coming from stdin.`,
 
 	flags.BoolVar(&enableDebugSidecar, "enable-debug-sidecar", enableDebugSidecar,
 		"Inject a debug sidecar for data plane debugging")
+
+	flags.StringVar(&options.traceCollector, "trace-collector", options.traceCollector,
+		"Collector Service address for the proxies to send Trace Data")
+
+	flags.StringVar(&options.traceCollectorSvcAccount, "trace-collector-svc-account", options.traceCollectorSvcAccount,
+		"Service account associated with the Trace collector instance")
+
 	cmd.PersistentFlags().AddFlagSet(flags)
 
 	return cmd
@@ -411,6 +418,14 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	if options.proxyMemoryLimit != "" {
 		configs.Proxy.Resource.LimitMemory = options.proxyMemoryLimit
 		overrideAnnotations[k8s.ProxyMemoryLimitAnnotation] = options.proxyMemoryLimit
+	}
+
+	if options.traceCollector != "" {
+		overrideAnnotations[k8s.ProxyTraceCollectorSvcAddr] = options.traceCollector
+	}
+
+	if options.traceCollectorSvcAccount != "" {
+		overrideAnnotations[k8s.ProxyTraceCollectorSvcAccount] = options.traceCollectorSvcAccount
 	}
 }
 

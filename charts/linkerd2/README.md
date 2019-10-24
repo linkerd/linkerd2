@@ -121,6 +121,8 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 |`Proxy.Resources.CPU.Request`         | Amount of CPU units that the proxy requests                                                     ||
 |`Proxy.Resources.Memory.Limit`        | Maximum amount of memory that the proxy can use                                                 ||
 |`Proxy.Resources.Memory.Request`      | Amount of memory that the proxy requests                                                        ||
+|`Proxy.Trace.CollectorSvcAccount`     | Service account associated with the Trace collector instance                                    ||
+|`Proxy.Trace.CollectorSvcAddr`        | Collector Service address for the proxies to send Trace Data                                    ||
 |`Proxy.UID`                           | User id under which the proxy runs                                                              |`2102`|
 |`ProxyInit.IgnoreInboundPorts`        | Inbound ports the proxy should ignore                                                           ||
 |`ProxyInit.IgnoreOutboundPorts`       | Outbound ports the proxy should ignore                                                          ||
