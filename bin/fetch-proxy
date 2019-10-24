@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # If the first argument to this script is "latest" or unset, it fetches the
-# latest proxy binary via build.l5d.io/linkerd2-proxy/latest.txt. If it's set to
+# latest proxy binary from the linkerd2-proxy github releases. If it's set to
 # a commit sha from the master branch of the linkerd2-proxy repo, it will fetch
 # the binary matching that sha instead.
 
