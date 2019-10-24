@@ -154,7 +154,7 @@ This will configure all the components to send the traces at `linkerd-collector.
 linkerd install --control-plane-tracing | kubectl apply -f -
 
 # install OpenCensus collector and Jaeger collector to collect traces
-kubectl apply -f https://gist.githubusercontent.com/Pothulapati/245842ce7f319e8bcd02521460684d6f/raw/39bacaa657255eca59de768fefef10da2835e966/linkerd-tracing.yaml
+linkerd inject https://gist.githubusercontent.com/Pothulapati/245842ce7f319e8bcd02521460684d6f/raw/52c869c58b07b17caeed520aa91380c2230d6e0c/linkerd-tracing.yaml --manual | kubectl apply -f -
 ```
 
 *Note:* Collector instance has to be injected, for the proxy spans to show up.
