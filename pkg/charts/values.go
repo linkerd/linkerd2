@@ -52,6 +52,7 @@ type (
 		InstallNamespace            bool
 		ControlPlaneTracing         bool
 		Configs                     ConfigJSONs
+		Dashboard                   *Dashboard
 		Identity                    *Identity
 		ProxyInjector               *ProxyInjector
 		ProfileValidator            *ProfileValidator
@@ -145,6 +146,23 @@ type (
 	Resources struct {
 		CPU    Constraints
 		Memory Constraints
+	}
+
+	// Dashboard has the Helm variables for the web dashboard
+	Dashboard struct {
+		Replicas              int32
+		SessionAffinity       string
+		SessionAffinityConfig *SessionAffinityConfig
+	}
+
+	// SessionAffinityConfig is a field of *Dashboard
+	SessionAffinityConfig struct {
+		ClientIP *ClientIP
+	}
+
+	// ClientIP is a field of *SessionAffinityConfig
+	ClientIP struct {
+		TimeoutSeconds int32
 	}
 
 	// Identity contains the fields to set the identity variables in the proxy

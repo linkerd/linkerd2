@@ -25,6 +25,16 @@ spec:
   - name: admin-http
     port: 9994
     targetPort: 9994
+{{- if .Dashboard.SessionAffinity}}
+  sessionAffinity: {{.Dashboard.SessionAffinity}}
+{{- with .Dashboard.SessionAffinityConfig -}}
+{{- if (and .ClientIP .ClientIP.TimeoutSeconds)}}
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{.ClientIP.TimeoutSeconds}}
+{{- end -}}
+{{- end -}}
+{{- end }}
 ---
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "linkerd-web" -}}
@@ -40,7 +50,7 @@ metadata:
   name: linkerd-web
   namespace: {{.Namespace}}
 spec:
-  replicas: 1
+  replicas: {{ .Dashboard.Replicas | default 1 }}
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: web

@@ -50,6 +50,16 @@ func TestNewValues(t *testing.T) {
 			"beta.kubernetes.io/os": "linux",
 		},
 
+		Dashboard: &Dashboard{
+			Replicas:        1,
+			SessionAffinity: "ClientIP",
+			SessionAffinityConfig: &SessionAffinityConfig{
+				ClientIP: &ClientIP{
+					TimeoutSeconds: 3600,
+				},
+			},
+		},
+
 		Identity: &Identity{
 			TrustDomain: "cluster.local",
 			Issuer: &Issuer{
