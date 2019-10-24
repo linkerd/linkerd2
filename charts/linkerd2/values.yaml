@@ -57,11 +57,7 @@ PrometheusImage: prom/prometheus:v2.11.1
 PrometheusLogLevel: *controller_log_level
 
 # Control Plane Trace Configuration
-ControlPlaneTrace:
-  Enabled: false
-  ProxyTrace:
-    CollectorSvcAddr: linkerd-collector # leave blank to disable tracing
-    CollectorSvcAccount: linkerd-collector
+ControlPlaneTracing: false
 
 # proxy configuration
 Proxy:
