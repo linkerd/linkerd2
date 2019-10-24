@@ -216,20 +216,11 @@ const (
 	// IdentityIssuerSchemeLinkerd is the issuer secret scheme used by linkerd
 	IdentityIssuerSchemeLinkerd = "linkerd.io/tls"
 
-	// IdentityIssuerSchemeK8s is the issuer secret scheme used by k8s and cert-manager
-	IdentityIssuerSchemeK8s = "kubernetes.io/tls"
-
 	// IdentityIssuerKeyName is the issuer's private key file.
 	IdentityIssuerKeyName = "key.pem"
 
 	// IdentityIssuerCrtName is the issuer's certificate file.
 	IdentityIssuerCrtName = "crt.pem"
-
-	// IdentityIssuerKeyNameExternal is the issuer's private key file (when using cert-manager).
-	IdentityIssuerKeyNameExternal = "tls.key"
-
-	// IdentityIssuerCrtNameExternal is the issuer's certificate file (when using cert-manager).
-	IdentityIssuerCrtNameExternal = "tls.crt"
 
 	// IdentityIssuerTrustAnchorsNameExternal is the issuer's certificate file (when using cert-manager).
 	IdentityIssuerTrustAnchorsNameExternal = "ca.crt"

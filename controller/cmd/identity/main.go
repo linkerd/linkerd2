@@ -26,6 +26,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/trace"
 	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	v1machinary "k8s.io/apimachinery/pkg/apis/meta/v1"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
@@ -73,8 +74,8 @@ func Main(args []string) {
 		issuerPathCrt = filepath.Join(*issuerPath, k8s.IdentityIssuerCrtName)
 		issuerPathKey = filepath.Join(*issuerPath, k8s.IdentityIssuerKeyName)
 	} else {
-		issuerPathCrt = filepath.Join(*issuerPath, k8s.IdentityIssuerCrtNameExternal)
-		issuerPathKey = filepath.Join(*issuerPath, k8s.IdentityIssuerKeyNameExternal)
+		issuerPathCrt = filepath.Join(*issuerPath, corev1.TLSCertKey)
+		issuerPathKey = filepath.Join(*issuerPath, corev1.TLSPrivateKeyKey)
 	}
 
 	trustDomain := idctx.GetTrustDomain()

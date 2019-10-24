@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -392,9 +393,9 @@ func fetchIssuer(k kubernetes.Interface, trustPEM string, scheme string) (string
 	if err != nil {
 		return "", "", time.Time{}, err
 	}
-	if scheme != k8s.IdentityIssuerSchemeLinkerd {
-		crtName = k8s.IdentityIssuerCrtNameExternal
-		keyName = k8s.IdentityIssuerKeyNameExternal
+	if scheme == string(corev1.SecretTypeTLS) {
+		crtName = corev1.TLSCertKey
+		keyName = corev1.TLSPrivateKeyKey
 	}
 
 	keyPEM := string(secret.Data[keyName])

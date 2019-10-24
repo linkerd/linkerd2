@@ -23,6 +23,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -914,7 +915,7 @@ func errIfLinkerdConfigConfigMapExists() error {
 	return fmt.Errorf("'linkerd-config' config map already exists")
 }
 
-func checkFiles(files []string) error {
+func checkFilesExist(files []string) error {
 	for _, f := range files {
 		stat, err := os.Stat(f)
 		if err != nil {
@@ -963,7 +964,7 @@ func (idopts *installIdentityOptions) validate() error {
 			if idopts.keyPEMFile == "" {
 				return errors.New("a private key file must be specified if other credentials are provided")
 			}
-			if err := checkFiles([]string{idopts.trustPEMFile, idopts.crtPEMFile, idopts.keyPEMFile}); err != nil {
+			if err := checkFilesExist([]string{idopts.trustPEMFile, idopts.crtPEMFile, idopts.keyPEMFile}); err != nil {
 				return err
 			}
 		}
@@ -1041,14 +1042,14 @@ func loadExternalIssuerData() (*externalIssuerData, error) {
 		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerTrustAnchorsNameExternal, "trust anchors", consts.IdentityIssuerSecretName)
 	}
 
-	crt, ok := secret.Data[consts.IdentityIssuerCrtNameExternal]
+	crt, ok := secret.Data[corev1.TLSCertKey]
 	if !ok {
-		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerCrtNameExternal, "issuer certificate", consts.IdentityIssuerSecretName)
+		return nil, fmt.Errorf(keyMissingError, corev1.TLSCertKey, "issuer certificate", consts.IdentityIssuerSecretName)
 	}
 
-	key, ok := secret.Data[consts.IdentityIssuerKeyNameExternal]
+	key, ok := secret.Data[corev1.TLSPrivateKeyKey]
 	if !ok {
-		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerKeyNameExternal, "issuer key", consts.IdentityIssuerSecretName)
+		return nil, fmt.Errorf(keyMissingError, corev1.TLSPrivateKeyKey, "issuer key", consts.IdentityIssuerSecretName)
 	}
 
 	return &externalIssuerData{string(anchors), string(crt), string(key)}, nil
@@ -1087,7 +1088,7 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*charts.Identity,
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: externalIssuerData.trustAnchors,
 		Issuer: &charts.Issuer{
-			Scheme:             consts.IdentityIssuerSchemeK8s,
+			Scheme:             string(corev1.SecretTypeTLS),
 			ClockSkewAllowance: idopts.clockSkewAllowance.String(),
 			IssuanceLifetime:   idopts.issuanceLifetime.String(),
 		},

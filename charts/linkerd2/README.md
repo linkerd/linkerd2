@@ -96,7 +96,7 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 |`ControllerReplicas`                  | Number of replicas for each control plane pod                                                   |`1`|
 |`ControllerUID`                       | User ID for the control plane components                                                        |`2103`|
 |`Identity.Issuer.ClockSkewAllowance`  | Amount of time to allow for clock skew within a Linkerd cluster                                 |`20s`|
-|`Identity.Issuer.External`            | Whether to use external issuer for managing certificates                                        |`false`|
+|`Identity.Issuer.Scheme`              | Which scheme is used for the identity issuer secret format                                      |`linkerd.io/tls`|
 |`Identity.Issuer.CrtExpiry`           | Expiration timestamp for the issuer certificate. It must be provided during install             ||
 |`Identity.Issuer.CrtExpiryAnnotation` | Annotation used to identity the issuer certificate expiration timestamp. Do not edit.           |`linkerd.io/identity-issuer-expiry`|
 |`Identity.Issuer.IssuanceLifeTime`    | Amount of time for which the Identity issuer should certify identity                            |`86400s`|
