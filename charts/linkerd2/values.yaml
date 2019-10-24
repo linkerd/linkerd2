@@ -22,6 +22,8 @@ ControllerUID: 2103
 # identity configuration
 Identity:
   Issuer:
+    Scheme: linkerd.io/tls
+
     ClockSkewAllowance: 20s
 
     # must match the expiry date in CrtPEM

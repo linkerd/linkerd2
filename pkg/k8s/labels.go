@@ -213,11 +213,17 @@ const (
 	// IdentityIssuerSecretName is the name of the Secret that stores issuer credentials.
 	IdentityIssuerSecretName = "linkerd-identity-issuer"
 
+	// IdentityIssuerSchemeLinkerd is the issuer secret scheme used by linkerd
+	IdentityIssuerSchemeLinkerd = "linkerd.io/tls"
+
 	// IdentityIssuerKeyName is the issuer's private key file.
 	IdentityIssuerKeyName = "key.pem"
 
 	// IdentityIssuerCrtName is the issuer's certificate file.
 	IdentityIssuerCrtName = "crt.pem"
+
+	// IdentityIssuerTrustAnchorsNameExternal is the issuer's certificate file (when using cert-manager).
+	IdentityIssuerTrustAnchorsNameExternal = "ca.crt"
 
 	// ProxyPortName is the name of the Linkerd Proxy's proxy port.
 	ProxyPortName = "linkerd-proxy"

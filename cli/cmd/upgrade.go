@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -348,7 +349,14 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*ch
 		return nil, nil
 	}
 
-	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem())
+	if idctx.Scheme == "" {
+		// if this is empty, then we are upgrading from a version
+		// that did not support issuer schemes. Just default to the
+		// linkerd one.
+		idctx.Scheme = k8s.IdentityIssuerSchemeLinkerd
+	}
+
+	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem(), idctx.Scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -357,6 +365,7 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*ch
 		TrustDomain:     idctx.GetTrustDomain(),
 		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
 		Issuer: &charts.Issuer{
+			Scheme:              idctx.Scheme,
 			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
 			IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
 			CrtExpiry:           expiry,
@@ -369,7 +378,10 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*ch
 	}, nil
 }
 
-func fetchIssuer(k kubernetes.Interface, trustPEM string) (string, string, time.Time, error) {
+func fetchIssuer(k kubernetes.Interface, trustPEM string, scheme string) (string, string, time.Time, error) {
+	crtName := k8s.IdentityIssuerCrtName
+	keyName := k8s.IdentityIssuerKeyName
+
 	roots, err := tls.DecodePEMCertPool(trustPEM)
 	if err != nil {
 		return "", "", time.Time{}, err
@@ -381,14 +393,18 @@ func fetchIssuer(k kubernetes.Interface, trustPEM string) (string, string, time.
 	if err != nil {
 		return "", "", time.Time{}, err
 	}
+	if scheme == string(corev1.SecretTypeTLS) {
+		crtName = corev1.TLSCertKey
+		keyName = corev1.TLSPrivateKeyKey
+	}
 
-	keyPEM := string(secret.Data[k8s.IdentityIssuerKeyName])
+	keyPEM := string(secret.Data[keyName])
 	key, err := tls.DecodePEMKey(keyPEM)
 	if err != nil {
 		return "", "", time.Time{}, err
 	}
 
-	crtPEM := string(secret.Data[k8s.IdentityIssuerCrtName])
+	crtPEM := string(secret.Data[crtName])
 	crt, err := tls.DecodePEMCrt(crtPEM)
 	if err != nil {
 		return "", "", time.Time{}, err

@@ -32,6 +32,12 @@ rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
   verbs: ["create"]
+- apiGroups: ["extensions"]
+  resources: ["deployments"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -798,7 +804,8 @@ data:
         "trustDomain": "test.trust.domain",
         "trustAnchorsPem": "test-trust-anchor",
         "issuanceLifeTime": "",
-        "clockSkewAllowance": "20s"
+        "clockSkewAllowance": "20s",
+        "scheme": "linkerd.io/tls"
       },
       "autoInjectContext": null,
       "omitWebhookSideEffects": false,

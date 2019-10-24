@@ -5,7 +5,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
@@ -23,14 +26,21 @@ const (
 
 	// EnvTrustAnchors is the environment variable holding the trust anchors for
 	// the proxy identity.
-	EnvTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
+	EnvTrustAnchors  = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
+	eventTypeSkipped = "IssuerUpdateSkipped"
+	eventTypeUpdated = "IssuerUpdated"
 )
 
 type (
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
-		Validator
-		tls.Issuer
+		validator                                  Validator
+		trustAnchors                               *x509.CertPool
+		issuer                                     *tls.Issuer
+		issuerMutex                                *sync.RWMutex
+		validity                                   *tls.Validity
+		recordEvent                                func(eventType, reason, message string)
+		expectedName, issuerPathCrt, issuerPathKey string
 	}
 
 	// Validator implementors accept a bearer token, validates it, and returns a
@@ -56,9 +66,74 @@ type (
 	NotAuthenticated struct{}
 )
 
+// Initialize loads the issuer certs from disk so it can start service CSRs to proxies
+func (svc *Service) Initialize() error {
+	credentials, err := svc.loadCredentials()
+	if err != nil {
+		return err
+	}
+	svc.updateIssuer(credentials)
+	return nil
+}
+
+func (svc *Service) updateIssuer(newIssuer tls.Issuer) {
+	svc.issuerMutex.Lock()
+	svc.issuer = &newIssuer
+	log.Debug("Issuer has been updated")
+	svc.issuerMutex.Unlock()
+}
+
+// Run reads from the issuer and error channels and reloads the issuer certs when necessary
+func (svc *Service) Run(issuerEvent <-chan struct{}, issuerError <-chan error) {
+	for {
+		select {
+		case <-issuerEvent:
+			if err := svc.Initialize(); err != nil {
+				message := fmt.Sprintf("Skipping issuer update as certs could not be read from disk: %s", err)
+				log.Warn(message)
+				svc.recordEvent(v1.EventTypeWarning, eventTypeSkipped, message)
+			} else {
+				message := "Updated identity issuer"
+				log.Infof(message)
+				svc.recordEvent(v1.EventTypeNormal, eventTypeUpdated, message)
+			}
+		case err := <-issuerError:
+			log.Warnf("Received error from fs watcher: %s", err)
+		}
+	}
+}
+
+func (svc *Service) loadCredentials() (tls.Issuer, error) {
+	creds, err := tls.ReadPEMCreds(
+		svc.issuerPathKey,
+		svc.issuerPathCrt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CA from disk: %s", err)
+	}
+
+	if err := creds.Crt.Verify(svc.trustAnchors, svc.expectedName); err != nil {
+		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
+	}
+
+	log.Debugf("Loaded issuer cert: %s", creds.EncodeCertificatePEM())
+	return tls.NewCA(*creds, *svc.validity), nil
+}
+
 // NewService creates a new identity service.
-func NewService(v Validator, i tls.Issuer) *Service {
-	return &Service{v, i}
+func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
+	return &Service{
+		validator,
+		trustAnchors,
+		nil,
+		&sync.RWMutex{},
+		validity,
+		recordEvent,
+		expectedName,
+		issuerPathCrt,
+		issuerPathKey,
+	}
 }
 
 // Register registers an identity service implementation in the provided gRPC
@@ -69,6 +144,14 @@ func Register(g *grpc.Server, s *Service) {
 
 // Certify validates identity and signs certificates.
 func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.CertifyResponse, error) {
+	svc.issuerMutex.RLock()
+	defer svc.issuerMutex.RUnlock()
+
+	if svc.issuer == nil {
+		log.Warn("Certificate issuer is not ready")
+		return nil, status.Error(codes.Unavailable, "cert issuer not ready yet")
+	}
+
 	// Extract the relevant info from the request.
 	reqIdentity, tok, csr, err := checkRequest(req)
 	if err != nil {
@@ -81,7 +164,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 
 	// Authenticate the provided token against the Kubernetes API.
 	log.Debugf("Validating token for %s", reqIdentity)
-	tokIdentity, err := svc.Validate(ctx, tok)
+	tokIdentity, err := svc.validator.Validate(ctx, tok)
 	if err != nil {
 		switch e := err.(type) {
 		case NotAuthenticated:
@@ -106,7 +189,8 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	}
 
 	// Create a certificate
-	crt, err := svc.IssueEndEntityCrt(csr)
+	issuer := *svc.issuer
+	crt, err := issuer.IssueEndEntityCrt(csr)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
