@@ -191,22 +191,22 @@ func runChecks(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker, ou
 	if output == jsonOutput {
 		return runChecksJSON(wout, werr, hc)
 	}
-	return runChecksTable(wout, hc)
+	return runChecksTable(werr, hc)
 }
 
-func runChecksTable(wout io.Writer, hc *healthcheck.HealthChecker) bool {
+func runChecksTable(werr io.Writer, hc *healthcheck.HealthChecker) bool {
 	var lastCategory healthcheck.CategoryID
 	spin := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
-	spin.Writer = wout
+	spin.Writer = werr
 
 	prettyPrintResults := func(result *healthcheck.CheckResult) {
 		if lastCategory != result.Category {
 			if lastCategory != "" {
-				fmt.Fprintln(wout)
+				fmt.Fprintln(werr)
 			}
 
-			fmt.Fprintln(wout, result.Category)
-			fmt.Fprintln(wout, strings.Repeat("-", len(result.Category)))
+			fmt.Fprintln(werr, result.Category)
+			fmt.Fprintln(werr, strings.Repeat("-", len(result.Category)))
 
 			lastCategory = result.Category
 		}
@@ -228,23 +228,23 @@ func runChecksTable(wout io.Writer, hc *healthcheck.HealthChecker) bool {
 			}
 		}
 
-		fmt.Fprintf(wout, "%s %s\n", status, result.Description)
+		fmt.Fprintf(werr, "%s %s\n", status, result.Description)
 		if result.Err != nil {
-			fmt.Fprintf(wout, "    %s\n", result.Err)
+			fmt.Fprintf(werr, "    %s\n", result.Err)
 			if result.HintAnchor != "" {
-				fmt.Fprintf(wout, "    see %s%s for hints\n", healthcheck.HintBaseURL, result.HintAnchor)
+				fmt.Fprintf(werr, "    see %s%s for hints\n", healthcheck.HintBaseURL, result.HintAnchor)
 			}
 		}
 	}
 
 	success := hc.RunChecks(prettyPrintResults)
 	// this empty line separates final results from the checks list in the output
-	fmt.Fprintln(wout, "")
+	fmt.Fprintln(werr, "")
 
 	if !success {
-		fmt.Fprintf(wout, "Status check results are %s\n", failStatus)
+		fmt.Fprintf(werr, "Status check results are %s\n", failStatus)
 	} else {
-		fmt.Fprintf(wout, "Status check results are %s\n", okStatus)
+		fmt.Fprintf(werr, "Status check results are %s\n", okStatus)
 	}
 
 	return success

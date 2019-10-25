@@ -24,7 +24,7 @@ func TestCheckStatus(t *testing.T) {
 		})
 
 		output := bytes.NewBufferString("")
-		runChecks(output, stderr, hc, tableOutput)
+		runChecks(stdout, output, hc, tableOutput)
 
 		goldenFileBytes, err := ioutil.ReadFile("testdata/check_output.golden")
 		if err != nil {
