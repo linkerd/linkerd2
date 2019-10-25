@@ -23,11 +23,12 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 )
 
 const requireIDHeader = "l5d-require-id"
-const podIPIndex = "ip"
+const ipIndex = "ip"
 const defaultMaxRps = 100.0
 
 // GRPCTapServer describes the gRPC server implementing pb.TapServer
@@ -510,7 +511,8 @@ func NewGrpcTapServer(
 	clusterDomain string,
 	k8sAPI *k8s.API,
 ) *GRPCTapServer {
-	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: indexPodByIP})
+	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{ipIndex: indexByIP})
+	k8sAPI.Node().Informer().AddIndexers(cache.Indexers{ipIndex: indexByIP})
 
 	return newGRPCTapServer(tapPort, controllerNamespace, clusterDomain, k8sAPI)
 }
@@ -534,11 +536,21 @@ func newGRPCTapServer(
 	return srv
 }
 
-func indexPodByIP(obj interface{}) ([]string, error) {
-	if pod, ok := obj.(*corev1.Pod); ok {
-		return []string{pod.Status.PodIP}, nil
+func indexByIP(obj interface{}) ([]string, error) {
+	switch v := obj.(type) {
+	case *corev1.Pod:
+		return []string{v.Status.PodIP}, nil
+	case *corev1.Node:
+		addresses := make([]string, 0)
+		for _, address := range v.Status.Addresses {
+			if address.Type == corev1.NodeInternalIP {
+				log.Debugf("Indexing node address: %s", address.Address)
+				addresses = append(addresses, address.Address)
+			}
+		}
+		return addresses, nil
 	}
-	return []string{""}, fmt.Errorf("object is not a pod")
+	return []string{""}, fmt.Errorf("object is not a pod nor a node")
 }
 
 // hydrateEventLabels attempts to hydrate the metadata labels for an event's
@@ -568,63 +580,72 @@ func (s *GRPCTapServer) hydrateEventLabels(ev *public.TapEvent) {
 // hydrateIPMeta attempts to determine the metadata labels for `ip` and, if
 // successful, adds them to `labels`.
 func (s *GRPCTapServer) hydrateIPLabels(ip *public.IPAddress, labels map[string]string) error {
-	pod, err := s.podForIP(ip)
-	switch {
-	case err != nil:
+	res, err := s.resourceForIP(ip)
+	if err != nil {
 		return err
-	case pod == nil:
-		log.Debugf("no pod for IP %s", addr.PublicIPToString(ip))
-		return nil
-	default:
-		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod, false)
-		podLabels := pkgK8s.GetPodLabels(ownerKind, ownerName, pod)
+	}
+
+	switch v := res.(type) {
+	case *corev1.Pod:
+		if v == nil {
+			log.Debugf("no pod found for IP %s", addr.PublicIPToString(ip))
+			return nil
+		}
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(v, false)
+		podLabels := pkgK8s.GetPodLabels(ownerKind, ownerName, v)
 		for key, value := range podLabels {
 			labels[key] = value
 		}
-		labels[pkgK8s.Namespace] = pod.Namespace
-		return nil
+		labels[pkgK8s.Namespace] = v.Namespace
+	case *corev1.Node:
+		labels[pkgK8s.Node] = v.Name
 	}
+	return nil
 }
 
-// podForIP returns the pod corresponding to a given IP address, if one exists.
+// resourceForIP returns the node or pod corresponding to a given IP address.
 //
-// If multiple pods exist with the same IP address, this may be because some
-// are terminating and the IP has been assigned to a new pod. In this case, we
-// select the running pod, if one currently exists. If there is a single pod
-// which is not running, we return that pod. Otherwise we return `nil`, as we
-// cannot easily determine which pod sent a given request.
-//
-// If no pods were found for the provided IP address, it returns nil. Errors are
-// returned only in the event of an error indexing the pods list.
-func (s *GRPCTapServer) podForIP(ip *public.IPAddress) (*corev1.Pod, error) {
+// First it checks if the IP corresponds to a Node's internal IP and returns the
+// node if that's the case. Otherwise it checks the running pods that match the
+// IP. If exactly one is found, it's returned. Otherwise it returns nil. Errors
+// are returned only in the event of an error searching the indices.
+func (s *GRPCTapServer) resourceForIP(ip *public.IPAddress) (runtime.Object, error) {
 	ipStr := addr.PublicIPToString(ip)
-	objs, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIPIndex, ipStr)
 
+	nodes, err := s.k8sAPI.Node().Informer().GetIndexer().ByIndex(ipIndex, ipStr)
+	if err != nil {
+		return nil, err
+	}
+	if len(nodes) == 1 {
+		log.Debugf("found one node at IP %s", ipStr)
+		return nodes[0].(*corev1.Node), nil
+	}
+
+	pods, err := s.k8sAPI.Pod().Informer().GetIndexer().ByIndex(ipIndex, ipStr)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(objs) == 1 {
+	if len(pods) == 1 {
 		log.Debugf("found one pod at IP %s", ipStr)
-		// It's safe to cast elements of `objs` to a `Pod`s here (and in the
-		// loop below). If the object wasn't a pod, it should never have been
-		// indexed by the indexing func in the first place.
-		return objs[0].(*corev1.Pod), nil
+		return pods[0].(*corev1.Pod), nil
 	}
 
-	for _, obj := range objs {
+	var singleRunningPod *corev1.Pod
+	for _, obj := range pods {
 		pod := obj.(*corev1.Pod)
 		if pod.Status.Phase == corev1.PodRunning {
-			// Found a running pod with this IP --- it's that!
-			log.Debugf("found running pod at IP %s", ipStr)
-			return pod, nil
+			if singleRunningPod != nil {
+				log.Warnf(
+					"could not uniquely identify pod at %s (found %d pods)",
+					ipStr,
+					len(pods),
+				)
+				return nil, nil
+			}
+			singleRunningPod = pod
 		}
 	}
 
-	log.Warnf(
-		"could not uniquely identify pod at %s (found %d pods)",
-		ipStr,
-		len(objs),
-	)
-	return nil, nil
+	return singleRunningPod, nil
 }

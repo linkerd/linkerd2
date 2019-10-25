@@ -54,6 +54,7 @@ const (
 	SS
 	Svc
 	TS
+	Node
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -74,6 +75,7 @@ type API struct {
 	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
 	ts       tsinformers.TrafficSplitInformer
+	node     coreinformers.NodeInformer
 
 	syncChecks        []cache.InformerSynced
 	sharedInformers   informers.SharedInformerFactory
@@ -198,6 +200,9 @@ func NewAPI(
 		case TS:
 			api.ts = tsSharedInformers.Split().V1alpha1().TrafficSplits()
 			api.syncChecks = append(api.syncChecks, api.ts.Informer().HasSynced)
+		case Node:
+			api.node = sharedInformers.Core().V1().Nodes()
+			api.syncChecks = append(api.syncChecks, api.node.Informer().HasSynced)
 		}
 	}
 
@@ -337,6 +342,14 @@ func (api *API) TS() tsinformers.TrafficSplitInformer {
 		panic("TS informer not configured")
 	}
 	return api.ts
+}
+
+// Node provides access to a shared informer and lister for Nodes.
+func (api *API) Node() coreinformers.NodeInformer {
+	if api.node == nil {
+		panic("Node informer not configured")
+	}
+	return api.node
 }
 
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.
