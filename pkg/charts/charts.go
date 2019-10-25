@@ -37,6 +37,7 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 		{Name: "charts/partials/templates/_helpers.tpl"},
 		{Name: "charts/partials/templates/_debug.tpl"},
 		{Name: "charts/partials/templates/_capabilities.tpl"},
+		{Name: "charts/partials/templates/_trace.tpl"},
 	}
 	if err := filesReader("", partialsFiles); err != nil {
 		return bytes.Buffer{}, err

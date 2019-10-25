@@ -50,6 +50,7 @@ type (
 		DisableHeartBeat            bool
 		HeartbeatSchedule           string
 		InstallNamespace            bool
+		ControlPlaneTracing         bool
 		Configs                     ConfigJSONs
 		Identity                    *Identity
 		ProxyInjector               *ProxyInjector

@@ -50,6 +50,7 @@ type (
 		skipChecks                  bool
 		omitWebhookSideEffects      bool
 		restrictDashboardPrivileges bool
+		controlPlaneTracing         bool
 		identityOptions             *installIdentityOptions
 		*proxyConfigOptions
 
@@ -176,6 +177,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		noInitContainer:             defaults.NoInitContainer,
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
+		controlPlaneTracing:         defaults.ControlPlaneTracing,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -465,8 +467,14 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.omitWebhookSideEffects, "omit-webhook-side-effects", options.omitWebhookSideEffects,
 		"Omit the sideEffects flag in the webhook manifests, This flag must be provided during install or upgrade for Kubernetes versions pre 1.12",
 	)
+	flags.BoolVar(
+		&options.controlPlaneTracing, "control-plane-tracing", options.controlPlaneTracing,
+		"Enables Control Plane Tracing with the defaults",
+	)
+
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.MarkHidden("control-plane-version")
+	flags.MarkHidden("control-plane-tracing")
 
 	return flags
 }
@@ -647,6 +655,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 	installValues.ControllerLogLevel = options.controllerLogLevel
 	installValues.ControllerReplicas = options.controllerReplicas
 	installValues.ControllerUID = options.controllerUID
+	installValues.ControlPlaneTracing = options.controlPlaneTracing
 	installValues.EnableH2Upgrade = !options.disableH2Upgrade
 	installValues.EnablePodAntiAffinity = options.highAvailability
 	installValues.HighAvailability = options.highAvailability

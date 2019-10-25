@@ -56,6 +56,9 @@ HeartbeatSchedule: "0 0 * * *"
 PrometheusImage: prom/prometheus:v2.11.1
 PrometheusLogLevel: *controller_log_level
 
+# Control Plane Trace Configuration
+ControlPlaneTracing: false
+
 # proxy configuration
 Proxy:
   EnableExternalProfiles: false

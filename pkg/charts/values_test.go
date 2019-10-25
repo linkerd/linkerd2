@@ -65,6 +65,8 @@ func TestNewValues(t *testing.T) {
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
 		Tap:              &Tap{TLS: &TLS{}},
 
+		ControlPlaneTracing: false,
+
 		Proxy: &Proxy{
 			EnableExternalProfiles: false,
 			Image: &Image{

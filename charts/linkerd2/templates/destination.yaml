@@ -65,6 +65,7 @@ spec:
         - -controller-namespace={{.Namespace}}
         - -enable-h2-upgrade={{.EnableH2Upgrade}}
         - -log-level={{.ControllerLogLevel}}
+        {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:
