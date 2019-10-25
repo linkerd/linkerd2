@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -37,7 +38,7 @@ func Reader(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, timeout tim
 	if err != nil {
 		return nil, nil, err
 	}
-	url.Path = protohttp.TapReqToURL(req)
+	url.Path = path.Join(url.Path, protohttp.TapReqToURL(req))
 
 	httpReq, err := http.NewRequest(
 		http.MethodPost,
