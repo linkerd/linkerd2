@@ -2,8 +2,8 @@
 
 # If the first argument to this script is "latest" or unset, it fetches the
 # latest proxy binary from the linkerd2-proxy github releases. If it's set to
-# a commit sha from the master branch of the linkerd2-proxy repo, it will fetch
-# the binary matching that sha instead.
+# a linkerd2-proxy version number (such as v2.76.0), it will fetch the binary
+# matching that version number instead.
 
 set -eu
 
