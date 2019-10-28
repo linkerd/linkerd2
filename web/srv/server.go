@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"path"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -27,6 +28,7 @@ type (
 		reload      bool
 		templates   map[string]*template.Template
 		router      *httprouter.Router
+		reHost      *regexp.Regexp
 	}
 
 	templatePayload struct {
@@ -44,6 +46,10 @@ type (
 
 // this is called by the HTTP server to actually respond to a request
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if !s.reHost.MatchString(req.Host) {
+		http.Error(w, "Invalid Host header", http.StatusNotFound)
+		return
+	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
@@ -62,12 +68,14 @@ func NewServer(
 	controllerNamespace string,
 	clusterDomain string,
 	reload bool,
+	reHost *regexp.Regexp,
 	apiClient public.APIClient,
 	k8sAPI *k8s.KubernetesAPI,
 ) *http.Server {
 	server := &Server{
 		templateDir: templateDir,
 		reload:      reload,
+		reHost:      reHost,
 	}
 
 	server.router = &httprouter.Router{
