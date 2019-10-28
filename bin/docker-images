@@ -17,7 +17,7 @@ docker_image() {
 tag=$(head_root_tag)
 
 for img in cli-bin cni-plugin controller debug grafana proxy web ; do
-    docker_image $img $tag
+    docker_image $img "$tag"
 done
 
 docker_image go-deps "$(go_deps_sha)"
