@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+bindir=$( cd "${0%/*}" && pwd )
 
-. $bindir/_tag.sh
+. "$bindir"/_tag.sh
 
 head_root_tag
