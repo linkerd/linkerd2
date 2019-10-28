@@ -151,6 +151,61 @@ func TestCheckPreInstall(t *testing.T) {
 	}
 }
 
+// Gathers success stats from the app upgrade test app
+// Used to ensure upgrade process went smoothly
+func ensureUpgradedAppRunning(t *testing.T, namespace string) {
+	args := []string{"stat", "deploy", "-n", namespace, "-t", "60s"}
+	err := TestHelper.RetryFor(60*time.Second, func() error {
+		out, stderr, err := TestHelper.LinkerdRun(args...)
+		if err != nil {
+			fmt.Println(stderr)
+			t.Fatalf("Unexpected stat error: %s\n%s", err, out)
+		}
+
+		rowStats, err := testutil.ParseRows(out, 1, 8)
+		if err != nil {
+			return err
+		}
+
+		name := "server"
+		successRate := "100.00%"
+
+		st, ok := rowStats[name]
+		if !ok {
+			return fmt.Errorf("no stats found for [%s]", name)
+		}
+
+		if st.Success != successRate {
+			return fmt.Errorf("expected success [%s] for [%s], got [%s]", successRate, name, st.Success)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+}
+
+func deployUpgradeTestApp(t *testing.T, namespace string) {
+	out, _, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/upgrade_test.yaml")
+	if err != nil {
+		t.Fatalf("linkerd inject command failed\n%s", out)
+	}
+
+	out, err = TestHelper.KubectlApply(out, namespace)
+	if err != nil {
+		t.Fatalf("kubectl apply command failed\n%s", out)
+	}
+
+	// wait for deployment to start
+	if err := TestHelper.CheckPods(namespace, "server", 1); err != nil {
+		t.Error(err)
+	}
+
+	if err := TestHelper.CheckDeployment(namespace, "server", 1); err != nil {
+		t.Error(fmt.Errorf("Error validating deployment [%s]:\n%s", "server", err))
+	}
+}
+
 func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.GetHelmReleaseName() != "" {
 		return
@@ -169,9 +224,19 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())
 	}
 
+	var upgradeNamespace string
 	if TestHelper.UpgradeFromVersion() != "" {
-		cmd = "upgrade"
 
+		upgradeNamespace = TestHelper.GetTestNamespace("upgrade-test")
+		err := TestHelper.CreateNamespaceIfNotExists(upgradeNamespace, nil)
+		if err != nil {
+			t.Fatalf("failed to create %s namespace: %s", upgradeNamespace, err)
+		}
+
+		deployUpgradeTestApp(t, upgradeNamespace)
+		ensureUpgradedAppRunning(t, upgradeNamespace)
+
+		cmd = "upgrade"
 		// test 2-stage install during upgrade
 		out, _, err := TestHelper.LinkerdRun(cmd, "config")
 		if err != nil {
@@ -227,6 +292,10 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	out, err = TestHelper.KubectlApply(out, "")
 	if err != nil {
 		t.Fatalf("kubectl apply command failed\n%s", out)
+	}
+
+	if TestHelper.UpgradeFromVersion() != "" {
+		ensureUpgradedAppRunning(t, upgradeNamespace) // make sure apps a running after upgrade
 	}
 }
 
