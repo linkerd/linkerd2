@@ -3,7 +3,7 @@
 set -eu
 
 if [ $# -ne 0 ]; then
-    echo "no arguments allowed for ${0##*/}, given: $@" >&2
+    echo "no arguments allowed for ${0##*/}, given: $*" >&2
     exit 64
 fi
 
@@ -15,4 +15,4 @@ rootdir=$( cd "$bindir"/.. && pwd )
 
 dockerfile="$rootdir/grafana/Dockerfile"
 
-docker_build grafana $(head_root_tag) "$dockerfile"
+docker_build grafana "$(head_root_tag)" "$dockerfile"

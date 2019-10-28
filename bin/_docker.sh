@@ -1,6 +1,7 @@
 set -eu
 
-bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+#bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+bindir=$( cd "${0%/*}" && pwd )
 
 . "$bindir"/_log.sh
 
