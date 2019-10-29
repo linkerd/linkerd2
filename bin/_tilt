@@ -18,41 +18,16 @@ def linkerd_yaml():
   else:
     return local("%s upgrade --proxy-version=%s" % (linkerd,proxy_version))
 
-def trigger_mode_settings():
-  if settings.get("trigger_mode") == "TRIGGER_MODE_MANUAL":
-    return TRIGGER_MODE_MANUAL
-  else:
-    return TRIGGER_MODE_AUTO
-
 controller = {
-  "name": "linkerd-controller",
-  "short_name": "controller",
+  "name": "controller",
   "deps": ["./controller", "./pkg"],
   "image": "gcr.io/linkerd-io/controller",
-  "port_forwards": ["30085:8085","9995","31760:4191"],
-  "labels": [
-    {"linkerd.io/control-plane-component": "controller"},
-  ],
-}
-
-destination = {
-  "name": "linkerd-destination",
-  "short_name": "destination",
-  "port_forwards": ["8086","30996:9996","31761:4191"],
-  "labels": [
-    {"linkerd.io/control-plane-component": "destination"},
-  ]
 }
 
 grafana = {
-  "name": "linkerd-grafana",
-  "short_name": "grafana",
+  "name": "grafana",
   "image": "gcr.io/linkerd-io/grafana",
   "deps": ["./grafana"],
-  "port_forwards": ["3000","31762:4192"],
-  "labels": [
-    {"linkerd.io/control-plane-component": "grafana"},
-  ],
   "live_update": {
     "sync": {
       "from": "./grafana/dashboards",
@@ -61,70 +36,10 @@ grafana = {
   },
 }
 
-heartbeat = {
-  "name": "linkerd-heartbeat",
-  "short_name": "heartbeat",
-  "labels": [
-    {"linkerd.io/control-plane-component": "heartbeat"},
-  ]
-}
-
-identity = {
-  "name": "linkerd-identity",
-  "short_name": "identity",
-  "port_forwards": ["31080:8080","30990:9990","31763:4191"],
-  "labels": [
-    {"linkerd.io/control-plane-component": "identity"},
-  ]
-}
-
-prometheus = {
-  "name": "linkerd-prometheus",
-  "short_name": "prometheus",
-  "port_forwards": ["9090","31764:4191"],
-  "labels": [
-    {"linkerd.io/control-plane-component": "prometheus"},
-  ]
-}
-
-proxy_injector = {
-  "name": "linkerd-proxy-injector",
-  "short_name": "proxy-injector",
-  "port_forwards": ["31443:8443","30995:9995","31765:4191"],
-  "labels": [
-    {"linkerd.io/control-plane-component": "proxy-injector"},
-  ]
-}
-
-sp_validator = {
-  "name": "linkerd-sp-validator",
-  "short_name": "sp-validator",
-  "port_forwards": ["32443:8443","30997:9997","31766:4191"],
-  "labels": [
-    {"linkerd.io/control-plane-component": "sp-validator"},
-  ]
-}
-
-tap = {
-  "name": "linkerd-tap",
-  "short_name": "tap",
-  "port_forwards": ["8088","8089", "30998:9998","31767:4191"],
-  "labels": [
-    {"linkerd.io/control-plane-component": "tap"},
-  ]
-}
-
 web = {
-  "name": "linkerd-web",
-  "short_name": "web",
+  "name": "web",
   "image": "gcr.io/linkerd-io/web",
   "deps": ["./web"],
-  "port_forwards": ["8084", "30994:9994","31768:4191"],
-  "labels": [
-    {"linkerd.io/control-plane-component": "web"},
-  ]
 }
-
-components = [controller, destination, grafana, heartbeat, identity, prometheus, proxy_injector, sp_validator, tap, web]
 
 images = [controller, grafana, web]
