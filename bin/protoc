@@ -1,19 +1,19 @@
-#!/bin/bash
+#!/bin/sh
 
 set -eu
 
-if [ "$(uname -s)" = "Darwin" ]; then
+if [ "$(uname -s)" = Darwin ]; then
   os=osx
 else
   os=linux
 fi
 arch=$(uname -m)
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-targetbin="$( cd $bindir/.. && pwd )"/target/bin
+bindir=$( cd "${0%/*}" && pwd )
+targetbin=$( cd "$bindir"/.. && pwd )/target/bin
 protocversion=3.6.0
-protocbin=${targetbin}/protoc-${protocversion}
-protocurl="https://github.com/google/protobuf/releases/download/v${protocversion}/protoc-${protocversion}-${os}-${arch}.zip"
+protocbin=$targetbin/protoc-$protocversion
+protocurl=https://github.com/google/protobuf/releases/download/v$protocversion/protoc-$protocversion-$os-$arch.zip
 
 if [ ! -f "$protocbin" ]; then
   tmp=$(mktemp -d -t protoc.XXX)
@@ -28,4 +28,4 @@ if [ ! -f "$protocbin" ]; then
   rm -rf "$tmp"
 fi
 
-$protocbin "$@"
+"$protocbin" "$@"

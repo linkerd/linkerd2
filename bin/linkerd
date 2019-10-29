@@ -1,15 +1,15 @@
-#!/bin/bash
+#!/bin/sh
 
 set -eu
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
 
 system=$(uname -s)
 
-if [ "$system" = "Darwin" ]; then
+if [ "$system" = Darwin ]; then
   bin=$rootdir/target/cli/darwin/linkerd
-elif [ "$system" = "Linux" ]; then
+elif [ "$system" = Linux ]; then
   bin=$rootdir/target/cli/linux/linkerd
 else
   echo "unknown system: $system" >&2
@@ -17,8 +17,8 @@ else
 fi
 
 # build linkerd executable if it does not exist
-if [ ! -f $bin ]; then
-  $bindir/build-cli-bin >/dev/null
+if [ ! -f "$bin" ]; then
+  "$bindir"/build-cli-bin >/dev/null
 fi
 
-exec $bin "$@"
+exec "$bin" "$@"

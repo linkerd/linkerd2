@@ -22,6 +22,6 @@ done
 
 for CLUSTER in $AKS $DO $EKS $GKE
 do
-  printf "\n$CLUSTER\n"
+  printf '\n%s\n' "$CLUSTER"
   bin/test-cleanup $CLUSTER
 done

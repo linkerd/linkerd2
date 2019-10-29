@@ -2,7 +2,7 @@
 
 set -o errexit -o nounset -o pipefail
 
-ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/.. && pwd )"
+ROOT=$( cd "${BASH_SOURCE[0]%/*}"/.. && pwd )
 
 DEV_PORT=8080
 export NODE_ENV=${NODE_ENV:=development}
@@ -26,40 +26,40 @@ USAGE: web <command>
 USAGE
 }; function --help { -h ;}
 
-function check-for-linkerd {
+check-for-linkerd() {
   controller_pod=$(get-pod controller)
   grafana_pod=$(get-pod grafana)
 
   if [[ -z "${controller_pod// }" ]]; then
-    err "Controller is not running. Have you installed Linkerd?"
+    err 'Controller is not running. Have you installed Linkerd?'
     exit 1
   fi
 
   if [[ -z "${grafana_pod// }" ]]; then
-    err "Controller is not running. Have you installed Linkerd?"
+    err 'Controller is not running. Have you installed Linkerd?'
     exit 1
   fi
 }
 
-function dev {
+dev() {
   while getopts "p:" opt; do
     case "$opt" in
       p) DEV_PORT=$OPTARG
     esac
   done
 
-  cd $ROOT/web/app && yarn webpack-dev-server --port $DEV_PORT &
+  cd "$ROOT"/web/app && yarn webpack-dev-server --port $DEV_PORT &
   run
 }
 
-function build {
-  cd $ROOT/web/app
+build() {
+  cd "$ROOT"/web/app
   yarn webpack
 }
 
-function get-pod {
-  if [[ "$#" -ne 1 ]]; then
-    echo "usage: bin/web get-pod component-name" >&2
+get-pod() {
+  if [ $# -ne 1 ]; then
+    echo "usage: bin/${0##*/} get-pod component-name" >&2
     exit 1
   fi
 
@@ -69,9 +69,9 @@ function get-pod {
     -o jsonpath='{.items[*].metadata.name}'
 }
 
-function port-forward {
-  if [[ "$#" -ne 2 ]]; then
-    echo "usage: bin/web port-forward component-name port-number" >&2
+port-forward() {
+  if [ $# -ne 2 ]; then
+    echo "usage: bin/${0##*/} port-forward component-name port-number" >&2
     exit 1
   fi
 
@@ -79,11 +79,11 @@ function port-forward {
     kubectl --namespace=linkerd port-forward $(get-pod $1) "$2:$2"
 }
 
-function run {
+run() {
   # Stop everything in the process group (in the background) whenever the
   # parent process experiences an error and exits.
-  trap "exit" INT TERM
-  trap "kill 0" EXIT
+  trap 'exit' INT TERM
+  trap 'kill 0' EXIT
 
   build
 
@@ -92,42 +92,42 @@ function run {
     port-forward grafana 3000 &
   )
 
-  cd $ROOT/web && \
+  cd "$ROOT"/web && \
     ../bin/go-run . --addr=:7777 $*
 }
 
-function setup {
-  cd $ROOT/web/app
+setup() {
+  cd "$ROOT"/web/app
   yarn $*
 }
 
 function test {
-  cd $ROOT/web/app
+  cd "$ROOT"/web/app
   yarn jest "$*"
 }
 
-function integration {
-  if [[ "$#" -ne 1 || ($1 != "cloud" && $1 != "local") ]]; then
-    echo "usage: bin/web integration (cloud|local)" >&2
+integration() {
+  if [[ $# -ne 1 || ($1 != "cloud" && $1 != "local") ]]; then
+    echo "usage: bin/${0##*/} integration (cloud|local)" >&2
     exit 1
   fi
-  if [ $1 = "cloud" ]; then
-    cd $ROOT/web/app && \
+  if [ "$1" = cloud ]; then
+    cd "$ROOT"/web/app && \
     ./node_modules/.bin/wdio ./integration/wdio-sauce.conf.js
   else
-    cd $ROOT/web/app && \
+    cd "$ROOT"/web/app && \
     ./node_modules/.bin/wdio ./integration/wdio.conf.js
   fi
 }
 
-function main {
+main() {
   setup
   build
 }
 
-function msg { out "$*" >&2 ;}
-function err { local x=$? ; msg "$*" ; return $(( $x == 0 ? 1 : $x )) ;}
-function out { printf '%s\n' "$*" ;}
+msg() { out "$*" >&2 ;}
+err() { local x=$? ; msg "$*" ; return $(( x == 0 ? 1 : x )) ;}
+out() { printf '%s\n' "$*" ;}
 
 if [[ ${1:-} ]] && declare -F | cut -d' ' -f3 | grep -Fqx -- "${1:-}"
 then "$@"
