@@ -64,7 +64,7 @@ spec:
         - -controller-namespace={{.Namespace}}
         - -log-level={{.ControllerLogLevel}}
         {{- $host := replace "." "\\." (printf "linkerd-web.%s.svc.%s" .Namespace .ClusterDomain) }}
-        - -enforced-host=^(localhost|127\.0\.0\.1|{{ $host }}|\[::1\]):\d+$
+        - -enforced-host=^(localhost|127\.0\.0\.1|{{ $host }}|\[::1\])(:\d+)?$
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.WebImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
