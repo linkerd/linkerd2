@@ -306,8 +306,9 @@ type RowStat struct {
 	TCPOpenConnections string
 }
 
-// check that expectedRowCount rows have been returned
-func checkRowCount(out string, expectedRowCount int) ([]string, error) {
+// CheckRowCount checks that expectedRowCount rows have been returned
+func CheckRowCount(out string, expectedRowCount int) ([]string, error) {
+	out = strings.TrimSuffix(out, "\n")
 	rows := strings.Split(out, "\n")
 	if len(rows) < 2 {
 		return nil, fmt.Errorf(
@@ -315,8 +316,7 @@ func checkRowCount(out string, expectedRowCount int) ([]string, error) {
 			strings.Join(rows, "\n"),
 		)
 	}
-	rows = rows[1 : len(rows)-1] // strip header and trailing newline
-
+	rows = rows[1:] // strip header
 	if len(rows) != expectedRowCount {
 		return nil, fmt.Errorf(
 			"Expected [%d] rows in stat output, got [%d]; full output:\n%s",
@@ -328,7 +328,7 @@ func checkRowCount(out string, expectedRowCount int) ([]string, error) {
 
 // ParseRows parses the output of linkerd stat into a map of resource names to RowStat objects
 func ParseRows(out string, expectedRowCount, expectedColumnCount int) (map[string]*RowStat, error) {
-	rows, err := checkRowCount(out, expectedRowCount)
+	rows, err := CheckRowCount(out, expectedRowCount)
 	if err != nil {
 		return nil, err
 	}
