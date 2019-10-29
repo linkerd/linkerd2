@@ -13,7 +13,7 @@ rootdir=$( cd "$bindir"/.. && pwd )
 . "$bindir"/_docker.sh
 . "$bindir"/_tag.sh
 
-dockerfile="$rootdir"/Dockerfile-debug
+dockerfile=$rootdir/Dockerfile-debug
 
 (
     "$bindir"/docker-build-base

@@ -6,18 +6,18 @@ dockerversion=19.03.1
 
 bindir=$( cd "${0%/*}" && pwd )
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
-dockerbin="${targetbin}/.docker-${dockerversion}"
+dockerbin=$targetbin/.docker-$dockerversion
 
 if [ ! -f "$dockerbin" ]; then
   if [ "$(uname -s)" = Darwin ]; then
     os=mac
-    filename="docker-$dockerversion.tgz"
+    filename=docker-$dockerversion.tgz
   else
     os=linux
-    filename="docker-$dockerversion.tgz"
+    filename=docker-$dockerversion.tgz
   fi
 
-  url="https://download.docker.com/${os}/static/stable/x86_64/${filename}"
+  url=https://download.docker.com/$os/static/stable/x86_64/$filename
   tmp=$(mktemp -d -t docker.XXX)
   mkdir -p "$targetbin"
   (

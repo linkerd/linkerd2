@@ -13,7 +13,7 @@ rootdir=$( cd "$bindir"/.. && pwd )
 . "$bindir"/_docker.sh
 . "$bindir"/_tag.sh
 
-dockerfile="$rootdir"/cni-plugin/Dockerfile
+dockerfile=$rootdir/cni-plugin/Dockerfile
 
 validate_go_deps_tag "$dockerfile"
 

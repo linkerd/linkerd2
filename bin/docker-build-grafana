@@ -13,6 +13,6 @@ rootdir=$( cd "$bindir"/.. && pwd )
 . "$bindir"/_docker.sh
 . "$bindir"/_tag.sh
 
-dockerfile="$rootdir/grafana/Dockerfile"
+dockerfile=$rootdir/grafana/Dockerfile
 
 docker_build grafana "$(head_root_tag)" "$dockerfile"

@@ -14,7 +14,7 @@ rootdir=$( cd "$bindir"/.. && pwd )
 
 . "$bindir"/_docker.sh
 
-workdir="$rootdir/target/release"
+workdir=$rootdir/target/release
 mkdir -p "$workdir"
 
 # create shorttag where eventual initial v in tag is stripped
@@ -28,7 +28,7 @@ for os in darwin linux windows ; do
   if [ "$os" = windows ]; then
     ext=windows.exe
   fi
-  filepath="$workdir/linkerd2-cli-$shorttag-$ext"
+  filepath=$workdir/linkerd2-cli-$shorttag-$ext
   docker cp "$id:/out/linkerd-$os" "$filepath"
   openssl dgst -sha256 "$filepath" | awk '{print $2}' > "$filepath.sha256"
   echo "$filepath"
