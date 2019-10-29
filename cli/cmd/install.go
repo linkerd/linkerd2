@@ -994,7 +994,7 @@ func (idopts *installIdentityOptions) genValues() (*l5dcharts.Identity, error) {
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
 		Issuer: &l5dcharts.Issuer{
-		Scheme:              consts.IdentityIssuerSchemeLinkerd,
+			Scheme:              consts.IdentityIssuerSchemeLinkerd,
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
 			IssuanceLifetime:    idopts.issuanceLifetime.String(),
 			CrtExpiry:           root.Cred.Crt.Certificate.NotAfter,
@@ -1109,7 +1109,7 @@ func (idopts *installIdentityOptions) readValues() (*l5dcharts.Identity, error) 
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: trustAnchorsPEM,
 		Issuer: &l5dcharts.Issuer{
-		Scheme:              consts.IdentityIssuerSchemeLinkerd,
+			Scheme:              consts.IdentityIssuerSchemeLinkerd,
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
 			IssuanceLifetime:    idopts.issuanceLifetime.String(),
 			CrtExpiry:           creds.Crt.Certificate.NotAfter,
