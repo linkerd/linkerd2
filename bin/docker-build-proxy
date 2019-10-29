@@ -24,6 +24,6 @@ validate_go_deps_tag "$dockerfile"
 tag="$(head_root_tag)"
 docker_build proxy "$tag" "$dockerfile" \
   --build-arg "LINKERD_VERSION=$tag" \
-  --build-arg "http_proxy=$http_proxy" \
-  --build-arg "https_proxy=$https_proxy" \
-  --build-arg "no_proxy=$no_proxy"
+  --build-arg "http_proxy=${http_proxy:-}" \
+  --build-arg "https_proxy=${https_proxy:-}" \
+  --build-arg "no_proxy=${no_proxy:-}"
