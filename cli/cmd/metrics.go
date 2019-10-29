@@ -3,8 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"sort"
 	"time"
@@ -169,12 +167,7 @@ func getMetrics(
 	}
 
 	metricsURL := portforward.URLFor("/metrics")
-	resp, err := http.Get(metricsURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	bytes, err := ioutil.ReadAll(resp.Body)
+	bytes, err := GetResponse(metricsURL)
 	if err != nil {
 		return nil, err
 	}
