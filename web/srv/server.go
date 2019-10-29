@@ -1,6 +1,8 @@
 package srv
 
 import (
+	"fmt"
+	"html"
 	"html/template"
 	"net/http"
 	"path"
@@ -47,7 +49,12 @@ type (
 // this is called by the HTTP server to actually respond to a request
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if !s.reHost.MatchString(req.Host) {
-		http.Error(w, "Invalid Host header", http.StatusNotFound)
+		error := fmt.Sprintf(`It appears that you are trying to reach this service with a host of '%s'.
+This does not match /^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|\[::1\]):\d+$/ and has been denied for security reasons.
+Please see https://linkerd.io/dns-rebinding for an explanation of what is happening and how to fix it.`,
+			html.EscapeString(req.Host))
+
+		http.Error(w, error, http.StatusNotFound)
 		return
 	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
