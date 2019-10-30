@@ -1,7 +1,6 @@
 package test
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -134,6 +133,10 @@ func TestVersionPreInstall(t *testing.T) {
 }
 
 func TestCheckPreInstall(t *testing.T) {
+	if TestHelper.ExternalIssuer() {
+		t.Skip("Skipping pre-install check for external issuer test")
+	}
+
 	if TestHelper.UpgradeFromVersion() != "" {
 		t.Skip("Skipping pre-install check for upgrade test")
 	}
@@ -158,8 +161,7 @@ func ensureUpgradedAppRunning(t *testing.T, namespace string) {
 	err := TestHelper.RetryFor(60*time.Second, func() error {
 		out, stderr, err := TestHelper.LinkerdRun(args...)
 		if err != nil {
-			fmt.Println(stderr)
-			t.Fatalf("Unexpected stat error: %s\n%s", err, out)
+			t.Fatalf("Unexpected stat error: %s\n%s\n%s", err, out, stderr)
 		}
 
 		rowStats, err := testutil.ParseRows(out, 1, 8)
@@ -217,8 +219,31 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--controller-log-level", "debug",
 			"--proxy-log-level", "warn,linkerd2_proxy=debug",
 			"--proxy-version", TestHelper.GetVersion(),
+			fmt.Sprintf("--identity-external-issuer=%s", strconv.FormatBool(TestHelper.ExternalIssuer())),
 		}
 	)
+
+	if TestHelper.ExternalIssuer() {
+
+		// short cert lifetime to put some pressure on the CSR request, response code path
+		args = append(args, "--identity-issuance-lifetime=15s")
+
+		err := TestHelper.CreateNamespaceIfNotExists(TestHelper.GetLinkerdNamespace(), nil)
+		if err != nil {
+			t.Fatalf("failed to create %s namespace: %s", TestHelper.GetLinkerdNamespace(), err)
+		}
+
+		secretResource, err := testutil.ReadFile("testdata/issuer_secret_1.yaml")
+		if err != nil {
+			t.Fatalf("failed to load linkerd-identity-issuer resource: %s", err)
+		}
+
+		out, err := TestHelper.KubectlApply(secretResource, TestHelper.GetLinkerdNamespace())
+
+		if err != nil {
+			t.Fatalf("failed to create linkerd-identity-issuer resource: %s", out)
+		}
+	}
 
 	var upgradeNamespace string
 	if TestHelper.UpgradeFromVersion() != "" {
@@ -250,9 +275,9 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	}
 
 	exec := append([]string{cmd}, args...)
-	out, _, err := TestHelper.LinkerdRun(exec...)
+	out, stderr, err := TestHelper.LinkerdRun(exec...)
 	if err != nil {
-		t.Fatalf("linkerd install command failed\n%s", out)
+		t.Fatalf("linkerd install command failed: \n%s\n%s\n%s", out, stderr, out)
 	}
 
 	// test `linkerd upgrade --from-manifests`
@@ -645,22 +670,14 @@ func TestEvents(t *testing.T) {
 	if err != nil {
 		t.Errorf("kubectl get events command failed with %s\n%s", err, out)
 	}
-	var list corev1.List
-	if err := json.Unmarshal([]byte(out), &list); err != nil {
-		t.Errorf("Error unmarshaling list from `kubectl get events`: %s", err)
-	}
 
-	if len(list.Items) == 0 {
-		t.Error("No events found")
+	events, err := testutil.ParseEvents(out)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	var unknownEvents []string
-	for _, i := range list.Items {
-		var e corev1.Event
-		if err := json.Unmarshal(i.Raw, &e); err != nil {
-			t.Errorf("Error unmarshaling list event from `kubectl get events`: %s", err)
-		}
-
+	for _, e := range events {
 		if e.Type == corev1.EventTypeNormal {
 			continue
 		}

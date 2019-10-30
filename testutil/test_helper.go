@@ -2,17 +2,19 @@ package testutil
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	corev1 "k8s.io/api/core/v1"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // TestHelper provides helpers for running the linkerd integration tests.
@@ -21,6 +23,7 @@ type TestHelper struct {
 	version            string
 	namespace          string
 	upgradeFromVersion string
+	externalIssuer     bool
 	httpClient         http.Client
 	KubernetesHelper
 	helm
@@ -49,6 +52,7 @@ func NewTestHelper() *TestHelper {
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
 	tillerNs := flag.String("tiller-ns", "kube-system", "namespace under which Tiller will be installed")
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
+	externalIssuer := flag.Bool("external-issuer", false, "when specified, the install test uses it to install linkerd with --identity-external-issuer=true")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	flag.Parse()
@@ -86,6 +90,7 @@ func NewTestHelper() *TestHelper {
 			releaseName: *helmReleaseName,
 			tillerNs:    *tillerNs,
 		},
+		externalIssuer: *externalIssuer,
 	}
 
 	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -129,6 +134,11 @@ func (h *TestHelper) GetTestNamespace(testName string) string {
 // GetHelmReleaseName returns the name of the Linkerd installation Helm release
 func (h *TestHelper) GetHelmReleaseName() string {
 	return h.helm.releaseName
+}
+
+// ExternalIssuer determines whether linkerd should be installed with --identity-external-issuer
+func (h *TestHelper) ExternalIssuer() bool {
+	return h.externalIssuer
 }
 
 // UpgradeFromVersion returns the base version of the upgrade test.
@@ -365,4 +375,27 @@ func ParseRows(out string, expectedRowCount, expectedColumnCount int) (map[strin
 	}
 
 	return rowStats, nil
+}
+
+// ParseEvents parses the output of kubectl events
+func ParseEvents(out string) ([]*corev1.Event, error) {
+	var list corev1.List
+	if err := json.Unmarshal([]byte(out), &list); err != nil {
+		return nil, fmt.Errorf("error unmarshaling list from `kubectl get events`: %s", err)
+	}
+
+	if len(list.Items) == 0 {
+		return nil, errors.New("no events found")
+	}
+
+	var events []*corev1.Event
+	for _, i := range list.Items {
+		var e corev1.Event
+		if err := json.Unmarshal(i.Raw, &e); err != nil {
+			return nil, fmt.Errorf("error unmarshaling list event from `kubectl get events`: %s", err)
+		}
+		events = append(events, &e)
+	}
+
+	return events, nil
 }
