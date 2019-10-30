@@ -21,9 +21,15 @@ validate_go_deps_tag "$dockerfile"
     $bindir/docker-build-go-deps
 ) >/dev/null
 
+get_extra_options() {
+    options=
+    for var in http_proxy https_proxy no_proxy; do
+        [ -z "${!var:-}" ] || options="$options --build-arg '$var=${!var}'"
+    done
+    echo $options
+}
+
 tag="$(head_root_tag)"
 docker_build proxy "$tag" "$dockerfile" \
   --build-arg "LINKERD_VERSION=$tag" \
-  --build-arg "http_proxy=${http_proxy:-}" \
-  --build-arg "https_proxy=${https_proxy:-}" \
-  --build-arg "no_proxy=${no_proxy:-}"
+  $(get_extra_options)
