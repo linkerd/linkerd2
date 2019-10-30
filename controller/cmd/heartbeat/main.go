@@ -31,9 +31,9 @@ func Main(args []string) {
 	// - install-time
 	// - rps
 	// - meshed-pods
+	// - proxy-injector-injections
 	// TODO:
 	// - k8s-env
-	// - proxy-injector-injections
 	v := url.Values{}
 	v.Set("version", version.Version)
 	v.Set("source", "heartbeat")
