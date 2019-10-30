@@ -52,7 +52,7 @@ validate_tag() {
     sha=$1
     shift
 
-    dockerfile_tag=$(grep -oe $image':[^ ]*' "$file") || true
+    dockerfile_tag=$(grep -oe "$image"':[^ ]*' "$file") || true
     deps_tag="$image:$sha"
     if [ -n "$dockerfile_tag" ] && [ "$dockerfile_tag" != "$deps_tag" ]; then
         echo "Tag in "$file" does not match source tree:"
