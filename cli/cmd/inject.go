@@ -31,6 +31,7 @@ const (
 )
 
 type resourceTransformerInject struct {
+	allowNsInject       bool
 	injectProxy         bool
 	configs             *cfg.All
 	overrideAnnotations map[string]string
@@ -82,6 +83,7 @@ sub-folders, or coming from stdin.`,
 			options.overrideConfigs(configs, overrideAnnotations)
 
 			transformer := &resourceTransformerInject{
+				allowNsInject:       true,
 				injectProxy:         manualOption,
 				configs:             configs,
 				overrideAnnotations: overrideAnnotations,
@@ -147,6 +149,11 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return nil, nil, err
 	}
 	reports := []inject.Report{*report}
+
+	if rt.allowNsInject && conf.IsNamespace() {
+		b, err := conf.InjectNamespace(rt.overrideAnnotations)
+		return b, reports, err
+	}
 
 	if b, _ := report.Injectable(); !b {
 		return bytes, reports, nil
