@@ -267,14 +267,14 @@ func TestUninjectAndInject(t *testing.T) {
 		{
 			inputFileName:    "inject_emojivoto_namespace_good.input.yml",
 			goldenFileName:   "inject_emojivoto_namespace_good.golden.yml",
-			reportFileName:   "inject_emojivoto_namespace_good.golden.stderr",
+			reportFileName:   "inject_emojivoto_namespace_good.golden.report",
 			injectProxy:      false,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_namespace_good.input.yml",
 			goldenFileName:   "inject_emojivoto_namespace_overidden.good.golden.yml",
-			reportFileName:   "inject_emojivoto_namespace_good.golden.stderr",
+			reportFileName:   "inject_emojivoto_namespace_good.golden.report",
 			injectProxy:      false,
 			testInjectConfig: defaultConfig,
 			overrideAnnotations: map[string]string{
