@@ -7,9 +7,9 @@ git_sha_head() {
 }
 
 go_deps_sha() {
-    bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-    rootdir="$( cd $bindir/.. && pwd )"
-    cat $rootdir/go.mod $rootdir/Dockerfile-go-deps | shasum - | awk '{print $1}' |cut -c 1-8
+    bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+    rootdir=$( cd "$bindir"/.. && pwd )
+    cat "$rootdir/go.mod" "$rootdir/Dockerfile-go-deps" | shasum - | awk '{print $1}' |cut -c 1-8
 }
 
 clean_head() {
@@ -24,37 +24,37 @@ head_root_tag() {
     if clean_head ; then
         clean_head_root_tag
     else
-        name="$(echo $USER | sed "s/[^[:alnum:].-]//g")"
+        name=$(echo $USER | sed 's/[^[:alnum:].-]//g')
         echo "dev-$(git_sha_head)-$name"
     fi
 }
 
 clean_head_root_tag() {
     if clean_head ; then
-        if [ "$(named_tag)" != "undefined" ]; then
+        if [ "$(named_tag)" != undefined ]; then
             echo "$(named_tag)"
         else
             echo "git-$(git_sha_head)"
         fi
     else
-        echo "Commit unstaged changes." >&2
+        echo 'Commit unstaged changes.' >&2
         exit 3
     fi
 }
 
 validate_tag() {
-    file="$1"
+    file=$1
     shift
 
-    image="$1"
+    image=$1
     shift
 
-    sha="$1"
+    sha=$1
     shift
 
-    dockerfile_tag=$(grep -oe $image':[^ ]*' $file) || true
+    dockerfile_tag=$(grep -oe "$image"':[^ ]*' "$file") || true
     deps_tag="$image:$sha"
-    if [ "$dockerfile_tag" != "" ] && [ "$dockerfile_tag" != "$deps_tag" ]; then
+    if [ -n "$dockerfile_tag" ] && [ "$dockerfile_tag" != "$deps_tag" ]; then
         echo "Tag in "$file" does not match source tree:"
         echo $dockerfile_tag" ("$file")"
         echo $deps_tag" (source)"
@@ -68,6 +68,6 @@ validate_tag() {
 # $ grep -ER 'docker-build-go-deps' .
 
 validate_go_deps_tag() {
-    file="$1"
-    validate_tag "$file" "gcr.io/linkerd-io/go-deps" "$(go_deps_sha)"
+    file=$1
+    validate_tag "$file" gcr.io/linkerd-io/go-deps "$(go_deps_sha)"
 }

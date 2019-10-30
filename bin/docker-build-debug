@@ -3,15 +3,15 @@
 set -eu
 
 if [ $# -ne 0 ]; then
-    echo "no arguments allowed for $(basename $0), given: $@" >&2
+    echo "no arguments allowed for ${0##*/}, given: $*" >&2
     exit 64
 fi
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
 
-. $bindir/_docker.sh
-. $bindir/_tag.sh
+. "$bindir"/_docker.sh
+. "$bindir"/_tag.sh
 
 dockerfile=$rootdir/Dockerfile-debug
 
@@ -19,6 +19,4 @@ dockerfile=$rootdir/Dockerfile-debug
     "$bindir"/docker-build-base
 ) >/dev/null
 
-tag="$(head_root_tag)"
-
-docker_build debug $tag $dockerfile
+docker_build debug "$(head_root_tag)" "$dockerfile"

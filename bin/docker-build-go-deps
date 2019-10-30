@@ -5,20 +5,20 @@
 set -eu
 
 if [ $# -ne 0 ]; then
-    echo "no arguments allowed for $(basename $0), given: $@" >&2
+    echo "no arguments allowed for ${0##*/}, given: $*" >&2
     exit 64
 fi
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
-. $bindir/_docker.sh
-. $bindir/_tag.sh
+. "$bindir"/_docker.sh
+. "$bindir"/_tag.sh
 
 tag=$(go_deps_sha)
 
-if (docker_pull go-deps "${tag}"); then
-    echo "$(docker_repo go-deps):${tag}"
+if (docker_pull go-deps "$tag"); then
+    echo "$(docker_repo go-deps):$tag"
 else
-    rootdir="$( cd $bindir/.. && pwd )"
-    docker_build go-deps "${tag}" $rootdir/Dockerfile-go-deps
+    rootdir=$( cd "$bindir"/.. && pwd )
+    docker_build go-deps "$tag" "$rootdir/Dockerfile-go-deps"
 fi
