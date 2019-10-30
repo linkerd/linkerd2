@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -15,6 +16,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/pkg/tap"
@@ -309,4 +311,22 @@ func (h *handler) handleAPIEdges(w http.ResponseWriter, req *http.Request, p htt
 		return
 	}
 	renderJSONPb(w, result)
+}
+
+func (h *handler) handleAPICheck(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	results := make(map[healthcheck.CategoryID][]*healthcheck.CheckResult)
+
+	collectResults := func(result *healthcheck.CheckResult) {
+		// TODO(sergio): use more reliable way to identify CLI specific checkers (hint anchor is not unique)
+		if result.Retry || strings.Contains(result.Description, "cli") {
+			return
+		}
+		results[result.Category] = append(results[result.Category], result)
+	}
+	success := h.hc.RunChecks(collectResults)
+
+	renderJSON(w, map[string]interface{}{
+		"success": success,
+		"results": results,
+	})
 }

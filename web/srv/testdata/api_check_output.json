@@ -1,0 +1,28 @@
+{
+    "results": {
+        "kubernetes-api": [{
+            "Category": "kubernetes-api",
+            "Description": "check1-description",
+            "HintAnchor": "check1-hint-anchor",
+            "Retry": false,
+            "Warning": false,
+            "Err": null
+        }, {
+            "Category": "kubernetes-api",
+            "Description": "check2-description",
+            "HintAnchor": "check2-hint-anchor",
+            "Retry": false,
+            "Warning": true,
+            "Err": {}
+        }],
+        "linkerd-config": [{
+            "Category": "linkerd-config",
+            "Description": "check3-description",
+            "HintAnchor": "check3-hint-anchor",
+            "Retry": false,
+            "Warning": false,
+            "Err": null
+        }]
+    },
+    "success": true
+}

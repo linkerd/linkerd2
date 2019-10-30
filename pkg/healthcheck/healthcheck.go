@@ -249,7 +249,8 @@ type CheckResult struct {
 	Err         error
 }
 
-type checkObserver func(*CheckResult)
+// CheckObserver receives the results of each check.
+type CheckObserver func(*CheckResult)
 
 type category struct {
 	id       CategoryID
@@ -906,7 +907,7 @@ func (hc *HealthChecker) addCategory(c category) {
 // remaining checks are skipped. If at least one check fails, RunChecks returns
 // false; if all checks passed, RunChecks returns true.  Checks which are
 // designated as warnings will not cause RunCheck to return false, however.
-func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
+func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 	success := true
 
 	for _, c := range hc.categories {
@@ -941,7 +942,7 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 	return success
 }
 
-func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer checkObserver) bool {
+func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer CheckObserver) bool {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
@@ -974,7 +975,7 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 	}
 }
 
-func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer checkObserver) bool {
+func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer CheckObserver) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	checkRsp, err := c.checkRPC(ctx)
