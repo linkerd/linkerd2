@@ -12,6 +12,8 @@ import (
 
 var TestHelper *testutil.TestHelper
 
+const zeroRPS = "0.0rps"
+
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
 	os.Exit(m.Run())
@@ -91,8 +93,18 @@ func validateTrafficSplit(actual *statTsRow, expected *statTsRow) error {
 		return fmt.Errorf("expected success '%s' for leaf %s, got '%s'", expected.success, expected.leaf, actual.success)
 	}
 
-	if actual.rps != expected.rps && expected.rps != "" {
-		return fmt.Errorf("expected rps '%s' for leaf %s, got '%s'", expected.rps, expected.leaf, actual.rps)
+	if expected.rps != "" {
+		if expected.rps == "-" && actual.rps != "-" {
+			return fmt.Errorf("expected no rps for leaf %s, got '%s'", expected.leaf, actual.rps)
+		}
+
+		if expected.rps == zeroRPS && actual.rps != zeroRPS {
+			return fmt.Errorf("expected zero rps for leaf %s, got '%s'", expected.leaf, actual.rps)
+		}
+
+		if expected.rps != zeroRPS && actual.rps == zeroRPS {
+			return fmt.Errorf("expected non zero rps for leaf %s, got '%s'", expected.leaf, actual.rps)
+		}
 	}
 
 	if actual.latencyP50 != expected.latencyP50 && expected.latencyP50 != "" {
@@ -174,6 +186,7 @@ func TestTrafficSplitCli(t *testing.T) {
 				leaf:    "backend-svc",
 				weight:  "500m",
 				success: "100.00%",
+				rps:     "0.5rps",
 			}
 			expectedFailingSvcOutput := &statTsRow{
 				name:       "backend-traffic-split",
@@ -198,18 +211,18 @@ func TestTrafficSplitCli(t *testing.T) {
 		}
 	})
 
-	t.Run("create traffic split resource", func(t *testing.T) {
+	t.Run("update traffic split resource with equal weights", func(t *testing.T) {
 
-		tsResourceFile := "testdata/traffic_splitter.yaml"
-		tsResource, err := testutil.ReadFile(tsResourceFile)
+		updatedTsResourceFile := "testdata/updated-traffic-split-leaf-weights.yaml"
+		updatedTsResource, err := testutil.ReadFile(updatedTsResourceFile)
 
 		if err != nil {
-			t.Fatalf("Cannot read traffic split resource: %s, %s", tsResourceFile, err)
+			t.Fatalf("Cannot read updated traffic split resource: %s, %s", updatedTsResource, err)
 		}
 
-		out, err := TestHelper.KubectlApply(tsResource, prefixedNs)
+		out, err := TestHelper.KubectlApply(updatedTsResource, prefixedNs)
 		if err != nil {
-			t.Fatalf("Failed to create traffic split resource: %s\n %s", err, out)
+			t.Fatalf("Failed to update traffic split resource: %s\n %s", err, out)
 		}
 	})
 
@@ -225,6 +238,7 @@ func TestTrafficSplitCli(t *testing.T) {
 				leaf:    "backend-svc",
 				weight:  "500m",
 				success: "100.00%",
+				rps:     "0.5rps",
 			}
 			expectedFailingSvcOutput := &statTsRow{
 				name:    "backend-traffic-split",
@@ -232,6 +246,7 @@ func TestTrafficSplitCli(t *testing.T) {
 				leaf:    "backend-svc",
 				weight:  "500m",
 				success: "0.00%",
+				rps:     "0.5rps",
 			}
 
 			if err := validateExpectedTsOutput(rows, expectedBackendSvcOutput, expectedFailingSvcOutput); err != nil {
