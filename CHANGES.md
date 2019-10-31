@@ -10,11 +10,6 @@ CLI.
   * Added a new `--identity-external-issuer` flag to `linkerd install` that
     configures Linkerd to use certificates issued by an external certificate
     issuer (such as `cert-manager`)
-  * Added new `--trace-collector` and `--trace-collector-svc-account` flags to
-    `linkerd inject` that configures the OpenCensus trace collector used by
-    proxies in the injected workload (thanks @Pothulapati!)
-  * Added a new `--control-plane-tracing` flag to `linkerd install` that enables
-    distributed tracing in the control plane (thanks @Pothulapati!)
   * Added support for injecting a namespace to `linkerd inject` (thanks
     @mayankshah1607!)
   * Added checks to `linkerd check --preinstall` ensuring Kubernetes Secrets
@@ -22,13 +17,19 @@ CLI.
   * Fixed `linkerd tap` sometimes displaying incorrect pod names for unmeshed
     IPs that match multiple running pods
 * Controller
-  * Added distributed tracing support to the control plane (thanks
-    @Pothulapati!)
   * Added support for using trust anchors from an external certificate issuer
     (such as `cert-mananger`) to the `linkerd-identity` service
 * Web UI
   * Added `Host:` header validation to the `linkerd-web` service, to protect
     against DNS rebinding attacks
+* Internal
+  * Added new `--trace-collector` and `--trace-collector-svc-account` flags to
+    `linkerd inject` that configures the OpenCensus trace collector used by
+    proxies in the injected workload (thanks @Pothulapati!)
+  * Added a new `--control-plane-tracing` flag to `linkerd install` that enables
+    distributed tracing in the control plane (thanks @Pothulapati!)
+  * Added distributed tracing support to the control plane (thanks
+    @Pothulapati!)
 
 Also, thanks to @joakimr-axis for several fixes and improvements to internal
 build scripts!
