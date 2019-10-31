@@ -73,6 +73,19 @@ func PromValues(promAPI promv1.API, controlPlaneNamespace string) url.Values {
 		v.Set("p99-handle-us", value)
 	}
 
+	// proxy-injector-injections
+	jobInjectorLabels := model.LabelSet{
+		"job":  "linkerd-controller",
+		"skip": "false",
+	}
+	query = fmt.Sprintf("sum(proxy_inject_admission_responses_total%s)", jobInjectorLabels)
+	value, err = promQuery(promAPI, query, 0)
+	if err != nil {
+		log.Errorf("Prometheus query failed: %s", err)
+	} else {
+		v.Set("proxy-injector-injections", value)
+	}
+
 	// container metrics
 	for _, container := range []struct {
 		name model.LabelValue
