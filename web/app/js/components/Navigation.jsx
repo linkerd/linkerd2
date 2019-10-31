@@ -10,6 +10,7 @@ import EmailIcon from '@material-ui/icons/Email';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Hidden from '@material-ui/core/Hidden';
 import IconButton from '@material-ui/core/IconButton';
+import InputBase from '@material-ui/core/InputBase';
 import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { Link } from 'react-router-dom';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
@@ -35,6 +36,7 @@ import { faSmile } from '@fortawesome/free-regular-svg-icons/faSmile';
 import { faStream } from '@fortawesome/free-solid-svg-icons/faStream';
 import grey from '@material-ui/core/colors/grey';
 import { processSingleResourceRollup } from './util/MetricUtils.jsx';
+import { regexFilterString } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 import yellow from '@material-ui/core/colors/yellow';
@@ -150,6 +152,7 @@ class NavigationBase extends React.Component {
     this.handleConfirmNamespaceChange = this.handleConfirmNamespaceChange.bind(this);
     this.handleCommunityClick = this.handleCommunityClick.bind(this);
     this.handleDialogCancel = this.handleDialogCancel.bind(this);
+    this.handleFilterInputChange = this.handleFilterInputChange.bind(this);
     this.handleNamespaceMenuClick = this.handleNamespaceMenuClick.bind(this);
     this.updateWindowDimensions = this.updateWindowDimensions.bind(this);
 
@@ -163,6 +166,8 @@ class NavigationBase extends React.Component {
       mobileSidebarOpen: false,
       namespaceMenuOpen: false,
       newNamespace: '',
+      namespaceFilter: '',
+      namespaceFilterInput: "",
       hideUpdateBadge: true,
       latestVersion: '',
       isLatest: true,
@@ -297,6 +302,13 @@ class NavigationBase extends React.Component {
     this.props.history.push(`/namespaces/${this.state.newNamespace}`);
   }
 
+  handleFilterInputChange = e => {
+    let namespaceFilter = regexFilterString(e.target.value);
+    if (namespaceFilter !== this.state.namespaceFilter) {
+      this.setState({ namespaceFilter, namespaceFilterInput: e.target.value });
+    }
+  }
+
   handleNamespaceChange = (event, namespace) => {
     // ensure that mobile drawer will not close on click
     event.stopPropagation();
@@ -325,7 +337,7 @@ class NavigationBase extends React.Component {
   handleNamespaceMenuClick = event => {
     // ensure that mobile drawer will not close on click
     event.stopPropagation();
-    this.setState({ anchorEl: event.currentTarget });
+    this.setState({ anchorEl: event.currentTarget, namespaceFilterInput: "", namespaceFilter: "" });
     this.setState(state => ({ namespaceMenuOpen: !state.namespaceMenuOpen }));
   }
 
@@ -356,7 +368,12 @@ class NavigationBase extends React.Component {
 
   render() {
     const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
-    const { namespaces, anchorEl, showNamespaceChangeDialog, newNamespace, mobileSidebarOpen } = this.state;
+    let { namespaces, namespaceFilter, namespaceFilterInput, anchorEl, showNamespaceChangeDialog, newNamespace, mobileSidebarOpen } = this.state;
+    if (namespaceFilter !== "") {
+      namespaces = namespaces.filter(ns => {
+        return ns.name.match(namespaceFilter);
+      });
+    }
     let formattedNamespaceName = selectedNamespace;
     if (formattedNamespaceName === "_all") {
       formattedNamespaceName = "All Namespaces";
@@ -401,13 +418,23 @@ class NavigationBase extends React.Component {
             open={this.state.namespaceMenuOpen}
             keepMounted
             onClose={this.handleNamespaceMenuClick}>
+
+            <MenuItem>
+              <InputBase
+                id="namespace-filter-textfield"
+                value={namespaceFilterInput}
+                onChange={this.handleFilterInputChange}
+                placeholder="Select namespace..."
+                autoFocus />
+            </MenuItem>
+
+            <Divider />
+
             <MenuItem
               value="all"
               onClick={e => this.handleNamespaceChange(e, "_all")}>
                   All Namespaces
             </MenuItem>
-
-            <Divider />
 
             {namespaces.map(ns => (
               <MenuItem
