@@ -151,9 +151,8 @@ func TestCheckPreInstall(t *testing.T) {
 	}
 }
 
-// Gathers success stats from the app upgrade test app
-// Used to ensure upgrade process went smoothly
-func ensureUpgradedAppRunning(t *testing.T, namespace string) {
+// Gathers success stats from the test app
+func ensureTestAppRunning(t *testing.T, namespace string) {
 	args := []string{"stat", "deploy", "-n", namespace, "-t", "60s"}
 	err := TestHelper.RetryFor(60*time.Second, func() error {
 		out, stderr, err := TestHelper.LinkerdRun(args...)
@@ -185,7 +184,8 @@ func ensureUpgradedAppRunning(t *testing.T, namespace string) {
 	}
 }
 
-func deployUpgradeTestApp(t *testing.T, namespace string) {
+// deploys and meshes a simple test application
+func deployTestApp(t *testing.T, namespace string) {
 	out, _, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/upgrade_test.yaml")
 	if err != nil {
 		t.Fatalf("linkerd inject command failed\n%s", out)
@@ -233,8 +233,8 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			t.Fatalf("failed to create %s namespace: %s", upgradeNamespace, err)
 		}
 
-		deployUpgradeTestApp(t, upgradeNamespace)
-		ensureUpgradedAppRunning(t, upgradeNamespace)
+		deployTestApp(t, upgradeNamespace)
+		ensureTestAppRunning(t, upgradeNamespace)
 
 		cmd = "upgrade"
 		// test 2-stage install during upgrade
@@ -295,7 +295,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	}
 
 	if TestHelper.UpgradeFromVersion() != "" {
-		ensureUpgradedAppRunning(t, upgradeNamespace) // make sure apps a running after upgrade
+		ensureTestAppRunning(t, upgradeNamespace) // make sure apps a running after upgrade
 	}
 }
 
