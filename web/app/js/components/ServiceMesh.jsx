@@ -283,7 +283,7 @@ class ServiceMesh extends React.Component {
 
               <Grid item xs={4} container direction="column" spacing={24}>
                 <Grid item>{this.renderServiceMeshDetails()}</Grid>
-                <CheckModal api={this.api} />
+                <Grid item><CheckModal api={this.api} /></Grid>
                 <Grid item>{this.renderAddResourcesMessage()}</Grid>
               </Grid>
             </Grid>

@@ -7,8 +7,10 @@ import Dialog from '@material-ui/core/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import ErrorBanner from './ErrorBanner.jsx';
 import Grid from '@material-ui/core/Grid';
 import Paper from '@material-ui/core/Paper';
+import PriorityHigh from '@material-ui/icons/PriorityHigh';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Slide from '@material-ui/core/Slide';
@@ -18,7 +20,6 @@ import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
   wrapper: {
-    margin: theme.spacing.unit,
     position: "relative",
     marginBottom: "20px",
   },
@@ -30,16 +31,24 @@ const styles = theme => ({
     marginTop: "-12px",
     marginLeft: "-12px",
   },
+  dialog: {
+    minWidth: "60%",
+  },
+  dialogContent: {
+    overflow: "hidden",
+    display: "flex",
+  },
   contentWrapper: {
     backgroundColor: "black",
     borderRadius: "5px",
+    maxHeight: "100%",
+    width: "100%",
+    overflowY: "auto",
   },
   content: {
     fontSize: "14px",
-    maxHeight: "80%",
     padding: theme.spacing.unit * 2,
     color: "white",
-    overflowY: "auto",
   },
   title: {
     fontFamily: `'Roboto Mono', monospace`,
@@ -50,19 +59,21 @@ const styles = theme => ({
     },
   },
   result: {
+    marginLeft: "10px",
     fontFamily: `'Roboto Mono', monospace`,
   },
-  iconError: {
+  icon: {
     marginLeft: "10px",
-    marginRight: "10px",
     verticalAlign: "bottom",
+  },
+  iconError: {
     color: theme.status.dark.danger,
   },
   iconSuccess: {
-    marginLeft: "10px",
-    marginRight: "10px",
-    verticalAlign: "bottom",
     color: theme.status.dark.good,
+  },
+  iconWarning: {
+    color: theme.status.dark.warning,
   },
   chipSuccess: {
     color: theme.status.dark.good,
@@ -79,6 +90,18 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 });
 
 const Results = ({title, results, classes}) => {
+  let getIconType = (error, warning) => {
+    if (error) {
+      if (warning) {
+        return "warning";
+      } else {
+        return "error";
+      }
+    } else {
+      return "success";
+    }
+  };
+
   return (
     <React.Fragment>
       <Typography className={classes.title}>
@@ -89,7 +112,7 @@ const Results = ({title, results, classes}) => {
         return (
           <Grid container direction="row" alignItems="center" key={result.Description}>
             <Grid item>
-              <Icon error={result.Err !== null} classes={classes} />
+              <Icon type={getIconType(result.Err, result.Warning)} classes={classes} />
             </Grid>
             <Grid className={classes.result} item>
               {result.Description}
@@ -106,28 +129,36 @@ Results.propTypes = {
   results: PropTypes.arrayOf(PropTypes.shape({
     Description: PropTypes.string.isRequired,
     Err: PropTypes.any,
+    Warning: PropTypes.bool,
   })).isRequired,
   title: PropTypes.string.isRequired,
 };
 
-const Icon = ({error, classes}) => {
+const Icon = ({type, classes}) => {
   return (
     <React.Fragment>
-      {error ? (
-        <CloseIcon className={classes.iconError} fontSize="small" />
-      ) : (
-        <CheckIcon className={classes.iconSuccess} fontSize="small" />
-      )}
+      {(() => {
+        switch (type) {
+          case 'success':
+            return <CheckIcon className={`${classes.icon} ${classes.iconSuccess}`} fontSize="small" />;
+          case 'error':
+            return <CloseIcon className={`${classes.icon} ${classes.iconError}`} fontSize="small" />;
+          case 'warning':
+            return <PriorityHigh className={`${classes.icon} ${classes.iconWarning}`} fontSize="small" />;
+          default:
+            null;
+        }
+      })()}
     </React.Fragment>
   );
 };
 
 Icon.propTypes = {
   classes: PropTypes.shape({}).isRequired,
-  error: PropTypes.bool.isRequired,
+  type: PropTypes.oneOf(['success', 'error', 'warning']).isRequired,
 };
 
-class CheckModal extends React.Component {
+export class CheckModal extends React.Component {
   constructor(props) {
     super(props);
 
@@ -140,6 +171,7 @@ class CheckModal extends React.Component {
       running: false,
       success: undefined,
       results: {},
+      error: undefined,
     };
   }
 
@@ -162,20 +194,21 @@ class CheckModal extends React.Component {
           open: true,
           success: response.success,
           results: response.results,
+          error: undefined,
         });
       })
       .catch(this.handleApiError);
   }
 
-  handleApiError = () => {
-    // TODO - handle error
+  handleApiError = error => {
     this.setState({
       running: false,
+      error: error,
     });
   }
 
   render() {
-    const { open, running, success, results } = this.state;
+    const { open, running, success, results, error } = this.state;
     const { classes, fullScreen } = this.props;
 
     return (
@@ -201,10 +234,16 @@ class CheckModal extends React.Component {
           </Grid>
         </Grid>
 
+        { this.state.error !== undefined && <ErrorBanner message={error} /> }
+
         <Dialog
+          className={classes.dialog}
           open={open}
+          scroll="paper"
           TransitionComponent={Transition}
           fullScreen={fullScreen}
+          maxWidth="md"
+          fullWidth
           keepMounted
           onClose={this.handleOpenChange}>
           <DialogTitle>
@@ -220,8 +259,8 @@ class CheckModal extends React.Component {
               {success !== undefined &&
                 <Grid item>
                   <Chip
-                    icon={<Icon error={!success} classes={classes} />}
-                    label="Status"
+                    icon={<Icon type={success ? "success" : "error"} classes={classes} />}
+                    label={success ? "Success" : "Error"}
                     className={success ? classes.chipSuccess : classes.chipError}
                     variant="outlined" />
                 </Grid>
@@ -229,7 +268,7 @@ class CheckModal extends React.Component {
             </Grid>
           </DialogTitle>
 
-          <DialogContent>
+          <DialogContent className={classes.dialogContent}>
             <Paper className={classes.contentWrapper}>
               <div className={classes.content}>
                 <React.Fragment>
