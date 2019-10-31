@@ -12,15 +12,15 @@ CLI.
     issuer (such as `cert-manager`)
   * Added new `--trace-collector` and `--trace-collector-svc-account` flags to
     `linkerd inject` that configures the OpenCensus trace collector used by
-    proxies in the injected workload (thanks @ Pothulapati!)
+    proxies in the injected workload (thanks @Pothulapati!)
   * Added a new `--control-plane-tracing` flag to `linkerd install` that enables
     distributed tracing in the control plane (thanks @Pothulapati!)
   * Added support for injecting a namespace to `linkerd inject` (thanks
     @mayankshah1607!)
   * Added checks to `linkerd check --preinstall` ensuring Kubernetes Secrets
     can be created and accessed
-  * Fixed `linkerd tap` sometimes not displaying incorrect pod names for
-    unmeshed IPs that match multiple running pods
+  * Fixed `linkerd tap` sometimes displaying incorrect pod names for unmeshed
+    IPs that match multiple running pods
 * Controller
   * Added distributed tracing support to the control plane (thanks
     @Pothulapati!)
