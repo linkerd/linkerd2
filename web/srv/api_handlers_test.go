@@ -76,6 +76,20 @@ func TestHandleApiCheck(t *testing.T) {
 	// Setup handler using a mock health checker
 	mockResults := []*healthcheck.CheckResult{
 		&healthcheck.CheckResult{
+			Category:    healthcheck.LinkerdConfigChecks,
+			Description: "check3-description",
+			HintAnchor:  "check3-hint-anchor",
+			Warning:     false,
+			Err:         nil,
+		},
+		&healthcheck.CheckResult{
+			Category:    healthcheck.LinkerdConfigChecks,
+			Description: "check4-description-kubectl",
+			HintAnchor:  "check4-hint-anchor",
+			Warning:     true,
+			Err:         nil,
+		},
+		&healthcheck.CheckResult{
 			Category:    healthcheck.KubernetesAPIChecks,
 			Description: "check1-description",
 			HintAnchor:  "check1-hint-anchor",
@@ -88,13 +102,6 @@ func TestHandleApiCheck(t *testing.T) {
 			HintAnchor:  "check2-hint-anchor",
 			Warning:     true,
 			Err:         errors.New("check2-error"),
-		},
-		&healthcheck.CheckResult{
-			Category:    healthcheck.LinkerdConfigChecks,
-			Description: "check3-description",
-			HintAnchor:  "check3-hint-anchor",
-			Warning:     false,
-			Err:         nil,
 		},
 	}
 	h := &handler{
