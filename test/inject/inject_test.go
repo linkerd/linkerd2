@@ -112,7 +112,7 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 	}
 
 	ns := TestHelper.GetTestNamespace(injectNS)
-	err = TestHelper.CreateNamespaceIfNotExists(ns, nsAnnotations)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ns, nsAnnotations)
 	if err != nil {
 		t.Fatalf("failed to create %s namespace: %s", ns, err)
 	}
@@ -179,7 +179,7 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 		}
 		ns := TestHelper.GetTestNamespace(nsPrefix)
 
-		err = TestHelper.CreateNamespaceIfNotExists(ns, nsAnnotations)
+		err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ns, nsAnnotations)
 		if err != nil {
 			t.Fatalf("failed to create %s namespace with annotation %s: %s", ns, nsAnnotation, err)
 		}
@@ -296,7 +296,7 @@ func TestInjectAutoPod(t *testing.T) {
 	}
 
 	ns := TestHelper.GetTestNamespace(injectNS)
-	err = TestHelper.CreateNamespaceIfNotExists(ns, nsAnnotations)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ns, nsAnnotations)
 	if err != nil {
 		t.Fatalf("failed to create %s namespace: %s", ns, err)
 	}

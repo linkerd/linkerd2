@@ -219,16 +219,15 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--controller-log-level", "debug",
 			"--proxy-log-level", "warn,linkerd2_proxy=debug",
 			"--proxy-version", TestHelper.GetVersion(),
-			fmt.Sprintf("--identity-external-issuer=%s", strconv.FormatBool(TestHelper.ExternalIssuer())),
 		}
 	)
 
 	if TestHelper.ExternalIssuer() {
 
 		// short cert lifetime to put some pressure on the CSR request, response code path
-		args = append(args, "--identity-issuance-lifetime=15s")
+		args = append(args, "--identity-issuance-lifetime=15s", "--identity-external-issuer=true")
 
-		err := TestHelper.CreateNamespaceIfNotExists(TestHelper.GetLinkerdNamespace(), nil)
+		err := TestHelper.CreateControlPlaneNamespaceIfNotExists(TestHelper.GetLinkerdNamespace())
 		if err != nil {
 			t.Fatalf("failed to create %s namespace: %s", TestHelper.GetLinkerdNamespace(), err)
 		}
@@ -249,7 +248,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
 
 		upgradeNamespace = TestHelper.GetTestNamespace("upgrade-test")
-		err := TestHelper.CreateNamespaceIfNotExists(upgradeNamespace, nil)
+		err := TestHelper.CreateDataPlaneNamespaceIfNotExists(upgradeNamespace, nil)
 		if err != nil {
 			t.Fatalf("failed to create %s namespace: %s", upgradeNamespace, err)
 		}
@@ -484,7 +483,7 @@ func TestInject(t *testing.T) {
 
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
 
-			err := TestHelper.CreateNamespaceIfNotExists(prefixedNs, tc.annotations)
+			err := TestHelper.CreateDataPlaneNamespaceIfNotExists(prefixedNs, tc.annotations)
 			if err != nil {
 				t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
 			}
