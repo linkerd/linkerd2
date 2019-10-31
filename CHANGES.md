@@ -1,10 +1,47 @@
+## edge-19.10.5
+
+This edge release adds support for integrating Linkerd's PKI with an external
+certificate issuer such as [`cert-manager`], adds distributed tracing support to
+the Linkerd control plane, and adds protection against DNS rebinding attacks to
+the web dashboard. In addition, it includes several improvements to the Linkerd
+CLI.
+
+* CLI
+  * Added a new `--identity-external-issuer` flag to `linkerd install` that
+    configures Linkerd to use certificates issued by an external certificate
+    issuer (such as `cert-manager`)
+  * Added new `--trace-collector` and `--trace-collector-svc-account` flags to
+    `linkerd inject` that configures the OpenCensus trace collector used by
+    proxies in the injected workload (thanks @ Pothulapati!)
+  * Added a new `--control-plane-tracing` flag to `linkerd install` that enables
+    distributed tracing in the control plane (thanks @Pothulapati!)
+  * Added support for injecting a namespace to `linkerd inject` (thanks
+    @mayankshah1607!)
+  * Added checks to `linkerd check --preinstall` ensuring Kubernetes Secrets
+    can be created and accessed
+  * Fixed `linkerd tap` sometimes not displaying incorrect pod names for
+    unmeshed IPs that match multiple running pods
+* Controller
+  * Added distributed tracing support to the control plane (thanks
+    @Pothulapati!)
+  * Added support for using trust anchors from an external certificate issuer
+    (such as `cert-mananger`) to the `linkerd-identity` service
+* Web UI
+  * Added `Host:` header validation to the `linkerd-web` service, to protect
+    against DNS rebinding attacks
+
+Also, thanks to @joakimr-axis for several fixes and improvements to internal
+build scripts!
+
+[`cert-manager`]: https://github.com/jetstack/cert-manager
+
 ## edge-19.10.4
 
 This edge release adds dashboard UX enhancements, and improves the speed of the CLI.
 
 * CLI
   * Made `linkerd install --ignore-cluster` and `--skip-checks` faster
-  * Fixed a bug causing `linkerd upgrade` to fail when used with 
+  * Fixed a bug causing `linkerd upgrade` to fail when used with
   `--from-manifest`
 * Web UI
   * Made the dashboard sidebar component responsive
