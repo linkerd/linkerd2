@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"regexp"
 	"syscall"
 	"time"
 
@@ -31,6 +32,7 @@ func main() {
 	staticDir := cmd.String("static-dir", "app/dist", "directory to search for static files")
 	reload := cmd.Bool("reload", true, "reloading set to true or false")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	enforcedHost := cmd.String("enforced-host", "", "regexp describing the allowed values for the Host header; protects from DNS-rebinding attacks")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 
 	traceCollector := flags.AddTraceFlags(cmd)
@@ -73,7 +75,13 @@ func main() {
 		}
 	}
 
-	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid, *controllerNamespace, clusterDomain, *reload, client, k8sAPI)
+	reHost, err := regexp.Compile(*enforcedHost)
+	if err != nil {
+		log.Fatalf("invalid --enforced-host parameter: %s", err)
+	}
+
+	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid,
+		*controllerNamespace, clusterDomain, *reload, reHost, client, k8sAPI)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)
