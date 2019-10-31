@@ -158,7 +158,7 @@ Icon.propTypes = {
   type: PropTypes.oneOf(['success', 'error', 'warning']).isRequired,
 };
 
-export class CheckModal extends React.Component {
+class CheckModal extends React.Component {
   constructor(props) {
     super(props);
 
