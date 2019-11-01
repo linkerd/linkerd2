@@ -1,4 +1,4 @@
-## edge-19.10.5
+## edge-19.11.1
 
 This edge release adds support for integrating Linkerd's PKI with an external
 certificate issuer such as [`cert-manager`], adds distributed tracing support to
