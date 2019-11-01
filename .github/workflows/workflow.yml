@@ -277,7 +277,7 @@ jobs:
   kind_setup:
     strategy:
       matrix:
-        integration_test: [deep, upgrade, helm]
+        integration_test: [deep, upgrade, helm, custom_domain]
     name: Cluster setup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     needs: [download_src]
@@ -311,15 +311,22 @@ jobs:
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
+        export CUSTOM_DOMAIN_CONFIG="test/testdata/custom_cluster_domain_config.yaml"
         # retry cluster creation once in case of port conflict or kubeadm failure
-        bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug ||
-          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug
+        if [ "${{ matrix.integration_test }}" == "custom_domain" ]
+        then
+          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug --config=$CUSTOM_DOMAIN_CONFIG ||
+            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug --config=$CUSTOM_DOMAIN_CONFIG
+        else
+          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug ||
+            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug
+        fi
         scp $(bin/kind get kubeconfig-path --name=$KIND_CLUSTER) github@$DOCKER_ADDRESS:/tmp
 
   kind_integration:
     strategy:
       matrix:
-        integration_test: [deep, upgrade, helm]
+        integration_test: [deep, upgrade, helm, custom_domain]
     needs: [docker_pull, docker_build, kind_setup]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -406,7 +413,7 @@ jobs:
     strategy:
       fail-fast: false # always attempt to cleanup all clusters
       matrix:
-        integration_test: [deep, upgrade, helm]
+        integration_test: [deep, upgrade, helm, custom_domain]
     needs: [kind_integration]
     name: Cluster cleanup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04

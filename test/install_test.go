@@ -165,6 +165,10 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 	)
 
+	if TestHelper.GetClusterDomain() != "" {
+		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())
+	}
+
 	if TestHelper.UpgradeFromVersion() != "" {
 		cmd = "upgrade"
 

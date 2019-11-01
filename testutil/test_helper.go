@@ -21,6 +21,7 @@ type TestHelper struct {
 	version            string
 	namespace          string
 	upgradeFromVersion string
+	clusterDomain      string
 	httpClient         http.Client
 	KubernetesHelper
 	helm
@@ -49,6 +50,7 @@ func NewTestHelper() *TestHelper {
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
 	tillerNs := flag.String("tiller-ns", "kube-system", "namespace under which Tiller will be installed")
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
+	clusterDomain := flag.String("cluster-domain", "", "when specified, the install test uses a custom cluster domain")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	flag.Parse()
@@ -86,6 +88,7 @@ func NewTestHelper() *TestHelper {
 			releaseName: *helmReleaseName,
 			tillerNs:    *tillerNs,
 		},
+		clusterDomain: *clusterDomain,
 	}
 
 	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -134,6 +137,11 @@ func (h *TestHelper) GetHelmReleaseName() string {
 // UpgradeFromVersion returns the base version of the upgrade test.
 func (h *TestHelper) UpgradeFromVersion() string {
 	return h.upgradeFromVersion
+}
+
+// GetClusterDomain returns the custom cluster domain that needs to be used during linkerd installation
+func (h *TestHelper) GetClusterDomain() string {
+	return h.clusterDomain
 }
 
 // LinkerdRun executes a linkerd command appended with the --linkerd-namespace
