@@ -167,7 +167,7 @@ class NavigationBase extends React.Component {
       namespaceMenuOpen: false,
       newNamespace: '',
       namespaceFilter: '',
-      namespaceFilterInput: "",
+      namespaceFilterInput: '',
       hideUpdateBadge: true,
       latestVersion: '',
       isLatest: true,
@@ -337,7 +337,7 @@ class NavigationBase extends React.Component {
   handleNamespaceMenuClick = event => {
     // ensure that mobile drawer will not close on click
     event.stopPropagation();
-    this.setState({ anchorEl: event.currentTarget, namespaceFilterInput: "", namespaceFilter: "" });
+    this.setState({ anchorEl: event.currentTarget, namespaceFilterInput: '', namespaceFilter: '' });
     this.setState(state => ({ namespaceMenuOpen: !state.namespaceMenuOpen }));
   }
 
@@ -369,7 +369,7 @@ class NavigationBase extends React.Component {
   render() {
     const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
     let { namespaces, namespaceFilter, namespaceFilterInput, anchorEl, showNamespaceChangeDialog, newNamespace, mobileSidebarOpen } = this.state;
-    if (namespaceFilter !== "") {
+    if (namespaceFilter !== '') {
       namespaces = namespaces.filter(ns => {
         return ns.name.match(namespaceFilter);
       });
