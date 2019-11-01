@@ -18,13 +18,14 @@ const (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
+	if !TestHelper.ExternalIssuer() {
+		fmt.Fprintln(os.Stdout, "Skiping as --external-issuer=false")
+		os.Exit(0)
+	}
 	os.Exit(m.Run())
 }
 
 func TestInstallApp(t *testing.T) {
-	if !TestHelper.ExternalIssuer() {
-		t.Skip("Skiping as --external-issuer=false")
-	}
 	out, _, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/external_issuer_application.yaml")
 	if err != nil {
 		t.Fatalf("linkerd inject command failed\n%s", out)
@@ -72,9 +73,6 @@ func checkAppWoks(t *testing.T) error {
 }
 
 func TestAppWorksBeforeCertRotation(t *testing.T) {
-	if !TestHelper.ExternalIssuer() {
-		t.Skip("Skiping as --external-issuer=false")
-	}
 	err := checkAppWoks(t)
 	if err != nil {
 		t.Fatalf("Received error while ensuring test app works (before cert rotation): %s", err)
@@ -82,9 +80,6 @@ func TestAppWorksBeforeCertRotation(t *testing.T) {
 }
 
 func TestRotateExternalCerts(t *testing.T) {
-	if !TestHelper.ExternalIssuer() {
-		t.Skip("Skiping as --external-issuer=false")
-	}
 	// change issuer secret
 	secretResource, err := testutil.ReadFile("testdata/issuer_secret_2.yaml")
 	if err != nil {
@@ -99,10 +94,6 @@ func TestRotateExternalCerts(t *testing.T) {
 }
 
 func TestIdentitiyServiceReloadsIssuerCert(t *testing.T) {
-	if !TestHelper.ExternalIssuer() {
-		t.Skip("Skiping as --external-issuer=false")
-	}
-
 	// check that the identity service has received an IssuerUpdated event
 	err := TestHelper.RetryFor(90*time.Second, func() error {
 		out, err := TestHelper.Kubectl("",
@@ -146,9 +137,6 @@ func TestEnsureNewCSRSAreServed(t *testing.T) {
 }
 
 func TestAppWorksAfterCertRotation(t *testing.T) {
-	if !TestHelper.ExternalIssuer() {
-		t.Skip("Skiping as --external-issuer=false")
-	}
 	err := checkAppWoks(t)
 	if err != nil {
 		t.Fatalf("Received error while ensuring test app works (after cert rotation): %s", err)
