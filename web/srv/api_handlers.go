@@ -21,6 +21,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/pkg/tap"
 	log "github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 )
 
 // Control Frame payload size can be no bigger than 125 bytes. 2 bytes are
@@ -357,4 +359,47 @@ func (h *handler) handleAPICheck(w http.ResponseWriter, req *http.Request, p htt
 		"success": success,
 		"results": results,
 	})
+}
+
+func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	namespace := p.ByName("namespace")
+	resourceType := p.ByName("resource-type")
+	resourceName := p.ByName("resource-name")
+
+	var resource interface{}
+	var err error
+	options := metav1.GetOptions{}
+	switch resourceType {
+	case k8s.CronJob:
+		resource, err = h.k8sAPI.BatchV1beta1().CronJobs(namespace).Get(resourceName, options)
+	case k8s.DaemonSet:
+		resource, err = h.k8sAPI.AppsV1().DaemonSets(namespace).Get(resourceName, options)
+	case k8s.Deployment:
+		resource, err = h.k8sAPI.AppsV1().Deployments(namespace).Get(resourceName, options)
+	case k8s.Job:
+		resource, err = h.k8sAPI.BatchV1().Jobs(namespace).Get(resourceName, options)
+	case k8s.Pod:
+		resource, err = h.k8sAPI.CoreV1().Pods(namespace).Get(resourceName, options)
+	case k8s.ReplicationController:
+		resource, err = h.k8sAPI.CoreV1().ReplicationControllers(namespace).Get(resourceName, options)
+	case k8s.ReplicaSet:
+		resource, err = h.k8sAPI.AppsV1().ReplicaSets(namespace).Get(resourceName, options)
+	case k8s.TrafficSplit:
+		resource, err = h.k8sAPI.TsClient.SplitV1alpha1().TrafficSplits(namespace).Get(resourceName, options)
+	default:
+		renderJSONError(w, errors.New("Invalid resource type: "+resourceType), http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	resourceDefinition, err := yaml.Marshal(resource)
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/yaml")
+	w.Write(resourceDefinition)
 }
