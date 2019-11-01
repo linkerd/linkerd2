@@ -7,7 +7,7 @@ EnableH2Upgrade: true
 ImagePullPolicy: &image_pull_policy IfNotPresent
 
 # control plane version. See Proxy section for proxy version
-LinkerdVersion: &linkerd_version edge-19.10.4
+LinkerdVersion: &linkerd_version edge-19.10.5
 
 Namespace: linkerd
 OmitWebhookSideEffects: false
