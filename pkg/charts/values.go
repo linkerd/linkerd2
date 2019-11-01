@@ -150,19 +150,7 @@ type (
 
 	// Dashboard has the Helm variables for the web dashboard
 	Dashboard struct {
-		Replicas              int32
-		SessionAffinity       string
-		SessionAffinityConfig *SessionAffinityConfig
-	}
-
-	// SessionAffinityConfig is a field of *Dashboard
-	SessionAffinityConfig struct {
-		ClientIP *ClientIP
-	}
-
-	// ClientIP is a field of *SessionAffinityConfig
-	ClientIP struct {
-		TimeoutSeconds int32
+		Replicas int32
 	}
 
 	// Identity contains the fields to set the identity variables in the proxy

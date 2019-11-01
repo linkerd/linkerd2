@@ -51,13 +51,7 @@ func TestNewValues(t *testing.T) {
 		},
 
 		Dashboard: &Dashboard{
-			Replicas:        1,
-			SessionAffinity: "ClientIP",
-			SessionAffinityConfig: &SessionAffinityConfig{
-				ClientIP: &ClientIP{
-					TimeoutSeconds: 3600,
-				},
-			},
+			Replicas: 1,
 		},
 
 		Identity: &Identity{

@@ -120,13 +120,7 @@ func TestRender(t *testing.T) {
 			},
 		},
 		Dashboard: &charts.Dashboard{
-			Replicas:        1,
-			SessionAffinity: "ClientIP",
-			SessionAffinityConfig: &charts.SessionAffinityConfig{
-				ClientIP: &charts.ClientIP{
-					TimeoutSeconds: 3600,
-				},
-			},
+			Replicas: 1,
 		},
 	}
 

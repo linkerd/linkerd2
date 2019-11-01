@@ -1444,10 +1444,6 @@ spec:
   - name: admin-http
     port: 9994
     targetPort: 9994
-  sessionAffinity: ClientIP
-  sessionAffinityConfig:
-    clientIP:
-      timeoutSeconds: 3600
 ---
 apiVersion: apps/v1
 kind: Deployment

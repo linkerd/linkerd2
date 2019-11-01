@@ -22,11 +22,6 @@ ControllerUID: 2103
 # web dashboard configuration
 Dashboard:
   Replicas: 1
-  # enable SessionAffinity if Replicas is bigger than 1
-  SessionAffinity: "ClientIP"
-  SessionAffinityConfig:
-    ClientIP:
-      TimeoutSeconds: 3600
 
 # identity configuration
 Identity:
