@@ -126,6 +126,67 @@ const formatTapLatency = str => {
   return formatLatencySec(str.replace("s", ""));
 };
 
+const headersStyles = {
+  headerName: {
+    fontSize: 12,
+    marginTop: "5px",
+  },
+};
+
+const HeadersContentBase = ({headers, classes}) => {
+  return (
+    <React.Fragment>
+      {headers.map(header => {
+        return (
+          <Typography
+            key={`${header.name}_${header.valueStr}`}
+            component="span"
+            variant="inherit"
+            color="textSecondary">
+            <Typography
+              className={classes.headerName}
+              component="span"
+              variant="inherit"
+              color="textPrimary">
+              {header.name}
+            </Typography>
+
+            {header.valueStr}
+          </Typography>
+        );
+      })}
+    </React.Fragment>
+  );
+};
+
+HeadersContentBase.propTypes = {
+  classes: PropTypes.shape({}).isRequired,
+  headers: PropTypes.arrayOf(PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    valueStr: PropTypes.string.isRequired,
+  })).isRequired,
+};
+
+HeadersContentBase.defaultProps = {
+  headers: [],
+};
+
+const HeadersContentDisplay = withStyles(headersStyles)(HeadersContentBase);
+
+const headersDisplay = (title, value) => {
+  if (!value) {
+    return null;
+  }
+
+  return (
+    <ListItem disableGutters>
+      <ListItemText
+        primary={title}
+        secondary={"headers" in value ? <HeadersContentDisplay headers={value.headers} /> : "-"} />
+    </ListItem>
+  );
+};
+
 const itemDisplay = (title, value) => {
   return (
     <ListItem disableGutters>
@@ -143,6 +204,7 @@ const requestInitSection = d => (
       {itemDisplay("Path", _get(d, "requestInit.http.requestInit.path"))}
       {itemDisplay("Scheme", _get(d, "requestInit.http.requestInit.scheme.registered"))}
       {itemDisplay("Method", _get(d, "requestInit.http.requestInit.method.registered"))}
+      {headersDisplay("Headers", _get(d, "requestInit.http.requestInit.headers"))}
     </List>
   </React.Fragment>
 );
@@ -154,6 +216,7 @@ const responseInitSection = d => _isEmpty(d.responseInit) ? null : (
     <List dense>
       {itemDisplay("HTTP Status", _get(d, "responseInit.http.responseInit.httpStatus"))}
       {itemDisplay("Latency", formatTapLatency(_get(d, "responseInit.http.responseInit.sinceRequestInit")))}
+      {headersDisplay("Headers", _get(d, "responseInit.http.responseInit.headers"))}
     </List>
   </React.Fragment>
 );

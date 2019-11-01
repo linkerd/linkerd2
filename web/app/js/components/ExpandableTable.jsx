@@ -105,6 +105,7 @@ class ExpandableTable extends React.Component {
         </Table>
         <Dialog
           maxWidth="md"
+          fullWidth
           open={this.state.open}
           onClose={this.handleDialogClose}
           aria-labelledby="form-dialog-title">
