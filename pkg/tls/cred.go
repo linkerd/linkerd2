@@ -165,13 +165,27 @@ func (cred *Cred) SignCrt(template *x509.Certificate) (Crt, error) {
 	return crt, nil
 }
 
-// ReadPEMCreds reads PEM-encoded credentials from the named files.
-func ReadPEMCreds(keyPath, crtPath string) (*Cred, error) {
-	keyb, err := ioutil.ReadFile(keyPath)
+// ValidateAndCreateCreds reads PEM-encoded credentials from strings and validates them
+func ValidateAndCreateCreds(crt, key string) (*Cred, error) {
+	k, err := DecodePEMKey(key)
 	if err != nil {
 		return nil, err
 	}
-	key, err := DecodePEMKey(string(keyb))
+
+	c, err := DecodePEMCrt(crt)
+	if err != nil {
+		return nil, err
+	}
+
+	if !k.matchesCertificate(c.Certificate) {
+		return nil, errors.New("tls: Public and private key do not match")
+	}
+	return &Cred{PrivateKey: k, Crt: *c}, nil
+}
+
+// ReadPEMCreds reads PEM-encoded credentials from the named files.
+func ReadPEMCreds(keyPath, crtPath string) (*Cred, error) {
+	keyb, err := ioutil.ReadFile(keyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -180,14 +194,8 @@ func ReadPEMCreds(keyPath, crtPath string) (*Cred, error) {
 	if err != nil {
 		return nil, err
 	}
-	crt, err := DecodePEMCrt(string(crtb))
-	if err != nil {
-		return nil, err
-	}
-	if !key.matchesCertificate(crt.Certificate) {
-		return nil, errors.New("tls: Public and private key do not match")
-	}
-	return &Cred{PrivateKey: key, Crt: *crt}, nil
+
+	return ValidateAndCreateCreds(string(crtb), string(keyb))
 }
 
 // DecodePEMCrt decodes PEM-encoded certificates from leaf to root.

@@ -50,6 +50,7 @@ type (
 		DisableHeartBeat            bool
 		HeartbeatSchedule           string
 		InstallNamespace            bool
+		ControlPlaneTracing         bool
 		Configs                     ConfigJSONs
 		Identity                    *Identity
 		ProxyInjector               *ProxyInjector
@@ -156,6 +157,7 @@ type (
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
+		Scheme              string
 		ClockSkewAllowance  string
 		IssuanceLifetime    string
 		CrtExpiryAnnotation string

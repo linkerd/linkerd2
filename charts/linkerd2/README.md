@@ -96,6 +96,7 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 |`ControllerReplicas`                  | Number of replicas for each control plane pod                                                   |`1`|
 |`ControllerUID`                       | User ID for the control plane components                                                        |`2103`|
 |`Identity.Issuer.ClockSkewAllowance`  | Amount of time to allow for clock skew within a Linkerd cluster                                 |`20s`|
+|`Identity.Issuer.Scheme`              | Which scheme is used for the identity issuer secret format                                      |`linkerd.io/tls`|
 |`Identity.Issuer.CrtExpiry`           | Expiration timestamp for the issuer certificate. It must be provided during install             ||
 |`Identity.Issuer.CrtExpiryAnnotation` | Annotation used to identity the issuer certificate expiration timestamp. Do not edit.           |`linkerd.io/identity-issuer-expiry`|
 |`Identity.Issuer.IssuanceLifeTime`    | Amount of time for which the Identity issuer should certify identity                            |`86400s`|
@@ -121,6 +122,8 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 |`Proxy.Resources.CPU.Request`         | Amount of CPU units that the proxy requests                                                     ||
 |`Proxy.Resources.Memory.Limit`        | Maximum amount of memory that the proxy can use                                                 ||
 |`Proxy.Resources.Memory.Request`      | Amount of memory that the proxy requests                                                        ||
+|`Proxy.Trace.CollectorSvcAccount`     | Service account associated with the Trace collector instance                                    ||
+|`Proxy.Trace.CollectorSvcAddr`        | Collector Service address for the proxies to send Trace Data                                    ||
 |`Proxy.UID`                           | User id under which the proxy runs                                                              |`2102`|
 |`ProxyInit.IgnoreInboundPorts`        | Inbound ports the proxy should ignore                                                           ||
 |`ProxyInit.IgnoreOutboundPorts`       | Outbound ports the proxy should ignore                                                          ||

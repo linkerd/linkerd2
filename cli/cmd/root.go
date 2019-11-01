@@ -178,25 +178,27 @@ func getSuccessRate(success, failure uint64) float64 {
 // install and inject commands. All fields in this struct should have
 // corresponding flags added in the addProxyConfigFlags func later in this file.
 type proxyConfigOptions struct {
-	proxyVersion           string
-	proxyImage             string
-	initImage              string
-	initImageVersion       string
-	dockerRegistry         string
-	imagePullPolicy        string
-	ignoreInboundPorts     []uint
-	ignoreOutboundPorts    []uint
-	proxyUID               int64
-	proxyLogLevel          string
-	proxyInboundPort       uint
-	proxyOutboundPort      uint
-	proxyControlPort       uint
-	proxyAdminPort         uint
-	proxyCPURequest        string
-	proxyMemoryRequest     string
-	proxyCPULimit          string
-	proxyMemoryLimit       string
-	enableExternalProfiles bool
+	proxyVersion             string
+	proxyImage               string
+	initImage                string
+	initImageVersion         string
+	dockerRegistry           string
+	imagePullPolicy          string
+	ignoreInboundPorts       []uint
+	ignoreOutboundPorts      []uint
+	proxyUID                 int64
+	proxyLogLevel            string
+	proxyInboundPort         uint
+	proxyOutboundPort        uint
+	proxyControlPort         uint
+	proxyAdminPort           uint
+	proxyCPURequest          string
+	proxyMemoryRequest       string
+	proxyCPULimit            string
+	proxyMemoryLimit         string
+	enableExternalProfiles   bool
+	traceCollector           string
+	traceCollectorSvcAccount string
 	// ignoreCluster is not validated by validate().
 	ignoreCluster   bool
 	disableIdentity bool

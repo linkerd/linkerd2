@@ -57,12 +57,15 @@ func TestNewValues(t *testing.T) {
 				IssuanceLifetime:    "86400s",
 				CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
 				TLS:                 &TLS{},
+				Scheme:              "linkerd.io/tls",
 			},
 		},
 
 		ProxyInjector:    &ProxyInjector{TLS: &TLS{}},
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
 		Tap:              &Tap{TLS: &TLS{}},
+
+		ControlPlaneTracing: false,
 
 		Proxy: &Proxy{
 			EnableExternalProfiles: false,

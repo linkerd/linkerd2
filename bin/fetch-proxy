@@ -1,18 +1,18 @@
-#!/bin/bash
+#!/bin/sh
 
 # If the first argument to this script is "latest" or unset, it fetches the
-# latest proxy binary via build.l5d.io/linkerd2-proxy/latest.txt. If it's set to
-# a commit sha from the master branch of the linkerd2-proxy repo, it will fetch
-# the binary matching that sha instead.
+# latest proxy binary from the linkerd2-proxy github releases. If it's set to
+# a linkerd2-proxy version number (such as v2.76.0), it will fetch the binary
+# matching that version number instead.
 
 set -eu
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
 builddir="$rootdir/target/proxy"
 
-version="${1:-latest}"
-if [ "$version" == "latest" ]; then
+version=${1:-latest}
+if [ "$version" = latest ]; then
   version=$(curl -sL https://api.github.com/repos/linkerd/linkerd2-proxy/releases/latest |jq -r .tag_name | sed 's,^release/,,')
 fi
 
@@ -30,7 +30,7 @@ tar -zxvf "$pkgfile" >&2
 expected=$(awk '{print $1}' "$shafile")
 computed=$(sha256sum "$pkgfile" | awk '{print $1}')
 if [ "$computed" != "$expected" ]; then
-  echo "sha mismatch" >&2
+  echo 'sha mismatch' >&2
   exit 1
 fi
 

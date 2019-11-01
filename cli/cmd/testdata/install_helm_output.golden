@@ -32,6 +32,12 @@ rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
   verbs: ["create"]
+- apiGroups: ["extensions"]
+  resources: ["deployments"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -563,7 +569,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
-  resources: ["pods", "services", "replicationcontrollers", "namespaces"]
+  resources: ["pods", "services", "replicationcontrollers", "namespaces", "nodes"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
@@ -798,7 +804,8 @@ data:
         "trustDomain": "test.trust.domain",
         "trustAnchorsPem": "test-trust-anchor",
         "issuanceLifeTime": "",
-        "clockSkewAllowance": "20s"
+        "clockSkewAllowance": "20s",
+        "scheme": "linkerd.io/tls"
       },
       "autoInjectContext": null,
       "omitWebhookSideEffects": false,
@@ -1640,6 +1647,7 @@ spec:
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -controller-namespace=linkerd
         - -log-level=info
+        - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|\[::1\])(:\d+)?$
         image: gcr.io/linkerd-io/web:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

@@ -76,6 +76,7 @@ message IdentityContext {
 
   google.protobuf.Duration issuance_lifetime = 3;
   google.protobuf.Duration clock_skew_allowance = 4;
+  string scheme = 5;
 }
 
 message LogLevel {

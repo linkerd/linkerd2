@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -eu
 
@@ -6,23 +6,28 @@ set -eu
 # Note: This script is used by Brew when running `brew install linkerd`:
 # https://github.com/Homebrew/homebrew-core/pull/36957
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
-. $bindir/_tag.sh
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+. "$bindir"/_tag.sh
 
-current_platform=$(uname)
-host_platform="windows"
-if [ "${current_platform}" = 'Darwin' ]; then
-    host_platform="darwin"
-elif [ "${current_platform}" = 'Linux' ]; then
-    host_platform="linux"
-fi
+case $(uname) in
+	Darwin)
+		host_platform=darwin
+		;;
+	Linux)
+		host_platform=linux
+		;;
+	*)
+		host_platform=windows
+		;;
+esac
 
 (
-    cd $rootdir
+    cd "$rootdir"
     cd "$(pwd -P)"
     target="target/cli/${host_platform}/linkerd"
     GO111MODULE=on go generate -mod=readonly ./pkg/charts/static # TODO: `go generate` does not honor -mod=readonly
-    GO111MODULE=on CGO_ENABLED=0 go build -o $target -tags prod -mod=readonly -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$($bindir/root-tag)" ./cli
+    root_tag=$("$bindir"/root-tag)
+    GO111MODULE=on CGO_ENABLED=0 go build -o $target -tags prod -mod=readonly -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$root_tag" ./cli
     echo "$target"
 )

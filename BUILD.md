@@ -142,6 +142,23 @@ bin/linkerd -n emojivoto stat deployments
 bin/linkerd -n emojivoto tap deploy voting
 ```
 
+#### Deploying Control Plane components with Tracing
+
+Control Plane components have the `trace-collector` flag used to enable [Distributed Tracing](https://opentracing.io/docs/overview/what-is-tracing/) for development purposes. It can be enabled globally i.e Control plane components and their proxies by using the `--control-plane-tracing` installation flag.
+
+This will configure all the components to send the traces at `linkerd-collector.{{.Namespace}}.svc.{{.ClusterDomain}}:55678`
+
+```bash
+
+# install Linkerd with tracing
+linkerd install --control-plane-tracing | kubectl apply -f -
+
+# install OpenCensus collector and Jaeger collector to collect traces
+linkerd inject https://gist.githubusercontent.com/Pothulapati/245842ce7f319e8bcd02521460684d6f/raw/52c869c58b07b17caeed520aa91380c2230d6e0c/linkerd-tracing.yaml --manual | kubectl apply -f -
+```
+
+*Note:* Collector instance has to be injected, for the proxy spans to show up.
+
 ### Go
 
 #### Go modules and dependencies

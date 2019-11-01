@@ -3,15 +3,18 @@
 ### Linkerd Namespace
 ###
 ---
-kind: Namespace
 apiVersion: v1
+kind: Namespace
 metadata:
-  name: linkerd
   annotations:
     linkerd.io/inject: disabled
+  creationTimestamp: null
   labels:
-    linkerd.io/is-control-plane: "true"
     config.linkerd.io/admission-webhooks: disabled
+    linkerd.io/is-control-plane: "true"
+  name: linkerd
+spec: {}
+status: {}
 ---
 ###
 ### Identity Controller Service RBAC
@@ -28,6 +31,12 @@ rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
   verbs: ["create"]
+- apiGroups: ["extensions"]
+  resources: ["deployments"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -537,7 +546,7 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
-  resources: ["pods", "services", "replicationcontrollers", "namespaces"]
+  resources: ["pods", "services", "replicationcontrollers", "namespaces", "nodes"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "apps"]
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]

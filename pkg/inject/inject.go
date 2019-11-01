@@ -2,6 +2,7 @@ package inject
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -260,6 +261,8 @@ func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
 		return &appsv1.StatefulSet{}
 	case k8s.Pod:
 		return &corev1.Pod{}
+	case k8s.Namespace:
+		return &corev1.Namespace{}
 	}
 
 	return nil
@@ -368,6 +371,17 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyStatefulSetLabel] = v.Name
 		conf.complete(&v.Spec.Template)
+
+	case *corev1.Namespace:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
+			return err
+		}
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		// If annotations not present previously
+		if conf.workload.Meta.Annotations == nil {
+			conf.workload.Meta.Annotations = map[string]string{}
+		}
 
 	case *corev1.Pod:
 		if err := yaml.Unmarshal(bytes, v); err != nil {
@@ -567,7 +581,7 @@ func (conf *ResourceConfig) trace() *charts.Trace {
 
 	var ns string
 	if len(hostname) == 1 {
-		ns = conf.workload.Meta.Namespace
+		ns = conf.pod.meta.Namespace
 	} else {
 		ns = hostname[1]
 	}
@@ -868,4 +882,25 @@ func sortedKeys(m map[string]string) []string {
 	sort.Strings(keys)
 
 	return keys
+}
+
+//IsNamespace checks if a given config is a workload of Kind namespace
+func (conf *ResourceConfig) IsNamespace() bool {
+	return strings.ToLower(conf.workload.metaType.Kind) == k8s.Namespace
+}
+
+//InjectNamespace annotates any given Namespace config
+func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]byte, error) {
+	ns, ok := conf.workload.obj.(*corev1.Namespace)
+	if !ok {
+		return nil, errors.New("can't inject namespace. Type assertion failed")
+	}
+	ns.Annotations[k8s.ProxyInjectAnnotation] = k8s.ProxyInjectEnabled
+	//For overriding annotations
+	if len(annotations) > 0 {
+		for annotation, value := range annotations {
+			ns.Annotations[annotation] = value
+		}
+	}
+	return yaml.Marshal(ns)
 }

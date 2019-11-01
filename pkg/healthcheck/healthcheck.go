@@ -443,6 +443,20 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
+					description: "can create Secrets",
+					hintAnchor:  "pre-k8s",
+					check: func(context.Context) error {
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "secrets")
+					},
+				},
+				{
+					description: "can read Secrets",
+					hintAnchor:  "pre-k8s",
+					check: func(context.Context) error {
+						return hc.checkCanGet(hc.ControlPlaneNamespace, "", "v1", "secrets")
+					},
+				},
+				{
 					description: "no clock skew detected",
 					hintAnchor:  "pre-k8s-clock-skew",
 					check: func(context.Context) error {
@@ -1331,7 +1345,7 @@ func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error
 	return pods, nil
 }
 
-func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
+func (hc *HealthChecker) checkCanPerformAction(verb, namespace, group, version, resource string) error {
 	if hc.kubeAPI == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
@@ -1340,12 +1354,20 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 	return k8s.ResourceAuthz(
 		hc.kubeAPI,
 		namespace,
-		"create",
+		verb,
 		group,
 		version,
 		resource,
 		"",
 	)
+}
+
+func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
+	return hc.checkCanPerformAction("create", namespace, group, version, resource)
+}
+
+func (hc *HealthChecker) checkCanGet(namespace, group, version, resource string) error {
+	return hc.checkCanPerformAction("get", namespace, group, version, resource)
 }
 
 func (hc *HealthChecker) checkCapability(cap string) error {

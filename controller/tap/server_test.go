@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/addr"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -396,6 +397,229 @@ status:
 				}
 			}
 
+		})
+	}
+}
+
+func TestHydrateIPLabels(t *testing.T) {
+	expectations := []struct {
+		k8sRes      []string
+		requestedIP string
+		labels      map[string]string
+	}{
+		{
+			// Requested IP that doesn't match node or any pod
+			k8sRes: []string{`
+apiVersion: v1
+kind: Node
+metadata:
+  name: node1
+status:
+  addresses:
+  - address: 1.2.3.4
+    type: InternalIP
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running
+  podIP: 5.6.7.8
+`,
+			},
+			requestedIP: "10.20.30.40",
+			labels:      map[string]string{},
+		},
+		{
+			// Requested IP that matches node only
+			k8sRes: []string{`
+apiVersion: v1
+kind: Node
+metadata:
+  name: node1
+status:
+  addresses:
+  - address: 1.2.3.4
+    type: InternalIP
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running
+  podIP: 5.6.7.8
+`,
+			},
+			requestedIP: "1.2.3.4",
+			labels:      map[string]string{"node": "node1"},
+		},
+		{
+			// Requested IP that matches node and pod
+			k8sRes: []string{`
+apiVersion: v1
+kind: Node
+metadata:
+  name: node1
+status:
+  addresses:
+  - address: 1.2.3.4
+    type: InternalIP
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running
+  podIP: 1.2.3.4
+`,
+			},
+			requestedIP: "1.2.3.4",
+			labels:      map[string]string{"node": "node1"},
+		},
+		{
+			// Requested IP that doesn't match node and matches exactly one pod
+			k8sRes: []string{`
+apiVersion: v1
+kind: Node
+metadata:
+  name: node1
+status:
+  addresses:
+  - address: 1.2.3.4
+    type: InternalIP
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running
+  podIP: 5.6.7.8
+`,
+			},
+			requestedIP: "5.6.7.8",
+			labels: map[string]string{
+				"namespace":      "emojivoto",
+				"pod":            "emojivoto-meshed",
+				"serviceaccount": "default",
+			},
+		},
+		{
+			// Requested IP that doesn't match node and matches exactly one running pod and one finished pod
+			k8sRes: []string{`
+apiVersion: v1
+kind: Node
+metadata:
+  name: node1
+status:
+  addresses:
+  - address: 1.2.3.4
+    type: InternalIP
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running
+  podIP: 5.6.7.8
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Finished
+  podIP: 5.6.7.8
+`,
+			},
+			requestedIP: "5.6.7.8",
+			labels: map[string]string{
+				"namespace":      "emojivoto",
+				"pod":            "emojivoto-meshed",
+				"serviceaccount": "default",
+			},
+		},
+		{
+			// Requested IP that doesn't match node and matches two running pods
+			k8sRes: []string{`
+apiVersion: v1
+kind: Node
+metadata:
+  name: node1
+status:
+  addresses:
+  - address: 1.2.3.4
+    type: InternalIP
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running
+  podIP: 5.6.7.8
+`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed-2
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+status:
+  phase: Running
+  podIP: 5.6.7.8
+`,
+			},
+			requestedIP: "5.6.7.8",
+			labels:      map[string]string{},
+		},
+	}
+
+	for i, exp := range expectations {
+		exp := exp // pin
+		t.Run(fmt.Sprintf("%d: Returns expected response", i), func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(exp.k8sRes...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+			s := NewGrpcTapServer(4190, "controller-ns", "cluster.local", k8sAPI)
+			k8sAPI.Sync()
+
+			labels := make(map[string]string)
+			ip, err := addr.ParsePublicIPV4(exp.requestedIP)
+			if err != nil {
+				t.Fatalf("Error parsing IP %s: %s", exp.requestedIP, err)
+			}
+			s.hydrateIPLabels(ip, labels)
+			if !reflect.DeepEqual(labels, exp.labels) {
+				t.Fatalf("Unexpected labels: [%#v], expected: [%#v]", labels, exp.labels)
+			}
 		})
 	}
 }

@@ -3,24 +3,20 @@
 set -eu
 
 # When set, causes docker's build output to be emitted to stderr.
-export DOCKER_TRACE="${DOCKER_TRACE:-}"
-export RUST_LOG="${RUST_LOG:-}"
+export DOCKER_TRACE=${DOCKER_TRACE:-}
+export RUST_LOG=${RUST_LOG:-}
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
 
-output="/dev/null"
 if [ -n "$DOCKER_TRACE" ]; then
-    output="/dev/stderr"
+	output=/dev/stderr
+else
+	output=/dev/null
 fi
 
-output="/dev/null"
-if [ -n "$DOCKER_TRACE" ]; then
-    output="/dev/stderr"
-fi
-
-docker build -f $rootdir/proxy/Dockerfile . \
+docker build -f "$rootdir/proxy/Dockerfile" . \
     --target build \
     -t proxy-build \
-    --build-arg=PROXY_UNOPTIMIZED=1 > "$output"
+    --build-arg=PROXY_UNOPTIMIZED=1 > $output
 docker run --rm -it proxy-build env RUST_LOG="$RUST_LOG" cargo test "$@"

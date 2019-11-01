@@ -301,6 +301,55 @@ func TestValidate(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("Rejects identity cert files data when external issuer is set", func(t *testing.T) {
+
+		options, err := testInstallOptions()
+		options.identityOptions.crtPEMFile = ""
+		options.identityOptions.keyPEMFile = ""
+		options.identityOptions.trustPEMFile = ""
+
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+
+		withoutCertDataOptions := options.identityOptions
+		withoutCertDataOptions.identityExternalIssuer = true
+		withCrtFile := *withoutCertDataOptions
+		withCrtFile.crtPEMFile = "crt-file"
+		withTrustAnchorsFile := *withoutCertDataOptions
+		withTrustAnchorsFile.trustPEMFile = "ta-file"
+		withKeyFile := *withoutCertDataOptions
+		withKeyFile.keyPEMFile = "key-file"
+
+		testCases := []struct {
+			input         *installIdentityOptions
+			expectedError string
+		}{
+			{withoutCertDataOptions, ""},
+			{&withCrtFile, "--identity-issuer-certificate-file must not be specified if --identity-external-issuer=true"},
+			{&withTrustAnchorsFile, "--identity-trust-anchors-file must not be specified if --identity-external-issuer=true"},
+			{&withKeyFile, "--identity-issuer-key-file must not be specified if --identity-external-issuer=true"},
+		}
+
+		for _, tc := range testCases {
+			err = tc.input.validate()
+
+			if tc.expectedError != "" {
+				if err == nil {
+					t.Fatal("Expected error, got nothing")
+				}
+				if err.Error() != tc.expectedError {
+					t.Fatalf("Expected error string\"%s\", got \"%s\"", tc.expectedError, err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Expected no error bu got \"%s\"", err)
+
+				}
+			}
+		}
+	})
 }
 
 func fakeHeartbeatSchedule() string {

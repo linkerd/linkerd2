@@ -2,13 +2,13 @@
 
 set -eu
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
-. $bindir/_docker.sh
-. $bindir/_tag.sh
+. "$bindir"/_docker.sh
+. "$bindir"/_tag.sh
 
 docker_image() {
-    repo="$(docker_repo "$1")"
+    repo=$(docker_repo "$1")
     docker image ls \
         --format "{{printf \"%-16s %-10s\" \"$1\" \"${2}\"}} {{.Size | printf \"%6s\"}}  {{.ID}}  {{.CreatedAt}}" \
         "${repo}:${2}"
@@ -16,8 +16,8 @@ docker_image() {
 
 tag=$(head_root_tag)
 
-for img in cli-bin cni-plugin controller debug grafana proxy web  ; do
-    docker_image "$img" "$tag"
+for img in cli-bin cni-plugin controller debug grafana proxy web ; do
+    docker_image $img "$tag"
 done
 
-docker_image go-deps      "$(go_deps_sha)"
+docker_image go-deps "$(go_deps_sha)"

@@ -4,7 +4,7 @@
 ###
 ### Identity Controller Service
 ###
-{{ if .Identity.Issuer -}}
+{{ if and (.Identity.Issuer) (eq .Identity.Issuer.Scheme "linkerd.io/tls") -}}
 ---
 kind: Secret
 apiVersion: v1
@@ -82,6 +82,7 @@ spec:
       - args:
         - identity
         - -log-level={{.ControllerLogLevel}}
+        {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
         imagePullPolicy: {{.ImagePullPolicy}}
         livenessProbe:

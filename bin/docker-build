@@ -1,22 +1,22 @@
-#!/bin/bash
+#!/bin/sh
 
 set -eu
 
 if [ $# -ne 0 ]; then
-    echo "no arguments allowed for $(basename $0), given: $@" >&2
+    echo "no arguments allowed for ${0##*/}, given: $*" >&2
     exit 64
 fi
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+bindir=$( cd "${0%/*}" && pwd )
 
-$bindir/docker-build-proxy
-$bindir/docker-build-controller
-$bindir/docker-build-web
-$bindir/docker-build-cni-plugin
-$bindir/docker-build-debug
+"$bindir"/docker-build-proxy
+"$bindir"/docker-build-controller
+"$bindir"/docker-build-web
+"$bindir"/docker-build-cni-plugin
+"$bindir"/docker-build-debug
 if [ -z "${LINKERD_LOCAL_BUILD_CLI:-}" ]; then
-    $bindir/docker-build-cli-bin
+    "$bindir"/docker-build-cli-bin
 else
-    $bindir/build-cli-bin
+    "$bindir"/build-cli-bin
 fi
-$bindir/docker-build-grafana
+"$bindir"/docker-build-grafana
