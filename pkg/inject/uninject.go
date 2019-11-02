@@ -11,6 +11,11 @@ import (
 // Uninject removes from the workload in conf the init and proxy containers,
 // the TLS volumes and the extra annotations/labels that were added
 func (conf *ResourceConfig) Uninject(report *Report) ([]byte, error) {
+	if conf.IsNamespace() {
+		uninjectObjectMeta(conf.workload.Meta, report)
+		return conf.YamlMarshalObj()
+	}
+
 	if conf.pod.spec == nil {
 		return nil, nil
 	}
