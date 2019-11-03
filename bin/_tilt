@@ -22,6 +22,7 @@ controller = {
   "name": "controller",
   "deps": ["./controller", "./pkg"],
   "image": "gcr.io/linkerd-io/controller",
+  "unit_tests": ["./controller", "./pkg"],
 }
 
 grafana = {
