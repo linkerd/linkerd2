@@ -340,33 +340,3 @@ func IsTapDisabled(pod *corev1.Pod) bool {
 	}
 	return false
 }
-
-// GetAnnotationsDocs return map with annotations and its descriptions
-// description can be omitted so it will be taken from corresponding cli flag
-func GetAnnotationsDocs() map[string]string {
-	return map[string]string{
-		ProxyImageAnnotation:                    "",
-		ProxyImagePullPolicyAnnotation:          "",
-		ProxyInitImageAnnotation:                "",
-		ProxyInitImageVersionAnnotation:         "",
-		ProxyControlPortAnnotation:              "",
-		ProxyIgnoreInboundPortsAnnotation:       "",
-		ProxyIgnoreOutboundPortsAnnotation:      "",
-		ProxyInboundPortAnnotation:              "",
-		ProxyAdminPortAnnotation:                "",
-		ProxyOutboundPortAnnotation:             "",
-		ProxyCPURequestAnnotation:               "",
-		ProxyMemoryRequestAnnotation:            "",
-		ProxyCPULimitAnnotation:                 "",
-		ProxyMemoryLimitAnnotation:              "",
-		ProxyUIDAnnotation:                      "",
-		ProxyLogLevelAnnotation:                 "",
-		ProxyEnableExternalProfilesAnnotation:   "",
-		ProxyVersionOverrideAnnotation:          "",
-		ProxyDisableIdentityAnnotation:          "",
-		ProxyDisableTapAnnotation:               "",
-		ProxyEnableDebugAnnotation:              "",
-		ProxyTraceCollectorSvcAddrAnnotation:    "Can be used to enable tracing on a proxy. It takes the collector service name (e.g. oc-collector.tracing:55678) as its value",
-		ProxyTraceCollectorSvcAccountAnnotation: "Can be used to specify the service account associated with the trace collector. It is used to create the service's mTLS identity",
-	}
-}

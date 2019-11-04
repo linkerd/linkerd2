@@ -52,7 +52,7 @@ func newCmdDoc() *cobra.Command {
 				return err
 			}
 
-			annotations := generateAnnotationsDocs(k8s.GetAnnotationsDocs(), cmdList)
+			annotations := generateAnnotationsDocs()
 
 			ref := references{
 				CLIReference:         cmdList,
@@ -72,7 +72,7 @@ func newCmdDoc() *cobra.Command {
 	return cmd
 }
 
-// generateCliDocs takes a command and recursively walks the tree of commands,
+// generateCLIDocs takes a command and recursively walks the tree of commands,
 // adding each as an item to cmdList.
 func generateCLIDocs(cmd *cobra.Command) ([]cmdDoc, error) {
 	var cmdList []cmdDoc
@@ -112,41 +112,100 @@ func generateCLIDocs(cmd *cobra.Command) ([]cmdDoc, error) {
 	return cmdList, nil
 }
 
-// generateAnnotationsDocs takes a labels file, parse it, iterate over nodes,
-// recognize annotations, adding them to annotationsList.
-func generateAnnotationsDocs(annotationsMap map[string]string, cmdList []cmdDoc) []annotationDoc {
-	var annotationsList []annotationDoc
-
-	for _, cmd := range cmdList {
-		for _, flag := range cmd.Options {
-			annotationName := fmt.Sprintf("%s/%s", k8s.ProxyConfigAnnotationsPrefix, flag.Name)
-			desc, ok := annotationsMap[annotationName]
-			if !ok {
-				continue
-			}
-
-			if desc != "" {
-				continue
-			}
-
-			annotation := annotationDoc{
-				Name:        annotationName,
-				Description: flag.Usage,
-			}
-
-			annotationsList = append(annotationsList, annotation)
-			delete(annotationsMap, annotationName)
-		}
+// generateAnnotationsDocs make list of annotations and its docs
+func generateAnnotationsDocs() []annotationDoc {
+	return []annotationDoc{
+		{
+			Name:        k8s.ProxyImageAnnotation,
+			Description: "Linkerd proxy container image name",
+		},
+		{
+			Name:        k8s.ProxyImagePullPolicyAnnotation,
+			Description: "Docker image pull policy",
+		},
+		{
+			Name:        k8s.ProxyInitImageAnnotation,
+			Description: "Linkerd init container image name",
+		},
+		{
+			Name:        k8s.ProxyInitImageVersionAnnotation,
+			Description: "Linkerd init container image version",
+		},
+		{
+			Name:        k8s.ProxyControlPortAnnotation,
+			Description: "Proxy port to use for control",
+		},
+		{
+			Name:        k8s.ProxyIgnoreInboundPortsAnnotation,
+			Description: "Ports that should skip the proxy and send directly to the application",
+		},
+		{
+			Name:        k8s.ProxyIgnoreOutboundPortsAnnotation,
+			Description: "Outbound ports that should skip the proxy",
+		},
+		{
+			Name:        k8s.ProxyInboundPortAnnotation,
+			Description: "Proxy port to use for inbound traffic",
+		},
+		{
+			Name:        k8s.ProxyAdminPortAnnotation,
+			Description: "Proxy port to serve metrics on",
+		},
+		{
+			Name:        k8s.ProxyOutboundPortAnnotation,
+			Description: "Proxy port to use for outbound traffic",
+		},
+		{
+			Name:        k8s.ProxyCPURequestAnnotation,
+			Description: "Amount of CPU units that the proxy sidecar requests",
+		},
+		{
+			Name:        k8s.ProxyMemoryRequestAnnotation,
+			Description: "Amount of Memory that the proxy sidecar requests",
+		},
+		{
+			Name:        k8s.ProxyCPULimitAnnotation,
+			Description: "Maximum amount of CPU units that the proxy sidecar can use",
+		},
+		{
+			Name:        k8s.ProxyMemoryLimitAnnotation,
+			Description: "Maximum amount of Memory that the proxy sidecar can use",
+		},
+		{
+			Name:        k8s.ProxyUIDAnnotation,
+			Description: "Run the proxy under this user ID",
+		},
+		{
+			Name:        k8s.ProxyLogLevelAnnotation,
+			Description: "Log level for the proxy",
+		},
+		{
+			Name:        k8s.ProxyEnableExternalProfilesAnnotation,
+			Description: "Enable service profiles for non-Kubernetes services",
+		},
+		{
+			Name:        k8s.ProxyVersionOverrideAnnotation,
+			Description: "Tag to be used for the Linkerd proxy images",
+		},
+		{
+			Name:        k8s.ProxyDisableIdentityAnnotation,
+			Description: "Disables resources from participating in TLS identity",
+		},
+		{
+			Name:        k8s.ProxyDisableTapAnnotation,
+			Description: "Disables resources from being tapped",
+		},
+		{
+			Name:        k8s.ProxyEnableDebugAnnotation,
+			Description: "Inject a debug sidecar for data plane debugging",
+		},
+		{
+			Name:        k8s.ProxyTraceCollectorSvcAddrAnnotation,
+			Description: "Service name of the trace collector. E.g. `oc-collector.tracing:55678`",
+		},
+		{
+			Name:        k8s.ProxyTraceCollectorSvcAccountAnnotation,
+			Description: "The trace collector's service account name. E.g., `tracing-service-account`. If not provided, it will be defaulted to `default`.",
+		},
 	}
-
-	for name, desc := range annotationsMap {
-		annotation := annotationDoc{
-			Name:        name,
-			Description: desc,
-		}
-
-		annotationsList = append(annotationsList, annotation)
-	}
-
-	return annotationsList
 }
