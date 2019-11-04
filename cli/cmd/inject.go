@@ -148,6 +148,11 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	if err != nil {
 		return nil, nil, err
 	}
+
+	if conf.IsControlPlaneComponent() && !rt.injectProxy {
+		return nil, nil, errors.New("--manual must be set when injecting control plane components")
+	}
+
 	reports := []inject.Report{*report}
 
 	if rt.allowNsInject && conf.IsNamespace() {
