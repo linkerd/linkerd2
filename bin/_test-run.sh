@@ -64,6 +64,11 @@ function deep_integration_tests() {
     exit_on_err "error during deep tests"
 }
 
+function custom_domain_integration_tests() {
+    run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace --cluster-domain="custom.domain"
+    exit_on_err "error during install"
+}
+
 #
 # Helper functions.
 #
