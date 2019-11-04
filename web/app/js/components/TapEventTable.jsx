@@ -128,7 +128,7 @@ const formatTapLatency = str => {
 
 const headersStyles = {
   headerName: {
-    fontSize: 12,
+    fontSize: "12px",
     marginTop: "5px",
   },
 };
@@ -138,21 +138,19 @@ const HeadersContentBase = ({headers, classes}) => {
     <React.Fragment>
       {headers.map(header => {
         return (
-          <Typography
-            key={`${header.name}_${header.valueStr}`}
-            component="span"
-            variant="inherit"
-            color="textSecondary">
+          <React.Fragment key={`${header.name}_${header.valueStr}`}>
             <Typography
               className={classes.headerName}
-              component="span"
               variant="inherit"
               color="textPrimary">
               {header.name}
             </Typography>
-
-            {header.valueStr}
-          </Typography>
+            <Typography
+              variant="inherit"
+              color="textSecondary">
+              {header.valueStr}
+            </Typography>
+          </React.Fragment>
         );
       })}
     </React.Fragment>

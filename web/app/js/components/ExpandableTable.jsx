@@ -22,7 +22,8 @@ const styles = theme => ({
     overflowX: 'auto',
   },
   expandedWrap: {
-    wordBreak: `break-word`
+    wordBreak: `break-word`,
+    paddingTop: "10px",
   },
   table: {
     minWidth: 700
@@ -103,9 +104,11 @@ class ExpandableTable extends React.Component {
             )}
           </TableBody>
         </Table>
+
         <Dialog
           maxWidth="md"
           fullWidth
+          scroll="body"
           open={this.state.open}
           onClose={this.handleDialogClose}
           aria-labelledby="form-dialog-title">

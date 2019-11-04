@@ -10,13 +10,11 @@ import {
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
-import Checkbox from '@material-ui/core/Checkbox';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import ExpansionPanel from '@material-ui/core/ExpansionPanel';
 import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
 import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
 import FormControl from '@material-ui/core/FormControl';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
 import FormHelperText from '@material-ui/core/FormHelperText';
 import Grid from '@material-ui/core/Grid';
 import InputLabel from '@material-ui/core/InputLabel';
@@ -62,15 +60,6 @@ const styles = theme => ({
   formControl: {
     margin: theme.spacing.unit,
     minWidth: 200,
-  },
-  formLabel: {
-    marginTop: "5px",
-    marginBottom: "-5px",
-  },
-  formCheckboxHelper: {
-    borderTop: `1px solid ${theme.status.dark.default}`,
-    paddingTop: "8px",
-    marginTop: "-1px",
   },
   selectEmpty: {
     'margin-top': '32px'
@@ -146,7 +135,7 @@ class TapQueryForm extends React.Component {
   constructor(props) {
     super(props);
 
-    let query = _merge({}, props.query, _pick(this.props, Object.keys(tapQueryProps)), {extract: false});
+    let query = _merge({}, props.query, _pick(this.props, Object.keys(tapQueryProps)));
     props.updateQuery(query);
 
     let advancedFormExpanded = _some(
@@ -192,18 +181,6 @@ class TapQueryForm extends React.Component {
         state.autocomplete.authority = this.state.authoritiesByNs[formVal];
       }
 
-      this.setState(state);
-      this.props.updateQuery(state.query);
-    };
-  }
-
-  handleCheckboxChange = name => {
-    let state = {
-      query: this.state.query
-    };
-
-    return () => {
-      state.query[name] = !state.query[name];
       this.setState(state);
       this.props.updateQuery(state.query);
     };
@@ -371,20 +348,6 @@ class TapQueryForm extends React.Component {
           </Grid>
           <Grid item xs={6} md={3}>
             { this.renderTextInput("Path", "path", "Display requests with paths that start with this prefix") }
-          </Grid>
-
-          <Grid item xs={12} md={3}>
-            <FormControl className={classes.formControl}>
-              <FormControlLabel
-                className={classes.formLabel}
-                control={<Checkbox
-                  checked={this.state.query.extract}
-                  onChange={this.handleCheckboxChange("extract")}
-                  value="extract"
-                  color="primary" />}
-                label="Include headers" />
-              <FormHelperText className={classes.formCheckboxHelper}>Include headers from HTTP requests and responses</FormHelperText>
-            </FormControl>
           </Grid>
         </Grid>
 
