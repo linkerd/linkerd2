@@ -433,11 +433,11 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	}
 
 	if options.traceCollector != "" {
-		overrideAnnotations[k8s.ProxyTraceCollectorSvcAddr] = options.traceCollector
+		overrideAnnotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] = options.traceCollector
 	}
 
 	if options.traceCollectorSvcAccount != "" {
-		overrideAnnotations[k8s.ProxyTraceCollectorSvcAccount] = options.traceCollectorSvcAccount
+		overrideAnnotations[k8s.ProxyTraceCollectorSvcAccountAnnotation] = options.traceCollectorSvcAccount
 	}
 }
 

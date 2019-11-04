@@ -59,7 +59,7 @@ var (
 		k8s.ProxyVersionOverrideAnnotation,
 		k8s.ProxyIgnoreInboundPortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
-		k8s.ProxyTraceCollectorSvcAddr,
+		k8s.ProxyTraceCollectorSvcAddrAnnotation,
 	}
 )
 
@@ -564,8 +564,8 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 
 func (conf *ResourceConfig) trace() *charts.Trace {
 	var (
-		svcAddr    = conf.getOverride(k8s.ProxyTraceCollectorSvcAddr)
-		svcAccount = conf.getOverride(k8s.ProxyTraceCollectorSvcAccount)
+		svcAddr    = conf.getOverride(k8s.ProxyTraceCollectorSvcAddrAnnotation)
+		svcAccount = conf.getOverride(k8s.ProxyTraceCollectorSvcAccountAnnotation)
 	)
 
 	if svcAddr == "" {
