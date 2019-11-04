@@ -71,17 +71,17 @@ deep_integration_tests() {
 check_linkerd_binary(){
     printf 'Checking the linkerd binary...'
     if [[ "$linkerd_path" != /* ]]; then
-        printf '\\n[%s] is not an absolute path\\n' "$linkerd_path"
+        printf '\n[%s] is not an absolute path\n' "$linkerd_path"
         exit 1
     fi
     if [ ! -x "$linkerd_path" ]; then
-        printf '\\n[%s] does not exist or is not executable\\n' "$linkerd_path"
+        printf '\n[%s] does not exist or is not executable\n' "$linkerd_path"
         exit 1
     fi
     exit_code=0
     "$linkerd_path" version --client > /dev/null 2>&1
     exit_on_err 'error running linkerd version command'
-    printf '[ok]\\n'
+    printf '[ok]\n'
 }
 
 check_if_k8s_reachable(){
@@ -89,7 +89,7 @@ check_if_k8s_reachable(){
     exit_code=0
     kubectl --context=$k8s_context --request-timeout=5s get ns > /dev/null 2>&1
     exit_on_err 'error connecting to Kubernetes cluster'
-    printf '[ok]\\n'
+    printf '[ok]\n'
 }
 
 remove_l5d_if_exists() {
@@ -97,7 +97,7 @@ remove_l5d_if_exists() {
   if [ ! -z "$resources" ]; then
     printf 'Removing existing l5d installation...'
     cleanup
-    printf '[ok]\\n'
+    printf '[ok]\n'
   fi
 
   # Cleanup Helm, in case it's there (if not, we ignore the error)
@@ -178,7 +178,7 @@ helm_cleanup() {
 exit_on_err() {
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
-        printf '\\n=== FAIL: %s\\n' "$@"
+        printf '\n=== FAIL: %s\n' "$@"
         exit $exit_code
     fi
 }

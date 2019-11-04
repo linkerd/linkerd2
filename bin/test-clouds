@@ -29,21 +29,21 @@ check_linkerd_binary() {
         /*)
             ;;
         *)
-            printf '\\n[%s] is not an absolute path\\n' "$linkerd_path"
+            printf '\n[%s] is not an absolute path\n' "$linkerd_path"
             exit 1
             ;;
     esac
     if [ ! -x "$linkerd_path" ]; then
-        printf '\\n[%s] does not exist or is not executable\\n' "$linkerd_path"
+        printf '\n[%s] does not exist or is not executable\n' "$linkerd_path"
         exit 1
     fi
     exit_code=0
     "$linkerd_path" version --client > /dev/null 2>&1 || exit_code=$?
     if [ $exit_code -ne 0 ]; then
-        printf '\\nFailed to run linkerd version command\\n'
+        printf '\nFailed to run linkerd version command\n'
         exit $exit_code
     fi
-    printf '[ok]\\n'
+    printf '[ok]\n'
 }
 
 if [ "$#" -ne 1 ]; then
