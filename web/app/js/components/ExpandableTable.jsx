@@ -3,7 +3,7 @@ import Dialog from '@material-ui/core/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import EmptyTableBody from './EmptyTableBody.jsx';
+import EmptyCard from './EmptyCard.jsx';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import IconButton from '@material-ui/core/IconButton';
 import Paper from '@material-ui/core/Paper';
@@ -79,9 +79,7 @@ class ExpandableTable extends React.Component {
             </TableRow>
           </TableHead>
           <TableBody>
-            { tableRows.length === 0 ? (
-              <EmptyTableBody columns={columns.length} />
-            ) : (
+            { tableRows.length > 0 && (
               <React.Fragment>
                 { tableRows.map(d => {
                     return (
@@ -110,6 +108,11 @@ class ExpandableTable extends React.Component {
             )}
           </TableBody>
         </Table>
+
+        { tableRows.length === 0 && (
+          <EmptyCard />
+        )}
+
         <Dialog
           maxWidth="md"
           open={this.state.open}

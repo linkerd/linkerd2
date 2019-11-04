@@ -1,5 +1,5 @@
 import CloseIcon from '@material-ui/icons/Close';
-import EmptyTableBody from './EmptyTableBody.jsx';
+import EmptyCard from './EmptyCard.jsx';
 import FilterListIcon from '@material-ui/icons/FilterList';
 import Hidden from '@material-ui/core/Hidden';
 import Paper from '@material-ui/core/Paper';
@@ -190,9 +190,7 @@ class BaseTable extends React.Component {
             </TableRow>
           </TableHead>
           <TableBody>
-            { sortedTableRows.length === 0 ? (
-              <EmptyTableBody columns={tableColumns.length} />
-            ) : (
+            { sortedTableRows.length > 0 && (
               <React.Fragment>
                 {
                   sortedTableRows.map(d => {
@@ -218,6 +216,10 @@ class BaseTable extends React.Component {
             )}
           </TableBody>
         </Table>
+
+        { sortedTableRows.length === 0 && (
+          <EmptyCard />
+        )}
       </Paper>
     );
   }
