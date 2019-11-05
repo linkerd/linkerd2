@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -69,7 +70,7 @@ func newCmdDiagnostics() *cobra.Command {
 			// ensure we can connect to the public API before fetching the diagnostics.
 			checkPublicAPIClientOrRetryOrExit(time.Now().Add(options.wait), true)
 
-			resCount := 0
+			var wg sync.WaitGroup
 			resultChan := make(chan diagnosticsResult)
 			for _, d := range deployments.Items {
 				pods, err := getPodsFor(k8sAPI, controlPlaneNamespace, "deploy/"+d.Name)
@@ -86,8 +87,8 @@ func newCmdDiagnostics() *cobra.Command {
 					}
 
 					for i := range containers {
-						resCount++
-						go func(container corev1.Container) {
+						wg.Add(1)
+						go func(container corev1.Container, wg *sync.WaitGroup) {
 							bytes, err := getDiagnostics(k8sAPI, pod, container, verbose)
 
 							resultChan <- diagnosticsResult{
@@ -96,23 +97,32 @@ func newCmdDiagnostics() *cobra.Command {
 								metrics:   bytes,
 								err:       err,
 							}
-						}(containers[i])
+
+							defer wg.Done()
+						}(containers[i], &wg)
 					}
 				}
 			}
 
 			var results []diagnosticsResult
-			timer := time.NewTimer(options.wait)
-			timedOut := false
 
+			c := make(chan struct{})
+			go func() {
+				defer close(c)
+				wg.Wait()
+			}()
+
+			done := false
 			for {
 				select {
 				case result := <-resultChan:
 					results = append(results, result)
-				case <-timer.C:
-					timedOut = true
+				case <-c:
+					done = true // completed normally
+				case <-time.After(options.wait):
+					done = true // timed out
 				}
-				if len(results) == resCount || timedOut {
+				if done {
 					break
 				}
 			}
