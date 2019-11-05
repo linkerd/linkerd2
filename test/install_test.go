@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 var (
 	linkerdSvcs = []string{
 		"linkerd-controller-api",
-		"linkerd-destination",
+		"linkerd-dst",
 		"linkerd-grafana",
 		"linkerd-identity",
 		"linkerd-prometheus",

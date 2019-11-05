@@ -10,13 +10,6 @@
     "namespace": "{{.Ns}}",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8086,
-    "pod": "linkerd\-controller\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-destination\.{{.Ns}}"
-  \},
-  \{
-    "namespace": "{{.Ns}}",
-    "ip": "\d+\.\d+\.\d+\.\d+",
-    "port": 8086,
     "pod": "linkerd\-destination\-[a-f0-9]+\-[a-z0-9]+",
     "service": "linkerd\-dst\.{{.Ns}}"
   \},

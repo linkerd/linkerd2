@@ -1027,25 +1027,6 @@ spec:
     port: 8085
     targetPort: 8085
 ---
-kind: Service
-apiVersion: v1
-metadata:
-  name: linkerd-destination
-  namespace: Namespace
-  labels:
-    ControllerComponentLabel: controller
-    ControllerNamespaceLabel: Namespace
-  annotations:
-    CreatedByAnnotation: CliVersion
-spec:
-  type: ClusterIP
-  selector:
-    ControllerComponentLabel: controller
-  ports:
-  - name: grpc
-    port: 8086
-    targetPort: 8086
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1101,35 +1082,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        securityContext:
-          runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
-      - args:
-        - destination
-        - -addr=:8086
-        - -controller-namespace=Namespace
-        - -enable-h2-upgrade=true
-        - -log-level=ControllerLogLevel
-        image: ControllerImage:ControllerImageVersion
-        imagePullPolicy: ImagePullPolicy
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9996
-          initialDelaySeconds: 10
-        name: destination
-        ports:
-        - containerPort: 8086
-          name: grpc
-        - containerPort: 9996
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9996
         securityContext:
           runAsUser: 2103
         volumeMounts:
