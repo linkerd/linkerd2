@@ -68,4 +68,18 @@ describe("Tests for <BaseTable>", () => {
     expect(enableFilter).toEqual(true);
     expect(filterIcon).toBeDefined();
   });
+
+  it("renders the table without data", () => {
+    let extraProps = _merge({}, defaultProps, {
+      tableRows: [],
+      tableColumns: tableColumns,
+    });
+
+    const component = mount(routerWrap(BaseTable, extraProps));
+    const table = component.find("BaseTable");
+    expect(table).toBeDefined();
+    const emptyCard = table.find("EmptyCard");
+    expect(emptyCard).toBeDefined();
+    expect(emptyCard).toHaveLength(1);
+  });
 });

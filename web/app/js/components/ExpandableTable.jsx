@@ -3,6 +3,7 @@ import Dialog from '@material-ui/core/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
+import EmptyCard from './EmptyCard.jsx';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import IconButton from '@material-ui/core/IconButton';
 import Paper from '@material-ui/core/Paper';
@@ -78,31 +79,40 @@ class ExpandableTable extends React.Component {
             </TableRow>
           </TableHead>
           <TableBody>
-            { tableRows.map(d => {
-                return (
-                  <React.Fragment key={"frag-" + d.key}>
-                    <TableRow
-                      key={d.key}
-                      onClick={this.handleClick}
-                      ref={ref => {
-                        this.container = ref;
-                      }}>
-                      {
-                        columns.map(c => (
-                          <TableCell
-                            key={`table-${d.key}-${c.key}`}
-                            numeric={c.isNumeric}>
-                            {c.render(d)}
-                          </TableCell>
-                        ))
-                      }
-                    </TableRow>
-                  </React.Fragment>
-                );
-              }
+            { tableRows.length > 0 && (
+              <React.Fragment>
+                { tableRows.map(d => {
+                    return (
+                      <React.Fragment key={"frag-" + d.key}>
+                        <TableRow
+                          key={d.key}
+                          onClick={this.handleClick}
+                          ref={ref => {
+                            this.container = ref;
+                          }}>
+                          {
+                            columns.map(c => (
+                              <TableCell
+                                key={`table-${d.key}-${c.key}`}
+                                numeric={c.isNumeric}>
+                                {c.render(d)}
+                              </TableCell>
+                            ))
+                          }
+                        </TableRow>
+                      </React.Fragment>
+                    );
+                  }
+                )}
+              </React.Fragment>
             )}
           </TableBody>
         </Table>
+
+        { tableRows.length === 0 && (
+          <EmptyCard />
+        )}
+
         <Dialog
           maxWidth="md"
           open={this.state.open}

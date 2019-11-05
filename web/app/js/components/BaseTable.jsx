@@ -1,4 +1,5 @@
 import CloseIcon from '@material-ui/icons/Close';
+import EmptyCard from './EmptyCard.jsx';
 import FilterListIcon from '@material-ui/icons/FilterList';
 import Hidden from '@material-ui/core/Hidden';
 import Paper from '@material-ui/core/Paper';
@@ -189,28 +190,36 @@ class BaseTable extends React.Component {
             </TableRow>
           </TableHead>
           <TableBody>
-            {
-              sortedTableRows.map(d => {
-              let key = !rowKey ? d.key : rowKey(d);
-              let tableRow = (
-                <TableRow key={key}>
-                  { tableColumns.map(c => (
-                    <TableCell
-                      className={classNames({[classes.denseTable]: padding === 'dense'})}
-                      key={`table-${key}-${c.key || c.dataIndex}`}
-                      numeric={c.isNumeric}>
-                      {c.render ? c.render(d) : _get(d, c.dataIndex)}
-                    </TableCell>
-                    )
-                  )}
-                </TableRow>
-              );
-              return _isNil(d.tooltip) ? tableRow :
-              <Tooltip key={`table-row-${key}`} placement="left" title={d.tooltip}>{tableRow}</Tooltip>;
-              }
+            { sortedTableRows.length > 0 && (
+              <React.Fragment>
+                {
+                  sortedTableRows.map(d => {
+                  let key = !rowKey ? d.key : rowKey(d);
+                  let tableRow = (
+                    <TableRow key={key}>
+                      { tableColumns.map(c => (
+                        <TableCell
+                          className={classNames({[classes.denseTable]: padding === 'dense'})}
+                          key={`table-${key}-${c.key || c.dataIndex}`}
+                          numeric={c.isNumeric}>
+                          {c.render ? c.render(d) : _get(d, c.dataIndex)}
+                        </TableCell>
+                        )
+                      )}
+                    </TableRow>
+                  );
+                  return _isNil(d.tooltip) ? tableRow :
+                  <Tooltip key={`table-row-${key}`} placement="left" title={d.tooltip}>{tableRow}</Tooltip>;
+                  }
+                )}
+              </React.Fragment>
             )}
           </TableBody>
         </Table>
+
+        { sortedTableRows.length === 0 && (
+          <EmptyCard />
+        )}
       </Paper>
     );
   }
