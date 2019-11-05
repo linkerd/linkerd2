@@ -61,22 +61,18 @@ func Main(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	clusterDomain := globalConfig.GetClusterDomain()
-	if clusterDomain == "" {
-		clusterDomain = defaultDomain
-	}
 	trustDomain := globalConfig.GetIdentityContext().GetTrustDomain()
 	if trustDomain == "" {
 		trustDomain = defaultDomain
 	}
-	log.Infof("Using cluster domain %s and trust domain %s", clusterDomain, trustDomain)
+	log.Infof("Using trust domain: %s", trustDomain)
 
 	if *traceCollector != "" {
 		if err := trace.InitializeTracing("linkerd-tap", *traceCollector); err != nil {
 			log.Warnf("failed to initialize tracing: %s", err)
 		}
 	}
-	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, clusterDomain, trustDomain, k8sAPI)
+	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, trustDomain, k8sAPI)
 
 	// TODO: make this configurable for local development
 	cert, err := tls.LoadX509KeyPair(*tlsCertPath, *tlsKeyPath)

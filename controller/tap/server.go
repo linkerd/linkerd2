@@ -36,7 +36,6 @@ type GRPCTapServer struct {
 	tapPort             uint
 	k8sAPI              *k8s.API
 	controllerNamespace string
-	clusterDomain       string
 	trustDomain         string
 }
 
@@ -509,20 +508,18 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 func NewGrpcTapServer(
 	tapPort uint,
 	controllerNamespace string,
-	clusterDomain string,
 	trustDomain string,
 	k8sAPI *k8s.API,
 ) *GRPCTapServer {
 	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{ipIndex: indexByIP})
 	k8sAPI.Node().Informer().AddIndexers(cache.Indexers{ipIndex: indexByIP})
 
-	return newGRPCTapServer(tapPort, controllerNamespace, clusterDomain, trustDomain, k8sAPI)
+	return newGRPCTapServer(tapPort, controllerNamespace, trustDomain, k8sAPI)
 }
 
 func newGRPCTapServer(
 	tapPort uint,
 	controllerNamespace string,
-	clusterDomain string,
 	trustDomain string,
 	k8sAPI *k8s.API,
 ) *GRPCTapServer {
@@ -530,7 +527,6 @@ func newGRPCTapServer(
 		tapPort:             tapPort,
 		k8sAPI:              k8sAPI,
 		controllerNamespace: controllerNamespace,
-		clusterDomain:       clusterDomain,
 		trustDomain:         trustDomain,
 	}
 
