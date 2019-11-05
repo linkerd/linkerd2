@@ -3,6 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tcpdump \
     iproute2 \
     lsof \
+    conntrack \
     tshark && \
     rm -rf /var/lib/apt/lists/*
 ENTRYPOINT [ "tshark", "-i", "any" ]
