@@ -84,6 +84,16 @@ func TestUninjectYAML(t *testing.T) {
 			goldenFileName: "inject_emojivoto_deployment_config_overrides.input.yml",
 			reportFileName: "inject_emojivoto_deployment_uninject.report",
 		},
+		{
+			inputFileName:  "inject_emojivoto_namespace_good.golden.yml",
+			goldenFileName: "inject_emojivoto_namespace_uninjected_good.golden.yml",
+			reportFileName: "inject_emojivoto_namespace_uninjected_good.golden.report",
+		},
+		{
+			inputFileName:  "inject_emojivoto_namespace_overidden_good.golden.yml",
+			goldenFileName: "inject_emojivoto_namespace_uninjected_good.golden.yml",
+			reportFileName: "inject_emojivoto_namespace_uninjected_good.golden.report",
+		},
 	}
 
 	for i, tc := range testCases {
