@@ -149,6 +149,18 @@ function AppHTML() {
                 path={`${pathPrefix}/namespaces/:namespace/replicationcontrollers`}
                 render={props => <Navigation {...props} ChildComponent={ResourceList} resource="replicationcontroller" />} />
               <Route
+                path={`${pathPrefix}/namespaces/:namespace/cronjobs/:cronjob`}
+                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
+                path={`${pathPrefix}/namespaces/:namespace/cronjobs`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="cronjob" />} />
+              <Route
+                path={`${pathPrefix}/namespaces/:namespace/replicasets/:replicaset`}
+                render={props => <Navigation {...props} ChildComponent={ResourceDetail} />} />
+              <Route
+                path={`${pathPrefix}/namespaces/:namespace/replicasets`}
+                render={props => <Navigation {...props} ChildComponent={ResourceList} resource="replicaset" />} />
+              <Route
                 path={`${pathPrefix}/tap`}
                 render={props => <Navigation {...props} ChildComponent={Tap} />} />
               <Route

@@ -953,3 +953,82 @@ export const statefulSetIcon = (
     </g>
   </svg>
 );
+
+export const cronJobIcon = (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24px"
+    height="24px"
+    version="1.1"
+    viewBox="0 0 18.035 17.5">
+    <g fillOpacity="1">
+      <g
+        stroke="none"
+        strokeDasharray="none"
+        strokeMiterlimit="4"
+        strokeWidth="0">
+        <path
+          fill="#757575"
+          strokeOpacity="1"
+          d="M-6.85 4.272a1.12 1.11 0 00-.428.109l-5.852 2.796a1.12 1.11 0 00-.606.753l-1.444 6.282a1.12 1.11 0 00.152.85 1.12 1.11 0 00.064.089l4.05 5.037a1.12 1.11 0 00.876.417l6.496-.001a1.12 1.11 0 00.875-.417l4.049-5.038a1.12 1.11 0 00.216-.939L.152 7.93a1.12 1.11 0 00-.605-.753L-6.307 4.38a1.12 1.11 0 00-.542-.109z"
+          transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)" />
+        <path
+          fill="#fff"
+          fillRule="nonzero"
+          d="M-6.852 3.818a1.181 1.172 0 00-.452.115l-6.18 2.951a1.181 1.172 0 00-.638.795l-1.524 6.63a1.181 1.172 0 00.16.9 1.181 1.172 0 00.067.093l4.276 5.317a1.181 1.172 0 00.924.44h6.858a1.181 1.172 0 00.923-.44L1.837 15.3a1.181 1.172 0 00.228-.99L.54 7.677a1.181 1.172 0 00-.64-.795l-6.178-2.95a1.181 1.172 0 00-.573-.115zm.003.455a1.12 1.11 0 01.542.108l5.853 2.795a1.12 1.11 0 01.606.753l1.446 6.281a1.12 1.11 0 01-.216.94l-4.05 5.037a1.12 1.11 0 01-.875.417l-6.496.001a1.12 1.11 0 01-.875-.417l-4.05-5.037a1.12 1.11 0 01-.064-.088 1.12 1.11 0 01-.152-.851l1.444-6.281a1.12 1.11 0 01.605-.753l5.853-2.797a1.12 1.11 0 01.429-.108z"
+          baselineShift="baseline"
+          color="#000"
+          direction="ltr"
+          display="inline"
+          enableBackground="accumulate"
+          fontFamily="Sans"
+          fontSize="medium"
+          fontStretch="normal"
+          fontStyle="normal"
+          fontVariant="normal"
+          fontWeight="normal"
+          letterSpacing="normal"
+          overflow="visible"
+          textAnchor="start"
+          textDecoration="none"
+          transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)"
+          style={{
+            lineHeight: "normal",
+            InkscapeFontSpecification: "Sans",
+            WebkitTextIndent: "0",
+            textIndent: "0",
+            WebkitTextAlign: "start",
+            textAlign: "start",
+            WebkitTextDecorationLine: "none",
+            textDecorationLine: "none",
+            WebkitTextTransform: "none",
+            textTransform: "none",
+            marker: "none"
+          }}
+          visibility="visible"
+          wordSpacing="normal"
+          writingMode="lr-tb" />
+      </g>
+      <g fill="#fff">
+        <path
+          fillRule="nonzero"
+          stroke="none"
+          strokeDasharray="1.418, 1.418"
+          strokeDashoffset="23.045"
+          strokeLinecap="butt"
+          strokeLinejoin="round"
+          strokeMiterlimit="10"
+          strokeOpacity="1"
+          strokeWidth="0.709"
+          d="M11.673 3.96v2.143h2.202V3.96zm0 3.084v.546c.258-.06.526-.097.803-.097.497 0 .97.106 1.4.295v-.744zm-6.284.033V9.22h2.203V7.077zm3.142 0V9.22h.928c.31-.52.75-.955 1.275-1.258v-.885zm-3.163 3.117v2.143h2.203v-2.143zm3.152 0v2.143h.707c-.17-.411-.265-.86-.265-1.33 0-.28.037-.551.1-.813z"
+          opacity="1"
+          transform="translate(-.993 -1.174) translate(-.578 .775)" />
+        <path
+          strokeWidth="0.32"
+          d="M12.608 7.94a3.21 3.21 0 00-3.2 3.2c0 1.76 1.44 3.2 3.2 3.2 1.76 0 3.2-1.44 3.2-3.2 0-1.76-1.44-3.2-3.2-3.2zm1.344 4.543l-1.664-1.024V9.54h.48v1.664l1.44.864z"
+          clipPath="url(#b)"
+          transform="translate(-.993 -1.174) translate(-.578 .775)" />
+      </g>
+    </g>
+  </svg>
+);

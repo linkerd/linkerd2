@@ -76,7 +76,7 @@ rules:
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
+  resources: ["cronjobs", "jobs"]
   verbs: ["list" , "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
@@ -451,7 +451,7 @@ rules:
   resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
+  resources: ["cronjobs", "jobs"]
   verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
@@ -629,7 +629,7 @@ rules:
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
+  resources: ["cronjobs", "jobs"]
   verbs: ["list" , "get", "watch"]
 ---
 kind: ClusterRole
@@ -1512,40 +1512,164 @@ spec:
 apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
-  name: linkerd-heartbeat
-  namespace: Namespace
+  annotations:
+    CreatedByAnnotation: CliVersion
+  creationTimestamp: null
   labels:
     ControllerComponentLabel: heartbeat
     ControllerNamespaceLabel: Namespace
-  annotations:
-    CreatedByAnnotation: CliVersion
+  name: linkerd-heartbeat
+  namespace: Namespace
 spec:
-  schedule: ""
-  successfulJobsHistoryLimit: 0
   jobTemplate:
+    metadata:
+      creationTimestamp: null
     spec:
       template:
         metadata:
-          labels:
-            ControllerComponentLabel: heartbeat
           annotations:
             CreatedByAnnotation: CliVersion
+            linkerd.io/created-by: linkerd/cli dev-undefined
+            linkerd.io/identity-mode: default
+            linkerd.io/proxy-version: install-proxy-version
+          creationTimestamp: null
+          labels:
+            ControllerComponentLabel: heartbeat
+            linkerd.io/control-plane-ns: Namespace
+            linkerd.io/proxy-cronjob: linkerd-heartbeat
         spec:
-          nodeSelector:
-            beta.kubernetes.io/os: linux
-          serviceAccountName: linkerd-heartbeat
-          restartPolicy: Never
           containers:
-          - name: heartbeat
+          - args:
+            - heartbeat
+            - -prometheus-url=http://linkerd-prometheus.Namespace.svc.cluster.local:9090
+            - -controller-namespace=Namespace
+            - -log-level=ControllerLogLevel
             image: ControllerImage:ControllerImageVersion
             imagePullPolicy: ImagePullPolicy
-            args:
-            - "heartbeat"
-            - "-prometheus-url=http://linkerd-prometheus.Namespace.svc.cluster.local:9090"
-            - "-controller-namespace=Namespace"
-            - "-log-level=ControllerLogLevel"
+            name: heartbeat
+            resources: {}
             securityContext:
               runAsUser: 2103
+          - env:
+            - name: LINKERD2_PROXY_LOG
+              value: warn,linkerd2_proxy=info
+            - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
+              value: linkerd-dst.Namespace.svc.cluster.local:8086
+            - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
+              value: 0.0.0.0:4190
+            - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
+              value: 0.0.0.0:4191
+            - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
+              value: 127.0.0.1:4140
+            - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+              value: 0.0.0.0:4143
+            - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
+              value: svc.cluster.local.
+            - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
+              value: svc.cluster.local.
+            - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
+              value: 10000ms
+            - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
+              value: 10000ms
+            - name: _pod_ns
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: LINKERD2_PROXY_DESTINATION_CONTEXT
+              value: ns:$(_pod_ns)
+            - name: LINKERD2_PROXY_IDENTITY_DIR
+              value: /var/run/linkerd/identity/end-entity
+            - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
+              value: |
+                test-trust-anchor
+            - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
+              value: /var/run/secrets/kubernetes.io/serviceaccount/token
+            - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
+              value: linkerd-identity.Namespace.svc.cluster.local:8080
+            - name: _pod_sa
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: _l5d_ns
+              value: Namespace
+            - name: _l5d_trustdomain
+            - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
+              value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+            - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
+              value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+            - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
+              value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+            - name: LINKERD2_PROXY_TAP_SVC_NAME
+              value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+            image: gcr.io/linkerd-io/proxy:install-proxy-version
+            imagePullPolicy: IfNotPresent
+            livenessProbe:
+              httpGet:
+                path: /metrics
+                port: 4191
+              initialDelaySeconds: 10
+            name: linkerd-proxy
+            ports:
+            - containerPort: 4143
+              name: linkerd-proxy
+            - containerPort: 4191
+              name: linkerd-admin
+            readinessProbe:
+              httpGet:
+                path: /ready
+                port: 4191
+              initialDelaySeconds: 2
+            resources: {}
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsUser: 2102
+            terminationMessagePolicy: FallbackToLogsOnError
+            volumeMounts:
+            - mountPath: /var/run/linkerd/identity/end-entity
+              name: linkerd-identity-end-entity
+          initContainers:
+          - args:
+            - --incoming-proxy-port
+            - "4143"
+            - --outgoing-proxy-port
+            - "4140"
+            - --proxy-uid
+            - "2102"
+            - --inbound-ports-to-ignore
+            - 4190,4191
+            image: gcr.io/linkerd-io/proxy-init:v1.2.0
+            imagePullPolicy: IfNotPresent
+            name: linkerd-init
+            resources:
+              limits:
+                cpu: 100m
+                memory: 50Mi
+              requests:
+                cpu: 10m
+                memory: 10Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                add:
+                - NET_ADMIN
+                - NET_RAW
+              privileged: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: false
+              runAsUser: 0
+            terminationMessagePolicy: FallbackToLogsOnError
+          nodeSelector:
+            beta.kubernetes.io/os: linux
+          restartPolicy: Never
+          serviceAccountName: linkerd-heartbeat
+          volumes:
+          - emptyDir:
+              medium: Memory
+            name: linkerd-identity-end-entity
+  schedule: ""
+  successfulJobsHistoryLimit: 0
+status: {}
 ---
 ###
 ### Web

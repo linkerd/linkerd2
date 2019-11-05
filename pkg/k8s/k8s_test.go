@@ -34,6 +34,8 @@ func TestCanonicalResourceNameFromFriendlyName(t *testing.T) {
 			"deployments": Deployment,
 			"au":          Authority,
 			"authorities": Authority,
+			"cj":          CronJob,
+			"cronjob":     CronJob,
 		}
 
 		for input, expectedName := range expectations {

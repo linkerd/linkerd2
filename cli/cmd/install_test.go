@@ -46,6 +46,7 @@ func TestRender(t *testing.T) {
 			ClockSkewAllowance: "20s",
 			IssuanceLifetime:   "86400s",
 		},
+		TrustAnchorsPEM: "test-trust-anchor",
 	})
 	metaConfig := metaOptions.configs(identityContext)
 	metaConfig.Global.LinkerdNamespace = "Namespace"

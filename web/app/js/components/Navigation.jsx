@@ -1,4 +1,4 @@
-import { daemonsetIcon, deploymentIcon, githubIcon, jobIcon, linkerdWordLogo, namespaceIcon, podIcon, replicaSetIcon, slackIcon, statefulSetIcon } from './util/SvgWrappers.jsx';
+import { cronJobIcon, daemonsetIcon, deploymentIcon, githubIcon, jobIcon, linkerdWordLogo, namespaceIcon, podIcon, replicaSetIcon, slackIcon, statefulSetIcon } from './util/SvgWrappers.jsx';
 import AppBar from '@material-ui/core/AppBar';
 import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import Badge from '@material-ui/core/Badge';
@@ -456,6 +456,8 @@ class NavigationBase extends React.Component {
                 Workloads
           </Typography>
 
+          { this.menuItem(`/namespaces/${selectedNamespace}/cronjobs`, "Cron Jobs", cronJobIcon) }
+
           { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, "Daemon Sets", daemonsetIcon) }
 
           { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, "Deployments", deploymentIcon) }
@@ -463,6 +465,8 @@ class NavigationBase extends React.Component {
           { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, "Jobs", jobIcon) }
 
           { this.menuItem(`/namespaces/${selectedNamespace}/pods`, "Pods", podIcon) }
+
+          { this.menuItem(`/namespaces/${selectedNamespace}/replicasets`, "Replica Sets", replicaSetIcon) }
 
           { this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, "Replication Controllers", replicaSetIcon) }
 

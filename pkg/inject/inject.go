@@ -16,6 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -203,7 +204,11 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 		Annotations: map[string]string{},
 		Labels:      map[string]string{},
 	}
-	if strings.ToLower(conf.workload.metaType.Kind) != k8s.Pod {
+	switch strings.ToLower(conf.workload.metaType.Kind) {
+	case k8s.Pod:
+	case k8s.CronJob:
+		values.PathPrefix = "/spec/jobTemplate/spec/template"
+	default:
 		values.PathPrefix = "/spec/template"
 	}
 
@@ -263,6 +268,8 @@ func (conf *ResourceConfig) getFreshWorkloadObj() runtime.Object {
 		return &corev1.Pod{}
 	case k8s.Namespace:
 		return &corev1.Namespace{}
+	case k8s.CronJob:
+		return &batchv1beta1.CronJob{}
 	}
 
 	return nil
@@ -382,6 +389,16 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		if conf.workload.Meta.Annotations == nil {
 			conf.workload.Meta.Annotations = map[string]string{}
 		}
+
+	case *batchv1beta1.CronJob:
+		if err := yaml.Unmarshal(bytes, v); err != nil {
+			return err
+		}
+
+		conf.workload.obj = v
+		conf.workload.Meta = &v.ObjectMeta
+		conf.pod.labels[k8s.ProxyCronJobLabel] = v.Name
+		conf.complete(&v.Spec.JobTemplate.Spec.Template)
 
 	case *corev1.Pod:
 		if err := yaml.Unmarshal(bytes, v); err != nil {

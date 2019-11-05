@@ -68,6 +68,7 @@ var (
 		{"replicasets", "rs", true},
 		{"statefulsets", "sts", true},
 		{"jobs", "", true},
+		{"cronjobs", "cj", true},
 	}
 )
 
