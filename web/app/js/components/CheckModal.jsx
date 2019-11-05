@@ -1,6 +1,5 @@
 import Button from '@material-ui/core/Button';
 import CheckIcon from '@material-ui/icons/Check';
-import Chip from '@material-ui/core/Chip';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import CloseIcon from '@material-ui/icons/Close';
 import Dialog from '@material-ui/core/Dialog';
@@ -13,6 +12,7 @@ import Paper from '@material-ui/core/Paper';
 import PriorityHigh from '@material-ui/icons/PriorityHigh';
 import PropTypes from 'prop-types';
 import React from 'react';
+import SimpleChip from './util/Chip.jsx';
 import Slide from '@material-ui/core/Slide';
 import Typography from '@material-ui/core/Typography';
 import withMobileDialog from '@material-ui/core/withMobileDialog';
@@ -23,13 +23,13 @@ const styles = theme => ({
     position: "relative",
     marginBottom: "20px",
   },
-  buttonSpinner: {
-    color: theme.palette.primary.main[500],
+  spinner: {
+    color: theme.status.dark.default,
     position: "absolute",
     top: "50%",
     left: "50%",
-    marginTop: "-12px",
-    marginLeft: "-12px",
+    marginTop: "-40px",
+    marginLeft: "-40px",
   },
   dialog: {
     minWidth: "60%",
@@ -37,6 +37,7 @@ const styles = theme => ({
   dialogContent: {
     overflow: "hidden",
     display: "flex",
+    height: "860px",
   },
   contentWrapper: {
     backgroundColor: "black",
@@ -62,6 +63,11 @@ const styles = theme => ({
     marginLeft: "10px",
     fontFamily: `'Roboto Mono', monospace`,
   },
+  resultError: {
+    marginLeft: "20px",
+    fontFamily: `'Roboto Mono', monospace`,
+    fontSize: "12px",
+  },
   icon: {
     marginLeft: "10px",
     verticalAlign: "bottom",
@@ -75,13 +81,9 @@ const styles = theme => ({
   iconWarning: {
     color: theme.status.dark.warning,
   },
-  chipSuccess: {
-    color: theme.status.dark.good,
-    border: `1px solid ${theme.status.dark.good}`,
-  },
-  chipError: {
-    color: theme.status.dark.danger,
-    border: `1px solid ${theme.status.dark.danger}`,
+  link: {
+    padding: "0px 5px",
+    color: "white",
   },
 });
 
@@ -90,7 +92,7 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 });
 
 const Results = ({title, results, classes}) => {
-  let getIconType = (error, warning) => {
+  let getResultType = (error, warning) => {
     if (error) {
       if (warning) {
         return "warning";
@@ -108,14 +110,38 @@ const Results = ({title, results, classes}) => {
         {title}
       </Typography>
 
-      {results.map(result => {
+      {results.map((result, index) => {
+        const resultType = getResultType(result.Err, result.Warning);
+
         return (
-          <Grid container direction="row" alignItems="center" key={result.Description}>
+          <Grid container direction="row" key={result.Description}>
             <Grid item>
-              <Icon type={getIconType(result.Err, result.Warning)} classes={classes} />
+              <Icon type={resultType} classes={classes} />
             </Grid>
-            <Grid className={classes.result} item>
-              {result.Description}
+            <Grid item>
+              <Typography className={classes.result} color="inherit" data-i18n={`${title}_${index + 1}`}>
+                {result.Description}
+              </Typography>
+
+              {resultType !== "success" && (
+                <React.Fragment>
+                  <Typography className={classes.resultError} color="inherit">
+                    {result.ErrMsg}
+                  </Typography>
+
+                  <Typography className={classes.resultError} color="inherit" gutterBottom>
+                    see
+                    <a
+                      className={classes.link}
+                      href={result.HintURL}
+                      target="_blank"
+                      rel="noopener noreferrer">
+                      {result.HintURL}
+                    </a>
+                    for hints
+                  </Typography>
+                </React.Fragment>
+              )}
             </Grid>
           </Grid>
         );
@@ -129,6 +155,8 @@ Results.propTypes = {
   results: PropTypes.arrayOf(PropTypes.shape({
     Description: PropTypes.string.isRequired,
     Err: PropTypes.any,
+    ErrMsg: PropTypes.string,
+    HintURL: PropTypes.string,
     Warning: PropTypes.bool,
   })).isRequired,
   title: PropTypes.string.isRequired,
@@ -139,11 +167,11 @@ const Icon = ({type, classes}) => {
     <React.Fragment>
       {(() => {
         switch (type) {
-          case 'success':
+          case "success":
             return <CheckIcon className={`${classes.icon} ${classes.iconSuccess}`} fontSize="small" />;
-          case 'error':
+          case "error":
             return <CloseIcon className={`${classes.icon} ${classes.iconError}`} fontSize="small" />;
-          case 'warning':
+          case "warning":
             return <PriorityHigh className={`${classes.icon} ${classes.iconWarning}`} fontSize="small" />;
           default:
             null;
@@ -184,14 +212,16 @@ class CheckModal extends React.Component {
   }
 
   runCheck = () => {
-    this.setState({ running: true });
+    this.setState({
+      running: true,
+      open: true,
+    });
 
     this.props.api.setCurrentRequests([this.props.api.fetchCheck()]);
     this.serverPromise = Promise.all(this.props.api.getCurrentPromises())
       .then(([response]) => {
         this.setState({
           running: false,
-          open: true,
           success: response.success,
           results: response.results,
           error: undefined,
@@ -228,8 +258,6 @@ class CheckModal extends React.Component {
                 onClick={this.runCheck}>
                 Run Linkerd Check
               </Button>
-
-              { running && <CircularProgress size={24} className={classes.buttonSpinner} /> }
             </div>
           </Grid>
         </Grid>
@@ -258,11 +286,9 @@ class CheckModal extends React.Component {
 
               {success !== undefined &&
                 <Grid item>
-                  <Chip
-                    icon={<Icon type={success ? "success" : "error"} classes={classes} />}
+                  <SimpleChip
                     label={success ? "Success" : "Error"}
-                    className={success ? classes.chipSuccess : classes.chipError}
-                    variant="outlined" />
+                    type={success ? "good" : "bad"} />
                 </Grid>
               }
             </Grid>
@@ -271,22 +297,30 @@ class CheckModal extends React.Component {
           <DialogContent className={classes.dialogContent}>
             <Paper className={classes.contentWrapper}>
               <div className={classes.content}>
-                <React.Fragment>
-                  {Object.keys(results).map(title => {
-                    return (
-                      <Results
-                        key={title}
-                        title={title}
-                        results={results[title]}
-                        classes={classes} />
-                    );
-                  })}
-                </React.Fragment>
+                { running ? (
+                  <CircularProgress size={80} className={classes.spinner} />
+                ) : (
+                  <React.Fragment>
+                    {Object.keys(results).map(title => {
+                      return (
+                        <Results
+                          key={title}
+                          title={title}
+                          results={results[title]}
+                          classes={classes} />
+                      );
+                    })}
+                  </React.Fragment>
+                )}
               </div>
             </Paper>
           </DialogContent>
 
           <DialogActions>
+            <Button onClick={this.runCheck} color="primary">
+              Re-Run Check
+            </Button>
+
             <Button onClick={this.handleOpenChange} color="primary">
               Close
             </Button>
