@@ -25,7 +25,16 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestInstallApp(t *testing.T) {
+func TestExternalIssuer(t *testing.T) {
+	verifyInstallApp(t)
+	verifyAppWorksBeforeCertRotation(t)
+	verifyRotateExternalCerts(t)
+	verifyIdentityServiceReloadsIssuerCert(t)
+	ensureNewCSRSAreServed()
+	verifyAppWorksAfterCertRotation(t)
+}
+
+func verifyInstallApp(t *testing.T) {
 	out, _, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/external_issuer_application.yaml")
 	if err != nil {
 		t.Fatalf("linkerd inject command failed\n%s", out)
@@ -72,14 +81,14 @@ func checkAppWoks(t *testing.T) error {
 
 }
 
-func TestAppWorksBeforeCertRotation(t *testing.T) {
+func verifyAppWorksBeforeCertRotation(t *testing.T) {
 	err := checkAppWoks(t)
 	if err != nil {
 		t.Fatalf("Received error while ensuring test app works (before cert rotation): %s", err)
 	}
 }
 
-func TestRotateExternalCerts(t *testing.T) {
+func verifyRotateExternalCerts(t *testing.T) {
 	// change issuer secret
 	secretResource, err := testutil.ReadFile("testdata/issuer_secret_2.yaml")
 	if err != nil {
@@ -93,7 +102,7 @@ func TestRotateExternalCerts(t *testing.T) {
 	}
 }
 
-func TestIdentitiyServiceReloadsIssuerCert(t *testing.T) {
+func verifyIdentityServiceReloadsIssuerCert(t *testing.T) {
 	// check that the identity service has received an IssuerUpdated event
 	err := TestHelper.RetryFor(90*time.Second, func() error {
 		out, err := TestHelper.Kubectl("",
@@ -128,7 +137,7 @@ func TestIdentitiyServiceReloadsIssuerCert(t *testing.T) {
 
 }
 
-func TestEnsureNewCSRSAreServed(t *testing.T) {
+func ensureNewCSRSAreServed() {
 	// this is to ensure new certs have been issued by the identity service.
 	// we know that this will happen because the issuance lifetime is set to 15s.
 	// Possible improvement is to provide a more deterministic way of checking that.
@@ -136,7 +145,7 @@ func TestEnsureNewCSRSAreServed(t *testing.T) {
 	time.Sleep(20 * time.Second)
 }
 
-func TestAppWorksAfterCertRotation(t *testing.T) {
+func verifyAppWorksAfterCertRotation(t *testing.T) {
 	err := checkAppWoks(t)
 	if err != nil {
 		t.Fatalf("Received error while ensuring test app works (after cert rotation): %s", err)
