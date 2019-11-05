@@ -18,6 +18,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const defaultDomain = "cluster.local"
+
 // Main executes the tap subcommand
 func Main(args []string) {
 	cmd := flag.NewFlagSet("tap", flag.ExitOnError)
@@ -61,16 +63,20 @@ func Main(args []string) {
 	}
 	clusterDomain := globalConfig.GetClusterDomain()
 	if clusterDomain == "" {
-		clusterDomain = "cluster.local"
+		clusterDomain = defaultDomain
 	}
-	log.Info("Using cluster domain: ", clusterDomain)
+	trustDomain := globalConfig.GetIdentityContext().GetTrustDomain()
+	if trustDomain == "" {
+		trustDomain = defaultDomain
+	}
+	log.Infof("Using cluster domain %s and trust domain %s", clusterDomain, trustDomain)
 
 	if *traceCollector != "" {
 		if err := trace.InitializeTracing("linkerd-tap", *traceCollector); err != nil {
 			log.Warnf("failed to initialize tracing: %s", err)
 		}
 	}
-	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, clusterDomain, k8sAPI)
+	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, clusterDomain, trustDomain, k8sAPI)
 
 	// TODO: make this configurable for local development
 	cert, err := tls.LoadX509KeyPair(*tlsCertPath, *tlsKeyPath)

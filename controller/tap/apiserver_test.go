@@ -47,7 +47,7 @@ data:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			fakeGrpcServer := newGRPCTapServer(4190, "controller-ns", "cluster.local", k8sAPI)
+			fakeGrpcServer := newGRPCTapServer(4190, "controller-ns", "cluster.local", "cluster.local", k8sAPI)
 
 			_, _, err = NewAPIServer("localhost:0", tls.Certificate{}, k8sAPI, fakeGrpcServer, false)
 			if !reflect.DeepEqual(err, exp.err) {
