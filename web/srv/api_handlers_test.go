@@ -15,8 +15,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHandleApiVersion(t *testing.T) {
@@ -117,14 +115,27 @@ func TestHandleApiCheck(t *testing.T) {
 	resp := w.Result()
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("not expecting error reading response body but got: %v", err)
+	}
 
 	// Check we receive the headers and body expected
-	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	expectedHeaders := http.Header{
+		"Content-Type": []string{"application/json"},
+	}
+	if !reflect.DeepEqual(resp.Header, expectedHeaders) {
+		t.Errorf("expecting headers to be\n %v\n but got\n %v", expectedHeaders, resp.Header)
+	}
 	apiCheckOutputGolden, err := ioutil.ReadFile("testdata/api_check_output.json")
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("not expecting error reading api check output golden file but got: %v", err)
+	}
 	apiCheckOutputGoldenCompact := &bytes.Buffer{}
 	err = json.Compact(apiCheckOutputGoldenCompact, apiCheckOutputGolden)
-	require.NoError(t, err)
-	assert.Equal(t, apiCheckOutputGoldenCompact.Bytes(), body)
+	if err != nil {
+		t.Fatalf("not expecting error compacting api check output golden file but got: %v", err)
+	}
+	if !bytes.Equal(body, apiCheckOutputGoldenCompact.Bytes()) {
+		t.Errorf("expecting response body to be\n %s\n but got\n %s", apiCheckOutputGoldenCompact.Bytes(), body)
+	}
 }
