@@ -13,7 +13,9 @@
             "HintAnchor": "check2-hint-anchor",
             "Retry": false,
             "Warning": true,
-            "Err": {}
+            "Err": {},
+            "ErrMsg": "check2-error",
+            "HintURL": "https://linkerd.io/checks/#check2-hint-anchor"
         }],
         "linkerd-config": [{
             "Category": "linkerd-config",

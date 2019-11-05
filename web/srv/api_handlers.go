@@ -322,13 +322,28 @@ func (h *handler) handleAPIEdges(w http.ResponseWriter, req *http.Request, p htt
 }
 
 func (h *handler) handleAPICheck(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	results := make(map[healthcheck.CategoryID][]*healthcheck.CheckResult)
+	type CheckResult struct {
+		*healthcheck.CheckResult
+		ErrMsg  string `json:",omitempty"`
+		HintURL string `json:",omitempty"`
+	}
+
+	results := make(map[healthcheck.CategoryID][]*CheckResult)
 
 	collectResults := func(result *healthcheck.CheckResult) {
 		if result.Retry || excludedChecksRE.MatchString(result.Description) {
 			return
 		}
-		results[result.Category] = append(results[result.Category], result)
+		var errMsg, hintURL string
+		if result.Err != nil {
+			errMsg = result.Err.Error()
+			hintURL = fmt.Sprintf("%s%s", healthcheck.HintBaseURL, result.HintAnchor)
+		}
+		results[result.Category] = append(results[result.Category], &CheckResult{
+			CheckResult: result,
+			ErrMsg:      errMsg,
+			HintURL:     hintURL,
+		})
 	}
 	success := h.hc.RunChecks(collectResults)
 
