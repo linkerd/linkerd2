@@ -90,15 +90,16 @@ class BaseTable extends React.Component {
     if (orderBy && col.sorter) {
       rows = _orderBy(rows, row => col.sorter(row), order);
     }
-    let columnsToFilter = tableColumns.filter(col => col.filter);
-    let filteredRows = rows.filter(row => {
-      return columnsToFilter.some(col => {
-        let rowText = col.filter(row);
-        return rowText.match(regexFilterString(filterBy));
+    if (filterBy) {
+      let columnsToFilter = tableColumns.filter(col => col.filter);
+      let filteredRows = rows.filter(row => {
+        return columnsToFilter.some(col => {
+          let rowText = col.filter(row);
+          return rowText.match(regexFilterString(filterBy));
+        });
       });
-    });
-    rows = filteredRows;
-
+      rows = filteredRows;
+    }
     return rows;
   }
 
