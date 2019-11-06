@@ -167,6 +167,7 @@ class NavigationBase extends React.Component {
       namespaceMenuOpen: false,
       newNamespace: '',
       namespaceFilter: '',
+      formattedNamespaceFilter: '',
       hideUpdateBadge: true,
       latestVersion: '',
       isLatest: true,
@@ -302,7 +303,8 @@ class NavigationBase extends React.Component {
   }
 
   handleFilterInputChange = event => {
-    this.setState({ namespaceFilter: event.target.value });
+    this.setState({ namespaceFilter: event.target.value,
+      formattedNamespaceFilter: regexFilterString(event.target.value) });
   }
 
   handleNamespaceChange = (event, namespace) => {
@@ -333,7 +335,8 @@ class NavigationBase extends React.Component {
   handleNamespaceMenuClick = event => {
     // ensure that mobile drawer will not close on click
     event.stopPropagation();
-    this.setState({ anchorEl: event.currentTarget, namespaceFilter: '' });
+    this.setState({ anchorEl: event.currentTarget, namespaceFilter: '',
+      formattedNamespaceFilter: '' });
     this.setState(state => ({ namespaceMenuOpen: !state.namespaceMenuOpen }));
   }
 
@@ -364,10 +367,10 @@ class NavigationBase extends React.Component {
 
   render() {
     const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
-    let { namespaces, namespaceFilter, anchorEl, showNamespaceChangeDialog,
-      newNamespace, mobileSidebarOpen } = this.state;
+    let { namespaces, namespaceFilter, formattedNamespaceFilter, anchorEl,
+      showNamespaceChangeDialog, newNamespace, mobileSidebarOpen } = this.state;
     namespaces = namespaces.filter(ns => {
-      return ns.name.match(regexFilterString(namespaceFilter));
+      return ns.name.match(formattedNamespaceFilter);
     });
     let formattedNamespaceName = selectedNamespace;
     if (formattedNamespaceName === "_all") {

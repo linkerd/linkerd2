@@ -75,7 +75,7 @@ class BaseTable extends React.Component {
   };
 
   handleFilterInputChange = event => {
-    this.setState({ filterBy: event.target.value });
+    this.setState({ filterBy: regexFilterString(event.target.value) });
   }
 
   handleFilterToggle = () => {
@@ -95,11 +95,12 @@ class BaseTable extends React.Component {
       let filteredRows = rows.filter(row => {
         return columnsToFilter.some(col => {
           let rowText = col.filter(row);
-          return rowText.match(regexFilterString(filterBy));
+          return rowText.match(filterBy);
         });
       });
       rows = filteredRows;
     }
+
     return rows;
   }
 
