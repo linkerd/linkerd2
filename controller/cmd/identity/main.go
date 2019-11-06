@@ -142,7 +142,7 @@ func Main(args []string) {
 		Interface: k8sAPI.CoreV1().Events(controllerNS),
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: componentName})
-	deployment, err := k8sAPI.ExtensionsV1beta1().Deployments(controllerNS).Get(componentName, v1machinary.GetOptions{})
+	deployment, err := k8sAPI.AppsV1().Deployments(controllerNS).Get(componentName, v1machinary.GetOptions{})
 
 	if err != nil {
 		log.Fatalf("Failed to construct k8s event recorder: %s", err)

@@ -32,7 +32,7 @@ rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
   verbs: ["create"]
-- apiGroups: ["extensions"]
+- apiGroups: ["apps"]
   resources: ["deployments"]
   verbs: ["get"]
 - apiGroups: [""]
