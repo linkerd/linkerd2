@@ -74,11 +74,8 @@ class BaseTable extends React.Component {
     this.setState({ order, orderBy });
   };
 
-  handleFilterInputChange = e => {
-    let filterBy = regexFilterString(e.target.value);
-    if (filterBy !== this.state.filterBy) {
-      this.setState({ filterBy });
-    }
+  handleFilterInputChange = event => {
+    this.setState({ filterBy: event.target.value });
   }
 
   handleFilterToggle = () => {
@@ -93,16 +90,14 @@ class BaseTable extends React.Component {
     if (orderBy && col.sorter) {
       rows = _orderBy(rows, row => col.sorter(row), order);
     }
-    if (filterBy) {
-      let columnsToFilter = tableColumns.filter(col => col.filter);
-      let filteredRows = rows.filter(row => {
-        return columnsToFilter.some(col => {
-          let rowText = col.filter(row);
-          return rowText.match(filterBy);
-        });
+    let columnsToFilter = tableColumns.filter(col => col.filter);
+    let filteredRows = rows.filter(row => {
+      return columnsToFilter.some(col => {
+        let rowText = col.filter(row);
+        return rowText.match(regexFilterString(filterBy));
       });
-      rows = filteredRows;
-    }
+    });
+    rows = filteredRows;
 
     return rows;
   }

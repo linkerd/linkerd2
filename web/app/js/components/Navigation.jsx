@@ -167,7 +167,6 @@ class NavigationBase extends React.Component {
       namespaceMenuOpen: false,
       newNamespace: '',
       namespaceFilter: '',
-      namespaceFilterInput: '',
       hideUpdateBadge: true,
       latestVersion: '',
       isLatest: true,
@@ -302,11 +301,8 @@ class NavigationBase extends React.Component {
     this.props.history.push(`/namespaces/${this.state.newNamespace}`);
   }
 
-  handleFilterInputChange = e => {
-    let namespaceFilter = regexFilterString(e.target.value);
-    if (namespaceFilter !== this.state.namespaceFilter) {
-      this.setState({ namespaceFilter, namespaceFilterInput: e.target.value });
-    }
+  handleFilterInputChange = event => {
+    this.setState({ namespaceFilter: event.target.value });
   }
 
   handleNamespaceChange = (event, namespace) => {
@@ -337,7 +333,7 @@ class NavigationBase extends React.Component {
   handleNamespaceMenuClick = event => {
     // ensure that mobile drawer will not close on click
     event.stopPropagation();
-    this.setState({ anchorEl: event.currentTarget, namespaceFilterInput: '', namespaceFilter: '' });
+    this.setState({ anchorEl: event.currentTarget, namespaceFilter: '' });
     this.setState(state => ({ namespaceMenuOpen: !state.namespaceMenuOpen }));
   }
 
@@ -368,12 +364,11 @@ class NavigationBase extends React.Component {
 
   render() {
     const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
-    let { namespaces, namespaceFilter, namespaceFilterInput, anchorEl, showNamespaceChangeDialog, newNamespace, mobileSidebarOpen } = this.state;
-    if (namespaceFilter !== '') {
-      namespaces = namespaces.filter(ns => {
-        return ns.name.match(namespaceFilter);
-      });
-    }
+    let { namespaces, namespaceFilter, anchorEl, showNamespaceChangeDialog,
+      newNamespace, mobileSidebarOpen } = this.state;
+    namespaces = namespaces.filter(ns => {
+      return ns.name.match(regexFilterString(namespaceFilter));
+    });
     let formattedNamespaceName = selectedNamespace;
     if (formattedNamespaceName === "_all") {
       formattedNamespaceName = "All Namespaces";
@@ -422,7 +417,7 @@ class NavigationBase extends React.Component {
             <MenuItem>
               <InputBase
                 id="namespace-filter-textfield"
-                value={namespaceFilterInput}
+                value={namespaceFilter}
                 onChange={this.handleFilterInputChange}
                 placeholder="Select namespace..."
                 autoFocus />
