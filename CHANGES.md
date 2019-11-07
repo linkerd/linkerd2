@@ -1,3 +1,28 @@
+## edge-19.11.2
+
+* CLI
+  * Updated `uninject` command to uninject namespace resources
+    (thanks @mayankshah1607!)
+* Controller
+  * Added `conntrack` to the `debug` container to help with connection tracking
+    debugging
+  * Fixed a bug in `tap` where mismatch cluster domain and trust domain caused
+    `tap` to hang
+  * Fixed an issue in the `identity` RBAC resource which caused start up errors
+    in k8s 1.6 (thanks @Pothulapati!)
+* Proxy
+  * Improved debug/error logging to include a wealth of contextual information
+* Web UI
+  * Added filter to namespace select button
+  * Improved how empty tables are displayed
+* Internal
+  * Added integration test for custom cluster domain
+  * Allowed the control plane to be injected with the `debug` container
+  * Updated proxy image build script to support HTTP proxy options
+    (thanks @joakimr-axis!)
+  * Updated the CLI `doc` command to auto-generate documentation for the proxy
+    configuration annotations (thanks @StupidScience!)
+
 ## edge-19.10.5
 
 This edge release adds support for integrating Linkerd's PKI with an external
