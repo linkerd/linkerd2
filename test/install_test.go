@@ -151,58 +151,39 @@ func TestCheckPreInstall(t *testing.T) {
 	}
 }
 
-// Gathers success stats from the test app
-func ensureTestAppRunning(t *testing.T, namespace string) {
-	args := []string{"stat", "deploy", "-n", namespace, "-t", "60s"}
-	err := TestHelper.RetryFor(60*time.Second, func() error {
-		out, stderr, err := TestHelper.LinkerdRun(args...)
-		if err != nil {
-			fmt.Println(stderr)
-			t.Fatalf("Unexpected stat error: %s\n%s", err, out)
-		}
-
-		rowStats, err := testutil.ParseRows(out, 1, 8)
+func exerciseTestAppEndpoint(endpoint, namespace string) error {
+	testAppURL, err := TestHelper.URLFor(namespace, "web", 8080)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < 30; i++ {
+		_, err := TestHelper.HTTPGetURL(testAppURL + endpoint)
 		if err != nil {
 			return err
 		}
-
-		name := "server"
-		successRate := "100.00%"
-
-		st, ok := rowStats[name]
-		if !ok {
-			return fmt.Errorf("no stats found for [%s]", name)
-		}
-
-		if st.Success != successRate {
-			return fmt.Errorf("expected success [%s] for [%s], got [%s]", successRate, name, st.Success)
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err.Error())
 	}
+	return nil
 }
 
-// deploys and meshes a simple test application
-func deployTestApp(t *testing.T, namespace string) {
-	out, _, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/upgrade_test.yaml")
-	if err != nil {
-		t.Fatalf("linkerd inject command failed\n%s", out)
-	}
+func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
+	if TestHelper.UpgradeFromVersion() != "" {
+		// make sure app is running
+		testAppNamespace := TestHelper.GetTestNamespace("upgrade-test")
+		for _, deploy := range []string{"emoji", "voting", "web"} {
+			if err := TestHelper.CheckPods(testAppNamespace, deploy, 1); err != nil {
+				t.Error(err)
+			}
 
-	out, err = TestHelper.KubectlApply(out, namespace)
-	if err != nil {
-		t.Fatalf("kubectl apply command failed\n%s", out)
-	}
+			if err := TestHelper.CheckDeployment(testAppNamespace, deploy, 1); err != nil {
+				t.Error(fmt.Errorf("Error validating deployment [%s]:\n%s", deploy, err))
+			}
+		}
 
-	// wait for deployment to start
-	if err := TestHelper.CheckPods(namespace, "server", 1); err != nil {
-		t.Error(err)
-	}
-
-	if err := TestHelper.CheckDeployment(namespace, "server", 1); err != nil {
-		t.Error(fmt.Errorf("Error validating deployment [%s]:\n%s", "server", err))
+		if err := exerciseTestAppEndpoint("/api/list", testAppNamespace); err != nil {
+			t.Fatalf("Error exercising test app endpoint before upgrade %s", err)
+		}
+	} else {
+		t.Skip("Skipping for non upgrade test")
 	}
 }
 
@@ -224,17 +205,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())
 	}
 
-	var upgradeNamespace string
 	if TestHelper.UpgradeFromVersion() != "" {
-
-		upgradeNamespace = TestHelper.GetTestNamespace("upgrade-test")
-		err := TestHelper.CreateNamespaceIfNotExists(upgradeNamespace, nil)
-		if err != nil {
-			t.Fatalf("failed to create %s namespace: %s", upgradeNamespace, err)
-		}
-
-		deployTestApp(t, upgradeNamespace)
-		ensureTestAppRunning(t, upgradeNamespace)
 
 		cmd = "upgrade"
 		// test 2-stage install during upgrade
@@ -294,9 +265,6 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		t.Fatalf("kubectl apply command failed\n%s", out)
 	}
 
-	if TestHelper.UpgradeFromVersion() != "" {
-		ensureTestAppRunning(t, upgradeNamespace) // make sure apps a running after upgrade
-	}
 }
 
 func TestInstallHelm(t *testing.T) {
@@ -401,6 +369,16 @@ func TestCheckPostInstall(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err.Error())
+	}
+}
+func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
+	if TestHelper.UpgradeFromVersion() != "" {
+		testAppNamespace := TestHelper.GetTestNamespace("upgrade-test")
+		if err := exerciseTestAppEndpoint("/api/vote?choice=:policeman:", testAppNamespace); err != nil {
+			t.Fatalf("Error exercising test app endpoint after upgrade %s", err)
+		}
+	} else {
+		t.Skip("Skipping for non upgrade test")
 	}
 }
 

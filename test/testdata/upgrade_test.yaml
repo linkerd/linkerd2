@@ -1,72 +1,157 @@
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: emoji
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: voting
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: web
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: server
+  creationTimestamp: null
+  name: emoji
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: server
+      app: emoji-svc
+  strategy: {}
   template:
     metadata:
+      creationTimestamp: null
       labels:
-        app: server
+        app: emoji-svc
     spec:
+      serviceAccountName: emoji
       containers:
-      - name: server
-        image: buoyantio/bb:v0.0.5
-        args:
-        - terminus
-        - "--h1-server-port=8080"
-        - "--response-text=server"
+      - env:
+        - name: GRPC_PORT
+          value: "8080"
+        image: buoyantio/emojivoto-emoji-svc:v8
+        name: emoji-svc
         ports:
         - containerPort: 8080
+          name: grpc
+        resources:
+          requests:
+            cpu: 100m
+status: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: server-svc
+  name: emoji-svc
 spec:
   selector:
-    app: server
+    app: emoji-svc
+  clusterIP: None
   ports:
-  - name: http
+  - name: grpc
     port: 8080
     targetPort: 8080
 ---
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: slow-cooker
+  creationTimestamp: null
+  name: voting
 spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: voting-svc
+  strategy: {}
   template:
     metadata:
+      creationTimestamp: null
       labels:
-        app: slow-cooker
+        app: voting-svc
     spec:
+      serviceAccountName: voting
       containers:
-      - name: slow-cooker
-        image: buoyantio/slow_cooker:1.1.1
-        command:
-        - "/bin/sh"
-        args:
-        - "-c"
-        - |
-          sleep 5 # wait for pods to start
-          slow_cooker -metric-addr 0.0.0.0:9999 http://server-svc:8080
+      - env:
+        - name: GRPC_PORT
+          value: "8080"
+        image: buoyantio/emojivoto-voting-svc:v8
+        name: voting-svc
         ports:
-        - containerPort: 9999
-      restartPolicy: OnFailure
+        - containerPort: 8080
+          name: grpc
+        resources:
+          requests:
+            cpu: 100m
+status: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: slow-cooker
+  name: voting-svc
 spec:
   selector:
-    app: slow-cooker
+    app: voting-svc
+  clusterIP: None
   ports:
-  - name: metrics
-    port: 9999
-    targetPort: 9999
+  - name: grpc
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-svc
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: web-svc
+    spec:
+      serviceAccountName: web
+      containers:
+      - env:
+        - name: WEB_PORT
+          value: "8080"
+        - name: EMOJISVC_HOST
+          value: emoji-svc:8080
+        - name: VOTINGSVC_HOST
+          value: voting-svc:8080
+        - name: INDEX_BUNDLE
+          value: dist/index_bundle.js
+        image: buoyantio/emojivoto-web:v8
+        name: web-svc
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: 100m
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-svc
+spec:
+  type: LoadBalancer
+  selector:
+    app: web-svc
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+---
