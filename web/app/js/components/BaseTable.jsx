@@ -20,6 +20,7 @@ import _get from 'lodash/get';
 import _isNil from 'lodash/isNil';
 import _orderBy from 'lodash/orderBy';
 import classNames from 'classnames';
+import { regexFilterString } from './util/Utils.js';
 import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
@@ -73,13 +74,8 @@ class BaseTable extends React.Component {
     this.setState({ order, orderBy });
   };
 
-  handleFilterInputChange = e => {
-    let input = e.target.value.replace(/[^A-Z0-9/.\-_]/gi, "").toLowerCase();
-    let swapWildCard = /[*]/g; // replace "*" in input with wildcard
-    let filterBy = new RegExp(input.replace(swapWildCard, ".+"), "i");
-    if (filterBy !== this.state.filterBy) {
-      this.setState({ filterBy });
-    }
+  handleFilterInputChange = event => {
+    this.setState({ filterBy: regexFilterString(event.target.value) });
   }
 
   handleFilterToggle = () => {
