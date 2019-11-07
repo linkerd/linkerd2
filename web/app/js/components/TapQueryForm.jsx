@@ -376,8 +376,8 @@ class TapQueryForm extends React.Component {
             </FormControl>
           </Grid>
         </Grid>
-      </Grid>
 
+      </Grid>
     );
   }
 
