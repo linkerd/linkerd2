@@ -34,6 +34,7 @@ import (
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
+	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -145,6 +146,11 @@ const (
 	linkerdCNIDisabledSkipReason = "skipping check because CNI is not enabled"
 	linkerdCNIResourceName       = "linkerd-cni"
 	linkerdCNIConfigMapName      = "linkerd-cni-config"
+
+	// linkerdTapAPIServiceName is the name of the tap api service
+	// This key is passed to checkApiSercice method to check whether
+	// the api service is available or not
+	linkerdTapAPIServiceName = "v1alpha1.tap.linkerd.io"
 )
 
 // HintBaseURL is the base URL on the linkerd.io website that all check hints
@@ -1001,6 +1007,14 @@ func (hc *HealthChecker) allCategories() []category {
 						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
 					},
 				},
+				{
+					description: "tap api service is running",
+					hintAnchor:  "#",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkAPIService(linkerdTapAPIServiceName)
+					},
+				},
 			},
 		},
 		{
@@ -1191,7 +1205,6 @@ func (hc *HealthChecker) addCategory(c category) {
 // designated as warnings will not cause RunCheck to return false, however.
 func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 	success := true
-
 	for _, c := range hc.categories {
 		if c.enabled {
 			for _, checker := range c.checkers {
@@ -1785,6 +1798,19 @@ func (hc *HealthChecker) checkCanCreateNonNamespacedResources() error {
 
 func (hc *HealthChecker) checkCanGet(namespace, group, version, resource string) error {
 	return hc.checkCanPerformAction("get", namespace, group, version, resource)
+}
+
+func (hc *HealthChecker) checkAPIService(serviceName string) error {
+	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
+	if err != nil {
+		return err
+	}
+
+	_, err = apiServiceClient.APIServices().Get(serviceName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (hc *HealthChecker) checkCapability(cap string) error {
