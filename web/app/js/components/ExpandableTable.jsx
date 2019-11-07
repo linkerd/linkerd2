@@ -104,11 +104,9 @@ class ExpandableTable extends React.Component {
             )}
           </TableBody>
         </Table>
-
         <Dialog
           maxWidth="md"
           fullWidth
-          scroll="body"
           open={this.state.open}
           onClose={this.handleDialogClose}
           aria-labelledby="form-dialog-title">
