@@ -1,7 +1,7 @@
-## edge-19.11.2
+## edge-19.11.1
 
 * CLI
-  * Updated `uninject` command to uninject namespace resources
+  * Updated `uninject` command to work with namespace resources
     (thanks @mayankshah1607!)
 * Controller
   * Added `conntrack` to the `debug` container to help with connection tracking
@@ -11,7 +11,7 @@
   * Fixed an issue in the `identity` RBAC resource which caused start up errors
     in k8s 1.6 (thanks @Pothulapati!)
 * Proxy
-  * Improved debug/error logging to include a wealth of contextual information
+  * Improved debug/error logging to include detailed contextual information
 * Web UI
   * Added filter to namespace select button
   * Improved how empty tables are displayed
