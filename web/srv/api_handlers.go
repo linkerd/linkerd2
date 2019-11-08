@@ -328,6 +328,7 @@ func (h *handler) handleAPICheck(w http.ResponseWriter, req *http.Request, p htt
 		HintURL string `json:",omitempty"`
 	}
 
+	success := true
 	results := make(map[healthcheck.CategoryID][]*CheckResult)
 
 	collectResults := func(result *healthcheck.CheckResult) {
@@ -336,6 +337,9 @@ func (h *handler) handleAPICheck(w http.ResponseWriter, req *http.Request, p htt
 		}
 		var errMsg, hintURL string
 		if result.Err != nil {
+			if !result.Warning {
+				success = false
+			}
 			errMsg = result.Err.Error()
 			hintURL = fmt.Sprintf("%s%s", healthcheck.HintBaseURL, result.HintAnchor)
 		}
@@ -345,7 +349,9 @@ func (h *handler) handleAPICheck(w http.ResponseWriter, req *http.Request, p htt
 			HintURL:     hintURL,
 		})
 	}
-	success := h.hc.RunChecks(collectResults)
+	// TODO (tegioz): ignore runchecks results until we stop filtering checks
+	// in this method (see #3670 for more details)
+	_ = h.hc.RunChecks(collectResults)
 
 	renderJSON(w, map[string]interface{}{
 		"success": success,
