@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: [download_src]
     container:
-      image: golang:1.12.9
+      image: golang:1.13.4
     steps:
     - name: Download .git artifact
       uses: actions/download-artifact@v1
@@ -130,7 +130,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: [download_src]
     container:
-      image: golang:1.12.9
+      image: golang:1.13.4
     steps:
     - name: Download .git artifact
       uses: actions/download-artifact@v1
@@ -155,7 +155,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: [download_src]
     container:
-      image: golang:1.12.9
+      image: golang:1.13.4
     steps:
     - name: Download .git artifact
       uses: actions/download-artifact@v1
