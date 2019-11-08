@@ -23,25 +23,6 @@ spec:
     port: 8085
     targetPort: 8085
 ---
-kind: Service
-apiVersion: v1
-metadata:
-  name: linkerd-destination
-  namespace: {{.Namespace}}
-  labels:
-    {{.ControllerComponentLabel}}: controller
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-  annotations:
-    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
-spec:
-  type: ClusterIP
-  selector:
-    {{.ControllerComponentLabel}}: controller
-  ports:
-  - name: grpc
-    port: 8086
-    targetPort: 8086
----
 {{ $_ := set .Proxy "WorkloadKind" "deployment" -}}
 {{ $_ := set .Proxy "Component" "linkerd-controller" -}}
 {{ include "linkerd.proxy.validation" .Proxy -}}
@@ -105,38 +86,6 @@ spec:
             port: 9995
         {{- if .PublicAPIResources -}}
         {{- include "partials.resources" .PublicAPIResources | nindent 8 }}
-        {{- end }}
-        securityContext:
-          runAsUser: {{.ControllerUID}}
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
-      - args:
-        - destination
-        - -addr=:8086
-        - -controller-namespace={{.Namespace}}
-        - -enable-h2-upgrade={{.EnableH2Upgrade}}
-        - -log-level={{.ControllerLogLevel}}
-        image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        livenessProbe:
-          httpGet:
-            path: /ping
-            port: 9996
-          initialDelaySeconds: 10
-        name: destination
-        ports:
-        - containerPort: 8086
-          name: grpc
-        - containerPort: 9996
-          name: admin-http
-        readinessProbe:
-          failureThreshold: 7
-          httpGet:
-            path: /ready
-            port: 9996
-        {{- if .DestinationResources -}}
-        {{- include "partials.resources" .DestinationResources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsUser: {{.ControllerUID}}
