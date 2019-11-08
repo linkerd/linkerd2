@@ -114,11 +114,11 @@ const Results = ({title, results, classes}) => {
         const resultType = getResultType(result.Err, result.Warning);
 
         return (
-          <Grid container direction="row" key={result.Description}>
+          <Grid container direction="row" alignItems="flex-start" key={result.Description}>
             <Grid item>
               <Icon type={resultType} classes={classes} />
             </Grid>
-            <Grid item>
+            <Grid item xs>
               <Typography className={classes.result} color="inherit" data-i18n={`${title}_${index + 1}`}>
                 {result.Description}
               </Typography>
