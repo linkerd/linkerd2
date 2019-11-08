@@ -138,6 +138,14 @@ func (h *KubernetesHelper) CheckDeployment(namespace string, deploymentName stri
 	})
 }
 
+func (h *KubernetesHelper) GetConfigUid(namespace string) (string, error) {
+	cm, err := h.clientset.CoreV1().ConfigMaps(namespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	return string(cm.GetUID()), nil
+}
+
 // CheckPods checks that a deployment in a namespace contains the expected
 // number of pods in the Running state, and that no pods have been restarted.
 func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, replicas int) error {

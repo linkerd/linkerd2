@@ -33,6 +33,8 @@ func TestMain(m *testing.M) {
 }
 
 var (
+	configMapUid string
+
 	linkerdSvcs = []string{
 		"linkerd-controller-api",
 		"linkerd-dst",
@@ -187,6 +189,16 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 	}
 }
 
+func TestRetrieveUidPreUpgrade(t *testing.T) {
+	if TestHelper.UpgradeFromVersion() != "" {
+		var err error
+		configMapUid, err = TestHelper.KubernetesHelper.GetConfigUid(TestHelper.GetLinkerdNamespace())
+		if err != nil || configMapUid == "" {
+			t.Fatalf("Error retrieving linkerd-config's uid %s", err)
+		}
+	}
+}
+
 func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.GetHelmReleaseName() != "" {
 		return
@@ -314,6 +326,21 @@ func TestResourcesPostInstall(t *testing.T) {
 		}
 		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.replicas); err != nil {
 			t.Fatal(fmt.Errorf("Error validating deploy [%s]:\n%s", deploy, err))
+		}
+	}
+}
+
+func TestRetrieveUidPostUpgrade(t *testing.T) {
+	if TestHelper.UpgradeFromVersion() != "" {
+		newConfigMapUid, err := TestHelper.KubernetesHelper.GetConfigUid(TestHelper.GetLinkerdNamespace())
+		if err != nil || newConfigMapUid == "" {
+			t.Fatalf("Error retrieving linkerd-config's uid %s", err)
+		}
+		if configMapUid != newConfigMapUid {
+			t.Fatalf(
+				"linkerd-config's uid after upgrade [%s] doesn't match its value before the upgrade [%s]",
+				newConfigMapUid, configMapUid,
+			)
 		}
 	}
 }

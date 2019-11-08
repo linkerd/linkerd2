@@ -209,7 +209,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 
 	// If the install config needs to be repaired--either because it did not
 	// exist or because it is missing expected fields, repair it.
-	repairInstall(options.generateUUID, configs.Install)
+	repairInstall(configs.Install)
 
 	// We recorded flags during a prior install. If we haven't overridden the
 	// flag on this upgrade, reset that prior value as if it were specified now.
@@ -304,13 +304,9 @@ func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) 
 	}
 }
 
-func repairInstall(generateUUID func() string, install *pb.Install) {
+func repairInstall(install *pb.Install) {
 	if install == nil {
 		install = &pb.Install{}
-	}
-
-	if install.GetUuid() == "" {
-		install.Uuid = generateUUID()
 	}
 
 	// ALWAYS update the CLI version to the most recent.

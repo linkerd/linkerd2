@@ -27,7 +27,6 @@ type (
 		PrometheusImage             string
 		GrafanaImage                string
 		ImagePullPolicy             string
-		UUID                        string
 		CliVersion                  string
 		ControllerReplicas          uint
 		ControllerLogLevel          string

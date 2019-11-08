@@ -285,6 +285,7 @@ type HealthChecker struct {
 	latestVersions   version.Channels
 	serverVersion    string
 	linkerdConfig    *configPb.All
+	uuid             string
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -611,7 +612,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
+						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
 						return
 					},
 				},
@@ -742,10 +743,9 @@ func (hc *HealthChecker) allCategories() []category {
 						if hc.VersionOverride != "" {
 							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
 						} else {
-							// Retrieve the UUID from `linkerd-config`.
 							uuid := "unknown"
-							if hc.linkerdConfig != nil {
-								uuid = hc.linkerdConfig.GetInstall().GetUuid()
+							if hc.uuid != "" {
+								uuid = hc.uuid
 							}
 							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
 						}
@@ -1023,13 +1023,13 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkLinkerdConfigConfigMap() (*configPb.All, error) {
-	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+func (hc *HealthChecker) checkLinkerdConfigConfigMap() (string, *configPb.All, error) {
+	cm, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	return configPB, nil
+	return string(cm.GetUID()), configPB, nil
 }
 
 // FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from

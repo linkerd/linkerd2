@@ -78,10 +78,11 @@ func main() {
 	})
 
 	installConfig, err := config.Install(pkgK8s.MountPathInstallConfig)
+	cm, _, err := healthcheck.FetchLinkerdConfigMap(k8sAPI, *controllerNamespace)
 	if err != nil {
-		log.Warnf("failed to load uuid from install config: [%s] (disregard warning if running in development mode)", err)
+		log.Errorf("Failed to fetch linkerd-config: %s", err)
 	}
-	uuid := installConfig.GetUuid()
+	uuid := string(cm.GetUID())
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
