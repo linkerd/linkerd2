@@ -1837,6 +1837,7 @@ func (hc *HealthChecker) checkAPIService(serviceName string) error {
 			}
 			errorMessage = fmt.Sprintf("%s: %s", condition.Reason, condition.Message)
 		}
+		errorMessage = condition.Message
 	}
 	if available {
 		return errors.New(errorMessage)
