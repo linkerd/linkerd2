@@ -1812,14 +1812,16 @@ func (hc *HealthChecker) checkAPIService(serviceName string) error {
 	}
 
 	available := false
+	var errorMessage string
 	for _, condition := range apiStatus.Status.Conditions {
 		if condition.Status == "True" {
 			available = true
 			break
 		}
+		errorMessage = condition.Message
 	}
 	if !available {
-		return fmt.Errorf("%s service is not available", serviceName)
+		return fmt.Errorf(errorMessage)
 	}
 	return nil
 }
