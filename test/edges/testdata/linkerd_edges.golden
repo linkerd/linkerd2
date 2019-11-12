@@ -84,9 +84,9 @@
     "src": "linkerd\-prometheus",
     "src_namespace": "{{.Ns}}",
     "dst": "linkerd\-identity",
-    "dst_namespace": "{{.Ns}}",
-    "client_id": "linkerd\-prometheus.{{.Ns}}",
-    "server_id": "linkerd\-identity.{{.Ns}}",
+    "dst_namespace": "",
+    "client_id": "",
+    "server_id": "",
     "no_tls_reason": ""
   \},
   \{
