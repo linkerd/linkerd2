@@ -26,7 +26,7 @@
     "server_id": "linkerd\-destination.{{.Ns}}",
     "no_tls_reason": ""
   \},
-    \{
+  \{
     "src": "linkerd\-prometheus",
     "src_namespace": "{{.Ns}}",
     "dst": "linkerd\-grafana",
