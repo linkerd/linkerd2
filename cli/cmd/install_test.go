@@ -119,6 +119,9 @@ func TestRender(t *testing.T) {
 				},
 			},
 		},
+		Dashboard: &charts.Dashboard{
+			Replicas: 1,
+		},
 	}
 
 	haOptions, err := testInstallOptions()

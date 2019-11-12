@@ -50,6 +50,10 @@ func TestNewValues(t *testing.T) {
 			"beta.kubernetes.io/os": "linux",
 		},
 
+		Dashboard: &Dashboard{
+			Replicas: 1,
+		},
+
 		Identity: &Identity{
 			TrustDomain: "cluster.local",
 			Issuer: &Issuer{

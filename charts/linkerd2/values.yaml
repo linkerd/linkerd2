@@ -19,6 +19,10 @@ ControllerLogLevel: &controller_log_level info
 ControllerReplicas: 1
 ControllerUID: 2103
 
+# web dashboard configuration
+Dashboard:
+  Replicas: 1
+
 # identity configuration
 Identity:
   Issuer:
