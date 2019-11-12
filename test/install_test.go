@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 }
 
 var (
-	configMapUid string
+	configMapUID string
 
 	linkerdSvcs = []string{
 		"linkerd-controller-api",
@@ -192,8 +192,8 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 func TestRetrieveUidPreUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
 		var err error
-		configMapUid, err = TestHelper.KubernetesHelper.GetConfigUid(TestHelper.GetLinkerdNamespace())
-		if err != nil || configMapUid == "" {
+		configMapUID, err = TestHelper.KubernetesHelper.GetConfigUid(TestHelper.GetLinkerdNamespace())
+		if err != nil || configMapUID == "" {
 			t.Fatalf("Error retrieving linkerd-config's uid %s", err)
 		}
 	}
@@ -332,14 +332,14 @@ func TestResourcesPostInstall(t *testing.T) {
 
 func TestRetrieveUidPostUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
-		newConfigMapUid, err := TestHelper.KubernetesHelper.GetConfigUid(TestHelper.GetLinkerdNamespace())
-		if err != nil || newConfigMapUid == "" {
+		newConfigMapUID, err := TestHelper.KubernetesHelper.GetConfigUid(TestHelper.GetLinkerdNamespace())
+		if err != nil || newConfigMapUID == "" {
 			t.Fatalf("Error retrieving linkerd-config's uid %s", err)
 		}
-		if configMapUid != newConfigMapUid {
+		if configMapUID != newConfigMapUID {
 			t.Fatalf(
 				"linkerd-config's uid after upgrade [%s] doesn't match its value before the upgrade [%s]",
-				newConfigMapUid, configMapUid,
+				newConfigMapUID, configMapUID,
 			)
 		}
 	}
