@@ -138,9 +138,9 @@ func (h *KubernetesHelper) CheckDeployment(namespace string, deploymentName stri
 	})
 }
 
-// GetConfigUid returns the uid associated to the linkerd-config ConfigMap resource
+// GetConfigUID returns the uid associated to the linkerd-config ConfigMap resource
 // in the given namespace
-func (h *KubernetesHelper) GetConfigUid(namespace string) (string, error) {
+func (h *KubernetesHelper) GetConfigUID(namespace string) (string, error) {
 	cm, err := h.clientset.CoreV1().ConfigMaps(namespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		return "", err

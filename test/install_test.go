@@ -192,7 +192,7 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 func TestRetrieveUidPreUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
 		var err error
-		configMapUID, err = TestHelper.KubernetesHelper.GetConfigUid(TestHelper.GetLinkerdNamespace())
+		configMapUID, err = TestHelper.KubernetesHelper.GetConfigUID(TestHelper.GetLinkerdNamespace())
 		if err != nil || configMapUID == "" {
 			t.Fatalf("Error retrieving linkerd-config's uid %s", err)
 		}
@@ -332,7 +332,7 @@ func TestResourcesPostInstall(t *testing.T) {
 
 func TestRetrieveUidPostUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
-		newConfigMapUID, err := TestHelper.KubernetesHelper.GetConfigUid(TestHelper.GetLinkerdNamespace())
+		newConfigMapUID, err := TestHelper.KubernetesHelper.GetConfigUID(TestHelper.GetLinkerdNamespace())
 		if err != nil || newConfigMapUID == "" {
 			t.Fatalf("Error retrieving linkerd-config's uid %s", err)
 		}
