@@ -106,7 +106,7 @@ func (iw *IPWatcher) Unsubscribe(clusterIP string, port Port, listener EndpointU
 
 func (iw *IPWatcher) addService(obj interface{}) {
 	service := obj.(*corev1.Service)
-	if service.Namespace == kubeSystem {
+	if service.Namespace == kubeSystem || service.Spec.ClusterIP == "None" {
 		return
 	}
 
