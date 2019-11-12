@@ -77,7 +77,6 @@ func main() {
 		APIAddr:               *apiAddr,
 	})
 
-	installConfig, err := config.Install(pkgK8s.MountPathInstallConfig)
 	cm, _, err := healthcheck.FetchLinkerdConfigMap(k8sAPI, *controllerNamespace)
 	if err != nil {
 		log.Errorf("Failed to fetch linkerd-config: %s", err)
