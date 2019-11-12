@@ -15,6 +15,7 @@ import Typography from '@material-ui/core/Typography';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import _isNull from 'lodash/isNull';
+import { headersDisplay } from './TapEventHeadersTable.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -143,6 +144,7 @@ const requestInitSection = d => (
       {itemDisplay("Path", _get(d, "requestInit.http.requestInit.path"))}
       {itemDisplay("Scheme", _get(d, "requestInit.http.requestInit.scheme.registered"))}
       {itemDisplay("Method", _get(d, "requestInit.http.requestInit.method.registered"))}
+      {headersDisplay("Headers", _get(d, "requestInit.http.requestInit.headers"))}
     </List>
   </React.Fragment>
 );
@@ -154,6 +156,7 @@ const responseInitSection = d => _isEmpty(d.responseInit) ? null : (
     <List dense>
       {itemDisplay("HTTP Status", _get(d, "responseInit.http.responseInit.httpStatus"))}
       {itemDisplay("Latency", formatTapLatency(_get(d, "responseInit.http.responseInit.sinceRequestInit")))}
+      {headersDisplay("Headers", _get(d, "responseInit.http.responseInit.headers"))}
     </List>
   </React.Fragment>
 );
