@@ -10,12 +10,24 @@ metadata:
   name: linkerd-web
   namespace: {{.Namespace}}
   labels:
+    {{.ControllerComponentLabel}}: web
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get"]
   resourceNames: ["linkerd-config"]
+  {{- if not .RestrictDashboardPrivileges }}
+- apiGroups: [""]
+  resources: ["namespaces", "configmaps"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["serviceaccounts", "pods"]
+  verbs: ["list"]
+- apiGroups: ["apps"]
+  resources: ["replicasets"]
+  verbs: ["list"]
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -23,6 +35,7 @@ metadata:
   name: linkerd-web
   namespace: {{.Namespace}}
   labels:
+    {{.ControllerComponentLabel}}: web
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
 roleRef:
   kind: Role
@@ -34,25 +47,6 @@ subjects:
   namespace: {{.Namespace}}
 ---
 {{- if not .RestrictDashboardPrivileges }}
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: linkerd-web-check
-  namespace: {{.Namespace}}
-  labels:
-    {{.ControllerComponentLabel}}: web
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-rules:
-- apiGroups: [""]
-  resources: ["namespaces", "configmaps",]
-  verbs: ["get"]
-- apiGroups: [""]
-  resources: ["serviceaccounts", "pods"]
-  verbs: ["list"]
-- apiGroups: ["apps"]
-  resources: ["replicasets"]
-  verbs: ["list"]
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -76,23 +70,6 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: linkerd-web-check
-  namespace: {{.Namespace}}
-  labels:
-    {{.ControllerComponentLabel}}: web
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-roleRef:
-  kind: Role
-  name: linkerd-web-check
-  apiGroup: rbac.authorization.k8s.io
-subjects:
-- kind: ServiceAccount
-  name: linkerd-web
-  namespace: {{.Namespace}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
