@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
@@ -60,6 +61,22 @@ func main() {
 		log.Fatalf("failed to construct Kubernetes API client: [%s]", err)
 	}
 
+	// Setup health checker
+	checks := []healthcheck.CategoryID{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.KubernetesVersionChecks,
+		healthcheck.LinkerdConfigChecks,
+		healthcheck.LinkerdControlPlaneExistenceChecks,
+		healthcheck.LinkerdAPIChecks,
+		healthcheck.LinkerdVersionChecks,
+		healthcheck.LinkerdControlPlaneVersionChecks,
+	}
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+		ControlPlaneNamespace: *controllerNamespace,
+		KubeConfig:            *kubeConfigPath,
+		APIAddr:               *apiAddr,
+	})
+
 	installConfig, err := config.Install(pkgK8s.MountPathInstallConfig)
 	if err != nil {
 		log.Warnf("failed to load uuid from install config: [%s] (disregard warning if running in development mode)", err)
@@ -81,7 +98,7 @@ func main() {
 	}
 
 	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid,
-		*controllerNamespace, clusterDomain, *reload, reHost, client, k8sAPI)
+		*controllerNamespace, clusterDomain, *reload, reHost, client, k8sAPI, hc)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

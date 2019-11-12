@@ -3,6 +3,7 @@ import BaseTable from './BaseTable.jsx';
 import CallToAction from './CallToAction.jsx';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
+import CheckModal from './CheckModal.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import Grid from '@material-ui/core/Grid';
 import MeshedStatusTable from './MeshedStatusTable.jsx';
@@ -282,6 +283,7 @@ class ServiceMesh extends React.Component {
 
               <Grid item xs={4} container direction="column" spacing={24}>
                 <Grid item>{this.renderServiceMeshDetails()}</Grid>
+                <Grid item><CheckModal api={this.api} /></Grid>
                 <Grid item>{this.renderAddResourcesMessage()}</Grid>
               </Grid>
             </Grid>

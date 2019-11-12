@@ -40,6 +40,7 @@ COPY --from=golang /linkerd-build/web/web .
 RUN mkdir -p app
 COPY --from=webpack-bundle /linkerd-build/web/app/dist app/dist
 COPY web/templates templates
+COPY --from=golang /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}

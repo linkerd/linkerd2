@@ -27,6 +27,7 @@ type (
 		controllerNamespace string
 		clusterDomain       string
 		grafanaProxy        *grafanaProxy
+		hc                  healthChecker
 	}
 )
 

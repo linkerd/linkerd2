@@ -491,7 +491,7 @@ func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
 
 	flags.BoolVar(
 		&options.restrictDashboardPrivileges, "restrict-dashboard-privileges", options.restrictDashboardPrivileges,
-		"Restrict the Linkerd Dashboard's default privileges to disallow Tap",
+		"Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check",
 	)
 	return flags
 }
