@@ -2,7 +2,7 @@
 
 set -eu
 
-lintversion=1.17.1
+lintversion=1.19.1
 
 cd "$(pwd -P)"
 
