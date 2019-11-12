@@ -9,12 +9,138 @@
     "no_tls_reason": ""
   \},
   \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "linkerd\-controller",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "linkerd\-prometheus.{{.Ns}}",
+    "server_id": "linkerd\-controller.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "linkerd\-destination",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "linkerd\-prometheus.{{.Ns}}",
+    "server_id": "linkerd\-destination.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+    \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "linkerd\-grafana",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "linkerd\-prometheus.{{.Ns}}",
+    "server_id": "linkerd\-grafana.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "linkerd\-proxy\-injector",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "linkerd\-prometheus.{{.Ns}}",
+    "server_id": "linkerd\-proxy\-injector.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "linkerd\-sp\-validator",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "linkerd\-prometheus.{{.Ns}}",
+    "server_id": "linkerd\-sp\-validator.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "linkerd\-tap",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "linkerd\-prometheus.{{.Ns}}",
+    "server_id": "linkerd\-tap.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "linkerd\-web",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "linkerd\-prometheus.{{.Ns}}",
+    "server_id": "linkerd\-web.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
     "src": "linkerd\-web",
     "src_namespace": "{{.Ns}}",
     "dst": "linkerd\-controller",
     "dst_namespace": "{{.Ns}}",
     "client_id": "linkerd\-web.{{.Ns}}",
     "server_id": "linkerd\-controller.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "linkerd\-identity",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "linkerd\-prometheus.{{.Ns}}",
+    "server_id": "linkerd\-identity.{{.Ns}}",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "smoke\-test\-gateway",
+    "dst_namespace": "",
+    "client_id": "",
+    "server_id": "",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "smoke\-test\-gateway",
+    "dst_namespace": "",
+    "client_id": "",
+    "server_id": "",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "smoke\-test\-gateway",
+    "dst_namespace": "",
+    "client_id": "",
+    "server_id": "",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "smoke\-test\-terminus",
+    "dst_namespace": "",
+    "client_id": "",
+    "server_id": "",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "smoke\-test\-terminus",
+    "dst_namespace": "",
+    "client_id": "",
+    "server_id": "",
+    "no_tls_reason": ""
+  \},
+  \{
+    "src": "linkerd\-prometheus",
+    "src_namespace": "{{.Ns}}",
+    "dst": "smoke\-test\-terminus",
+    "dst_namespace": "",
+    "client_id": "",
+    "server_id": "",
     "no_tls_reason": ""
   \}
 \]
