@@ -28,6 +28,7 @@ type routeRowStats struct {
 	rowStats
 	actualRequestRate float64
 	actualSuccessRate float64
+	hasRequestData    bool
 }
 
 func newRoutesOptions() *routesOptions {
@@ -124,6 +125,7 @@ func writeRouteStatsToBuffer(resp *pb.TopRoutesResponse, w *tabwriter.Writer, op
 					},
 					actualRequestRate: getRequestRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount(), r.TimeWindow),
 					actualSuccessRate: getSuccessRate(r.Stats.GetActualSuccessCount(), r.Stats.GetActualFailureCount()),
+					hasRequestData:    statHasRequestData(r.Stats),
 				})
 			}
 		}
@@ -200,27 +202,36 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 	// p50, p95, p99
 	templateString = templateString + "%dms\t%dms\t%dms\t\n"
 
+	emptyTemplateString := routeTemplate + "\t%s\t-\t-\t-\t-\t-\t\n"
 	for _, row := range stats {
 
 		values := []interface{}{
 			row.route,
 			row.dst,
-			row.successRate * 100,
-			row.requestRate,
 		}
-		if outputActual {
-			values = append(values, []interface{}{
-				row.actualSuccessRate * 100,
-				row.actualRequestRate,
-			}...)
-		}
-		values = append(values, []interface{}{
-			row.latencyP50,
-			row.latencyP95,
-			row.latencyP99,
-		}...)
 
-		fmt.Fprintf(w, templateString, values...)
+		if row.hasRequestData {
+			values = append(values, []interface{}{
+				row.successRate * 100,
+				row.requestRate,
+			}...)
+
+			if outputActual {
+				values = append(values, []interface{}{
+					row.actualSuccessRate * 100,
+					row.actualRequestRate,
+				}...)
+			}
+			values = append(values, []interface{}{
+				row.latencyP50,
+				row.latencyP95,
+				row.latencyP99,
+			}...)
+
+			fmt.Fprintf(w, templateString, values...)
+		} else {
+			fmt.Fprintf(w, emptyTemplateString, values...)
+		}
 	}
 }
 
