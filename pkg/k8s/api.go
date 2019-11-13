@@ -13,6 +13,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -32,6 +33,7 @@ type KubernetesAPI struct {
 	kubernetes.Interface
 	Apiextensions apiextensionsclient.Interface // for CRDs
 	TsClient      tsclient.Interface
+	DynamicClient dynamic.Interface
 }
 
 // NewAPI validates a Kubernetes config and returns a client for accessing the
@@ -65,7 +67,11 @@ func NewAPI(configPath, kubeContext string, impersonate string, timeout time.Dur
 	}
 	tsClient, err := tsclient.NewForConfig(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error configuring Traffic Split clientset: %v", err)
+	}
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error configuring Kubernetes Dynamic Client: %v", err)
 	}
 
 	return &KubernetesAPI{
@@ -73,6 +79,7 @@ func NewAPI(configPath, kubeContext string, impersonate string, timeout time.Dur
 		Interface:     clientset,
 		Apiextensions: apiextensions,
 		TsClient:      tsClient,
+		DynamicClient: dynamicClient,
 	}, nil
 }
 

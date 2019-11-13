@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
@@ -705,6 +706,14 @@ func (hc *HealthChecker) allCategories() []category {
 					check: func(ctx context.Context) (err error) {
 						hc.serverVersion, err = GetServerVersion(ctx, hc.apiClient)
 						return
+					},
+				},
+				{
+					description: "injector is operating correctly",
+					hintAnchor:  "",
+					warning:     true,
+					check: func(context.Context) error {
+						return hc.checkInjector()
 					},
 				},
 			},
@@ -1625,6 +1634,45 @@ func (hc *HealthChecker) checkClockSkew() error {
 
 	if len(clockSkewNodes) > 0 {
 		return fmt.Errorf("clock skew detected for node(s): %s", strings.Join(clockSkewNodes, ", "))
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) checkInjector() error {
+	// Create pod using dry-run option
+	pod := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "Pod",
+			"metadata": map[string]interface{}{
+				"name": "check-injector",
+				"annotations": map[string]interface{}{
+					"linkerd.io/inject": "enabled",
+				},
+			},
+			"spec": map[string]interface{}{
+				"containers": []map[string]interface{}{
+					{
+						"name":  "busybox",
+						"image": "busybox",
+					},
+				},
+			},
+		},
+	}
+	injectedPod, err := hc.kubeAPI.DynamicClient.
+		Resource(schema.GroupVersionResource{Version: "v1", Resource: "pods"}).
+		Namespace("default").
+		Create(pod, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}})
+	if err != nil {
+		return fmt.Errorf("error creating pod to check injector: %v", err)
+	}
+
+	// Check the pod was correctly injected
+	annotations := injectedPod.GetAnnotations()
+	if _, ok := annotations["linkerd.io/created-by"]; !ok {
+		return errors.New("pod created during check wasn't injected")
 	}
 
 	return nil

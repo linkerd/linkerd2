@@ -28,6 +28,7 @@ linkerd-existence
 √ controller pod is running
 √ can initialize the client
 √ can query the control plane API
+√ injector is operating correctly
 
 linkerd-identity
 ----------------
