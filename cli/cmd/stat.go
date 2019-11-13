@@ -247,6 +247,10 @@ var (
 	weightHeader    = "WEIGHT"
 )
 
+func statHasRequestData(stat *pb.BasicStats) bool {
+	return stat.GetSuccessCount() != 0 || stat.GetFailureCount() != 0 || stat.GetActualSuccessCount() != 0 || stat.GetActualFailureCount() != 0
+}
+
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
 	maxNamespaceLength := len(namespaceHeader)
@@ -300,7 +304,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 			status: r.Status,
 		}
 
-		if r.Stats != nil {
+		if r.Stats != nil && statHasRequestData(r.Stats) {
 			statTables[resourceKey][key].rowStats = &rowStats{
 				requestRate:        getRequestRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount(), r.TimeWindow),
 				successRate:        getSuccessRate(r.Stats.GetSuccessCount(), r.Stats.GetFailureCount()),

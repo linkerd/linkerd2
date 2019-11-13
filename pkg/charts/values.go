@@ -27,7 +27,6 @@ type (
 		PrometheusImage             string
 		GrafanaImage                string
 		ImagePullPolicy             string
-		UUID                        string
 		CliVersion                  string
 		ControllerReplicas          uint
 		ControllerLogLevel          string
@@ -52,6 +51,7 @@ type (
 		InstallNamespace            bool
 		ControlPlaneTracing         bool
 		Configs                     ConfigJSONs
+		Dashboard                   *Dashboard
 		Identity                    *Identity
 		ProxyInjector               *ProxyInjector
 		ProfileValidator            *ProfileValidator
@@ -145,6 +145,11 @@ type (
 	Resources struct {
 		CPU    Constraints
 		Memory Constraints
+	}
+
+	// Dashboard has the Helm variables for the web dashboard
+	Dashboard struct {
+		Replicas int32
 	}
 
 	// Identity contains the fields to set the identity variables in the proxy

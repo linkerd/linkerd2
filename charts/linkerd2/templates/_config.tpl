@@ -74,7 +74,6 @@
 
 {{- define "linkerd.configs.install" -}}
 {
-  "uuid":"{{ uuidv4 }}",
   "cliVersion":"{{ .LinkerdVersion }}",
   "flags":[]
 }

@@ -58,7 +58,6 @@ func TestRender(t *testing.T) {
 		PrometheusImage:             "PrometheusImage",
 		GrafanaImage:                "GrafanaImage",
 		ImagePullPolicy:             "ImagePullPolicy",
-		UUID:                        "UUID",
 		CliVersion:                  "CliVersion",
 		ControllerLogLevel:          "ControllerLogLevel",
 		PrometheusLogLevel:          "PrometheusLogLevel",
@@ -118,6 +117,9 @@ func TestRender(t *testing.T) {
 					Request: "10Mi",
 				},
 			},
+		},
+		Dashboard: &charts.Dashboard{
+			Replicas: 1,
 		},
 	}
 
@@ -196,9 +198,6 @@ func testInstallOptions() (*installOptions, error) {
 	o.ignoreCluster = true
 	o.proxyVersion = "install-proxy-version"
 	o.controlPlaneVersion = "install-control-plane-version"
-	o.generateUUID = func() string {
-		return "deaab91a-f4ab-448a-b7d1-c832a2fa0a60"
-	}
 	o.heartbeatSchedule = fakeHeartbeatSchedule
 	o.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
 	o.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")

@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/filesonly"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -43,6 +44,10 @@ type (
 		Error               bool
 		ErrorMessage        string
 		PathPrefix          string
+	}
+
+	healthChecker interface {
+		RunChecks(observer healthcheck.CheckObserver) bool
 	}
 )
 
@@ -79,6 +84,7 @@ func NewServer(
 	reHost *regexp.Regexp,
 	apiClient public.APIClient,
 	k8sAPI *k8s.KubernetesAPI,
+	hc healthChecker,
 ) *http.Server {
 	server := &Server{
 		templateDir: templateDir,
@@ -101,6 +107,7 @@ func NewServer(
 		controllerNamespace: controllerNamespace,
 		clusterDomain:       clusterDomain,
 		grafanaProxy:        newGrafanaProxy(grafanaAddr),
+		hc:                  hc,
 	}
 
 	httpServer := &http.Server{
@@ -165,6 +172,7 @@ func NewServer(
 	server.router.GET("/api/tap", handler.handleAPITap)
 	server.router.GET("/api/routes", handler.handleAPITopRoutes)
 	server.router.GET("/api/edges", handler.handleAPIEdges)
+	server.router.GET("/api/check", handler.handleAPICheck)
 
 	// grafana proxy
 	server.router.DELETE("/grafana/*grafanapath", handler.handleGrafana)

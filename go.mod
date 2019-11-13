@@ -1,6 +1,6 @@
 module github.com/linkerd/linkerd2
 
-go 1.12.9
+go 1.13.4
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.6.0
@@ -84,3 +84,7 @@ require (
 )
 
 replace github.com/wercker/stern => github.com/linkerd/stern v0.0.0-20190907020106-201e8ccdff9c
+
+replace k8s.io/apimachinery v0.0.0-20181127105237-2b1284ed4c93 => k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93
+
+replace k8s.io/code-generator v0.0.0-20181116203124-c2090bec4d9b => k8s.io/code-generator v0.0.0-20181117043124-c2090bec4d9b

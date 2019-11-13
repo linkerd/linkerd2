@@ -115,6 +115,10 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     return apiFetch(edgesPath + "?resource_type=" + resourceType + "&namespace=" + namespace);
   };
 
+  const fetchCheck = () => {
+    return apiFetch('/api/check');
+  };
+
   const getMetricsWindow = () => metricsWindow;
   const getMetricsWindowDisplayText = () => validMetricsWindows[metricsWindow];
 
@@ -230,6 +234,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     fetchPods,
     fetchServices,
     fetchEdges,
+    fetchCheck,
     getMetricsWindow,
     setMetricsWindow,
     getValidMetricsWindows: () => Object.keys(validMetricsWindows),

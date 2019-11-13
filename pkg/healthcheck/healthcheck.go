@@ -249,7 +249,8 @@ type CheckResult struct {
 	Err         error
 }
 
-type checkObserver func(*CheckResult)
+// CheckObserver receives the results of each check.
+type CheckObserver func(*CheckResult)
 
 type category struct {
 	id       CategoryID
@@ -284,6 +285,7 @@ type HealthChecker struct {
 	latestVersions   version.Channels
 	serverVersion    string
 	linkerdConfig    *configPb.All
+	uuid             string
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -610,7 +612,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
+						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
 						return
 					},
 				},
@@ -741,10 +743,9 @@ func (hc *HealthChecker) allCategories() []category {
 						if hc.VersionOverride != "" {
 							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
 						} else {
-							// Retrieve the UUID from `linkerd-config`.
 							uuid := "unknown"
-							if hc.linkerdConfig != nil {
-								uuid = hc.linkerdConfig.GetInstall().GetUuid()
+							if hc.uuid != "" {
+								uuid = hc.uuid
 							}
 							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
 						}
@@ -906,7 +907,7 @@ func (hc *HealthChecker) addCategory(c category) {
 // remaining checks are skipped. If at least one check fails, RunChecks returns
 // false; if all checks passed, RunChecks returns true.  Checks which are
 // designated as warnings will not cause RunCheck to return false, however.
-func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
+func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 	success := true
 
 	for _, c := range hc.categories {
@@ -941,7 +942,7 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 	return success
 }
 
-func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer checkObserver) bool {
+func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer CheckObserver) bool {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
@@ -974,7 +975,7 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 	}
 }
 
-func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer checkObserver) bool {
+func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer CheckObserver) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	checkRsp, err := c.checkRPC(ctx)
@@ -1022,13 +1023,13 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkLinkerdConfigConfigMap() (*configPb.All, error) {
-	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+func (hc *HealthChecker) checkLinkerdConfigConfigMap() (string, *configPb.All, error) {
+	cm, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	return configPB, nil
+	return string(cm.GetUID()), configPB, nil
 }
 
 // FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from

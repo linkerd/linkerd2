@@ -1,11 +1,8 @@
 package edges
 
 import (
-	"bytes"
-	"html/template"
 	"io/ioutil"
 	"os"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -22,6 +19,11 @@ func TestMain(m *testing.M) {
 // TestEdges requires that there has been traffic recently between linkerd-web
 // and linkerd-controller for edges to have been registered, which is the
 // case when running this test in the context of the other integration tests.
+
+// This test has been disabled because it can fail due to
+// https://github.com/linkerd/linkerd2/issues/3706
+// This test should be updated and re-enabled when that issue is addressed.
+/*
 func TestEdges(t *testing.T) {
 	ns := TestHelper.GetLinkerdNamespace()
 	cmd := []string{
@@ -47,6 +49,7 @@ func TestEdges(t *testing.T) {
 		t.Errorf("Expected output:\n%s\nactual:\n%s", b.String(), out)
 	}
 }
+*/
 
 // TestDirectEdges deploys a terminus and then generates a load generator which
 // sends traffic directly to the pod ip of the terminus pod. Traffic which is

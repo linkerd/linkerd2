@@ -40,7 +40,7 @@ metadata:
   name: linkerd-web
   namespace: {{.Namespace}}
 spec:
-  replicas: 1
+  replicas: {{.Dashboard.Replicas}}
   selector:
     matchLabels:
       {{.ControllerComponentLabel}}: web
