@@ -215,14 +215,18 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: linkerd-web-check
+  name: linkerd-web
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: web
     linkerd.io/control-plane-ns: linkerd
 rules:
 - apiGroups: [""]
-  resources: ["namespaces", "configmaps",]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]
+- apiGroups: [""]
+  resources: ["namespaces", "configmaps"]
   verbs: ["get"]
 - apiGroups: [""]
   resources: ["serviceaccounts", "pods"]
@@ -230,6 +234,23 @@ rules:
 - apiGroups: ["apps"]
   resources: ["replicasets"]
   verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-web
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: web
+    linkerd.io/control-plane-ns: linkerd
+roleRef:
+  kind: Role
+  name: linkerd-web
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: linkerd-web
+  namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -254,23 +275,6 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: linkerd-web-check
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: web
-    linkerd.io/control-plane-ns: linkerd
-roleRef:
-  kind: Role
-  name: linkerd-web-check
-  apiGroup: rbac.authorization.k8s.io
-subjects:
-- kind: ServiceAccount
-  name: linkerd-web
-  namespace: linkerd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -849,7 +853,7 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"UPGRADE-PROXY-VERSION","proxyInitImageVersion":"v1.2.0"}
   install: |
-    {"uuid":"57af298c-58b0-43fc-8d88-3c338789bfbc","cliVersion":"dev-undefined","flags":[{"name":"ha","value":"true"}]}
+    {"cliVersion":"dev-undefined","flags":[{"name":"ha","value":"true"}]}
 ---
 ###
 ### Identity Controller Service

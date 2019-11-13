@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/google/uuid"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -57,7 +56,6 @@ type (
 		recordedFlags []*pb.Install_Flag
 
 		// function pointers that can be overridden for tests
-		generateUUID      func() string
 		heartbeatSchedule func() string
 	}
 
@@ -205,14 +203,6 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			issuanceLifetime:       issuanceLifetime,
 			clockSkewAllowance:     clockSkewAllowance,
 			identityExternalIssuer: false,
-		},
-
-		generateUUID: func() string {
-			id, err := uuid.NewRandom()
-			if err != nil {
-				log.Fatalf("Could not generate UUID: %s", err)
-			}
-			return id.String()
 		},
 
 		heartbeatSchedule: func() string {
@@ -668,7 +658,6 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat
-	installValues.UUID = configs.GetInstall().GetUuid()
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
 
 	installValues.Proxy = &charts.Proxy{
@@ -791,13 +780,7 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 }
 
 func (options *installOptions) installConfig() *pb.Install {
-	installID := ""
-	if options.generateUUID != nil {
-		installID = options.generateUUID()
-	}
-
 	return &pb.Install{
-		Uuid:       installID,
 		CliVersion: version.Version,
 		Flags:      options.recordedFlags,
 	}

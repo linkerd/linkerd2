@@ -23,7 +23,6 @@ func TestNewValues(t *testing.T) {
 		PrometheusImage:             "prom/prometheus:v2.11.1",
 		GrafanaImage:                "gcr.io/linkerd-io/grafana",
 		ImagePullPolicy:             "IfNotPresent",
-		UUID:                        "",
 		CliVersion:                  "linkerd/cli dev-undefined",
 		ControllerReplicas:          1,
 		ControllerLogLevel:          "info",
