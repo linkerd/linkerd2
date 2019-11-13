@@ -253,7 +253,7 @@ class TapQueryForm extends React.Component {
       <React.Fragment>
         <InputLabel htmlFor={resourceKey}>{_startCase(resourceKey)}</InputLabel>
         <Select
-          value={nsEmpty ? _startCase(resourceKey) : this.state.query[resourceKey]}
+          value={!nsEmpty && resourceOptions.includes(this.state.query[resourceKey]) ? this.state.query[resourceKey] : ""}
           onChange={this.handleFormChange(resourceKey)}
           inputProps={{ name: resourceKey, id: resourceKey }}
           className={classes.selectEmpty}>
@@ -273,7 +273,7 @@ class TapQueryForm extends React.Component {
       <React.Fragment>
         <InputLabel htmlFor={namespaceKey}>{title}</InputLabel>
         <Select
-          value={this.state.query[namespaceKey]}
+          value={this.state.autocomplete[namespaceKey].includes(this.state.query[namespaceKey]) ? this.state.query[namespaceKey] : ""}
           onChange={this.handleFormChange(namespaceKey, resourceKey)}
           inputProps={{ name: namespaceKey, id: namespaceKey }}
           className={classes.selectEmpty}>
@@ -325,7 +325,7 @@ class TapQueryForm extends React.Component {
     return (
       <Grid container>
 
-        <Grid container spacing={24}>
+        <Grid container spacing={3}>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             <FormControl className={classes.formControl}>
               {this.renderNamespaceSelect("To Namespace", "toNamespace", "toResource")}
@@ -338,7 +338,7 @@ class TapQueryForm extends React.Component {
           </Grid>
         </Grid>
 
-        <Grid container spacing={24}>
+        <Grid container spacing={3}>
           <Grid item xs={6} md={3} classes={{ item: classes.formControlWrapper }}>
             <FormControl className={classes.formControl}>
               <InputLabel htmlFor="authority">Authority</InputLabel>
@@ -361,7 +361,7 @@ class TapQueryForm extends React.Component {
           </Grid>
         </Grid>
 
-        <Grid container spacing={24}>
+        <Grid container spacing={3}>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             { this.renderTextInput("Scheme", "scheme", "Display requests with this scheme") }
           </Grid>
@@ -393,7 +393,7 @@ class TapQueryForm extends React.Component {
 
   renderAdvancedTapForm() {
     return (
-      <ExpansionPanel expanded={this.state.advancedFormExpanded} onChange={this.handleAdvancedFormExpandClick}>
+      <ExpansionPanel expanded={this.state.advancedFormExpanded} onChange={this.handleAdvancedFormExpandClick} elevation={3}>
         <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
           <Typography variant="caption" gutterBottom>
             {this.state.advancedFormExpanded ? "Hide filters" : "Show more filters"}
@@ -411,9 +411,9 @@ class TapQueryForm extends React.Component {
     const { classes } = this.props;
 
     return (
-      <Card className={classes.card}>
+      <Card className={classes.card} elevation={3}>
         <CardContent>
-          <Grid container spacing={24}>
+          <Grid container spacing={3}>
             <Grid item xs={6} md="auto" className={classes.formControlWrapper}>
               <FormControl className={classes.formControl} fullWidth>
                 {this.renderNamespaceSelect("Namespace", "namespace", "resource")}

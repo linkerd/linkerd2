@@ -335,7 +335,7 @@ export class ResourceDetailBase extends React.Component {
         <Grid container justify="space-between" alignItems="center">
           <Grid item><Typography variant="h5">{resourceType}/{resourceName}</Typography></Grid>
           <Grid item>
-            <Grid container spacing={8}>
+            <Grid container spacing={1}>
               {showNoTrafficMsg ? <Grid item><SimpleChip label="no traffic" type="warning" /></Grid> : null}
               <Grid item>
                 {resourceIsMeshed ?

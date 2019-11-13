@@ -42,7 +42,7 @@ const grpcStatusCodes = {
 
 const spinnerStyles = theme => ({
   progress: {
-    margin: theme.spacing.unit * 2,
+    margin: theme.spacing(2),
   },
 });
 const SpinnerBase = () => <CircularProgress size={20} />;
@@ -178,19 +178,19 @@ const responseEndSection = d => _isEmpty(d.responseEnd) ? null : (
 // hide verbose information
 const expandedRowRender = (d, expandedWrapStyle) => {
   return (
-    <Grid container spacing={16} className={expandedWrapStyle}>
+    <Grid container spacing={2} className={expandedWrapStyle}>
       <Grid item xs={4}>
-        <Card>
+        <Card elevation={3}>
           <CardContent>{requestInitSection(d)}</CardContent>
         </Card>
       </Grid>
       <Grid item xs={4}>
-        <Card>
+        <Card elevation={3}>
           <CardContent>{responseInitSection(d)}</CardContent>
         </Card>
       </Grid>
       <Grid item xs={4}>
-        <Card>
+        <Card elevation={3}>
           <CardContent>{responseEndSection(d)}</CardContent>
         </Card>
       </Grid>

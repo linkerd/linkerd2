@@ -7,14 +7,14 @@ import Typography from '@material-ui/core/Typography';
 export const incompleteMeshMessage = name => {
   if (name) {
     return (
-      <Typography>
+      <Typography variant="body2">
         Add {name} to the k8s.yml file<br /><br />
         Then run <code>linkerd inject k8s.yml | kubectl apply -f -</code> to add it to the service mesh
       </Typography>
     );
   } else {
     return (
-      <Typography>
+      <Typography variant="body2">
         Add one or more resources to the k8s.yml file<br /><br />
         Then run <code>linkerd inject k8s.yml | kubectl apply -f -</code> to add them to the service mesh
       </Typography>

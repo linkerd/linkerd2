@@ -9,13 +9,13 @@ import { withStyles } from '@material-ui/core/styles';
 const styles = theme => ({
   version: {
     maxWidth: "250px",
-    padding: 3 * theme.spacing.unit,
+    padding: theme.spacing(3),
   },
   versionMsg: {
     fontSize: "12px"
   },
   updateBtn: {
-    marginTop: theme.spacing.unit,
+    marginTop: theme.spacing(1),
   }
 });
 class Version extends React.Component {

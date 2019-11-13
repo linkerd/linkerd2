@@ -10,7 +10,7 @@ class SuccessRateMiniChart extends React.Component {
     const { sr } = this.props;
 
     return (
-      <Grid container justify="flex-end" alignItems="center" spacing={8}>
+      <Grid container justify="flex-end" alignItems="center" spacing={1}>
         <Grid item>{metricToFormatter["SUCCESS_RATE"](sr)}</Grid>
         <Grid item>{_isNil(sr) ? null :
         <SuccessRateDot sr={sr} />

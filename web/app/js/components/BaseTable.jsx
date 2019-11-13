@@ -26,9 +26,19 @@ import { withStyles } from '@material-ui/core/styles';
 const styles = theme => ({
   root: {
     width: '100%',
-    marginTop: theme.spacing.unit * 3,
-    marginBottom: theme.spacing.unit * 3,
+    marginTop: theme.spacing(3),
+    marginBottom: theme.spacing(3),
     overflowX: 'auto',
+  },
+  tableHeader: {
+    fontSize: "12px",
+    opacity: 0.6,
+    lineHeight: 1,
+  },
+  tableHeaderActive: {
+    fontSize: "12px",
+    opacity: 1,
+    lineHeight: 1,
   },
   activeSortIcon: {
     opacity: 1,
@@ -40,11 +50,15 @@ const styles = theme => ({
     cursor: "pointer",
     opacity: 0.8
   },
-  inactiveSortIcon: {
+  sortIcon: {
+    fontSize: "16px",
     opacity: 0.4,
   },
   denseTable: {
-    paddingRight: "8px"
+    paddingRight: "8px",
+    "&:last-child": {
+      paddingRight: "24px",
+    },
   },
   title: {
     flexGrow: 1
@@ -113,13 +127,19 @@ class BaseTable extends React.Component {
       tableCell = (
         <TableCell
           key={col.key || col.dataIndex}
-          numeric={col.isNumeric}
+          align={col.isNumeric ? "right" : "left"}
           sortDirection={orderBy === col.dataIndex ? order : false}
+          classes={{
+            root: active ? classes.tableHeaderActive : classes.tableHeader,
+          }}
           className={classNames({[classes.denseTable]: padding === 'dense'})}>
           <TableSortLabel
             active={active}
             direction={active ? order : col.defaultSortOrder || 'asc'}
-            classes={{icon: active ? classes.activeSortIcon : classes.inactiveSortIcon}}
+            classes={{
+              icon: classes.sortIcon,
+              active: classes.activeSortIcon,
+            }}
             onClick={this.createSortHandler(col)}>
             {col.title}
           </TableSortLabel>
@@ -129,8 +149,11 @@ class BaseTable extends React.Component {
       tableCell = (
         <TableCell
           key={col.key || col.dataIndex}
-          numeric={col.isNumeric}
-          className={classNames({[classes.denseTable]: padding === 'dense'})}>
+          align={col.isNumeric ? "right" : "left"}
+          className={classNames(
+            {[classes.denseTable]: padding === 'dense'},
+            classes.tableHeader,
+          )}>
           {col.title}
         </TableCell>
       );
@@ -174,10 +197,10 @@ class BaseTable extends React.Component {
     const sortedTableRows = tableRows.length > 0 ? this.generateRows(tableRows, tableColumns, order, orderBy, filterBy) : tableRows;
 
     return (
-      <Paper className={classes.root}>
+      <Paper className={classes.root} elevation={3}>
         {enableFilter &&
           this.renderToolbar(classes, title)}
-        <Table className={`${classes.table} ${tableClassName}`} padding={padding}>
+        <Table className={`${classes.table} ${tableClassName}`}>
           <TableHead>
             <TableRow>
               { tableColumns.map(c => (
@@ -197,7 +220,7 @@ class BaseTable extends React.Component {
                         <TableCell
                           className={classNames({[classes.denseTable]: padding === 'dense'})}
                           key={`table-${key}-${c.key || c.dataIndex}`}
-                          numeric={c.isNumeric}>
+                          align={c.isNumeric ? "right" : "left"}>
                           {c.render ? c.render(d) : _get(d, c.dataIndex)}
                         </TableCell>
                         )

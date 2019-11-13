@@ -8,9 +8,9 @@ import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => _merge({}, statusClassNames(theme), {
   successRateDot: {
-    width: theme.spacing.unit,
-    height: theme.spacing.unit,
-    minWidth: theme.spacing.unit,
+    width: theme.spacing(1),
+    height: theme.spacing(1),
+    minWidth: theme.spacing(1),
     borderRadius: "50%"
   }
 });

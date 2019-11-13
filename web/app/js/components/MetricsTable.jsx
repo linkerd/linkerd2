@@ -173,7 +173,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
         );
       }
       return (
-        <Grid container alignItems="center" spacing={8}>
+        <Grid container alignItems="center" spacing={1}>
           <Grid item>{nameContents}</Grid>
           {_isEmpty(d.errors) ? null :
           <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={d.type} /></Grid>}
