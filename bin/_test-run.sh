@@ -69,6 +69,14 @@ function custom_domain_integration_tests() {
     exit_on_err "error during install"
 }
 
+function external_issuer_integration_tests() {
+    run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace-external-issuer --external-issuer=true
+    exit_on_err "error during install with --external-issuer=true"
+
+    run_test "$test_directory/externalissuer/external_issuer_test.go" --linkerd-namespace=$linkerd_namespace-external-issuer --external-issuer=true
+    exit_on_err "error during external issuer tests"
+}
+
 #
 # Helper functions.
 #

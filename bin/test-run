@@ -17,6 +17,7 @@ printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linke
 upgrade_integration_tests
 helm_integration_tests
 deep_integration_tests
+external_issuer_integration_tests
 
 if [ $exit_code -eq 0 ]; then
     printf "\\n=== PASS: all tests passed\\n"

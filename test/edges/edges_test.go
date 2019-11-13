@@ -61,7 +61,7 @@ func TestDirectEdges(t *testing.T) {
 	// setup
 
 	testNamespace := TestHelper.GetTestNamespace("direct-edges-test")
-	err := TestHelper.CreateNamespaceIfNotExists(testNamespace, nil)
+	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(testNamespace, nil)
 	if err != nil {
 		t.Fatalf("failed to create %s namespace: %s", testNamespace, err)
 	}
