@@ -24,6 +24,13 @@ import _mapKeys from 'lodash/mapKeys';
 import _sumBy from 'lodash/sumBy';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { withStyles } from '@material-ui/core/styles';
+
+const styles = {
+  checkModalWrapper: {
+    width: "100%",
+  },
+};
 
 const serviceMeshDetailsColumns = [
   {
@@ -72,6 +79,7 @@ class ServiceMesh extends React.Component {
       setCurrentRequests: PropTypes.func.isRequired,
       urlsForResourceNoStats: PropTypes.func.isRequired,
     }).isRequired,
+    classes: PropTypes.shape({}).isRequired,
     controllerNamespace: PropTypes.string.isRequired,
     productName: PropTypes.string,
     releaseVersion: PropTypes.string.isRequired,
@@ -263,6 +271,8 @@ class ServiceMesh extends React.Component {
   }
 
   render() {
+    const { classes } = this.props;
+
     return (
       <div className="page-content">
         { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
@@ -283,7 +293,7 @@ class ServiceMesh extends React.Component {
 
               <Grid item xs={4} container direction="column" spacing={24}>
                 <Grid item>{this.renderServiceMeshDetails()}</Grid>
-                <Grid item><CheckModal api={this.api} /></Grid>
+                <Grid className={classes.checkModalWrapper} item><CheckModal api={this.api} /></Grid>
                 <Grid item>{this.renderAddResourcesMessage()}</Grid>
               </Grid>
             </Grid>
@@ -294,4 +304,4 @@ class ServiceMesh extends React.Component {
   }
 }
 
-export default withContext(ServiceMesh);
+export default withStyles(styles)(withContext(ServiceMesh));
