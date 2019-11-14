@@ -10,14 +10,12 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
-	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
@@ -721,14 +719,6 @@ func (hc *HealthChecker) allCategories() []category {
 					retryDeadline: hc.RetryDeadline,
 					checkRPC: func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, error) {
 						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
-					},
-				},
-				{
-					description: "no invalid service profiles",
-					hintAnchor:  "l5d-sp",
-					warning:     true,
-					check: func(context.Context) error {
-						return hc.validateServiceProfiles()
 					},
 				},
 			},
@@ -1442,33 +1432,6 @@ func (hc *HealthChecker) checkClockSkew() error {
 		return fmt.Errorf("clock skew detected for node(s): %s", strings.Join(clockSkewNodes, ", "))
 	}
 
-	return nil
-}
-
-func (hc *HealthChecker) validateServiceProfiles() error {
-	spClientset, err := spclient.NewForConfig(hc.kubeAPI.Config)
-	if err != nil {
-		return err
-	}
-
-	svcProfiles, err := spClientset.LinkerdV1alpha2().ServiceProfiles("").List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, p := range svcProfiles.Items {
-		// TODO: remove this check once we implement ServiceProfile validation via a
-		// ValidatingAdmissionWebhook
-		result := spClientset.RESTClient().Get().RequestURI(p.GetSelfLink()).Do()
-		raw, err := result.Raw()
-		if err != nil {
-			return err
-		}
-		err = profiles.Validate(raw)
-		if err != nil {
-			return fmt.Errorf("%s: %s", p.Name, err)
-		}
-	}
 	return nil
 }
 
