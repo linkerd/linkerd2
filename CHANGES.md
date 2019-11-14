@@ -1,3 +1,18 @@
+## edge-19.11.2
+
+* CLI
+  * Added a `Dashboard.Replicas` parameter to the Linkerd Helm chart to allow
+    configuring the number of dashboard replicas (thanks @KIVagant!)
+  * Removed redundant service profile check (thanks @alenkacz!)
+* Web UI
+  * Added `linkerd check` to the dashboard in the `/controlplane` view
+  * Added request and response headers to the `tap` expanded view in the
+    dashboard
+* Internal
+  * Removed the destination container from the linkerd-controller deployment as
+    it now runs in the linkerd-destination deployment
+  * Upgraded Go to version 1.13.4
+
 ## edge-19.11.1
 
 * CLI
