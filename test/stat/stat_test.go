@@ -1,12 +1,8 @@
 package get
 
 import (
-	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -32,6 +28,14 @@ func TestMain(m *testing.M) {
 // first few attempts fail due to missing stats, since the requests from those
 // failed attempts will eventually be recorded in the stats that we're
 // requesting, and the test will pass.
+
+// https://github.com/linkerd/linkerd2/pull/3693 caused the proxy to start
+// resolving private IP addresses with the destination service.  However,
+// the destination service does not support IP lookups and returns failures
+// for these lookups.  This negatively affects the destination service success
+// rate and can cause this test to fail.  We disable this test for now until
+// the destination service supports IP lookups.
+/*
 func TestCliStatForLinkerdNamespace(t *testing.T) {
 
 	pods, err := TestHelper.GetPodNamesForDeployment(TestHelper.GetLinkerdNamespace(), "linkerd-prometheus")
@@ -120,8 +124,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	} {
 		tt := tt // pin
 		t.Run("linkerd "+strings.Join(tt.args, " "), func(t *testing.T) {
-			// TODO: move this back to 20s once #3595 lands
-			err := TestHelper.RetryFor(40*time.Second, func() error {
+			err := TestHelper.RetryFor(20*time.Second, func() error {
 				// Use a short time window so that transient errors at startup
 				// fall out of the window.
 				tt.args = append(tt.args, "-t", "30s")
@@ -206,3 +209,4 @@ func validateRowStats(name, expectedMeshCount, expectedStatus string, rowStats m
 
 	return nil
 }
+*/
