@@ -409,7 +409,6 @@ jobs:
         )
 
   kind_cleanup:
-    if: always()
     strategy:
       fail-fast: false # always attempt to cleanup all clusters
       matrix:
