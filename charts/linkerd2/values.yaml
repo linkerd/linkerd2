@@ -25,6 +25,8 @@ Dashboard:
 
 # identity configuration
 Identity:
+  # enabling this flag behaves like using --identitiy-external-issuer flag
+  External: false
   Issuer:
     Scheme: linkerd.io/tls
 
