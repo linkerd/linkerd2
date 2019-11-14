@@ -1,10 +1,7 @@
 package get
 
 import (
-	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/linkerd/linkerd2/testutil"
@@ -160,7 +157,6 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		})
 	}
 }
-*/
 
 func validateRowStats(name, expectedMeshCount, expectedStatus string, rowStats map[string]*testutil.RowStat) error {
 	stat, ok := rowStats[name]
@@ -213,3 +209,4 @@ func validateRowStats(name, expectedMeshCount, expectedStatus string, rowStats m
 
 	return nil
 }
+*/
