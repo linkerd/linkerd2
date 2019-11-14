@@ -277,7 +277,7 @@ jobs:
   kind_setup:
     strategy:
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain]
+        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     name: Cluster setup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     needs: [download_src]
@@ -326,7 +326,7 @@ jobs:
   kind_integration:
     strategy:
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain]
+        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_pull, docker_build, kind_setup]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -413,7 +413,7 @@ jobs:
     strategy:
       fail-fast: false # always attempt to cleanup all clusters
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain]
+        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [kind_integration]
     name: Cluster cleanup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
