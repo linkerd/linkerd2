@@ -314,6 +314,18 @@ func mkPathItem(desc string) spec.PathItem {
 					Description: desc,
 					Consumes:    []string{"application/json"},
 					Produces:    []string{"application/json"},
+					Responses: &spec.Responses{
+						ResponsesProps: spec.ResponsesProps{
+							StatusCodeResponses: map[int]spec.Response{
+								200: spec.Response{
+									Refable: spec.Refable{Ref: spec.MustCreateRef("n/a")},
+									ResponseProps: spec.ResponseProps{
+										Description: "OK response",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
