@@ -472,18 +472,15 @@ jobs:
     needs: [validate_go_deps, go_unit_tests, go_lint, js_unit_tests, kind_integration, kind_cleanup]
     steps:
     - name: Download .git artifact
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       uses: actions/download-artifact@v1
       with:
         name: linkerd2-src-${{ github.sha }}
         path: ${{ runner.temp }}
     - name: Clone source
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       run: |
         tar -C $RUNNER_TEMP -zxf $RUNNER_TEMP/linkerd2.$GITHUB_SHA.tar.gz
         git clone $RUNNER_TEMP/.git $GITHUB_WORKSPACE
     - name: Docker SSH setup
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
         DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
         DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
@@ -493,7 +490,6 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
     - name: Configure gcloud
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
         CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
         CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
@@ -517,7 +513,6 @@ jobs:
         gcloud auth configure-docker
         bin/kubectl version --short
     - name: Docker push
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
         DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
       run: |

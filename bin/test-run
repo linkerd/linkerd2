@@ -4,6 +4,8 @@
 # 1. upgrade_integration_tests
 # 2. helm_integration_tests
 # 3. deep_integration_tests
+# 4. custom_domain_integration_tests
+# 5. external_issuer_integration_tests
 
 bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -17,6 +19,7 @@ printf "Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\\n" "$linke
 upgrade_integration_tests
 helm_integration_tests
 deep_integration_tests
+custom_domain_integration_tests
 external_issuer_integration_tests
 
 if [ $exit_code -eq 0 ]; then
