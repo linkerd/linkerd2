@@ -62,11 +62,13 @@ function deep_integration_tests() {
 
     run_test "$(go list $test_directory/.../...)" --linkerd-namespace=$linkerd_namespace
     exit_on_err "error during deep tests"
+    cleanup
 }
 
 function custom_domain_integration_tests() {
     run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace --cluster-domain="custom.domain"
     exit_on_err "error during install"
+    cleanup
 }
 
 function external_issuer_integration_tests() {
@@ -75,6 +77,7 @@ function external_issuer_integration_tests() {
 
     run_test "$test_directory/externalissuer/external_issuer_test.go" --linkerd-namespace=$linkerd_namespace-external-issuer --external-issuer=true
     exit_on_err "error during external issuer tests"
+    cleanup
 }
 
 #
