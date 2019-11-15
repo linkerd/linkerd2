@@ -258,6 +258,9 @@ const (
 	// TapServiceName is the name of the tap APIService
 	TapServiceName = "linkerd-tap"
 
+	// AdmissionWebhookLabel indicates whether admission webhooks are enabled for a namespace
+	AdmissionWebhookLabel = ProxyConfigAnnotationsPrefix + "/admission-webhooks"
+
 	/*
 	 * Mount paths
 	 */

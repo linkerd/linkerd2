@@ -18,6 +18,7 @@ linkerd-config
 √ control plane MutatingWebhookConfigurations exist
 √ control plane ValidatingWebhookConfigurations exist
 √ control plane PodSecurityPolicies exist
+√ pod injection disabled on kube-system (HA only)
 
 linkerd-existence
 -----------------

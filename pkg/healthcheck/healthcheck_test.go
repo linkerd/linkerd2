@@ -1582,6 +1582,7 @@ metadata:
 				"linkerd-config control plane MutatingWebhookConfigurations exist",
 				"linkerd-config control plane ValidatingWebhookConfigurations exist",
 				"linkerd-config control plane PodSecurityPolicies exist",
+				"linkerd-config pod injection disabled on kube-system (HA only)",
 			},
 		},
 	}
@@ -2127,6 +2128,94 @@ metadata:
 			t.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
 		}
 	})
+}
+
+func getConfigAndKubeSystemNamespace(ha bool, nsAnnotation, nsLabel string) []string {
+	return []string{fmt.Sprintf(`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+data:
+  install: |
+    {"cliVersion":"dev-undefined","flags":[{"name":"ha","value":"%v"}]}`, ha),
+		fmt.Sprintf(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    %s
+  creationTimestamp: null
+  labels:
+    %s
+    linkerd.io/is-control-plane: "true"
+  name: kube-system`, nsAnnotation, nsLabel),
+	}
+}
+
+func TestKubeSystemNamespaceInHA(t *testing.T) {
+	testCases := []struct {
+		testDescription string
+		k8sConfigs      []string
+		expectedWarning error
+	}{
+		{
+			"passes when HA is not enabled",
+			getConfigAndKubeSystemNamespace(false, "", ""),
+			nil,
+		},
+		{
+			"passes when HA is enabled and namespace has required metadata",
+			getConfigAndKubeSystemNamespace(true, "linkerd.io/inject: disabled", "config.linkerd.io/admission-webhooks: disabled"),
+			nil,
+		},
+		{
+			"fails when HA and injection are enabled",
+			getConfigAndKubeSystemNamespace(true, "linkerd.io/inject: enabled", "config.linkerd.io/admission-webhooks: disabled"),
+			errors.New("kube-system namespace needs to have linkerd.io/inject: disabled if HA mode is enabled"),
+		},
+		{
+			"fails when HA and admission hooks are enabled",
+			getConfigAndKubeSystemNamespace(true, "linkerd.io/inject: disabled", "config.linkerd.io/admission-webhooks: enabled"),
+			errors.New("kube-system namespace needs to have config.linkerd.io/admission-webhookss: disabled if HA mode is enabled"),
+		},
+		{
+			"fails when HA is enabled and metadata is missing",
+			getConfigAndKubeSystemNamespace(true, "", ""),
+			errors.New("kube-system namespace needs to have config.linkerd.io/admission-webhookss: disabled if HA mode is enabled"),
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(tc.testDescription, func(t *testing.T) {
+
+			hc := NewHealthChecker([]CategoryID{}, &Options{})
+			hc.ControlPlaneNamespace = "linkerd"
+
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(tc.k8sConfigs...)
+			_, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
+			if err != nil {
+				t.Fatalf("Unexpected error: %q", err)
+			}
+
+			err = hc.checkHAMetadataPresentOnKubeSystemNamespace()
+
+			if err != nil {
+				if tc.expectedWarning == nil {
+					t.Fatalf("Got warning %q but expected no warnings", err)
+				}
+
+				if err.Error() != tc.expectedWarning.Error() {
+					t.Fatalf("Warning %q does not match expected warning: %q", err, tc.expectedWarning)
+				}
+
+			}
+		})
+	}
+
 }
 
 func TestFetchLinkerdConfigMap(t *testing.T) {

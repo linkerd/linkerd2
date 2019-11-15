@@ -593,6 +593,14 @@ func (hc *HealthChecker) allCategories() []category {
 						return hc.checkPodSecurityPolicies(true)
 					},
 				},
+				{
+					description: "pod injection disabled on kube-system (HA only)",
+					hintAnchor:  "l5d-injection-disabled",
+					warning:     true,
+					check: func(context.Context) error {
+						return hc.checkHAMetadataPresentOnKubeSystemNamespace()
+					},
+				},
 			},
 		},
 		{
@@ -1265,6 +1273,15 @@ func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
 	return checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames(), shouldExist)
 }
 
+func (hc *HealthChecker) isHA() bool {
+	for _, flag := range hc.linkerdConfig.GetInstall().GetFlags() {
+		if flag.GetName() == "ha" && flag.GetValue() == "true" {
+			return true
+		}
+	}
+	return false
+}
+
 func (hc *HealthChecker) isHeartbeatDisabled() bool {
 	for _, flag := range hc.linkerdConfig.GetInstall().GetFlags() {
 		if flag.GetName() == "disable-heartbeat" && flag.GetValue() == "true" {
@@ -1524,6 +1541,27 @@ func (hc *HealthChecker) checkCanPerformAction(verb, namespace, group, version, 
 		resource,
 		"",
 	)
+}
+
+func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace() error {
+	if hc.isHA() {
+		ns, err := hc.kubeAPI.CoreV1().Namespaces().Get("kube-system", metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		val, ok := ns.Labels[k8s.AdmissionWebhookLabel]
+		if !ok || val != "disabled" {
+			return fmt.Errorf("kube-system namespace needs to have %ss: disabled if HA mode is enabled", k8s.AdmissionWebhookLabel)
+		}
+
+		val, ok = ns.Annotations[k8s.ProxyInjectAnnotation]
+		if !ok || val != "disabled" {
+			return fmt.Errorf("kube-system namespace needs to have %s: disabled if HA mode is enabled", k8s.ProxyInjectAnnotation)
+		}
+
+	}
+	return nil
 }
 
 func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
