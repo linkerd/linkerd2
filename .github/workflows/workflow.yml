@@ -227,17 +227,9 @@ jobs:
       run: |
         mkdir -p ~/.ssh/
         touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
         echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        (
-          echo "Host linkerd-docker"
-          echo "    User github"
-          echo "    Hostname ${{ secrets.DOCKER_ADDRESS }}"
-          echo "    IdentityFile ~/.ssh/id"
-          echo "    BatchMode yes"
-          echo "    ServerAliveInterval 60"
-          echo "    ServerAliveCountMax 5"
-        ) > ~/.ssh/config
         ssh linkerd-docker docker version
     - name: Docker pull
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
@@ -268,17 +260,9 @@ jobs:
       run: |
         mkdir -p ~/.ssh/
         touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
         echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        (
-          echo "Host linkerd-docker"
-          echo "    User github"
-          echo "    Hostname ${{ secrets.DOCKER_ADDRESS }}"
-          echo "    IdentityFile ~/.ssh/id"
-          echo "    BatchMode yes"
-          echo "    ServerAliveInterval 60"
-          echo "    ServerAliveCountMax 5"
-        ) > ~/.ssh/config
         ssh linkerd-docker docker version
     - name: Docker build
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
@@ -313,17 +297,9 @@ jobs:
       run: |
         mkdir -p ~/.ssh/
         touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
         echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        (
-          echo "Host linkerd-docker"
-          echo "    User github"
-          echo "    Hostname ${{ secrets.DOCKER_ADDRESS }}"
-          echo "    IdentityFile ~/.ssh/id"
-          echo "    BatchMode yes"
-          echo "    ServerAliveInterval 60"
-          echo "    ServerAliveCountMax 5"
-        ) > ~/.ssh/config
         ssh linkerd-docker docker version
     - name: Kind cluster setup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
@@ -369,17 +345,9 @@ jobs:
       run: |
         mkdir -p ~/.ssh/
         touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
         echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        (
-          echo "Host linkerd-docker"
-          echo "    User github"
-          echo "    Hostname ${{ secrets.DOCKER_ADDRESS }}"
-          echo "    IdentityFile ~/.ssh/id"
-          echo "    BatchMode yes"
-          echo "    ServerAliveInterval 60"
-          echo "    ServerAliveCountMax 5"
-        ) > ~/.ssh/config
         ssh linkerd-docker docker version
     - name: Kind load docker images
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
@@ -472,17 +440,9 @@ jobs:
       run: |
         mkdir -p ~/.ssh/
         touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
         echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        (
-          echo "Host linkerd-docker"
-          echo "    User github"
-          echo "    Hostname ${{ secrets.DOCKER_ADDRESS }}"
-          echo "    IdentityFile ~/.ssh/id"
-          echo "    BatchMode yes"
-          echo "    ServerAliveInterval 60"
-          echo "    ServerAliveCountMax 5"
-        ) > ~/.ssh/config
         ssh linkerd-docker docker version
     - name: Kind cluster cleanup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
@@ -544,17 +504,9 @@ jobs:
       run: |
         mkdir -p ~/.ssh/
         touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
         echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        (
-          echo "Host linkerd-docker"
-          echo "    User github"
-          echo "    Hostname ${{ secrets.DOCKER_ADDRESS }}"
-          echo "    IdentityFile ~/.ssh/id"
-          echo "    BatchMode yes"
-          echo "    ServerAliveInterval 60"
-          echo "    ServerAliveCountMax 5"
-        ) > ~/.ssh/config
         ssh linkerd-docker docker version
     - name: Docker push
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
