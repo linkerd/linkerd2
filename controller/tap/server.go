@@ -36,7 +36,7 @@ type GRPCTapServer struct {
 	tapPort             uint
 	k8sAPI              *k8s.API
 	controllerNamespace string
-	clusterDomain       string
+	trustDomain         string
 }
 
 var (
@@ -128,7 +128,7 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 		if res.GetType() == pkgK8s.Namespace {
 			ns = res.GetName()
 		}
-		name := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", pod.Spec.ServiceAccountName, ns, s.controllerNamespace, s.clusterDomain)
+		name := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", pod.Spec.ServiceAccountName, ns, s.controllerNamespace, s.trustDomain)
 		log.Debugf("initiating tap request to %s with required name %s", pod.Spec.ServiceAccountName, name)
 
 		// pass the header metadata into the request context
@@ -508,26 +508,26 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 func NewGrpcTapServer(
 	tapPort uint,
 	controllerNamespace string,
-	clusterDomain string,
+	trustDomain string,
 	k8sAPI *k8s.API,
 ) *GRPCTapServer {
 	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{ipIndex: indexByIP})
 	k8sAPI.Node().Informer().AddIndexers(cache.Indexers{ipIndex: indexByIP})
 
-	return newGRPCTapServer(tapPort, controllerNamespace, clusterDomain, k8sAPI)
+	return newGRPCTapServer(tapPort, controllerNamespace, trustDomain, k8sAPI)
 }
 
 func newGRPCTapServer(
 	tapPort uint,
 	controllerNamespace string,
-	clusterDomain string,
+	trustDomain string,
 	k8sAPI *k8s.API,
 ) *GRPCTapServer {
 	srv := &GRPCTapServer{
 		tapPort:             tapPort,
 		k8sAPI:              k8sAPI,
 		controllerNamespace: controllerNamespace,
-		clusterDomain:       clusterDomain,
+		trustDomain:         trustDomain,
 	}
 
 	s := prometheus.NewGrpcServer()

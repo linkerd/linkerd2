@@ -22,11 +22,11 @@ import (
 func K8sValues(kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) url.Values {
 	v := url.Values{}
 
-	cm, configPB, err := healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
+	cm, _, err := healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		log.Errorf("Failed to fetch linkerd-config: %s", err)
 	} else {
-		v.Set("uuid", configPB.GetInstall().GetUuid())
+		v.Set("uuid", string(cm.GetUID()))
 		v.Set("install-time", strconv.FormatInt(cm.GetCreationTimestamp().Unix(), 10))
 	}
 
@@ -71,6 +71,19 @@ func PromValues(promAPI promv1.API, controlPlaneNamespace string) url.Values {
 		log.Errorf("Prometheus query failed: %s", err)
 	} else {
 		v.Set("p99-handle-us", value)
+	}
+
+	// proxy-injector-injections
+	jobInjectorLabels := model.LabelSet{
+		"job":  "linkerd-controller",
+		"skip": "false",
+	}
+	query = fmt.Sprintf("sum(proxy_inject_admission_responses_total%s)", jobInjectorLabels)
+	value, err = promQuery(promAPI, query, 0)
+	if err != nil {
+		log.Errorf("Prometheus query failed: %s", err)
+	} else {
+		v.Set("proxy-injector-injections", value)
 	}
 
 	// container metrics

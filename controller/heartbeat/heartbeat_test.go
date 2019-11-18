@@ -28,9 +28,7 @@ metadata:
   name: linkerd-config
   namespace: linkerd
   creationTimestamp: 2019-02-15T12:34:56Z
-data:
-  install: |
-    {"uuid":"fake-uuid"}`,
+  uid: fake-uuid`,
 			},
 			url.Values{
 				"k8s-version":  []string{"v0.0.0-master+$Format:%h$"},
@@ -46,9 +44,7 @@ apiVersion: v1
 metadata:
   name: linkerd-config
   namespace: linkerd
-data:
-  install: |
-    {"uuid":"fake-uuid"}`,
+  uid: fake-uuid`,
 			},
 			url.Values{
 				"k8s-version": []string{"v0.0.0-master+$Format:%h$"},
@@ -88,15 +84,16 @@ func TestPromValues(t *testing.T) {
 				},
 			},
 			url.Values{
-				"total-rps":             []string{"100"},
-				"meshed-pods":           []string{"100"},
-				"p99-handle-us":         []string{"100"},
-				"max-mem-linkerd-proxy": []string{"100"},
-				"max-mem-destination":   []string{"100"},
-				"max-mem-prometheus":    []string{"100"},
-				"p95-cpu-linkerd-proxy": []string{"100.123"},
-				"p95-cpu-destination":   []string{"100.123"},
-				"p95-cpu-prometheus":    []string{"100.123"},
+				"total-rps":                 []string{"100"},
+				"meshed-pods":               []string{"100"},
+				"p99-handle-us":             []string{"100"},
+				"max-mem-linkerd-proxy":     []string{"100"},
+				"max-mem-destination":       []string{"100"},
+				"max-mem-prometheus":        []string{"100"},
+				"p95-cpu-linkerd-proxy":     []string{"100.123"},
+				"p95-cpu-destination":       []string{"100.123"},
+				"p95-cpu-prometheus":        []string{"100.123"},
+				"proxy-injector-injections": []string{"100"},
 			},
 		},
 		{

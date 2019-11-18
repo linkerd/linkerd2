@@ -5,7 +5,7 @@
 #
 # When this file is changed, run `bin/update-go-deps-shas`.
 
-FROM golang:1.12.9
+FROM golang:1.13.4
 
 WORKDIR /linkerd-build
 

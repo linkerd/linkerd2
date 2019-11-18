@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"testing"
 
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -111,11 +110,7 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 		buf.WriteString(v)
 	}
 
-	// pin the uuid in the linkerd-config config map
-	re := regexp.MustCompile(`"uuid":".*"`)
-	result := re.ReplaceAllString(buf.String(), `"uuid":"test-install-uuid"`)
-
-	diffTestdata(t, goldenFileName, result)
+	diffTestdata(t, goldenFileName, buf.String())
 }
 
 func chartControlPlane(t *testing.T, ha bool) *pb.Chart {

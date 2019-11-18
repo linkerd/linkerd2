@@ -1,32 +1,32 @@
-#!/bin/bash
+#!/bin/sh
 
 set -eu
 
 dockerversion=19.03.1
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-targetbin="$( cd $bindir/.. && pwd )"/target/bin
-dockerbin="${targetbin}/.docker-${dockerversion}"
+bindir=$( cd "${0%/*}" && pwd )
+targetbin=$( cd "$bindir"/.. && pwd )/target/bin
+dockerbin=$targetbin/.docker-$dockerversion
 
 if [ ! -f "$dockerbin" ]; then
-  if [ "$(uname -s)" = "Darwin" ]; then
+  if [ "$(uname -s)" = Darwin ]; then
     os=mac
-    filename="docker-$dockerversion.tgz"
+    filename=docker-$dockerversion.tgz
   else
     os=linux
-    filename="docker-$dockerversion.tgz"
+    filename=docker-$dockerversion.tgz
   fi
 
-  url="https://download.docker.com/${os}/static/stable/x86_64/${filename}"
+  url=https://download.docker.com/$os/static/stable/x86_64/$filename
   tmp=$(mktemp -d -t docker.XXX)
   mkdir -p "$targetbin"
   (
       cd "$tmp"
-      curl -Lsf -o "./docker.tar.gz" "$url"
-      tar zf "./docker.tar.gz" -x docker/docker
+      curl -Lsf -o ./docker.tar.gz "$url"
+      tar zf ./docker.tar.gz -x docker/docker
   )
   mv "$tmp/docker/docker" "$dockerbin"
   rm -rf "$tmp"
 fi
 
-$dockerbin "$@"
+"$dockerbin" "$@"

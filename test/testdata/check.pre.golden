@@ -21,6 +21,8 @@ pre-kubernetes-setup
 √ can create Deployments
 √ can create CronJobs
 √ can create ConfigMaps
+√ can create Secrets
+√ can read Secrets
 √ no clock skew detected
 
 pre-kubernetes-capability

@@ -7,7 +7,7 @@ EnableH2Upgrade: true
 ImagePullPolicy: &image_pull_policy IfNotPresent
 
 # control plane version. See Proxy section for proxy version
-LinkerdVersion: &linkerd_version edge-19.10.4
+LinkerdVersion: &linkerd_version edge-19.11.2
 
 Namespace: linkerd
 OmitWebhookSideEffects: false
@@ -18,6 +18,10 @@ ControllerImage: gcr.io/linkerd-io/controller
 ControllerLogLevel: &controller_log_level info
 ControllerReplicas: 1
 ControllerUID: 2103
+
+# web dashboard configuration
+Dashboard:
+  Replicas: 1
 
 # identity configuration
 Identity:

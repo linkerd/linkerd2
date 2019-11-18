@@ -1,16 +1,20 @@
 package srv
 
 import (
+	"fmt"
+	"html"
 	"html/template"
 	"net/http"
 	"path"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/filesonly"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -27,6 +31,7 @@ type (
 		reload      bool
 		templates   map[string]*template.Template
 		router      *httprouter.Router
+		reHost      *regexp.Regexp
 	}
 
 	templatePayload struct {
@@ -40,10 +45,24 @@ type (
 		ErrorMessage        string
 		PathPrefix          string
 	}
+
+	healthChecker interface {
+		RunChecks(observer healthcheck.CheckObserver) bool
+	}
 )
 
 // this is called by the HTTP server to actually respond to a request
 func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if !s.reHost.MatchString(req.Host) {
+		error := fmt.Sprintf(`It appears that you are trying to reach this service with a host of '%s'.
+This does not match /%s/ and has been denied for security reasons.
+Please see https://linkerd.io/dns-rebinding for an explanation of what is happening and how to fix it.`,
+			html.EscapeString(req.Host),
+			html.EscapeString(s.reHost.String()))
+
+		http.Error(w, error, http.StatusBadRequest)
+		return
+	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
@@ -62,12 +81,15 @@ func NewServer(
 	controllerNamespace string,
 	clusterDomain string,
 	reload bool,
+	reHost *regexp.Regexp,
 	apiClient public.APIClient,
 	k8sAPI *k8s.KubernetesAPI,
+	hc healthChecker,
 ) *http.Server {
 	server := &Server{
 		templateDir: templateDir,
 		reload:      reload,
+		reHost:      reHost,
 	}
 
 	server.router = &httprouter.Router{
@@ -85,6 +107,7 @@ func NewServer(
 		controllerNamespace: controllerNamespace,
 		clusterDomain:       clusterDomain,
 		grafanaProxy:        newGrafanaProxy(grafanaAddr),
+		hc:                  hc,
 	}
 
 	httpServer := &http.Server{
@@ -149,6 +172,7 @@ func NewServer(
 	server.router.GET("/api/tap", handler.handleAPITap)
 	server.router.GET("/api/routes", handler.handleAPITopRoutes)
 	server.router.GET("/api/edges", handler.handleAPIEdges)
+	server.router.GET("/api/check", handler.handleAPICheck)
 
 	// grafana proxy
 	server.router.DELETE("/grafana/*grafanapath", handler.handleGrafana)

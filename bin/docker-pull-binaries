@@ -3,34 +3,32 @@
 set -eu
 
 if [ $# -eq 1 ]; then
-    tag="${1:-}"
+    tag=${1:-}
 else
-    echo "usage: $(basename $0) tag" >&2
+    echo "usage: ${0##*/} tag" >&2
     exit 64
 fi
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
 
-. $bindir/_docker.sh
+. "$bindir"/_docker.sh
 
-workdir="$rootdir/target/release"
+workdir=$rootdir/target/release
 mkdir -p "$workdir"
 
-shorttag="$tag"
-if [ "${tag:0:1}" == "v" ]; then
-  shorttag="${tag:1}"
-fi
+# create shorttag where eventual initial v in tag is stripped
+shorttag=${tag#v}
 
 # create the cli-bin container in order to extract the binaries
 id=$(docker create "$(docker_repo cli-bin):$tag")
 
 for os in darwin linux windows ; do
-  ext="$os"
-  if [ "$os" == "windows" ]; then
-    ext="windows.exe"
+  ext=$os
+  if [ "$os" = windows ]; then
+    ext=windows.exe
   fi
-  filepath="$workdir/linkerd2-cli-$shorttag-$ext"
+  filepath=$workdir/linkerd2-cli-$shorttag-$ext
   docker cp "$id:/out/linkerd-$os" "$filepath"
   openssl dgst -sha256 "$filepath" | awk '{print $2}' > "$filepath.sha256"
   echo "$filepath"

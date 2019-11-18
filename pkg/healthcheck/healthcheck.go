@@ -10,14 +10,12 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
-	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
@@ -249,7 +247,8 @@ type CheckResult struct {
 	Err         error
 }
 
-type checkObserver func(*CheckResult)
+// CheckObserver receives the results of each check.
+type CheckObserver func(*CheckResult)
 
 type category struct {
 	id       CategoryID
@@ -284,6 +283,7 @@ type HealthChecker struct {
 	latestVersions   version.Channels
 	serverVersion    string
 	linkerdConfig    *configPb.All
+	uuid             string
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -443,6 +443,20 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
+					description: "can create Secrets",
+					hintAnchor:  "pre-k8s",
+					check: func(context.Context) error {
+						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "secrets")
+					},
+				},
+				{
+					description: "can read Secrets",
+					hintAnchor:  "pre-k8s",
+					check: func(context.Context) error {
+						return hc.checkCanGet(hc.ControlPlaneNamespace, "", "v1", "secrets")
+					},
+				},
+				{
 					description: "no clock skew detected",
 					hintAnchor:  "pre-k8s-clock-skew",
 					check: func(context.Context) error {
@@ -596,7 +610,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
+						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
 						return
 					},
 				},
@@ -707,14 +721,6 @@ func (hc *HealthChecker) allCategories() []category {
 						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
 					},
 				},
-				{
-					description: "no invalid service profiles",
-					hintAnchor:  "l5d-sp",
-					warning:     true,
-					check: func(context.Context) error {
-						return hc.validateServiceProfiles()
-					},
-				},
 			},
 		},
 		{
@@ -727,10 +733,9 @@ func (hc *HealthChecker) allCategories() []category {
 						if hc.VersionOverride != "" {
 							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
 						} else {
-							// Retrieve the UUID from `linkerd-config`.
 							uuid := "unknown"
-							if hc.linkerdConfig != nil {
-								uuid = hc.linkerdConfig.GetInstall().GetUuid()
+							if hc.uuid != "" {
+								uuid = hc.uuid
 							}
 							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
 						}
@@ -892,7 +897,7 @@ func (hc *HealthChecker) addCategory(c category) {
 // remaining checks are skipped. If at least one check fails, RunChecks returns
 // false; if all checks passed, RunChecks returns true.  Checks which are
 // designated as warnings will not cause RunCheck to return false, however.
-func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
+func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 	success := true
 
 	for _, c := range hc.categories {
@@ -927,7 +932,7 @@ func (hc *HealthChecker) RunChecks(observer checkObserver) bool {
 	return success
 }
 
-func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer checkObserver) bool {
+func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer CheckObserver) bool {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
@@ -960,7 +965,7 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer ch
 	}
 }
 
-func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer checkObserver) bool {
+func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer CheckObserver) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	checkRsp, err := c.checkRPC(ctx)
@@ -1008,13 +1013,13 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkLinkerdConfigConfigMap() (*configPb.All, error) {
-	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+func (hc *HealthChecker) checkLinkerdConfigConfigMap() (string, *configPb.All, error) {
+	cm, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	return configPB, nil
+	return string(cm.GetUID()), configPB, nil
 }
 
 // FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from
@@ -1331,7 +1336,7 @@ func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error
 	return pods, nil
 }
 
-func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
+func (hc *HealthChecker) checkCanPerformAction(verb, namespace, group, version, resource string) error {
 	if hc.kubeAPI == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
@@ -1340,12 +1345,20 @@ func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource stri
 	return k8s.ResourceAuthz(
 		hc.kubeAPI,
 		namespace,
-		"create",
+		verb,
 		group,
 		version,
 		resource,
 		"",
 	)
+}
+
+func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
+	return hc.checkCanPerformAction("create", namespace, group, version, resource)
+}
+
+func (hc *HealthChecker) checkCanGet(namespace, group, version, resource string) error {
+	return hc.checkCanPerformAction("get", namespace, group, version, resource)
 }
 
 func (hc *HealthChecker) checkCapability(cap string) error {
@@ -1419,33 +1432,6 @@ func (hc *HealthChecker) checkClockSkew() error {
 		return fmt.Errorf("clock skew detected for node(s): %s", strings.Join(clockSkewNodes, ", "))
 	}
 
-	return nil
-}
-
-func (hc *HealthChecker) validateServiceProfiles() error {
-	spClientset, err := spclient.NewForConfig(hc.kubeAPI.Config)
-	if err != nil {
-		return err
-	}
-
-	svcProfiles, err := spClientset.LinkerdV1alpha2().ServiceProfiles("").List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, p := range svcProfiles.Items {
-		// TODO: remove this check once we implement ServiceProfile validation via a
-		// ValidatingAdmissionWebhook
-		result := spClientset.RESTClient().Get().RequestURI(p.GetSelfLink()).Do()
-		raw, err := result.Raw()
-		if err != nil {
-			return err
-		}
-		err = profiles.Validate(raw)
-		if err != nil {
-			return fmt.Errorf("%s: %s", p.Name, err)
-		}
-	}
 	return nil
 }
 

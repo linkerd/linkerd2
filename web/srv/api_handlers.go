@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -15,6 +16,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/pkg/tap"
@@ -39,6 +41,14 @@ var (
 		ReadBufferSize:  maxMessageSize,
 		WriteBufferSize: maxMessageSize,
 	}
+
+	// Checks whose description matches the following regexp won't be included
+	// in the handleApiCheck output. In the context of the dashboard, some
+	// checks like cli or kubectl versions ones may not be relevant.
+	//
+	// TODO(tegioz): use more reliable way to identify the checks that should
+	// not be displayed in the dashboard (hint anchor is not unique).
+	excludedChecksRE = regexp.MustCompile(`(?i)cli|(?i)kubectl`)
 )
 
 func renderJSONError(w http.ResponseWriter, err error, status int) {
@@ -309,4 +319,42 @@ func (h *handler) handleAPIEdges(w http.ResponseWriter, req *http.Request, p htt
 		return
 	}
 	renderJSONPb(w, result)
+}
+
+func (h *handler) handleAPICheck(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	type CheckResult struct {
+		*healthcheck.CheckResult
+		ErrMsg  string `json:",omitempty"`
+		HintURL string `json:",omitempty"`
+	}
+
+	success := true
+	results := make(map[healthcheck.CategoryID][]*CheckResult)
+
+	collectResults := func(result *healthcheck.CheckResult) {
+		if result.Retry || excludedChecksRE.MatchString(result.Description) {
+			return
+		}
+		var errMsg, hintURL string
+		if result.Err != nil {
+			if !result.Warning {
+				success = false
+			}
+			errMsg = result.Err.Error()
+			hintURL = fmt.Sprintf("%s%s", healthcheck.HintBaseURL, result.HintAnchor)
+		}
+		results[result.Category] = append(results[result.Category], &CheckResult{
+			CheckResult: result,
+			ErrMsg:      errMsg,
+			HintURL:     hintURL,
+		})
+	}
+	// TODO (tegioz): ignore runchecks results until we stop filtering checks
+	// in this method (see #3670 for more details)
+	_ = h.hc.RunChecks(collectResults)
+
+	renderJSON(w, map[string]interface{}{
+		"success": success,
+		"results": results,
+	})
 }

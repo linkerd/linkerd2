@@ -63,7 +63,8 @@ export const tapQueryProps = {
   path: PropTypes.string,
   scheme: PropTypes.string,
   authority: PropTypes.string,
-  maxRps: PropTypes.string
+  maxRps: PropTypes.string,
+  extract: PropTypes.bool,
 };
 
 export const tapQueryPropType = PropTypes.shape(tapQueryProps);

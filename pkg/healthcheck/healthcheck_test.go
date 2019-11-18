@@ -2143,7 +2143,7 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version", "proxy_init_image_version":"v1.2.0"}
   install: |
-    {"uuid":"deaab91a-f4ab-448a-b7d1-c832a2fa0a60","cliVersion":"dev-undefined","flags":[]}`,
+    {"cliVersion":"dev-undefined","flags":[]}`,
 			},
 			&configPb.All{
 				Global: &configPb.Global{
@@ -2189,7 +2189,6 @@ data:
 					ProxyVersion:            "install-proxy-version",
 					ProxyInitImageVersion:   "v1.2.0",
 				}, Install: &configPb.Install{
-					Uuid:       "deaab91a-f4ab-448a-b7d1-c832a2fa0a60",
 					CliVersion: "dev-undefined",
 				}},
 			nil,

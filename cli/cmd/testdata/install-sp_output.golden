@@ -41,7 +41,7 @@ spec:
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
-  name: linkerd-destination.NAMESPACE.svc.CLUSTERDOMAIN
+  name: linkerd-dst.NAMESPACE.svc.CLUSTERDOMAIN
   namespace: NAMESPACE
 spec:
   routes:

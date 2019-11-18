@@ -87,7 +87,8 @@ class Tap extends React.Component {
 
     this.ws.send(JSON.stringify({
       id: "tap-web",
-      ...query
+      ...query,
+      extract: true,
     }));
     this.setState({
       error: null

@@ -62,6 +62,22 @@ deep_integration_tests() {
 
     run_test "$(go list $test_directory/.../...)" --linkerd-namespace=$linkerd_namespace
     exit_on_err 'error during deep tests'
+    cleanup
+}
+
+function custom_domain_integration_tests() {
+    run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace --cluster-domain="custom.domain"
+    exit_on_err 'error during install'
+    cleanup
+}
+
+function external_issuer_integration_tests() {
+    run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace-external-issuer --external-issuer=true
+    exit_on_err 'error during install with --external-issuer=true'
+
+    run_test "$test_directory/externalissuer/external_issuer_test.go" --linkerd-namespace=$linkerd_namespace-external-issuer --external-issuer=true
+    exit_on_err 'error during external issuer tests'
+    cleanup
 }
 
 #
@@ -127,8 +143,14 @@ install_stable() {
 
     local linkerd_path=$tmp/.linkerd2/bin/linkerd
     local stable_namespace=$1
+    local test_app_namespace=$stable_namespace-upgrade-test
     $linkerd_path install --linkerd-namespace="$stable_namespace" | kubectl --context=$k8s_context apply -f - > /dev/null 2>&1
     $linkerd_path check --linkerd-namespace="$stable_namespace" > /dev/null 2>&1
+
+    #Now we need to install the app that will be used to verify that upgrade does not break anything
+    kubectl --context=$k8s_context create namespace "$test_app_namespace" > /dev/null 2>&1
+    kubectl --context=$k8s_context label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
+    $linkerd_path inject --linkerd-namespace="$stable_namespace" "$test_directory/testdata/upgrade_test.yaml" | kubectl --context=$k8s_context apply --namespace="$test_app_namespace" -f - > /dev/null 2>&1
 }
 
 # Run the upgrade test by upgrading the most-recent stable release to the HEAD of

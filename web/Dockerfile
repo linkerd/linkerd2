@@ -21,7 +21,7 @@ COPY web/app ./web/app
 RUN ./bin/web build
 
 ## compile go server
-FROM gcr.io/linkerd-io/go-deps:f4c3ddf4 as golang
+FROM gcr.io/linkerd-io/go-deps:1c6a29b8 as golang
 WORKDIR /linkerd-build
 RUN mkdir -p web
 COPY web/main.go web
@@ -40,6 +40,7 @@ COPY --from=golang /linkerd-build/web/web .
 RUN mkdir -p app
 COPY --from=webpack-bundle /linkerd-build/web/app/dist app/dist
 COPY web/templates templates
+COPY --from=golang /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}

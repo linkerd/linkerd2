@@ -3,23 +3,23 @@
 set -eu
 
 if [ $# -ne 0 ]; then
-    echo "no arguments allowed for $(basename $0), given: $@" >&2
+    echo "no arguments allowed for ${0##*/}, given: $*" >&2
     exit 64
 fi
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
 
-. $bindir/_docker.sh
-. $bindir/_tag.sh
+. "$bindir"/_docker.sh
+. "$bindir"/_tag.sh
 
 dockerfile=$rootdir/controller/Dockerfile
 
-validate_go_deps_tag $dockerfile
+validate_go_deps_tag "$dockerfile"
 
 (
-    $bindir/docker-build-go-deps
+    "$bindir"/docker-build-go-deps
 ) >/dev/null
 
-tag="$(head_root_tag)"
-docker_build controller $tag $dockerfile --build-arg LINKERD_VERSION=$tag
+tag=$(head_root_tag)
+docker_build controller "$tag" "$dockerfile" --build-arg LINKERD_VERSION="$tag"

@@ -3,24 +3,33 @@
 set -eu
 
 if [ $# -ne 0 ]; then
-    echo "no arguments allowed for $(basename $0), given: $@" >&2
+    echo "no arguments allowed for ${0##*/}, given: $*" >&2
     exit 64
 fi
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
 
-. $bindir/_docker.sh
-. $bindir/_tag.sh
+. "$bindir"/_docker.sh
+. "$bindir"/_tag.sh
 
-dockerfile="$rootdir/Dockerfile-proxy"
+dockerfile=$rootdir/Dockerfile-proxy
 
 validate_go_deps_tag "$dockerfile"
 
 (
-    $bindir/docker-build-go-deps
+    "$bindir"/docker-build-go-deps
 ) >/dev/null
 
-tag="$(head_root_tag)"
+get_extra_options() {
+    options=
+    for var in http_proxy https_proxy no_proxy; do
+        [ -z "${!var:-}" ] || options="$options --build-arg '$var=${!var}'"
+    done
+    echo $options
+}
+
+tag=$(head_root_tag)
 docker_build proxy "$tag" "$dockerfile" \
-  --build-arg "LINKERD_VERSION=$tag"
+  --build-arg "LINKERD_VERSION=$tag" \
+  $(get_extra_options)

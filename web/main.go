@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"regexp"
 	"syscall"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
@@ -31,6 +33,7 @@ func main() {
 	staticDir := cmd.String("static-dir", "app/dist", "directory to search for static files")
 	reload := cmd.Bool("reload", true, "reloading set to true or false")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	enforcedHost := cmd.String("enforced-host", "", "regexp describing the allowed values for the Host header; protects from DNS-rebinding attacks")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 
 	traceCollector := flags.AddTraceFlags(cmd)
@@ -58,11 +61,27 @@ func main() {
 		log.Fatalf("failed to construct Kubernetes API client: [%s]", err)
 	}
 
-	installConfig, err := config.Install(pkgK8s.MountPathInstallConfig)
-	if err != nil {
-		log.Warnf("failed to load uuid from install config: [%s] (disregard warning if running in development mode)", err)
+	// Setup health checker
+	checks := []healthcheck.CategoryID{
+		healthcheck.KubernetesAPIChecks,
+		healthcheck.KubernetesVersionChecks,
+		healthcheck.LinkerdConfigChecks,
+		healthcheck.LinkerdControlPlaneExistenceChecks,
+		healthcheck.LinkerdAPIChecks,
+		healthcheck.LinkerdVersionChecks,
+		healthcheck.LinkerdControlPlaneVersionChecks,
 	}
-	uuid := installConfig.GetUuid()
+	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
+		ControlPlaneNamespace: *controllerNamespace,
+		KubeConfig:            *kubeConfigPath,
+		APIAddr:               *apiAddr,
+	})
+
+	cm, _, err := healthcheck.FetchLinkerdConfigMap(k8sAPI, *controllerNamespace)
+	if err != nil {
+		log.Errorf("Failed to fetch linkerd-config: %s", err)
+	}
+	uuid := string(cm.GetUID())
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -73,7 +92,13 @@ func main() {
 		}
 	}
 
-	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid, *controllerNamespace, clusterDomain, *reload, client, k8sAPI)
+	reHost, err := regexp.Compile(*enforcedHost)
+	if err != nil {
+		log.Fatalf("invalid --enforced-host parameter: %s", err)
+	}
+
+	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid,
+		*controllerNamespace, clusterDomain, *reload, reHost, client, k8sAPI, hc)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

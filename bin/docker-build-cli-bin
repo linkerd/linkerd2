@@ -3,32 +3,32 @@
 set -eu
 
 if [ $# -ne 0 ]; then
-    echo "no arguments allowed for $(basename $0), given: $@" >&2
+    echo "no arguments allowed for ${0##*/}, given: $*" >&2
     exit 64
 fi
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
 
-. $bindir/_docker.sh
-. $bindir/_tag.sh
+. "$bindir"/_docker.sh
+. "$bindir"/_tag.sh
 
 dockerfile=$rootdir/cli/Dockerfile-bin
 
-validate_go_deps_tag $dockerfile
+validate_go_deps_tag "$dockerfile"
 
 (
-    $bindir/docker-build-go-deps
+    "$bindir"/docker-build-go-deps
 ) >/dev/null
 
-tag="$(head_root_tag)"
-docker_build cli-bin $tag $dockerfile --build-arg LINKERD_VERSION=$tag
+tag=$(head_root_tag)
+docker_build cli-bin "$tag" "$dockerfile" --build-arg LINKERD_VERSION="$tag"
 IMG=$(docker_repo cli-bin):$tag
 ID=$(docker create "$IMG")
 
 # copy the newly built linkerd cli binaries to the local system
 for OS in darwin linux windows ; do
-    DIR="${rootdir}/target/cli/${OS}"
+    DIR=$rootdir/target/cli/$OS
     mkdir -p "$DIR"
 
     if docker cp "$ID:/out/linkerd-${OS}" "$DIR/linkerd" ; then

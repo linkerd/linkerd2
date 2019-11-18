@@ -309,7 +309,7 @@ spec:
               min: 1`,
 		},
 		{
-			err: errors.New("failed to validate ServiceProfile: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal bool into Go struct field Range.min of type uint32"),
+			err: errors.New("failed to validate ServiceProfile: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal bool into Go struct field Range.spec.routes.responseClasses.condition.all.not.status.min of type uint32"),
 			sp: `apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
@@ -388,7 +388,7 @@ spec:
       pathRegex: /route-1`,
 		},
 		{
-			err: errors.New("failed to validate ServiceProfile: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal number -5 into Go struct field RetryBudget.minRetriesPerSecond of type uint32"),
+			err: errors.New("failed to validate ServiceProfile: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal number -5 into Go struct field RetryBudget.spec.retryBudget.minRetriesPerSecond of type uint32"),
 			sp: `apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:

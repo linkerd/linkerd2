@@ -1,10 +1,88 @@
+## edge-19.11.2
+
+* CLI
+  * Added a `Dashboard.Replicas` parameter to the Linkerd Helm chart to allow
+    configuring the number of dashboard replicas (thanks @KIVagant!)
+  * Removed redundant service profile check (thanks @alenkacz!)
+* Web UI
+  * Added `linkerd check` to the dashboard in the `/controlplane` view
+  * Added request and response headers to the `tap` expanded view in the
+    dashboard
+* Internal
+  * Removed the destination container from the linkerd-controller deployment as
+    it now runs in the linkerd-destination deployment
+  * Upgraded Go to version 1.13.4
+
+## edge-19.11.1
+
+* CLI
+  * Updated `uninject` command to work with namespace resources
+    (thanks @mayankshah1607!)
+* Controller
+  * Added `conntrack` to the `debug` container to help with connection tracking
+    debugging
+  * Fixed a bug in `tap` where mismatch cluster domain and trust domain caused
+    `tap` to hang
+  * Fixed an issue in the `identity` RBAC resource which caused start up errors
+    in k8s 1.6 (thanks @Pothulapati!)
+* Proxy
+  * Improved debug/error logging to include detailed contextual information
+* Web UI
+  * Added filter to namespace select button
+  * Improved how empty tables are displayed
+* Internal
+  * Added integration test for custom cluster domain
+  * Allowed the control plane to be injected with the `debug` container
+  * Updated proxy image build script to support HTTP proxy options
+    (thanks @joakimr-axis!)
+  * Updated the CLI `doc` command to auto-generate documentation for the proxy
+    configuration annotations (thanks @StupidScience!)
+
+## edge-19.10.5
+
+This edge release adds support for integrating Linkerd's PKI with an external
+certificate issuer such as [`cert-manager`], adds distributed tracing support to
+the Linkerd control plane, and adds protection against DNS rebinding attacks to
+the web dashboard. In addition, it includes several improvements to the Linkerd
+CLI.
+
+* CLI
+  * Added a new `--identity-external-issuer` flag to `linkerd install` that
+    configures Linkerd to use certificates issued by an external certificate
+    issuer (such as `cert-manager`)
+  * Added support for injecting a namespace to `linkerd inject` (thanks
+    @mayankshah1607!)
+  * Added checks to `linkerd check --preinstall` ensuring Kubernetes Secrets
+    can be created and accessed
+  * Fixed `linkerd tap` sometimes displaying incorrect pod names for unmeshed
+    IPs that match multiple running pods
+* Controller
+  * Added support for using trust anchors from an external certificate issuer
+    (such as `cert-mananger`) to the `linkerd-identity` service
+* Web UI
+  * Added `Host:` header validation to the `linkerd-web` service, to protect
+    against DNS rebinding attacks
+* Internal
+  * Added new `--trace-collector` and `--trace-collector-svc-account` flags to
+    `linkerd inject` that configures the OpenCensus trace collector used by
+    proxies in the injected workload (thanks @Pothulapati!)
+  * Added a new `--control-plane-tracing` flag to `linkerd install` that enables
+    distributed tracing in the control plane (thanks @Pothulapati!)
+  * Added distributed tracing support to the control plane (thanks
+    @Pothulapati!)
+
+Also, thanks to @joakimr-axis for several fixes and improvements to internal
+build scripts!
+
+[`cert-manager`]: https://github.com/jetstack/cert-manager
+
 ## edge-19.10.4
 
 This edge release adds dashboard UX enhancements, and improves the speed of the CLI.
 
 * CLI
   * Made `linkerd install --ignore-cluster` and `--skip-checks` faster
-  * Fixed a bug causing `linkerd upgrade` to fail when used with 
+  * Fixed a bug causing `linkerd upgrade` to fail when used with
   `--from-manifest`
 * Web UI
   * Made the dashboard sidebar component responsive
