@@ -711,6 +711,10 @@ func (o *statOptions) validateConflictingFlags() error {
 		return fmt.Errorf("--to-namespace and --from-namespace flags are mutually exclusive")
 	}
 
+	if o.allNamespaces && o.namespace != "default" {
+		return fmt.Errorf("--all-namespaces and --namespace flags are mutually exclusive")
+	}
+
 	return nil
 }
 

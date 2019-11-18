@@ -155,6 +155,19 @@ func TestStat(t *testing.T) {
 		}
 	})
 
+	t.Run("Rejects commands with both --all-namespaces and --namespace flags", func(t *testing.T) {
+		options := newStatOptions()
+		options.allNamespaces = true
+		options.namespace = "ns"
+		args := []string{"po"}
+		expectedError := "--all-namespaces and --namespace flags are mutually exclusive"
+
+		_, err := buildStatSummaryRequests(args, options)
+		if err == nil || err.Error() != expectedError {
+			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
+		}
+	})
+
 	t.Run("Rejects --to-namespace flag when the target is a namespace", func(t *testing.T) {
 		options := newStatOptions()
 		options.toNamespace = "bar"
