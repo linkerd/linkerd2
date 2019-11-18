@@ -167,7 +167,7 @@ class Top extends React.Component {
           tapRequestInProgress={this.state.tapRequestInProgress}
           tapIsClosing={this.state.tapIsClosing}
           updateQuery={this.updateQuery}
-          query={this.state.query} />
+          currentQuery={this.state.query} />
 
         <TopModule
           pathPrefix={this.props.pathPrefix}

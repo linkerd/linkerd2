@@ -1,4 +1,4 @@
-import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
+import { StringParam, withQueryParams } from 'use-query-params';
 import { WS_ABNORMAL_CLOSURE, WS_NORMAL_CLOSURE, WS_POLICY_VIOLATION, emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
 
 import ErrorBanner from './ErrorBanner.jsx';
@@ -17,7 +17,7 @@ import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 const urlPropsQueryConfig = {
-  autostart: { type: UrlQueryParamTypes.string }
+  autostart: StringParam,
 };
 
 class Tap extends React.Component {
@@ -293,7 +293,7 @@ class Tap extends React.Component {
           resourcesByNs={this.state.resourcesByNs}
           authoritiesByNs={this.state.authoritiesByNs}
           updateQuery={this.updateQuery}
-          query={this.state.query} />
+          currentQuery={this.state.query} />
 
         <TapEventTable
           resource={this.state.query.resource}
@@ -303,4 +303,4 @@ class Tap extends React.Component {
   }
 }
 
-export default addUrlProps({ urlPropsQueryConfig })(withContext(Tap));
+export default withQueryParams(urlPropsQueryConfig, withContext(Tap));

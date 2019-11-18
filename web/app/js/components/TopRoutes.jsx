@@ -1,4 +1,4 @@
-import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
+import { StringParam, withQueryParams } from 'use-query-params';
 
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
@@ -19,11 +19,9 @@ import TopRoutesModule from './TopRoutesModule.jsx';
 import Typography from '@material-ui/core/Typography';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
-import _mapValues from 'lodash/mapValues';
 import _merge from 'lodash/merge';
 import _pick from 'lodash/pick';
 import _uniq from 'lodash/uniq';
-import _upperFirst from 'lodash/upperFirst';
 import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { tapResourceTypes } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
@@ -39,9 +37,10 @@ const topRoutesQueryProps = {
 };
 const topRoutesQueryPropType = PropTypes.shape(topRoutesQueryProps);
 
-const urlPropsQueryConfig = _mapValues(topRoutesQueryProps, () => {
-  return { type: UrlQueryParamTypes.string };
-});
+let topRoutesQueryConfig = {};
+for (let value in topRoutesQueryProps) {
+  topRoutesQueryConfig[value] = StringParam;
+}
 
 const toResourceName = (query, typeKey, nameKey) => {
   return `${query[typeKey] || ""}${!query[nameKey] ? "" : "/"}${query[nameKey] || ""}`;
@@ -62,24 +61,23 @@ class TopRoutes extends React.Component {
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
     classes: PropTypes.shape({}).isRequired,
-    query: topRoutesQueryPropType,
-  }
-  static defaultProps = {
-    query: {
-      resource_name: '',
-      resource_type: '',
-      namespace: '',
-      to_name: '',
-      to_type: '',
-      to_namespace: ''
-    },
+    query: topRoutesQueryPropType.isRequired,
+    setQuery: PropTypes.func.isRequired,
   }
 
   constructor(props) {
     super(props);
     this.api = this.props.api;
 
-    let query = _merge({}, props.query, _pick(this.props, Object.keys(topRoutesQueryProps)));
+    const query = _merge({
+      resource_name: '',
+      resource_type: '',
+      namespace: '',
+      to_name: '',
+      to_type: '',
+      to_namespace: ''
+    }, _pick(props.query, Object.keys(topRoutesQueryProps)));
+
 
     this.state = {
       query: query,
@@ -160,12 +158,9 @@ class TopRoutes extends React.Component {
   }
 
   // Each time state.query is updated, this method calls the equivalent
-  // onChange method to reflect the update in url query params. These onChange
-  // methods are automatically added to props by react-url-query.
+  // method to reflect the update in url query params.
   handleUrlUpdate = query => {
-    for (let key in query) {
-      this.props[`onChange${_upperFirst(key)}`](query[key]);
-    }
+    this.props.setQuery({ ...query });
   }
 
   handleNamespaceSelect = nsKey => e => {
@@ -340,4 +335,4 @@ class TopRoutes extends React.Component {
   }
 }
 
-export default addUrlProps({ urlPropsQueryConfig })(withContext(withStyles(styles, { withTheme: true })(TopRoutes)));
+export default withQueryParams(topRoutesQueryConfig, (withContext(withStyles(styles, { withTheme: true })(TopRoutes))));
