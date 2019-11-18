@@ -9,6 +9,7 @@ import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
 import _has from 'lodash/has';
+import _includes from 'lodash/includes';
 import _isEmpty from 'lodash/isEmpty';
 import _isEqual from 'lodash/isEqual';
 import _isNil from 'lodash/isNil';
@@ -18,6 +19,9 @@ import _take from 'lodash/take';
 import _throttle from 'lodash/throttle';
 import _values from 'lodash/values';
 import { withContext } from './util/AppContext.jsx';
+
+// https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
+const grpcErrorStatusCodes = [2, 4, 13, 14, 15];
 
 class TopModule extends React.Component {
   static propTypes = {
@@ -306,7 +310,7 @@ class TopModule extends React.Component {
     if (success) {
       let grpcStatusCode = _get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode");
       if (!_isNil(grpcStatusCode)) {
-        success = grpcStatusCode === 0;
+        success = !_includes(grpcErrorStatusCodes, grpcStatusCode);
       } else if (!_isNil(_get(d, "responseEnd.http.responseEnd.eos.resetErrorCode"))) {
         success = false;
       }
