@@ -189,7 +189,7 @@ class NavigationBase extends React.Component {
     window.addEventListener("resize", this.updateWindowDimensions);
   }
 
-  componentWillUpdate() {
+  componentDidUpdate() {
     if (this.props.history) {
       this.props.checkNamespaceMatch(this.props.history.location.pathname);
     }

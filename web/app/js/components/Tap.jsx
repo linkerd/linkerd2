@@ -1,5 +1,5 @@
-import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
-import { WS_ABNORMAL_CLOSURE, WS_NORMAL_CLOSURE, WS_POLICY_VIOLATION, emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
+import { StringParam, withQueryParams } from 'use-query-params';
+import { WS_ABNORMAL_CLOSURE, WS_NORMAL_CLOSURE, WS_POLICY_VIOLATION, emptyTapQuery, processTapEvent, setMaxRps, tapQueryPropType, tapQueryProps, wsCloseCodes } from './util/TapUtils.jsx';
 
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
@@ -9,6 +9,7 @@ import TapQueryForm from './TapQueryForm.jsx';
 import _cloneDeep from 'lodash/cloneDeep';
 import _each from 'lodash/each';
 import _isNil from 'lodash/isNil';
+import _merge from 'lodash/merge';
 import _orderBy from 'lodash/orderBy';
 import _size from 'lodash/size';
 import _throttle from 'lodash/throttle';
@@ -16,9 +17,13 @@ import _values from 'lodash/values';
 import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
-const urlPropsQueryConfig = {
-  autostart: { type: UrlQueryParamTypes.string }
+let urlPropsQueryConfig = {
+  autostart: StringParam,
 };
+
+for (let value in tapQueryProps) {
+  urlPropsQueryConfig[value] = StringParam;
+}
 
 class Tap extends React.Component {
   static propTypes = {
@@ -26,11 +31,13 @@ class Tap extends React.Component {
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
     autostart: PropTypes.string,
-    pathPrefix: PropTypes.string.isRequired
+    pathPrefix: PropTypes.string.isRequired,
+    query: tapQueryPropType.isRequired,
+    setQuery: PropTypes.func.isRequired,
   }
 
   static defaultProps = {
-    autostart: ""
+    autostart: "",
   }
 
   constructor(props) {
@@ -45,17 +52,6 @@ class Tap extends React.Component {
       error: null,
       resourcesByNs: {},
       authoritiesByNs: {},
-      query: {
-        resource: "",
-        namespace: "",
-        toResource: "",
-        toNamespace: "",
-        method: "",
-        path: "",
-        scheme: "",
-        authority: "",
-        maxRps: ""
-      },
       maxLinesToDisplay: 40,
       tapRequestInProgress: false,
       tapIsClosing: false,
@@ -82,7 +78,7 @@ class Tap extends React.Component {
   }
 
   onWebsocketOpen = () => {
-    let query = _cloneDeep(this.state.query);
+    let query = _cloneDeep(this.props.query);
     setMaxRps(query);
 
     this.ws.send(JSON.stringify({
@@ -228,10 +224,10 @@ class Tap extends React.Component {
   }
 
   resetTapResults = () => {
+    this.props.setQuery({ ...emptyTapQuery() });
     this.tapResultsById = {};
     this.setState({
       tapResultsById: {},
-      query: emptyTapQuery()
     });
   }
 
@@ -270,13 +266,12 @@ class Tap extends React.Component {
   }
 
   updateQuery = query => {
-    this.setState({
-      query
-    });
+    this.props.setQuery({ ...query });
   }
 
   render() {
     let tableRows = _orderBy(_values(this.state.tapResultsById), r => r.lastUpdated, "desc");
+    let queryValues = _merge(emptyTapQuery(), this.props.query); // To avoid input issues with undefined values
 
     return (
       <div>
@@ -293,14 +288,14 @@ class Tap extends React.Component {
           resourcesByNs={this.state.resourcesByNs}
           authoritiesByNs={this.state.authoritiesByNs}
           updateQuery={this.updateQuery}
-          query={this.state.query} />
+          query={queryValues} />
 
         <TapEventTable
-          resource={this.state.query.resource}
+          resource={this.props.query.resource}
           tableRows={tableRows} />
       </div>
     );
   }
 }
 
-export default addUrlProps({ urlPropsQueryConfig })(withContext(Tap));
+export default withQueryParams(urlPropsQueryConfig, withContext(Tap));

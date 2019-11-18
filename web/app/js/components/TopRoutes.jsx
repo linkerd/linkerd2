@@ -1,4 +1,4 @@
-import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
+import { StringParam, withQueryParams } from 'use-query-params';
 
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
@@ -19,17 +19,15 @@ import TopRoutesModule from './TopRoutesModule.jsx';
 import Typography from '@material-ui/core/Typography';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
-import _mapValues from 'lodash/mapValues';
 import _merge from 'lodash/merge';
-import _pick from 'lodash/pick';
+import _pickBy from 'lodash/pickBy';
 import _uniq from 'lodash/uniq';
-import _upperFirst from 'lodash/upperFirst';
 import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { tapResourceTypes } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 
-const topRoutesQueryProps = {
+let topRoutesQueryProps = {
   resource_name: PropTypes.string,
   resource_type: PropTypes.string,
   namespace: PropTypes.string,
@@ -37,11 +35,11 @@ const topRoutesQueryProps = {
   to_type: PropTypes.string,
   to_namespace: PropTypes.string,
 };
-const topRoutesQueryPropType = PropTypes.shape(topRoutesQueryProps);
 
-const urlPropsQueryConfig = _mapValues(topRoutesQueryProps, () => {
-  return { type: UrlQueryParamTypes.string };
-});
+let topRoutesQueryConfig = {};
+for (let value in topRoutesQueryProps) {
+  topRoutesQueryConfig[value] = StringParam;
+}
 
 const toResourceName = (query, typeKey, nameKey) => {
   return `${query[typeKey] || ""}${!query[nameKey] ? "" : "/"}${query[nameKey] || ""}`;
@@ -62,27 +60,15 @@ class TopRoutes extends React.Component {
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
     classes: PropTypes.shape({}).isRequired,
-    query: topRoutesQueryPropType,
-  }
-  static defaultProps = {
-    query: {
-      resource_name: '',
-      resource_type: '',
-      namespace: '',
-      to_name: '',
-      to_type: '',
-      to_namespace: ''
-    },
+    query: PropTypes.shape({}).isRequired,
+    setQuery: PropTypes.func.isRequired,
   }
 
   constructor(props) {
     super(props);
     this.api = this.props.api;
 
-    let query = _merge({}, props.query, _pick(this.props, Object.keys(topRoutesQueryProps)));
-
     this.state = {
-      query: query,
       error: null,
       services: [],
       namespaces: ["default"],
@@ -159,38 +145,26 @@ class TopRoutes extends React.Component {
     });
   }
 
-  // Each time state.query is updated, this method calls the equivalent
-  // onChange method to reflect the update in url query params. These onChange
-  // methods are automatically added to props by react-url-query.
-  handleUrlUpdate = query => {
-    for (let key in query) {
-      this.props[`onChange${_upperFirst(key)}`](query[key]);
-    }
-  }
-
   handleNamespaceSelect = nsKey => e => {
-    let query = this.state.query;
     let formVal = _get(e, 'target.value');
-    query[nsKey] = formVal;
-    this.handleUrlUpdate(query);
-    this.setState({ query });
+
+    this.props.setQuery({ [nsKey]: formVal });
   };
 
   handleResourceSelect = (nameKey, typeKey) => e => {
-    let query = this.state.query;
     let resource = _get(e, 'target.value');
     let [resourceType, resourceName] = resource.split("/");
 
     resourceName = resourceName || "";
-    query[nameKey] = resourceName;
-    query[typeKey] = resourceType;
 
-    this.handleUrlUpdate(query);
-    this.setState({ query });
+    this.props.setQuery({
+      [nameKey]: resourceName,
+      [typeKey]: resourceType,
+    });
   }
 
   renderRoutesQueryForm = () => {
-    const { classes } = this.props;
+    const { classes, query } = this.props;
 
     return (
       <CardContent>
@@ -208,7 +182,7 @@ class TopRoutes extends React.Component {
               <Button
                 color="primary"
                 variant="outlined"
-                disabled={this.state.requestInProgress || !this.state.query.namespace || !this.state.query.resource_type}
+                disabled={this.state.requestInProgress || !query.namespace || !query.resource_type}
                 onClick={this.handleBtnClick(true)}>
               Start
               </Button>
@@ -242,13 +216,13 @@ class TopRoutes extends React.Component {
   }
 
   renderNamespaceDropdown = (title, key, helperText) => {
-    const { classes } = this.props;
+    const { classes, query } = this.props;
 
     return (
       <FormControl className={classes.formControl}>
         <InputLabel htmlFor={`${key}-dropdown`}>{title}</InputLabel>
         <Select
-          value={this.state.query[key]}
+          value={query[key] || ""}
           onChange={this.handleNamespaceSelect(key)}
           inputProps={{
             name: key,
@@ -266,8 +240,8 @@ class TopRoutes extends React.Component {
   }
 
   renderResourceDropdown = (title, nameKey, typeKey, helperText) => {
-    const { classes } = this.props;
-    let { query, services, resourcesByNs } = this.state;
+    const { classes, query } = this.props;
+    let { services, resourcesByNs } = this.state;
 
     let nsFilterKey = "namespace";
     if (typeKey === "to_type") {
@@ -314,7 +288,7 @@ class TopRoutes extends React.Component {
 
 
   render() {
-    let query = this.state.query;
+    let query = this.props.query;
     let emptyQuery = _isEmpty(query.resource_type);
     let cliQueryToDisplay = _merge({}, query, {toResource: toResourceName(query, "to_type", "to_name"), toNamespace: query.to_namespace});
 
@@ -333,11 +307,11 @@ class TopRoutes extends React.Component {
               query={cliQueryToDisplay}
               resource={toResourceName(query, "resource_type", "resource_name")} />
             }
-          { !this.state.requestInProgress || !this._isMounted ? null : <TopRoutesModule query={this.state.query} /> }
+          { !this.state.requestInProgress || !this._isMounted ? null : <TopRoutesModule query={_pickBy(query)} /> }
         </Card>
       </div>
     );
   }
 }
 
-export default addUrlProps({ urlPropsQueryConfig })(withContext(withStyles(styles, { withTheme: true })(TopRoutes)));
+export default withQueryParams(topRoutesQueryConfig, (withContext(withStyles(styles, { withTheme: true })(TopRoutes))));

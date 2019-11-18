@@ -1,3 +1,6 @@
+import { StringParam, withQueryParams } from 'use-query-params';
+import { emptyTapQuery, tapQueryPropType, tapQueryProps } from './util/TapUtils.jsx';
+
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -5,16 +8,23 @@ import TapQueryForm from './TapQueryForm.jsx';
 import TopModule from './TopModule.jsx';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
+import _merge from 'lodash/merge';
 import _reduce from 'lodash/reduce';
-import { emptyTapQuery } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
+
+let topQueryConfig = {};
+for (let value in tapQueryProps) {
+  topQueryConfig[value] = StringParam;
+}
 
 class Top extends React.Component {
   static propTypes = {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
-    pathPrefix: PropTypes.string.isRequired
+    pathPrefix: PropTypes.string.isRequired,
+    query: tapQueryPropType.isRequired,
+    setQuery: PropTypes.func.isRequired,
   }
 
   constructor(props) {
@@ -27,7 +37,6 @@ class Top extends React.Component {
       error: null,
       resourcesByNs: {},
       authoritiesByNs: {},
-      query: emptyTapQuery(),
       pollingInterval: 10000,
       tapRequestInProgress: false,
       pendingRequests: false
@@ -119,9 +128,7 @@ class Top extends React.Component {
   }
 
   updateQuery = query => {
-    this.setState({
-      query
-    });
+    this.props.setQuery({ ...query });
   }
 
   handleTapStart = () => {
@@ -138,9 +145,9 @@ class Top extends React.Component {
   }
 
   handleTapClear = () => {
+    this.props.setQuery({ ...emptyTapQuery() });
     this.setState({
       error: null,
-      query: emptyTapQuery()
     });
   }
 
@@ -152,6 +159,8 @@ class Top extends React.Component {
   }
 
   render() {
+    let queryValues = _merge(emptyTapQuery(), this.props.query); // To avoid input issues with undefined values
+
     return (
       <div>
         {!this.state.error ? null :
@@ -167,11 +176,11 @@ class Top extends React.Component {
           tapRequestInProgress={this.state.tapRequestInProgress}
           tapIsClosing={this.state.tapIsClosing}
           updateQuery={this.updateQuery}
-          query={this.state.query} />
+          query={queryValues} />
 
         <TopModule
           pathPrefix={this.props.pathPrefix}
-          query={this.state.query}
+          query={this.props.query}
           startTap={this.state.tapRequestInProgress}
           updateTapClosingState={this.updateTapClosingState} />
       </div>
@@ -179,4 +188,4 @@ class Top extends React.Component {
   }
 }
 
-export default withContext(Top);
+export default withQueryParams(topQueryConfig, withContext(Top));
