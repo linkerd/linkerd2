@@ -21,14 +21,24 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/pkg/tap"
+	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
-// Control Frame payload size can be no bigger than 125 bytes. 2 bytes are
-// reserved for the status code when formatting the message.
-const maxControlFrameMsgSize = 123
+const (
+	// Control Frame payload size can be no bigger than 125 bytes. 2 bytes are
+	// reserved for the status code when formatting the message.
+	maxControlFrameMsgSize = 123
+
+	// statExpiration indicates when items in the stat cache expire.
+	statExpiration = 1500 * time.Millisecond
+
+	// statCleanupInterval indicates how often expired items in the stat cache
+	// are cleaned up.
+	statCleanupInterval = 5 * time.Minute
+)
 
 type (
 	jsonError struct {
@@ -77,6 +87,11 @@ func renderJSONPb(w http.ResponseWriter, msg proto.Message) {
 	pbMarshaler.Marshal(w, msg)
 }
 
+func renderJSONBytes(w http.ResponseWriter, b []byte) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
 func (h *handler) handleAPIVersion(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	version, err := h.apiClient.Version(req.Context(), &pb.Empty{})
 
@@ -121,6 +136,19 @@ func (h *handler) handleAPIServices(w http.ResponseWriter, req *http.Request, p 
 }
 
 func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	// Initialize stat cache if needed
+	if h.statCache == nil {
+		h.statCache = cache.New(statExpiration, statCleanupInterval)
+	}
+
+	// Try to get stat summary from cache using the query as key
+	cachedResultJSON, ok := h.statCache.Get(req.URL.RawQuery)
+	if ok {
+		// Cache hit, render cached json result
+		renderJSONBytes(w, cachedResultJSON.([]byte))
+		return
+	}
+
 	trueStr := fmt.Sprintf("%t", true)
 
 	requestParams := util.StatsSummaryRequestParams{
@@ -157,7 +185,16 @@ func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p http
 		renderJSONError(w, err, http.StatusInternalServerError)
 		return
 	}
-	renderJSONPb(w, result)
+
+	// Marshal result into json and cache it
+	var resultJSON bytes.Buffer
+	if err := pbMarshaler.Marshal(&resultJSON, result); err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+	h.statCache.SetDefault(req.URL.RawQuery, resultJSON.Bytes())
+
+	renderJSONBytes(w, resultJSON.Bytes())
 }
 
 func (h *handler) handleAPITopRoutes(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
