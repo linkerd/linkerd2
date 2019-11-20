@@ -1,3 +1,17 @@
+## edge-19.11.3
+
+* CLI
+  * Added a check that ensures using `--namespace` and `--all-namespaces`
+    results in an error as they are mutually exclusive
+* Web UI
+  * Fixed a bug causing the `Run Linkerd Check` button to be incorrectly
+    positioned after being clicked
+* Internal
+  * Fixed an issue causing some control plane components to continue
+    using old certificates 
+  * Fixed incomplete Swagger definition of the tap api, causing benign
+    error logging in the kube-apiserver
+    
 ## edge-19.11.2
 
 * CLI
