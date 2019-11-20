@@ -1,3 +1,14 @@
+## edge-19.11.3
+
+* CLI
+  * Added a check that ensures using `--namespace` and `--all-namespaces`
+    results in an error as they are mutually exclusive
+* Internal
+  * Fixed an issue causing `tap`, `injector` and `sp-validator` to use 
+    old certificates after `helm upgrade` due to not being restarted
+  * Fixed incomplete Swagger definition of the tap api, causing benign
+    error logging in the kube-apiserver
+    
 ## edge-19.11.2
 
 * CLI
