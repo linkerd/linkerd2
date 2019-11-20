@@ -3,9 +3,6 @@
 * CLI
   * Added a check that ensures using `--namespace` and `--all-namespaces`
     results in an error as they are mutually exclusive
-* Web UI
-  * Fixed a bug causing the `Run Linkerd Check` button to be incorrectly
-    positioned after being clicked
 * Internal
   * Fixed an issue causing `tap`, `injector` and `sp-validator` to use 
     old certificates after `helm upgrade` due to not being restarted
