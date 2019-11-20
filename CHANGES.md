@@ -7,8 +7,8 @@
   * Fixed a bug causing the `Run Linkerd Check` button to be incorrectly
     positioned after being clicked
 * Internal
-  * Fixed an issue causing some control plane components to continue
-    using old certificates 
+  * Fixed an issue causing `tap`, `injector` and `sp-validator` to use 
+    old certificates after `helm upgrade` due to not being restarted
   * Fixed incomplete Swagger definition of the tap api, causing benign
     error logging in the kube-apiserver
     
