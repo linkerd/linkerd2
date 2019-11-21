@@ -11,6 +11,8 @@ metadata:
   name: {{ .Namespace }}
   annotations:
     {{.ProxyInjectAnnotation}}: {{.ProxyInjectDisabled}}
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-10"
   labels:
     {{.LinkerdNamespaceLabel}}: "true"
     config.linkerd.io/admission-webhooks: disabled

@@ -10,6 +10,8 @@ metadata:
     {{.ControllerNamespaceLabel}}: {{.Namespace}}
   annotations:
     {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-4"
 data:
   global: |
   {{- if .Configs -}}

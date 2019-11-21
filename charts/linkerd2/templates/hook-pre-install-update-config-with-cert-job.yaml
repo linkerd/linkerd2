@@ -1,0 +1,123 @@
+{{with .Values -}}
+{{if .Identity -}}
+{{if and (.Identity.Issuer) (eq .Identity.Issuer.Scheme "linkerd.io/cert-manager") -}}
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: global-config-creator
+  namespace: {{ .Namespace }}
+  annotations:
+    "helm.sh/hook": "pre-install"
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"
+  labels:
+    app: global-config-creator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - linkerd-config
+  verbs:
+  - "*"
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  resourceNames:
+  - linkerd-identity-issuer
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+- apiGroups:
+  - extensions
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - linkerd-{{ .Namespace }}-control-plane
+  verbs:
+  - "use"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: global-config-creator
+  namespace: {{ .Namespace }}
+  annotations:
+    "helm.sh/hook": "pre-install"
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"
+  namespace: {{ .Namespace }}
+  labels:
+    app: global-config-creator
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: global-config-creator
+  namespace: {{ .Namespace }}
+  annotations:
+    "helm.sh/hook": "pre-install"
+    "helm.sh/hook-weight": "-4"
+    "helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"
+  labels:
+    app: global-config-creator
+subjects:
+  - kind: ServiceAccount
+    name: global-config-creator
+    namespace: {{ .Namespace }}
+roleRef:
+  kind: Role
+  name: global-config-creator
+  namespace: {{ .Namespace }}
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: global-config-creator
+  namespace: {{ .Namespace }}
+  annotations:
+    "helm.sh/hook": "pre-install"
+    "helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"
+  labels:
+    app: global-config-creator
+spec:
+  template:
+    spec:
+      serviceAccountName: global-config-creator
+      containers:
+      - name: global-config-creator
+        image: "quay.io/giantswarm/docker-kubectl:latest"
+        command:
+        - /bin/sh
+        - -e
+        - -x
+        - -c
+        - >-
+          while true; do 
+              export CERT=`kubectl -n linkerd get secret linkerd-identity-issuer -o jsonpath="{.data['ca\.crt']}" | base64 -d`;
+              if [ $? -eq 0 ] && [ ! -z "$CERT" ]; then 
+                  break; 
+              fi; 
+              echo \"waiting for cert\"; 
+              sleep 1; 
+          done; 
+          while true; do 
+              kubectl -n linkerd get cm linkerd-config -o yaml --export > /tmp/config.yaml; 
+              if [ $? -eq 0 ]; then 
+                  break; 
+              fi; 
+              echo "waiting for config"; 
+              sleep 1; 
+          done; 
+          awk -v CERT="$CERT" 'BEGIN{gsub("\n", "\\n", CERT)}; {gsub("REPLACE_ME", CERT);print $0}' /tmp/config.yaml > /tmp/config-out.yaml;
+          kubectl -n linkerd replace configmap linkerd-config -f /tmp/config-out.yaml;
+      restartPolicy: Never
+  backoffLimit: 6
+{{- end}}
+{{- end}}
+{{- end}}

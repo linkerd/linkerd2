@@ -1,0 +1,130 @@
+{{ with .Values -}}
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: linkerd-janitor
+  namespace: {{ .Namespace }}
+  annotations:
+    "helm.sh/hook": "post-delete"
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"
+  labels:
+    app: linkerd-janitor
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - linkerd-config
+  verbs:
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  resourceNames:
+  - linkerd-identity-issuer
+  verbs:
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  resourceNames:
+  - {{ .Namespace }}
+  verbs:
+  - delete
+- apiGroups:
+  - certmanager.k8s.io
+  resources:
+  - issuers
+  resourceNames:
+  - linkerd-selfsigning-issuer
+  verbs:
+  - delete
+- apiGroups:
+  - certmanager.k8s.io
+  resources:
+  - certificates
+  resourceNames:
+  - linkerd-identity-issuer
+  verbs:
+  - delete
+- apiGroups:
+  - extensions
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - linkerd-{{ .Namespace }}-control-plane
+  verbs:
+  - use
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: linkerd-janitor
+  namespace: {{ .Namespace }}
+  annotations:
+    "helm.sh/hook": "post-delete"
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"
+  labels:
+    app: linkerd-janitor
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: linkerd-janitor
+  namespace: {{ .Namespace }}
+  annotations:
+    "helm.sh/hook": "post-delete"
+    "helm.sh/hook-weight": "-4"
+    "helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"
+  labels:
+    app: linkerd-janitor
+subjects:
+  - kind: ServiceAccount
+    name: linkerd-janitor
+    namespace: {{ .Namespace }}
+roleRef:
+  kind: Role
+  name: linkerd-janitor
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: linkerd-janitor
+  namespace: {{ .Namespace }}
+  annotations:
+    "helm.sh/hook": "post-delete"
+    "helm.sh/hook-weight": "-3"
+    "helm.sh/hook-delete-policy": "hook-succeeded,hook-failed"
+  labels:
+    app: linkerd-janitor
+spec:
+  template:
+    spec:
+      serviceAccountName: linkerd-janitor
+      containers:
+      - name: janitor
+        image: "quay.io/giantswarm/docker-kubectl:latest"
+        command:
+        - /bin/sh
+        - -e
+        - -c
+        - >-
+          kubectl -n linkerd delete configmap linkerd-config;
+{{- if and (.Identity.Issuer) (eq .Identity.Issuer.Scheme "linkerd.io/cert-manager") }}
+          kubectl -n linkerd delete issuer linkerd-selfsigning-issuer;
+          kubectl -n linkerd delete certificate linkerd-identity-issuer;
+          kubectl -n linkerd delete secret linkerd-identity-issuer;
+{{- end }}
+{{- if (.InstallNamespace) }}
+          kubectl delete ns {{ .Namespace }};
+{{- end }}
+      restartPolicy: Never
+  backoffLimit: 6
+{{- end -}}

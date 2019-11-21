@@ -51,6 +51,7 @@ Identity:
 
 # grafana configuration
 GrafanaImage: gcr.io/linkerd-io/grafana
+GrafanaUserRole: Editor
 
 # heartbeat configuration
 DisableHeartBeat: false
