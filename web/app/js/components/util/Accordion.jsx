@@ -5,6 +5,7 @@ import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   root: {
@@ -37,7 +38,7 @@ class Accordion extends React.Component {
   };
 
   render() {
-    const { classes, panels } = this.props;
+    const { classes, panels, t } = this.props;
     const { expanded } = this.state;
 
     return (
@@ -49,10 +50,10 @@ class Accordion extends React.Component {
               onChange={this.handlePanelSelect(panel.id)}
               key={panel.id}>
               <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
-                {panel.header}
+                {t(panel.header)}
               </ExpansionPanelSummary>
               <ExpansionPanelDetails>
-                {panel.body || "No data present."}
+                {panel.body || t("No data present.")}
               </ExpansionPanelDetails>
             </ExpansionPanel>
             )
@@ -71,7 +72,8 @@ Accordion.propTypes = {
     id: PropTypes.string,
     header: PropTypes.node,
     body: PropTypes.node
-  }))
+  })),
+  t: PropTypes.func.isRequired,
 };
 
 Accordion.defaultProps = {
@@ -79,4 +81,4 @@ Accordion.defaultProps = {
   panels: []
 };
 
-export default withStyles(styles)(Accordion);
+export default withTranslation()(withStyles(styles)(Accordion));

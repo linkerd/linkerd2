@@ -16,6 +16,7 @@ import _throttle from 'lodash/throttle';
 import _values from 'lodash/values';
 import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { withTranslation } from 'react-i18next';
 
 let urlPropsQueryConfig = {
   autostart: StringParam,
@@ -34,6 +35,7 @@ class Tap extends React.Component {
     pathPrefix: PropTypes.string.isRequired,
     query: tapQueryPropType.isRequired,
     setQuery: PropTypes.func.isRequired,
+    t: PropTypes.func.isRequired,
   }
 
   static defaultProps = {
@@ -113,7 +115,7 @@ class Tap extends React.Component {
       } else {
         this.setState({
           error: {
-            error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
+            error: this.props.t("message1", { error: `[${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}` }),
           }
         });
       }
@@ -122,7 +124,7 @@ class Tap extends React.Component {
 
   onWebsocketError = e => {
     this.setState({
-      error: { error: `Websocket error: ${e.message}` }
+      error: { error: this.props.t("message2", { error: e.message}) }
     });
 
     this.stopTapStreaming();
@@ -298,4 +300,4 @@ class Tap extends React.Component {
   }
 }
 
-export default withQueryParams(urlPropsQueryConfig, withContext(Tap));
+export default withTranslation(["ws"])(withQueryParams(urlPropsQueryConfig, withContext(Tap)));

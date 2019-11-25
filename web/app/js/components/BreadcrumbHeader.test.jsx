@@ -2,6 +2,7 @@ import { BrowserRouter } from 'react-router-dom';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import React from 'react';
 import { mount } from 'enzyme';
+import '../i18n.js';
 
 const loc = {
   pathname: '',

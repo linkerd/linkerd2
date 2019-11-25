@@ -3,6 +3,7 @@ import ApiHelpers from './util/ApiHelpers.jsx';
 import TopRoutesTable from './TopRoutesTable.jsx';
 import { routerWrap } from '../../test/testHelpers.jsx';
 import { mount } from 'enzyme';
+import '../i18n.js';
 
 describe("Tests for <TopRoutesTable>", () => {
   const defaultProps = {

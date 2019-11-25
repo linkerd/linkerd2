@@ -8,12 +8,13 @@ import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import _isEmpty from 'lodash/isEmpty';
 import _isNil from 'lodash/isNil';
 import { withContext } from './util/AppContext.jsx';
+import { withTranslation } from 'react-i18next';
 
-const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
+const topColumns = (resourceType, ResourceLink, PrefixedLink, t) => [
   {
     title: " ",
     dataIndex: "direction",
-    render: d => directionColumn(d.direction)
+    render: d => directionColumn(d.direction, t)
   },
   {
     title: "Name",
@@ -89,6 +90,7 @@ class TopEventTable extends React.Component {
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
     resourceType: PropTypes.string.isRequired,
+    t: PropTypes.func.isRequired,
     tableRows: PropTypes.arrayOf(PropTypes.shape({}))
   };
   static defaultProps = {
@@ -96,8 +98,8 @@ class TopEventTable extends React.Component {
   };
 
   render() {
-    const { tableRows, resourceType, api } = this.props;
-    let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
+    const { tableRows, resourceType, api, t } = this.props;
+    let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink, t);
     return (
       <BaseTable
         enableFilter={true}
@@ -111,4 +113,4 @@ class TopEventTable extends React.Component {
   }
 }
 
-export default withContext(TopEventTable);
+export default withTranslation(["tapQueryForm"])(withContext(TopEventTable));

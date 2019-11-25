@@ -15,6 +15,7 @@ import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   root: {
@@ -50,7 +51,7 @@ class ExpandableTable extends React.Component {
   };
 
   render() {
-    const { expandedRowRender, classes, tableRows, tableColumns, tableClassName } = this.props;
+    const { expandedRowRender, classes, tableRows, tableColumns, tableClassName, t } = this.props;
     let columns = [{
       title: " ",
       key: "expansion",
@@ -72,7 +73,7 @@ class ExpandableTable extends React.Component {
                 columns.map(c => (
                   <TableCell
                     key={c.key}
-                    numeric={c.isNumeric}>{c.title}
+                    numeric={c.isNumeric}>{t(c.title)}
                   </TableCell>
                   )
                 )
@@ -120,12 +121,12 @@ class ExpandableTable extends React.Component {
           open={this.state.open}
           onClose={this.handleDialogClose}
           aria-labelledby="form-dialog-title">
-          <DialogTitle id="form-dialog-title">Request Details</DialogTitle>
+          <DialogTitle id="form-dialog-title">{t("Request Details")}</DialogTitle>
           <DialogContent>
-            {expandedRowRender(this.state.datum, classes.expandedWrap)}
+            {expandedRowRender(this.state.datum, classes.expandedWrap, t)}
           </DialogContent>
           <DialogActions>
-            <Button onClick={this.handleDialogClose} color="primary">Close</Button>
+            <Button onClick={this.handleDialogClose} color="primary">{t("Close")}</Button>
           </DialogActions>
         </Dialog>
       </Paper>
@@ -136,6 +137,7 @@ class ExpandableTable extends React.Component {
 ExpandableTable.propTypes = {
   classes: PropTypes.shape({}).isRequired,
   expandedRowRender: PropTypes.func.isRequired,
+  t: PropTypes.func.isRequired,
   tableClassName: PropTypes.string,
   tableColumns: PropTypes.arrayOf(PropTypes.shape({
     title: PropTypes.string,
@@ -150,4 +152,4 @@ ExpandableTable.defaultProps = {
   tableRows: []
 };
 
-export default withStyles(styles)(ExpandableTable);
+export default withTranslation()(withStyles(styles)(ExpandableTable));

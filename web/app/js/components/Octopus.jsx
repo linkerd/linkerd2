@@ -24,6 +24,7 @@ import _take from 'lodash/take';
 import _times from 'lodash/times';
 import { getSuccessRateClassification } from './util/MetricUtils.jsx';
 import { withStyles } from "@material-ui/core/styles";
+import { withTranslation } from 'react-i18next';
 
 const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopus graph
 
@@ -56,6 +57,7 @@ class Octopus extends React.Component {
     classes: PropTypes.shape({}).isRequired,
     neighbors: PropTypes.shape({}),
     resource: PropTypes.shape({}),
+    t: PropTypes.func.isRequired,
     unmeshedSources: PropTypes.arrayOf(PropTypes.shape({})),
   }
 
@@ -139,21 +141,21 @@ class Octopus extends React.Component {
       <TableBody>
         {resource.isLeafService &&
         <TableRow>
-          <TableCell><Typography>Weight</Typography></TableCell>
+          <TableCell><Typography>{this.props.t("Weight")}</Typography></TableCell>
           <TableCell numeric={true}><Typography>{resource.tsStats.weight}</Typography></TableCell>
         </TableRow>
         }
         <TableRow>
-          <TableCell><Typography>SR</Typography></TableCell>
+          <TableCell><Typography>{this.props.t("SR")}</Typography></TableCell>
           <TableCell numeric={true}><Typography>{metricToFormatter["SUCCESS_RATE"](resource.successRate)}</Typography></TableCell>
         </TableRow>
         <TableRow>
-          <TableCell><Typography>RPS</Typography></TableCell>
+          <TableCell><Typography>{this.props.t("RPS")}</Typography></TableCell>
           <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
         </TableRow>
         {!resource.isApexService &&
         <TableRow>
-          <TableCell><Typography>P99</Typography></TableCell>
+          <TableCell><Typography>{this.props.t("P99")}</Typography></TableCell>
           <TableCell numeric={true}><Typography>{metricToFormatter["LATENCY"](_get(resource, "latency.P99"))}</Typography></TableCell>
         </TableRow>
         }
@@ -166,15 +168,15 @@ class Octopus extends React.Component {
     return (
       <TableBody>
         <TableRow>
-          <TableCell><Typography>Conn</Typography></TableCell>
+          <TableCell><Typography>{this.props.t("Conn")}</Typography></TableCell>
           <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](tcp.openConnections)}</Typography></TableCell>
         </TableRow>
         <TableRow>
-          <TableCell><Typography>Read</Typography></TableCell>
+          <TableCell><Typography>{this.props.t("Read")}</Typography></TableCell>
           <TableCell numeric={true}><Typography>{metricToFormatter["BYTES"](tcp.readRate)}</Typography></TableCell>
         </TableRow>
         <TableRow>
-          <TableCell><Typography>Write</Typography></TableCell>
+          <TableCell><Typography>{this.props.t("Write")}</Typography></TableCell>
           <TableCell numeric={true}><Typography>{metricToFormatter["BYTES"](tcp.writeRate)}</Typography></TableCell>
         </TableRow>
       </TableBody>
@@ -321,4 +323,4 @@ class Octopus extends React.Component {
   }
 }
 
-export default withStyles(styles)(Octopus);
+export default withTranslation()(withStyles(styles)(Octopus));

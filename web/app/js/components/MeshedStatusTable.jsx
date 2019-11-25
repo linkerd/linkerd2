@@ -7,6 +7,7 @@ import { StyledProgress } from './util/Progress.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
 import _isEmpty from 'lodash/isEmpty';
 import { withContext } from './util/AppContext.jsx';
+import { withTranslation } from 'react-i18next';
 
 const getClassification = (meshedPodCount, failedPodCount) => {
   if (failedPodCount > 0) {
@@ -18,7 +19,7 @@ const getClassification = (meshedPodCount, failedPodCount) => {
   }
 };
 
-const namespacesColumns = PrefixedLink => [
+const namespacesColumns = (PrefixedLink, t) => [
   {
     title: "Namespace",
     dataIndex: "namespace",
@@ -59,9 +60,9 @@ const namespacesColumns = PrefixedLink => [
           title={(
             <div>
               <div>
-                {`${row.meshedPods} out of ${row.totalPods} running or pending pods are in the mesh ${percentMeshedMsg}`}
+                {t("message1", { meshedPods: row.meshedPods, totalPods: row.totalPods, percent: percentMeshedMsg })}
               </div>
-              {row.failedPods === 0 ? null : <div>{ `${row.failedPods} failed pods` }</div>}
+              {row.failedPods === 0 ? null : <div>{ t("message2", { failedPods: row.failedPods }) }</div>}
             </div>
             )}>
           <Progress variant="determinate" value={Math.round(percent * 100)} />
@@ -73,11 +74,12 @@ const namespacesColumns = PrefixedLink => [
 
 class MeshedStatusTable extends React.Component {
   render() {
+    const { t } = this.props;
     return (
       <BaseTable
         tableClassName="metric-table mesh-completion-table"
         tableRows={this.props.tableRows}
-        tableColumns={namespacesColumns(this.props.api.PrefixedLink)}
+        tableColumns={namespacesColumns(this.props.api.PrefixedLink, t)}
         defaultOrderBy="namespace"
         rowKey={d => d.namespace} />
     );
@@ -88,6 +90,7 @@ MeshedStatusTable.propTypes = {
   api: PropTypes.shape({
     PrefixedLink: PropTypes.func.isRequired
   }).isRequired,
+  t: PropTypes.func.isRequired,
   tableRows: PropTypes.arrayOf(PropTypes.shape({}))
 };
 
@@ -95,4 +98,4 @@ MeshedStatusTable.defaultProps = {
   tableRows: []
 };
 
-export default withContext(MeshedStatusTable);
+export default withTranslation(["meshedStatusTable"])(withContext(MeshedStatusTable));

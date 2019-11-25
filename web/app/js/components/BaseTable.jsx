@@ -22,6 +22,7 @@ import _orderBy from 'lodash/orderBy';
 import classNames from 'classnames';
 import { regexFilterString } from './util/Utils.js';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   root: {
@@ -121,7 +122,7 @@ class BaseTable extends React.Component {
             direction={active ? order : col.defaultSortOrder || 'asc'}
             classes={{icon: active ? classes.activeSortIcon : classes.inactiveSortIcon}}
             onClick={this.createSortHandler(col)}>
-            {col.title}
+            {this.props.t(col.title)}
           </TableSortLabel>
         </TableCell>
       );
@@ -131,7 +132,7 @@ class BaseTable extends React.Component {
           key={col.key || col.dataIndex}
           numeric={col.isNumeric}
           className={classNames({[classes.denseTable]: padding === 'dense'})}>
-          {col.title}
+          {this.props.t(col.title)}
         </TableCell>
       );
     }
@@ -146,13 +147,13 @@ class BaseTable extends React.Component {
         <Typography
           className={classes.title}
           variant="h5">
-          {title}
+          {this.props.t(title)}
         </Typography>
         {this.state.showFilter &&
           <TextField
             id="input-with-icon-textfield"
             onChange={this.handleFilterInputChange}
-            placeholder="Filter by text"
+            placeholder={this.props.t("Filter by text")}
             autoFocus />}
         {!this.state.showFilter &&
         <Hidden smDown>
@@ -228,6 +229,7 @@ BaseTable.propTypes = {
   enableFilter: PropTypes.bool,
   padding: PropTypes.string,
   rowKey: PropTypes.func,
+  t: PropTypes.func.isRequired,
   tableClassName: PropTypes.string,
   tableColumns: PropTypes.arrayOf(PropTypes.shape({
     dataIndex: PropTypes.string,
@@ -252,4 +254,4 @@ BaseTable.defaultProps = {
   title: ""
 };
 
-export default withStyles(styles)(BaseTable);
+export default withTranslation()(withStyles(styles)(BaseTable));

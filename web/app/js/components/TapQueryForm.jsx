@@ -32,6 +32,7 @@ import _startCase from 'lodash/startCase';
 import _uniq from 'lodash/uniq';
 import _values from 'lodash/values';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 
 const getResourceList = (resourcesByNs, ns) => {
@@ -83,6 +84,7 @@ class TapQueryForm extends React.Component {
     handleTapStart: PropTypes.func.isRequired,
     handleTapStop: PropTypes.func.isRequired,
     query: tapQueryPropType.isRequired,
+    t: PropTypes.func.isRequired,
     tapIsClosing: PropTypes.bool,
     tapRequestInProgress: PropTypes.bool.isRequired,
     updateQuery: PropTypes.func.isRequired,
@@ -196,7 +198,7 @@ class TapQueryForm extends React.Component {
 
     return (
       <React.Fragment>
-        <InputLabel htmlFor={resourceKey}>{_startCase(resourceKey)}</InputLabel>
+        <InputLabel htmlFor={resourceKey}>{this.props.t(_startCase(resourceKey))}</InputLabel>
         <Select
           value={nsEmpty ? _startCase(resourceKey) : this.props.query[resourceKey]}
           onChange={this.handleFormChange(resourceKey)}
@@ -216,7 +218,7 @@ class TapQueryForm extends React.Component {
     let { classes } = this.props;
     return (
       <React.Fragment>
-        <InputLabel htmlFor={namespaceKey}>{title}</InputLabel>
+        <InputLabel htmlFor={namespaceKey}>{this.props.t(title)}</InputLabel>
         <Select
           value={this.props.query[namespaceKey]}
           onChange={this.handleFormChange(namespaceKey, resourceKey)}
@@ -234,9 +236,9 @@ class TapQueryForm extends React.Component {
 
   renderTapButton = (tapInProgress, tapIsClosing) => {
     if (tapIsClosing) {
-      return (<Button variant="outlined" color="primary" className="tap-ctrl tap-stop" disabled={true}>Stop</Button>);
+      return (<Button variant="outlined" color="primary" className="tap-ctrl tap-stop" disabled={true}>{this.props.t("Stop")}</Button>);
     } else if (tapInProgress) {
-      return (<Button variant="outlined" color="primary" className="tap-ctrl tap-stop" onClick={this.props.handleTapStop}>Stop</Button>);
+      return (<Button variant="outlined" color="primary" className="tap-ctrl tap-stop" onClick={this.props.handleTapStop}>{this.props.t("Stop")}</Button>);
     } else {
       return (
         <Button
@@ -245,7 +247,7 @@ class TapQueryForm extends React.Component {
           className="tap-ctrl tap-start"
           disabled={!this.props.query.namespace || !this.props.query.resource}
           onClick={this.props.handleTapStart}>
-          Start
+          {this.props.t("Start")}
         </Button>);
     }
   }
@@ -255,7 +257,7 @@ class TapQueryForm extends React.Component {
     return (
       <TextField
         id={key}
-        label={title}
+        label={this.props.t(title)}
         className={classes.formControl}
         value={this.props.query[key]}
         onChange={this.handleFormEvent(key)}
@@ -298,24 +300,26 @@ class TapQueryForm extends React.Component {
                 ))
               }
               </Select>
-              <FormHelperText>Display requests with this :authority</FormHelperText>
+              <FormHelperText>
+                {this.props.t("Display requests with this :authority")}
+              </FormHelperText>
             </FormControl>
           </Grid>
           <Grid item xs={6} md={3}>
-            { this.renderTextInput("Path", "path", "Display requests with paths that start with this prefix") }
+            { this.renderTextInput("Path", "path", this.props.t("Display requests with paths that start with this prefix")) }
           </Grid>
         </Grid>
 
         <Grid container spacing={24}>
           <Grid item xs={6} md={3}>
-            { this.renderTextInput("Scheme", "scheme", "Display requests with this scheme") }
+            { this.renderTextInput("Scheme", "scheme", this.props.t("Display requests with this scheme")) }
           </Grid>
           <Grid item xs={6} md={3}>
-            { this.renderTextInput("Max RPS", "maxRps", `Maximum requests per second to tap. Default ${defaultMaxRps}`) }
+            { this.renderTextInput("Max RPS", "maxRps", this.props.t("message1", { defaultMaxRps: defaultMaxRps })) }
           </Grid>
           <Grid item xs={6} md={3}>
             <FormControl className={classes.formControl}>
-              <InputLabel htmlFor="method">HTTP method</InputLabel>
+              <InputLabel htmlFor="method">{this.props.t("HTTP method")}</InputLabel>
               <Select
                 value={this.props.query.method}
                 onChange={this.handleFormChange("method")}
@@ -327,7 +331,9 @@ class TapQueryForm extends React.Component {
                 ))
               }
               </Select>
-              <FormHelperText>Display requests with this HTTP method</FormHelperText>
+              <FormHelperText>
+                {this.props.t("Display requests with this HTTP method")}
+              </FormHelperText>
             </FormControl>
           </Grid>
         </Grid>
@@ -341,7 +347,7 @@ class TapQueryForm extends React.Component {
       <ExpansionPanel expanded={this.state.advancedFormExpanded} onChange={this.handleAdvancedFormExpandClick}>
         <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
           <Typography variant="caption" gutterBottom>
-            {this.state.advancedFormExpanded ? "Hide filters" : "Show more filters"}
+            {this.state.advancedFormExpanded ? this.props.t("Hide filters") : this.props.t("Show more filters")}
           </Typography>
         </ExpansionPanelSummary>
 
@@ -353,7 +359,7 @@ class TapQueryForm extends React.Component {
   }
 
   render() {
-    const { classes, query } = this.props;
+    const { classes, query, t } = this.props;
 
     return (
       <Card className={classes.card}>
@@ -376,7 +382,7 @@ class TapQueryForm extends React.Component {
             </Grid>
 
             <Grid item xs={4} md={1}>
-              <Button onClick={this.resetTapForm} disabled={this.props.tapRequestInProgress}>Reset</Button>
+              <Button onClick={this.resetTapForm} disabled={this.props.tapRequestInProgress}>{t("Reset")}</Button>
             </Grid>
           </Grid>
         </CardContent>
@@ -390,4 +396,4 @@ class TapQueryForm extends React.Component {
   }
 }
 
-export default withStyles(styles)(TapQueryForm);
+export default withTranslation(["tapQueryForm", "common"])(withStyles(styles)(TapQueryForm));

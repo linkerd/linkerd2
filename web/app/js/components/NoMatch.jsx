@@ -1,12 +1,21 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import { withTranslation } from 'react-i18next';
 
-export default class NoMatch extends React.Component {
+class NoMatch extends React.Component {
   render() {
+    const { t } = this.props;
     return (
       <div>
         <h3>404</h3>
-        <div>Page not found.</div>
+        <div>{t("Page not found.")}</div>
       </div>
     );
   }
 }
+
+NoMatch.propTypes = {
+  t: PropTypes.func.isRequired,
+};
+
+export default withTranslation()(NoMatch);

@@ -6,11 +6,12 @@ import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { withTranslation } from 'react-i18next';
 
 class NamespaceConfirmationModal extends React.Component {
 
   render() {
-    const { open, selectedNamespace, newNamespace, handleConfirmNamespaceChange, handleDialogCancel } = this.props;
+    const { open, selectedNamespace, newNamespace, handleConfirmNamespaceChange, handleDialogCancel, t } = this.props;
 
     return (
       <React.Fragment>
@@ -18,19 +19,19 @@ class NamespaceConfirmationModal extends React.Component {
           open={open}
           onClose={this.handleClose}>
           <DialogTitle>
-            Change namespace?
+            {t("Change namespace?")}
           </DialogTitle>
           <DialogContent>
             <DialogContentText>
-              The resource you are viewing is in a different namespace than the namespace you have selected. Do you want to change the namespace from { selectedNamespace } to { newNamespace }?
+              {t("message1", { selectedNamespace: selectedNamespace, newNamespace: newNamespace })}
             </DialogContentText>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleConfirmNamespaceChange} color="primary">
-              Yes
+              {t("Yes")}
             </Button>
             <Button onClick={handleDialogCancel} variant="text">
-              No
+              {t("No")}
             </Button>
           </DialogActions>
         </Dialog>
@@ -44,7 +45,8 @@ NamespaceConfirmationModal.propTypes = {
   handleDialogCancel: PropTypes.func.isRequired,
   newNamespace: PropTypes.string.isRequired,
   open: PropTypes.bool.isRequired,
-  selectedNamespace: PropTypes.string.isRequired
+  selectedNamespace: PropTypes.string.isRequired,
+  t: PropTypes.func.isRequired,
 };
 
-export default NamespaceConfirmationModal;
+export default withTranslation(["namespaceConfirmationModal", "common"])(NamespaceConfirmationModal);

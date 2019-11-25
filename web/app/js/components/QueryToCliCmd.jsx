@@ -6,6 +6,7 @@ import _isEmpty from 'lodash/isEmpty';
 import _startCase from 'lodash/startCase';
 import { displayOrder } from './util/CliQueryUtils.js';
 import { withContext } from './util/AppContext.jsx';
+import { withTranslation } from 'react-i18next';
 
 const toCliParam = {
   "namespace": "--namespace",
@@ -29,7 +30,8 @@ class QueryToCliCmd extends React.Component {
     cmdName: PropTypes.string.isRequired,
     controllerNamespace: PropTypes.string.isRequired,
     query: PropTypes.shape({}).isRequired,
-    resource: PropTypes.string.isRequired
+    resource: PropTypes.string.isRequired,
+    t: PropTypes.func.isRequired,
   }
 
   renderCliItem = (queryLabel, queryVal) => {
@@ -37,13 +39,13 @@ class QueryToCliCmd extends React.Component {
   }
 
   render = () => {
-    let { cmdName, query, resource, controllerNamespace } = this.props;
+    let { cmdName, query, resource, controllerNamespace, t } = this.props;
 
     return (
       _isEmpty(resource) ? null :
       <CardContent>
         <Typography variant="caption" gutterBottom>
-          Current {_startCase(cmdName)} query
+          {t("message1", { cmdName: _startCase(cmdName)})}
         </Typography>
 
         <code>
@@ -58,4 +60,4 @@ class QueryToCliCmd extends React.Component {
   }
 }
 
-export default withContext(QueryToCliCmd);
+export default withTranslation(["queryToCliCmd"])(withContext(QueryToCliCmd));

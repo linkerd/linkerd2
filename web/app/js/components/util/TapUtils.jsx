@@ -307,9 +307,9 @@ export const extractPodOwner = labels => {
   return podOwner;
 };
 
-export const directionColumn = d => (
+export const directionColumn = (d, t) => (
   <Tooltip title={d} placement="right">
-    <span>{d === "INBOUND" ? "FROM" : "TO"}</span>
+    <span>{d === "INBOUND" ? t("FROM") : t("TO")}</span>
   </Tooltip>
 );
 

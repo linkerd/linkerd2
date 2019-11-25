@@ -13,6 +13,7 @@ import _isEqual from 'lodash/isEqual';
 import { friendlyTitle } from './util/Utils.js';
 import { processMultiResourceRollup } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { withTranslation } from 'react-i18next';
 
 class Namespaces extends React.Component {
   static defaultProps = {
@@ -37,6 +38,7 @@ class Namespaces extends React.Component {
       }),
     }),
     selectedNamespace: PropTypes.string.isRequired,
+    t: PropTypes.func.isRequired,
     updateNamespaceInContext: PropTypes.func.isRequired,
   }
 
@@ -136,6 +138,7 @@ class Namespaces extends React.Component {
 
   render() {
     const { metrics } = this.state;
+    const { t } = this.props;
     let noMetrics = _isEmpty(metrics.pod);
     let deploymentsWithMetrics = _filter(metrics.deployment, d => d.requestRate > 0);
 
@@ -144,7 +147,7 @@ class Namespaces extends React.Component {
         {!this.state.error ? null : <ErrorBanner message={this.state.error} />}
         {!this.state.loaded ? <Spinner /> : (
           <div>
-            {noMetrics ? <div>No resources detected.</div> : null}
+            {noMetrics ? <div>{t("message1")}</div> : null}
             {
               _isEmpty(deploymentsWithMetrics) ? null :
               <NetworkGraph namespace={this.state.ns} deployments={metrics.deployment} />
@@ -173,4 +176,4 @@ class Namespaces extends React.Component {
   }
 }
 
-export default withContext(Namespaces);
+export default withTranslation(["serviceMesh"])(withContext(Namespaces));

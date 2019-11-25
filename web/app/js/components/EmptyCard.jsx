@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Typography from '@material-ui/core/Typography';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = () => ({
   card: {
@@ -12,12 +13,12 @@ const styles = () => ({
   },
 });
 
-const EmptyCard = ({ content, classes }) => {
+const EmptyCard = ({ content, classes, t }) => {
   return (
     <Card className={classes.card}>
       <CardContent>
         <Typography>
-          {content}
+          {t(content)}
         </Typography>
       </CardContent>
     </Card>
@@ -27,10 +28,11 @@ const EmptyCard = ({ content, classes }) => {
 EmptyCard.propTypes = {
   classes: PropTypes.shape({}).isRequired,
   content: PropTypes.string,
+  t: PropTypes.func.isRequired,
 };
 
 EmptyCard.defaultProps = {
   content: "No data to display",
 };
 
-export default withStyles(styles)(EmptyCard);
+export default withTranslation()(withStyles(styles)(EmptyCard));

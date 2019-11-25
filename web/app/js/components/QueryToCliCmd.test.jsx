@@ -1,6 +1,7 @@
 import QueryToCliCmd from './QueryToCliCmd.jsx';
 import React from 'react';
 import { mount } from 'enzyme';
+import '../i18n.js';
 
 describe('QueryToCliCmd', () => {
   it('renders a query as a linkerd CLI command', () => {

@@ -5,6 +5,7 @@ import Typography from '@material-ui/core/Typography';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   version: {
@@ -32,6 +33,7 @@ class Version extends React.Component {
     latestVersion: PropTypes.string,
     productName: PropTypes.string,
     releaseVersion: PropTypes.string.isRequired,
+    t: PropTypes.func.isRequired,
   }
 
   numericVersion = version => {
@@ -56,34 +58,40 @@ class Version extends React.Component {
     if (!latestVersion) {
       return (
         <Typography className={classes.versionMsg}>
-          Version check failed{error ? `: ${error.statusText}` : ''}.
+          {this.props.t("message3", { error: error ? `: ${error.statusText}` : '' })}
         </Typography>
       );
     }
 
     if (isLatest) {
-      return <Typography className={classes.versionMsg}>Linkerd is up to date.</Typography>;
+      return (
+        <Typography className={classes.versionMsg}>
+          {this.props.t("Linkerd is up to date.")}
+        </Typography>
+      );
     }
 
     return (
       <div>
-        <Typography className={classes.versionMsg}>A new version ({this.numericVersion(latestVersion)}) is available.</Typography>
+        <Typography className={classes.versionMsg}>
+          {this.props.t("message2", { latestVersion: this.numericVersion(latestVersion) })}
+        </Typography>
         <Button
           className={classes.updateBtn}
           variant="contained"
           color="primary"
           target="_blank"
           href="https://versioncheck.linkerd.io/update">
-          Update Now
+          {this.props.t("Update Now")}
         </Button>
       </div>
     );
   }
 
   render() {
-    const { classes, releaseVersion, productName } = this.props;
+    const { classes, releaseVersion, productName, t } = this.props;
     let channel = this.versionChannel(releaseVersion);
-    let message = `Running ${productName || "controller"}`;
+    let message = t("message1", { name: productName || "controller" });
     message += ` ${this.numericVersion(releaseVersion)}`;
     if (channel) {
       message += ` (${channel})`;
@@ -99,4 +107,4 @@ class Version extends React.Component {
   }
 }
 
-export default withStyles(styles, { withTheme: true })(withContext(Version));
+export default withTranslation(["version"])(withStyles(styles, { withTheme: true })(withContext(Version)));

@@ -6,6 +6,7 @@ import ReactRouterPropTypes from 'react-router-prop-types';
 import _chunk from 'lodash/chunk';
 import _takeWhile from 'lodash/takeWhile';
 import { withContext } from './util/AppContext.jsx';
+import { withTranslation } from 'react-i18next';
 
 const routeToCrumbTitle = {
   "controlplane": "Control Plane",
@@ -22,7 +23,8 @@ class BreadcrumbHeader extends React.Component {
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
     location: ReactRouterPropTypes.location.isRequired,
-    pathPrefix: PropTypes.string.isRequired
+    pathPrefix: PropTypes.string.isRequired,
+    t: PropTypes.func.isRequired,
   }
 
   constructor(props) {
@@ -78,11 +80,11 @@ class BreadcrumbHeader extends React.Component {
 
     if (isMeshResource) {
       if (!shouldPluralizeFirstSegment) {
-        return friendlyTitle(segment).singular;
+        return this.props.t(friendlyTitle(segment).singular);
       }
-      return this.segmentToFriendlyTitle(segment, true);
+      return this.props.t(this.segmentToFriendlyTitle(segment, true));
     }
-    return this.segmentToFriendlyTitle(segment, false);
+    return this.props.t(this.segmentToFriendlyTitle(segment, false));
   }
 
   render() {
@@ -101,4 +103,4 @@ class BreadcrumbHeader extends React.Component {
   }
 }
 
-export default withContext(BreadcrumbHeader);
+export default withTranslation()(withContext(BreadcrumbHeader));

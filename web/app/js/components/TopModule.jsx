@@ -18,6 +18,7 @@ import _take from 'lodash/take';
 import _throttle from 'lodash/throttle';
 import _values from 'lodash/values';
 import { withContext } from './util/AppContext.jsx';
+import { withTranslation } from 'react-i18next';
 
 class TopModule extends React.Component {
   static propTypes = {
@@ -28,8 +29,9 @@ class TopModule extends React.Component {
       resource: PropTypes.string
     }),
     startTap: PropTypes.bool.isRequired,
+    t: PropTypes.func.isRequired,
     updateTapClosingState: PropTypes.func,
-    updateUnmeshedSources: PropTypes.func
+    updateUnmeshedSources: PropTypes.func,
   }
 
   static defaultProps = {
@@ -112,7 +114,7 @@ class TopModule extends React.Component {
     if (e.code !== WS_NORMAL_CLOSURE && e.code !== WS_ABNORMAL_CLOSURE) {
       this.setState({
         error: {
-          error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
+          error: this.props.t("message1", { error: `[${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}` }),
         }
       });
     }
@@ -120,7 +122,7 @@ class TopModule extends React.Component {
 
   onWebsocketError = e => {
     this.setState({
-      error: { error: `Websocket error: ${e.message}` }
+      error: { error: this.props.t("message2", { error: e.message}) }
     });
   }
 
@@ -375,4 +377,4 @@ class TopModule extends React.Component {
   }
 }
 
-export default withContext(TopModule);
+export default withTranslation(["ws"])(withContext(TopModule));

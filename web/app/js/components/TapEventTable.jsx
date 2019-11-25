@@ -18,6 +18,7 @@ import _isNull from 'lodash/isNull';
 import { headersDisplay } from './TapEventHeadersTable.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 // https://godoc.org/google.golang.org/grpc/codes#Code
 const grpcStatusCodes = {
@@ -95,11 +96,11 @@ const methodCol = {
   }
 };
 
-const topLevelColumns = (resourceType, ResourceLink) => [
+const topLevelColumns = (resourceType, ResourceLink, t) => [
   {
     title: "Direction",
     key: "direction",
-    render: d => directionColumn(d.base.proxyDirection)
+    render: d => directionColumn(d.base.proxyDirection, t)
   },
   {
     title: "Name",
@@ -117,8 +118,8 @@ const topLevelColumns = (resourceType, ResourceLink) => [
   }
 ];
 
-const tapColumns = (resourceType, ResourceLink) => {
-  return topLevelColumns(resourceType, ResourceLink).concat(
+const tapColumns = (resourceType, ResourceLink, t) => {
+  return topLevelColumns(resourceType, ResourceLink, t).concat(
     [ methodCol, pathCol, responseInitLatencyCol, httpStatusCol, grpcStatusCol ]
   );
 };
@@ -135,63 +136,63 @@ const itemDisplay = (title, value) => {
   );
 };
 
-const requestInitSection = d => (
+const requestInitSection = (d, t) => (
   <React.Fragment>
-    <Typography variant="subtitle2">Request Init</Typography>
+    <Typography variant="subtitle2">{t("Request Init")}</Typography>
     <br />
     <List dense>
       {itemDisplay("Authority", _get(d, "requestInit.http.requestInit.authority"))}
-      {itemDisplay("Path", _get(d, "requestInit.http.requestInit.path"))}
-      {itemDisplay("Scheme", _get(d, "requestInit.http.requestInit.scheme.registered"))}
-      {itemDisplay("Method", _get(d, "requestInit.http.requestInit.method.registered"))}
-      {headersDisplay("Headers", _get(d, "requestInit.http.requestInit.headers"))}
+      {itemDisplay(t("Path"), _get(d, "requestInit.http.requestInit.path"))}
+      {itemDisplay(t("Scheme"), _get(d, "requestInit.http.requestInit.scheme.registered"))}
+      {itemDisplay(t("Method"), _get(d, "requestInit.http.requestInit.method.registered"))}
+      {headersDisplay(t("Headers"), _get(d, "requestInit.http.requestInit.headers"))}
     </List>
   </React.Fragment>
 );
 
-const responseInitSection = d => _isEmpty(d.responseInit) ? null : (
+const responseInitSection = (d, t) => _isEmpty(d.responseInit) ? null : (
   <React.Fragment>
-    <Typography variant="subtitle2">Response Init</Typography>
+    <Typography variant="subtitle2">{t("Response Init")}</Typography>
     <br />
     <List dense>
-      {itemDisplay("HTTP Status", _get(d, "responseInit.http.responseInit.httpStatus"))}
-      {itemDisplay("Latency", formatTapLatency(_get(d, "responseInit.http.responseInit.sinceRequestInit")))}
-      {headersDisplay("Headers", _get(d, "responseInit.http.responseInit.headers"))}
+      {itemDisplay(t("HTTP Status"), _get(d, "responseInit.http.responseInit.httpStatus"))}
+      {itemDisplay(t("Latency"), formatTapLatency(_get(d, "responseInit.http.responseInit.sinceRequestInit")))}
+      {headersDisplay(t("Headers"), _get(d, "responseInit.http.responseInit.headers"))}
     </List>
   </React.Fragment>
 );
 
-const responseEndSection = d => _isEmpty(d.responseEnd) ? null : (
+const responseEndSection = (d, t) => _isEmpty(d.responseEnd) ? null : (
   <React.Fragment>
-    <Typography variant="subtitle2">Response End</Typography>
+    <Typography variant="subtitle2">{t("Response End")}</Typography>
     <br />
 
     <List dense>
-      {itemDisplay("GRPC Status", _isNull(_get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")])}
-      {itemDisplay("Latency", formatTapLatency(_get(d, "responseEnd.http.responseEnd.sinceResponseInit")))}
-      {itemDisplay("Response Length (B)", formatWithComma(_get(d, "responseEnd.http.responseEnd.responseBytes")))}
+      {itemDisplay(t("GRPC Status"), _isNull(_get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")])}
+      {itemDisplay(t("Latency"), formatTapLatency(_get(d, "responseEnd.http.responseEnd.sinceResponseInit")))}
+      {itemDisplay(t("Response Length (B)"), formatWithComma(_get(d, "responseEnd.http.responseEnd.responseBytes")))}
     </List>
   </React.Fragment>
 );
 
 
 // hide verbose information
-const expandedRowRender = (d, expandedWrapStyle) => {
+const expandedRowRender = (d, expandedWrapStyle, t) => {
   return (
     <Grid container spacing={16} className={expandedWrapStyle}>
       <Grid item xs={4}>
         <Card>
-          <CardContent>{requestInitSection(d)}</CardContent>
+          <CardContent>{requestInitSection(d, t)}</CardContent>
         </Card>
       </Grid>
       <Grid item xs={4}>
         <Card>
-          <CardContent>{responseInitSection(d)}</CardContent>
+          <CardContent>{responseInitSection(d, t)}</CardContent>
         </Card>
       </Grid>
       <Grid item xs={4}>
         <Card>
-          <CardContent>{responseEndSection(d)}</CardContent>
+          <CardContent>{responseEndSection(d, t)}</CardContent>
         </Card>
       </Grid>
     </Grid>
@@ -204,6 +205,7 @@ class TapEventTable extends React.Component {
       ResourceLink: PropTypes.func.isRequired,
     }).isRequired,
     resource: PropTypes.string,
+    t: PropTypes.func.isRequired,
     tableRows: PropTypes.arrayOf(PropTypes.shape({})),
   }
 
@@ -213,9 +215,9 @@ class TapEventTable extends React.Component {
   }
 
   render() {
-    const { tableRows, resource, api } = this.props;
+    const { tableRows, resource, api, t } = this.props;
     let resourceType = resource.split("/")[0];
-    let columns = tapColumns(resourceType, api.ResourceLink);
+    let columns = tapColumns(resourceType, api.ResourceLink, t);
 
     return (
       <ExpandableTable
@@ -227,4 +229,4 @@ class TapEventTable extends React.Component {
   }
 }
 
-export default withContext(TapEventTable);
+export default withTranslation(["tapQueryForm"])(withContext(TapEventTable));

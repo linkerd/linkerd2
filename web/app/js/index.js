@@ -1,5 +1,6 @@
 import './../css/styles.css';
 import './../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
+import './i18n';
 
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';

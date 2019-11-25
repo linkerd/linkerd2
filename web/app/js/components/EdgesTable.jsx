@@ -7,6 +7,7 @@ import WarningIcon from '@material-ui/icons/Warning';
 import { directionColumn } from './util/TapUtils.jsx';
 import { processedEdgesPropType } from './util/EdgesUtils.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   secure: {
@@ -17,12 +18,12 @@ const styles = theme => ({
   }
 });
 
-const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
+const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes, t) => {
   return [
     {
       title: " ",
       dataIndex: "direction",
-      render: d => directionColumn(d.direction),
+      render: d => directionColumn(d.direction, t),
     },
     {
       title: "Namespace",
@@ -82,13 +83,13 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
   ];
 };
 
-const generateEdgesTableTitle = edges => {
-  let title = "Edges";
+const generateEdgesTableTitle = (edges, t) => {
+  let title = t("Edges");
   if (edges.length > 0) {
     let identity = edges[0].direction === "INBOUND" ? edges[0].serverId : edges[0].clientId;
     if (identity) {
       identity = identity.split('.')[0] + '.' + identity.split('.')[1];
-      title = `${title} (Identity: ${identity})`;
+      title = t("message1", { identity: identity });
     }
   }
   return title;
@@ -102,6 +103,7 @@ class EdgesTable extends React.Component {
     classes: PropTypes.shape({}).isRequired,
     edges: PropTypes.arrayOf(processedEdgesPropType),
     namespace: PropTypes.string.isRequired,
+    t: PropTypes.func.isRequired,
     type: PropTypes.string.isRequired
   };
 
@@ -111,9 +113,9 @@ class EdgesTable extends React.Component {
 
 
   render() {
-    const { edges, api, namespace, type, classes } = this.props;
-    let edgesColumns = edgesColumnDefinitions(api.PrefixedLink, namespace, type, classes);
-    let edgesTableTitle = generateEdgesTableTitle(edges);
+    const { edges, api, namespace, type, classes, t } = this.props;
+    let edgesColumns = edgesColumnDefinitions(api.PrefixedLink, namespace, type, classes, t);
+    let edgesTableTitle = generateEdgesTableTitle(edges, t);
 
     return (
       <BaseTable
@@ -128,4 +130,4 @@ class EdgesTable extends React.Component {
   }
 }
 
-export default withStyles(styles)(EdgesTable);
+export default withTranslation(["edgesTable", "common"])(withStyles(styles)(EdgesTable));

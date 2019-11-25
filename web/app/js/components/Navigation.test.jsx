@@ -5,6 +5,7 @@ import Navigation from './Navigation.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 import { mount } from 'enzyme';
+import '../i18n.js';
 
 sinonStubPromise(sinon);
 

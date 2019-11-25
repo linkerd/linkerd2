@@ -26,6 +26,7 @@ import { groupResourcesByNs } from './util/MetricUtils.jsx';
 import { tapResourceTypes } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 let topRoutesQueryProps = {
   resource_name: PropTypes.string,
@@ -62,6 +63,7 @@ class TopRoutes extends React.Component {
     classes: PropTypes.shape({}).isRequired,
     query: PropTypes.shape({}).isRequired,
     setQuery: PropTypes.func.isRequired,
+    t: PropTypes.func.isRequired,
   }
 
   constructor(props) {
@@ -184,7 +186,7 @@ class TopRoutes extends React.Component {
                 variant="outlined"
                 disabled={this.state.requestInProgress || !query.namespace || !query.resource_type}
                 onClick={this.handleBtnClick(true)}>
-              Start
+                {this.props.t("Start")}
               </Button>
             </Grid>
 
@@ -194,14 +196,14 @@ class TopRoutes extends React.Component {
                 variant="outlined"
                 disabled={!this.state.requestInProgress}
                 onClick={this.handleBtnClick(false)}>
-              Stop
+                {this.props.t("Stop")}
               </Button>
             </Grid>
           </Grid>
 
           <Grid item container spacing={32} alignItems="center" justify="flex-start">
             <Grid item>
-              { this.renderNamespaceDropdown("To Namespace", "to_namespace", "Namespece of target resource") }
+              { this.renderNamespaceDropdown("To Namespace", "to_namespace", "Namespace of target resource") }
             </Grid>
 
             <Grid item>
@@ -210,7 +212,7 @@ class TopRoutes extends React.Component {
           </Grid>
         </Grid>
         <Divider light className={classes.root} />
-        <Typography variant="caption">You can also create a new profile <ConfigureProfilesMsg showAsIcon={true} /></Typography>
+        <Typography variant="caption">{this.props.t("You can also create a new profile")} <ConfigureProfilesMsg showAsIcon={true} /></Typography>
       </CardContent>
     );
   }
@@ -234,7 +236,7 @@ class TopRoutes extends React.Component {
               <MenuItem key={`namespace-${ns}`} value={ns}>{ns}</MenuItem>)
           }
         </Select>
-        <FormHelperText>{helperText}</FormHelperText>
+        <FormHelperText>{this.props.t(helperText)}</FormHelperText>
       </FormControl>
     );
   }
@@ -280,7 +282,7 @@ class TopRoutes extends React.Component {
             dropdownOptions.map(resource => <MenuItem key={resource} value={resource}>{resource}</MenuItem>)
           }
         </Select>
-        <FormHelperText>{helperText}</FormHelperText>
+        <FormHelperText>{this.props.t(helperText)}</FormHelperText>
       </FormControl>
     );
   }
@@ -314,4 +316,4 @@ class TopRoutes extends React.Component {
   }
 }
 
-export default withQueryParams(topRoutesQueryConfig, (withContext(withStyles(styles, { withTheme: true })(TopRoutes))));
+export default withTranslation(["topRoutes", "common"])(withQueryParams(topRoutesQueryConfig, (withContext(withStyles(styles, { withTheme: true })(TopRoutes)))));

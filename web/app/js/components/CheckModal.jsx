@@ -17,6 +17,7 @@ import Slide from '@material-ui/core/Slide';
 import Typography from '@material-ui/core/Typography';
 import withMobileDialog from '@material-ui/core/withMobileDialog';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   wrapper: {
@@ -90,7 +91,7 @@ const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="down" ref={ref} {...props} />;
 });
 
-const Results = ({title, results, classes}) => {
+const Results = ({ title, results, classes, t }) => {
   let getResultType = (error, warning) => {
     if (error) {
       if (warning) {
@@ -109,7 +110,7 @@ const Results = ({title, results, classes}) => {
         {title}
       </Typography>
 
-      {results.map((result, index) => {
+      {results.map(result => {
         const resultType = getResultType(result.Err, result.Warning);
 
         return (
@@ -118,8 +119,8 @@ const Results = ({title, results, classes}) => {
               <Icon type={resultType} classes={classes} />
             </Grid>
             <Grid item xs>
-              <Typography className={classes.result} color="inherit" data-i18n={`${title}_${index + 1}`}>
-                {result.Description}
+              <Typography className={classes.result} color="inherit">
+                {t(result.Description)}
               </Typography>
 
               {resultType !== "success" && (
@@ -129,7 +130,7 @@ const Results = ({title, results, classes}) => {
                   </Typography>
 
                   <Typography className={classes.resultError} color="inherit" gutterBottom>
-                    see
+                    {t("see")}
                     <a
                       className={classes.link}
                       href={result.HintURL}
@@ -137,7 +138,7 @@ const Results = ({title, results, classes}) => {
                       rel="noopener noreferrer">
                       {result.HintURL}
                     </a>
-                    for hints
+                    {t("for hints")}
                   </Typography>
                 </React.Fragment>
               )}
@@ -158,6 +159,7 @@ Results.propTypes = {
     HintURL: PropTypes.string,
     Warning: PropTypes.bool,
   })).isRequired,
+  t: PropTypes.func.isRequired,
   title: PropTypes.string.isRequired,
 };
 
@@ -238,7 +240,7 @@ class CheckModal extends React.Component {
 
   render() {
     const { open, running, success, results, error } = this.state;
-    const { classes, fullScreen } = this.props;
+    const { classes, fullScreen, t } = this.props;
 
     return (
       <React.Fragment>
@@ -254,7 +256,7 @@ class CheckModal extends React.Component {
               color="primary"
               disabled={running}
               onClick={this.runCheck}>
-              Run Linkerd Check
+              {t("Run Linkerd Check")}
             </Button>
           </Grid>
         </Grid>
@@ -278,7 +280,7 @@ class CheckModal extends React.Component {
               justify="space-between"
               alignItems="center">
               <Grid item>
-                Linkerd Check
+                {t("Linkerd Check")}
               </Grid>
 
               {success !== undefined &&
@@ -302,6 +304,7 @@ class CheckModal extends React.Component {
                       return (
                         <Results
                           key={title}
+                          t={t}
                           title={title}
                           results={results[title]}
                           classes={classes} />
@@ -315,11 +318,11 @@ class CheckModal extends React.Component {
 
           <DialogActions>
             <Button onClick={this.runCheck} color="primary">
-              Re-Run Check
+              {t("Re-Run Check")}
             </Button>
 
             <Button onClick={this.handleOpenChange} color="primary">
-              Close
+              {t("Close")}
             </Button>
           </DialogActions>
         </Dialog>
@@ -336,7 +339,8 @@ CheckModal.propTypes = {
   }).isRequired,
   classes: PropTypes.shape({}).isRequired,
   fullScreen: PropTypes.bool.isRequired,
+  t: PropTypes.func.isRequired,
   theme: PropTypes.shape({}).isRequired,
 };
 
-export default withMobileDialog()(withStyles(styles, { withTheme: true })(CheckModal));
+export default withTranslation(["check", "common"])(withMobileDialog()(withStyles(styles, { withTheme: true })(CheckModal)));

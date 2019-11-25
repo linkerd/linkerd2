@@ -12,6 +12,7 @@ import _sortBy from 'lodash/sortBy';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { processTopRoutesResults } from './util/MetricUtils.jsx';
 import withREST from './util/withREST.jsx';
+import { withTranslation } from 'react-i18next';
 
 class TopRoutesBase extends React.Component {
   static defaultProps = {
@@ -23,6 +24,7 @@ class TopRoutesBase extends React.Component {
     error:  apiErrorPropType,
     loading: PropTypes.bool.isRequired,
     query: PropTypes.shape({}).isRequired,
+    t: PropTypes.func.isRequired,
   }
 
   banner = () => {
@@ -43,14 +45,14 @@ class TopRoutesBase extends React.Component {
   }
 
   render() {
-    const {data, loading} = this.props;
+    const {data, loading, t} = this.props;
     let results = _get(data, '[0].ok.routes', []);
     results = _sortBy(results, o => o.resource);
 
     let metricsByResource = results.map(r => {
       return {
         resource: r.resource,
-        rows: processTopRoutesResults(r.rows)
+        rows: processTopRoutesResults(r.rows, t)
       };
     });
 
@@ -74,10 +76,10 @@ class TopRoutesBase extends React.Component {
   }
 }
 
-export default withREST(
+export default withTranslation(["topRoutes"])(withREST(
   TopRoutesBase,
   ({api, query}) => {
     let queryParams = new URLSearchParams(query).toString();
     return [api.fetchMetrics(`/api/routes?${queryParams}`)];
   }
-);
+));

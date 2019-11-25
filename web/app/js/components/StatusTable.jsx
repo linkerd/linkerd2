@@ -7,6 +7,7 @@ import _merge from 'lodash/merge';
 import classNames from 'classnames';
 import { statusClassNames } from './util/theme.js';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => _merge({}, statusClassNames(theme), {
   statusTableDot: {
@@ -43,14 +44,14 @@ const columnConfig = {
   }
 };
 
-const StatusDot = ({status, columnName, classes}) => (
+const StatusDot = ({status, columnName, classes, t}) => (
   <Tooltip
     placement="top"
     title={(
       <div>
         <div>{status.name}</div>
-        <div>{_get(columnConfig, [columnName, "dotExplanation"])(status)}</div>
-        <div>Uptime: {status.uptime} ({status.uptimeSec}s)</div>
+        <div>{t(_get(columnConfig, [columnName, "dotExplanation"])(status))}</div>
+        <div>{t("message1", { uptime: status.uptime, uptimeSec: status.uptimeSec })}</div>
       </div>
     )}>
     <div
@@ -70,6 +71,7 @@ StatusDot.propTypes = {
     name: PropTypes.string.isRequired,
     value: PropTypes.string.isRequired,
   }).isRequired,
+  t: PropTypes.func.isRequired,
 };
 
 const columns = {
@@ -83,7 +85,7 @@ const columns = {
     isNumeric: true,
     render: d => d.pods.length
   },
-  status: (name, classes) => {
+  status: (name, classes, t) => {
     return {
       title: name,
       key: "status",
@@ -93,6 +95,7 @@ const columns = {
             status={status}
             columnName={name}
             classes={classes}
+            t={t}
             key={`${status.name}-pod-status`} />
         ));
       }
@@ -109,14 +112,15 @@ class StatusTable extends React.Component {
       added: PropTypes.bool,
     })).isRequired,
     statusColumnTitle: PropTypes.string.isRequired,
+    t: PropTypes.func.isRequired,
   }
 
   render() {
-    const { classes, statusColumnTitle, data } = this.props;
+    const { classes, statusColumnTitle, data, t } = this.props;
     let tableCols = [
       columns.resourceName,
       columns.pods,
-      columns.status(statusColumnTitle, classes)
+      columns.status(statusColumnTitle, classes, t)
     ];
 
     return (
@@ -130,4 +134,4 @@ class StatusTable extends React.Component {
   }
 }
 
-export default withStyles(styles, { withTheme: true })(StatusTable);
+export default withTranslation(["statusTable"])(withStyles(styles, { withTheme: true })(StatusTable));

@@ -25,6 +25,7 @@ import _sumBy from 'lodash/sumBy';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = {
   checkModalWrapper: {
@@ -83,6 +84,7 @@ class ServiceMesh extends React.Component {
     controllerNamespace: PropTypes.string.isRequired,
     productName: PropTypes.string,
     releaseVersion: PropTypes.string.isRequired,
+    t: PropTypes.func.isRequired,
   }
 
   constructor(props) {
@@ -113,10 +115,10 @@ class ServiceMesh extends React.Component {
 
   getServiceMeshDetails() {
     return [
-      { key: 1, name: this.props.productName + " version", value: this.props.releaseVersion },
-      { key: 2, name: this.props.productName + " namespace", value: this.props.controllerNamespace },
-      { key: 3, name: "Control plane components", value: this.componentCount() },
-      { key: 4, name: "Data plane proxies", value: this.proxyCount() }
+      { key: 1, name: this.props.t("message4", { name: this.props.productName }), value: this.props.releaseVersion },
+      { key: 2, name: this.props.t("message5", { name: this.props.productName }), value: this.props.controllerNamespace },
+      { key: 3, name: this.props.t("Control plane components"), value: this.componentCount() },
+      { key: 4, name: this.props.t("Data plane proxies"), value: this.proxyCount() }
     ];
   }
 
@@ -213,10 +215,10 @@ class ServiceMesh extends React.Component {
       <React.Fragment>
         <Grid container justify="space-between">
           <Grid item xs={3}>
-            <Typography variant="h6">Control plane</Typography>
+            <Typography variant="h6">{this.props.t("Control plane")}</Typography>
           </Grid>
           <Grid item xs={3}>
-            <Typography align="right">Components</Typography>
+            <Typography align="right">{this.props.t("Components")}</Typography>
             <Typography align="right">{this.componentCount()}</Typography>
           </Grid>
         </Grid>
@@ -233,7 +235,7 @@ class ServiceMesh extends React.Component {
   renderServiceMeshDetails() {
     return (
       <React.Fragment>
-        <Typography variant="h6">Service mesh details</Typography>
+        <Typography variant="h6">{this.props.t("Service mesh details")}</Typography>
 
         <BaseTable
           tableClassName="metric-table"
@@ -250,14 +252,15 @@ class ServiceMesh extends React.Component {
     let numUnadded = 0;
 
     if (_isEmpty(this.state.nsStatuses)) {
-      message = "No resources detected.";
+      message = this.props.t("No resources detected.");
     } else {
       let meshedCount = _countBy(this.state.nsStatuses, pod => {
         return pod.meshedPercent.get() > 0;
       });
       numUnadded = meshedCount["false"] || 0;
-      message = numUnadded === 0 ? `All namespaces have a ${this.props.productName} install.` :
-        `${numUnadded} ${numUnadded === 1 ? "namespace has" : "namespaces have"} no meshed resources.`;
+      message = numUnadded === 0 ?
+        this.props.t("message1", { productName: this.props.productName }) :
+        this.props.t("message2", { count: numUnadded });
     }
 
     return (
@@ -304,4 +307,4 @@ class ServiceMesh extends React.Component {
   }
 }
 
-export default withStyles(styles)(withContext(ServiceMesh));
+export default withTranslation(["serviceMesh", "common"])(withStyles(styles)(withContext(ServiceMesh)));

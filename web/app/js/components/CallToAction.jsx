@@ -7,6 +7,7 @@ import Stepper from '@material-ui/core/Stepper';
 import Typography from '@material-ui/core/Typography';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   root: {
@@ -21,23 +22,26 @@ const styles = theme => ({
   },
 });
 
-function getSteps(numResources, resource) {
+function getSteps(numResources, resource, t) {
   return [
-    { label: 'Controller successfully installed' },
-    { label: `${numResources ? numResources : 'No'} ${resource}s detected` },
-    { label: `Connect your first ${resource}`, content: incompleteMeshMessage() }
+    { label: t("Controller successfully installed") },
+    { label: numResources ?
+      t("message2", { count: numResources, resource: resource }) :
+      t("message1", { resource: resource })
+    },
+    { label: t("message3", { resource: resource }), content: incompleteMeshMessage() }
   ];
 }
 
 class CallToAction extends React.Component {
   render() {
-    const { resource, numResources } = this.props;
-    const steps = getSteps(numResources, resource);
+    const { resource, numResources, t } = this.props;
+    const steps = getSteps(numResources, resource, t);
     const lastStep = steps.length - 1; // hardcode the last step as the active step
 
     return (
       <React.Fragment>
-        <Typography>The service mesh was successfully installed!</Typography>
+        <Typography>{t("The service mesh was successfully installed!")}</Typography>
         <Stepper
           activeStep={lastStep}
           orientation="vertical">
@@ -69,4 +73,4 @@ CallToAction.defaultProps = {
   numResources: null
 };
 
-export default withStyles(styles)(CallToAction);
+export default withTranslation(["callToAction"])(withStyles(styles)(CallToAction));

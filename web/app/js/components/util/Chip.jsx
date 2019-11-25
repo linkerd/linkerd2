@@ -2,6 +2,7 @@ import Chip from '@material-ui/core/Chip';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   good: {
@@ -19,12 +20,12 @@ const styles = theme => ({
 });
 
 function SimpleChip(props) {
-  const { classes, label, type } = props;
+  const { classes, label, type, t } = props;
 
   return (
     <Chip
       className={classes[type]}
-      label={label}
+      label={t(label)}
       variant="outlined" />
   );
 }
@@ -32,7 +33,8 @@ function SimpleChip(props) {
 SimpleChip.propTypes = {
   classes: PropTypes.shape({}).isRequired,
   label: PropTypes.string.isRequired,
+  t: PropTypes.func.isRequired,
   type: PropTypes.string.isRequired
 };
 
-export default withStyles(styles, { withTheme: true })(SimpleChip);
+export default withTranslation()(withStyles(styles, { withTheme: true })(SimpleChip));

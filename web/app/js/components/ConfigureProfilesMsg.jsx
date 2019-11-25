@@ -17,6 +17,7 @@ import Typography from '@material-ui/core/Typography';
 import _isEmpty from 'lodash/isEmpty';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   button: {
@@ -131,7 +132,7 @@ class ConfigureProfilesMsg extends React.Component {
           color="primary"
           size="small"
           onClick={this.handleClickOpen}>
-          Create Service Profile
+          {this.props.t("Create Service Profile")}
         </Button>
       );
     }
@@ -144,7 +145,7 @@ class ConfigureProfilesMsg extends React.Component {
         disabled={disableDownloadButton}
         onClick={() => this.handleClose(downloadUrl)}
         color="primary">
-        Download
+        {this.props.t("Download")}
       </Button>
     );
 
@@ -155,11 +156,10 @@ class ConfigureProfilesMsg extends React.Component {
           open={this.state.open}
           onClose={this.handleClose}
           aria-labelledby="form-dialog-title">
-          <DialogTitle id="form-dialog-title">New service profile</DialogTitle>
+          <DialogTitle id="form-dialog-title">{this.props.t("New service profile")}</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              To create a service profile, download a profile and then apply it
-              with `kubectl apply`.
+              {this.props.t("message1")}
             </DialogContentText>
             <FormControl
               className={classes.textField}
@@ -173,8 +173,7 @@ class ConfigureProfilesMsg extends React.Component {
                 aria-describedby="component-error-text" />
               {error.service && (
                 <FormHelperText id="component-error-text">
-                  Service name must consist of lower case alphanumeric characters or &#45;
-                  start with an alphabetic character, and end with an alphanumeric character
+                  {this.props.t("message2")}
                 </FormHelperText>
               )}
             </FormControl>
@@ -182,7 +181,7 @@ class ConfigureProfilesMsg extends React.Component {
               className={classes.textField}
               onBlur={() => this.validateFields('namespace', query.namespace)}
               error={error.namespace}>
-              <InputLabel htmlFor="component-error">Namespace</InputLabel>
+              <InputLabel htmlFor="component-error">{this.props.t("Namespace")}</InputLabel>
               <Input
                 id="component-error"
                 value={this.state.name}
@@ -190,15 +189,14 @@ class ConfigureProfilesMsg extends React.Component {
                 aria-describedby="component-error-text" />
               {error.namespace && (
                 <FormHelperText id="component-error-text">
-                  Namespace must consist of lower case alphanumeric characters or &#45;
-                  and must start and end with an alphanumeric character
+                  {this.props.t("message3")}
                 </FormHelperText>
               )}
             </FormControl>
           </DialogContent>
           <DialogActions>
             <Button onClick={this.handleClose} color="primary">
-              Cancel
+              {this.props.t("Cancel")}
             </Button>
             {disableDownloadButton ?
               downloadButton :
@@ -214,16 +212,14 @@ class ConfigureProfilesMsg extends React.Component {
   }
 
   render() {
-    const { showAsIcon } = this.props;
+    const { showAsIcon, t } = this.props;
     if (showAsIcon) {
       return this.renderDownloadProfileForm();
     } else {
       return (
         <CardContent>
           <Typography component="div">
-            No named route traffic found. This could be because the service is
-            not receiving any traffic, or because there is no service profile
-            configured. Does the service have a service profile?
+            {t("message4")}
             {this.renderDownloadProfileForm()}
           </Typography>
         </CardContent>
@@ -238,10 +234,11 @@ ConfigureProfilesMsg.propTypes = {
   }).isRequired,
   classes: PropTypes.shape({}).isRequired,
   showAsIcon: PropTypes.bool,
+  t: PropTypes.func.isRequired,
 };
 
 ConfigureProfilesMsg.defaultProps = {
   showAsIcon: false
 };
 
-export default withContext(withStyles(styles, { withTheme: true })(ConfigureProfilesMsg));
+export default withTranslation(["profileMessages", "common"])(withContext(withStyles(styles, { withTheme: true })(ConfigureProfilesMsg)));

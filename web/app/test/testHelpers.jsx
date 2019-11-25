@@ -3,6 +3,7 @@ import ApiHelpers from '../js/components/util/ApiHelpers.jsx';
 import { createMemoryHistory } from 'history';
 import React from 'react';
 import { Route, Router } from 'react-router';
+import '../js/i18n.js';
 
 const componentDefaultProps = {
   api: ApiHelpers(''),

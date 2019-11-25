@@ -39,6 +39,7 @@ import { processSingleResourceRollup } from './util/MetricUtils.jsx';
 import { regexFilterString } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 import yellow from '@material-ui/core/colors/yellow';
 
 const jsonFeedUrl = "https://linkerd.io/dashboard/index.json";
@@ -353,7 +354,7 @@ class NavigationBase extends React.Component {
         className={classes.navMenuItem}
         selected={isCurrentPage(path)}>
         <ListItemIcon>{icon}</ListItemIcon>
-        <ListItemText primary={title} />
+        <ListItemText primary={this.props.t(title)} />
       </MenuItem>
     );
   }
@@ -366,7 +367,7 @@ class NavigationBase extends React.Component {
   }
 
   render() {
-    const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
+    const { api, classes, selectedNamespace, ChildComponent, t, ...otherProps } = this.props;
     let { namespaces, namespaceFilter, formattedNamespaceFilter, anchorEl,
       showNamespaceChangeDialog, newNamespace, mobileSidebarOpen } = this.state;
     namespaces = namespaces.filter(ns => {
@@ -374,7 +375,7 @@ class NavigationBase extends React.Component {
     });
     let formattedNamespaceName = selectedNamespace;
     if (formattedNamespaceName === "_all") {
-      formattedNamespaceName = "All Namespaces";
+      formattedNamespaceName = t("All Namespaces");
     }
 
     const drawer = (
@@ -422,7 +423,7 @@ class NavigationBase extends React.Component {
                 id="namespace-filter-textfield"
                 value={namespaceFilter}
                 onChange={this.handleFilterInputChange}
-                placeholder="Select namespace..."
+                placeholder={t("Select namespace...")}
                 autoFocus />
             </MenuItem>
 
@@ -431,7 +432,7 @@ class NavigationBase extends React.Component {
             <MenuItem
               value="all"
               onClick={e => this.handleNamespaceChange(e, "_all")}>
-                  All Namespaces
+              {t("All Namespaces")}
             </MenuItem>
 
             {namespaces.map(ns => (
@@ -453,7 +454,7 @@ class NavigationBase extends React.Component {
 
         <MenuList>
           <Typography variant="button" className={classes.sidebarHeading}>
-                Workloads
+            {t("Workloads")}
           </Typography>
 
           { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, "Daemon Sets", daemonsetIcon) }
@@ -471,7 +472,7 @@ class NavigationBase extends React.Component {
 
         <MenuList>
           <Typography variant="button" className={classes.sidebarHeading}>
-                Configuration
+            {t("Configuration")}
           </Typography>
 
           { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, "Traffic Splits", <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
@@ -480,7 +481,7 @@ class NavigationBase extends React.Component {
         <Divider />
         <MenuList >
           <Typography variant="button" className={classes.sidebarHeading}>
-                Tools
+            {t("Tools")}
           </Typography>
 
           { this.menuItem("/tap", "Tap", <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
@@ -501,7 +502,7 @@ class NavigationBase extends React.Component {
 
           <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
-            <ListItemText primary="Documentation" />
+            <ListItemText primary={t("Documentation")} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
@@ -513,7 +514,7 @@ class NavigationBase extends React.Component {
 
           <MenuItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon><EmailIcon className={classes.shrinkIcon} /></ListItemIcon>
-            <ListItemText primary="Mailing List" />
+            <ListItemText primary={t("Mailing List")} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
@@ -596,8 +597,9 @@ NavigationBase.propTypes = {
   location: ReactRouterPropTypes.location.isRequired,
   pathPrefix: PropTypes.string.isRequired,
   releaseVersion: PropTypes.string.isRequired,
+  t: PropTypes.func.isRequired,
   theme: PropTypes.shape({}).isRequired,
   uuid: PropTypes.string.isRequired,
 };
 
-export default withContext(withStyles(styles, { withTheme: true })(NavigationBase));
+export default withTranslation()(withContext(withStyles(styles, { withTheme: true })(NavigationBase)));

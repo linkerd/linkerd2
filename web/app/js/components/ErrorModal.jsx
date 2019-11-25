@@ -18,6 +18,7 @@ import _map from 'lodash/map';
 import _reduce from 'lodash/reduce';
 import _take from 'lodash/take';
 import { friendlyTitle } from './util/Utils.js';
+import { withTranslation } from 'react-i18next';
 
 // max characters we display for error messages before truncating them
 const maxErrorLength = 500;
@@ -78,7 +79,7 @@ class ErrorModal extends React.Component {
 
   renderContainerErrors = (pod, errorsByContainer) => {
     if (_isEmpty(errorsByContainer)) {
-      return "No messages to display";
+      return this.props.t("No messages to display");
     }
 
     return _map(errorsByContainer, (errors, container) => (
@@ -145,7 +146,7 @@ class ErrorModal extends React.Component {
 
     if (showInit) {
       return (
-        <Tooltip title="Pods are initializing"><CircularProgress size={20} thickness={4} /></Tooltip>
+        <Tooltip title={this.props.t("Pods are initializing")}><CircularProgress size={20} thickness={4} /></Tooltip>
       );
     } else {
       return (
@@ -155,6 +156,7 @@ class ErrorModal extends React.Component {
   }
 
   render() {
+    const { t } = this.props;
     let errors = this.processErrorData(this.props.errors);
 
     return (
@@ -166,13 +168,15 @@ class ErrorModal extends React.Component {
           scroll={this.state.scroll}
           aria-labelledby="scroll-dialog-title">
 
-          <DialogTitle id="scroll-dialog-title">Errors in {friendlyTitle(this.props.resourceType).singular} {this.props.resourceName}</DialogTitle>
+          <DialogTitle id="scroll-dialog-title">
+            {t("message1", { type: friendlyTitle(this.props.resourceType).singular, name: this.props.resourceName })}
+          </DialogTitle>
 
           <DialogContent>
             {
               !errors.shouldTruncate ? null :
               <React.Fragment>
-                Some of these error messages are very long. Show full error text?
+                {t("Some of these error messages are very long. Show full error text?")}
                 <Switch
                   checked={!this.state.truncateErrors}
                   onChange={this.toggleTruncateErrors}
@@ -185,7 +189,7 @@ class ErrorModal extends React.Component {
           </DialogContent>
 
           <DialogActions>
-            <Button onClick={this.handleClose} color="primary">Close</Button>
+            <Button onClick={this.handleClose} color="primary">{t("Close")}</Button>
           </DialogActions>
         </Dialog>
       </React.Fragment>
@@ -196,11 +200,12 @@ class ErrorModal extends React.Component {
 ErrorModal.propTypes = {
   errors: PropTypes.shape({}),
   resourceName: PropTypes.string.isRequired,
-  resourceType: PropTypes.string.isRequired
+  resourceType: PropTypes.string.isRequired,
+  t: PropTypes.func.isRequired,
 };
 
 ErrorModal.defaultProps = {
   errors: {}
 };
 
-export default ErrorModal;
+export default withTranslation(["errors", "common"])(ErrorModal);

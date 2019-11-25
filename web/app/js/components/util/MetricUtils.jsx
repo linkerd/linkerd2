@@ -141,10 +141,10 @@ const processStatTable = table => {
 };
 
 export const DefaultRoute = "[DEFAULT]";
-export const processTopRoutesResults = rows => {
+export const processTopRoutesResults = (rows, t) => {
   return _map(rows, row => ({
     route: row.route || DefaultRoute,
-    tooltip: !_isEmpty(row.route) ? null : "Traffic does not match any configured routes",
+    tooltip: !_isEmpty(row.route) ? null : t("Traffic does not match any configured routes"),
     authority: row.authority,
     totalRequests: getTotalRequests(row),
     requestRate: getRequestRate(row),
