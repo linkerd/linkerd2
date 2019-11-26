@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # A wrapper for interacting with minikube.
 #
@@ -8,8 +8,7 @@
 # If we're running under WSL then we have to use the Windows native Minikube
 # as the Linux version doesn't work in WSL. Assume WSL is Microsoft's only
 # Linux distro.
-uname -r | grep "Microsoft" > /dev/null
-if  [ $? -ne 0 ]; then
+if ! uname -r | grep Microsoft > /dev/null; then
   MINIKUBE_EXE=minikube
 else
   # This is where minikube-installer.exe puts it.

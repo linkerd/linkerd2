@@ -23,27 +23,31 @@
 set -e
 
 # TODO: share this with test-run
-function check_linkerd_binary(){
-    printf "Checking the linkerd binary..."
-    if [[ "$linkerd_path" != /* ]]; then
-        printf "\\n[%s] is not an absolute path\\n" "$linkerd_path"
-        exit 1
-    fi
+check_linkerd_binary() {
+    printf 'Checking the linkerd binary...'
+    case "$linkerd_path" in
+        /*)
+            ;;
+        *)
+            printf '\n[%s] is not an absolute path\n' "$linkerd_path"
+            exit 1
+            ;;
+    esac
     if [ ! -x "$linkerd_path" ]; then
-        printf "\\n[%s] does not exist or is not executable\\n" "$linkerd_path"
+        printf '\n[%s] does not exist or is not executable\n' "$linkerd_path"
         exit 1
     fi
     exit_code=0
     "$linkerd_path" version --client > /dev/null 2>&1 || exit_code=$?
     if [ $exit_code -ne 0 ]; then
-        printf "\\nFailed to run linkerd version command\\n"
+        printf '\nFailed to run linkerd version command\n'
         exit $exit_code
     fi
-    printf "[ok]\\n"
+    printf '[ok]\n'
 }
 
 if [ "$#" -ne 1 ]; then
-    echo "usage: $(basename "$0") /path/to/linkerd" >&2
+    echo "usage: ${0##*/} /path/to/linkerd" >&2
     exit 64
 fi
 
@@ -57,7 +61,7 @@ done
 linkerd_path=$1
 check_linkerd_binary
 
-printf "\nKicking off tests for:\n- $AKS\n- $DO\n- $EKS\n- $GKE\n\n"
+printf '\nKicking off tests for:\n- %s\n- %s\n- %s\n- %s\n\n' "$AKS" "$DO" "$EKS" "$GKE"
 
 trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
 for CLUSTER in $AKS $DO $EKS $GKE; do
