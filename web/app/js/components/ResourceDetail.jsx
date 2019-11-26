@@ -380,15 +380,11 @@ export class ResourceDetailBase extends React.Component {
           isTcpTable={true}
           metrics={this.state.podMetrics} />
 
-        <Grid container direction="column" justify="center">
-          <Grid item>
-            <EdgesTable
-              api={this.api}
-              namespace={this.state.resource.namespace}
-              type={this.state.resource.type}
-              edges={edges} />
-          </Grid>
-        </Grid>
+        <EdgesTable
+          api={this.api}
+          namespace={this.state.resource.namespace}
+          type={this.state.resource.type}
+          edges={edges} />
 
       </div>
     );
