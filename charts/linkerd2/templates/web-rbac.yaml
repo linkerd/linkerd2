@@ -1,4 +1,3 @@
-{{with .Values -}}
 ---
 ###
 ### Web RBAC
@@ -8,16 +7,16 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-web
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: web
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: web
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get"]
   resourceNames: ["linkerd-config"]
-  {{- if not .RestrictDashboardPrivileges }}
+  {{- if not .Values.RestrictDashboardPrivileges }}
 - apiGroups: [""]
   resources: ["namespaces", "configmaps"]
   verbs: ["get"]
@@ -33,10 +32,10 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-web
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: web
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: web
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
 roleRef:
   kind: Role
   name: linkerd-web
@@ -44,16 +43,16 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-web
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 ---
-{{- if not .RestrictDashboardPrivileges }}
+{{- if not .Values.RestrictDashboardPrivileges }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: linkerd-{{.Namespace}}-web-check
+  name: linkerd-{{.Values.Namespace}}-web-check
   labels:
-    {{.ControllerComponentLabel}}: web
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: web
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
 rules:
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["clusterroles", "clusterrolebindings"]
@@ -74,42 +73,41 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: linkerd-{{.Namespace}}-web-check
+  name: linkerd-{{.Values.Namespace}}-web-check
   labels:
-    {{.ControllerComponentLabel}}: web
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: web
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
 roleRef:
   kind: ClusterRole
-  name: linkerd-{{.Namespace}}-web-check
+  name: linkerd-{{.Values.Namespace}}-web-check
   apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
   name: linkerd-web
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Namespace}}-web-admin
+  name: linkerd-{{.Values.Namespace}}-web-admin
   labels:
-    {{.ControllerComponentLabel}}: web
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: web
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-{{.Namespace}}-tap-admin
+  name: linkerd-{{.Values.Namespace}}-tap-admin
 subjects:
 - kind: ServiceAccount
   name: linkerd-web
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 ---
 {{- end}}
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-web
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: web
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-{{- end }}
+    {{.Values.ControllerComponentLabel}}: web
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}

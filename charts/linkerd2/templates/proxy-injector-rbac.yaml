@@ -1,4 +1,3 @@
-{{with .Values -}}
 ---
 ###
 ### Proxy Injector RBAC
@@ -7,10 +6,10 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Namespace}}-proxy-injector
+  name: linkerd-{{.Values.Namespace}}-proxy-injector
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: proxy-injector
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
 rules:
 - apiGroups: [""]
   resources: ["events"]
@@ -31,52 +30,52 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Namespace}}-proxy-injector
+  name: linkerd-{{.Values.Namespace}}-proxy-injector
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: proxy-injector
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-{{.Namespace}}-proxy-injector
+  name: linkerd-{{.Values.Namespace}}-proxy-injector
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: proxy-injector
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
 ---
 kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector-tls
-  namespace: {{ .Namespace }}
+  namespace: {{ .Values.Namespace }}
   labels:
-    {{ .ControllerComponentLabel }}: proxy-injector
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: proxy-injector
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
   annotations:
-    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
 type: Opaque
 data:
-  {{ $ca := genCA (printf "linkerd-proxy-injector.%s.svc" .Namespace) 365 -}}
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .ProxyInjector.CrtPEM)) (empty .ProxyInjector.CrtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .ProxyInjector.KeyPEM)) (empty .ProxyInjector.KeyPEM) }}
+  {{ $ca := genCA (printf "linkerd-proxy-injector.%s.svc" .Values.Namespace) 365 -}}
+  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.ProxyInjector.CrtPEM)) (empty .Values.ProxyInjector.CrtPEM) }}
+  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.ProxyInjector.KeyPEM)) (empty .Values.ProxyInjector.KeyPEM) }}
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
-    {{.ControllerComponentLabel}}: proxy-injector
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: proxy-injector
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
@@ -88,16 +87,15 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-proxy-injector
-      namespace: {{ .Namespace }}
+      namespace: {{ .Values.Namespace }}
       path: "/"
-    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .ProxyInjector.CrtPEM)) (empty .ProxyInjector.CrtPEM) }}
-  failurePolicy: {{.WebhookFailurePolicy}}
+    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.ProxyInjector.CrtPEM)) (empty .Values.ProxyInjector.CrtPEM) }}
+  failurePolicy: {{.Values.WebhookFailurePolicy}}
   rules:
   - operations: [ "CREATE" ]
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
-  {{- if not .OmitWebhookSideEffects }}
+  {{- if not .Values.OmitWebhookSideEffects }}
   sideEffects: None
   {{- end }}
-{{end -}}
