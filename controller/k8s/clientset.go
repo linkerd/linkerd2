@@ -3,7 +3,6 @@ package k8s
 import (
 	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"k8s.io/client-go/rest"
 
@@ -11,35 +10,20 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-func newConfig(kubeConfig string, telemetryName string) (*rest.Config, error) {
-	config, err := k8s.GetConfig(kubeConfig, "")
-	if err != nil {
-		return nil, err
-	}
-
+func wrapTransport (config *rest.Config, telemetryName string) *rest.Config {
 	wt := config.WrapTransport
 	config.WrapTransport = prometheus.ClientWithTelemetry(telemetryName, wt)
-	return config, nil
+	return config
 }
 
 // NewSpClientSet returns a Kubernetes ServiceProfile client for the given
 // configuration.
-func NewSpClientSet(kubeConfig string) (*spclient.Clientset, error) {
-	config, err := newConfig(kubeConfig, "sp")
-	if err != nil {
-		return nil, err
-	}
-
-	return spclient.NewForConfig(config)
+func NewSpClientSet(kubeConfig *rest.Config) (*spclient.Clientset, error) {
+	return spclient.NewForConfig(wrapTransport(kubeConfig,"sp"))
 }
 
 // NewTsClientSet returns a Kubernetes TrafficSplit client for the given
 // configuration.
-func NewTsClientSet(kubeConfig string) (*tsclient.Clientset, error) {
-	config, err := newConfig(kubeConfig, "ts")
-	if err != nil {
-		return nil, err
-	}
-
-	return tsclient.NewForConfig(config)
+func NewTsClientSet(kubeConfig *rest.Config) (*tsclient.Clientset, error) {
+	return tsclient.NewForConfig(wrapTransport(kubeConfig,"ts"))
 }

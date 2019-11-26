@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"k8s.io/client-go/rest"
 	"strings"
 	"time"
 
@@ -55,6 +56,7 @@ const (
 	Svc
 	TS
 	Node
+	SC
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -76,6 +78,7 @@ type API struct {
 	svc      coreinformers.ServiceInformer
 	ts       tsinformers.TrafficSplitInformer
 	node     coreinformers.NodeInformer
+	sc     coreinformers.SecretInformer
 
 	syncChecks        []cache.InformerSynced
 	sharedInformers   informers.SharedInformerFactory
@@ -83,15 +86,11 @@ type API struct {
 	tsSharedInformers ts.SharedInformerFactory
 }
 
-// InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
-func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
-	k8sClient, err := k8s.NewAPI(kubeConfig, "", "", 0)
-	if err != nil {
-		return nil, err
-	}
 
+
+func initApi(k8sClient *k8s.KubernetesAPI,kubeConfig *rest.Config, resources ...APIResource) (*API, error) {
 	// check for cluster-wide access
-	err = k8s.ClusterAccess(k8sClient)
+	err  := k8s.ClusterAccess(k8sClient)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +126,34 @@ func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
 		}
 	}
 	return NewAPI(k8sClient, spClient, tsClient, resources...), nil
+
 }
+
+// InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
+func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
+	config, err := k8s.GetConfig(kubeConfig, "")
+	if err != nil {
+		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
+	}
+
+	k8sClient, err := k8s.NewApiForConfig(config, "", 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return initApi(k8sClient, config, resources...)
+}
+
+// InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
+func InitializeAPIForConfig(kubeConfig *rest.Config, resources ...APIResource) (*API, error) {
+	k8sClient, err := k8s.NewApiForConfig(kubeConfig, "", 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return initApi(k8sClient, kubeConfig, resources...)
+}
+
 
 // NewAPI takes a Kubernetes client and returns an initialized API.
 func NewAPI(
@@ -203,6 +229,9 @@ func NewAPI(
 		case Node:
 			api.node = sharedInformers.Core().V1().Nodes()
 			api.syncChecks = append(api.syncChecks, api.node.Informer().HasSynced)
+		case SC:
+			api.sc = sharedInformers.Core().V1().Secrets()
+			api.syncChecks = append(api.syncChecks, api.sc.Informer().HasSynced)
 		}
 	}
 
@@ -350,6 +379,14 @@ func (api *API) Node() coreinformers.NodeInformer {
 		panic("Node informer not configured")
 	}
 	return api.node
+}
+
+// Secret provides access to a shared informer and lister for Secrets.
+func (api *API) Secret() coreinformers.SecretInformer {
+	if api.sc == nil {
+		panic("Secret informer not configured")
+	}
+	return api.sc
 }
 
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.

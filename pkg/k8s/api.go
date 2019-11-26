@@ -39,6 +39,11 @@ func NewAPI(configPath, kubeContext string, impersonate string, timeout time.Dur
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}
+	return NewApiForConfig(config, impersonate, timeout)
+}
+
+
+func NewApiForConfig(config *rest.Config, impersonate string, timeout time.Duration)  (*KubernetesAPI, error) {
 
 	// k8s' client-go doesn't support injecting context
 	// https://github.com/kubernetes/kubernetes/issues/46503
