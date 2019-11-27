@@ -179,11 +179,11 @@ func TestStat(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns an error if --time-window is not more than 10s", func(t *testing.T) {
+	t.Run("Returns an error if --time-window is not more than 15s", func(t *testing.T) {
 		options := newStatOptions()
 		options.timeWindow = "10s"
 		args := []string{"ns/bar"}
-		expectedError := "metrics time window needs to be > 10s"
+		expectedError := "metrics time window needs to be at least 15s"
 
 		_, err := buildStatSummaryRequests(args, options)
 		if err == nil || err.Error() != expectedError {

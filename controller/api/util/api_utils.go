@@ -22,7 +22,7 @@ import (
 
 var (
 	defaultMetricTimeWindow    = "1m"
-	metricTimeWindowLowerBound = time.Second * 10 //the window value needs to be larger than that
+	metricTimeWindowLowerBound = time.Second * 15 //the window value needs to equal or larger than that
 
 	// ValidTargets specifies resource types allowed as a target:
 	// target resource on an inbound query
@@ -151,8 +151,8 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 			return nil, err
 		}
 
-		if w <= metricTimeWindowLowerBound {
-			return nil, errors.New("metrics time window needs to be > 10s")
+		if w < metricTimeWindowLowerBound {
+			return nil, errors.New("metrics time window needs to be at least 15s")
 		}
 
 		window = p.TimeWindow
