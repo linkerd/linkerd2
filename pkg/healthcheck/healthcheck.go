@@ -1555,11 +1555,6 @@ func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace() error {
 			return fmt.Errorf("kube-system namespace needs to have %ss: disabled if HA mode is enabled", k8s.AdmissionWebhookLabel)
 		}
 
-		val, ok = ns.Annotations[k8s.ProxyInjectAnnotation]
-		if !ok || val != "disabled" {
-			return fmt.Errorf("kube-system namespace needs to have %s: disabled if HA mode is enabled", k8s.ProxyInjectAnnotation)
-		}
-
 	}
 	return nil
 }

@@ -2130,7 +2130,7 @@ metadata:
 	})
 }
 
-func getConfigAndKubeSystemNamespace(ha bool, nsAnnotation, nsLabel string) []string {
+func getConfigAndKubeSystemNamespace(ha bool, nsLabel string) []string {
 	return []string{fmt.Sprintf(`
 kind: ConfigMap
 apiVersion: v1
@@ -2144,13 +2144,11 @@ data:
 apiVersion: v1
 kind: Namespace
 metadata:
-  annotations:
-    %s
   creationTimestamp: null
   labels:
     %s
     linkerd.io/is-control-plane: "true"
-  name: kube-system`, nsAnnotation, nsLabel),
+  name: kube-system`, nsLabel),
 	}
 }
 
@@ -2162,27 +2160,22 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 	}{
 		{
 			"passes when HA is not enabled",
-			getConfigAndKubeSystemNamespace(false, "", ""),
+			getConfigAndKubeSystemNamespace(false, ""),
 			nil,
 		},
 		{
 			"passes when HA is enabled and namespace has required metadata",
-			getConfigAndKubeSystemNamespace(true, "linkerd.io/inject: disabled", "config.linkerd.io/admission-webhooks: disabled"),
+			getConfigAndKubeSystemNamespace(true, "config.linkerd.io/admission-webhooks: disabled"),
 			nil,
 		},
 		{
-			"fails when HA and injection are enabled",
-			getConfigAndKubeSystemNamespace(true, "linkerd.io/inject: enabled", "config.linkerd.io/admission-webhooks: disabled"),
-			errors.New("kube-system namespace needs to have linkerd.io/inject: disabled if HA mode is enabled"),
-		},
-		{
 			"fails when HA and admission hooks are enabled",
-			getConfigAndKubeSystemNamespace(true, "linkerd.io/inject: disabled", "config.linkerd.io/admission-webhooks: enabled"),
+			getConfigAndKubeSystemNamespace(true, "config.linkerd.io/admission-webhooks: enabled"),
 			errors.New("kube-system namespace needs to have config.linkerd.io/admission-webhookss: disabled if HA mode is enabled"),
 		},
 		{
 			"fails when HA is enabled and metadata is missing",
-			getConfigAndKubeSystemNamespace(true, "", ""),
+			getConfigAndKubeSystemNamespace(true, ""),
 			errors.New("kube-system namespace needs to have config.linkerd.io/admission-webhookss: disabled if HA mode is enabled"),
 		},
 	}
@@ -2203,15 +2196,18 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 
 			err = hc.checkHAMetadataPresentOnKubeSystemNamespace()
 
-			if err != nil {
-				if tc.expectedWarning == nil {
+			if tc.expectedWarning == nil {
+				if err != nil {
 					t.Fatalf("Got warning %q but expected no warnings", err)
+				}
+			} else {
+				if err == nil {
+					t.Fatalf("Expected warning %q but got no warnings", tc.expectedWarning)
 				}
 
 				if err.Error() != tc.expectedWarning.Error() {
 					t.Fatalf("Warning %q does not match expected warning: %q", err, tc.expectedWarning)
 				}
-
 			}
 		})
 	}
