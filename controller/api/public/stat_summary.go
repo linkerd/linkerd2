@@ -96,7 +96,11 @@ func (s *grpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryRequest
 
 	var resourcesToQuery []string
 	if req.Selector.Resource.Type == k8s.All {
-		resourcesToQuery = k8s.StatAllResourceTypes
+		for _, resource := range k8s.StatAllResourceTypes {
+			if !util.Contains(req.ExcludeFromAll, resource) {
+				resourcesToQuery = append(resourcesToQuery, resource)
+			}
+		}
 	} else {
 		resourcesToQuery = []string{req.Selector.Resource.Type}
 	}

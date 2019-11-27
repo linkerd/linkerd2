@@ -118,21 +118,6 @@ export class ResourceDetailBase extends React.Component {
     this.stopServerPolling();
   }
 
-  getDisplayMetrics(metricsByResource) {
-    // if we're displaying a pod detail page, only display pod metrics
-    // if we're displaying another type of resource page, display metrics for
-    // rcs, deploys, replicasets, etc but not pods or authorities
-    let shouldExclude = this.state.resourceType === "pod" ?
-      r => r !== "pod" :
-      r => r === "pod" || r === "authority" || r === "service";
-    return _reduce(metricsByResource, (mem, resourceMetrics, resource) => {
-      if (shouldExclude(resource)) {
-        return mem;
-      }
-      return mem.concat(resourceMetrics);
-    }, []);
-  }
-
   startServerPolling() {
     this.loadFromServer();
     this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
@@ -152,9 +137,19 @@ export class ResourceDetailBase extends React.Component {
 
     let { resource } = this.state;
 
+    // Define upstream / downstream metrics urls based on resource type
+    let baseMetricsURL;
+    if (resource.type === "pod") {
+      baseMetricsURL = `${this.api.urlsForResource("pod")}`;
+    } else {
+      baseMetricsURL = `${this.api.urlsForResource("all")}&exclude=authority&exclude=pod&exclude=service`;
+    }
+    let upstreamMetricsURL = `${baseMetricsURL}&to_name=${resource.name}&to_type=${resource.type}&to_namespace=${resource.namespace}`;
+    let downstreamMetricsURL = `${baseMetricsURL}&from_name=${resource.name}&from_type=${resource.type}&from_namespace=${resource.namespace}`;
+
     let apiRequests =
       [
-      // inbound stats for this resource
+        // inbound stats for this resource
         this.api.fetchMetrics(
           `${this.api.urlsForResource(resource.type, resource.namespace, true)}&resource_name=${resource.name}`
         ),
@@ -165,13 +160,9 @@ export class ResourceDetailBase extends React.Component {
           `${this.api.urlsForResource("pod", resource.namespace, true)}`
         ),
         // upstream resources of this resource (meshed traffic only)
-        this.api.fetchMetrics(
-          `${this.api.urlsForResource("all")}&to_name=${resource.name}&to_type=${resource.type}&to_namespace=${resource.namespace}`
-        ),
+        this.api.fetchMetrics(upstreamMetricsURL),
         // downstream resources of this resource (meshed traffic only)
-        this.api.fetchMetrics(
-          `${this.api.urlsForResource("all")}&from_name=${resource.name}&from_type=${resource.type}&from_namespace=${resource.namespace}`
-        )
+        this.api.fetchMetrics(downstreamMetricsURL),
       ];
 
     if (this.state.queryForDefinition) {
@@ -332,8 +323,8 @@ export class ResourceDetailBase extends React.Component {
         }
       }));
 
-    let upstreamMetrics = this.getDisplayMetrics(this.state.upstreamMetrics);
-    let downstreamMetrics = this.getDisplayMetrics(this.state.downstreamMetrics);
+    let upstreamMetrics = _reduce(this.state.upstreamMetrics, (mem, metrics) => mem.concat(metrics), []);
+    let downstreamMetrics = _reduce(this.state.downstreamMetrics, (mem, metrics) => mem.concat(metrics), []);
 
     let upstreams = upstreamMetrics.concat(unmeshed);
 

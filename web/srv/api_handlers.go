@@ -153,11 +153,12 @@ func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p http
 
 	requestParams := util.StatsSummaryRequestParams{
 		StatsBaseRequestParams: util.StatsBaseRequestParams{
-			TimeWindow:    req.FormValue("window"),
-			ResourceName:  req.FormValue("resource_name"),
-			ResourceType:  req.FormValue("resource_type"),
-			Namespace:     req.FormValue("namespace"),
-			AllNamespaces: req.FormValue("all_namespaces") == trueStr,
+			TimeWindow:     req.FormValue("window"),
+			ResourceName:   req.FormValue("resource_name"),
+			ResourceType:   req.FormValue("resource_type"),
+			Namespace:      req.FormValue("namespace"),
+			AllNamespaces:  req.FormValue("all_namespaces") == trueStr,
+			ExcludeFromAll: req.URL.Query()["exclude"],
 		},
 		ToName:        req.FormValue("to_name"),
 		ToType:        req.FormValue("to_type"),

@@ -357,6 +357,7 @@ message StatSummaryRequest {
 
   bool skip_stats = 6;  // true if we want to skip stats from Prometheus
   bool tcp_stats = 7;
+  repeated string exclude_from_all = 8; // exclude some types when using all as resource type
 }
 
 message StatSummaryResponse {

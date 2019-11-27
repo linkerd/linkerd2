@@ -60,11 +60,12 @@ var (
 // StatsBaseRequestParams contains parameters that are used to build requests
 // for metrics data.  This includes requests to StatSummary and TopRoutes.
 type StatsBaseRequestParams struct {
-	TimeWindow    string
-	Namespace     string
-	ResourceType  string
-	ResourceName  string
-	AllNamespaces bool
+	TimeWindow     string
+	Namespace      string
+	ResourceType   string
+	ResourceName   string
+	AllNamespaces  bool
+	ExcludeFromAll []string
 }
 
 // StatsSummaryRequestParams contains parameters that are used to build
@@ -178,6 +179,15 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 		return nil, err
 	}
 
+	excludeFromAll := make([]string, 0, len(p.ExcludeFromAll))
+	for _, entry := range p.ExcludeFromAll {
+		crn, err := k8s.CanonicalResourceNameFromFriendlyName(entry)
+		if err != nil {
+			return nil, err
+		}
+		excludeFromAll = append(excludeFromAll, crn)
+	}
+
 	statRequest := &pb.StatSummaryRequest{
 		Selector: &pb.ResourceSelection{
 			Resource: &pb.Resource{
@@ -186,9 +196,10 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 				Type:      resourceType,
 			},
 		},
-		TimeWindow: window,
-		SkipStats:  p.SkipStats,
-		TcpStats:   p.TCPStats,
+		TimeWindow:     window,
+		SkipStats:      p.SkipStats,
+		TcpStats:       p.TCPStats,
+		ExcludeFromAll: excludeFromAll,
 	}
 
 	if p.ToName != "" || p.ToType != "" || p.ToNamespace != "" {
@@ -450,7 +461,7 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 	if err != nil {
 		return nil, fmt.Errorf("target resource invalid: %s", err)
 	}
-	if !contains(ValidTargets, target.Type) {
+	if !Contains(ValidTargets, target.Type) {
 		return nil, fmt.Errorf("unsupported resource type [%s]", target.Type)
 	}
 
@@ -461,7 +472,7 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 		if err != nil {
 			return nil, fmt.Errorf("destination resource invalid: %s", err)
 		}
-		if !contains(ValidTapDestinations, destination.Type) {
+		if !Contains(ValidTapDestinations, destination.Type) {
 			return nil, fmt.Errorf("unsupported resource type [%s]", destination.Type)
 		}
 
@@ -541,7 +552,8 @@ func buildExtractHTTP(extract *pb.TapByResourceRequest_Extract_Http) *pb.TapByRe
 	}
 }
 
-func contains(list []string, s string) bool {
+// Contains checks if string <s> is in the string slice <list> provided.
+func Contains(list []string, s string) bool {
 	for _, elem := range list {
 		if s == elem {
 			return true
