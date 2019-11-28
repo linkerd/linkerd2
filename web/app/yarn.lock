@@ -8000,6 +8000,13 @@ react-linkify@1.0.0-alpha:
     linkify-it "^2.0.3"
     tlds "^1.199.0"
 
+react-page-visibility@^5.1.0:
+  version "5.1.0"
+  resolved "https://registry.yarnpkg.com/react-page-visibility/-/react-page-visibility-5.1.0.tgz#64f44961f57b12a48603f1bdfe7d082310e161bf"
+  integrity sha512-xzo063refxWUSVbBvLon3/hlkPZGtrypwKACIe48C2PLH9I2YT5tnaNOCnJCvN7p3UFovxf4jc2yXszWmzXPBA==
+  dependencies:
+    prop-types "^15.7.2"
+
 react-router-dom@5.1.2:
   version "5.1.2"
   resolved "https://registry.yarnpkg.com/react-router-dom/-/react-router-dom-5.1.2.tgz#06701b834352f44d37fbb6311f870f84c76b9c18"

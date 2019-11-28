@@ -1,3 +1,4 @@
+import { handlePageVisibility, withPageVisibility } from './PageVisibility.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import _get from 'lodash/get';
@@ -25,6 +26,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
         getCurrentPromises: PropTypes.func.isRequired,
         setCurrentRequests: PropTypes.func.isRequired,
       }).isRequired,
+      isPageVisible: PropTypes.bool.isRequired,
     }
 
     constructor(props) {
@@ -47,6 +49,13 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
     }
 
     componentDidUpdate(prevProps) {
+      handlePageVisibility({
+        prevVisibilityState: prevProps.isPageVisible,
+        currentVisibilityState: this.props.isPageVisible,
+        onVisible: () => this.startServerPolling(this.props),
+        onHidden: () => this.stopServerPolling(),
+      });
+
       const changed = localOptions.resetProps.filter(
         prop => _get(prevProps, prop) !== _get(this.props, prop)
       );
@@ -73,6 +82,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
 
     stopServerPolling = () => {
       this.api.cancelCurrentRequests();
+      this.setState({ pendingRequests: false });
       if (localOptions.poll) {
         window.clearInterval(this.timerId);
       }
@@ -119,7 +129,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
     }
   }
 
-  return withContext(RESTWrapper);
+  return withPageVisibility(withContext(RESTWrapper));
 };
 
 export default withREST;

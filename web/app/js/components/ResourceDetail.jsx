@@ -1,5 +1,6 @@
 import 'whatwg-fetch';
 import { emptyMetric, processMultiResourceRollup, processSingleResourceRollup } from './util/MetricUtils.jsx';
+import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 import { resourceTypeToCamelCase, singularResource } from './util/Utils.js';
 import AddResources from './AddResources.jsx';
 import EdgesTable from './EdgesTable.jsx';
@@ -51,6 +52,7 @@ export class ResourceDetailBase extends React.Component {
     api: PropTypes.shape({
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
+    isPageVisible: PropTypes.bool.isRequired,
     match: PropTypes.shape({
       url: PropTypes.string.isRequired
     }).isRequired,
@@ -93,8 +95,7 @@ export class ResourceDetailBase extends React.Component {
   }
 
   componentDidMount() {
-    this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.startServerPolling();
   }
 
   componentDidUpdate(prevProps) {
@@ -104,11 +105,17 @@ export class ResourceDetailBase extends React.Component {
       this.unmeshedSources = {};
       this.setState(this.getInitialState(this.props.match, this.props.pathPrefix));
     }
+
+    handlePageVisibility({
+      prevVisibilityState: prevProps.isPageVisible,
+      currentVisibilityState: this.props.isPageVisible,
+      onVisible: () => this.startServerPolling(),
+      onHidden: () => this.stopServerPolling(),
+    });
   }
 
   componentWillUnmount() {
-    window.clearInterval(this.timerId);
-    this.api.cancelCurrentRequests();
+    this.stopServerPolling();
   }
 
   getDisplayMetrics(metricsByResource) {
@@ -124,6 +131,17 @@ export class ResourceDetailBase extends React.Component {
       }
       return mem.concat(resourceMetrics);
     }, []);
+  }
+
+  startServerPolling() {
+    this.loadFromServer();
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+  }
+
+  stopServerPolling() {
+    window.clearInterval(this.timerId);
+    this.api.cancelCurrentRequests();
+    this.setState({ pendingRequests: false });
   }
 
   loadFromServer() {
@@ -419,4 +437,4 @@ export class ResourceDetailBase extends React.Component {
   }
 }
 
-export default withContext(ResourceDetailBase);
+export default withPageVisibility(withContext(ResourceDetailBase));
