@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -236,6 +237,19 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		configs.GetGlobal().ClusterDomain = defaultClusterDomain
 	}
 
+	if options.identityOptions.crtPEMFile != "" || options.identityOptions.keyPEMFile != "" {
+
+		if options.identityOptions.crtPEMFile == "" {
+			return nil, nil, errors.New("a certificate file must be specified if a private key is provided")
+		}
+		if options.identityOptions.keyPEMFile == "" {
+			return nil, nil, errors.New("a private key file must be specified if a certificate is provided")
+		}
+		if err := checkFilesExist([]string{options.identityOptions.crtPEMFile, options.identityOptions.keyPEMFile}); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	var identity *charts.Identity
 	idctx := configs.GetGlobal().GetIdentityContext()
 	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
@@ -247,9 +261,9 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 		configs.GetGlobal().IdentityContext = toIdentityContext(identity)
 	} else {
-		identity, err = fetchIdentityValues(k, idctx)
+		identity, err = options.fetchIdentityValues(k, idctx)
 		if err != nil {
-			return nil, nil, fmt.Errorf("unable to fetch the existing issuer credentials from Kubernetes: %s", err)
+			return nil, nil, fmt.Errorf("unable to read the existing issuer credentials: %s", err)
 		}
 	}
 
@@ -340,7 +354,7 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*charts.Identity, error) {
+func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*charts.Identity, error) {
 	if idctx == nil {
 		return nil, nil
 	}
@@ -352,7 +366,14 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*ch
 		idctx.Scheme = k8s.IdentityIssuerSchemeLinkerd
 	}
 
-	keyPEM, crtPEM, expiry, err := fetchIssuer(k, idctx.GetTrustAnchorsPem(), idctx.Scheme)
+	var issuerData *issuerData
+	var err error
+	if options.identityOptions.crtPEMFile != "" && options.identityOptions.keyPEMFile != "" {
+		issuerData, err = readIssuer(idctx.GetTrustAnchorsPem(), options.identityOptions.crtPEMFile, options.identityOptions.keyPEMFile)
+	} else {
+		issuerData, err = fetchIssuer(k, idctx.GetTrustAnchorsPem(), idctx.Scheme)
+
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -364,30 +385,53 @@ func fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*ch
 			Scheme:              idctx.Scheme,
 			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
 			IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
-			CrtExpiry:           expiry,
+			CrtExpiry:           issuerData.exp,
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
 			TLS: &charts.TLS{
-				KeyPEM: keyPEM,
-				CrtPEM: crtPEM,
+				KeyPEM: issuerData.key,
+				CrtPEM: issuerData.crt,
 			},
 		},
 	}, nil
 }
 
-func fetchIssuer(k kubernetes.Interface, trustPEM string, scheme string) (string, string, time.Time, error) {
+type issuerData struct {
+	key string
+	crt string
+	exp time.Time
+}
+
+func readIssuer(trustPEM, issuerCrtPath, issuerKeyPath string) (*issuerData, error) {
+	creds, err := tls.ReadPEMCreds(issuerKeyPath, issuerCrtPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := VerifyCreds(creds, trustPEM, ""); err != nil {
+		return nil, fmt.Errorf("invalid issuer credentials: %s", err)
+	}
+
+	return &issuerData{
+		key: creds.EncodePrivateKeyPEM(),
+		crt: creds.EncodeCertificatePEM(),
+		exp: creds.Certificate.NotAfter,
+	}, nil
+}
+
+func fetchIssuer(k kubernetes.Interface, trustPEM string, scheme string) (*issuerData, error) {
 	crtName := k8s.IdentityIssuerCrtName
 	keyName := k8s.IdentityIssuerKeyName
 
 	roots, err := tls.DecodePEMCertPool(trustPEM)
 	if err != nil {
-		return "", "", time.Time{}, err
+		return nil, err
 	}
 
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
 	if err != nil {
-		return "", "", time.Time{}, err
+		return nil, err
 	}
 	if scheme == string(corev1.SecretTypeTLS) {
 		crtName = corev1.TLSCertKey
@@ -397,21 +441,26 @@ func fetchIssuer(k kubernetes.Interface, trustPEM string, scheme string) (string
 	keyPEM := string(secret.Data[keyName])
 	key, err := tls.DecodePEMKey(keyPEM)
 	if err != nil {
-		return "", "", time.Time{}, err
+		return nil, err
 	}
 
 	crtPEM := string(secret.Data[crtName])
 	crt, err := tls.DecodePEMCrt(crtPEM)
 	if err != nil {
-		return "", "", time.Time{}, err
+		return nil, err
 	}
 
 	cred := &tls.Cred{PrivateKey: key, Crt: *crt}
 	if err = cred.Verify(roots, ""); err != nil {
-		return "", "", time.Time{}, fmt.Errorf("invalid issuer credentials: %s", err)
+		return nil, fmt.Errorf("invalid issuer credentials: %s", err)
 	}
 
-	return keyPEM, crtPEM, crt.Certificate.NotAfter, nil
+	return &issuerData{
+		key: keyPEM,
+		crt: crtPEM,
+		exp: crt.Certificate.NotAfter,
+	}, nil
+
 }
 
 // upgradeErrorf prints the error message and quits the upgrade process
