@@ -755,8 +755,8 @@ func render(w io.Writer, values *charts.Values, configs *pb.All) error {
 	}
 
 	return processYAML(&buf, w, ioutil.Discard, resourceTransformerInject{
-		injectProxy: true,
-		configs:     configs,
+		inject:  injectProxySkip,
+		configs: configs,
 	})
 }
 

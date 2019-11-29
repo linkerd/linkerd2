@@ -30,9 +30,17 @@ const (
 	udpDesc            = "pod specs do not include UDP ports"
 )
 
+type injectProxy int
+
+const (
+	injectProxyDirectly injectProxy = iota
+	injectProxyAnnotation
+	injectProxySkip
+)
+
 type resourceTransformerInject struct {
 	allowNsInject       bool
-	injectProxy         bool
+	inject              injectProxy
 	configs             *cfg.All
 	overrideAnnotations map[string]string
 	enableDebugSidecar  bool
@@ -84,10 +92,13 @@ sub-folders, or coming from stdin.`,
 
 			transformer := &resourceTransformerInject{
 				allowNsInject:       true,
-				injectProxy:         manualOption,
+				inject:              injectProxyAnnotation,
 				configs:             configs,
 				overrideAnnotations: overrideAnnotations,
 				enableDebugSidecar:  enableDebugSidecar,
+			}
+			if manualOption {
+				transformer.inject = injectProxyDirectly
 			}
 			exitCode := uninjectAndInject(in, stderr, stdout, transformer)
 			os.Exit(exitCode)
@@ -149,7 +160,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return nil, nil, err
 	}
 
-	if conf.IsControlPlaneComponent() && !rt.injectProxy {
+	if conf.IsControlPlaneComponent() && rt.inject == injectProxyAnnotation {
 		return nil, nil, errors.New("--manual must be set when injecting control plane components")
 	}
 
@@ -164,9 +175,12 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return bytes, reports, nil
 	}
 
-	if rt.injectProxy {
+	switch rt.inject {
+	case injectProxySkip:
+		return bytes, reports, nil
+	case injectProxyDirectly:
 		conf.AppendPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
-	} else {
+	case injectProxyAnnotation:
 		// flag the auto-injector to inject the proxy, regardless of the namespace annotation
 		conf.AppendPodAnnotation(k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled)
 	}
@@ -175,7 +189,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
-	patchJSON, err := conf.GetPatch(rt.injectProxy)
+	patchJSON, err := conf.GetPatch(rt.inject == injectProxyDirectly)
 	if err != nil {
 		return nil, nil, err
 	}
