@@ -162,6 +162,15 @@ func TestRender(t *testing.T) {
 	noInitContainerValues, _, _ := noInitContainerOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(noInitContainerValues)
 
+	withProxyIgnoresOptions, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withProxyIgnoresOptions.rawIgnoreInboundPorts = []string{"22", "8100-8102"}
+	withProxyIgnoresOptions.rawIgnoreOutboundPorts = []string{"5432"}
+	withProxyIgnoresValues, _, _ := withProxyIgnoresOptions.validateAndBuild("", nil)
+	addFakeTLSSecrets(withProxyIgnoresValues)
+
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
@@ -173,6 +182,7 @@ func TestRender(t *testing.T) {
 		{haValues, "install_ha_output.golden"},
 		{haWithOverridesValues, "install_ha_with_overrides_output.golden"},
 		{noInitContainerValues, "install_no_init_container.golden"},
+		{withProxyIgnoresValues, "install_proxy_ignores.golden"},
 	}
 
 	for i, tc := range testCases {

@@ -66,7 +66,7 @@ sub-folders, or coming from stdin.`,
 				return fmt.Errorf("please specify a kubernetes resource file")
 			}
 
-			if err := options.validate(); err != nil {
+			if err := options.parseAndValidate(); err != nil {
 				return err
 			}
 

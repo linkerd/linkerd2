@@ -7,6 +7,7 @@ import (
 
 func TestMapRangeSlice(t *testing.T) {
 	assertRangesEqual(t, []string{"23"}, []uint{23})
+	assertRangesEqual(t, []string{"23-23"}, []uint{23})
 	assertRangesEqual(t, []string{"23", "25"}, []uint{23, 25})
 	assertRangesEqual(t, []string{"25-27"}, []uint{25, 26, 27})
 	assertRangesEqual(t, []string{"20-21", "25-27"}, []uint{20, 21, 25, 26, 27})
@@ -16,7 +17,7 @@ func TestMapRangeSlice(t *testing.T) {
 
 func TestMapRangeSlice_NilSlice(t *testing.T) {
 	var check []uint
-	err := mapRangeSlice(&check, nil)
+	err := MapRangeSlice(&check, nil)
 	if err != nil {
 		t.Fatal("expected no error; got", err)
 	}
@@ -27,7 +28,7 @@ func TestMapRangeSlice_NilSlice(t *testing.T) {
 
 func TestMapRangeSlice_EmptySlice(t *testing.T) {
 	var check []uint
-	err := mapRangeSlice(&check, []string{})
+	err := MapRangeSlice(&check, []string{})
 	if err != nil {
 		t.Fatal("expected no error; got", err)
 	}
@@ -38,7 +39,7 @@ func TestMapRangeSlice_EmptySlice(t *testing.T) {
 
 func TestMapRangeSlice_NonNumeric(t *testing.T) {
 	var check []uint
-	err := mapRangeSlice(&check, []string{"not a number"})
+	err := MapRangeSlice(&check, []string{"not a number"})
 	if err == nil {
 		t.Fatal("expecting error")
 	}
@@ -46,7 +47,7 @@ func TestMapRangeSlice_NonNumeric(t *testing.T) {
 
 func TestMapRangeSlice_MissingLowerBound(t *testing.T) {
 	var check []uint
-	err := mapRangeSlice(&check, []string{"-27"})
+	err := MapRangeSlice(&check, []string{"-27"})
 	if err == nil {
 		t.Fatal("expecting error")
 	}
@@ -57,7 +58,7 @@ func TestMapRangeSlice_MissingLowerBound(t *testing.T) {
 
 func TestMapRangeSlice_MissingUpperBound(t *testing.T) {
 	var check []uint
-	err := mapRangeSlice(&check, []string{"27-"})
+	err := MapRangeSlice(&check, []string{"27-"})
 	if err == nil {
 		t.Fatal("expecting error")
 	}
@@ -68,7 +69,7 @@ func TestMapRangeSlice_MissingUpperBound(t *testing.T) {
 
 func TestMapRangeSlice_DescendingRange(t *testing.T) {
 	var check []uint
-	err := mapRangeSlice(&check, []string{"29-27"})
+	err := MapRangeSlice(&check, []string{"29-27"})
 	if err == nil {
 		t.Fatal("expecting error")
 	}
@@ -79,7 +80,7 @@ func TestMapRangeSlice_DescendingRange(t *testing.T) {
 
 func TestMapRangeSlice_NegativePortRange(t *testing.T) {
 	var check []uint
-	err := mapRangeSlice(&check, []string{"-29-27"})
+	err := MapRangeSlice(&check, []string{"-29-27"})
 	if err == nil {
 		t.Fatal("expecting error")
 	}
@@ -91,7 +92,7 @@ func TestMapRangeSlice_NegativePortRange(t *testing.T) {
 func assertRangesEqual(t *testing.T, test []string, expected []uint) {
 	var check []uint
 	// Convert the 'test' string slice
-	if err := mapRangeSlice(&check, test); err != nil {
+	if err := MapRangeSlice(&check, test); err != nil {
 		t.Fatal("expected no error; got", err)
 	}
 	// Ensure the expected results match

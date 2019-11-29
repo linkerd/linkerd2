@@ -570,7 +570,7 @@ func (options *installOptions) validate() error {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
-	if err := options.proxyConfigOptions.validate(); err != nil {
+	if err := options.proxyConfigOptions.parseAndValidate(); err != nil {
 		return err
 	}
 	if options.proxyLogLevel == "" {

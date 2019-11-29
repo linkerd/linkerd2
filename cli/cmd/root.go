@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -209,7 +208,7 @@ type proxyConfigOptions struct {
 	disableTap      bool
 }
 
-func (options *proxyConfigOptions) validate() error {
+func (options *proxyConfigOptions) parseAndValidate() error {
 	if options.proxyVersion != "" && !alphaNumDashDot.MatchString(options.proxyVersion) {
 		return fmt.Errorf("%s is not a valid version", options.proxyVersion)
 	}
@@ -270,13 +269,13 @@ func (options *proxyConfigOptions) validate() error {
 	}
 
 	if options.rawIgnoreInboundPorts != nil {
-		if err := mapRangeSlice(&options.ignoreInboundPorts, options.rawIgnoreInboundPorts); err != nil {
+		if err := MapRangeSlice(&options.ignoreInboundPorts, options.rawIgnoreInboundPorts); err != nil {
 			return err
 		}
 	}
 
 	if options.rawIgnoreOutboundPorts != nil {
-		if err := mapRangeSlice(&options.ignoreOutboundPorts, options.rawIgnoreOutboundPorts); err != nil {
+		if err := MapRangeSlice(&options.ignoreOutboundPorts, options.rawIgnoreOutboundPorts); err != nil {
 			return err
 		}
 	}
@@ -290,45 +289,6 @@ func registryOverride(image, registry string) string {
 	return strings.Replace(image, defaultDockerRegistry, registry, 1)
 }
 
-// mapRangeSlice creates and populates the target slice of unsigned integers
-// based upon the source slice of string integer(s) and range(s).
-// For example:
-//   []string{"23","25-27"}
-// will result in
-//   []uint{23,25,26,27}
-func mapRangeSlice(target *[]uint, source []string) error {
-	*target = make([]uint, 0)
-	for _, portOrRange := range source {
-		if strings.Contains(portOrRange, "-") {
-			bounds := strings.Split(portOrRange, "-")
-			if len(bounds) != 2 {
-				return fmt.Errorf("ranges expected as <lower>-<upper>")
-			}
-			lower, err := strconv.ParseUint(bounds[0], 10, 0)
-			if err != nil {
-				return fmt.Errorf("\"%s\" is not a valid lower-bound", bounds[0])
-			}
-			upper, err := strconv.ParseUint(bounds[1], 10, 0)
-			if err != nil {
-				return fmt.Errorf("\"%s\" is not a valid upper-bound", bounds[1])
-			}
-			if upper < lower {
-				return fmt.Errorf("\"%s\": upper-bound must be greater than lower-bound", portOrRange)
-			}
-			for i := lower; i <= upper; i++ {
-				*target = append(*target, uint(i))
-			}
-		} else {
-			u, err := strconv.ParseUint(portOrRange, 10, 0)
-			if err != nil {
-				return err
-			}
-			*target = append(*target, uint(u))
-		}
-	}
-	return nil
-}
-
 func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("proxy", e)
 	flags.StringVarP(&options.proxyVersion, "proxy-version", "v", options.proxyVersion, "Tag to be used for the Linkerd proxy images")
@@ -339,8 +299,8 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	flags.StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
 	flags.UintVar(&options.proxyInboundPort, "inbound-port", options.proxyInboundPort, "Proxy port to use for inbound traffic")
 	flags.UintVar(&options.proxyOutboundPort, "outbound-port", options.proxyOutboundPort, "Proxy port to use for outbound traffic")
-	flags.StringSliceVar(&options.rawIgnoreInboundPorts, "skip-inbound-ports", options.rawIgnoreInboundPorts, "Ports and/or port ranges that should skip the proxy and send directly to the application")
-	flags.StringSliceVar(&options.rawIgnoreOutboundPorts, "skip-outbound-ports", options.rawIgnoreOutboundPorts, "Outbound ports and/or port ranges that should skip the proxy")
+	flags.StringSliceVar(&options.rawIgnoreInboundPorts, "skip-inbound-ports", options.rawIgnoreInboundPorts, "Ports and/or port ranges (inclusive) that should skip the proxy and send directly to the application")
+	flags.StringSliceVar(&options.rawIgnoreOutboundPorts, "skip-outbound-ports", options.rawIgnoreOutboundPorts, "Outbound ports and/or port ranges (inclusive) that should skip the proxy")
 	flags.Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	flags.StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
 	flags.UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
