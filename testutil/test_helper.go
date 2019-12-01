@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -152,7 +153,28 @@ func (h *TestHelper) UpgradeFromVersion() string {
 
 // GetClusterDomain returns the custom cluster domain that needs to be used during linkerd installation
 func (h *TestHelper) GetClusterDomain() string {
+	if h.clusterDomain == "" {
+		return "cluster.local"
+	}
+
 	return h.clusterDomain
+}
+
+// CreateTLSSecret creates a TLS Kubernetes secret
+func (h *TestHelper) CreateTLSSecret(name, root, cert, key string) error {
+	secret := fmt.Sprintf(`
+apiVersion: v1
+data:
+    ca.crt: %s
+    tls.crt: %s
+    tls.key: %s
+kind: Secret
+metadata:
+    name: %s
+type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base64.StdEncoding.EncodeToString([]byte(cert)), base64.StdEncoding.EncodeToString([]byte(key)), name)
+
+	_, err := h.KubectlApply(secret, h.GetLinkerdNamespace())
+	return err
 }
 
 // LinkerdRun executes a linkerd command appended with the --linkerd-namespace
