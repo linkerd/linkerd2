@@ -18,7 +18,6 @@ linkerd-config
 √ control plane MutatingWebhookConfigurations exist
 √ control plane ValidatingWebhookConfigurations exist
 √ control plane PodSecurityPolicies exist
-√ pod injection disabled on kube-system (HA only)
 
 linkerd-existence
 -----------------
@@ -64,5 +63,9 @@ linkerd-data-plane
 √ data plane proxy metrics are present in Prometheus
 √ data plane is up-to-date
 √ data plane and cli versions match
+
+linkerd-ha-checks
+-----------------
+√ pod injection disabled on kube-system
 
 Status check results are √

@@ -1582,7 +1582,6 @@ metadata:
 				"linkerd-config control plane MutatingWebhookConfigurations exist",
 				"linkerd-config control plane ValidatingWebhookConfigurations exist",
 				"linkerd-config control plane PodSecurityPolicies exist",
-				"linkerd-config pod injection disabled on kube-system (HA only)",
 			},
 		},
 	}
