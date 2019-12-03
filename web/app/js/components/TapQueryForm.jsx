@@ -45,7 +45,7 @@ const getResourceList = (resourcesByNs, ns) => {
   return resourcesByNs[ns] || _uniq(_flatten(_values(resourcesByNs)));
 };
 
-const urlPropsQueryConfig = {};
+let urlPropsQueryConfig = {};
 for (let value in tapQueryProps) {
   urlPropsQueryConfig[value] = StringParam;
 }
