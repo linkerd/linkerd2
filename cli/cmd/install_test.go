@@ -305,9 +305,9 @@ func TestValidate(t *testing.T) {
 			expectedError string
 		}{
 			{"valid", ""},
-			{"expired", "failed to verify issuer certs stored on disk: certificate not valid anymore. Expired at: 1990-01-01T01:01:11Z"},
-			{"not-valid-yet", "failed to verify issuer certs stored on disk: certificate not valid before: 2100-01-01T01:00:51Z"},
-			{"wrong-domain", "failed to verify issuer certs stored on disk: invalid credentials: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"},
+			{"expired", "failed to verify issuer certs stored on disk: invalid issuer certificate: certificate not valid anymore. Expired at: 1990-01-01T01:01:11Z"},
+			{"not-valid-yet", "failed to verify issuer certs stored on disk: invalid issuer certificate: certificate not valid before: 2100-01-01T01:00:51Z"},
+			{"wrong-domain", "failed to verify issuer certs stored on disk: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"},
 		}
 		for _, tc := range testCases {
 

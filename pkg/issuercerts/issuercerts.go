@@ -68,14 +68,25 @@ func FetchExternalIssuerData(api *k8s.KubernetesAPI, controlPlaneNamespace strin
 	return &IssuerCertData{string(anchors), string(crt), string(key)}, nil
 }
 
-// LoadIssuerDataFromFiles loads the issuer data from file stored on disk
-func LoadIssuerDataFromFiles(keyPEMFile, crtPEMFile, trustPEMFile string) (*IssuerCertData, error) {
+// LoadIssuerCrtAndKeyFromFiles loads the issuer certificate and key from files
+func LoadIssuerCrtAndKeyFromFiles(keyPEMFile, crtPEMFile string) (string, string, error) {
 	key, err := ioutil.ReadFile(keyPEMFile)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 
 	crt, err := ioutil.ReadFile(crtPEMFile)
+	if err != nil {
+		return "", "", err
+	}
+
+	return string(key), string(crt), nil
+}
+
+// LoadIssuerDataFromFiles loads the issuer data from file stored on disk
+func LoadIssuerDataFromFiles(keyPEMFile, crtPEMFile, trustPEMFile string) (*IssuerCertData, error) {
+	key, crt, err := LoadIssuerCrtAndKeyFromFiles(keyPEMFile, crtPEMFile)
+
 	if err != nil {
 		return nil, err
 	}
@@ -85,31 +96,40 @@ func LoadIssuerDataFromFiles(keyPEMFile, crtPEMFile, trustPEMFile string) (*Issu
 		return nil, err
 	}
 
-	return &IssuerCertData{string(anchors), string(crt), string(key)}, nil
+	return &IssuerCertData{string(anchors), crt, key}, nil
 }
 
-// BuildCreds builds and validates the creds out of the data in IssuerCertData
-func (ic *IssuerCertData) BuildCreds(dnsName string) (*tls.Cred, error) {
+func validateCert(cert *x509.Certificate) error {
+	if cert.PublicKeyAlgorithm != x509.ECDSA {
+		return fmt.Errorf("the required public key algorithm is %s, instead %s was used", x509.ECDSA, cert.PublicKeyAlgorithm)
+	}
+
+	if cert.SignatureAlgorithm != x509.ECDSAWithSHA256 {
+		return fmt.Errorf("the required public key algorithm is %s, instead %s was used", x509.ECDSAWithSHA256, cert.SignatureAlgorithm)
+	}
+
+	if cert.NotBefore.After(time.Now()) {
+		return fmt.Errorf("certificate not valid before: %s", cert.NotBefore.Format(time.RFC3339))
+	}
+
+	if cert.NotAfter.Before(time.Now()) {
+		return fmt.Errorf("certificate not valid anymore. Expired at: %s", cert.NotAfter.Format(time.RFC3339))
+	}
+
+	return nil
+}
+
+// VerifyAndBuildCreds builds and validates the creds out of the data in IssuerCertData
+func (ic *IssuerCertData) VerifyAndBuildCreds(dnsName string) (*tls.Cred, error) {
 
 	creds, err := tls.ValidateAndCreateCreds(ic.IssuerCrt, ic.IssuerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA: %s", err)
 	}
 
-	algo := creds.Certificate.PublicKeyAlgorithm
-	starts := creds.Certificate.NotBefore
-	ends := creds.Certificate.NotAfter
-
-	if algo != x509.ECDSA {
-		return nil, fmt.Errorf("the required public key algorithm is %s, instead %s was used", x509.ECDSA, algo)
-	}
-
-	if starts.After(time.Now()) {
-		return nil, fmt.Errorf("certificate not valid before: %s", starts.Format(time.RFC3339))
-	}
-
-	if ends.Before(time.Now()) {
-		return nil, fmt.Errorf("certificate not valid anymore. Expired at: %s", ends.Format(time.RFC3339))
+	// we check the validity of the issuer cert
+	if err := validateCert(creds.Certificate); err != nil {
+		return nil, fmt.Errorf("invalid issuer certificate: %s", err)
 	}
 
 	roots, err := tls.DecodePEMCertPool(ic.TrustAnchors)
@@ -118,7 +138,7 @@ func (ic *IssuerCertData) BuildCreds(dnsName string) (*tls.Cred, error) {
 	}
 
 	if err := creds.Verify(roots, dnsName); err != nil {
-		return nil, fmt.Errorf("invalid credentials: %s", err)
+		return nil, err
 	}
 
 	return creds, nil

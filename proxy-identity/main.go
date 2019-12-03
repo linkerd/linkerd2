@@ -13,13 +13,13 @@ import (
 	"path/filepath"
 
 	"github.com/linkerd/linkerd2/pkg/flags"
-	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	envDisabled = "LINKERD2_PROXY_IDENTITY_DISABLED"
+	envDisabled     = "LINKERD2_PROXY_IDENTITY_DISABLED"
+	envTrustAnchors = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
 )
 
 func main() {
@@ -40,7 +40,7 @@ func main() {
 		log.Fatalf("Invalid end-entity directory: %s", err)
 	}
 
-	if _, err := loadVerifier(os.Getenv(identity.EnvTrustAnchors)); err != nil {
+	if _, err := loadVerifier(os.Getenv(envTrustAnchors)); err != nil {
 		log.Fatalf("Failed to load trust anchors: %s", err)
 	}
 
@@ -56,7 +56,7 @@ func main() {
 
 func loadVerifier(pem string) (verify x509.VerifyOptions, err error) {
 	if pem == "" {
-		err = fmt.Errorf("'%s' must be set", identity.EnvTrustAnchors)
+		err = fmt.Errorf("'%s' must be set", envTrustAnchors)
 		return
 	}
 

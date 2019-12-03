@@ -1018,7 +1018,7 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*l5dcharts.Identi
 	if err != nil {
 		return nil, err
 	}
-	_, err = externalIssuerData.BuildCreds(idopts.issuerName())
+	_, err = externalIssuerData.VerifyAndBuildCreds(idopts.issuerName())
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA from %s: %s", consts.IdentityIssuerSecretName, err)
@@ -1046,7 +1046,7 @@ func (idopts *installIdentityOptions) readValues() (*l5dcharts.Identity, error) 
 		return nil, err
 	}
 
-	creds, err := issuerData.BuildCreds(idopts.issuerName())
+	creds, err := issuerData.VerifyAndBuildCreds(idopts.issuerName())
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify issuer certs stored on disk: %s", err)

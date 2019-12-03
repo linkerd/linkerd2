@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
+
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/golang/protobuf/ptypes"
@@ -35,7 +37,7 @@ type (
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
 		validator                                  Validator
-		trustAnchors                               *x509.CertPool
+		trustAnchors                               string
 		issuer                                     *tls.Issuer
 		issuerMutex                                *sync.RWMutex
 		validity                                   *tls.Validity
@@ -104,16 +106,21 @@ func (svc *Service) Run(issuerEvent <-chan struct{}, issuerError <-chan error) {
 }
 
 func (svc *Service) loadCredentials() (tls.Issuer, error) {
-	creds, err := tls.ReadPEMCreds(
-		svc.issuerPathKey,
-		svc.issuerPathCrt,
-	)
 
+	key, crt, err := issuercerts.LoadIssuerCrtAndKeyFromFiles(svc.issuerPathKey, svc.issuerPathCrt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA from disk: %s", err)
 	}
 
-	if err := creds.Crt.Verify(svc.trustAnchors, svc.expectedName); err != nil {
+	issuerData := &issuercerts.IssuerCertData{
+		TrustAnchors: svc.trustAnchors,
+		IssuerCrt:    crt,
+		IssuerKey:    key,
+	}
+
+	creds, err := issuerData.VerifyAndBuildCreds(svc.expectedName)
+
+	if err != nil {
 		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
 	}
 
@@ -122,7 +129,7 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 }
 
 // NewService creates a new identity service.
-func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
+func NewService(validator Validator, trustAnchors string, validity *tls.Validity, recordEvent func(eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
 	return &Service{
 		validator,
 		trustAnchors,
@@ -142,6 +149,25 @@ func Register(g *grpc.Server, s *Service) {
 	pb.RegisterIdentityServer(g, s)
 }
 
+// ensureIssuerStillValid should check that the CA is still good time wise
+// and verifies just fine with the provided trust anchors
+func (svc *Service) ensureIssuerStillValid() error {
+	issuer := *svc.issuer
+	switch is := issuer.(type) {
+	case *tls.CA:
+		roots, err := tls.DecodePEMCertPool(svc.trustAnchors)
+		if err != nil {
+			return err
+		}
+		if err := is.Cred.Verify(roots, svc.expectedName); err != nil {
+			return nil
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
 // Certify validates identity and signs certificates.
 func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.CertifyResponse, error) {
 	svc.issuerMutex.RLock()
@@ -150,6 +176,10 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	if svc.issuer == nil {
 		log.Warn("Certificate issuer is not ready")
 		return nil, status.Error(codes.Unavailable, "cert issuer not ready yet")
+	}
+
+	if err := svc.ensureIssuerStillValid(); err != nil {
+		return nil, err
 	}
 
 	// Extract the relevant info from the request.

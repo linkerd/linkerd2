@@ -84,11 +84,6 @@ func Main(args []string) {
 		log.Fatalf("Invalid trust domain: %s", err.Error())
 	}
 
-	trustAnchors, err := tls.DecodePEMCertPool(idctx.GetTrustAnchorsPem())
-	if err != nil {
-		log.Fatalf("Failed to read trust anchors: %s", err)
-	}
-
 	validity := tls.Validity{
 		ClockSkewAllowance: tls.DefaultClockSkewAllowance,
 		Lifetime:           identity.DefaultIssuanceLifetime,
@@ -155,7 +150,7 @@ func Main(args []string) {
 	//
 	// Create, initialize and run service
 	//
-	svc := identity.NewService(v, trustAnchors, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey)
+	svc := identity.NewService(v, idctx.GetTrustAnchorsPem(), &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey)
 	if err = svc.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}

@@ -1079,7 +1079,7 @@ func (hc *HealthChecker) checkIssuerCertsValidity() (*tls.Cred, error) {
 	}
 
 	issuerDNS := fmt.Sprintf("identity.%s.%s", hc.ControlPlaneNamespace, configPB.Global.IdentityContext.TrustDomain)
-	creds, err := data.BuildCreds(issuerDNS)
+	creds, err := data.VerifyAndBuildCreds(issuerDNS)
 
 	if err != nil {
 		return nil, err

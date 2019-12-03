@@ -1899,7 +1899,7 @@ func TestValidateIssuerCert(t *testing.T) {
 		{
 			checkDescription:   "fails when cert dns is wrong",
 			certificateDNSName: "wrong.linkerd.cluster.local",
-			expectedErr:        errors.New("invalid credentials: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"),
+			expectedErr:        errors.New("x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"),
 		},
 		{
 			checkDescription: "fails when cert is not valid yet",
@@ -1907,7 +1907,7 @@ func TestValidateIssuerCert(t *testing.T) {
 				starts: time.Date(2100, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(2101, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedErr: errors.New("certificate not valid before: 2100-01-01T01:00:51Z"),
+			expectedErr: errors.New("invalid issuer certificate: certificate not valid before: 2100-01-01T01:00:51Z"),
 		},
 		{
 			checkDescription: "fails when cert is expired",
@@ -1915,7 +1915,7 @@ func TestValidateIssuerCert(t *testing.T) {
 				starts: time.Date(1989, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(1990, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedErr: errors.New("certificate not valid anymore. Expired at: 1990-01-01T01:01:11Z"),
+			expectedErr: errors.New("invalid issuer certificate: certificate not valid anymore. Expired at: 1990-01-01T01:01:11Z"),
 		},
 		{
 			checkDescription: "warns if certificate expires to soon",
