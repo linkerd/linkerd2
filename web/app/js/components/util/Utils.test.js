@@ -1,6 +1,7 @@
 import {
   formatLatencySec,
   metricToFormatter,
+  regexFilterString,
   styleNum,
   toClassName
 } from './Utils.js';
@@ -123,5 +124,19 @@ describe('Utils', () => {
       expect(toClassName('potato123yam0squash')).toEqual('potato_123_yam_0_squash');
       expect(toClassName('test/potato-e1af21-f3f3')).toEqual('test_potato_e_1_af_21_f_3_f_3');
     });
+  });
+
+  describe('regexFilterString', () => {
+    it('converts string to a valid regex for namespaces', () => {
+      expect(regexFilterString('emojivoto')).toEqual(new RegExp(/emojivoto/));
+      expect(regexFilterString('emojivoto123')).toEqual(new RegExp(/emojivoto123/));
+      expect(regexFilterString('emojivoto*')).toEqual(new RegExp(/emojivoto.+/));
+      expect(regexFilterString('emojivoto**')).toEqual(new RegExp(/emojivoto.+.+/));
+      expect(regexFilterString('Emojivoto')).toEqual(new RegExp(/emojivoto/));
+      expect(regexFilterString('emojivoto{}')).toEqual(new RegExp(/emojivoto/));
+      expect(regexFilterString('emojivoto_.')).toEqual(new RegExp(/emojivoto_./));
+      expect(regexFilterString('emojivoto_.{')).toEqual(new RegExp(/emojivoto_./));
+      expect(regexFilterString('emojivoto//')).toEqual(new RegExp(/emojivoto\/\//));
+    })
   });
 });

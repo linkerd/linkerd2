@@ -102,6 +102,7 @@ describe("Tests for <BaseTable>", () => {
     });
 
     const component = mount(<BaseTable {...extraProps} />);
+    expect(component.find("TableBody").find("TableRow")).toHaveLength(2);
     const enableFilter = component.prop("enableFilter");
     const filterIcon = component.find("FilterListIcon");
     expect(enableFilter).toEqual(true);
@@ -113,6 +114,7 @@ describe("Tests for <BaseTable>", () => {
       input.simulate("change", {target: {value: "authors"}});
       expect(table.html()).not.toContain('books');
       expect(table.html()).toContain('authors');
+      expect(component.find("TableBody").find("TableRow")).toHaveLength(1);
     }, 100);
   });
 });
