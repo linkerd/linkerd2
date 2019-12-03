@@ -129,7 +129,7 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   const fetchResourceDefinition = (namespace, resourceType, resourceName) => {
-    return apiFetchYAML(`/api/namespaces/${namespace}/${resourceType}/${resourceName}`);
+    return apiFetchYAML(`/api/resource-definition?namespace=${namespace}&resource_type=${resourceType}&resource_name=${resourceName}`);
   };
 
   const getMetricsWindow = () => metricsWindow;
