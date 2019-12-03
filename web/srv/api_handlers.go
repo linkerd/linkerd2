@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -361,10 +362,22 @@ func (h *handler) handleAPICheck(w http.ResponseWriter, req *http.Request, p htt
 	})
 }
 
-func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	namespace := p.ByName("namespace")
-	resourceType := p.ByName("resource-type")
-	resourceName := p.ByName("resource-name")
+func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	var missingParams []string
+	requiredParams := []string{"namespace", "resource_type", "resource_name"}
+	for _, param := range requiredParams {
+		if req.FormValue(param) == "" {
+			missingParams = append(missingParams, param)
+		}
+	}
+	if len(missingParams) != 0 {
+		renderJSONError(w, fmt.Errorf("Required params not provided: %s", strings.Join(missingParams, ", ")), http.StatusBadRequest)
+		return
+	}
+
+	namespace := req.FormValue("namespace")
+	resourceType := req.FormValue("resource_type")
+	resourceName := req.FormValue("resource_name")
 
 	var resource interface{}
 	var err error
