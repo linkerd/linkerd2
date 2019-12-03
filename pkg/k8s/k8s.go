@@ -11,6 +11,7 @@ import (
 const (
 	All                   = "all"
 	Authority             = "authority"
+	CronJob               = "cronjob"
 	DaemonSet             = "daemonset"
 	Deployment            = "deployment"
 	Job                   = "job"
