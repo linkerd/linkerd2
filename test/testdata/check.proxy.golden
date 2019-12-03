@@ -48,6 +48,8 @@ linkerd-data-plane
 √ data plane proxy metrics are present in Prometheus
 √ data plane is up-to-date
 √ data plane and cli versions match
+√ issuer certs are valid
+√ issuer certs do not expire sooner than 60 days from now
 √ data plane proxies certificate match CA
 
 Status check results are √

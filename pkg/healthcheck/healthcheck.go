@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
+
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
@@ -129,6 +131,11 @@ const HintBaseURL = "https://linkerd.io/checks/#"
 //
 // TODO: Make this default value overridiable, e.g. by CLI flag
 const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
+
+// ExpirationWarningThresholdInDays sets the threshold that determines
+// a point in time after which the identity issuer cert will be considered
+// too close to expiry and as a result of that a warning will be issued
+const ExpirationWarningThresholdInDays = 60
 
 var (
 	retryWindow    = 5 * time.Second
@@ -284,6 +291,7 @@ type HealthChecker struct {
 	serverVersion    string
 	linkerdConfig    *configPb.All
 	uuid             string
+	issuerCerts      *tls.Cred
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -856,6 +864,23 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
+					description: "issuer certs are valid",
+					hintAnchor:  "l5d-issuer-certs-are-valid",
+					fatal:       true,
+					check: func(ctx context.Context) (err error) {
+						hc.issuerCerts, err = hc.checkIssuerCertsValidity()
+						return
+					},
+				},
+				{
+					description: "issuer certs do not expire sooner than 60 days from now",
+					hintAnchor:  "l5d-issuer-certs-do-not-expire-sooner-than-60-days",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkIssuerCertsNotExpiringTooSoon()
+					},
+				},
+				{
 					description: "data plane proxies certificate match CA",
 					hintAnchor:  "l5d-data-plane-proxies-certificate-match-ca",
 					warning:     true,
@@ -1020,6 +1045,46 @@ func (hc *HealthChecker) checkLinkerdConfigConfigMap() (string, *configPb.All, e
 	}
 
 	return string(cm.GetUID()), configPB, nil
+}
+
+func (hc *HealthChecker) checkIssuerCertsNotExpiringTooSoon() error {
+	if time.Now().AddDate(0, 0, ExpirationWarningThresholdInDays).After(hc.issuerCerts.Certificate.NotAfter) {
+		return fmt.Errorf("certificate is expiring sooner than %d days from now", ExpirationWarningThresholdInDays)
+	}
+	return nil
+}
+
+func (hc *HealthChecker) checkIssuerCertsValidity() (*tls.Cred, error) {
+	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	idctx := configPB.Global.IdentityContext
+	var data *issuercerts.IssuerCertData
+
+	if idctx.Scheme == "" || idctx.Scheme == k8s.IdentityIssuerSchemeLinkerd {
+		data, err = issuercerts.FetchIssuerData(hc.kubeAPI, idctx.TrustAnchorsPem, hc.ControlPlaneNamespace)
+	} else {
+		data, err = issuercerts.FetchExternalIssuerData(hc.kubeAPI, hc.ControlPlaneNamespace)
+		// ensure trust anchors in config matches whats in the secret
+		if data != nil && idctx.TrustAnchorsPem != data.TrustAnchors {
+			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
+			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	issuerDNS := fmt.Sprintf("identity.%s.%s", hc.ControlPlaneNamespace, configPB.Global.IdentityContext.TrustDomain)
+	creds, err := data.BuildCreds(issuerDNS)
+
+	if err != nil {
+		return nil, err
+	}
+	return creds, nil
 }
 
 // FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from

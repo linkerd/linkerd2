@@ -2,12 +2,17 @@ package healthcheck
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
+	"github.com/linkerd/linkerd2/pkg/tls"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
@@ -1769,6 +1774,200 @@ data:
 			err = hc.checkDataPlaneProxiesCertificate()
 			if !reflect.DeepEqual(err, testCase.expectedErr) {
 				t.Fatalf("Error %q does not match expected error: %q", err, testCase.expectedErr)
+			}
+		})
+	}
+}
+
+func getFakeConfig(secretScheme string, schemeInConfig string, issuerCerts *issuercerts.IssuerCertData) []string {
+
+	var resources []string
+	base64.StdEncoding.EncodeToString([]byte(issuerCerts.IssuerCrt))
+
+	if secretScheme == k8s.IdentityIssuerSchemeLinkerd {
+		resources = append(resources, fmt.Sprintf(`
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-identity-issuer
+  namespace: linkerd
+data:
+  crt.pem: %s
+  key.pem: %s
+---
+`, base64.StdEncoding.EncodeToString([]byte(issuerCerts.IssuerCrt)), base64.StdEncoding.EncodeToString([]byte(issuerCerts.IssuerKey))))
+	} else {
+		resources = append(resources, fmt.Sprintf(
+			`
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-identity-issuer
+  namespace: linkerd
+data:
+  ca.crt: %s
+  tls.crt: %s
+  tls.key: %s
+---
+`, base64.StdEncoding.EncodeToString([]byte(issuerCerts.TrustAnchors)), base64.StdEncoding.EncodeToString([]byte(issuerCerts.IssuerCrt)), base64.StdEncoding.EncodeToString([]byte(issuerCerts.IssuerKey))))
+	}
+
+	anchors, _ := json.Marshal(issuerCerts.TrustAnchors)
+
+	resources = append(resources, fmt.Sprintf(`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+data:
+  global: |
+    {"linkerdNamespace": "linkerd", "identityContext":{"trustAnchorsPem": %s, "trustDomain": "cluster.local", "scheme": "%s"}}
+---
+`, anchors, schemeInConfig))
+
+	return resources
+}
+
+func createIssuerData(dnsName string, notBefore, notAfter time.Time) *issuercerts.IssuerCertData {
+
+	// Generate a new root key.
+	key, _ := tls.GenerateKey()
+
+	rootCa, _ := tls.CreateRootCA(dnsName, key, tls.Validity{
+		Lifetime:  notAfter.Sub(notBefore),
+		ValidFrom: &notBefore,
+	})
+
+	return &issuercerts.IssuerCertData{
+		TrustAnchors: rootCa.Cred.Crt.EncodeCertificatePEM(),
+		IssuerCrt:    rootCa.Cred.Crt.EncodeCertificatePEM(),
+		IssuerKey:    rootCa.Cred.EncodePrivateKeyPEM(),
+	}
+}
+
+func TestValidateIssuerCert(t *testing.T) {
+	type lifeSpan struct {
+		starts time.Time
+		ends   time.Time
+	}
+	var testCases = []struct {
+		checkDescription   string
+		certificateDNSName string
+		lifespan           *lifeSpan
+		tlsSecretScheme    string
+		schemeInConfig     string
+		expectedErr        error
+		expectedWarning    error
+	}{
+		{
+			checkDescription: "works with valid cert and linkerd.io/tls secret",
+			tlsSecretScheme:  k8s.IdentityIssuerSchemeLinkerd,
+			schemeInConfig:   k8s.IdentityIssuerSchemeLinkerd,
+			expectedErr:      nil,
+		},
+		{
+			checkDescription: "works with valid cert and kubernetes.io/tls secret",
+			tlsSecretScheme:  string(corev1.SecretTypeTLS),
+			schemeInConfig:   string(corev1.SecretTypeTLS),
+			expectedErr:      nil,
+		},
+		{
+			checkDescription: "works if config scheme is empty and secret scheme is linkerd.io/tls (pre 2.7)",
+			tlsSecretScheme:  k8s.IdentityIssuerSchemeLinkerd,
+			schemeInConfig:   "",
+			expectedErr:      nil,
+		},
+		{
+			checkDescription: "fails if config scheme is empty and secret scheme is kubernetes.io/tls (pre 2.7)",
+			tlsSecretScheme:  string(corev1.SecretTypeTLS),
+			schemeInConfig:   "",
+			expectedErr:      errors.New("key crt.pem containing the issuer certificate needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=false"),
+		},
+		{
+			checkDescription: "fails when config scheme is linkerd.io/tls but secret scheme is kubernetes.io/tls in config is different than the one in the issuer secret",
+			tlsSecretScheme:  string(corev1.SecretTypeTLS),
+			schemeInConfig:   k8s.IdentityIssuerSchemeLinkerd,
+			expectedErr:      errors.New("key crt.pem containing the issuer certificate needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=false"),
+		},
+		{
+			checkDescription: "fails when config scheme is kubernetes.io/tls but secret scheme is linkerd.io/tls in config is different than the one in the issuer secret",
+			tlsSecretScheme:  k8s.IdentityIssuerSchemeLinkerd,
+			schemeInConfig:   string(corev1.SecretTypeTLS),
+			expectedErr:      errors.New("key ca.crt containing the trust anchors needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=true"),
+		},
+		{
+			checkDescription:   "fails when cert dns is wrong",
+			certificateDNSName: "wrong.linkerd.cluster.local",
+			expectedErr:        errors.New("invalid credentials: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"),
+		},
+		{
+			checkDescription: "fails when cert is not valid yet",
+			lifespan: &lifeSpan{
+				starts: time.Date(2100, 1, 1, 1, 1, 1, 1, time.UTC),
+				ends:   time.Date(2101, 1, 1, 1, 1, 1, 1, time.UTC),
+			},
+			expectedErr: errors.New("certificate not valid before: 2100-01-01T01:00:51Z"),
+		},
+		{
+			checkDescription: "fails when cert is expired",
+			lifespan: &lifeSpan{
+				starts: time.Date(1989, 1, 1, 1, 1, 1, 1, time.UTC),
+				ends:   time.Date(1990, 1, 1, 1, 1, 1, 1, time.UTC),
+			},
+			expectedErr: errors.New("certificate not valid anymore. Expired at: 1990-01-01T01:01:11Z"),
+		},
+		{
+			checkDescription: "warns if certificate expires to soon",
+			lifespan: &lifeSpan{
+				starts: time.Date(1989, 1, 1, 1, 1, 1, 1, time.Local),
+				ends:   time.Now().AddDate(0, 0, 1),
+			},
+			expectedWarning: errors.New("certificate is expiring sooner than 60 days from now"),
+		},
+	}
+
+	for id, testCase := range testCases {
+		testCase := testCase
+
+		if testCase.certificateDNSName == "" {
+			testCase.certificateDNSName = "identity.linkerd.cluster.local"
+		}
+		if testCase.lifespan == nil {
+			testCase.lifespan = &lifeSpan{
+				starts: time.Now().AddDate(-1, 0, 0),
+				ends:   time.Now().AddDate(1, 0, 0),
+			}
+		}
+
+		if testCase.schemeInConfig == "" && testCase.tlsSecretScheme == "" {
+			testCase.schemeInConfig = k8s.IdentityIssuerSchemeLinkerd
+			testCase.tlsSecretScheme = k8s.IdentityIssuerSchemeLinkerd
+		}
+
+		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
+			hc := NewHealthChecker([]CategoryID{}, &Options{})
+			hc.ControlPlaneNamespace = "linkerd"
+
+			issuerData := createIssuerData(testCase.certificateDNSName, testCase.lifespan.starts, testCase.lifespan.ends)
+			config := getFakeConfig(testCase.tlsSecretScheme, testCase.schemeInConfig, issuerData)
+
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(config...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %q", err)
+			}
+
+			hc.issuerCerts, err = hc.checkIssuerCertsValidity()
+			if err != nil && err.Error() != testCase.expectedErr.Error() {
+				t.Fatalf("Error %q does not match expected error: %q", err, testCase.expectedErr)
+			}
+
+			if testCase.expectedWarning != nil {
+				warn := hc.checkIssuerCertsNotExpiringTooSoon()
+				if warn != nil && warn.Error() != testCase.expectedWarning.Error() {
+					t.Fatalf("Warning %q does not match expected warning: %q", warn, testCase.expectedWarning)
+				}
 			}
 		})
 	}
