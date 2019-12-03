@@ -20,7 +20,7 @@ type testCase struct {
 	inputFileName          string
 	goldenFileName         string
 	reportFileName         string
-	inject                 injectProxy
+	injectProxy            injectionMode
 	testInjectConfig       *config.All
 	overrideAnnotations    map[string]string
 	enableDebugSidecarFlag bool
@@ -44,7 +44,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	output := new(bytes.Buffer)
 	report := new(bytes.Buffer)
 	transformer := &resourceTransformerInject{
-		inject:              tc.inject,
+		injectProxy:         tc.injectProxy,
 		configs:             tc.testInjectConfig,
 		overrideAnnotations: tc.overrideAnnotations,
 		enableDebugSidecar:  tc.enableDebugSidecarFlag,
@@ -107,28 +107,28 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_empty_version_config.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: emptyVersionConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_empty_proxy_version_config.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: emptyProxyVersionConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_overridden_noinject.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
-			inject:           injectProxyAnnotation,
+			injectProxy:      injectProxyAnnotation,
 			testInjectConfig: defaultConfig,
 			overrideAnnotations: map[string]string{
 				k8s.ProxyAdminPortAnnotation: "1234",
@@ -138,7 +138,7 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_overridden.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 			overrideAnnotations: map[string]string{
 				k8s.ProxyAdminPortAnnotation: "1234",
@@ -148,119 +148,119 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:    "inject_emojivoto_list.input.yml",
 			goldenFileName:   "inject_emojivoto_list.golden.yml",
 			reportFileName:   "inject_emojivoto_list.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_hostNetwork_false.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_false.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_hostNetwork_false.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_hostNetwork_true.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_true.input.yml",
 			reportFileName:   "inject_emojivoto_deployment_hostNetwork_true.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_injectDisabled.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_injectDisabled.input.yml",
 			reportFileName:   "inject_emojivoto_deployment_injectDisabled.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_controller_name.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_controller_name.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_controller_name.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_statefulset.input.yml",
 			goldenFileName:   "inject_emojivoto_statefulset.golden.yml",
 			reportFileName:   "inject_emojivoto_statefulset.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod.input.yml",
 			goldenFileName:   "inject_emojivoto_pod.golden.yml",
 			reportFileName:   "inject_emojivoto_pod.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod_with_requests.input.yml",
 			goldenFileName:   "inject_emojivoto_pod_with_requests.golden.yml",
 			reportFileName:   "inject_emojivoto_pod_with_requests.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: proxyResourceConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_udp.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_udp.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_udp.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_already_injected.input.yml",
 			goldenFileName:   "inject_emojivoto_already_injected.golden.yml",
 			reportFileName:   "inject_emojivoto_already_injected.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_istio.input.yml",
 			goldenFileName:   "inject_emojivoto_istio.input.yml",
 			reportFileName:   "inject_emojivoto_istio.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_contour.input.yml",
 			goldenFileName:   "inject_contour.input.yml",
 			reportFileName:   "inject_contour.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_empty_resources.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_empty_resources.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_empty_resources.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_list_empty_resources.input.yml",
 			goldenFileName:   "inject_emojivoto_list_empty_resources.golden.yml",
 			reportFileName:   "inject_emojivoto_list_empty_resources.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_no_init_container.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: noInitContainerConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_config_overrides.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_config_overrides.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
-			inject:           injectProxyDirectly,
+			injectProxy:      injectProxyDirectly,
 			testInjectConfig: overrideConfig,
 		},
 		{
 			inputFileName:          "inject_emojivoto_deployment.input.yml",
 			goldenFileName:         "inject_emojivoto_deployment_debug.golden.yml",
 			reportFileName:         "inject_emojivoto_deployment.report",
-			inject:                 injectProxyDirectly,
+			injectProxy:            injectProxyDirectly,
 			testInjectConfig:       defaultConfig,
 			enableDebugSidecarFlag: true,
 		},
@@ -268,14 +268,14 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:    "inject_emojivoto_namespace_good.input.yml",
 			goldenFileName:   "inject_emojivoto_namespace_good.golden.yml",
 			reportFileName:   "inject_emojivoto_namespace_good.golden.report",
-			inject:           injectProxyAnnotation,
+			injectProxy:      injectProxyAnnotation,
 			testInjectConfig: defaultConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_namespace_good.input.yml",
 			goldenFileName:   "inject_emojivoto_namespace_overidden_good.golden.yml",
 			reportFileName:   "inject_emojivoto_namespace_good.golden.report",
-			inject:           injectProxyAnnotation,
+			injectProxy:      injectProxyAnnotation,
 			testInjectConfig: defaultConfig,
 			overrideAnnotations: map[string]string{
 				k8s.IdentityModeAnnotation: "default",
@@ -302,7 +302,7 @@ type injectCmd struct {
 	stdErrGoldenFileName string
 	stdOutGoldenFileName string
 	exitCode             int
-	inject               injectProxy
+	injectProxy          injectionMode
 }
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
@@ -318,8 +318,8 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 	}
 
 	transformer := &resourceTransformerInject{
-		inject:  tc.inject,
-		configs: testConfig,
+		injectProxy: tc.injectProxy,
+		configs:     testConfig,
 	}
 	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer)
 	if exitCode != tc.exitCode {
@@ -341,20 +341,20 @@ func TestRunInjectCmd(t *testing.T) {
 			inputFileName:        "inject_gettest_deployment.bad.input.yml",
 			stdErrGoldenFileName: "inject_gettest_deployment.bad.golden",
 			exitCode:             1,
-			inject:               injectProxyDirectly,
+			injectProxy:          injectProxyDirectly,
 		},
 		{
 			inputFileName:        "inject_tap_deployment.bad.input.yml",
 			stdErrGoldenFileName: "inject_tap_deployment.bad.golden",
 			exitCode:             1,
-			inject:               injectProxyAnnotation,
+			injectProxy:          injectProxyAnnotation,
 		},
 		{
 			inputFileName:        "inject_gettest_deployment.good.input.yml",
 			stdOutGoldenFileName: "inject_gettest_deployment.good.golden.yml",
 			stdErrGoldenFileName: "inject_gettest_deployment.good.golden.stderr",
 			exitCode:             0,
-			inject:               injectProxyDirectly,
+			injectProxy:          injectProxyDirectly,
 		},
 	}
 
@@ -387,8 +387,8 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
 	transformer := &resourceTransformerInject{
-		inject:  injectProxyDirectly,
-		configs: testInstallConfig(),
+		injectProxy: injectProxyDirectly,
+		configs:     testInstallConfig(),
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
@@ -408,8 +408,8 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
 	transformer := &resourceTransformerInject{
-		inject:  injectProxyDirectly,
-		configs: testInstallConfig(),
+		injectProxy: injectProxyDirectly,
+		configs:     testInstallConfig(),
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)

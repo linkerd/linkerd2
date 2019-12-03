@@ -30,17 +30,17 @@ const (
 	udpDesc            = "pod specs do not include UDP ports"
 )
 
-type injectProxy int
+type injectionMode int
 
 const (
-	injectProxyDirectly injectProxy = iota
+	injectProxyDirectly injectionMode = iota
 	injectProxyAnnotation
 	injectProxySkip
 )
 
 type resourceTransformerInject struct {
 	allowNsInject       bool
-	inject              injectProxy
+	injectProxy         injectionMode
 	configs             *cfg.All
 	overrideAnnotations map[string]string
 	enableDebugSidecar  bool
@@ -92,13 +92,13 @@ sub-folders, or coming from stdin.`,
 
 			transformer := &resourceTransformerInject{
 				allowNsInject:       true,
-				inject:              injectProxyAnnotation,
+				injectProxy:         injectProxyAnnotation,
 				configs:             configs,
 				overrideAnnotations: overrideAnnotations,
 				enableDebugSidecar:  enableDebugSidecar,
 			}
 			if manualOption {
-				transformer.inject = injectProxyDirectly
+				transformer.injectProxy = injectProxyDirectly
 			}
 			exitCode := uninjectAndInject(in, stderr, stdout, transformer)
 			os.Exit(exitCode)
@@ -160,7 +160,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return nil, nil, err
 	}
 
-	if conf.IsControlPlaneComponent() && rt.inject == injectProxyAnnotation {
+	if conf.IsControlPlaneComponent() && rt.injectProxy == injectProxyAnnotation {
 		return nil, nil, errors.New("--manual must be set when injecting control plane components")
 	}
 
@@ -175,7 +175,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return bytes, reports, nil
 	}
 
-	switch rt.inject {
+	switch rt.injectProxy {
 	case injectProxySkip:
 		return bytes, reports, nil
 	case injectProxyDirectly:
@@ -189,7 +189,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
-	patchJSON, err := conf.GetPatch(rt.inject == injectProxyDirectly)
+	patchJSON, err := conf.GetPatch(rt.injectProxy == injectProxyDirectly)
 	if err != nil {
 		return nil, nil, err
 	}
