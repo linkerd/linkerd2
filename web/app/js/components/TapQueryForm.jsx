@@ -57,6 +57,16 @@ const styles = theme => ({
     display: 'flex',
     flexWrap: 'wrap',
   },
+  formControlWrapper: {
+    minWidth: 200,
+  },
+  formControlWithAutoWidth: {
+    padding: theme.spacing.unit,
+    paddingLeft: 0,
+    minWidth: 'inherit',
+    maxWidth: '100%',
+    width: 'auto',
+  },
   formControl: {
     margin: theme.spacing.unit,
     minWidth: 200,
@@ -83,6 +93,9 @@ const styles = theme => ({
   },
   expandOpen: {
     transform: 'rotate(180deg)',
+  },
+  resetButton: {
+    marginLeft: theme.spacing.unit,
   }
 });
 
@@ -404,24 +417,21 @@ class TapQueryForm extends React.Component {
       <Card className={classes.card}>
         <CardContent>
           <Grid container spacing={24}>
-            <Grid item xs={6} md={3}>
-              <FormControl className={classes.formControl}>
+            <Grid item xs={6} md="auto" spacing={1} classes={{ item: classes.formControlWrapper }}>
+              <FormControl className={classes.formControlWithAutoWidth} fullWidth>
                 {this.renderNamespaceSelect("Namespace", "namespace", "resource")}
               </FormControl>
             </Grid>
 
-            <Grid item xs={6} md={3}>
-              <FormControl className={classes.formControl} disabled={_isEmpty(this.state.query.namespace)}>
+            <Grid item xs={6} md="auto" spacing={1} classes={{ item: classes.formControlWrapper }}>
+              <FormControl className={classes.formControlWithAutoWidth} disabled={_isEmpty(this.state.query.namespace)} fullWidth>
                 {this.renderResourceSelect("resource", "namespace")}
               </FormControl>
             </Grid>
 
-            <Grid item xs={4} md={1}>
+            <Grid item>
               { this.renderTapButton(this.props.tapRequestInProgress, this.props.tapIsClosing) }
-            </Grid>
-
-            <Grid item xs={4} md={1}>
-              <Button onClick={this.resetTapForm} disabled={this.props.tapRequestInProgress}>Reset</Button>
+              <Button onClick={this.resetTapForm} disabled={this.props.tapRequestInProgress} classes={{ root: classes.resetButton }}>Reset</Button>
             </Grid>
           </Grid>
         </CardContent>
