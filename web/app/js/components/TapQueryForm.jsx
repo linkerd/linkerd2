@@ -60,16 +60,12 @@ const styles = theme => ({
   formControlWrapper: {
     minWidth: 200,
   },
-  formControlWithAutoWidth: {
+  formControl: {
     padding: theme.spacing.unit,
     paddingLeft: 0,
     minWidth: 'inherit',
     maxWidth: '100%',
     width: 'auto',
-  },
-  formControl: {
-    margin: theme.spacing.unit,
-    minWidth: 200,
   },
   selectEmpty: {
     'margin-top': '32px'
@@ -329,12 +325,12 @@ class TapQueryForm extends React.Component {
       <Grid container>
 
         <Grid container spacing={24}>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} classes={{ item: classes.formControlWrapper }}>
             <FormControl className={classes.formControl}>
               {this.renderNamespaceSelect("To Namespace", "toNamespace", "toResource")}
             </FormControl>
           </Grid>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} classes={{ item: classes.formControlWrapper }}>
             <FormControl className={classes.formControl} disabled={_isEmpty(this.state.query.toNamespace)}>
               {this.renderResourceSelect("toResource", "toNamespace")}
             </FormControl>
@@ -342,7 +338,7 @@ class TapQueryForm extends React.Component {
         </Grid>
 
         <Grid container spacing={24}>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} classes={{ item: classes.formControlWrapper }}>
             <FormControl className={classes.formControl}>
               <InputLabel htmlFor="authority">Authority</InputLabel>
               <Select
@@ -359,19 +355,19 @@ class TapQueryForm extends React.Component {
               <FormHelperText>Display requests with this :authority</FormHelperText>
             </FormControl>
           </Grid>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} classes={{ item: classes.formControlWrapper }}>
             { this.renderTextInput("Path", "path", "Display requests with paths that start with this prefix") }
           </Grid>
         </Grid>
 
         <Grid container spacing={24}>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} classes={{ item: classes.formControlWrapper }}>
             { this.renderTextInput("Scheme", "scheme", "Display requests with this scheme") }
           </Grid>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} classes={{ item: classes.formControlWrapper }}>
             { this.renderTextInput("Max RPS", "maxRps", `Maximum requests per second to tap. Default ${defaultMaxRps}`) }
           </Grid>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} classes={{ item: classes.formControlWrapper }}>
             <FormControl className={classes.formControl}>
               <InputLabel htmlFor="method">HTTP method</InputLabel>
               <Select
@@ -417,14 +413,14 @@ class TapQueryForm extends React.Component {
       <Card className={classes.card}>
         <CardContent>
           <Grid container spacing={24}>
-            <Grid item xs={6} md="auto" spacing={1} classes={{ item: classes.formControlWrapper }}>
-              <FormControl className={classes.formControlWithAutoWidth} fullWidth>
+            <Grid item xs={6} md="auto" classes={{ item: classes.formControlWrapper }}>
+              <FormControl className={classes.formControl} fullWidth>
                 {this.renderNamespaceSelect("Namespace", "namespace", "resource")}
               </FormControl>
             </Grid>
 
-            <Grid item xs={6} md="auto" spacing={1} classes={{ item: classes.formControlWrapper }}>
-              <FormControl className={classes.formControlWithAutoWidth} disabled={_isEmpty(this.state.query.namespace)} fullWidth>
+            <Grid item xs={6} md="auto" classes={{ item: classes.formControlWrapper }}>
+              <FormControl className={classes.formControl} disabled={_isEmpty(this.state.query.namespace)} fullWidth>
                 {this.renderResourceSelect("resource", "namespace")}
               </FormControl>
             </Grid>
