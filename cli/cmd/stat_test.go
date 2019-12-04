@@ -191,6 +191,18 @@ func TestStat(t *testing.T) {
 			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
 		}
 	})
+
+	t.Run("Returns an error if --time-window is not more than 15s", func(t *testing.T) {
+		options := newStatOptions()
+		options.timeWindow = "10s"
+		args := []string{"ns/bar"}
+		expectedError := "metrics time window needs to be at least 15s"
+
+		_, err := buildStatSummaryRequests(args, options)
+		if err == nil || err.Error() != expectedError {
+			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
+		}
+	})
 }
 
 func testStatCall(exp paramsExp, resourceType string, t *testing.T) {
