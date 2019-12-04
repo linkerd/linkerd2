@@ -116,6 +116,14 @@ const (
 	// 3) `serverVersion` from `LinkerdControlPlaneExistenceChecks`
 	LinkerdControlPlaneVersionChecks CategoryID = "control-plane-version"
 
+	// LinkerdControlPlaneDryRunChecks adds control plane checks that use dry
+	// run, so they may require some special write permissions. The only check
+	// in this category at the moment is `check-injector`, which verifies if
+	// the injector is operating correctly.
+	// These checks are dependent on the following:
+	// 1) `kubeAPI` from KubernetesAPIChecks
+	LinkerdControlPlaneDryRunChecks CategoryID = "linkerd-control-plane-dry-run"
+
 	// LinkerdDataPlaneChecks adds data plane checks to validate that the data
 	// plane namespace exists, and that the proxy containers are in a ready
 	// state and running the latest available version.
@@ -708,14 +716,6 @@ func (hc *HealthChecker) allCategories() []category {
 						return
 					},
 				},
-				{
-					description: "injector is operating correctly",
-					hintAnchor:  "",
-					warning:     true,
-					check: func(context.Context) error {
-						return hc.checkInjector()
-					},
-				},
 			},
 		},
 		{
@@ -915,6 +915,19 @@ func (hc *HealthChecker) allCategories() []category {
 							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
 						}
 						return nil
+					},
+				},
+			},
+		},
+		{
+			id: LinkerdControlPlaneDryRunChecks,
+			checkers: []checker{
+				{
+					description: "injector is operating correctly",
+					hintAnchor:  "",
+					warning:     true,
+					check: func(context.Context) error {
+						return hc.checkInjector()
 					},
 				},
 			},
