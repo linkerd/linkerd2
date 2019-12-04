@@ -1,0 +1,107 @@
+---
+###
+### Gateway annotator
+###
+---
+{{ $_ := set .Values.proxy "WorkloadKind" "deployment" -}}
+{{ $_ := set .Values.proxy "Component" "linkerd-gateway-annotator" -}}
+{{ include "linkerd.proxy.validation" .Values.proxy -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+  labels:
+    {{.Values.controllerComponentLabel}}: gateway-annotator
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+  name: linkerd-gateway-annotator
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: {{.Values.controllerReplicas}}
+  selector:
+    matchLabels:
+      {{.Values.controllerComponentLabel}}: gateway-annotator
+  template:
+    metadata:
+      annotations:
+        {{- if empty .Values.cliVersion }}
+        linkerd.io/helm-release-version: {{ $.Release.Revision | quote}}
+        {{- end }}
+        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+        {{- include "partials.proxy.annotations" .Values.proxy| nindent 8}}
+      labels:
+        {{.Values.controllerComponentLabel}}: gateway-annotator
+        {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+        {{- include "partials.proxy.labels" .Values.proxy | nindent 8}}
+    spec:
+      {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- if .Values.enablePodAntiAffinity -}}
+      {{- $local := dict "Component" "gateway-annotator" "Label" .Values.controllerComponentLabel -}}
+      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
+      {{- end }}
+      containers:
+      - args:
+        - gateway-annotator
+        - -log-level={{.Values.controllerLogLevel}}
+        image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
+        imagePullPolicy: {{.Values.imagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9991
+          initialDelaySeconds: 10
+        name: gateway-annotator
+        ports:
+        - containerPort: 8443
+          name: gw-annotator
+        - containerPort: 9991
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9991
+        {{- if .Values.gatewayAnnotatorResources -}}
+        {{- include "partials.resources" .Values.gatewayAnnotatorResources | nindent 8 }}
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.controllerUID}}
+        volumeMounts:
+        - mountPath: /var/run/linkerd/config
+          name: config
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
+      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if not .Values.noInitContainer -}}
+      initContainers:
+      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      serviceAccountName: linkerd-gateway-annotator
+      volumes:
+      - name: config
+        configMap:
+          name: linkerd-config
+      - name: tls
+        secret:
+          secretName: linkerd-gateway-annotator-tls
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-gateway-annotator
+  namespace: {{.Values.namespace}}
+  labels:
+    {{.Values.controllerComponentLabel}}: gateway-annotator
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+  annotations:
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.Values.controllerComponentLabel}}: gateway-annotator
+  ports:
+  - name: gw-annotator
+    port: 443
+    targetPort: gw-annotator

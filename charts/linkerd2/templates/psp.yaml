@@ -111,6 +111,9 @@ subjects:
   name: linkerd-sp-validator
   namespace: {{.Values.namespace}}
 - kind: ServiceAccount
+  name: linkerd-gateway-controller
+  namespace: {{.Values.Namespace}}
+- kind: ServiceAccount
   name: linkerd-tap
   namespace: {{.Values.namespace}}
 - kind: ServiceAccount

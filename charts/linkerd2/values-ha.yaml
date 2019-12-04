@@ -59,6 +59,9 @@ webhookFailurePolicy: Fail
 # service profile validator configuration
 spValidatorResources: *controller_resources
 
+# gateway annotator configuration
+GatewayAnnotatorResources: *controller_resources
+
 # tap configuration
 tapResources: *controller_resources
 

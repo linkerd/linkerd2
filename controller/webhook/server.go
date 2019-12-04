@@ -121,7 +121,7 @@ func (s *Server) processReq(data []byte) *admissionv1beta1.AdmissionReview {
 
 	admissionResponse, err := s.handler(s.api, admissionReview.Request, s.recorder)
 	if err != nil {
-		log.Error("failed to inject sidecar. Reason: ", err)
+		log.Error("failed to process admission request. Reason: ", err)
 		admissionReview.Response = &admissionv1beta1.AdmissionResponse{
 			UID:     admissionReview.Request.UID,
 			Allowed: false,

@@ -118,6 +118,13 @@ profileValidator:
 
   keyPEM: |
 
+# gateway annotator configuration
+GatewayAnnotator:
+  # if empty, Helm will auto-generate these fields
+  crtPEM: |
+
+  keyPEM: |
+
 # tap configuration
 tap:
   # if empty, Helm will auto-generate these fields

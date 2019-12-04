@@ -460,7 +460,7 @@ metadata:
 			},
 			[]string{
 				"linkerd-config control plane Namespace exists",
-				"linkerd-config control plane ClusterRoles exist: missing ClusterRoles: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-prometheus, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
+				"linkerd-config control plane ClusterRoles exist: missing ClusterRoles: linkerd-test-ns-controller, linkerd-test-ns-gateway-annotator, linkerd-test-ns-identity, linkerd-test-ns-prometheus, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
 			},
 		},
 		{
@@ -507,6 +507,14 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-gateway-annotator
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -522,7 +530,7 @@ metadata:
 			[]string{
 				"linkerd-config control plane Namespace exists",
 				"linkerd-config control plane ClusterRoles exist",
-				"linkerd-config control plane ClusterRoleBindings exist: missing ClusterRoleBindings: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-prometheus, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
+				"linkerd-config control plane ClusterRoleBindings exist: missing ClusterRoleBindings: linkerd-test-ns-controller, linkerd-test-ns-gateway-annotator, linkerd-test-ns-identity, linkerd-test-ns-prometheus, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
 			},
 		},
 		{
@@ -576,6 +584,14 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
+  name: linkerd-test-ns-gateway-annotator
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
   name: linkerd-test-ns-tap
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -617,6 +633,14 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-gateway-annotator
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -669,6 +693,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-gateway-annotator
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -769,6 +802,14 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
+  name: linkerd-test-ns-gateway-annotator
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
   name: linkerd-test-ns-tap
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -810,6 +851,14 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-gateway-annotator
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -862,6 +911,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-gateway-annotator
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -917,7 +975,7 @@ metadata:
 				"linkerd-config control plane ClusterRoleBindings exist",
 				"linkerd-config control plane ServiceAccounts exist",
 				"linkerd-config control plane CustomResourceDefinitions exist",
-				"linkerd-config control plane MutatingWebhookConfigurations exist: missing MutatingWebhookConfigurations: linkerd-proxy-injector-webhook-config",
+				"linkerd-config control plane MutatingWebhookConfigurations exist: missing MutatingWebhookConfigurations: linkerd-gateway-annotator-webhook-config, linkerd-proxy-injector-webhook-config",
 			},
 		},
 		{
@@ -971,6 +1029,14 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
+  name: linkerd-test-ns-gateway-annotator
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
   name: linkerd-test-ns-tap
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1012,6 +1078,14 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-gateway-annotator
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -1072,6 +1146,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-gateway-annotator
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-grafana
   namespace: test-ns
   labels:
@@ -1117,6 +1200,14 @@ apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-gateway-annotator-webhook-config
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -1182,6 +1273,14 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
+  name: linkerd-test-ns-gateway-annotator
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
   name: linkerd-test-ns-tap
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1223,6 +1322,14 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-gateway-annotator
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -1283,6 +1390,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-gateway-annotator
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-grafana
   namespace: test-ns
   labels:
@@ -1328,6 +1444,14 @@ apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-gateway-annotator-webhook-config
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -1402,6 +1526,14 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
+  name: linkerd-test-ns-gateway-annotator
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
   name: linkerd-test-ns-tap
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1443,6 +1575,14 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-sp-validator
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-test-ns-gateway-annotator
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -1503,6 +1643,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-gateway-annotator
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-grafana
   namespace: test-ns
   labels:
@@ -1548,6 +1697,14 @@ apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-gateway-annotator-webhook-config
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -1793,6 +1950,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
+			pod("linkerd-gateway-annotator-aaaa1bbbb2-cccc3", corev1.PodRunning, true),
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodFailed, false),
@@ -1813,6 +1971,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 	t.Run("Returns an error if not all containers are ready", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
+			pod("linkerd-gateway-annotator-aaaa1bbbb2-cccc3", corev1.PodRunning, true),
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, false),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
@@ -1833,6 +1992,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 	t.Run("Returns nil if all pods are running and all containers are ready", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
+			pod("linkerd-gateway-annotator-aaaa1bbbb2-cccc3", corev1.PodRunning, true),
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
@@ -1852,6 +2012,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-controller-6f78cbd47-bc558", corev1.PodRunning, false),
 			pod("linkerd-controller-6f78cbd47-bc559", corev1.PodFailed, false),
+			pod("linkerd-gateway-annotator-aaaa1bbbb2-cccc3", corev1.PodRunning, true),
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27983", corev1.PodRunning, false),
@@ -1871,6 +2032,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 	t.Run("Returns nil if all linkerd pods are running and pod list includes non-linkerd pod", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
+			pod("linkerd-gateway-annotator-aaaa1bbbb2-cccc3", corev1.PodRunning, true),
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),

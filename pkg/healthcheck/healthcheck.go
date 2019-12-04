@@ -136,6 +136,7 @@ var (
 
 	expectedServiceAccountNames = []string{
 		"linkerd-controller",
+		"linkerd-gateway-annotator",
 		"linkerd-grafana",
 		"linkerd-identity",
 		"linkerd-prometheus",
@@ -1061,6 +1062,7 @@ func (hc *HealthChecker) checkNamespace(namespace string, shouldExist bool) erro
 func (hc *HealthChecker) expectedRBACNames() []string {
 	return []string{
 		fmt.Sprintf("linkerd-%s-controller", hc.ControlPlaneNamespace),
+		fmt.Sprintf("linkerd-%s-gateway-annotator", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-identity", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-prometheus", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-proxy-injector", hc.ControlPlaneNamespace),
@@ -1175,7 +1177,10 @@ func (hc *HealthChecker) checkMutatingWebhookConfigurations(shouldExist bool) er
 		objects = append(objects, &item)
 	}
 
-	return checkResources("MutatingWebhookConfigurations", objects, []string{k8s.ProxyInjectorWebhookConfigName}, shouldExist)
+	return checkResources("MutatingWebhookConfigurations", objects, []string{
+		k8s.ProxyInjectorWebhookConfigName,
+		k8s.GatewayAnnotatorWebhookConfigName,
+	}, shouldExist)
 }
 
 func (hc *HealthChecker) checkValidatingWebhookConfigurations(shouldExist bool) error {
@@ -1468,7 +1473,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web", "tap"}
+	names := []string{"controller", "gateway-annotator", "grafana", "identity", "prometheus", "sp-validator", "web", "tap"}
 	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")

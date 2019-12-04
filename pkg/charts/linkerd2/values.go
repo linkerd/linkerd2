@@ -57,21 +57,23 @@ type (
 		Identity                    *Identity         `json:"identity"`
 		ProxyInjector               *ProxyInjector    `json:"proxyInjector"`
 		ProfileValidator            *ProfileValidator `json:"profileValidator"`
+		GatewayAnnotator            *GatewayAnnotator `json:"gatewayAnnotator"`
 		Tap                         *Tap              `json:"tap"`
 		Proxy                       *Proxy            `json:"proxy"`
 		ProxyInit                   *ProxyInit        `json:"proxyInit"`
 		NodeSelector                map[string]string `json:"nodeSelector"`
 
-		DestinationResources   *Resources `json:"destinationResources"`
-		GrafanaResources       *Resources `json:"grafanaResources"`
-		HeartbeatResources     *Resources `json:"heartbeatResources"`
-		IdentityResources      *Resources `json:"identityResources"`
-		PrometheusResources    *Resources `json:"prometheusResources"`
-		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
-		PublicAPIResources     *Resources `json:"publicAPIResources"`
-		SPValidatorResources   *Resources `json:"spValidatorResources"`
-		TapResources           *Resources `json:"tapResources"`
-		WebResources           *Resources `json:"webResources"`
+		DestinationResources      *Resources `json:"destinationResources"`
+		GrafanaResources          *Resources `json:"grafanaResources"`
+		HeartbeatResources        *Resources `json:"heartbeatResources"`
+		IdentityResources         *Resources `json:"identityResources"`
+		PrometheusResources       *Resources `json:"prometheusResources"`
+		ProxyInjectorResources    *Resources `json:"proxyInjectorResources"`
+		PublicAPIResources        *Resources `json:"publicAPIResources"`
+		SPValidatorResources      *Resources `json:"spValidatorResources"`
+		GatewayAnnotatorResources *Resources `json:"gatewayAnnotatorResources"`
+		TapResources              *Resources `json:"tapResources"`
+		WebResources              *Resources `json:"webResources"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
@@ -183,6 +185,11 @@ type (
 
 	// ProfileValidator has all the profile validator's Helm variables
 	ProfileValidator struct {
+		*TLS
+	}
+
+	// GatewayAnnotator has all the gateway annotator's Helm variables
+	GatewayAnnotator struct {
 		*TLS
 	}
 

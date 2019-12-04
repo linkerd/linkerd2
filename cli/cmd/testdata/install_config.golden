@@ -611,6 +611,92 @@ webhooks:
   sideEffects: None
 ---
 ###
+### Gateway Annotator RBAC
+###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-gateway-annotator
+  labels:
+    linkerd.io/control-plane-component: gateway-annotator
+    linkerd.io/control-plane-ns: linkerd
+rules:
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-gateway-annotator
+  labels:
+    linkerd.io/control-plane-component: gateway-annotator
+    linkerd.io/control-plane-ns: linkerd
+subjects:
+- kind: ServiceAccount
+  name: linkerd-gateway-annotator
+  namespace: linkerd
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: linkerd-linkerd-gateway-annotator
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-gateway-annotator
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: gateway-annotator
+    linkerd.io/control-plane-ns: linkerd
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-gateway-annotator-tls
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: gateway-annotator
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+type: Opaque
+data:
+  crt.pem: Z2F0ZXdheSBhbm5vdGF0b3IgY3J0
+  key.pem: Z2F0ZXdheSBhbm5vdGF0b3Iga2V5
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-gateway-annotator-webhook-config
+  labels:
+    linkerd.io/control-plane-component: gateway-annotator
+    linkerd.io/control-plane-ns: linkerd
+webhooks:
+- name: linkerd-gateway-annotator.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+  clientConfig:
+    service:
+      name: linkerd-gateway-annotator
+      namespace: linkerd
+      path: "/"
+    caBundle: Z2F0ZXdheSBhbm5vdGF0b3IgY3J0
+  failurePolicy: Ignore
+  rules:
+  - operations: ["CREATE"]
+    apiGroups: ["extensions", "networking.k8s.io"]
+    apiVersions: ["v1beta1"]
+    resources: ["ingresses"]
+  sideEffects: None
+---
+###
 ### Tap RBAC
 ###
 ---
@@ -827,6 +913,9 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
   namespace: linkerd
+- kind: ServiceAccount
+  name: linkerd-gateway-controller
+  namespace: 
 - kind: ServiceAccount
   name: linkerd-tap
   namespace: linkerd

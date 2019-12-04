@@ -305,8 +305,9 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		values.Configs.Global = globalJSON
 	}
 
-	// if exist, re-use the proxy injector, profile validator and tap TLS secrets.
-	// otherwise, let Helm generate them by creating an empty charts.TLS struct here.
+	// If exist, re-use the proxy injector, profile validator, gateway
+	// annotator and tap TLS secrets. Otherwise, let Helm generate them by
+	// creating an empty charts.TLS struct here.
 	proxyInjectorTLS, err := fetchTLSSecret(k, k8s.ProxyInjectorWebhookServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
@@ -324,6 +325,15 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		profileValidatorTLS = &charts.TLS{}
 	}
 	values.ProfileValidator = &charts.ProfileValidator{TLS: profileValidatorTLS}
+
+	gatewayAnnotatorTLS, err := fetchTLSSecret(k, k8s.GatewayAnnotatorWebhookServiceName, options)
+	if err != nil {
+		if !kerrors.IsNotFound(err) {
+			return nil, nil, fmt.Errorf("could not fetch existing gateway annotator secret: %s", err)
+		}
+		gatewayAnnotatorTLS = &charts.TLS{}
+	}
+	values.GatewayAnnotator = &charts.GatewayAnnotator{TLS: gatewayAnnotatorTLS}
 
 	tapTLS, err := fetchTLSSecret(k, k8s.TapServiceName, options)
 	if err != nil {

@@ -66,6 +66,7 @@ func TestNewValues(t *testing.T) {
 
 		ProxyInjector:    &ProxyInjector{TLS: &TLS{}},
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
+		GatewayAnnotator: &GatewayAnnotator{TLS: &TLS{}},
 		Tap:              &Tap{TLS: &TLS{}},
 
 		ControlPlaneTracing: false,
@@ -155,6 +156,7 @@ func TestNewValues(t *testing.T) {
 		expected.PublicAPIResources = controllerResources
 		expected.ProxyInjectorResources = controllerResources
 		expected.SPValidatorResources = controllerResources
+		expected.GatewayAnnotatorResources = controllerResources
 		expected.TapResources = controllerResources
 		expected.WebResources = controllerResources
 		expected.HeartbeatResources = controllerResources

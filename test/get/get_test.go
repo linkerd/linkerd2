@@ -33,15 +33,16 @@ var (
 	}
 
 	linkerdPods = map[string]int{
-		"linkerd-controller":     1,
-		"linkerd-destination":    1,
-		"linkerd-grafana":        1,
-		"linkerd-identity":       1,
-		"linkerd-prometheus":     1,
-		"linkerd-proxy-injector": 1,
-		"linkerd-sp-validator":   1,
-		"linkerd-tap":            1,
-		"linkerd-web":            1,
+		"linkerd-controller":        1,
+		"linkerd-destination":       1,
+		"linkerd-gateway-annotator": 1,
+		"linkerd-grafana":           1,
+		"linkerd-identity":          1,
+		"linkerd-prometheus":        1,
+		"linkerd-proxy-injector":    1,
+		"linkerd-sp-validator":      1,
+		"linkerd-tap":               1,
+		"linkerd-web":               1,
 	}
 )
 

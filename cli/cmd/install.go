@@ -117,6 +117,7 @@ var (
 		"templates/grafana-rbac.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
+		"templates/gateway-annotator-rbac.yaml",
 		"templates/tap-rbac.yaml",
 		"templates/psp.yaml",
 	}
@@ -137,6 +138,7 @@ var (
 		"templates/grafana.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
+		"templates/gateway-annotator.yaml",
 		"templates/tap.yaml",
 	}
 )

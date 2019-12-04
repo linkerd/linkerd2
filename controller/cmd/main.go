@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/linkerd/linkerd2/controller/cmd/destination"
+	gwannotatorcmd "github.com/linkerd/linkerd2/controller/cmd/gw-annotator"
 	"github.com/linkerd/linkerd2/controller/cmd/heartbeat"
 	"github.com/linkerd/linkerd2/controller/cmd/identity"
 	proxyinjector "github.com/linkerd/linkerd2/controller/cmd/proxy-injector"
@@ -26,6 +27,8 @@ func main() {
 		heartbeat.Main(os.Args[2:])
 	case "identity":
 		identity.Main(os.Args[2:])
+	case "gateway-annotator":
+		gwannotatorcmd.Main(os.Args[2:])
 	case "proxy-injector":
 		proxyinjector.Main(os.Args[2:])
 	case "public-api":

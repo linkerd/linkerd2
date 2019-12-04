@@ -247,6 +247,12 @@ const (
 	// SPValidatorWebhookConfigName is the name of the validating webhook configuration
 	SPValidatorWebhookConfigName = SPValidatorWebhookServiceName + "-webhook-config"
 
+	// GatewayAnnotatorWebhookServiceName is the name of the mutating webhook service
+	GatewayAnnotatorWebhookServiceName = "linkerd-gateway-annotator"
+
+	// GatewayAnnotatorWebhookConfigName is the name of the mutating webhook configuration
+	GatewayAnnotatorWebhookConfigName = GatewayAnnotatorWebhookServiceName + "-webhook-config"
+
 	// TapServiceName is the name of the tap APIService
 	TapServiceName = "linkerd-tap"
 

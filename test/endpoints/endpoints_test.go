@@ -25,6 +25,7 @@ func TestGoodEndpoints(t *testing.T) {
 		"endpoints",
 		fmt.Sprintf("linkerd-controller-api.%s.svc.cluster.local:8085", ns),
 		fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", ns),
+		fmt.Sprintf("linkerd-gateway-annotator.%s.svc.cluster.local:443", ns),
 		fmt.Sprintf("linkerd-grafana.%s.svc.cluster.local:3000", ns),
 		fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", ns),
 		fmt.Sprintf("linkerd-prometheus.%s.svc.cluster.local:9090", ns),

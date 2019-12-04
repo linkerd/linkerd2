@@ -95,9 +95,11 @@ func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
 	}
 
 	// check for cluster-wide access
-	err = k8s.ClusterAccess(k8sClient)
-	if err != nil {
-		return nil, err
+	if resources != nil {
+		err = k8s.ClusterAccess(k8sClient)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// check for need and access to ServiceProfiles

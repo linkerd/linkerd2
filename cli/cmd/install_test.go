@@ -86,6 +86,7 @@ func TestRender(t *testing.T) {
 		Identity:           defaultValues.Identity,
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
+		GatewayAnnotator:   defaultValues.GatewayAnnotator,
 		Tap:                defaultValues.Tap,
 		Proxy: &charts.Proxy{
 			Image: &charts.Image{
@@ -394,6 +395,8 @@ func fakeHeartbeatSchedule() string {
 }
 
 func addFakeTLSSecrets(values *charts.Values) {
+	values.GatewayAnnotator.CrtPEM = "gateway annotator crt"
+	values.GatewayAnnotator.KeyPEM = "gateway annotator key"
 	values.ProxyInjector.CrtPEM = "proxy injector crt"
 	values.ProxyInjector.KeyPEM = "proxy injector key"
 	values.ProfileValidator.CrtPEM = "proxy injector crt"
