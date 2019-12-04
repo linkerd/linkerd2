@@ -23,6 +23,8 @@ import _take from 'lodash/take';
 import { getSuccessRateClassification } from './util/MetricUtils.jsx';
 import { withStyles } from "@material-ui/core/styles";
 
+const maxNumNeighbors = 6; // max number of neighbor nodes to show in the octopus graph
+
 const styles = () => ({
   graphContainer: {
     overflowX: "auto",
@@ -48,13 +50,11 @@ class Octopus extends React.Component {
   static defaultProps = {
     neighbors: {},
     resource: {},
-    unmeshedSources: [],
-    maxNumNeighbors: 6,
+    unmeshedSources: []
   }
 
   static propTypes = {
     classes: PropTypes.shape({}).isRequired,
-    maxNumNeighbors: PropTypes.number,
     neighbors: PropTypes.shape({}),
     resource: PropTypes.shape({}),
     unmeshedSources: PropTypes.arrayOf(PropTypes.shape({})),
@@ -70,7 +70,6 @@ class Octopus extends React.Component {
   }
 
   getNeighborDisplayData = neighbors => {
-    const { maxNumNeighbors } = this.props;
     // only display maxNumNeighbors neighboring nodes in the octopus graph,
     // otherwise it will be really tall
     // even though _sortBy is a stable sort, the order that this data is returned by the API
@@ -103,8 +102,8 @@ class Octopus extends React.Component {
     return display;
   }
 
-  refCallback = (element, index, isOutbound) => {
-    if (element) {
+  addElementToRefsList = (element, index, isOutbound, type = "neighbor") => {
+    if (element && (type !== "main")) {
       if (isOutbound) {
         this.downstreamsRefs[index] = element;
       } else {
@@ -136,7 +135,7 @@ class Octopus extends React.Component {
     }
 
     return (
-      <RootRef rootRef={el => type === "neighbor" ? this.refCallback(el, index, isOutbound) : undefined} key={resource.type + "-" + resource.name}>
+      <RootRef rootRef={el => this.addElementToRefsList(el, index, isOutbound, type)} key={resource.type + "-" + resource.name}>
         <Grid item>
           <Card className={type === "neighbor" ? classes.neighborNode : classes.centerNode} title={display}>
             <CardContent>
@@ -207,7 +206,7 @@ class Octopus extends React.Component {
   renderUnmeshedResources = (unmeshedResources, index, isOutbound) => {
     const { classes } = this.props;
     return (
-      <RootRef rootRef={el => this.refCallback(el, index, isOutbound)}>
+      <RootRef rootRef={el => this.addElementToRefsList(el, index, isOutbound)}>
         <Grid item>
           <Card key="unmeshed-resources" className={classes.neighborNode}>
             <CardContent>
@@ -229,7 +228,7 @@ class Octopus extends React.Component {
     const { classes } = this.props;
     let Progress = StyledProgress();
     return (
-      <RootRef rootRef={el => this.refCallback(el, index, isOutbound)}>
+      <RootRef rootRef={el => this.addElementToRefsList(el, index, isOutbound)}>
         <Grid item>
           <Card className={classes.neighborNode}>
             <CardContent>
@@ -250,7 +249,7 @@ class Octopus extends React.Component {
     );
   }
 
-  renderArrowCol = isOutbound => {
+  renderArrowCol = (numNeighbors, isOutbound) => {
     const container = !isOutbound ? this.upstreamsContainer : this.downstreamsContainer;
     let refs = !isOutbound ? this.upstreamsRefs : this.downstreamsRefs;
     if (refs.length === 0 || container.current === undefined) {
@@ -260,13 +259,13 @@ class Octopus extends React.Component {
     let width = 80;
     let fullHeight = container.current.offsetHeight;
     let arrowTypes = [];
-    arrowTypes = refs.map(element => {
+    arrowTypes = refs.slice(0, numNeighbors).map(element => {
       const elementTop = element.offsetTop - container.current.offsetTop;
       const elementHeight = element.offsetHeight;
       const halfElement = elementHeight / 2;
 
       // Middle element
-      if (Math.round(fullHeight / 2) === elementTop + halfElement) {
+      if (Math.round(fullHeight / 2) === Math.round(elementTop + halfElement)) {
         const height = elementTop + halfElement;
         return { type: "flat", inboundType: "flat", height: height };
 
@@ -306,6 +305,11 @@ class Octopus extends React.Component {
 
     let display = this.getNeighborDisplayData(neighbors);
 
+    let numUpstreams = _size(display.upstreams.displayed) + (_isEmpty(unmeshedSources) ? 0 : 1) +
+       (_isEmpty(display.upstreams.collapsed) ? 0 : 1);
+
+    let numDownstreams = _size(display.downstreams.displayed) + (_isEmpty(display.downstreams.collapsed) ? 0 : 1);
+
     return (
       <div className={classes.graphContainer}>
         <div className={classes.graph}>
@@ -331,7 +335,7 @@ class Octopus extends React.Component {
             </RootRef>
 
             <Grid item xs={1}>
-              {this.renderArrowCol(false)}
+              {this.renderArrowCol(numUpstreams, false)}
             </Grid>
 
 
@@ -340,7 +344,7 @@ class Octopus extends React.Component {
             </Grid>
 
             <Grid item xs={1}>
-              {this.renderArrowCol(true)}
+              {this.renderArrowCol(numDownstreams, true)}
             </Grid>
 
             <RootRef rootRef={this.downstreamsContainer}>
