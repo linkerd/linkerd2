@@ -1,4 +1,4 @@
-import { UrlQueryParamTypes, addUrlProps } from 'react-url-query';
+import { StringParam, withQueryParams } from 'use-query-params';
 import {
   defaultMaxRps,
   emptyTapQuery,
@@ -25,13 +25,11 @@ import React from 'react';
 import Select from '@material-ui/core/Select';
 import TextField from '@material-ui/core/TextField';
 import Typography from '@material-ui/core/Typography';
-import _each from 'lodash/each';
 import _flatten from 'lodash/flatten';
 import _isEmpty from 'lodash/isEmpty';
 import _isEqual from 'lodash/isEqual';
 import _isNil from 'lodash/isNil';
 import _map from 'lodash/map';
-import _mapValues from 'lodash/mapValues';
 import _merge from 'lodash/merge';
 import _noop from 'lodash/noop';
 import _omit from 'lodash/omit';
@@ -39,7 +37,6 @@ import _pick from 'lodash/pick';
 import _some from 'lodash/some';
 import _startCase from 'lodash/startCase';
 import _uniq from 'lodash/uniq';
-import _upperFirst from 'lodash/upperFirst';
 import _values from 'lodash/values';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -48,9 +45,10 @@ const getResourceList = (resourcesByNs, ns) => {
   return resourcesByNs[ns] || _uniq(_flatten(_values(resourcesByNs)));
 };
 
-const urlPropsQueryConfig = _mapValues(tapQueryProps, () => {
-  return { type: UrlQueryParamTypes.string };
-});
+let urlPropsQueryConfig = {};
+for (let value in tapQueryProps) {
+  urlPropsQueryConfig[value] = StringParam;
+}
 
 const styles = theme => ({
   root: {
@@ -91,11 +89,13 @@ class TapQueryForm extends React.Component {
   static propTypes = {
     classes: PropTypes.shape({}).isRequired,
     cmdName: PropTypes.string.isRequired,
+    currentQuery: tapQueryPropType.isRequired,
     enableAdvancedForm: PropTypes.bool,
     handleTapClear: PropTypes.func,
     handleTapStart: PropTypes.func.isRequired,
     handleTapStop: PropTypes.func.isRequired,
     query: tapQueryPropType.isRequired,
+    setQuery: PropTypes.func.isRequired,
     tapIsClosing: PropTypes.bool,
     tapRequestInProgress: PropTypes.bool.isRequired,
     updateQuery: PropTypes.func.isRequired
@@ -135,7 +135,7 @@ class TapQueryForm extends React.Component {
   constructor(props) {
     super(props);
 
-    let query = _merge({}, props.query, _pick(this.props, Object.keys(tapQueryProps)));
+    const query = _merge({}, props.currentQuery, _pick(props.query, Object.keys(tapQueryProps)));
     props.updateQuery(query);
 
     let advancedFormExpanded = _some(
@@ -164,17 +164,18 @@ class TapQueryForm extends React.Component {
     };
 
     let shouldScopeAuthority = name === "namespace";
+    let newQueryValues = {};
 
     return event => {
       let formVal = event.target.value;
       state.query[name] = formVal;
-      this.handleUrlUpdate(name, formVal);
+      newQueryValues[name] = formVal;
 
       if (!_isNil(scopeResource)) {
         // scope the available typeahead resources to the selected namespace
         state.autocomplete[scopeResource] = this.state.resourcesByNs[formVal];
         state.query[scopeResource] = `namespace/${formVal}`;
-        this.handleUrlUpdate(scopeResource, `namespace/${formVal}`);
+        newQueryValues[scopeResource] = `namespace/${formVal}`;
       }
 
       if (shouldScopeAuthority) {
@@ -183,14 +184,15 @@ class TapQueryForm extends React.Component {
 
       this.setState(state);
       this.props.updateQuery(state.query);
+      this.handleUrlUpdate(newQueryValues);
     };
   }
 
-  // Each time state.query is updated, this method calls the equivalent
-  // onChange method to reflect the update in url query params. These onChange
-  // methods are automatically added to props by react-url-query.
-  handleUrlUpdate = (name, formVal) => {
-    this.props[`onChange${_upperFirst(name)}`](formVal);
+  // Each time state.query is updated, this method calls setQuery provided
+  // by useQueryParams HOC to partially update url query params that have
+  // changed
+  handleUrlUpdate = query => {
+    this.props.setQuery({ ...query });
   }
 
   handleFormEvent = name => {
@@ -200,7 +202,7 @@ class TapQueryForm extends React.Component {
 
     return event => {
       state.query[name] = event.target.value;
-      this.handleUrlUpdate(name, event.target.value);
+      this.handleUrlUpdate(state.query);
       this.setState(state);
       this.props.updateQuery(state.query);
     };
@@ -221,9 +223,7 @@ class TapQueryForm extends React.Component {
       query: emptyTapQuery()
     });
 
-    _each(this.state.query, (_val, name) => {
-      this.handleUrlUpdate(name, null);
-    });
+    this.handleUrlUpdate(emptyTapQuery());
 
     this.props.updateQuery(emptyTapQuery(), true);
     this.props.handleTapClear();
@@ -435,4 +435,4 @@ class TapQueryForm extends React.Component {
   }
 }
 
-export default addUrlProps({ urlPropsQueryConfig })(withStyles(styles)(TapQueryForm));
+export default withQueryParams(urlPropsQueryConfig, withStyles(styles)(TapQueryForm));

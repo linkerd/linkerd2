@@ -11,11 +11,11 @@ import CssBaseline from '@material-ui/core/CssBaseline';
 import Namespace from './components/Namespace.jsx';
 import Navigation from './components/Navigation.jsx';
 import NoMatch from './components/NoMatch.jsx';
+import { QueryParamProvider } from 'use-query-params';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import ResourceDetail from './components/ResourceDetail.jsx';
 import ResourceList from './components/ResourceList.jsx';
-import { RouterToUrlQuery } from 'react-url-query';
 import ServiceMesh from './components/ServiceMesh.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
@@ -87,7 +87,7 @@ function AppHTML() {
       <CssBaseline />
       <MuiThemeProvider theme={theme}>
         <BrowserRouter>
-          <RouterToUrlQuery>
+          <QueryParamProvider ReactRouterRoute={Route}>
             <Switch>
               <Redirect exact from={`${pathPrefix}/`} to={`${pathPrefix}/namespaces`} />
               <Redirect exact from={`${pathPrefix}/overview`} to={`${pathPrefix}/namespaces`} />
@@ -165,7 +165,7 @@ function AppHTML() {
                 render={props => <Navigation {...props} ChildComponent={Community} />} />
               <Route component={NoMatch} />
             </Switch>
-          </RouterToUrlQuery>
+          </QueryParamProvider>
         </BrowserRouter>
       </MuiThemeProvider>
     </React.Fragment>
