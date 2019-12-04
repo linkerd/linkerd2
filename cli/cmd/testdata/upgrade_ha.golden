@@ -3,18 +3,15 @@
 ### Linkerd Namespace
 ###
 ---
-apiVersion: v1
 kind: Namespace
+apiVersion: v1
 metadata:
+  name: linkerd
   annotations:
     linkerd.io/inject: disabled
-  creationTimestamp: null
   labels:
-    config.linkerd.io/admission-webhooks: disabled
     linkerd.io/is-control-plane: "true"
-  name: linkerd
-spec: {}
-status: {}
+    config.linkerd.io/admission-webhooks: disabled
 ---
 ###
 ### Identity Controller Service RBAC
@@ -3280,4 +3277,3 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-tap-tls
----

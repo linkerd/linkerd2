@@ -754,10 +754,8 @@ func render(w io.Writer, values *charts.Values, configs *pb.All) error {
 		return err
 	}
 
-	return processYAML(&buf, w, ioutil.Discard, resourceTransformerInject{
-		injectProxy: true,
-		configs:     configs,
-	})
+	_, err = w.Write(buf.Bytes())
+	return err
 }
 
 func (options *installOptions) configs(identity *pb.IdentityContext) *pb.All {
