@@ -273,9 +273,10 @@ type CheckResult struct {
 type CheckObserver func(*CheckResult)
 
 type category struct {
-	id       CategoryID
-	checkers []checker
-	enabled  bool
+	id        CategoryID
+	checkers  []checker
+	enabled   bool
+	shouldRun func() bool
 }
 
 // Options specifies configuration for a HealthChecker.
@@ -985,6 +986,9 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 			},
+			shouldRun: func() bool {
+				return hc.isHA()
+			},
 		},
 	}
 }
@@ -1027,29 +1031,32 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 
 	for _, c := range hc.categories {
 		if c.enabled {
-			for _, checker := range c.checkers {
-				checker := checker // pin
-				if checker.check != nil {
-					if !hc.runCheck(c.id, &checker, observer) {
-						if !checker.warning {
-							success = false
+			if c.shouldRun == nil || c.shouldRun() {
+				for _, checker := range c.checkers {
+					checker := checker // pin
+					if checker.check != nil {
+						if !hc.runCheck(c.id, &checker, observer) {
+							if !checker.warning {
+								success = false
+							}
+							if checker.fatal {
+								return success
+							}
 						}
-						if checker.fatal {
-							return success
+					}
+
+					if checker.checkRPC != nil {
+						if !hc.runCheckRPC(c.id, &checker, observer) {
+							if !checker.warning {
+								success = false
+							}
+							if checker.fatal {
+								return success
+							}
 						}
 					}
 				}
 
-				if checker.checkRPC != nil {
-					if !hc.runCheckRPC(c.id, &checker, observer) {
-						if !checker.warning {
-							success = false
-						}
-						if checker.fatal {
-							return success
-						}
-					}
-				}
 			}
 		}
 	}
@@ -1553,18 +1560,16 @@ func (hc *HealthChecker) checkCanPerformAction(verb, namespace, group, version, 
 }
 
 func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace() error {
-	if hc.isHA() {
-		ns, err := hc.kubeAPI.CoreV1().Namespaces().Get("kube-system", metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		val, ok := ns.Labels[k8s.AdmissionWebhookLabel]
-		if !ok || val != "disabled" {
-			return fmt.Errorf("kube-system namespace needs to have %ss: disabled if HA mode is enabled", k8s.AdmissionWebhookLabel)
-		}
-
+	ns, err := hc.kubeAPI.CoreV1().Namespaces().Get("kube-system", metav1.GetOptions{})
+	if err != nil {
+		return err
 	}
+
+	val, ok := ns.Labels[k8s.AdmissionWebhookLabel]
+	if !ok || val != "disabled" {
+		return fmt.Errorf("kube-system namespace needs to have %s: disabled if HA mode is enabled", k8s.AdmissionWebhookLabel)
+	}
+
 	return nil
 }
 

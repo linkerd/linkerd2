@@ -64,8 +64,4 @@ linkerd-data-plane
 √ data plane is up-to-date
 √ data plane and cli versions match
 
-linkerd-ha-checks
------------------
-√ pod injection disabled on kube-system
-
 Status check results are √

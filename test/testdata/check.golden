@@ -57,8 +57,4 @@ control-plane-version
 √ control plane is up-to-date
 √ control plane and cli versions match
 
-linkerd-ha-checks
------------------
-√ pod injection disabled on kube-system
-
 Status check results are √

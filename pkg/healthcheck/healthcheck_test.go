@@ -49,10 +49,12 @@ func (hc *HealthChecker) addCheckAsCategory(
 	testCategoryID CategoryID,
 	categoryID CategoryID,
 	desc string,
+	shouldRun func() bool,
 ) {
 	testCategory := category{
-		id:       testCategoryID,
-		checkers: []checker{},
+		id:        testCategoryID,
+		checkers:  []checker{},
+		shouldRun: shouldRun,
 	}
 
 	for _, cat := range hc.categories {
@@ -1668,7 +1670,7 @@ metadata:
 
 			// validate that this check relies on the k8s api, not on hc.controlPlanePods
 			hc.addCheckAsCategory("cat1", LinkerdControlPlaneExistenceChecks,
-				testCase.checkDescription)
+				testCase.checkDescription, nil)
 
 			obs := newObserver()
 			hc.RunChecks(obs.resultFn)
@@ -1923,7 +1925,7 @@ func TestValidateDataPlaneNamespace(t *testing.T) {
 			}
 
 			// create a synethic category that only includes the "data plane namespace exists" check
-			hc.addCheckAsCategory("data-plane-ns-test-cat", LinkerdDataPlaneChecks, "data plane namespace exists")
+			hc.addCheckAsCategory("data-plane-ns-test-cat", LinkerdDataPlaneChecks, "data plane namespace exists", nil)
 
 			expectedResults := []string{
 				tc.result,
@@ -2155,27 +2157,27 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 	testCases := []struct {
 		testDescription string
 		k8sConfigs      []string
-		expectedWarning error
+		expectedOutput  string
 	}{
 		{
 			"passes when HA is not enabled",
 			getConfigAndKubeSystemNamespace(false, ""),
-			nil,
+			"",
 		},
 		{
 			"passes when HA is enabled and namespace has required metadata",
 			getConfigAndKubeSystemNamespace(true, "config.linkerd.io/admission-webhooks: disabled"),
-			nil,
+			"l5d-injection-disabled pod injection disabled on kube-system",
 		},
 		{
 			"fails when HA and admission hooks are enabled",
 			getConfigAndKubeSystemNamespace(true, "config.linkerd.io/admission-webhooks: enabled"),
-			errors.New("kube-system namespace needs to have config.linkerd.io/admission-webhookss: disabled if HA mode is enabled"),
+			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have config.linkerd.io/admission-webhooks: disabled if HA mode is enabled",
 		},
 		{
 			"fails when HA is enabled and metadata is missing",
 			getConfigAndKubeSystemNamespace(true, ""),
-			errors.New("kube-system namespace needs to have config.linkerd.io/admission-webhookss: disabled if HA mode is enabled"),
+			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have config.linkerd.io/admission-webhooks: disabled if HA mode is enabled",
 		},
 	}
 
@@ -2187,25 +2189,30 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 			hc.ControlPlaneNamespace = "linkerd"
 
 			var err error
-			hc.kubeAPI, err = k8s.NewFakeAPI(tc.k8sConfigs...)
+			hc.kubeAPI, _ = k8s.NewFakeAPI(tc.k8sConfigs...)
 			_, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
 			if err != nil {
 				t.Fatalf("Unexpected error: %q", err)
 			}
 
-			err = hc.checkHAMetadataPresentOnKubeSystemNamespace()
+			hc.addCheckAsCategory("l5d-injection-disabled", LinkerdHaChecks, "pod injection disabled on kube-system", func() bool {
+				return hc.isHA()
+			})
 
-			if tc.expectedWarning == nil {
-				if err != nil {
-					t.Fatalf("Got warning %q but expected no warnings", err)
+			obs := newObserver()
+			hc.RunChecks(obs.resultFn)
+
+			if tc.expectedOutput == "" {
+				if len(obs.results) != 0 {
+					t.Fatalf("Expected not output, but got %v", obs.results)
 				}
 			} else {
-				if err == nil {
-					t.Fatalf("Expected warning %q but got no warnings", tc.expectedWarning)
+				expectedResults := []string{
+					tc.expectedOutput,
 				}
 
-				if err.Error() != tc.expectedWarning.Error() {
-					t.Fatalf("Warning %q does not match expected warning: %q", err, tc.expectedWarning)
+				if !reflect.DeepEqual(obs.results, expectedResults) {
+					t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
 				}
 			}
 		})
