@@ -164,15 +164,18 @@ class TapQueryForm extends React.Component {
     };
 
     let shouldScopeAuthority = name === "namespace";
+    let newQueryValues = {};
 
     return event => {
       let formVal = event.target.value;
       state.query[name] = formVal;
+      newQueryValues[name] = formVal;
 
       if (!_isNil(scopeResource)) {
         // scope the available typeahead resources to the selected namespace
         state.autocomplete[scopeResource] = this.state.resourcesByNs[formVal];
         state.query[scopeResource] = `namespace/${formVal}`;
+        newQueryValues[scopeResource] = `namespace/${formVal}`;
       }
 
       if (shouldScopeAuthority) {
@@ -181,12 +184,13 @@ class TapQueryForm extends React.Component {
 
       this.setState(state);
       this.props.updateQuery(state.query);
-      this.handleUrlUpdate(state.query);
+      this.handleUrlUpdate(newQueryValues);
     };
   }
 
-  // Each time state.query is updated, this method calls the equivalent
-  // method to reflect the update in url query params.
+  // Each time state.query is updated, this method calls setQuery provided
+  // by useQueryParams HOC to partially update url query params that have
+  // changed
   handleUrlUpdate = query => {
     this.props.setQuery({ ...query });
   }

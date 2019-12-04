@@ -157,8 +157,9 @@ class TopRoutes extends React.Component {
     });
   }
 
-  // Each time state.query is updated, this method calls the equivalent
-  // method to reflect the update in url query params.
+  // Each time state.query is updated, this method calls setQuery provided
+  // by useQueryParams HOC to partially update url query params that have
+  // changed
   handleUrlUpdate = query => {
     this.props.setQuery({ ...query });
   }
