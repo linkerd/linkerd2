@@ -380,12 +380,12 @@ control plane.`,
 }
 
 func installRunE(options *installOptions, stage string, flags *pflag.FlagSet) error {
-	values, configs, err := options.validateAndBuild(stage, flags)
+	values, _, err := options.validateAndBuild(stage, flags)
 	if err != nil {
 		return err
 	}
 
-	return render(os.Stdout, values, configs)
+	return render(os.Stdout, values)
 }
 
 func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
@@ -714,8 +714,7 @@ func toPromLogLevel(level string) string {
 	}
 }
 
-// TODO: are `installValues.Configs` and `configs` redundant?
-func render(w io.Writer, values *charts.Values, configs *pb.All) error {
+func render(w io.Writer, values *charts.Values) error {
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
 	if err != nil {
