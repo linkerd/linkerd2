@@ -73,14 +73,14 @@ class BreadcrumbHeader extends React.Component {
     }
   }
 
-  renderBreadcrumbSegment(segment, shouldPluralizeFirstSegment) {
+  renderBreadcrumbSegment(segment, numCrumbs, index) {
     let isMeshResource = isResource(segment);
 
     if (isMeshResource) {
-      if (!shouldPluralizeFirstSegment) {
-        return friendlyTitle(segment).singular;
+      if (numCrumbs === 1 || index !== 0) {
+        return this.segmentToFriendlyTitle(segment, true);
       }
-      return this.segmentToFriendlyTitle(segment, true);
+      return friendlyTitle(segment).singular;
     }
     return this.segmentToFriendlyTitle(segment, false);
   }
@@ -88,12 +88,11 @@ class BreadcrumbHeader extends React.Component {
   render() {
     let prefix = this.props.pathPrefix;
     let breadcrumbs = this.convertURLToBreadcrumbs(this.props.location.pathname.replace(prefix, ""));
-    let shouldPluralizeFirstSegment = breadcrumbs.length === 1;
 
     return breadcrumbs.map((pathSegment, index) => {
       return (
         <span key={pathSegment.segment}>
-          {this.renderBreadcrumbSegment(pathSegment.segment, shouldPluralizeFirstSegment && index === 0)}
+          {this.renderBreadcrumbSegment(pathSegment.segment, breadcrumbs.length, index)}
           { index < breadcrumbs.length - 1 ? " > " : null }
         </span>
       );
