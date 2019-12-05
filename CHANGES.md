@@ -3,16 +3,12 @@
 * CLI
   * Added condition to the `linkerd stat` command that requires a window size
     of at least 15 seconds to work properly with Prometheus
-* Web UI
-  * Fixed a table wrap issue in the resource detail view that made sidebar 
-    font size inconsistent
 * Internal
   * Fixed whitespace path handling in non-docker build scripts (thanks
     @joakimr-axis!)
-  * Removed calico logutils dependency that was incompatible with go 1.13
+  * Removed Calico logutils dependency that was incompatible with Go 1.13
   * Updated Helm templates to use fully-qualified variable references based
     upon Helm best practices (thanks @javaducky!)
-  * Added new browser tests for URL routing in dashboard
 
 ## edge-19.11.3
 
