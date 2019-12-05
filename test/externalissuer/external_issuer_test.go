@@ -95,7 +95,6 @@ func verifyRotateExternalCerts(t *testing.T) {
 	// the key and cert values from the temporary secret we have
 	// created
 	secretWithUpdatedData, err := TestHelper.KubernetesHelper.GetSecret(TestHelper.GetLinkerdNamespace(), k8s.IdentityIssuerSecretName+"-new")
-
 	if err != nil {
 		t.Fatalf("failed to fetch new secret data resource: %s", err)
 	}
