@@ -216,7 +216,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 	)
 
-	if TestHelper.GetClusterDomain() != "" {
+	if TestHelper.GetClusterDomain() != "cluster.local" {
 		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())
 	}
 
@@ -230,15 +230,38 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			t.Fatalf("failed to create %s namespace: %s", TestHelper.GetLinkerdNamespace(), err)
 		}
 
-		secretResource, err := testutil.ReadFile("testdata/issuer_secret_1.yaml")
+		identity := fmt.Sprintf("identity.%s.%s", TestHelper.GetLinkerdNamespace(), TestHelper.GetClusterDomain())
+
+		root, err := tls.GenerateRootCAWithDefaults(identity)
 		if err != nil {
-			t.Fatalf("failed to load linkerd-identity-issuer resource: %s", err)
+			t.Fatal(err)
 		}
 
-		out, err := TestHelper.KubectlApply(secretResource, TestHelper.GetLinkerdNamespace())
+		// instead of passing the roots and key around we generate
+		// two secrets here. The second one will be used in the
+		// external_issuer_test to update the first one and trigger
+		// cert rotation in the identity service. That allows us
+		// to generated the certs on the fly and use custom domain.
 
+		if err = TestHelper.CreateTLSSecret(
+			k8s.IdentityIssuerSecretName,
+			root.Cred.Crt.EncodeCertificatePEM(),
+			root.Cred.Crt.EncodeCertificatePEM(),
+			root.Cred.EncodePrivateKeyPEM()); err != nil {
+			t.Fatal(err)
+		}
+
+		crt2, err := root.GenerateEndEntityCred(identity)
 		if err != nil {
-			t.Fatalf("failed to create linkerd-identity-issuer resource: %s", out)
+			t.Fatal(err)
+		}
+
+		if err = TestHelper.CreateTLSSecret(
+			k8s.IdentityIssuerSecretName+"-new",
+			root.Cred.Crt.EncodeCertificatePEM(),
+			crt2.EncodeCertificatePEM(),
+			crt2.EncodePrivateKeyPEM()); err != nil {
+			t.Fatal(err)
 		}
 	}
 

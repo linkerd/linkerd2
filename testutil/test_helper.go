@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -54,7 +55,7 @@ func NewTestHelper() *TestHelper {
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
 	tillerNs := flag.String("tiller-ns", "kube-system", "namespace under which Tiller will be installed")
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
-	clusterDomain := flag.String("cluster-domain", "", "when specified, the install test uses a custom cluster domain")
+	clusterDomain := flag.String("cluster-domain", "cluster.local", "when specified, the install test uses a custom cluster domain")
 	externalIssuer := flag.Bool("external-issuer", false, "when specified, the install test uses it to install linkerd with --identity-external-issuer=true")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
@@ -153,6 +154,23 @@ func (h *TestHelper) UpgradeFromVersion() string {
 // GetClusterDomain returns the custom cluster domain that needs to be used during linkerd installation
 func (h *TestHelper) GetClusterDomain() string {
 	return h.clusterDomain
+}
+
+// CreateTLSSecret creates a TLS Kubernetes secret
+func (h *TestHelper) CreateTLSSecret(name, root, cert, key string) error {
+	secret := fmt.Sprintf(`
+apiVersion: v1
+data:
+    ca.crt: %s
+    tls.crt: %s
+    tls.key: %s
+kind: Secret
+metadata:
+    name: %s
+type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base64.StdEncoding.EncodeToString([]byte(cert)), base64.StdEncoding.EncodeToString([]byte(key)), name)
+
+	_, err := h.KubectlApply(secret, h.GetLinkerdNamespace())
+	return err
 }
 
 // LinkerdRun executes a linkerd command appended with the --linkerd-namespace
