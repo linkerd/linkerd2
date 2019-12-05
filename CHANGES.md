@@ -1,3 +1,29 @@
+## edge-19.11.3
+
+* CLI
+  * Added a check that ensures using `--namespace` and `--all-namespaces`
+    results in an error as they are mutually exclusive
+* Internal
+  * Fixed an issue causing `tap`, `injector` and `sp-validator` to use 
+    old certificates after `helm upgrade` due to not being restarted
+  * Fixed incomplete Swagger definition of the tap api, causing benign
+    error logging in the kube-apiserver
+    
+## edge-19.11.2
+
+* CLI
+  * Added a `Dashboard.Replicas` parameter to the Linkerd Helm chart to allow
+    configuring the number of dashboard replicas (thanks @KIVagant!)
+  * Removed redundant service profile check (thanks @alenkacz!)
+* Web UI
+  * Added `linkerd check` to the dashboard in the `/controlplane` view
+  * Added request and response headers to the `tap` expanded view in the
+    dashboard
+* Internal
+  * Removed the destination container from the linkerd-controller deployment as
+    it now runs in the linkerd-destination deployment
+  * Upgraded Go to version 1.13.4
+
 ## edge-19.11.1
 
 * CLI

@@ -20,7 +20,6 @@ import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
   wrapper: {
-    position: "relative",
     marginBottom: "20px",
   },
   spinner: {
@@ -249,16 +248,14 @@ class CheckModal extends React.Component {
           justify="center"
           alignItems="center"
           spacing={24}>
-          <Grid item>
-            <div className={classes.wrapper}>
-              <Button
-                variant="outlined"
-                color="primary"
-                disabled={running}
-                onClick={this.runCheck}>
-                Run Linkerd Check
-              </Button>
-            </div>
+          <Grid className={classes.wrapper} item>
+            <Button
+              variant="outlined"
+              color="primary"
+              disabled={running}
+              onClick={this.runCheck}>
+              Run Linkerd Check
+            </Button>
           </Grid>
         </Grid>
 

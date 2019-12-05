@@ -155,6 +155,19 @@ func TestStat(t *testing.T) {
 		}
 	})
 
+	t.Run("Rejects commands with both --all-namespaces and --namespace flags", func(t *testing.T) {
+		options := newStatOptions()
+		options.allNamespaces = true
+		options.namespace = "ns"
+		args := []string{"po"}
+		expectedError := "--all-namespaces and --namespace flags are mutually exclusive"
+
+		_, err := buildStatSummaryRequests(args, options)
+		if err == nil || err.Error() != expectedError {
+			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
+		}
+	})
+
 	t.Run("Rejects --to-namespace flag when the target is a namespace", func(t *testing.T) {
 		options := newStatOptions()
 		options.toNamespace = "bar"
@@ -172,6 +185,18 @@ func TestStat(t *testing.T) {
 		options.fromNamespace = "foo"
 		args := []string{"ns/bar"}
 		expectedError := "--from-namespace flag is incompatible with namespace resource type"
+
+		_, err := buildStatSummaryRequests(args, options)
+		if err == nil || err.Error() != expectedError {
+			t.Fatalf("Expected error [%s] instead got [%s]", expectedError, err)
+		}
+	})
+
+	t.Run("Returns an error if --time-window is not more than 15s", func(t *testing.T) {
+		options := newStatOptions()
+		options.timeWindow = "10s"
+		args := []string{"ns/bar"}
+		expectedError := "metrics time window needs to be at least 15s"
 
 		_, err := buildStatSummaryRequests(args, options)
 		if err == nil || err.Error() != expectedError {

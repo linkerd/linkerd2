@@ -1,19 +1,19 @@
-#!/bin/bash
+#!/bin/sh
 
 set -eu
 
 if [ $# -ne 1 ]; then
-    echo "usage: $(basename $0) v2.N.P" >&2
+    echo "usage: ${0##*/} v2.N.P" >&2
     exit 64
 fi
 new_proxy_version="$1"
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
 
 old_proxy_version="$(tr -d '\n' <"$rootdir/.proxy-version")"
 if [ -z "$old_proxy_version" ]; then
-    echo "Missing .proxy-version" >&2
+    echo 'Missing .proxy-version' >&2
     exit 1
 fi
 

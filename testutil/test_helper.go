@@ -2,6 +2,9 @@ package testutil
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -13,6 +16,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // TestHelper provides helpers for running the linkerd integration tests.
@@ -22,6 +26,7 @@ type TestHelper struct {
 	namespace          string
 	upgradeFromVersion string
 	clusterDomain      string
+	externalIssuer     bool
 	httpClient         http.Client
 	KubernetesHelper
 	helm
@@ -50,7 +55,8 @@ func NewTestHelper() *TestHelper {
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
 	tillerNs := flag.String("tiller-ns", "kube-system", "namespace under which Tiller will be installed")
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
-	clusterDomain := flag.String("cluster-domain", "", "when specified, the install test uses a custom cluster domain")
+	clusterDomain := flag.String("cluster-domain", "cluster.local", "when specified, the install test uses a custom cluster domain")
+	externalIssuer := flag.Bool("external-issuer", false, "when specified, the install test uses it to install linkerd with --identity-external-issuer=true")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	flag.Parse()
@@ -88,7 +94,8 @@ func NewTestHelper() *TestHelper {
 			releaseName: *helmReleaseName,
 			tillerNs:    *tillerNs,
 		},
-		clusterDomain: *clusterDomain,
+		clusterDomain:  *clusterDomain,
+		externalIssuer: *externalIssuer,
 	}
 
 	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -134,6 +141,11 @@ func (h *TestHelper) GetHelmReleaseName() string {
 	return h.helm.releaseName
 }
 
+// ExternalIssuer determines whether linkerd should be installed with --identity-external-issuer
+func (h *TestHelper) ExternalIssuer() bool {
+	return h.externalIssuer
+}
+
 // UpgradeFromVersion returns the base version of the upgrade test.
 func (h *TestHelper) UpgradeFromVersion() string {
 	return h.upgradeFromVersion
@@ -142,6 +154,23 @@ func (h *TestHelper) UpgradeFromVersion() string {
 // GetClusterDomain returns the custom cluster domain that needs to be used during linkerd installation
 func (h *TestHelper) GetClusterDomain() string {
 	return h.clusterDomain
+}
+
+// CreateTLSSecret creates a TLS Kubernetes secret
+func (h *TestHelper) CreateTLSSecret(name, root, cert, key string) error {
+	secret := fmt.Sprintf(`
+apiVersion: v1
+data:
+    ca.crt: %s
+    tls.crt: %s
+    tls.key: %s
+kind: Secret
+metadata:
+    name: %s
+type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base64.StdEncoding.EncodeToString([]byte(cert)), base64.StdEncoding.EncodeToString([]byte(key)), name)
+
+	_, err := h.KubectlApply(secret, h.GetLinkerdNamespace())
+	return err
 }
 
 // LinkerdRun executes a linkerd command appended with the --linkerd-namespace
@@ -373,4 +402,27 @@ func ParseRows(out string, expectedRowCount, expectedColumnCount int) (map[strin
 	}
 
 	return rowStats, nil
+}
+
+// ParseEvents parses the output of kubectl events
+func ParseEvents(out string) ([]*corev1.Event, error) {
+	var list corev1.List
+	if err := json.Unmarshal([]byte(out), &list); err != nil {
+		return nil, fmt.Errorf("error unmarshaling list from `kubectl get events`: %s", err)
+	}
+
+	if len(list.Items) == 0 {
+		return nil, errors.New("no events found")
+	}
+
+	var events []*corev1.Event
+	for _, i := range list.Items {
+		var e corev1.Event
+		if err := json.Unmarshal(i.Raw, &e); err != nil {
+			return nil, fmt.Errorf("error unmarshaling list event from `kubectl get events`: %s", err)
+		}
+		events = append(events, &e)
+	}
+
+	return events, nil
 }

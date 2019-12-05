@@ -224,18 +224,17 @@ jobs:
         git clone $RUNNER_TEMP/.git $GITHUB_WORKSPACE
     - name: Docker SSH setup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      env:
-        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
-        DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
       run: |
         mkdir -p ~/.ssh/
-        echo "$DOCKER_HOST_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
+        touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
+        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
+        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+        ssh linkerd-docker docker version
     - name: Docker pull
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
-        DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
+        DOCKER_HOST: ssh://linkerd-docker
       run: |
         bin/docker pull gcr.io/linkerd-io/proxy-init:v1.2.0
         bin/docker pull prom/prometheus:v2.11.1
@@ -258,26 +257,26 @@ jobs:
         git clone $RUNNER_TEMP/.git $GITHUB_WORKSPACE
     - name: Docker SSH setup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      env:
-        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
-        DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
       run: |
         mkdir -p ~/.ssh/
-        echo "$DOCKER_HOST_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
+        touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
+        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
+        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+        ssh linkerd-docker docker version
     - name: Docker build
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
-        DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
+        DOCKER_HOST: ssh://linkerd-docker
       run: |
         export PATH="`pwd`/bin:$PATH"
         DOCKER_TRACE=1 bin/docker-build
 
   kind_setup:
     strategy:
+      max-parallel: 3
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain]
+        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     name: Cluster setup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     needs: [download_src]
@@ -295,19 +294,17 @@ jobs:
         git clone $RUNNER_TEMP/.git $GITHUB_WORKSPACE
     - name: Docker SSH setup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      env:
-        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
-        DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
       run: |
         mkdir -p ~/.ssh/
-        echo "$DOCKER_HOST_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
+        touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
+        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
+        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+        ssh linkerd-docker docker version
     - name: Kind cluster setup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
-        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
-        DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
+        DOCKER_HOST: ssh://linkerd-docker
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
@@ -321,12 +318,13 @@ jobs:
           bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug ||
             bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug
         fi
-        scp $(bin/kind get kubeconfig-path --name=$KIND_CLUSTER) github@$DOCKER_ADDRESS:/tmp
+        scp $(bin/kind get kubeconfig-path --name=$KIND_CLUSTER) linkerd-docker:/tmp
 
   kind_integration:
     strategy:
+      max-parallel: 3
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain]
+        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_pull, docker_build, kind_setup]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -344,22 +342,19 @@ jobs:
         git clone $RUNNER_TEMP/.git $GITHUB_WORKSPACE
     - name: Docker SSH setup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      env:
-        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
-        DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
       run: |
         mkdir -p ~/.ssh/
-        echo "$DOCKER_HOST_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
+        touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
+        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
+        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+        ssh linkerd-docker docker version
     - name: Kind load docker images
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      env:
-        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        ssh -T github@$DOCKER_ADDRESS &> /dev/null << EOF
+        ssh -T linkerd-docker &> /dev/null << EOF
           # TODO: This is using the kind binary on the remote host.
           kind load docker-image gcr.io/linkerd-io/proxy-init:v1.2.0 --name=$KIND_CLUSTER
           kind load docker-image prom/prometheus:v2.11.1 --name=$KIND_CLUSTER
@@ -370,7 +365,7 @@ jobs:
     - name: Install linkerd CLI
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
-        DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
+        DOCKER_HOST: ssh://linkerd-docker
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         image="gcr.io/linkerd-io/cli-bin:$TAG"
@@ -383,8 +378,7 @@ jobs:
     - name: Run integration tests
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
-        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
-        DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
+        DOCKER_HOST: ssh://linkerd-docker
         GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
       run: |
         export PATH="`pwd`/bin:$PATH"
@@ -395,11 +389,11 @@ jobs:
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
         # Restore kubeconfig from remote docker host.
         mkdir -p $HOME/.kube
-        scp github@$DOCKER_ADDRESS:/tmp/kind-config-$KIND_CLUSTER $HOME/.kube
+        scp linkerd-docker:/tmp/kind-config-$KIND_CLUSTER $HOME/.kube
         export KUBECONFIG=$(bin/kind get kubeconfig-path --name=$KIND_CLUSTER)
         # Start ssh tunnel to allow kubectl to connect via localhost.
         export KIND_PORT=$(bin/kubectl config view -o jsonpath="{.clusters[?(@.name=='$KIND_CLUSTER')].cluster.server}" | cut -d':' -f3)
-        ssh -4 -N -L $KIND_PORT:localhost:$KIND_PORT github@$DOCKER_ADDRESS &
+        ssh -4 -N -L $KIND_PORT:localhost:$KIND_PORT linkerd-docker &
         sleep 2 # Wait for ssh tunnel to come up.
         bin/kubectl version --short # Test connection to kind cluster.
         (
@@ -413,7 +407,7 @@ jobs:
     strategy:
       fail-fast: false # always attempt to cleanup all clusters
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain]
+        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [kind_integration]
     name: Cluster cleanup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -443,18 +437,17 @@ jobs:
       run: echo "$JOB_CONTEXT"
     - name: Docker SSH setup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      env:
-        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
-        DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
       run: |
         mkdir -p ~/.ssh/
-        echo "$DOCKER_HOST_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
+        touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
+        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
+        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+        ssh linkerd-docker docker version
     - name: Kind cluster cleanup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
-        DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
+        DOCKER_HOST: ssh://linkerd-docker
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
@@ -482,16 +475,6 @@ jobs:
       run: |
         tar -C $RUNNER_TEMP -zxf $RUNNER_TEMP/linkerd2.$GITHUB_SHA.tar.gz
         git clone $RUNNER_TEMP/.git $GITHUB_WORKSPACE
-    - name: Docker SSH setup
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
-      env:
-        DOCKER_ADDRESS: ${{ secrets.DOCKER_ADDRESS }}
-        DOCKER_HOST_PRIVATE_KEY: ${{ secrets.DOCKER_HOST_PRIVATE_KEY }}
-      run: |
-        mkdir -p ~/.ssh/
-        echo "$DOCKER_HOST_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan $DOCKER_ADDRESS >> ~/.ssh/known_hosts
     - name: Configure gcloud
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
@@ -516,10 +499,19 @@ jobs:
         . "$dir/path.bash.inc"
         gcloud auth configure-docker
         bin/kubectl version --short
+    - name: Docker SSH setup
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      run: |
+        mkdir -p ~/.ssh/
+        touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
+        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
+        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+        ssh linkerd-docker docker version
     - name: Docker push
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
-        DOCKER_HOST: ssh://github@${{ secrets.DOCKER_ADDRESS }}
+        DOCKER_HOST: ssh://linkerd-docker
       run: |
         export PATH="`pwd`/bin:$PATH"
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"

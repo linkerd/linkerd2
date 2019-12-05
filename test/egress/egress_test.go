@@ -40,7 +40,7 @@ func TestEgressHttp(t *testing.T) {
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace("egress-test")
-	err = TestHelper.CreateNamespaceIfNotExists(prefixedNs, nil)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(prefixedNs, nil)
 	if err != nil {
 		t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
 	}

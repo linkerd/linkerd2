@@ -31,7 +31,6 @@ import (
 	"github.com/linkerd/linkerd2-proxy-init/cmd"
 	"github.com/linkerd/linkerd2-proxy-init/iptables"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/projectcalico/libcalico-go/lib/logutils"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -77,10 +76,6 @@ type PluginConf struct {
 }
 
 func main() {
-	// Set up logging formatting.
-	logrus.SetFormatter(&logutils.Formatter{})
-	// Install a hook that adds file/line no information.
-	logrus.AddHook(&logutils.ContextHook{})
 	skel.PluginMain(cmdAdd, cmdDel, version.All)
 }
 

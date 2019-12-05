@@ -7,49 +7,49 @@ k8s_context=${1:-""}
 echo "cleaning up control-plane namespaces in k8s-context [${k8s_context}]"
 
 if [ -z "${namespaces_controlplane=$(kubectl --context=$k8s_context get ns -oname -l linkerd.io/is-control-plane)}" ]; then
-  echo "no control-plane namespaces found" >&2
+  echo 'no control-plane namespaces found' >&2
 fi
 
 if [ -z "${namespaces_helm=$(kubectl --context=$k8s_context get ns -oname -l linkerd.io/is-test-helm)}" ]; then
-  echo "no helm namespaces found" >&2
+  echo 'no helm namespaces found' >&2
 fi
 
 echo "cleaning up data-plane namespaces in k8s-context [${k8s_context}]"
 
 if [ -z "${namespaces_dataplane=$(kubectl --context=$k8s_context get ns -oname -l linkerd.io/is-test-data-plane)}" ]; then
-  echo "no data-plane namespaces found" >&2
+  echo 'no data-plane namespaces found' >&2
 fi
 
 if [ -z "${clusterrolebindings=$(kubectl --context=$k8s_context get clusterrolebindings -oname -l linkerd.io/control-plane-ns)}" ]; then
-  echo "no clusterrolebindings found" >&2
+  echo 'no clusterrolebindings found' >&2
 fi
 
 if [ -z "${clusterrolebindings_helm=$(kubectl --context=$k8s_context get clusterrolebindings -oname -l linkerd.io/is-test-helm)}" ]; then
-  echo "no helm clusterrolebindings found" >&2
+  echo 'no helm clusterrolebindings found' >&2
 fi
 
 if [ -z "${clusterroles=$(kubectl --context=$k8s_context get clusterroles -oname -l linkerd.io/control-plane-ns)}" ]; then
-  echo "no clusterroles found" >&2
+  echo 'no clusterroles found' >&2
 fi
 
 if [ -z "${webhookconfigs=$(kubectl --context=$k8s_context get mutatingwebhookconfigurations -oname -l linkerd.io/control-plane-ns)}" ]; then
-  echo "no mutatingwebhookconfigurations found" >&2
+  echo 'no mutatingwebhookconfigurations found' >&2
 fi
 
 if [ -z "${validatingconfigs=$(kubectl --context=$k8s_context get validatingwebhookconfigurations -oname -l linkerd.io/control-plane-ns)}" ]; then
-  echo "no validatingwebhookconfigurations found" >&2
+  echo 'no validatingwebhookconfigurations found' >&2
 fi
 
 if [ -z "${podsecuritypolicies=$(kubectl --context=$k8s_context get podsecuritypolicies -oname -l linkerd.io/control-plane-ns)}" ]; then
-  echo "no podsecuritypolicies found" >&2
+  echo 'no podsecuritypolicies found' >&2
 fi
 
 if [ -z "${customresourcedefinitions=$(kubectl --context=$k8s_context get customresourcedefinitions -l linkerd.io/control-plane-ns -oname)}" ]; then
-  echo "no customresourcedefinitions found" >&2
+  echo 'no customresourcedefinitions found' >&2
 fi
 
 if [ -z "${apiservices=$(kubectl --context=$k8s_context get apiservices -l linkerd.io/control-plane-ns -oname)}" ]; then
-  echo "no apiservices found" >&2
+  echo 'no apiservices found' >&2
 fi
 
 if [[ $namespaces_controlplane || $namespaces_helm || $namespaces_dataplane || $clusterrolebindings || $clusterrolebindings_helm || $clusterroles || $webhookconfigs || $validatingconfigs || $podsecuritypolicies || $customresourcedefinitions || $apiservices ]]; then
@@ -58,7 +58,7 @@ fi
 
 echo "cleaning up rolebindings in kube-system namespace in k8s-context [${k8s_context}]"
 if ! rolebindings=$(kubectl --context=$k8s_context -n kube-system get rolebindings -l linkerd.io/control-plane-ns -oname); then
-  echo "no rolebindings found in the kube-system namespace" >&2
+  echo 'no rolebindings found in the kube-system namespace' >&2
 fi
 if [[ $rolebindings ]]; then
   kubectl --context=$k8s_context delete $rolebindings -n kube-system

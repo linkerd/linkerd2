@@ -1,4 +1,3 @@
-{{with .Values -}}
 ---
 ###
 ### Destination Controller Service
@@ -7,10 +6,10 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Namespace}}-destination
+  name: linkerd-{{.Values.Namespace}}-destination
   labels:
-    {{.ControllerComponentLabel}}: destination
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: destination
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
 rules:
 - apiGroups: ["apps"]
   resources: ["replicasets"]
@@ -28,25 +27,24 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Namespace}}-destination
+  name: linkerd-{{.Values.Namespace}}-destination
   labels:
-    {{.ControllerComponentLabel}}: destination
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: destination
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-{{.Namespace}}-destination
+  name: linkerd-{{.Values.Namespace}}-destination
 subjects:
 - kind: ServiceAccount
   name: linkerd-destination
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-destination
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: destination
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-{{ end -}}
+    {{.Values.ControllerComponentLabel}}: destination
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}

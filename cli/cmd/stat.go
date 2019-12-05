@@ -169,7 +169,7 @@ If no resource name is specified, displays stats about all resources of the spec
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
-	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"10s\", \"1m\", \"10m\", \"1h\")")
+	cmd.PersistentFlags().StringVarP(&options.timeWindow, "time-window", "t", options.timeWindow, "Stat window (for example: \"15s\", \"1m\", \"10m\", \"1h\"). Needs to be at least 15s.")
 	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, restricts outbound stats to the specified resource name")
 	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
 	cmd.PersistentFlags().StringVar(&options.fromResource, "from", options.fromResource, "If present, restricts outbound stats from the specified resource name")
@@ -709,6 +709,10 @@ func (o *statOptions) validateConflictingFlags() error {
 
 	if o.toNamespace != "" && o.fromNamespace != "" {
 		return fmt.Errorf("--to-namespace and --from-namespace flags are mutually exclusive")
+	}
+
+	if o.allNamespaces && o.namespace != "default" {
+		return fmt.Errorf("--all-namespaces and --namespace flags are mutually exclusive")
 	}
 
 	return nil

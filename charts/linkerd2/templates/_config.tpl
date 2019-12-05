@@ -1,36 +1,36 @@
 {{- define "linkerd.configs.global" -}}
 {
-  "linkerdNamespace": "{{.Namespace}}",
+  "linkerdNamespace": "{{.Values.Namespace}}",
   "cniEnabled": false,
-  "version": "{{.LinkerdVersion}}",
+  "version": "{{.Values.LinkerdVersion}}",
   "identityContext":{
-    "trustDomain": "{{.Identity.TrustDomain}}",
-    "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Identity.TrustAnchorsPEM | trim | replace "\n" "\\n"}}",
-    "issuanceLifeTime": "{{.Identity.Issuer.IssuanceLifeTime}}",
-    "clockSkewAllowance": "{{.Identity.Issuer.ClockSkewAllowance}}",
-    "scheme": "{{.Identity.Issuer.Scheme}}"
+    "trustDomain": "{{.Values.Identity.TrustDomain}}",
+    "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Values.Identity.TrustAnchorsPEM | trim | replace "\n" "\\n"}}",
+    "issuanceLifeTime": "{{.Values.Identity.Issuer.IssuanceLifeTime}}",
+    "clockSkewAllowance": "{{.Values.Identity.Issuer.ClockSkewAllowance}}",
+    "scheme": "{{.Values.Identity.Issuer.Scheme}}"
   },
   "autoInjectContext": null,
-  "omitWebhookSideEffects": {{.OmitWebhookSideEffects}},
-  "clusterDomain": "{{.ClusterDomain}}"
+  "omitWebhookSideEffects": {{.Values.OmitWebhookSideEffects}},
+  "clusterDomain": "{{.Values.ClusterDomain}}"
 }
 {{- end -}}
 
 {{- define "linkerd.configs.proxy" -}}
 {
   "proxyImage":{
-    "imageName":"{{.Proxy.Image.Name}}",
-    "pullPolicy":"{{.Proxy.Image.PullPolicy}}"
+    "imageName":"{{.Values.Proxy.Image.Name}}",
+    "pullPolicy":"{{.Values.Proxy.Image.PullPolicy}}"
   },
   "proxyInitImage":{
-    "imageName":"{{.ProxyInit.Image.Name}}",
-    "pullPolicy":"{{.ProxyInit.Image.PullPolicy}}"
+    "imageName":"{{.Values.ProxyInit.Image.Name}}",
+    "pullPolicy":"{{.Values.ProxyInit.Image.PullPolicy}}"
   },
   "controlPort":{
-    "port": {{.Proxy.Ports.Control}}
+    "port": {{.Values.Proxy.Ports.Control}}
   },
   "ignoreInboundPorts":[
-    {{- $ports := splitList "," .ProxyInit.IgnoreInboundPorts -}}
+    {{- $ports := splitList "," .Values.ProxyInit.IgnoreInboundPorts -}}
     {{- if gt (len $ports) 1}}
     {{- $last := sub (len $ports) 1 -}}
     {{- range $i,$port := $ports -}}
@@ -39,7 +39,7 @@
     {{- end -}}
   ],
   "ignoreOutboundPorts":[
-    {{- $ports := splitList "," .ProxyInit.IgnoreOutboundPorts -}}
+    {{- $ports := splitList "," .Values.ProxyInit.IgnoreOutboundPorts -}}
     {{- if gt (len $ports) 1}}
     {{- $last := sub (len $ports) 1 -}}
     {{- range $i,$port := $ports -}}
@@ -48,33 +48,33 @@
     {{- end -}}
   ],
   "inboundPort":{
-    "port": {{.Proxy.Ports.Inbound}}
+    "port": {{.Values.Proxy.Ports.Inbound}}
   },
   "adminPort":{
-    "port": {{.Proxy.Ports.Admin}}
+    "port": {{.Values.Proxy.Ports.Admin}}
   },
   "outboundPort":{
-    "port": {{.Proxy.Ports.Outbound}}
+    "port": {{.Values.Proxy.Ports.Outbound}}
   },
   "resource":{
-    "requestCpu": "{{.Proxy.Resources.CPU.Request}}",
-    "limitCpu": "{{.Proxy.Resources.CPU.Limit}}",
-    "requestMemory": "{{.Proxy.Resources.Memory.Request}}",
-    "limitMemory": "{{.Proxy.Resources.Memory.Limit}}"
+    "requestCpu": "{{.Values.Proxy.Resources.CPU.Request}}",
+    "limitCpu": "{{.Values.Proxy.Resources.CPU.Limit}}",
+    "requestMemory": "{{.Values.Proxy.Resources.Memory.Request}}",
+    "limitMemory": "{{.Values.Proxy.Resources.Memory.Limit}}"
   },
-  "proxyUid": {{.Proxy.UID}},
+  "proxyUid": {{.Values.Proxy.UID}},
   "logLevel":{
-    "level": "{{.Proxy.LogLevel}}"
+    "level": "{{.Values.Proxy.LogLevel}}"
   },
-  "disableExternalProfiles": {{not .Proxy.EnableExternalProfiles}},
-  "proxyVersion": "{{.Proxy.Image.Version}}",
-  "proxyInitImageVersion": "{{.ProxyInit.Image.Version}}"
+  "disableExternalProfiles": {{not .Values.Proxy.EnableExternalProfiles}},
+  "proxyVersion": "{{.Values.Proxy.Image.Version}}",
+  "proxyInitImageVersion": "{{.Values.ProxyInit.Image.Version}}"
 }
 {{- end -}}
 
 {{- define "linkerd.configs.install" -}}
 {
-  "cliVersion":"{{ .LinkerdVersion }}",
+  "cliVersion":"{{ .Values.LinkerdVersion }}",
   "flags":[]
 }
 {{- end -}}

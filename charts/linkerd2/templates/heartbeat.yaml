@@ -1,5 +1,4 @@
-{{ with .Values -}}
-{{ if not .DisableHeartBeat -}}
+{{ if not .Values.DisableHeartBeat -}}
 ---
 ###
 ### Heartbeat
@@ -9,40 +8,39 @@ apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
   name: linkerd-heartbeat
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerComponentLabel}}: heartbeat
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
+    {{.Values.ControllerComponentLabel}}: heartbeat
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
   annotations:
-    {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
 spec:
-  schedule: "{{.HeartbeatSchedule}}"
+  schedule: "{{.Values.HeartbeatSchedule}}"
   successfulJobsHistoryLimit: 0
   jobTemplate:
     spec:
       template:
         metadata:
           labels:
-            {{.ControllerComponentLabel}}: heartbeat
+            {{.Values.ControllerComponentLabel}}: heartbeat
           annotations:
-            {{.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .LinkerdVersion) .CliVersion}}
+            {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
         spec:
           {{- include "linkerd.node-selector" . | nindent 10 }}
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:
           - name: heartbeat
-            image: {{.ControllerImage}}:{{default .LinkerdVersion .ControllerImageVersion}}
-            imagePullPolicy: {{.ImagePullPolicy}}
+            image: {{.Values.ControllerImage}}:{{default .Values.LinkerdVersion .Values.ControllerImageVersion}}
+            imagePullPolicy: {{.Values.ImagePullPolicy}}
             args:
             - "heartbeat"
-            - "-prometheus-url=http://linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}:9090"
-            - "-controller-namespace={{.Namespace}}"
-            - "-log-level={{.ControllerLogLevel}}"
-            {{- if .HeartbeatResources -}}
-            {{- include "partials.resources" .HeartbeatResources | nindent 12 }}
+            - "-prometheus-url=http://linkerd-prometheus.{{.Values.Namespace}}.svc.{{.Values.ClusterDomain}}:9090"
+            - "-controller-namespace={{.Values.Namespace}}"
+            - "-log-level={{.Values.ControllerLogLevel}}"
+            {{- if .Values.HeartbeatResources -}}
+            {{- include "partials.resources" .Values.HeartbeatResources | nindent 12 }}
             {{- end }}
             securityContext:
-              runAsUser: {{.ControllerUID}}
-{{- end }}
+              runAsUser: {{.Values.ControllerUID}}
 {{- end }}

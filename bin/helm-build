@@ -5,29 +5,29 @@ set -e
 # trap the last failed command
 trap 'printf "Error on exit:\n  Exit code: $?\n  Failed command: \"$BASH_COMMAND\"\n"' ERR
 
-bindir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rootdir="$( cd $bindir/.. && pwd )"
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
 
-$bindir/helm lint $rootdir/charts/partials
-$bindir/helm init --client-only
-$bindir/helm dep up $rootdir/charts/linkerd2
-$bindir/helm dep up $rootdir/charts/patch
-$bindir/helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.TLS.CrtPEM="fake-cert" --set Identity.Issuer.TLS.KeyPEM="fake-key" --set Identity.Issuer.CrtExpiry="fake-expiry-date" $rootdir/charts/linkerd2
+"$bindir"/helm lint "$rootdir"/charts/partials
+"$bindir"/helm init --client-only
+"$bindir"/helm dep up "$rootdir"/charts/linkerd2
+"$bindir"/helm dep up "$rootdir"/charts/patch
+"$bindir"/helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.TLS.CrtPEM="fake-cert" --set Identity.Issuer.TLS.KeyPEM="fake-key" --set Identity.Issuer.CrtExpiry="fake-expiry-date" "$rootdir"/charts/linkerd2
 
-# `bin/helm-build package` assumes the presence of $rootdir/target/helm/index-pre.yaml which is downloaded in the chart_deploy CI job
-if [ "$1" == "package" ]; then
-    . $bindir/_tag.sh
+# `bin/helm-build package` assumes the presence of "$rootdir"/target/helm/index-pre.yaml which is downloaded in the chart_deploy CI job
+if [ "$1" = package ]; then
+    . "$bindir"/_tag.sh
     tag=$(named_tag)
-    clean_head || { echo "There are uncommitted changes"; exit 1; }
+    clean_head || { echo 'There are uncommitted changes'; exit 1; }
 
     regex='(edge|stable)-([0-9]+\.[0-9]+\.[0-9]+)'
     if [[ ! "$tag" =~ $regex ]]; then
-        echo "Version tag is malformed"
+        echo 'Version tag is malformed'
         exit 1
-    fi;
+    fi
     repo=${BASH_REMATCH[1]}
     version=${BASH_REMATCH[2]}
-    $bindir/helm --version $version --app-version $tag -d $rootdir/target/helm package $rootdir/charts/linkerd2
-    mv $rootdir/target/helm/index-pre.yaml $rootdir/target/helm/index-pre-$version.yaml
-    $bindir/helm repo index --url "https://helm.linkerd.io/$repo/" --merge $rootdir/target/helm/index-pre-$version.yaml $rootdir/target/helm
-fi;
+    "$bindir"/helm --version $version --app-version $tag -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2
+    mv "$rootdir"/target/helm/index-pre.yaml "$rootdir"/target/helm/index-pre-$version.yaml
+    "$bindir"/helm repo index --url "https://helm.linkerd.io/$repo/" --merge "$rootdir"/target/helm/index-pre-$version.yaml "$rootdir"/target/helm
+fi

@@ -54,13 +54,15 @@ func (h *KubernetesHelper) CheckIfNamespaceExists(namespace string) error {
 	return err
 }
 
-// CreateNamespaceIfNotExists creates a dataplane namespace if it does not already exist,
-// with a linkerd.io/is-test-data-plane label for easier cleanup afterwards
-func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string, annotations map[string]string) error {
+// GetSecret retrieves a Kubernetes Secret
+func (h *KubernetesHelper) GetSecret(namespace, name string) (*corev1.Secret, error) {
+	return h.clientset.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+}
+
+func (h *KubernetesHelper) createNamespaceIfNotExists(namespace string, annotations, labels map[string]string) error {
 	err := h.CheckIfNamespaceExists(namespace)
 
 	if err != nil {
-		labels := map[string]string{"linkerd.io/is-test-data-plane": "true"}
 		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels:      labels,
@@ -76,6 +78,19 @@ func (h *KubernetesHelper) CreateNamespaceIfNotExists(namespace string, annotati
 	}
 
 	return nil
+}
+
+// CreateControlPlaneNamespaceIfNotExists creates linkerd control plane namespace.
+func (h *KubernetesHelper) CreateControlPlaneNamespaceIfNotExists(namespace string) error {
+	labels := map[string]string{"linkerd.io/is-control-plane": "true", "config.linkerd.io/admission-webhooks": "disabled"}
+	annotations := map[string]string{"linkerd.io/inject": "disabled"}
+	return h.createNamespaceIfNotExists(namespace, annotations, labels)
+}
+
+// CreateDataPlaneNamespaceIfNotExists creates a dataplane namespace if it does not already exist,
+// with a linkerd.io/is-test-data-plane label for easier cleanup afterwards
+func (h *KubernetesHelper) CreateDataPlaneNamespaceIfNotExists(namespace string, annotations map[string]string) error {
+	return h.createNamespaceIfNotExists(namespace, annotations, map[string]string{"linkerd.io/is-test-data-plane": "true"})
 }
 
 // KubectlApply applies a given configuration string in a namespace. If the
