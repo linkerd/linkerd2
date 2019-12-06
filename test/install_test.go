@@ -251,7 +251,8 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		crt2, err := root.GenerateEndEntityCred(identity)
+		crt2, err := root.GenerateCA(identity, root.Validity, -1)
+
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -259,8 +260,8 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		if err = TestHelper.CreateTLSSecret(
 			k8s.IdentityIssuerSecretName+"-new",
 			root.Cred.Crt.EncodeCertificatePEM(),
-			crt2.EncodeCertificatePEM(),
-			crt2.EncodePrivateKeyPEM()); err != nil {
+			crt2.Cred.EncodeCertificatePEM(),
+			crt2.Cred.EncodePrivateKeyPEM()); err != nil {
 			t.Fatal(err)
 		}
 	}
