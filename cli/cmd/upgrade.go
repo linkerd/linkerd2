@@ -25,10 +25,11 @@ import (
 )
 
 const (
-	okMessage           = "You're on your way to upgrading Linkerd!"
-	controlPlaneMessage = "Don't forget to run `linkerd upgrade control-plane`!"
-	visitMessage        = "Visit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps"
-	failMessage         = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
+	okMessage              = "You're on your way to upgrading Linkerd!"
+	controlPlaneMessage    = "Don't forget to run `linkerd upgrade control-plane`!"
+	visitMessage           = "Visit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps"
+	failMessage            = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
+	trustRootChangeMessage = "Rotating the trust anchors will affect existing proxies\nSee https://linkerd.io/cert-rotation for more information"
 )
 
 type upgradeOptions struct {
@@ -188,6 +189,10 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 
 	buf.WriteTo(os.Stdout)
 
+	if options.identityOptions.trustPEMFile != "" {
+		fmt.Fprintf(os.Stderr, "\n%s %s\n", warnStatus, trustRootChangeMessage)
+	}
+
 	fmt.Fprintf(os.Stderr, "\n%s %s\n", okStatus, okMessage)
 	if stage == configStage {
 		fmt.Fprintf(os.Stderr, "%s\n", controlPlaneMessage)
@@ -238,6 +243,10 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	configs.GetGlobal().OmitWebhookSideEffects = options.omitWebhookSideEffects
 	if configs.GetGlobal().GetClusterDomain() == "" {
 		configs.GetGlobal().ClusterDomain = defaultClusterDomain
+	}
+
+	if options.identityOptions.trustPEMFile != "" && (options.identityOptions.crtPEMFile != "" || options.identityOptions.keyPEMFile != "") {
+		return nil, nil, errors.New("the trust root and issuer certificate/key must be upgraded separately")
 	}
 
 	if options.identityOptions.crtPEMFile != "" || options.identityOptions.keyPEMFile != "" {
