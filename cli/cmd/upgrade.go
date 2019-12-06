@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"time"
+
+	"github.com/linkerd/linkerd2/pkg/config"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -250,6 +253,12 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 	}
 
+	if options.identityOptions.trustPEMFile != "" {
+		if err := checkFilesExist([]string{options.identityOptions.trustPEMFile}); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	var identity *charts.Identity
 	idctx := configs.GetGlobal().GetIdentityContext()
 	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
@@ -257,13 +266,13 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		// must be upgrading from a version that didn't support identity, so generate it anew...
 		identity, err = options.identityOptions.genValues()
 		if err != nil {
-			return nil, nil, fmt.Errorf("unable to generate issuer credentials: %s", err)
+			return nil, nil, err
 		}
 		configs.GetGlobal().IdentityContext = toIdentityContext(identity)
 	} else {
 		identity, err = options.fetchIdentityValues(k, idctx)
 		if err != nil {
-			return nil, nil, fmt.Errorf("unable to read the existing issuer credentials: %s", err)
+			return nil, nil, err
 		}
 	}
 
@@ -274,6 +283,14 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
 	values.Identity = identity
+	// we need to do that if we have updated the anchors as the config map json has already been generated
+	if values.Identity.TrustAnchorsPEM != configs.Global.IdentityContext.TrustAnchorsPem {
+		// override the anchors in config
+		configs.Global.IdentityContext.TrustAnchorsPem = values.Identity.TrustAnchorsPEM
+		// rebuild the json config map
+		globalJSON, _, _, _ := config.ToJSON(configs)
+		values.Configs.Global = globalJSON
+	}
 
 	// if exist, re-use the proxy injector, profile validator and tap TLS secrets.
 	// otherwise, let Helm generate them by creating an empty charts.TLS struct here.
@@ -366,13 +383,24 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 		idctx.Scheme = k8s.IdentityIssuerSchemeLinkerd
 	}
 
+	var trustAnchorsPEM string
 	var issuerData *issuerData
 	var err error
-	if options.identityOptions.crtPEMFile != "" && options.identityOptions.keyPEMFile != "" {
-		issuerData, err = readIssuer(idctx.GetTrustAnchorsPem(), options.identityOptions.crtPEMFile, options.identityOptions.keyPEMFile)
-	} else {
-		issuerData, err = fetchIssuer(k, idctx.GetTrustAnchorsPem(), idctx.Scheme)
 
+	if options.identityOptions.trustPEMFile != "" {
+		trustb, err := ioutil.ReadFile(options.identityOptions.trustPEMFile)
+		if err != nil {
+			return nil, err
+		}
+		trustAnchorsPEM = string(trustb)
+	} else {
+		trustAnchorsPEM = idctx.GetTrustAnchorsPem()
+	}
+
+	if options.identityOptions.crtPEMFile != "" && options.identityOptions.keyPEMFile != "" {
+		issuerData, err = readIssuer(trustAnchorsPEM, options.identityOptions.crtPEMFile, options.identityOptions.keyPEMFile)
+	} else {
+		issuerData, err = fetchIssuer(k, trustAnchorsPEM, idctx.Scheme)
 	}
 	if err != nil {
 		return nil, err
@@ -380,7 +408,7 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 
 	return &charts.Identity{
 		TrustDomain:     idctx.GetTrustDomain(),
-		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
+		TrustAnchorsPEM: trustAnchorsPEM,
 		Issuer: &charts.Issuer{
 			Scheme:              idctx.Scheme,
 			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
@@ -407,7 +435,7 @@ func readIssuer(trustPEM, issuerCrtPath, issuerKeyPath string) (*issuerData, err
 		return nil, err
 	}
 
-	if err := VerifyCreds(creds, trustPEM, ""); err != nil {
+	if err := verifyCreds(creds, trustPEM, ""); err != nil {
 		return nil, fmt.Errorf("invalid issuer credentials: %s", err)
 	}
 
