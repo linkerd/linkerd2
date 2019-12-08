@@ -66,7 +66,7 @@ sub-folders, or coming from stdin.`,
 				return fmt.Errorf("please specify a kubernetes resource file")
 			}
 
-			if err := options.parseAndValidate(); err != nil {
+			if err := options.validate(); err != nil {
 				return err
 			}
 
@@ -341,12 +341,12 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	}
 
 	if len(options.ignoreInboundPorts) > 0 {
-		configs.Proxy.IgnoreInboundPorts = toPorts(options.ignoreInboundPorts)
-		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = parsePorts(configs.Proxy.IgnoreInboundPorts)
+		configs.Proxy.IgnoreInboundPorts = toPortRanges(options.ignoreInboundPorts)
+		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = parsePortRanges(configs.Proxy.IgnoreInboundPorts)
 	}
 	if len(options.ignoreOutboundPorts) > 0 {
-		configs.Proxy.IgnoreOutboundPorts = toPorts(options.ignoreOutboundPorts)
-		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = parsePorts(configs.Proxy.IgnoreOutboundPorts)
+		configs.Proxy.IgnoreOutboundPorts = toPortRanges(options.ignoreOutboundPorts)
+		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = parsePortRanges(configs.Proxy.IgnoreOutboundPorts)
 	}
 
 	if options.proxyAdminPort != 0 {
@@ -461,18 +461,18 @@ func parsePort(port *cfg.Port) string {
 	return strconv.FormatUint(uint64(port.GetPort()), 10)
 }
 
-func toPorts(ints []uint) []*cfg.Port {
-	ports := make([]*cfg.Port, len(ints))
-	for i, p := range ints {
-		ports[i] = toPort(p)
+func toPortRanges(portRanges []string) []*cfg.PortRange {
+	ports := make([]*cfg.PortRange, len(portRanges))
+	for i, p := range portRanges {
+		ports[i] = &cfg.PortRange{PortRange: p}
 	}
 	return ports
 }
 
-func parsePorts(ports []*cfg.Port) string {
+func parsePortRanges(portRanges []*cfg.PortRange) string {
 	var str string
-	for _, port := range ports {
-		str += parsePort(port) + ","
+	for _, p := range portRanges {
+		str += p.GetPortRange() + ","
 	}
 
 	return strings.TrimSuffix(str, ",")

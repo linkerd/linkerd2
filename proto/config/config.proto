@@ -35,8 +35,8 @@ message Proxy {
   Image proxy_init_image = 2;
 
   Port control_port = 3;
-  repeated Port ignore_inbound_ports = 4;
-  repeated Port ignore_outbound_ports = 5;
+  repeated PortRange ignore_inbound_ports = 4;
+  repeated PortRange ignore_outbound_ports = 5;
   Port inbound_port = 6;
   Port admin_port = 7;
   Port outbound_port = 8;
@@ -59,6 +59,10 @@ message Image {
 
 message Port {
   uint32 port = 1;
+}
+
+message PortRange {
+  string port_range = 1;
 }
 
 message ResourceRequirements {

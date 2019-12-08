@@ -106,8 +106,8 @@ func TestUninjectAndInject(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Unexpected error: %v", err)
 	}
-	proxyIgnorePortsOptions.rawIgnoreInboundPorts = []string{"22", "8100-8102"}
-	proxyIgnorePortsOptions.rawIgnoreOutboundPorts = []string{"5432"}
+	proxyIgnorePortsOptions.ignoreInboundPorts = []string{"22", "8100-8102"}
+	proxyIgnorePortsOptions.ignoreOutboundPorts = []string{"5432"}
 	_, proxyIgnorePortsConfig, err := proxyIgnorePortsOptions.validateAndBuild("", nil)
 	if err != nil {
 		log.Fatalf("test install proxy-ignore options must be valid: %s", err)

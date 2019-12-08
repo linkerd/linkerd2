@@ -166,8 +166,8 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withProxyIgnoresOptions.rawIgnoreInboundPorts = []string{"22", "8100-8102"}
-	withProxyIgnoresOptions.rawIgnoreOutboundPorts = []string{"5432"}
+	withProxyIgnoresOptions.ignoreInboundPorts = []string{"22", "8100-8102"}
+	withProxyIgnoresOptions.ignoreOutboundPorts = []string{"5432"}
 	withProxyIgnoresValues, _, _ := withProxyIgnoresOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(withProxyIgnoresValues)
 

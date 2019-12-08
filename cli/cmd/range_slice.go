@@ -6,15 +6,11 @@ import (
 	"strings"
 )
 
-// MapRangeSlice creates and populates the target slice of unsigned integers
-// based upon the source slice of string integer(s) and inclusive range(s).
-// For example:
-//   []string{"23","25-27"}
-// will result in
-//   []uint{23,25,26,27}
-func MapRangeSlice(target *[]uint, source []string) error {
-	*target = make([]uint, 0)
-	for _, portOrRange := range source {
+// validateRangeSlice ensures that provided slice contains valid entries
+// representing either port number(s) and/or port range(s).  Invalid entries
+// will result in an error being returned.
+func validateRangeSlice(rangeSlice []string) error {
+	for _, portOrRange := range rangeSlice {
 		if strings.Contains(portOrRange, "-") {
 			bounds := strings.Split(portOrRange, "-")
 			if len(bounds) != 2 {
@@ -31,15 +27,11 @@ func MapRangeSlice(target *[]uint, source []string) error {
 			if upper < lower {
 				return fmt.Errorf("\"%s\": upper-bound must be greater than or equal to lower-bound", portOrRange)
 			}
-			for i := lower; i <= upper; i++ {
-				*target = append(*target, uint(i))
-			}
 		} else {
-			u, err := strconv.ParseUint(portOrRange, 10, 0)
+			_, err := strconv.ParseUint(portOrRange, 10, 0)
 			if err != nil {
-				return err
+				return fmt.Errorf("\"%s\" is not a valid port nor port-range", portOrRange)
 			}
-			*target = append(*target, uint(u))
 		}
 	}
 	return nil
