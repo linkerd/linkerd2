@@ -98,7 +98,8 @@ func TestNewValues(t *testing.T) {
 				CollectorSvcAddr:    "",
 				CollectorSvcAccount: "default",
 			},
-			UID: 2102,
+			UID:                   2102,
+			WaitBeforeExitSeconds: 0,
 		},
 
 		ProxyInit: &ProxyInit{

@@ -467,8 +467,9 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 			Inbound:  conf.proxyInboundPort(),
 			Outbound: conf.proxyOutboundPort(),
 		},
-		UID:       conf.proxyUID(),
-		Resources: conf.proxyResourceRequirements(),
+		UID:                   conf.proxyUID(),
+		Resources:             conf.proxyResourceRequirements(),
+		WaitBeforeExitSeconds: conf.proxyWaitBeforeExitSeconds(),
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -755,6 +756,17 @@ func (conf *ResourceConfig) tapDisabled() bool {
 		}
 	}
 	return false
+}
+
+func (conf *ResourceConfig) proxyWaitBeforeExitSeconds() int32 {
+	if override := conf.getOverride(k8s.WaitBeforeExitSecondsAnnotation); override != "" {
+		waitBeforeExitSeconds, err := strconv.ParseInt(override, 10, 32)
+		if err == nil {
+			return int32(waitBeforeExitSeconds)
+		}
+	}
+
+	return conf.configs.GetProxy().GetWaitBeforeExitSeconds()
 }
 
 func (conf *ResourceConfig) proxyResourceRequirements() *l5dcharts.Resources {

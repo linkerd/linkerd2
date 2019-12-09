@@ -199,6 +199,7 @@ type proxyConfigOptions struct {
 	enableExternalProfiles   bool
 	traceCollector           string
 	traceCollectorSvcAccount string
+	waitBeforeExitSeconds    uint
 	// ignoreCluster is not validated by validate().
 	ignoreCluster   bool
 	disableIdentity bool
