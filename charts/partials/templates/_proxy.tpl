@@ -105,7 +105,7 @@ readinessProbe:
 securityContext:
   allowPrivilegeEscalation: false
   {{- if .Values.Proxy.Capabilities -}}
-  {{- include "partials.proxy.capabilities" .Values.Proxy | nindent 2 -}}
+  {{- include "partials.proxy.capabilities" . | nindent 2 -}}
   {{- end }}
   readOnlyRootFilesystem: true
   runAsUser: {{.Values.Proxy.UID}}
