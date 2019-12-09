@@ -2189,4 +2189,3 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-tap-tls
----

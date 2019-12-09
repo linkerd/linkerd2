@@ -17,19 +17,19 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	defaultValues, defaultConfig, err := defaultOptions.validateAndBuild("", nil)
+	defaultValues, _, err := defaultOptions.validateAndBuild("", nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
 	addFakeTLSSecrets(defaultValues)
 
-	configValues, configConfig, err := defaultOptions.validateAndBuild(configStage, nil)
+	configValues, _, err := defaultOptions.validateAndBuild(configStage, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
 	addFakeTLSSecrets(configValues)
 
-	controlPlaneValues, controlPlaneConfig, err := defaultOptions.validateAndBuild(controlPlaneStage, nil)
+	controlPlaneValues, _, err := defaultOptions.validateAndBuild(controlPlaneStage, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestRender(t *testing.T) {
 
 	haOptions.recordedFlags = []*config.Install_Flag{{Name: "ha", Value: "true"}}
 	haOptions.highAvailability = true
-	haValues, haConfig, _ := haOptions.validateAndBuild("", nil)
+	haValues, _, _ := haOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(haValues)
 
 	haWithOverridesOptions, err := testInstallOptions()
@@ -148,7 +148,7 @@ func TestRender(t *testing.T) {
 	haWithOverridesOptions.controllerReplicas = 2
 	haWithOverridesOptions.proxyCPURequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
-	haWithOverridesValues, haWithOverridesConfig, _ := haWithOverridesOptions.validateAndBuild("", nil)
+	haWithOverridesValues, _, _ := haWithOverridesOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(haWithOverridesValues)
 
 	noInitContainerOptions, err := testInstallOptions()
@@ -158,30 +158,27 @@ func TestRender(t *testing.T) {
 
 	noInitContainerOptions.recordedFlags = []*config.Install_Flag{{Name: "linkerd-cni-enabled", Value: "true"}}
 	noInitContainerOptions.noInitContainer = true
-	noInitContainerValues, noInitContainerConfig, _ := noInitContainerOptions.validateAndBuild("", nil)
+	noInitContainerValues, _, _ := noInitContainerOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(noInitContainerValues)
 
 	testCases := []struct {
 		values         *charts.Values
-		configs        *config.All
 		goldenFileName string
 	}{
-		{defaultValues, defaultConfig, "install_default.golden"},
-		{configValues, configConfig, "install_config.golden"},
-		{controlPlaneValues, controlPlaneConfig, "install_control-plane.golden"},
-		{metaValues, metaConfig, "install_output.golden"},
-		{haValues, haConfig, "install_ha_output.golden"},
-		{haWithOverridesValues, haWithOverridesConfig, "install_ha_with_overrides_output.golden"},
-		{noInitContainerValues, noInitContainerConfig, "install_no_init_container.golden"},
+		{defaultValues, "install_default.golden"},
+		{configValues, "install_config.golden"},
+		{controlPlaneValues, "install_control-plane.golden"},
+		{metaValues, "install_output.golden"},
+		{haValues, "install_ha_output.golden"},
+		{haWithOverridesValues, "install_ha_with_overrides_output.golden"},
+		{noInitContainerValues, "install_no_init_container.golden"},
 	}
 
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
-			controlPlaneNamespace = tc.configs.GetGlobal().GetLinkerdNamespace()
-
 			var buf bytes.Buffer
-			if err := render(&buf, tc.values, tc.configs); err != nil {
+			if err := render(&buf, tc.values); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
 			diffTestdata(t, tc.goldenFileName, buf.String())

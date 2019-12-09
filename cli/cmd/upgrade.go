@@ -170,7 +170,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 		}
 	}
 
-	values, configs, err := options.validateAndBuild(stage, k, flags)
+	values, _, err := options.validateAndBuild(stage, k, flags)
 	if err != nil {
 		upgradeErrorf("Failed to build upgrade configuration: %s", err)
 	}
@@ -178,7 +178,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	// rendering to a buffer and printing full contents of buffer after
 	// render is complete, to ensure that okStatus prints separately
 	var buf bytes.Buffer
-	if err = render(&buf, values, configs); err != nil {
+	if err = render(&buf, values); err != nil {
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
 
