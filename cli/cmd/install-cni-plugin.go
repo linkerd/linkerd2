@@ -61,7 +61,7 @@ func (options *cniPluginOptions) pluginImage() string {
 }
 
 func newCmdInstallCNIPlugin() *cobra.Command {
-	options, err := newCniInstallOptionsWithDefaults()
+	options, err := newCNIInstallOptionsWithDefaults()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		os.Exit(1)
@@ -105,7 +105,7 @@ assumes that the 'linkerd install' command will be executed with the
 	return cmd
 }
 
-func newCniInstallOptionsWithDefaults() (*cniPluginOptions, error) {
+func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 	defaults, err := cnicharts.NewValues()
 	if err != nil {
 		return nil, err
@@ -152,8 +152,8 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 		portsToRedirect = append(portsToRedirect, fmt.Sprintf("%d", p))
 	}
 
-	installValues.CniPluginImage = options.pluginImage()
-	installValues.CniPluginVersion = options.linkerdVersion
+	installValues.CNIPluginImage = options.pluginImage()
+	installValues.CNIPluginVersion = options.linkerdVersion
 	installValues.LogLevel = options.logLevel
 	installValues.InboundProxyPort = options.inboundPort
 	installValues.OutboundProxyPort = options.outboundPort

@@ -8,9 +8,9 @@ import (
 
 func TestRenderCNIPlugin(t *testing.T) {
 	defaultControlPlaneNamespace := controlPlaneNamespace
-	defaultOptions, err := newCniInstallOptionsWithDefaults()
+	defaultOptions, err := newCNIInstallOptionsWithDefaults()
 	if err != nil {
-		t.Fatalf("Unexpected error from newCniInstallOptionsWithDefaults(): %v", err)
+		t.Fatalf("Unexpected error from newCNIInstallOptionsWithDefaults(): %v", err)
 	}
 
 	fullyConfiguredOptions := &cniPluginOptions{

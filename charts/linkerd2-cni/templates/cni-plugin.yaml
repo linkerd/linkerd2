@@ -18,19 +18,18 @@ This file was inspired by
 1) https://github.com/istio/cni/blob/c63a509539b5ed165a6617548c31b686f13c2133/deployments/kubernetes/install/manifests/istio-cni.yaml
 */ -}}
 
-{{with .Values -}}
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: {{.Namespace}}
+  name: {{.Values.Namespace}}
 ---
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: linkerd-{{.Namespace}}-cni
+  name: linkerd-{{.Values.Namespace}}-cni
   labels:
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-    {{.CniResourceAnnotation}}: "true"
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.CNIResourceAnnotation}}: "true"
 spec:
   allowPrivilegeEscalation: false
   fsGroup:
@@ -50,34 +49,34 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: linkerd-cni
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-    {{.CniResourceAnnotation}}: "true"
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.CNIResourceAnnotation}}: "true"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-cni
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-    {{.CniResourceAnnotation}}: "true"
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.CNIResourceAnnotation}}: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
   resourceNames:
-  - linkerd-{{.Namespace}}-cni
+  - linkerd-{{.Values.Namespace}}-cni
   verbs: ['use']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-cni
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-    {{.CniResourceAnnotation}}: "true"
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.CNIResourceAnnotation}}: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -85,15 +84,15 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-cni
   labels:
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-    {{.CniResourceAnnotation}}: "true"
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.CNIResourceAnnotation}}: "true"
 rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces"]
@@ -104,8 +103,8 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
   labels:
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-    {{.CniResourceAnnotation}}: "true"
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.CNIResourceAnnotation}}: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -113,26 +112,26 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-cni-config
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-    {{.CniResourceAnnotation}}: "true"
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.CNIResourceAnnotation}}: "true"
 data:
-  dest_cni_net_dir: "{{.DestCNINetDir}}"
-  dest_cni_bin_dir: "{{.DestCNIBinDir}}"
+  dest_cni_net_dir: "{{.Values.DestCNINetDir}}"
+  dest_cni_bin_dir: "{{.Values.DestCNIBinDir}}"
   # The CNI network configuration to install on each node. The special
   # values in this config will be automatically populated.
   cni_network_config: |-
     {
       "name": "linkerd-cni",
       "type": "linkerd-cni",
-      "log_level": "{{.LogLevel}}",
+      "log_level": "{{.Values.LogLevel}}",
       "policy": {
           "type": "k8s",
           "k8s_api_root": "https://__KUBERNETES_SERVICE_HOST__:__KUBERNETES_SERVICE_PORT__",
@@ -142,14 +141,14 @@ data:
           "kubeconfig": "__KUBECONFIG_FILEPATH__"
       },
       "linkerd": {
-        "incoming-proxy-port": {{.InboundProxyPort}},
-        "outgoing-proxy-port": {{.OutboundProxyPort}},
-        "proxy-uid": {{.ProxyUID}},
-        "ports-to-redirect": [{{.PortsToRedirect}}],
-        "inbound-ports-to-ignore": [{{.IgnoreInboundPorts}}],
-        "outbound-ports-to-ignore": [{{.IgnoreOutboundPorts}}],
+        "incoming-proxy-port": {{.Values.InboundProxyPort}},
+        "outgoing-proxy-port": {{.Values.OutboundProxyPort}},
+        "proxy-uid": {{.Values.ProxyUID}},
+        "ports-to-redirect": [{{.Values.PortsToRedirect}}],
+        "inbound-ports-to-ignore": [{{.Values.IgnoreInboundPorts}}],
+        "outbound-ports-to-ignore": [{{.Values.IgnoreOutboundPorts}}],
         "simulate": false,
-        "use-wait-flag": {{.UseWaitFlag}}
+        "use-wait-flag": {{.Values.UseWaitFlag}}
       }
     }
 ---
@@ -157,13 +156,13 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: linkerd-cni
-  namespace: {{.Namespace}}
+  namespace: {{.Values.Namespace}}
   labels:
     k8s-app: linkerd-cni
-    {{.ControllerNamespaceLabel}}: {{.Namespace}}
-    {{.CniResourceAnnotation}}: "true"
+    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.CNIResourceAnnotation}}: "true"
   annotations:
-    {{.CreatedByAnnotation}}: {{.CliVersion}}
+    {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
 spec:
   selector:
     matchLabels:
@@ -177,7 +176,7 @@ spec:
       labels:
         k8s-app: linkerd-cni
       annotations:
-        {{.CreatedByAnnotation}}: {{.CliVersion}}
+        {{.Values.CreatedByAnnotation}}: {{.Values.CliVersion}}
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -189,7 +188,7 @@ spec:
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: {{.CniPluginImage}}:{{.CniPluginVersion}}
+        image: {{.Values.CNIPluginImage}}:{{.Values.CNIPluginVersion}}
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:
@@ -213,26 +212,25 @@ spec:
             exec:
               command: ["kill","-15","1"]
         volumeMounts:
-        {{- if ne .DestCNIBinDir .DestCNINetDir }}
-        - mountPath: /host{{.DestCNIBinDir}}
+        {{- if ne .Values.DestCNIBinDir .Values.DestCNINetDir }}
+        - mountPath: /host{{.Values.DestCNIBinDir}}
           name: cni-bin-dir
-        - mountPath: /host{{.DestCNINetDir}}
+        - mountPath: /host{{.Values.DestCNINetDir}}
           name: cni-net-dir
         {{- else }}
-        - mountPath: /host{{.DestCNINetDir}}
+        - mountPath: /host{{.Values.DestCNINetDir}}
           name: cni-net-dir
         {{- end }}
       volumes:
-      {{- if ne .DestCNIBinDir .DestCNINetDir }}
+      {{- if ne .Values.DestCNIBinDir .Values.DestCNINetDir }}
       - name: cni-bin-dir
         hostPath:
-          path: {{.DestCNIBinDir}}
+          path: {{.Values.DestCNIBinDir}}
       - name: cni-net-dir
         hostPath:
-          path: {{.DestCNINetDir}}
+          path: {{.Values.DestCNINetDir}}
       {{- else }}
       - name: cni-net-dir
         hostPath:
-          path: {{.DestCNINetDir}}
+          path: {{.Values.DestCNINetDir}}
       {{- end }}
-{{ end -}}

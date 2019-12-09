@@ -17,7 +17,7 @@ func TestRenderCniHelm(t *testing.T) {
 	// override most defaults with pinned values.
 	// use the Helm lib to render the templates.
 	// the golden file is generated using the following `helm template` command:
-	// bin/helm template --set Namespace="linkerd-test" --set ControllerNamespaceLabel="linkerd.io/control-plane-ns-test" --set CniResourceAnnotation="linkerd.io/cni-resource-test" --set InboundProxyPort=1234 --set OutboundProxyPort=5678 --set CreatedByAnnotation="linkerd.io/created-by-test" --set CniPluginImage="gcr.io/linkerd-io/cni-plugin-test" --set CniPluginVersion="test-version" --set LogLevel="debug" --set ProxyUID=1111 --set DestCNINetDir="/etc/cni/net.d-test" --set DestCNIBinDir="/opt/cni/bin-test" --set UseWaitFlag=true --set CliVersion=test-version charts/linkerd2-cni
+	// bin/helm template --set Namespace="linkerd-test" --set ControllerNamespaceLabel="linkerd.io/control-plane-ns-test" --set CNIResourceAnnotation="linkerd.io/cni-resource-test" --set InboundProxyPort=1234 --set OutboundProxyPort=5678 --set CreatedByAnnotation="linkerd.io/created-by-test" --set CNIPluginImage="gcr.io/linkerd-io/cni-plugin-test" --set CNIPluginVersion="test-version" --set LogLevel="debug" --set ProxyUID=1111 --set DestCNINetDir="/etc/cni/net.d-test" --set DestCNIBinDir="/opt/cni/bin-test" --set UseWaitFlag=true --set CliVersion=test-version charts/linkerd2-cni
 
 	t.Run("Cni Install", func(t *testing.T) {
 		chartCni := chartCniPlugin(t)
@@ -35,12 +35,12 @@ func testRenderCniHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 		`{
 			"Namespace": "linkerd-test",
   			"ControllerNamespaceLabel": "linkerd.io/control-plane-ns-test",
-  			"CniResourceAnnotation": "linkerd.io/cni-resource-test",
+  			"CNIResourceAnnotation": "linkerd.io/cni-resource-test",
   			"InboundProxyPort": 1234,
   			"OutboundProxyPort": 5678,
 			"CreatedByAnnotation": "linkerd.io/created-by-test",
-  			"CniPluginImage": "gcr.io/linkerd-io/cni-plugin-test",
-  			"CniPluginVersion": "test-version",
+  			"CNIPluginImage": "gcr.io/linkerd-io/cni-plugin-test",
+  			"CNIPluginVersion": "test-version",
   			"LogLevel": "debug",
   			"ProxyUID": 1111,
   			"DestCNINetDir": "/etc/cni/net.d-test",

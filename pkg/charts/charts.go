@@ -101,7 +101,9 @@ func ReadFile(dir string, f *chartutil.BufferedFile) error {
 	defer file.Close()
 
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(file)
+	if _, err := buf.ReadFrom(file); err != nil {
+		return err
+	}
 
 	f.Data = buf.Bytes()
 	return nil

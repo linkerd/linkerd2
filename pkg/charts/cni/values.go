@@ -10,22 +10,22 @@ import (
 )
 
 const (
-	helmDefaultCniChartDir = "linkerd2-cni"
+	helmDefaultCNIChartDir = "linkerd2-cni"
 )
 
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
 	Namespace                string
 	ControllerNamespaceLabel string
-	CniResourceAnnotation    string
+	CNIResourceAnnotation    string
 	InboundProxyPort         uint
 	OutboundProxyPort        uint
 	IgnoreInboundPorts       string
 	IgnoreOutboundPorts      string
 	CreatedByAnnotation      string
 	CliVersion               string
-	CniPluginImage           string
-	CniPluginVersion         string
+	CNIPluginImage           string
+	CNIPluginVersion         string
 	LogLevel                 string
 	PortsToRedirect          string
 	ProxyUID                 int64
@@ -36,7 +36,7 @@ type Values struct {
 
 // NewValues returns a new instance of the Values type.
 func NewValues() (*Values, error) {
-	chartDir := fmt.Sprintf("%s/", helmDefaultCniChartDir)
+	chartDir := fmt.Sprintf("%s/", helmDefaultCNIChartDir)
 	v, err := readDefaults(chartDir)
 	if err != nil {
 		return nil, err
