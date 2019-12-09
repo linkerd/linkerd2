@@ -1,5 +1,6 @@
 # Linkerd 2.x adopters
 
+- [Allotrac](https://allotrac.com.au)
 - [AlphaSights](https://www.alphasights.com)
 - [Apester](https://apester.com)
 - [Attest](https://www.askattest.com)
