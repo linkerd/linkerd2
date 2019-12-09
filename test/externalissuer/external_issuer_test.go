@@ -6,9 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/testutil"
-	corev1 "k8s.io/api/core/v1"
 )
 
 var TestHelper *testutil.TestHelper
@@ -91,20 +89,16 @@ func verifyAppWorksBeforeCertRotation(t *testing.T) {
 }
 
 func verifyRotateExternalCerts(t *testing.T) {
-	// We rotate the certificates here by simply grabbing
-	// the key and cert values from the temporary secret we have
-	// created
-	secretWithUpdatedData, err := TestHelper.KubernetesHelper.GetSecret(TestHelper.GetLinkerdNamespace(), k8s.IdentityIssuerSecretName+"-new")
+	// change issuer secret
+	secretResource, err := testutil.ReadFile("testdata/issuer_secret_2.yaml")
 	if err != nil {
-		t.Fatalf("failed to fetch new secret data resource: %s", err)
+		t.Fatalf("failed to load linkerd-identity-issuer resource: %s", err)
 	}
 
-	roots := secretWithUpdatedData.Data[k8s.IdentityIssuerTrustAnchorsNameExternal]
-	crt := secretWithUpdatedData.Data[corev1.TLSCertKey]
-	key := secretWithUpdatedData.Data[corev1.TLSPrivateKeyKey]
+	out, err := TestHelper.KubectlApply(secretResource, TestHelper.GetLinkerdNamespace())
 
-	if err = TestHelper.CreateTLSSecret(k8s.IdentityIssuerSecretName, string(roots), string(crt), string(key)); err != nil {
-		t.Fatalf("failed to update linkerd-identity-issuer resource: %s", err)
+	if err != nil {
+		t.Fatalf("failed to update linkerd-identity-issuer resource: %s", out)
 	}
 }
 

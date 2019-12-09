@@ -1,3 +1,15 @@
+## edge-19.12.1
+
+* CLI
+  * Added condition to the `linkerd stat` command that requires a window size
+    of at least 15 seconds to work properly with Prometheus
+* Internal
+  * Fixed whitespace path handling in non-docker build scripts (thanks
+    @joakimr-axis!)
+  * Removed Calico logutils dependency that was incompatible with Go 1.13
+  * Updated Helm templates to use fully-qualified variable references based
+    upon Helm best practices (thanks @javaducky!)
+
 ## edge-19.11.3
 
 * CLI
