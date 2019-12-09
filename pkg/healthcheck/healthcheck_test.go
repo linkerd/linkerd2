@@ -2195,9 +2195,7 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 				t.Fatalf("Unexpected error: %q", err)
 			}
 
-			hc.addCheckAsCategory("l5d-injection-disabled", LinkerdHaChecks, "pod injection disabled on kube-system", func() bool {
-				return hc.isHA()
-			})
+			hc.addCheckAsCategory("l5d-injection-disabled", LinkerdHAChecks, "pod injection disabled on kube-system", hc.isHA)
 
 			obs := newObserver()
 			hc.RunChecks(obs.resultFn)
