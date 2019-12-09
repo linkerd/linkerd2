@@ -138,24 +138,7 @@ func (iw *IPWatcher) addPod(obj interface{}) {
 	}
 	ss := iw.getOrNewServiceSubscriptions(pod.Status.PodIP)
 
-	ownerKind, ownerName := iw.k8sAPI.GetOwnerKindAndName(pod, true)
-	podSet := PodSet{
-		Pods: map[PodID]Address{
-			PodID{
-				Name:      pod.Name,
-				Namespace: pod.Namespace,
-			}: Address{
-				IP:        pod.Status.PodIP,
-				Port:      0, // Will be set by individual subscriptions
-				Pod:       pod,
-				OwnerName: ownerName,
-				OwnerKind: ownerKind,
-			},
-		},
-		Labels: map[string]string{},
-	}
-
-	ss.updatePod(podSet)
+	ss.updatePod(ss.pod)
 }
 
 func (iw *IPWatcher) deletePod(obj interface{}) {
