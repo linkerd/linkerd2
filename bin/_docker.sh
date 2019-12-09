@@ -5,7 +5,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 . "$bindir"/_log.sh
 
 # TODO this should be set to the canonical public docker registry; we can override this
-# docker regsistry in, for instance, CI.
+# docker registry in, for instance, CI.
 export DOCKER_REGISTRY=${DOCKER_REGISTRY:-gcr.io/linkerd-io}
 
 # When set, causes docker's build output to be emitted to stderr.
