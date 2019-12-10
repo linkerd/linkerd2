@@ -30,7 +30,7 @@ securityContext:
     {{- toYaml .Values.ProxyInit.Capabilities.Add | trim | nindent 4 }}
     {{- end }}
     {{- if .Values.ProxyInit.Capabilities.Drop -}}
-    {{- include "partials.proxy-init.capabilities.drop" .Values.ProxyInit | nindent 4 -}}
+    {{- include "partials.proxy-init.capabilities.drop" . | nindent 4 -}}
     {{- end }}
     {{- end }}
   privileged: false

@@ -1,16 +1,16 @@
 {{- define "partials.proxy.capabilities" -}}
 capabilities:
-  {{- if .Values.Capabilities.Add }}
+  {{- if .Values.Proxy.Capabilities.Add }}
   add:
-  {{- toYaml .Values.Capabilities.Add | trim | nindent 4 }}
+  {{- toYaml .Values.Proxy.Capabilities.Add | trim | nindent 4 }}
   {{- end }}
-  {{- if .Values.Capabilities.Drop }}
+  {{- if .Values.Proxy.Capabilities.Drop }}
   drop:
-  {{- toYaml .Values.Capabilities.Drop | trim | nindent 4 }}
+  {{- toYaml .Values.Proxy.Capabilities.Drop | trim | nindent 4 }}
   {{- end }}
 {{- end -}}
 
 {{- define "partials.proxy-init.capabilities.drop" -}}
 drop:
-{{ toYaml .Values.Capabilities.Drop | trim }}
+{{ toYaml .Values.ProxyInit.Capabilities.Drop | trim }}
 {{- end -}}
