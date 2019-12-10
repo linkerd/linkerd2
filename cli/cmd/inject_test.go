@@ -265,6 +265,14 @@ func TestUninjectAndInject(t *testing.T) {
 			enableDebugSidecarFlag: true,
 		},
 		{
+			inputFileName:          "inject_tap_deployment.input.yml",
+			goldenFileName:         "inject_tap_deployment_debug.golden.yml",
+			reportFileName:         "inject_tap_deployment_debug.report",
+			injectProxy:            true,
+			testInjectConfig:       defaultConfig,
+			enableDebugSidecarFlag: true,
+		},
+		{
 			inputFileName:    "inject_emojivoto_namespace_good.input.yml",
 			goldenFileName:   "inject_emojivoto_namespace_good.golden.yml",
 			reportFileName:   "inject_emojivoto_namespace_good.golden.report",
@@ -344,7 +352,7 @@ func TestRunInjectCmd(t *testing.T) {
 			injectProxy:          true,
 		},
 		{
-			inputFileName:        "inject_tap_deployment.bad.input.yml",
+			inputFileName:        "inject_tap_deployment.input.yml",
 			stdErrGoldenFileName: "inject_tap_deployment.bad.golden",
 			exitCode:             1,
 			injectProxy:          false,
