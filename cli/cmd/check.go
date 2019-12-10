@@ -17,24 +17,26 @@ import (
 )
 
 type checkOptions struct {
-	versionOverride string
-	preInstallOnly  bool
-	dataPlaneOnly   bool
-	wait            time.Duration
-	namespace       string
-	cniEnabled      bool
-	output          string
+	versionOverride       string
+	preInstallOnly        bool
+	dataPlaneOnly         bool
+	wait                  time.Duration
+	namespace             string
+	cniEnabled            bool
+	output                string
+	maxNumOfPodsDisplayed uint32
 }
 
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
-		versionOverride: "",
-		preInstallOnly:  false,
-		dataPlaneOnly:   false,
-		wait:            300 * time.Second,
-		namespace:       "",
-		cniEnabled:      false,
-		output:          tableOutput,
+		versionOverride:       "",
+		preInstallOnly:        false,
+		dataPlaneOnly:         false,
+		wait:                  300 * time.Second,
+		namespace:             "",
+		cniEnabled:            false,
+		output:                tableOutput,
+		maxNumOfPodsDisplayed: 10,
 	}
 }
 
@@ -46,6 +48,7 @@ func (options *checkOptions) nonConfigFlagSet() *pflag.FlagSet {
 	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	flags.BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
 	flags.BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
+	flags.Uint32Var(&options.maxNumOfPodsDisplayed, "max-num-affected-pods", options.maxNumOfPodsDisplayed, "Limits the number of affected pods displayed by the check command")
 
 	return flags
 }

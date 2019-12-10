@@ -291,6 +291,7 @@ type Options struct {
 	VersionOverride       string
 	RetryDeadline         time.Time
 	NoInitContainer       bool
+	maxPodsToDisplay      uint32
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -822,8 +823,8 @@ func (hc *HealthChecker) allCategories() []category {
 						var invalidRoots []string
 						affectedPods := make(map[string]bool)
 
-						unparsableErrorFmt := "      * Unparsable trustRoots for name %s"
-						invalidRootFormat := "      * %v %s %s in name %s"
+						unparsableErrorFmt := "      * Unparsable trustRoots for pod %s"
+						invalidRootFormat := "      * %v %s %s in pod %s"
 						errorFormat := "Invalid roots:\n%s\n    Affected pods: %d/%d"
 
 						for _, pod := range hc.meshedPods {
@@ -840,7 +841,8 @@ func (hc *HealthChecker) allCategories() []category {
 							}
 						}
 						if len(invalidRoots) > 0 {
-							return CheckRunResult{Fatal: true, Err: fmt.Errorf(errorFormat, strings.Join(invalidRoots, "\n"), len(affectedPods), len(hc.meshedPods))}
+							truncatedRootsList := hc.truncateToMaxAllowed(invalidRoots)
+							return CheckRunResult{Fatal: true, Err: fmt.Errorf(errorFormat, strings.Join(truncatedRootsList, "\n"), len(affectedPods), len(hc.meshedPods))}
 						}
 						return CheckRunResult{}
 					},
@@ -902,9 +904,8 @@ func (hc *HealthChecker) allCategories() []category {
 							}
 						}
 						if len(affectedPods) > 0 {
-							affectedPods = affectedPods[:]
-							affected := strings.Join(affectedPods, "\n")
-							return CheckRunResult{Fatal: true, Err: fmt.Errorf(errorFormat, affected, len(affectedPods), len(hc.meshedPods))}
+							truncatedListOfPods := strings.Join(hc.truncateToMaxAllowed(affectedPods), "\n")
+							return CheckRunResult{Fatal: true, Err: fmt.Errorf(errorFormat, truncatedListOfPods, len(affectedPods), len(hc.meshedPods))}
 						}
 						return CheckRunResult{}
 					},
@@ -1107,6 +1108,14 @@ func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintAnch
 func (hc *HealthChecker) addCategory(c category) {
 	c.enabled = true
 	hc.categories = append(hc.categories, c)
+}
+
+func (hc *HealthChecker) truncateToMaxAllowed(pods []string) []string {
+	numPods := uint32(len(pods))
+	if numPods < hc.maxPodsToDisplay {
+		return pods[:numPods]
+	}
+	return pods[:hc.maxPodsToDisplay]
 }
 
 // Create K8s event recorder
