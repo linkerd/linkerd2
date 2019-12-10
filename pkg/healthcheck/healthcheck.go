@@ -670,7 +670,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description:         "controller name is running",
+					description:         "controller pod is running",
 					hintAnchor:          "l5d-existence-controller",
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,

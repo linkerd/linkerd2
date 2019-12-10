@@ -1615,7 +1615,7 @@ func TestCheckControlPlanePodExistence(t *testing.T) {
 		expected         []string
 	}{
 		{
-			checkDescription: "controller name is running",
+			checkDescription: "controller pod is running",
 			resources: []string{`
 apiVersion: v1
 kind: Pod
@@ -1628,7 +1628,7 @@ status:
 `,
 			},
 			expected: []string{
-				"cat1 controller name is running",
+				"cat1 controller pod is running",
 			},
 		},
 		{

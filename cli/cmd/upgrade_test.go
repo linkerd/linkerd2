@@ -544,8 +544,8 @@ type: Opaque`,
 			"upgrade_overwrite_issuer.golden",
 			nil,
 			func(options *upgradeOptions) {
-				options.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
-				options.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
+				options.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
+				options.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
 			},
 		},
 
@@ -631,7 +631,7 @@ type: Opaque`,
 			"upgrade_overwrite_trust_anchors.golden",
 			nil,
 			func(options *upgradeOptions) {
-				options.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
+				options.identityOptions.trustPEMFile = filepath.Join("testdata", "valid-trust-anchors.pem")
 			},
 		},
 		{
@@ -657,7 +657,7 @@ data:
 			"",
 			errors.New("a private key file must be specified if a certificate is provided"),
 			func(options *upgradeOptions) {
-				options.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
+				options.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
 			},
 		},
 		{
@@ -683,7 +683,7 @@ data:
 			"",
 			errors.New("a certificate file must be specified if a private key is provided"),
 			func(options *upgradeOptions) {
-				options.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
+				options.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
 			},
 		},
 	}

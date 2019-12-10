@@ -29,14 +29,20 @@ linkerd-existence
 √ can initialize the client
 √ can query the control plane API
 
-linkerd-certs
--------------
+linkerd-identity
+----------------
 √ certificate config is valid
-√ data plane proxies certificate match CA
-√ no trust roots expire sooner than 60 days from now
-√ issuer certificate matches algorithm requirements
-√ issuer certificate is not expired
-√ issuer certificate validates with trust roots
+√ control plane is using supported trust roots
+√ identity is using supported issuer certificate
+√ all control plane trust roots have valid lifetimes
+√ issuer cert has valid lifetime
+√ issuer cert can be verified with trust root
+
+linkerd-identity-data-plane
+---------------------------
+√ data plane is using supported trust roots
+√ all data plane trust roots have valid lifetimes
+√ control plane issuer certificate can be verified with data plane trust roots
 
 linkerd-api
 -----------

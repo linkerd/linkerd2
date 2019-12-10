@@ -438,6 +438,18 @@ type issuerData struct {
 	exp time.Time
 }
 
+func verifyCreds(creds *tls.Cred, trustAnchors, dns string) error {
+	roots, err := tls.DecodePEMCertPool(trustAnchors)
+	if err != nil {
+		return err
+	}
+
+	if err := creds.Verify(roots, dns); err != nil {
+		return fmt.Errorf("invalid credentials: %s", err)
+	}
+	return nil
+}
+
 func readIssuer(trustPEM, issuerCrtPath, issuerKeyPath string) (*issuerData, error) {
 	creds, err := tls.ReadPEMCreds(issuerKeyPath, issuerCrtPath)
 	if err != nil {
