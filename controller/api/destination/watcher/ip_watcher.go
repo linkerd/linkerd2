@@ -282,9 +282,11 @@ func (ss *serviceSubscriptions) updatePod(podSet PodSet) {
 	defer ss.Unlock()
 
 	for listener, port := range ss.listeners {
-		podSetWithPort := withPort(podSet, port)
 		listener.NoEndpoints(true) // Clear out previous endpoints.
-		listener.Add(podSetWithPort)
+		if len(podSet.Pods) != 0 {
+			podSetWithPort := withPort(podSet, port)
+			listener.Add(podSetWithPort)
+		}
 	}
 	ss.pod = podSet
 	ss.service = ServiceID{}
