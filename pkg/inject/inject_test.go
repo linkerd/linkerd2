@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/pkg/charts"
+	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
@@ -24,14 +24,14 @@ type expectedProxyConfigs struct {
 	adminPort            int32
 	outboundPort         int32
 	logLevel             string
-	resourceRequirements *charts.Resources
+	resourceRequirements *l5dcharts.Resources
 	proxyUID             int64
 	initImage            string
 	initImagePullPolicy  string
 	initVersion          string
 	inboundSkipPorts     string
 	outboundSkipPorts    string
-	trace                *charts.Trace
+	trace                *l5dcharts.Trace
 }
 
 func TestConfigAccessors(t *testing.T) {
@@ -121,12 +121,12 @@ func TestConfigAccessors(t *testing.T) {
 				adminPort:       int32(5001),
 				outboundPort:    int32(5002),
 				logLevel:        "debug,linkerd2_proxy=debug",
-				resourceRequirements: &charts.Resources{
-					CPU: charts.Constraints{
+				resourceRequirements: &l5dcharts.Resources{
+					CPU: l5dcharts.Constraints{
 						Limit:   "1500m",
 						Request: "150m",
 					},
-					Memory: charts.Constraints{
+					Memory: l5dcharts.Constraints{
 						Limit:   "256",
 						Request: "120",
 					},
@@ -137,7 +137,7 @@ func TestConfigAccessors(t *testing.T) {
 				initVersion:         version.ProxyInitVersion,
 				inboundSkipPorts:    "4222,6222",
 				outboundSkipPorts:   "8079,8080",
-				trace: &charts.Trace{
+				trace: &l5dcharts.Trace{
 					CollectorSvcAddr:    "oc-collector.tracing:55678",
 					CollectorSvcAccount: "default.tracing",
 				},
@@ -160,12 +160,12 @@ func TestConfigAccessors(t *testing.T) {
 				adminPort:       int32(6001),
 				outboundPort:    int32(6002),
 				logLevel:        "info,linkerd2_proxy=debug",
-				resourceRequirements: &charts.Resources{
-					CPU: charts.Constraints{
+				resourceRequirements: &l5dcharts.Resources{
+					CPU: l5dcharts.Constraints{
 						Limit:   "1",
 						Request: "200m",
 					},
-					Memory: charts.Constraints{
+					Memory: l5dcharts.Constraints{
 						Limit:   "128",
 						Request: "64",
 					},
@@ -215,12 +215,12 @@ func TestConfigAccessors(t *testing.T) {
 				adminPort:       int32(5001),
 				outboundPort:    int32(5002),
 				logLevel:        "debug,linkerd2_proxy=debug",
-				resourceRequirements: &charts.Resources{
-					CPU: charts.Constraints{
+				resourceRequirements: &l5dcharts.Resources{
+					CPU: l5dcharts.Constraints{
 						Limit:   "1500m",
 						Request: "150m",
 					},
-					Memory: charts.Constraints{
+					Memory: l5dcharts.Constraints{
 						Limit:   "256",
 						Request: "120",
 					},
@@ -231,7 +231,7 @@ func TestConfigAccessors(t *testing.T) {
 				initVersion:         version.ProxyInitVersion,
 				inboundSkipPorts:    "4222,6222",
 				outboundSkipPorts:   "8079,8080",
-				trace: &charts.Trace{
+				trace: &l5dcharts.Trace{
 					CollectorSvcAddr:    "oc-collector.tracing:55678",
 					CollectorSvcAccount: "default.tracing",
 				},
@@ -365,9 +365,9 @@ func TestConfigAccessors(t *testing.T) {
 			})
 
 			t.Run("proxyTraceCollectorService", func(t *testing.T) {
-				var expected *charts.Trace
+				var expected *l5dcharts.Trace
 				if testCase.expected.trace != nil {
-					expected = &charts.Trace{
+					expected = &l5dcharts.Trace{
 						CollectorSvcAddr:    testCase.expected.trace.CollectorSvcAddr,
 						CollectorSvcAccount: testCase.expected.trace.CollectorSvcAccount,
 					}

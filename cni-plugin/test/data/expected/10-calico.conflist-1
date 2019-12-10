@@ -27,7 +27,7 @@
     {
       "name": "linkerd-cni",
       "type": "linkerd-cni",
-      "log_level": "warn",
+      "log_level": "info",
       "policy": {
         "type": "k8s",
         "k8s_api_root": "https://10.110.0.1:443",
@@ -37,9 +37,9 @@
         "kubeconfig": "/etc/cni/net.d/ZZZ-linkerd-cni-kubeconfig"
       },
       "linkerd": {
-        "incoming-proxy-port": -1,
-        "outgoing-proxy-port": -1,
-        "proxy-uid": -1,
+        "incoming-proxy-port": 4143,
+        "outgoing-proxy-port": 4140,
+        "proxy-uid": 2102,
         "ports-to-redirect": [],
         "inbound-ports-to-ignore": [],
         "outbound-ports-to-ignore": [],

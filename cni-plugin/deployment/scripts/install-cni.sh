@@ -174,15 +174,6 @@ sed -i s/__CNI_MTU__/"${CNI_MTU:-1500}"/g ${TMP_CONF}
 
 # Use alternative command character "~", since these include a "/".
 sed -i s~__KUBECONFIG_FILEPATH__~"${DEST_CNI_NET_DIR}/${KUBECONFIG_FILE_NAME}"~g ${TMP_CONF}
-sed -i s~__LOG_LEVEL__~"${LOG_LEVEL:-warn}"~g ${TMP_CONF}
-sed -i s~__INCOMING_PROXY_PORT__~"${INCOMING_PROXY_PORT:=-1}"~g ${TMP_CONF}
-sed -i s~__OUTGOING_PROXY_PORT__~"${OUTGOING_PROXY_PORT:=-1}"~g ${TMP_CONF}
-sed -i s~__PROXY_UID__~"${PROXY_UID:=-1}"~g ${TMP_CONF}
-sed -i s~__PORTS_TO_REDIRECT__~"${PORTS_TO_REDIRECT:=}"~g ${TMP_CONF}
-sed -i s~__INBOUND_PORTS_TO_IGNORE__~"${INBOUND_PORTS_TO_IGNORE:=}"~g ${TMP_CONF}
-sed -i s~__OUTBOUND_PORTS_TO_IGNORE__~"${OUTBOUND_PORTS_TO_IGNORE:=}"~g ${TMP_CONF}
-sed -i s~__SIMULATE__~"${SIMULATE:=false}"~g ${TMP_CONF}
-sed -i s~__USE_WAIT_FLAG__~"${USE_WAIT_FLAG:=false}"~g ${TMP_CONF}
 
 CNI_OLD_CONF_PATH="${CNI_OLD_CONF_PATH:-${CNI_CONF_PATH}}"
 

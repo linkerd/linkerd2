@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -148,7 +149,7 @@ var (
 // persisted in Linkerd's control plane configuration to be used at
 // injection-time.
 func newInstallOptionsWithDefaults() (*installOptions, error) {
-	defaults, err := charts.NewValues(false)
+	defaults, err := l5dcharts.NewValues(false)
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +389,7 @@ func installRunE(options *installOptions, stage string, flags *pflag.FlagSet) er
 	return render(os.Stdout, values)
 }
 
-func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
+func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagSet) (*l5dcharts.Values, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
@@ -580,8 +581,8 @@ func (options *installOptions) validate() error {
 
 // buildValuesWithoutIdentity builds the values that will be used to render
 // the Helm templates. It overrides the defaults values with CLI options.
-func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*charts.Values, error) {
-	installValues, err := charts.NewValues(options.highAvailability)
+func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5dcharts.Values, error) {
+	installValues, err := l5dcharts.NewValues(options.highAvailability)
 	if err != nil {
 		return nil, err
 	}
@@ -659,26 +660,26 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*cha
 	installValues.DisableHeartBeat = options.disableHeartbeat
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
 
-	installValues.Proxy = &charts.Proxy{
+	installValues.Proxy = &l5dcharts.Proxy{
 		EnableExternalProfiles: options.enableExternalProfiles,
-		Image: &charts.Image{
+		Image: &l5dcharts.Image{
 			Name:       registryOverride(options.proxyImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
 			Version:    options.proxyVersion,
 		},
 		LogLevel: options.proxyLogLevel,
-		Ports: &charts.Ports{
+		Ports: &l5dcharts.Ports{
 			Admin:    int32(options.proxyAdminPort),
 			Control:  int32(options.proxyControlPort),
 			Inbound:  int32(options.proxyInboundPort),
 			Outbound: int32(options.proxyOutboundPort),
 		},
-		Resources: &charts.Resources{
-			CPU: charts.Constraints{
+		Resources: &l5dcharts.Resources{
+			CPU: l5dcharts.Constraints{
 				Limit:   options.proxyCPULimit,
 				Request: options.proxyCPURequest,
 			},
-			Memory: charts.Constraints{
+			Memory: l5dcharts.Constraints{
 				Limit:   options.proxyMemoryLimit,
 				Request: options.proxyMemoryRequest,
 			},
@@ -713,7 +714,7 @@ func toPromLogLevel(level string) string {
 	}
 }
 
-func render(w io.Writer, values *charts.Values) error {
+func render(w io.Writer, values *l5dcharts.Values) error {
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
 	if err != nil {
@@ -961,7 +962,7 @@ func (idopts *installIdentityOptions) validate() error {
 	return nil
 }
 
-func (idopts *installIdentityOptions) validateAndBuild() (*charts.Identity, error) {
+func (idopts *installIdentityOptions) validateAndBuild() (*l5dcharts.Identity, error) {
 	if idopts == nil {
 		return nil, nil
 	}
@@ -983,22 +984,22 @@ func (idopts *installIdentityOptions) issuerName() string {
 	return fmt.Sprintf("identity.%s.%s", controlPlaneNamespace, idopts.trustDomain)
 }
 
-func (idopts *installIdentityOptions) genValues() (*charts.Identity, error) {
+func (idopts *installIdentityOptions) genValues() (*l5dcharts.Identity, error) {
 	root, err := tls.GenerateRootCAWithDefaults(idopts.issuerName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate root certificate for identity: %s", err)
 	}
 
-	return &charts.Identity{
+	return &l5dcharts.Identity{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
-		Issuer: &charts.Issuer{
+		Issuer: &l5dcharts.Issuer{
 			Scheme:              consts.IdentityIssuerSchemeLinkerd,
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
 			IssuanceLifetime:    idopts.issuanceLifetime.String(),
 			CrtExpiry:           root.Cred.Crt.Certificate.NotAfter,
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-			TLS: &charts.TLS{
+			TLS: &l5dcharts.TLS{
 				KeyPEM: root.Cred.EncodePrivateKeyPEM(),
 				CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
 			},
@@ -1055,7 +1056,7 @@ func verifyCreds(creds *tls.Cred, trustAnchors, dns string) error {
 	return nil
 }
 
-func (idopts *installIdentityOptions) readExternallyManaged() (*charts.Identity, error) {
+func (idopts *installIdentityOptions) readExternallyManaged() (*l5dcharts.Identity, error) {
 
 	externalIssuerData, err := loadExternalIssuerData()
 	if err != nil {
@@ -1072,10 +1073,10 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*charts.Identity,
 		return nil, err
 	}
 
-	return &charts.Identity{
+	return &l5dcharts.Identity{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: externalIssuerData.trustAnchors,
-		Issuer: &charts.Issuer{
+		Issuer: &l5dcharts.Issuer{
 			Scheme:             string(corev1.SecretTypeTLS),
 			ClockSkewAllowance: idopts.clockSkewAllowance.String(),
 			IssuanceLifetime:   idopts.issuanceLifetime.String(),
@@ -1088,7 +1089,7 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*charts.Identity,
 // to produce an `installIdentityValues`.
 //
 // The identity options must have already been validated.
-func (idopts *installIdentityOptions) readValues() (*charts.Identity, error) {
+func (idopts *installIdentityOptions) readValues() (*l5dcharts.Identity, error) {
 	creds, err := tls.ReadPEMCreds(idopts.keyPEMFile, idopts.crtPEMFile)
 	if err != nil {
 		return nil, err
@@ -1104,16 +1105,16 @@ func (idopts *installIdentityOptions) readValues() (*charts.Identity, error) {
 		return nil, err
 	}
 
-	return &charts.Identity{
+	return &l5dcharts.Identity{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: trustAnchorsPEM,
-		Issuer: &charts.Issuer{
+		Issuer: &l5dcharts.Issuer{
 			Scheme:              consts.IdentityIssuerSchemeLinkerd,
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
 			IssuanceLifetime:    idopts.issuanceLifetime.String(),
 			CrtExpiry:           creds.Crt.Certificate.NotAfter,
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-			TLS: &charts.TLS{
+			TLS: &l5dcharts.TLS{
 				KeyPEM: creds.EncodePrivateKeyPEM(),
 				CrtPEM: creds.EncodeCertificatePEM(),
 			},
@@ -1121,7 +1122,7 @@ func (idopts *installIdentityOptions) readValues() (*charts.Identity, error) {
 	}, nil
 }
 
-func toIdentityContext(idvals *charts.Identity) *pb.IdentityContext {
+func toIdentityContext(idvals *l5dcharts.Identity) *pb.IdentityContext {
 	if idvals == nil {
 		return nil
 	}

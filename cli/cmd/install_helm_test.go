@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerd/linkerd2/pkg/charts"
+	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/helm/pkg/chartutil"
 	pb "k8s.io/helm/pkg/proto/hapi/chart"
@@ -181,7 +181,7 @@ func chartPartials(t *testing.T) *pb.Chart {
 }
 
 func readTestValues(t *testing.T, ha bool) ([]byte, error) {
-	values, err := charts.NewValues(ha)
+	values, err := l5dcharts.NewValues(ha)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}

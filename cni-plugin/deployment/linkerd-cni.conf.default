@@ -1,7 +1,7 @@
 {
     "name": "linkerd-cni",
     "type": "linkerd-cni",
-    "log_level": "__LOG_LEVEL__",
+    "log_level": "info",
     "policy": {
         "type": "k8s",
         "k8s_api_root": "https://__KUBERNETES_SERVICE_HOST__:__KUBERNETES_SERVICE_PORT__",
@@ -11,13 +11,13 @@
         "kubeconfig": "__KUBECONFIG_FILEPATH__"
     },
     "linkerd": {
-        "incoming-proxy-port": __INCOMING_PROXY_PORT__,
-        "outgoing-proxy-port": __OUTGOING_PROXY_PORT__,
-        "proxy-uid": __PROXY_UID__,
-        "ports-to-redirect": [__PORTS_TO_REDIRECT__],
-        "inbound-ports-to-ignore": [__INBOUND_PORTS_TO_IGNORE__],
-        "outbound-ports-to-ignore": [__OUTBOUND_PORTS_TO_IGNORE__],
-        "simulate": __SIMULATE__,
-        "use-wait-flag": __USE_WAIT_FLAG__
+        "incoming-proxy-port": 4143,
+        "outgoing-proxy-port": 4140,
+        "proxy-uid": 2102,
+        "ports-to-redirect": [],
+        "inbound-ports-to-ignore": [],
+        "outbound-ports-to-ignore": [],
+        "simulate": false,
+        "use-wait-flag": false
     }
 }

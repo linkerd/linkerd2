@@ -1,15 +1,17 @@
+---
+# Source: linkerd2-cni/templates/cni-plugin.yaml
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: other
+  name: linkerd-test
 ---
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: linkerd-other-cni
+  name: linkerd-linkerd-test-cni
   labels:
-    linkerd.io/control-plane-ns: other
-    linkerd.io/cni-resource: "true"
+    linkerd.io/control-plane-ns-test: linkerd-test
+    linkerd.io/cni-resource-test: "true"
 spec:
   allowPrivilegeEscalation: false
   fsGroup:
@@ -29,34 +31,34 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-test
   labels:
-    linkerd.io/control-plane-ns: other
-    linkerd.io/cni-resource: "true"
+    linkerd.io/control-plane-ns-test: linkerd-test
+    linkerd.io/cni-resource-test: "true"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-test
   labels:
-    linkerd.io/control-plane-ns: other
-    linkerd.io/cni-resource: "true"
+    linkerd.io/control-plane-ns-test: linkerd-test
+    linkerd.io/cni-resource-test: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
   resourceNames:
-  - linkerd-other-cni
+  - linkerd-linkerd-test-cni
   verbs: ['use']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-test
   labels:
-    linkerd.io/control-plane-ns: other
-    linkerd.io/cni-resource: "true"
+    linkerd.io/control-plane-ns-test: linkerd-test
+    linkerd.io/cni-resource-test: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -64,15 +66,15 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-test
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-cni
   labels:
-    linkerd.io/control-plane-ns: other
-    linkerd.io/cni-resource: "true"
+    linkerd.io/control-plane-ns-test: linkerd-test
+    linkerd.io/cni-resource-test: "true"
 rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces"]
@@ -83,8 +85,8 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
   labels:
-    linkerd.io/control-plane-ns: other
-    linkerd.io/cni-resource: "true"
+    linkerd.io/control-plane-ns-test: linkerd-test
+    linkerd.io/cni-resource-test: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -92,19 +94,19 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-test
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-cni-config
-  namespace: other
+  namespace: linkerd-test
   labels:
-    linkerd.io/control-plane-ns: other
-    linkerd.io/cni-resource: "true"
+    linkerd.io/control-plane-ns-test: linkerd-test
+    linkerd.io/cni-resource-test: "true"
 data:
-  dest_cni_net_dir: "/etc/kubernetes/cni/net.d"
-  dest_cni_bin_dir: "/etc/kubernetes/cni/net.d"
+  dest_cni_net_dir: "/etc/cni/net.d-test"
+  dest_cni_bin_dir: "/opt/cni/bin-test"
   # The CNI network configuration to install on each node. The special
   # values in this config will be automatically populated.
   cni_network_config: |-
@@ -121,14 +123,14 @@ data:
           "kubeconfig": "__KUBECONFIG_FILEPATH__"
       },
       "linkerd": {
-        "incoming-proxy-port": 5143,
-        "outgoing-proxy-port": 5140,
-        "proxy-uid": 12102,
+        "incoming-proxy-port": 1234,
+        "outgoing-proxy-port": 5678,
+        "proxy-uid": 1111,
         "ports-to-redirect": [],
-        "inbound-ports-to-ignore": [5190,5191],
+        "inbound-ports-to-ignore": [],
         "outbound-ports-to-ignore": [],
         "simulate": false,
-        "use-wait-flag": false
+        "use-wait-flag": true
       }
     }
 ---
@@ -136,13 +138,13 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: linkerd-cni
-  namespace: other
+  namespace: linkerd-test
   labels:
     k8s-app: linkerd-cni
-    linkerd.io/control-plane-ns: other
-    linkerd.io/cni-resource: "true"
+    linkerd.io/control-plane-ns-test: linkerd-test
+    linkerd.io/cni-resource-test: "true"
   annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
+    linkerd.io/created-by-test: test-version
 spec:
   selector:
     matchLabels:
@@ -156,7 +158,7 @@ spec:
       labels:
         k8s-app: linkerd-cni
       annotations:
-        linkerd.io/created-by: linkerd/cli dev-undefined
+        linkerd.io/created-by-test: test-version
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -168,7 +170,7 @@ spec:
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: my-docker-registry.io/awesome/cni-plugin-test-image:awesome-linkerd-version.1
+        image: gcr.io/linkerd-io/cni-plugin-test:test-version
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:
@@ -192,10 +194,14 @@ spec:
             exec:
               command: ["kill","-15","1"]
         volumeMounts:
-        - mountPath: /host/etc/kubernetes/cni/net.d
+        - mountPath: /host/opt/cni/bin-test
+          name: cni-bin-dir
+        - mountPath: /host/etc/cni/net.d-test
           name: cni-net-dir
       volumes:
+      - name: cni-bin-dir
+        hostPath:
+          path: /opt/cni/bin-test
       - name: cni-net-dir
         hostPath:
-          path: /etc/kubernetes/cni/net.d
----
+          path: /etc/cni/net.d-test
