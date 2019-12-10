@@ -252,7 +252,6 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		crt2, err := root.GenerateCA(identity, root.Validity, -1)
-
 		if err != nil {
 			t.Fatal(err)
 		}
