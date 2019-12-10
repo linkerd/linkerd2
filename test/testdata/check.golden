@@ -29,6 +29,15 @@ linkerd-existence
 √ can initialize the client
 √ can query the control plane API
 
+linkerd-certs
+-------------
+√ certificate config is valid
+√ data plane proxies certificate match CA
+√ no trust roots expire sooner than 60 days from now
+√ issuer certificate matches algorithm requirements
+√ issuer certificate is not expired
+√ issuer certificate validates with trust roots
+
 linkerd-api
 -----------
 √ control plane pods are ready

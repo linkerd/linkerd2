@@ -2,12 +2,15 @@ package healthcheck
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"k8s.io/client-go/tools/record"
 
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 
@@ -25,10 +28,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1machinary "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 // CategoryID is an identifier for the types of health checks.
@@ -65,7 +71,7 @@ const (
 	// LinkerdPreInstallGlobalResourcesChecks adds a series of checks to determine
 	// the existence of the global resources like cluster roles, cluster role
 	// bindings, mutating webhook configuration validating webhook configuration
-	// and pod security policies during the pre-install phase. This check is used
+	// and name security policies during the pre-install phase. This check is used
 	// to determine if a control plane is already installed.
 	LinkerdPreInstallGlobalResourcesChecks CategoryID = "pre-linkerd-global-resources"
 
@@ -81,7 +87,7 @@ const (
 	LinkerdConfigChecks CategoryID = "linkerd-config"
 
 	// LinkerdControlPlaneExistenceChecks adds a series of checks to validate that
-	// the control plane namespace and controller pod exist.
+	// the control plane namespace and controller name exist.
 	// These checks are dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
 	LinkerdControlPlaneExistenceChecks CategoryID = "linkerd-existence"
@@ -112,6 +118,16 @@ const (
 	// from LinkerdVersionChecks, so those checks must be added first.
 	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
 
+	// LinkerdIdentity Checks the integrity of the mTLS certificates
+	// that the control plane is configured with
+	LinkerdIdentity CategoryID = "linkerd-identity"
+
+	// LinkerdIdentityDataPlane checks that integrity of the mTLS
+	// certificates that the proxies are configured with and tries to
+	// report useful information with respect to whether the configuration
+	// is compatible with the one of the control plane
+	LinkerdIdentityDataPlane CategoryID = "linkerd-identity-data-plane"
+
 	// linkerdCniResourceLabel is the label key that is used to identify
 	// whether a Kubernetes resource is related to the install-cni command
 	// The value is expected to be "true", "false" or "", where "false" and
@@ -131,11 +147,6 @@ const HintBaseURL = "https://linkerd.io/checks/#"
 //
 // TODO: Make this default value overridiable, e.g. by CLI flag
 const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
-
-// ExpirationWarningThresholdInDays sets the threshold that determines
-// a point in time after which the identity issuer cert will be considered
-// too close to expiry and as a result of that a warning will be issued
-const ExpirationWarningThresholdInDays = 60
 
 var (
 	retryWindow    = 5 * time.Second
@@ -205,6 +216,21 @@ func IsCategoryError(err error, categoryID CategoryID) bool {
 	return false
 }
 
+// CheckRunResult Represents the result of running an individual checker
+type CheckRunResult struct {
+	// Fatal indicates that all remaining checks should be aborted if this check
+	// fails; it should only be used if subsequent checks cannot possibly succeed
+	// (default false)
+	Fatal bool
+
+	// Warning indicates that if this check fails, it should be reported, but it
+	// should not impact the overall outcome of the health check (default false)
+	Warning bool
+
+	// Err stores the error that the check has produced
+	Err error
+}
+
 type checker struct {
 	// description is the short description that's printed to the command line
 	// when the check is executed
@@ -213,15 +239,6 @@ type checker struct {
 	// hintAnchor, when appended to `HintBaseURL`, provides a URL to more
 	// information about the check
 	hintAnchor string
-
-	// fatal indicates that all remaining checks should be aborted if this check
-	// fails; it should only be used if subsequent checks cannot possibly succeed
-	// (default false)
-	fatal bool
-
-	// warning indicates that if this check fails, it should be reported, but it
-	// should not impact the overall outcome of the health check (default false)
-	warning bool
 
 	// retryDeadline establishes a deadline before which this check should be
 	// retried; if the deadline has passed, the check fails (default: no retries)
@@ -234,12 +251,12 @@ type checker struct {
 
 	// check is the function that's called to execute the check; if the function
 	// returns an error, the check fails
-	check func(context.Context) error
+	check func(context.Context) CheckRunResult
 
 	// checkRPC is an alternative to check that can be used to perform a remote
 	// check using the SelfCheck gRPC endpoint; check status is based on the value
 	// of the gRPC response
-	checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, error)
+	checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, CheckRunResult)
 }
 
 // CheckResult encapsulates a check's identifying information and output
@@ -291,7 +308,10 @@ type HealthChecker struct {
 	serverVersion    string
 	linkerdConfig    *configPb.All
 	uuid             string
-	issuerCerts      *tls.Cred
+	issuerCert       *tls.Cred
+	roots            []*x509.Certificate
+	meshedPods       []meshedPodData
+	recordEvent      func(eventType, reason, message string)
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -334,19 +354,19 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "can initialize the client",
 					hintAnchor:  "k8s-api",
-					fatal:       true,
-					check: func(context.Context) (err error) {
-						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, requestTimeout)
-						return
+					check: func(context.Context) CheckRunResult {
+						api, err := k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, requestTimeout)
+						hc.kubeAPI = api
+						return CheckRunResult{Fatal: true, Err: err}
 					},
 				},
 				{
 					description: "can query the Kubernetes API",
 					hintAnchor:  "k8s-api",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						hc.kubeVersion, err = hc.kubeAPI.GetVersionInfo()
-						return
+					check: func(context.Context) CheckRunResult {
+						ver, err := hc.kubeAPI.GetVersionInfo()
+						hc.kubeVersion = ver
+						return CheckRunResult{Fatal: true, Err: err}
 					},
 				},
 			},
@@ -357,15 +377,15 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "is running the minimum Kubernetes API version",
 					hintAnchor:  "k8s-version",
-					check: func(context.Context) error {
-						return hc.kubeAPI.CheckVersion(hc.kubeVersion)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.kubeAPI.CheckVersion(hc.kubeVersion)}
 					},
 				},
 				{
 					description: "is running the minimum kubectl version",
 					hintAnchor:  "kubectl-version",
-					check: func(context.Context) error {
-						return k8s.CheckKubectlVersion()
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: k8s.CheckKubectlVersion()}
 					},
 				},
 			},
@@ -376,99 +396,99 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
-					check: func(context.Context) error {
-						return hc.checkNamespace(hc.ControlPlaneNamespace, false)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkNamespace(hc.ControlPlaneNamespace, false)}
 					},
 				},
 				{
 					description: "can create Namespaces",
 					hintAnchor:  "pre-k8s-cluster-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate("", "", "v1", "namespaces")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanCreate("", "", "v1", "namespaces")}
 					},
 				},
 				{
 					description: "can create ClusterRoles",
 					hintAnchor:  "pre-k8s-cluster-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "clusterroles")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "clusterroles")}
 					},
 				},
 				{
 					description: "can create ClusterRoleBindings",
 					hintAnchor:  "pre-k8s-cluster-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "clusterrolebindings")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "clusterrolebindings")}
 					},
 				},
 				{
 					description: "can create CustomResourceDefinitions",
 					hintAnchor:  "pre-k8s-cluster-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate("", "apiextensions.k8s.io", "v1beta1", "customresourcedefinitions")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanCreate("", "apiextensions.k8s.io", "v1beta1", "customresourcedefinitions")}
 					},
 				},
 				{
 					description: "can create PodSecurityPolicies",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "policy", "v1beta1", "podsecuritypolicies")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanCreate(hc.ControlPlaneNamespace, "policy", "v1beta1", "podsecuritypolicies")}
 					},
 				},
 				{
 					description: "can create ServiceAccounts",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "serviceaccounts")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "serviceaccounts")}
 					},
 				},
 				{
 					description: "can create Services",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "services")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "services")}
 					},
 				},
 				{
 					description: "can create Deployments",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "apps", "v1", "deployments")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanCreate(hc.ControlPlaneNamespace, "apps", "v1", "deployments")}
 					},
 				},
 				{
 					description: "can create CronJobs",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "batch", "v1beta1", "cronjobs")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanCreate(hc.ControlPlaneNamespace, "batch", "v1beta1", "cronjobs")}
 					},
 				},
 				{
 					description: "can create ConfigMaps",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "configmaps")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "configmaps")}
 					},
 				},
 				{
 					description: "can create Secrets",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "secrets")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "secrets")}
 					},
 				},
 				{
 					description: "can read Secrets",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanGet(hc.ControlPlaneNamespace, "", "v1", "secrets")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCanGet(hc.ControlPlaneNamespace, "", "v1", "secrets")}
 					},
 				},
 				{
 					description: "no clock skew detected",
 					hintAnchor:  "pre-k8s-clock-skew",
-					check: func(context.Context) error {
-						return hc.checkClockSkew()
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkClockSkew()}
 					},
 				},
 			},
@@ -479,17 +499,15 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "has NET_ADMIN capability",
 					hintAnchor:  "pre-k8s-cluster-net-admin",
-					warning:     true,
-					check: func(context.Context) error {
-						return hc.checkCapability("NET_ADMIN")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCapability("NET_ADMIN"), Warning: true}
 					},
 				},
 				{
 					description: "has NET_RAW capability",
 					hintAnchor:  "pre-k8s-cluster-net-raw",
-					warning:     true,
-					check: func(context.Context) error {
-						return hc.checkCapability("NET_RAW")
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCapability("NET_RAW"), Warning: true}
 					},
 				},
 			},
@@ -500,43 +518,43 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "no ClusterRoles exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkClusterRoles(false)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkClusterRoles(false)}
 					},
 				},
 				{
 					description: "no ClusterRoleBindings exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkClusterRoleBindings(false)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkClusterRoleBindings(false)}
 					},
 				},
 				{
 					description: "no CustomResourceDefinitions exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkCustomResourceDefinitions(false)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCustomResourceDefinitions(false)}
 					},
 				},
 				{
 					description: "no MutatingWebhookConfigurations exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkMutatingWebhookConfigurations(false)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkMutatingWebhookConfigurations(false)}
 					},
 				},
 				{
 					description: "no ValidatingWebhookConfigurations exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkValidatingWebhookConfigurations(false)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkValidatingWebhookConfigurations(false)}
 					},
 				},
 				{
 					description: "no PodSecurityPolicies exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkPodSecurityPolicies(false)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkPodSecurityPolicies(false)}
 					},
 				},
 			},
@@ -547,65 +565,58 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "control plane Namespace exists",
 					hintAnchor:  "l5d-existence-ns",
-					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkNamespace(hc.ControlPlaneNamespace, true)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkNamespace(hc.ControlPlaneNamespace, true), Fatal: true}
 					},
 				},
 				{
 					description: "control plane ClusterRoles exist",
 					hintAnchor:  "l5d-existence-cr",
-					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkClusterRoles(true)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkClusterRoles(true), Fatal: true}
 					},
 				},
 				{
 					description: "control plane ClusterRoleBindings exist",
 					hintAnchor:  "l5d-existence-crb",
-					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkClusterRoleBindings(true)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkClusterRoleBindings(true), Fatal: true}
 					},
 				},
 				{
 					description: "control plane ServiceAccounts exist",
 					hintAnchor:  "l5d-existence-sa",
-					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkServiceAccounts(expectedServiceAccountNames)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkServiceAccounts(expectedServiceAccountNames), Fatal: true}
 					},
 				},
 				{
 					description: "control plane CustomResourceDefinitions exist",
 					hintAnchor:  "l5d-existence-crd",
-					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkCustomResourceDefinitions(true)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkCustomResourceDefinitions(true), Fatal: true}
 					},
 				},
 				{
 					description: "control plane MutatingWebhookConfigurations exist",
 					hintAnchor:  "l5d-existence-mwc",
-					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkMutatingWebhookConfigurations(true)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkMutatingWebhookConfigurations(true), Fatal: true}
 					},
 				},
 				{
 					description: "control plane ValidatingWebhookConfigurations exist",
 					hintAnchor:  "l5d-existence-vwc",
-					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkValidatingWebhookConfigurations(true)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkValidatingWebhookConfigurations(true), Fatal: true}
+
 					},
 				},
 				{
 					description: "control plane PodSecurityPolicies exist",
 					hintAnchor:  "l5d-existence-psp",
-					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkPodSecurityPolicies(true)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Err: hc.checkPodSecurityPolicies(true), Fatal: true}
 					},
 				},
 			},
@@ -616,88 +627,286 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "'linkerd-config' config map exists",
 					hintAnchor:  "l5d-existence-linkerd-config",
-					fatal:       true,
-					check: func(context.Context) (err error) {
-						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
-						return
+					check: func(context.Context) CheckRunResult {
+						uuid, linkerdConfig, err := hc.checkLinkerdConfigConfigMap()
+						hc.uuid = uuid
+						hc.linkerdConfig = linkerdConfig
+						return CheckRunResult{Err: err, Fatal: true}
 					},
 				},
 				{
 					description: "heartbeat ServiceAccount exist",
 					hintAnchor:  "l5d-existence-sa",
-					fatal:       true,
-					check: func(context.Context) error {
+					check: func(context.Context) CheckRunResult {
 						if hc.isHeartbeatDisabled() {
-							return nil
+							return CheckRunResult{}
 						}
-						return hc.checkServiceAccounts([]string{"linkerd-heartbeat"})
+						return CheckRunResult{Err: hc.checkServiceAccounts([]string{"linkerd-heartbeat"}), Fatal: true}
 					},
 				},
 				{
 					description: "control plane replica sets are ready",
 					hintAnchor:  "l5d-existence-replicasets",
-					fatal:       true,
-					check: func(context.Context) error {
+					check: func(context.Context) CheckRunResult {
 						controlPlaneReplicaSet, err := hc.kubeAPI.GetReplicaSets(hc.ControlPlaneNamespace)
 						if err != nil {
-							return err
+							return CheckRunResult{Err: err, Fatal: true}
 						}
-						return checkControlPlaneReplicaSets(controlPlaneReplicaSet)
+						return CheckRunResult{Err: checkControlPlaneReplicaSets(controlPlaneReplicaSet), Fatal: true}
 					},
 				},
 				{
 					description: "no unschedulable pods",
 					hintAnchor:  "l5d-existence-unschedulable-pods",
-					fatal:       true,
-					check: func(context.Context) error {
+					check: func(context.Context) CheckRunResult {
 						// do not save this into hc.controlPlanePods, as this check may
 						// succeed prior to all expected control plane pods being up
 						controlPlanePods, err := hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
 						if err != nil {
-							return err
+							return CheckRunResult{Err: err, Fatal: true}
 						}
-						return checkUnschedulablePods(controlPlanePods)
+						return CheckRunResult{Err: checkUnschedulablePods(controlPlanePods), Fatal: true}
+
 					},
 				},
 				{
-					description:         "controller pod is running",
+					description:         "controller name is running",
 					hintAnchor:          "l5d-existence-controller",
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
-					fatal:               true,
-					check: func(ctx context.Context) error {
+					check: func(context.Context) CheckRunResult {
 						// save this into hc.controlPlanePods, since this check only
 						// succeeds when all pods are up
 						var err error
 						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
 						if err != nil {
-							return err
+							return CheckRunResult{Err: err, Fatal: true}
 						}
-
-						return checkControllerRunning(hc.controlPlanePods)
+						return CheckRunResult{Err: checkControllerRunning(hc.controlPlanePods), Fatal: true}
 					},
 				},
 				{
 					description: "can initialize the client",
 					hintAnchor:  "l5d-existence-client",
-					fatal:       true,
-					check: func(context.Context) (err error) {
+					check: func(context.Context) CheckRunResult {
+						result := CheckRunResult{Fatal: true}
 						if hc.APIAddr != "" {
-							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
+							hc.apiClient, result.Err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
 						} else {
-							hc.apiClient, err = public.NewExternalClient(hc.ControlPlaneNamespace, hc.kubeAPI)
+							hc.apiClient, result.Err = public.NewExternalClient(hc.ControlPlaneNamespace, hc.kubeAPI)
 						}
-						return
+						return result
 					},
 				},
 				{
 					description:   "can query the control plane API",
 					hintAnchor:    "l5d-existence-api",
 					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
-					check: func(ctx context.Context) (err error) {
-						hc.serverVersion, err = GetServerVersion(ctx, hc.apiClient)
-						return
+					check: func(ctx context.Context) CheckRunResult {
+						r := CheckRunResult{Fatal: true}
+						hc.serverVersion, r.Err = GetServerVersion(ctx, hc.apiClient)
+						return r
+					},
+				},
+			},
+		},
+		{
+			id: LinkerdIdentity,
+			checkers: []checker{
+				{
+					description: "certificate config is valid",
+					hintAnchor:  "l5d-crt-config-is-valid",
+					check: func(context.Context) CheckRunResult {
+						r := CheckRunResult{Fatal: true}
+						hc.issuerCert, hc.roots, r.Err = hc.checkCertificatesConfig()
+						return r
+					},
+				},
+				{
+					description: "control plane is using supported trust roots",
+					hintAnchor:  "l5d-supported-certs-type",
+					check: func(context.Context) CheckRunResult {
+						var invalidRoots []string
+						for _, root := range hc.roots {
+							if err := issuercerts.CheckCertAlgoRequirements(root); err != nil {
+								invalidRoots = append(invalidRoots, fmt.Sprintf("    %v %s %s", root.SerialNumber, root.Subject.CommonName, err))
+							}
+						}
+						if len(invalidRoots) > 0 {
+							return CheckRunResult{Fatal: true, Err: fmt.Errorf("Invalid roots:\n%s", strings.Join(invalidRoots, "\n"))}
+
+						}
+						return CheckRunResult{}
+					},
+				},
+				{
+					description: "identity is using supported issuer certificate",
+					hintAnchor:  "l5d-supported-certs-type",
+					check: func(context.Context) CheckRunResult {
+						if err := issuercerts.CheckCertAlgoRequirements(hc.issuerCert.Certificate); err != nil {
+							return CheckRunResult{Fatal: true, Err: fmt.Errorf("issuer certificate %s", err)}
+						}
+						return CheckRunResult{}
+					},
+				},
+				{
+					description: "all control plane trust roots have valid lifetimes",
+					hintAnchor:  "l5d-certs-rotation",
+					check: func(ctx context.Context) CheckRunResult {
+						var invalidRoots []string
+						var expiringRoots []string
+						rootInfoFormat := "    %v %s %s"
+						for _, root := range hc.roots {
+							if err := issuercerts.CheckCertTimeValidity(root); err != nil {
+								invalidRoots = append(invalidRoots, fmt.Sprintf(rootInfoFormat, root.SerialNumber, root.Subject.CommonName, err))
+							}
+							if err := issuercerts.CheckExpiringSoon(root); err != nil {
+								expiringRoots = append(expiringRoots, fmt.Sprintf(rootInfoFormat, root.SerialNumber, root.Subject.CommonName, err))
+							}
+						}
+
+						if len(invalidRoots) > 0 {
+							return CheckRunResult{Warning: false, Fatal: true, Err: fmt.Errorf("Invalid roots:\n%s", strings.Join(invalidRoots, "\n"))}
+						}
+
+						if len(expiringRoots) > 0 {
+							if recorder, err := hc.eventRecorder(); err == nil {
+								recorder(corev1.EventTypeWarning, "LinkerdCertsExpiringSoon", "Some of the TLS certificates that Linkerd is configured with are expiring soon")
+							}
+							return CheckRunResult{Warning: true, Fatal: false, Err: fmt.Errorf("Roots expiring soon:\n%s", strings.Join(expiringRoots, "\n"))}
+
+						}
+						return CheckRunResult{}
+					},
+				},
+				{
+					description: "issuer cert has valid lifetime",
+					hintAnchor:  "l5d-certs-rotation",
+					check: func(ctx context.Context) CheckRunResult {
+						if err := issuercerts.CheckCertTimeValidity(hc.issuerCert.Certificate); err != nil {
+							return CheckRunResult{Warning: false, Fatal: true, Err: fmt.Errorf("issuer certiifcate is %s", err)}
+						}
+						if err := issuercerts.CheckExpiringSoon(hc.issuerCert.Certificate); err != nil {
+							if recorder, err := hc.eventRecorder(); err == nil {
+								recorder(corev1.EventTypeWarning, "LinkerdCertsExpiringSoon", "Some of the TLS certificates that Linkerd is configured with are expiring soon")
+							}
+							return CheckRunResult{Warning: true, Fatal: false, Err: fmt.Errorf("issuer certiifcate %s", err)}
+						}
+						return CheckRunResult{}
+					},
+				},
+				{
+					description: "issuer cert can be verified with trust root",
+					hintAnchor:  "l5d-certs-rotation",
+					check: func(ctx context.Context) CheckRunResult {
+						if err := hc.issuerCert.Verify(tls.CertificatesToPool(hc.roots), hc.issuerDNS()); err != nil {
+							return CheckRunResult{Err: err, Fatal: true}
+						}
+						return CheckRunResult{}
+					},
+				},
+			},
+		},
+		{
+			id: LinkerdIdentityDataPlane,
+			checkers: []checker{
+				{
+					description: "data plane is using supported trust roots",
+					hintAnchor:  "l5d-supported-certs-type",
+					check: func(context.Context) CheckRunResult {
+						pods, err := hc.getMeshedPods()
+						if err != nil {
+							return CheckRunResult{Fatal: true, Err: err}
+						}
+						hc.meshedPods = pods
+						var invalidRoots []string
+						affectedPods := make(map[string]bool)
+
+						unparsableErrorFmt := "      * Unparsable trustRoots for name %s"
+						invalidRootFormat := "      * %v %s %s in name %s"
+						errorFormat := "Invalid roots:\n%s\n    Affected pods: %d/%d"
+
+						for _, pod := range hc.meshedPods {
+							if pod.trustRoots == nil {
+								invalidRoots = append(invalidRoots, fmt.Sprintf(unparsableErrorFmt, pod.name))
+								affectedPods[pod.name] = true
+								continue
+							}
+							for _, root := range pod.trustRoots {
+								if err := issuercerts.CheckCertAlgoRequirements(root); err != nil {
+									invalidRoots = append(invalidRoots, fmt.Sprintf(invalidRootFormat, root.SerialNumber, root.Subject.CommonName, err, pod.name))
+									affectedPods[pod.name] = true
+								}
+							}
+						}
+						if len(invalidRoots) > 0 {
+							return CheckRunResult{Fatal: true, Err: fmt.Errorf(errorFormat, strings.Join(invalidRoots, "\n"), len(affectedPods), len(hc.meshedPods))}
+						}
+						return CheckRunResult{}
+					},
+				},
+				{
+					description: "all data plane trust roots have valid lifetimes",
+					hintAnchor:  "l5d-certs-rotation",
+					check: func(context.Context) CheckRunResult {
+						expiredRoots := make(map[string]bool)
+						podsAffectedByExpiredRoots := make(map[string]bool)
+						expiringRoots := make(map[string]bool)
+						podsAffectedByExpiringRoots := make(map[string]bool)
+
+						rootInfoFormat := "      * %v %s %s in pod %s"
+						expiredRootsErrorFormat := "Expired roots:\n%s\n    Affected pods: %d/%d"
+						expiringRootsErrorFormat := "Roots expiring soon:\n%s\n    Affected pods: %d/%d"
+
+						for _, pod := range hc.meshedPods {
+							if pod.trustRoots != nil {
+								for _, root := range pod.trustRoots {
+									if err := issuercerts.CheckCertTimeValidity(root); err != nil {
+										expiredRoots[fmt.Sprintf(rootInfoFormat, root.SerialNumber, root.Subject.CommonName, err, pod.name)] = true
+										podsAffectedByExpiredRoots[pod.name] = true
+									}
+
+									if err := issuercerts.CheckExpiringSoon(root); err != nil {
+										expiringRoots[fmt.Sprintf(rootInfoFormat, root.SerialNumber, root.Subject.CommonName, err, pod.name)] = true
+										podsAffectedByExpiringRoots[pod.name] = true
+									}
+								}
+							}
+						}
+						if len(expiredRoots) > 0 {
+							expiredRoots := strings.Join(sortedKeys(expiredRoots), "\n")
+							return CheckRunResult{Warning: false, Fatal: true, Err: fmt.Errorf(expiredRootsErrorFormat, expiredRoots, len(podsAffectedByExpiredRoots), len(hc.meshedPods))}
+						}
+
+						if len(expiringRoots) > 0 {
+							if recorder, err := hc.eventRecorder(); err == nil {
+								recorder(corev1.EventTypeWarning, "LinkerdCertsExpiringSoon", "Some of the TLS certificates that Linkerd is configured with are expiring soon")
+							}
+							rootsToExpireSooon := strings.Join(sortedKeys(expiringRoots), "\n")
+							return CheckRunResult{Warning: true, Fatal: false, Err: fmt.Errorf(expiringRootsErrorFormat, rootsToExpireSooon, len(podsAffectedByExpiringRoots), len(hc.meshedPods))}
+
+						}
+						return CheckRunResult{}
+
+					},
+				},
+				{
+					description: "control plane issuer certificate can be verified with data plane trust roots",
+					hintAnchor:  "l5d-certs-rotation",
+					check: func(ctx context.Context) CheckRunResult {
+						var affectedPods []string
+						errorFormat := "Roots in pods cannot verify control plane issuer cert:\n%s\n    Affected pods: %d/%d"
+						for _, pod := range hc.meshedPods {
+							if err := hc.issuerCert.Verify(tls.CertificatesToPool(pod.trustRoots), hc.issuerDNS()); err != nil {
+								affectedPods = append(affectedPods, fmt.Sprintf("      * %s", pod.name))
+							}
+						}
+						if len(affectedPods) > 0 {
+							affectedPods = affectedPods[:]
+							affected := strings.Join(affectedPods, "\n")
+							return CheckRunResult{Fatal: true, Err: fmt.Errorf(errorFormat, affected, len(affectedPods), len(hc.meshedPods))}
+						}
+						return CheckRunResult{}
 					},
 				},
 			},
@@ -710,23 +919,22 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:          "l5d-api-control-ready",
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
-					fatal:               true,
-					check: func(context.Context) error {
+					check: func(context.Context) CheckRunResult {
 						var err error
 						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
 						if err != nil {
-							return err
+							return CheckRunResult{Fatal: true, Err: err}
 						}
-						return validateControlPlanePods(hc.controlPlanePods)
+						return CheckRunResult{Fatal: true, Err: validateControlPlanePods(hc.controlPlanePods)}
 					},
 				},
 				{
 					description:   "control plane self-check",
 					hintAnchor:    "l5d-api-control-api",
-					fatal:         true,
 					retryDeadline: hc.RetryDeadline,
-					checkRPC: func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
+					checkRPC: func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, CheckRunResult) {
+						resp, err := hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
+						return resp, CheckRunResult{Fatal: true, Err: err}
 					},
 				},
 			},
@@ -737,7 +945,8 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "can determine the latest version",
 					hintAnchor:  "l5d-version-latest",
-					check: func(ctx context.Context) (err error) {
+					check: func(ctx context.Context) CheckRunResult {
+						var err error
 						if hc.VersionOverride != "" {
 							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
 						} else {
@@ -747,15 +956,14 @@ func (hc *HealthChecker) allCategories() []category {
 							}
 							hc.latestVersions, err = version.GetLatestVersions(ctx, uuid, "cli")
 						}
-						return
+						return CheckRunResult{Err: err}
 					},
 				},
 				{
 					description: "cli is up-to-date",
 					hintAnchor:  "l5d-version-cli",
-					warning:     true,
-					check: func(context.Context) error {
-						return hc.latestVersions.Match(version.Version)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Warning: true, Err: hc.latestVersions.Match(version.Version)}
 					},
 				},
 			},
@@ -766,20 +974,18 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "control plane is up-to-date",
 					hintAnchor:  "l5d-version-control",
-					warning:     true,
-					check: func(context.Context) error {
-						return hc.latestVersions.Match(hc.serverVersion)
+					check: func(context.Context) CheckRunResult {
+						return CheckRunResult{Warning: true, Err: hc.latestVersions.Match(hc.serverVersion)}
 					},
 				},
 				{
 					description: "control plane and cli versions match",
 					hintAnchor:  "l5d-version-control",
-					warning:     true,
-					check: func(context.Context) error {
+					check: func(context.Context) CheckRunResult {
 						if hc.serverVersion != version.Version {
-							return fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)
+							return CheckRunResult{Warning: true, Err: fmt.Errorf("control plane running %s but cli running %s", hc.serverVersion, version.Version)}
 						}
-						return nil
+						return CheckRunResult{}
 					},
 				},
 			},
@@ -790,102 +996,73 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "data plane namespace exists",
 					hintAnchor:  "l5d-data-plane-exists",
-					fatal:       true,
-					check: func(context.Context) error {
+					check: func(context.Context) CheckRunResult {
 						if hc.DataPlaneNamespace == "" {
 							// when checking proxies in all namespaces, this check is a no-op
-							return nil
+							return CheckRunResult{}
 						}
-						return hc.checkNamespace(hc.DataPlaneNamespace, true)
+						return CheckRunResult{Fatal: true, Err: hc.checkNamespace(hc.DataPlaneNamespace, true)}
 					},
 				},
 				{
 					description:   "data plane proxies are ready",
 					hintAnchor:    "l5d-data-plane-ready",
 					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
-					check: func(ctx context.Context) error {
+					check: func(ctx context.Context) CheckRunResult {
 						pods, err := hc.getDataPlanePods(ctx)
 						if err != nil {
-							return err
+							return CheckRunResult{Fatal: true, Err: err}
 						}
 
-						return validateDataPlanePods(pods, hc.DataPlaneNamespace)
+						return CheckRunResult{Fatal: true, Err: validateDataPlanePods(pods, hc.DataPlaneNamespace)}
 					},
 				},
 				{
 					description:   "data plane proxy metrics are present in Prometheus",
 					hintAnchor:    "l5d-data-plane-prom",
 					retryDeadline: hc.RetryDeadline,
-					check: func(ctx context.Context) error {
+					check: func(ctx context.Context) CheckRunResult {
 						pods, err := hc.getDataPlanePods(ctx)
 						if err != nil {
-							return err
+							return CheckRunResult{Err: err}
 						}
 
-						return validateDataPlanePodReporting(pods)
+						return CheckRunResult{Err: validateDataPlanePodReporting(pods)}
 					},
 				},
 				{
 					description: "data plane is up-to-date",
 					hintAnchor:  "l5d-data-plane-version",
-					warning:     true,
-					check: func(ctx context.Context) error {
+					check: func(ctx context.Context) CheckRunResult {
 						pods, err := hc.getDataPlanePods(ctx)
 						if err != nil {
-							return err
+							return CheckRunResult{Warning: true, Err: err}
 						}
 
 						for _, pod := range pods {
 							err = hc.latestVersions.Match(pod.ProxyVersion)
 							if err != nil {
-								return fmt.Errorf("%s: %s", pod.Name, err)
+								return CheckRunResult{Warning: true, Err: fmt.Errorf("%s: %s", pod.Name, err)}
 							}
 						}
-						return nil
+						return CheckRunResult{}
 					},
 				},
 				{
 					description: "data plane and cli versions match",
 					hintAnchor:  "l5d-data-plane-cli-version",
-					warning:     true,
-					check: func(ctx context.Context) error {
+					check: func(ctx context.Context) CheckRunResult {
 						pods, err := hc.getDataPlanePods(ctx)
 						if err != nil {
-							return err
+							return CheckRunResult{Warning: true, Err: err}
 						}
 
 						for _, pod := range pods {
 							if pod.ProxyVersion != version.Version {
-								return fmt.Errorf("%s running %s but cli running %s", pod.Name, pod.ProxyVersion, version.Version)
+								return CheckRunResult{Warning: true, Err: fmt.Errorf("%s running %s but cli running %s", pod.Name, pod.ProxyVersion, version.Version)}
 							}
 						}
-						return nil
-					},
-				},
-				{
-					description: "issuer certs are valid",
-					hintAnchor:  "l5d-issuer-certs-are-valid",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						hc.issuerCerts, err = hc.checkIssuerCertsValidity()
-						return
-					},
-				},
-				{
-					description: "issuer certs do not expire sooner than 60 days from now",
-					hintAnchor:  "l5d-issuer-certs-do-not-expire-sooner-than-60-days",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkIssuerCertsNotExpiringTooSoon()
-					},
-				},
-				{
-					description: "data plane proxies certificate match CA",
-					hintAnchor:  "l5d-data-plane-proxies-certificate-match-ca",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkDataPlaneProxiesCertificate()
+						return CheckRunResult{}
 					},
 				},
 			},
@@ -893,10 +1070,25 @@ func (hc *HealthChecker) allCategories() []category {
 	}
 }
 
+func (hc *HealthChecker) issuerDNS() string {
+	return fmt.Sprintf("identity.%s.%s", hc.ControlPlaneNamespace, hc.linkerdConfig.Global.IdentityContext.TrustDomain)
+}
+
+func sortedKeys(m map[string]bool) []string {
+	keys := []string{}
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
+}
+
 // Add adds an arbitrary checker. This should only be used for testing. For
 // production code, pass in the desired set of checks when calling
 // NewHealthChecker.
-func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintAnchor string, check func(context.Context) error) {
+func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintAnchor string, check func(context.Context) CheckRunResult) {
 	hc.addCategory(
 		category{
 			id: categoryID,
@@ -917,8 +1109,36 @@ func (hc *HealthChecker) addCategory(c category) {
 	hc.categories = append(hc.categories, c)
 }
 
+// Create K8s event recorder
+func (hc *HealthChecker) eventRecorder() (func(eventType, reason, message string), error) {
+	if hc.recordEvent != nil {
+		return hc.recordEvent, nil
+	}
+
+	if hc.kubeAPI == nil {
+		return nil, errors.New("K8s api not initialized yet")
+	}
+
+	eventBroadcaster := record.NewBroadcaster()
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{
+		Interface: hc.kubeAPI.CoreV1().Events(hc.ControlPlaneNamespace),
+	})
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "linkerd-identity"})
+	deployment, err := hc.kubeAPI.AppsV1().Deployments(hc.ControlPlaneNamespace).Get("linkerd-identity", v1machinary.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	recordEventFunc := func(eventType, reason, message string) {
+		recorder.Event(deployment, eventType, reason, message)
+	}
+
+	hc.recordEvent = recordEventFunc
+	return hc.recordEvent, nil
+}
+
 // RunChecks runs all configured checkers, and passes the results of each
-// check to the observer. If a check fails and is marked as fatal, then all
+// check to the observer. If a check fails and is marked as Fatal, then all
 // remaining checks are skipped. If at least one check fails, RunChecks returns
 // false; if all checks passed, RunChecks returns true.  Checks which are
 // designated as warnings will not cause RunCheck to return false, however.
@@ -930,22 +1150,24 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 			for _, checker := range c.checkers {
 				checker := checker // pin
 				if checker.check != nil {
-					if !hc.runCheck(c.id, &checker, observer) {
-						if !checker.warning {
+					r := hc.runCheck(c.id, &checker, observer)
+					if r.Err != nil {
+						if !r.Warning {
 							success = false
 						}
-						if checker.fatal {
+						if r.Fatal {
 							return success
 						}
 					}
 				}
 
 				if checker.checkRPC != nil {
-					if !hc.runCheckRPC(c.id, &checker, observer) {
-						if !checker.warning {
+					r := hc.runCheckRPC(c.id, &checker, observer)
+					if r.Err != nil {
+						if !r.Warning {
 							success = false
 						}
-						if checker.fatal {
+						if r.Fatal {
 							return success
 						}
 					}
@@ -957,28 +1179,29 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 	return success
 }
 
-func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer CheckObserver) bool {
+func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer CheckObserver) CheckRunResult {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
-		err := c.check(ctx)
-		if err != nil {
-			err = &CategoryError{categoryID, err}
+		res := c.check(ctx)
+		e := res.Err
+		if e != nil {
+			res.Err = &CategoryError{categoryID, e}
 		}
 		checkResult := &CheckResult{
 			Category:    categoryID,
 			Description: c.description,
 			HintAnchor:  c.hintAnchor,
-			Warning:     c.warning,
-			Err:         err,
+			Warning:     res.Warning,
+			Err:         res.Err,
 		}
 
-		if err != nil && time.Now().Before(c.retryDeadline) {
+		if res.Err != nil && time.Now().Before(c.retryDeadline) {
 			checkResult.Retry = true
 			if !c.surfaceErrorOnRetry {
 				checkResult.Err = errors.New("waiting for check to complete")
 			}
-			log.Debugf("Retrying on error: %s", err)
+			log.Debugf("Retrying on error: %s", res.Err)
 
 			observer(checkResult)
 			time.Sleep(retryWindow)
@@ -986,26 +1209,27 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer Ch
 		}
 
 		observer(checkResult)
-		return err == nil
+		return res
 	}
 }
 
-func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer CheckObserver) bool {
+func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer CheckObserver) CheckRunResult {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
-	checkRsp, err := c.checkRPC(ctx)
-	if err != nil {
-		err = &CategoryError{categoryID, err}
+	checkRsp, res := c.checkRPC(ctx)
+	e := res.Err
+	if e != nil {
+		res.Err = &CategoryError{categoryID, e}
 	}
 	observer(&CheckResult{
 		Category:    categoryID,
 		Description: c.description,
 		HintAnchor:  c.hintAnchor,
-		Warning:     c.warning,
-		Err:         err,
+		Warning:     res.Warning,
+		Err:         res.Err,
 	})
-	if err != nil {
-		return false
+	if res.Err != nil {
+		return res
 	}
 
 	for _, check := range checkRsp.Results {
@@ -1020,15 +1244,16 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 			Category:    categoryID,
 			Description: fmt.Sprintf("[%s] %s", check.SubsystemName, check.CheckDescription),
 			HintAnchor:  c.hintAnchor,
-			Warning:     c.warning,
+			Warning:     res.Warning,
 			Err:         err,
 		})
 		if err != nil {
-			return false
+			res.Err = err
+			return res
 		}
 	}
 
-	return true
+	return CheckRunResult{}
 }
 
 // PublicAPIClient returns a fully configured public API client. This client is
@@ -1047,17 +1272,10 @@ func (hc *HealthChecker) checkLinkerdConfigConfigMap() (string, *configPb.All, e
 	return string(cm.GetUID()), configPB, nil
 }
 
-func (hc *HealthChecker) checkIssuerCertsNotExpiringTooSoon() error {
-	if time.Now().AddDate(0, 0, ExpirationWarningThresholdInDays).After(hc.issuerCerts.Certificate.NotAfter) {
-		return fmt.Errorf("certificate is expiring sooner than %d days from now", ExpirationWarningThresholdInDays)
-	}
-	return nil
-}
-
-func (hc *HealthChecker) checkIssuerCertsValidity() (*tls.Cred, error) {
+func (hc *HealthChecker) checkCertificatesConfig() (*tls.Cred, []*x509.Certificate, error) {
 	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	idctx := configPB.Global.IdentityContext
@@ -1067,7 +1285,7 @@ func (hc *HealthChecker) checkIssuerCertsValidity() (*tls.Cred, error) {
 		data, err = issuercerts.FetchIssuerData(hc.kubeAPI, idctx.TrustAnchorsPem, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(hc.kubeAPI, hc.ControlPlaneNamespace)
-		// ensure trust anchors in config matches whats in the secret
+		// ensure trust trustRoots in config matches whats in the secret
 		if data != nil && idctx.TrustAnchorsPem != data.TrustAnchors {
 			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
 			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
@@ -1075,16 +1293,20 @@ func (hc *HealthChecker) checkIssuerCertsValidity() (*tls.Cred, error) {
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	issuerDNS := fmt.Sprintf("identity.%s.%s", hc.ControlPlaneNamespace, configPB.Global.IdentityContext.TrustDomain)
-	creds, err := data.VerifyAndBuildCreds(issuerDNS)
-
+	issuerCreds, err := tls.ValidateAndCreateCreds(data.IssuerCrt, data.IssuerKey)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return creds, nil
+
+	roots, err := tls.DecodePEMCertificates(data.TrustAnchors)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return issuerCreds, roots, nil
 }
 
 // FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from
@@ -1284,44 +1506,40 @@ func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 	return checkResources("PodSecurityPolicies", objects, []string{fmt.Sprintf("linkerd-%s-control-plane", hc.ControlPlaneNamespace)}, shouldExist)
 }
 
-func (hc *HealthChecker) checkDataPlaneProxiesCertificate() error {
-	podList, err := hc.kubeAPI.CoreV1().Pods(hc.DataPlaneNamespace).List(metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
+type meshedPodData struct {
+	name       string
+	namespace  string
+	trustRoots []*x509.Certificate
+}
+
+func (hc *HealthChecker) getMeshedPods() ([]meshedPodData, error) {
+	list, err := hc.kubeAPI.CoreV1().Pods(hc.DataPlaneNamespace).List(metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	// Return early if no proxies are deployed on the cluster yet (or on the targeted namespace)
-	if len(podList.Items) == 0 {
-		return nil
-	}
-	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
-	if err != nil {
-		return err
-	}
-	trustAnchorsPem := configPB.GetGlobal().GetIdentityContext().GetTrustAnchorsPem()
-	offendingPods := []string{}
-	for _, pod := range podList.Items {
-		for _, containerSpec := range pod.Spec.Containers {
+	var meshedPods []meshedPodData
+	for _, p := range list.Items {
+		for _, containerSpec := range p.Spec.Containers {
 			if containerSpec.Name != k8s.ProxyContainerName {
 				continue
 			}
+
 			for _, envVar := range containerSpec.Env {
 				if envVar.Name != identity.EnvTrustAnchors {
 					continue
 				}
-				if strings.TrimSpace(envVar.Value) != strings.TrimSpace(trustAnchorsPem) {
-					if hc.DataPlaneNamespace == "" {
-						offendingPods = append(offendingPods, fmt.Sprintf("%s/%s", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name))
-					} else {
-						offendingPods = append(offendingPods, pod.ObjectMeta.Name)
-					}
+
+				encodedTrustAnchors := strings.TrimSpace(envVar.Value)
+				roots, err := tls.DecodePEMCertificates(encodedTrustAnchors)
+				if err != nil {
+					meshedPods = append(meshedPods, meshedPodData{name: p.Name, namespace: p.Namespace, trustRoots: nil})
+				} else {
+					meshedPods = append(meshedPods, meshedPodData{name: p.Name, namespace: p.Namespace, trustRoots: roots})
 				}
 			}
 		}
 	}
-	if len(offendingPods) == 0 {
-		return nil
-	}
-	return fmt.Errorf("The following pods have old proxy certificate information; please, restart them:\n\t%s", strings.Join(offendingPods, "\n\t"))
+	return meshedPods, nil
 }
 
 func checkResources(resourceName string, objects []runtime.Object, expectedNames []string, shouldExist bool) error {
@@ -1502,7 +1720,7 @@ func (hc *HealthChecker) checkClockSkew() error {
 
 // getPodStatuses returns a map of all Linkerd container statuses:
 // component =>
-//   pod name =>
+//   name name =>
 //     container statuses
 // "controller" =>
 //   "linkerd-controller-6f78cbd47-bc557" =>
@@ -1550,17 +1768,17 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 			containersReady := true
 			for _, container := range containers {
 				if !container.Ready {
-					// TODO: Save this as a warning, allow check to pass but let the user
-					// know there is at least one pod not ready. This might imply
+					// TODO: Save this as a Warning, allow check to pass but let the user
+					// know there is at least one name not ready. This might imply
 					// restructuring health checks to allow individual checks to return
-					// either fatal or warning, rather than setting this property at
+					// either Fatal or Warning, rather than setting this property at
 					// compile time.
-					err = fmt.Errorf("pod/%s container %s is not ready", pod, container.Name)
+					err = fmt.Errorf("name/%s container %s is not ready", pod, container.Name)
 					containersReady = false
 				}
 			}
 			if containersReady {
-				// at least one pod has all containers ready
+				// at least one name has all containers ready
 				ready = true
 				break
 			}
@@ -1598,12 +1816,12 @@ func validateDataPlanePods(pods []*pb.Pod, targetNamespace string) error {
 
 	for _, pod := range pods {
 		if pod.Status != "Running" {
-			return fmt.Errorf("The \"%s\" pod is not running",
+			return fmt.Errorf("The \"%s\" name is not running",
 				pod.Name)
 		}
 
 		if !pod.ProxyReady {
-			return fmt.Errorf("The \"%s\" container in the \"%s\" pod is not ready",
+			return fmt.Errorf("The \"%s\" container in the \"%s\" name is not ready",
 				k8s.ProxyContainerName, pod.Name)
 		}
 	}
@@ -1615,7 +1833,7 @@ func validateDataPlanePodReporting(pods []*pb.Pod) error {
 	notInPrometheus := []string{}
 
 	for _, p := range pods {
-		// the `Added` field indicates the pod was found in Prometheus
+		// the `Added` field indicates the name was found in Prometheus
 		if !p.Added {
 			notInPrometheus = append(notInPrometheus, p.Name)
 		}

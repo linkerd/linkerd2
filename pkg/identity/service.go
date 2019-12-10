@@ -160,7 +160,7 @@ func (svc *Service) ensureIssuerStillValid() error {
 			return err
 		}
 		if err := is.Cred.Verify(roots, svc.expectedName); err != nil {
-			return nil
+			return err
 		}
 		return nil
 	default:
@@ -179,6 +179,7 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	}
 
 	if err := svc.ensureIssuerStillValid(); err != nil {
+		log.Errorf("Could not process CSR because of CA cert validation failure: %s", err)
 		return nil, err
 	}
 

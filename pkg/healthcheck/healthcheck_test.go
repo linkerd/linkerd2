@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -20,7 +19,6 @@ import (
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -77,8 +75,8 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []checker{
 			{
 				description: "desc1",
-				check: func(context.Context) error {
-					return nil
+				check: func(context.Context) CheckRunResult {
+					return CheckRunResult{}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -90,8 +88,8 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []checker{
 			{
 				description: "desc2",
-				check: func(context.Context) error {
-					return nil
+				check: func(context.Context) CheckRunResult {
+					return CheckRunResult{}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -103,8 +101,8 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []checker{
 			{
 				description: "desc3",
-				check: func(context.Context) error {
-					return fmt.Errorf("error")
+				check: func(context.Context) CheckRunResult {
+					return CheckRunResult{Err: fmt.Errorf("error")}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -128,9 +126,9 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []checker{
 			{
 				description: "desc4",
-				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-					return passingRPCClient.SelfCheck(context.Background(),
-						&healthcheckPb.SelfCheckRequest{})
+				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, CheckRunResult) {
+					resp, err := passingRPCClient.SelfCheck(context.Background(), &healthcheckPb.SelfCheckRequest{})
+					return resp, CheckRunResult{Err: err}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -155,9 +153,9 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []checker{
 			{
 				description: "desc5",
-				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-					return failingRPCClient.SelfCheck(context.Background(),
-						&healthcheckPb.SelfCheckRequest{})
+				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, CheckRunResult) {
+					resp, err := failingRPCClient.SelfCheck(context.Background(), &healthcheckPb.SelfCheckRequest{})
+					return resp, CheckRunResult{Err: err}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -169,9 +167,8 @@ func TestHealthChecker(t *testing.T) {
 		checkers: []checker{
 			{
 				description: "desc6",
-				fatal:       true,
-				check: func(context.Context) error {
-					return fmt.Errorf("fatal")
+				check: func(context.Context) CheckRunResult {
+					return CheckRunResult{Err: fmt.Errorf("Fatal"), Fatal: true}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -255,7 +252,7 @@ func TestHealthChecker(t *testing.T) {
 		}
 	})
 
-	t.Run("Does not run remaining check if fatal check fails", func(t *testing.T) {
+	t.Run("Does not run remaining check if Fatal check fails", func(t *testing.T) {
 		hc := NewHealthChecker(
 			[]CategoryID{},
 			&Options{},
@@ -266,7 +263,7 @@ func TestHealthChecker(t *testing.T) {
 
 		expectedResults := []string{
 			"cat1 desc1",
-			"cat6 desc6: fatal",
+			"cat6 desc6: Fatal",
 		}
 
 		obs := newObserver()
@@ -287,12 +284,12 @@ func TestHealthChecker(t *testing.T) {
 				{
 					description:   "desc7",
 					retryDeadline: time.Now().Add(100 * time.Second),
-					check: func(context.Context) error {
+					check: func(context.Context) CheckRunResult {
 						if returnError {
 							returnError = false
-							return fmt.Errorf("retry")
+							return CheckRunResult{Err: fmt.Errorf("retry")}
 						}
-						return nil
+						return CheckRunResult{}
 					},
 				},
 			},
@@ -1618,7 +1615,7 @@ func TestCheckControlPlanePodExistence(t *testing.T) {
 		expected         []string
 	}{
 		{
-			checkDescription: "controller pod is running",
+			checkDescription: "controller name is running",
 			resources: []string{`
 apiVersion: v1
 kind: Pod
@@ -1631,7 +1628,7 @@ status:
 `,
 			},
 			expected: []string{
-				"cat1 controller pod is running",
+				"cat1 controller name is running",
 			},
 		},
 		{
@@ -1674,106 +1671,6 @@ metadata:
 			hc.RunChecks(obs.resultFn)
 			if !reflect.DeepEqual(obs.results, testCase.expected) {
 				t.Fatalf("Expected results %v, but got %v", testCase.expected, obs.results)
-			}
-		})
-	}
-}
-
-func proxiesWithCertificates(certificates ...string) []string {
-	result := []string{}
-	for i, certificate := range certificates {
-		result = append(result, fmt.Sprintf(`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: pod-%d
-  namespace: namespace-%d
-  labels:
-    %s: linkerd
-spec:
-  containers:
-  - name: %s
-    env:
-    - name: %s
-      value: %s
-`, i, i, k8s.ControllerNSLabel, k8s.ProxyContainerName, identity.EnvTrustAnchors, certificate))
-	}
-	return result
-}
-
-func TestCheckDataPlaneProxiesCertificate(t *testing.T) {
-	const currentCertificate = "current-certificate"
-	const oldCertificate = "old-certificate"
-
-	linkerdConfigMap := fmt.Sprintf(`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: %s
-data:
-  global: |
-    {"identityContext":{"trustAnchorsPem": "%s"}}
-`, k8s.ConfigConfigMapName, currentCertificate)
-
-	var testCases = []struct {
-		checkDescription string
-		resources        []string
-		namespace        string
-		expectedErr      error
-	}{
-		{
-			checkDescription: "all proxies match CA certificate (all namespaces)",
-			resources:        proxiesWithCertificates(currentCertificate, currentCertificate),
-			namespace:        "",
-			expectedErr:      nil,
-		},
-		{
-			checkDescription: "some proxies match CA certificate (all namespaces)",
-			resources:        proxiesWithCertificates(currentCertificate, oldCertificate),
-			namespace:        "",
-			expectedErr:      errors.New("The following pods have old proxy certificate information; please, restart them:\n\tnamespace-1/pod-1"),
-		},
-		{
-			checkDescription: "no proxies match CA certificate (all namespaces)",
-			resources:        proxiesWithCertificates(oldCertificate, oldCertificate),
-			namespace:        "",
-			expectedErr:      errors.New("The following pods have old proxy certificate information; please, restart them:\n\tnamespace-0/pod-0\n\tnamespace-1/pod-1"),
-		},
-		{
-			checkDescription: "some proxies match CA certificate (match in target namespace)",
-			resources:        proxiesWithCertificates(currentCertificate, oldCertificate),
-			namespace:        "namespace-0",
-			expectedErr:      nil,
-		},
-		{
-			checkDescription: "some proxies match CA certificate (unmatch in target namespace)",
-			resources:        proxiesWithCertificates(currentCertificate, oldCertificate),
-			namespace:        "namespace-1",
-			expectedErr:      errors.New("The following pods have old proxy certificate information; please, restart them:\n\tpod-1"),
-		},
-		{
-			checkDescription: "no proxies match CA certificate (specific namespace)",
-			resources:        proxiesWithCertificates(oldCertificate, oldCertificate),
-			namespace:        "namespace-0",
-			expectedErr:      errors.New("The following pods have old proxy certificate information; please, restart them:\n\tpod-0"),
-		},
-	}
-
-	for id, testCase := range testCases {
-		testCase := testCase
-		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
-			hc := NewHealthChecker([]CategoryID{}, &Options{})
-			hc.DataPlaneNamespace = testCase.namespace
-
-			var err error
-			hc.kubeAPI, err = k8s.NewFakeAPI(append(testCase.resources, linkerdConfigMap)...)
-			if err != nil {
-				t.Fatalf("Unexpected error: %q", err)
-			}
-
-			err = hc.checkDataPlaneProxiesCertificate()
-			if !reflect.DeepEqual(err, testCase.expectedErr) {
-				t.Fatalf("Error %q does not match expected error: %q", err, testCase.expectedErr)
 			}
 		})
 	}
@@ -1845,8 +1742,7 @@ func createIssuerData(dnsName string, notBefore, notAfter time.Time) *issuercert
 		IssuerKey:    rootCa.Cred.EncodePrivateKeyPEM(),
 	}
 }
-
-func TestValidateIssuerCert(t *testing.T) {
+func TestValidateLinkerdIdentity(t *testing.T) {
 	type lifeSpan struct {
 		starts time.Time
 		ends   time.Time
@@ -1857,73 +1753,102 @@ func TestValidateIssuerCert(t *testing.T) {
 		lifespan           *lifeSpan
 		tlsSecretScheme    string
 		schemeInConfig     string
-		expectedErr        error
-		expectedWarning    error
+		expectedOutput     []string
 	}{
 		{
 			checkDescription: "works with valid cert and linkerd.io/tls secret",
 			tlsSecretScheme:  k8s.IdentityIssuerSchemeLinkerd,
 			schemeInConfig:   k8s.IdentityIssuerSchemeLinkerd,
-			expectedErr:      nil,
+			expectedOutput: []string{
+				"linkerd-identity certificate config is valid",
+				"linkerd-identity control plane is using supported trust roots",
+				"linkerd-identity identity is using supported issuer certificate",
+				"linkerd-identity all control plane trust roots have valid lifetimes",
+				"linkerd-identity issuer cert has valid lifetime",
+				"linkerd-identity issuer cert can be verified with trust root",
+			},
 		},
 		{
 			checkDescription: "works with valid cert and kubernetes.io/tls secret",
 			tlsSecretScheme:  string(corev1.SecretTypeTLS),
 			schemeInConfig:   string(corev1.SecretTypeTLS),
-			expectedErr:      nil,
+			expectedOutput: []string{
+				"linkerd-identity certificate config is valid",
+				"linkerd-identity control plane is using supported trust roots",
+				"linkerd-identity identity is using supported issuer certificate",
+				"linkerd-identity all control plane trust roots have valid lifetimes",
+				"linkerd-identity issuer cert has valid lifetime",
+				"linkerd-identity issuer cert can be verified with trust root",
+			},
 		},
 		{
 			checkDescription: "works if config scheme is empty and secret scheme is linkerd.io/tls (pre 2.7)",
 			tlsSecretScheme:  k8s.IdentityIssuerSchemeLinkerd,
 			schemeInConfig:   "",
-			expectedErr:      nil,
+			expectedOutput: []string{
+				"linkerd-identity certificate config is valid",
+				"linkerd-identity control plane is using supported trust roots",
+				"linkerd-identity identity is using supported issuer certificate",
+				"linkerd-identity all control plane trust roots have valid lifetimes",
+				"linkerd-identity issuer cert has valid lifetime",
+				"linkerd-identity issuer cert can be verified with trust root",
+			},
 		},
 		{
 			checkDescription: "fails if config scheme is empty and secret scheme is kubernetes.io/tls (pre 2.7)",
 			tlsSecretScheme:  string(corev1.SecretTypeTLS),
 			schemeInConfig:   "",
-			expectedErr:      errors.New("key crt.pem containing the issuer certificate needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=false"),
+			expectedOutput:   []string{"linkerd-identity certificate config is valid: key crt.pem containing the issuer certificate needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=false"},
 		},
 		{
 			checkDescription: "fails when config scheme is linkerd.io/tls but secret scheme is kubernetes.io/tls in config is different than the one in the issuer secret",
 			tlsSecretScheme:  string(corev1.SecretTypeTLS),
 			schemeInConfig:   k8s.IdentityIssuerSchemeLinkerd,
-			expectedErr:      errors.New("key crt.pem containing the issuer certificate needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=false"),
+			expectedOutput:   []string{"linkerd-identity certificate config is valid: key crt.pem containing the issuer certificate needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=false"},
 		},
 		{
 			checkDescription: "fails when config scheme is kubernetes.io/tls but secret scheme is linkerd.io/tls in config is different than the one in the issuer secret",
 			tlsSecretScheme:  k8s.IdentityIssuerSchemeLinkerd,
 			schemeInConfig:   string(corev1.SecretTypeTLS),
-			expectedErr:      errors.New("key ca.crt containing the trust anchors needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=true"),
+			expectedOutput:   []string{"linkerd-identity certificate config is valid: key ca.crt containing the trust anchors needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=true"},
 		},
 		{
 			checkDescription:   "fails when cert dns is wrong",
 			certificateDNSName: "wrong.linkerd.cluster.local",
-			expectedErr:        errors.New("x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"),
+			expectedOutput: []string{
+				"linkerd-identity certificate config is valid",
+				"linkerd-identity control plane is using supported trust roots",
+				"linkerd-identity identity is using supported issuer certificate",
+				"linkerd-identity all control plane trust roots have valid lifetimes",
+				"linkerd-identity issuer cert has valid lifetime",
+				"linkerd-identity issuer cert can be verified with trust root: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local",
+			},
 		},
 		{
-			checkDescription: "fails when cert is not valid yet",
+			checkDescription: "fails when the only root cert is not valid yet",
 			lifespan: &lifeSpan{
 				starts: time.Date(2100, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(2101, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedErr: errors.New("invalid issuer certificate: certificate not valid before: 2100-01-01T01:00:51Z"),
+			expectedOutput: []string{
+				"linkerd-identity certificate config is valid",
+				"linkerd-identity control plane is using supported trust roots",
+				"linkerd-identity identity is using supported issuer certificate",
+				"linkerd-identity all control plane trust roots have valid lifetimes: Invalid roots:\n    1 identity.linkerd.cluster.local not valid before: 2100-01-01T01:00:51Z",
+			},
 		},
 		{
-			checkDescription: "fails when cert is expired",
+			checkDescription: "fails when the only root cert is expired",
 			lifespan: &lifeSpan{
 				starts: time.Date(1989, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(1990, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedErr: errors.New("invalid issuer certificate: certificate not valid anymore. Expired at: 1990-01-01T01:01:11Z"),
-		},
-		{
-			checkDescription: "warns if certificate expires to soon",
-			lifespan: &lifeSpan{
-				starts: time.Date(1989, 1, 1, 1, 1, 1, 1, time.Local),
-				ends:   time.Now().AddDate(0, 0, 1),
+			expectedOutput: []string{
+				"linkerd-identity certificate config is valid",
+				"linkerd-identity control plane is using supported trust roots",
+				"linkerd-identity identity is using supported issuer certificate",
+				"linkerd-identity all control plane trust roots have valid lifetimes: Invalid roots:\n    1 identity.linkerd.cluster.local not valid anymore. Expired on 1990-01-01T01:01:11Z",
 			},
-			expectedWarning: errors.New("certificate is expiring sooner than 60 days from now"),
 		},
 	}
 
@@ -1945,32 +1870,32 @@ func TestValidateIssuerCert(t *testing.T) {
 			testCase.tlsSecretScheme = k8s.IdentityIssuerSchemeLinkerd
 		}
 
-		t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
-			hc := NewHealthChecker([]CategoryID{}, &Options{})
+		t.Run(fmt.Sprintf("%d/%s", id, testCase.checkDescription), func(t *testing.T) {
+			hc := NewHealthChecker(
+				[]CategoryID{LinkerdIdentity},
+				&Options{
+					DataPlaneNamespace: "linkerd",
+				},
+			)
+			var err error
 			hc.ControlPlaneNamespace = "linkerd"
-
 			issuerData := createIssuerData(testCase.certificateDNSName, testCase.lifespan.starts, testCase.lifespan.ends)
 			config := getFakeConfig(testCase.tlsSecretScheme, testCase.schemeInConfig, issuerData)
-
-			var err error
 			hc.kubeAPI, err = k8s.NewFakeAPI(config...)
+			_, hc.linkerdConfig, _ = hc.checkLinkerdConfigConfigMap()
+
 			if err != nil {
-				t.Fatalf("Unexpected error: %q", err)
+				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			hc.issuerCerts, err = hc.checkIssuerCertsValidity()
-			if err != nil && err.Error() != testCase.expectedErr.Error() {
-				t.Fatalf("Error %q does not match expected error: %q", err, testCase.expectedErr)
-			}
-
-			if testCase.expectedWarning != nil {
-				warn := hc.checkIssuerCertsNotExpiringTooSoon()
-				if warn != nil && warn.Error() != testCase.expectedWarning.Error() {
-					t.Fatalf("Warning %q does not match expected warning: %q", warn, testCase.expectedWarning)
-				}
+			obs := newObserver()
+			hc.RunChecks(obs.resultFn)
+			if !reflect.DeepEqual(obs.results, testCase.expectedOutput) {
+				t.Fatalf("Expected results %v, but got %v", testCase.expectedOutput, obs.results)
 			}
 		})
 	}
+
 }
 
 func TestValidateControlPlanePods(t *testing.T) {
@@ -2024,7 +1949,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "pod/linkerd-grafana-5b7d796646-hh46d container grafana is not ready" {
+		if err.Error() != "name/linkerd-grafana-5b7d796646-hh46d container grafana is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -2046,7 +1971,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns nil if, HA mode, at least one pod of each control plane component is ready", func(t *testing.T) {
+	t.Run("Returns nil if, HA mode, at least one name of each control plane component is ready", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-controller-6f78cbd47-bc558", corev1.PodRunning, false),
@@ -2067,7 +1992,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns nil if all linkerd pods are running and pod list includes non-linkerd pod", func(t *testing.T) {
+	t.Run("Returns nil if all linkerd pods are running and name list includes non-linkerd name", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
@@ -2155,7 +2080,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"voting-65b9fffd77-rlwsd\" pod is not running" {
+		if err.Error() != "The \"voting-65b9fffd77-rlwsd\" name is not running" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -2172,7 +2097,7 @@ func TestValidateDataPlanePods(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "The \"linkerd-proxy\" container in the \"vote-bot-644b8cb6b4-g8nlr\" pod is not ready" {
+		if err.Error() != "The \"linkerd-proxy\" container in the \"vote-bot-644b8cb6b4-g8nlr\" name is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -2212,7 +2137,7 @@ func TestValidateDataPlanePodReporting(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns an error if any of the pod was not added to Prometheus", func(t *testing.T) {
+	t.Run("Returns an error if any of the name was not added to Prometheus", func(t *testing.T) {
 		pods := []*pb.Pod{
 			{Name: "ns1/test1", Added: true},
 			{Name: "ns2/test2", Added: false},
@@ -2293,7 +2218,7 @@ metadata:
 			`apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: pod-security-policy
+  name: name-security-policy
   labels:
     linkerd.io/control-plane-ns: test-ns`,
 		}
@@ -2315,7 +2240,7 @@ metadata:
 			"pre-linkerd-global-resources no CustomResourceDefinitions exist: CustomResourceDefinitions found but should not exist: custom-resource-definition",
 			"pre-linkerd-global-resources no MutatingWebhookConfigurations exist: MutatingWebhookConfigurations found but should not exist: mutating-webhook-configuration",
 			"pre-linkerd-global-resources no ValidatingWebhookConfigurations exist: ValidatingWebhookConfigurations found but should not exist: validating-webhook-configuration",
-			"pre-linkerd-global-resources no PodSecurityPolicies exist: PodSecurityPolicies found but should not exist: pod-security-policy",
+			"pre-linkerd-global-resources no PodSecurityPolicies exist: PodSecurityPolicies found but should not exist: name-security-policy",
 		}
 		if !reflect.DeepEqual(observer.results, expected) {
 			t.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
@@ -2338,7 +2263,7 @@ metadata:
   namespace: linkerd
 data:
   global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-trustRoots-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version", "proxy_init_image_version":"v1.2.0"}
   install: |
@@ -2350,7 +2275,7 @@ data:
 					Version:          "install-control-plane-version",
 					IdentityContext: &configPb.IdentityContext{
 						TrustDomain:     "cluster.local",
-						TrustAnchorsPem: "fake-trust-anchors-pem",
+						TrustAnchorsPem: "fake-trust-trustRoots-pem",
 						IssuanceLifetime: &duration.Duration{
 							Seconds: 86400,
 						},

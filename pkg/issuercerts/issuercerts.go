@@ -1,6 +1,7 @@
 package issuercerts
 
 import (
+	"crypto/ecdsa"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -99,23 +100,44 @@ func LoadIssuerDataFromFiles(keyPEMFile, crtPEMFile, trustPEMFile string) (*Issu
 	return &IssuerCertData{string(anchors), crt, key}, nil
 }
 
-func validateCert(cert *x509.Certificate) error {
-	if cert.PublicKeyAlgorithm != x509.ECDSA {
-		return fmt.Errorf("the required public key algorithm is %s, instead %s was used", x509.ECDSA, cert.PublicKeyAlgorithm)
-	}
-
-	if cert.SignatureAlgorithm != x509.ECDSAWithSHA256 {
-		return fmt.Errorf("the required public key algorithm is %s, instead %s was used", x509.ECDSAWithSHA256, cert.SignatureAlgorithm)
-	}
-
+// CheckCertTimeValidity ensures the certificate is valid time - wise
+func CheckCertTimeValidity(cert *x509.Certificate) error {
 	if cert.NotBefore.After(time.Now()) {
-		return fmt.Errorf("certificate not valid before: %s", cert.NotBefore.Format(time.RFC3339))
+		return fmt.Errorf("not valid before: %s", cert.NotBefore.Format(time.RFC3339))
 	}
 
 	if cert.NotAfter.Before(time.Now()) {
-		return fmt.Errorf("certificate not valid anymore. Expired at: %s", cert.NotAfter.Format(time.RFC3339))
+		return fmt.Errorf("not valid anymore. Expired on %s", cert.NotAfter.Format(time.RFC3339))
+	}
+	return nil
+}
+
+// CheckExpiringSoon returns an error if a certificate is expiring soon
+func CheckExpiringSoon(cert *x509.Certificate) error {
+	lifetime := cert.NotAfter.Unix() - cert.NotBefore.Unix()
+	timeLeft := cert.NotAfter.Unix() - time.Now().Unix()
+	if (float64(timeLeft) / float64(lifetime)) < 0.1 {
+		return fmt.Errorf("will expire on %s", cert.NotAfter.Format(time.RFC3339))
+	}
+	return nil
+}
+
+// CheckCertAlgoRequirements ensures the certificate respects with the constraints
+// we have posed on the public key and signature algorithms
+func CheckCertAlgoRequirements(cert *x509.Certificate) error {
+	if cert.PublicKeyAlgorithm == x509.ECDSA {
+		// this si a safe cast here as wel know we are using ECDSA
+		k := cert.PublicKey.(*ecdsa.PublicKey)
+		if k.Params().BitSize != 256 {
+			return fmt.Errorf("must use P-256 curve for public key, instead P-%d was used", k.Params().BitSize)
+		}
+	} else {
+		return fmt.Errorf("must use ECDSA for public key algorithm, instead %s was used", cert.PublicKeyAlgorithm)
 	}
 
+	if cert.SignatureAlgorithm != x509.ECDSAWithSHA256 {
+		return fmt.Errorf("must be signed by an ECDSA P-256 key, instead %s was used", cert.SignatureAlgorithm)
+	}
 	return nil
 }
 
@@ -127,9 +149,14 @@ func (ic *IssuerCertData) VerifyAndBuildCreds(dnsName string) (*tls.Cred, error)
 		return nil, fmt.Errorf("failed to read CA: %s", err)
 	}
 
-	// we check the validity of the issuer cert
-	if err := validateCert(creds.Certificate); err != nil {
-		return nil, fmt.Errorf("invalid issuer certificate: %s", err)
+	// we check the time validity of the issuer cert
+	if err := CheckCertTimeValidity(creds.Certificate); err != nil {
+		return nil, err
+	}
+
+	// we check the algo requirements of the issuer cert
+	if err := CheckCertAlgoRequirements(creds.Certificate); err != nil {
+		return nil, err
 	}
 
 	roots, err := tls.DecodePEMCertPool(ic.TrustAnchors)

@@ -16,11 +16,11 @@ func TestCheckStatus(t *testing.T) {
 			[]healthcheck.CategoryID{},
 			&healthcheck.Options{},
 		)
-		hc.Add("category", "check1", "", func(context.Context) error {
-			return nil
+		hc.Add("category", "check1", "", func(context.Context) healthcheck.CheckRunResult {
+			return healthcheck.CheckRunResult{}
 		})
-		hc.Add("category", "check2", "hint-anchor", func(context.Context) error {
-			return fmt.Errorf("This should contain instructions for fail")
+		hc.Add("category", "check2", "hint-anchor", func(context.Context) healthcheck.CheckRunResult {
+			return healthcheck.CheckRunResult{Err: fmt.Errorf("This should contain instructions for fail")}
 		})
 
 		output := bytes.NewBufferString("")
@@ -43,11 +43,11 @@ func TestCheckStatus(t *testing.T) {
 			[]healthcheck.CategoryID{},
 			&healthcheck.Options{},
 		)
-		hc.Add("category", "check1", "", func(context.Context) error {
-			return nil
+		hc.Add("category", "check1", "", func(context.Context) healthcheck.CheckRunResult {
+			return healthcheck.CheckRunResult{}
 		})
-		hc.Add("category", "check2", "hint-anchor", func(context.Context) error {
-			return fmt.Errorf("This should contain instructions for fail")
+		hc.Add("category", "check2", "hint-anchor", func(context.Context) healthcheck.CheckRunResult {
+			return healthcheck.CheckRunResult{Err: fmt.Errorf("This should contain instructions for fail")}
 		})
 
 		output := bytes.NewBufferString("")

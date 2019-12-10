@@ -7,7 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// HasExistingSidecars returns true if the pod spec already has the proxy init
+// HasExistingSidecars returns true if the name spec already has the proxy init
 // and sidecar containers injected. Otherwise, it returns false.
 func HasExistingSidecars(podSpec *corev1.PodSpec) bool {
 	for _, container := range podSpec.Containers {
