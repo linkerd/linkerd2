@@ -58,6 +58,7 @@ func newCmdStat() *cobra.Command {
   or (TYPE1/NAME1 TYPE2/NAME2...)
 
   Examples:
+  * cronjob/my-cronjob
   * deploy
   * deploy/my-deploy
   * deploy/ po/
@@ -67,6 +68,8 @@ func newCmdStat() *cobra.Command {
   * po/mypod1 rc/my-replication-controller
   * po mypod1 mypod2
   * rc/my-replication-controller
+  * rs
+  * rs/my-replicaset
   * sts/my-statefulset
   * ts/my-split
   * authority
@@ -74,11 +77,13 @@ func newCmdStat() *cobra.Command {
   * all
 
   Valid resource types include:
+  * cronjobs
   * daemonsets
   * deployments
   * namespaces
   * jobs
   * pods
+  * replicasets
   * replicationcontrollers
   * statefulsets
   * trafficsplits

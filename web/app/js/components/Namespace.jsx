@@ -156,6 +156,8 @@ class Namespaces extends React.Component {
             {this.renderResourceSection("statefulset", metrics.statefulset)}
             {this.renderResourceSection("job", metrics.job)}
             {this.renderResourceSection("trafficsplit", metrics.trafficsplit)}
+            {this.renderResourceSection("cronjob", metrics.cronjob)}
+            {this.renderResourceSection("replicaset", metrics.replicaset)}
 
             {
               noMetrics ? null :

@@ -130,6 +130,8 @@ func NewServer(
 	server.router.GET("/namespaces/:namespace/deployments", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/replicationcontrollers", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/pods", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/cronjobs", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/replicasets", handler.handleIndex)
 
 	// legacy paths that are deprecated but should not 404
 	server.router.GET("/overview", handler.handleIndex)
@@ -150,6 +152,8 @@ func NewServer(
 	server.router.GET("/namespaces/:namespace/deployments/:deployment", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/jobs/:job", handler.handleIndex)
 	server.router.GET("/namespaces/:namespace/replicationcontrollers/:replicationcontroller", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/cronjobs/:cronjob", handler.handleIndex)
+	server.router.GET("/namespaces/:namespace/replicasets/:replicaset", handler.handleIndex)
 
 	// tools and community paths
 	server.router.GET("/tap", handler.handleIndex)

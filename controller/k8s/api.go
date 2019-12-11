@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc/status"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
+	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,6 +30,7 @@ import (
 	arinformers "k8s.io/client-go/informers/admissionregistration/v1beta1"
 	appv1informers "k8s.io/client-go/informers/apps/v1"
 	batchv1informers "k8s.io/client-go/informers/batch/v1"
+	batchv1beta1informers "k8s.io/client-go/informers/batch/v1beta1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -40,7 +42,8 @@ type APIResource int
 
 // These constants enumerate Kubernetes resource types.
 const (
-	CM APIResource = iota
+	CJ APIResource = iota
+	CM
 	Deploy
 	DS
 	Endpoint
@@ -61,6 +64,7 @@ const (
 type API struct {
 	Client kubernetes.Interface
 
+	cj       batchv1beta1informers.CronJobInformer
 	cm       coreinformers.ConfigMapInformer
 	deploy   appv1informers.DeploymentInformer
 	ds       appv1informers.DaemonSetInformer
@@ -158,6 +162,9 @@ func NewAPI(
 
 	for _, resource := range resources {
 		switch resource {
+		case CJ:
+			api.cj = sharedInformers.Batch().V1beta1().CronJobs()
+			api.syncChecks = append(api.syncChecks, api.cj.Informer().HasSynced)
 		case CM:
 			api.cm = sharedInformers.Core().V1().ConfigMaps()
 			api.syncChecks = append(api.syncChecks, api.cm.Informer().HasSynced)
@@ -352,6 +359,14 @@ func (api *API) Node() coreinformers.NodeInformer {
 	return api.node
 }
 
+// CJ provides access to a shared informer and lister for CronJobs.
+func (api *API) CJ() batchv1beta1informers.CronJobInformer {
+	if api.cj == nil {
+		panic("CJ informer not configured")
+	}
+	return api.cj
+}
+
 // GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.
 // If namespace is an empty string, match objects in all namespaces.
 // If name is an empty string, match all objects of the given type.
@@ -359,6 +374,8 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 	switch restype {
 	case k8s.Namespace:
 		return api.getNamespaces(name)
+	case k8s.CronJob:
+		return api.getCronjobs(namespace, name)
 	case k8s.DaemonSet:
 		return api.getDaemonsets(namespace, name)
 	case k8s.Deployment:
@@ -369,12 +386,13 @@ func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, e
 		return api.getPods(namespace, name)
 	case k8s.ReplicationController:
 		return api.getRCs(namespace, name)
+	case k8s.ReplicaSet:
+		return api.getReplicasets(namespace, name)
 	case k8s.Service:
 		return api.getServices(namespace, name)
 	case k8s.StatefulSet:
 		return api.getStatefulsets(namespace, name)
 	default:
-		// TODO: ReplicaSet
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
 	}
 }
@@ -395,27 +413,39 @@ func (api *API) GetOwnerKindAndName(pod *corev1.Pod, retry bool) (string, string
 	}
 
 	parent := ownerRefs[0]
-	if parent.Kind == "ReplicaSet" {
-		var rs *appsv1.ReplicaSet
-		var err error
-		rs, err = api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
+	var parentObj metav1.Object
+	var err error
+	switch parent.Kind {
+	case "Job":
+		parentObj, err = api.Job().Lister().Jobs(pod.Namespace).Get(parent.Name)
+		if err != nil {
+			log.Warnf("failed to retrieve job from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
+			if retry {
+				parentObj, err = api.Client.BatchV1().Jobs(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
+				if err != nil {
+					log.Warnf("failed to retrieve job from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
+				}
+			}
+		}
+	case "ReplicaSet":
+		parentObj, err = api.RS().Lister().ReplicaSets(pod.Namespace).Get(parent.Name)
 		if err != nil {
 			log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
 			if retry {
-				rs, err = api.Client.AppsV1().ReplicaSets(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
+				parentObj, err = api.Client.AppsV1().ReplicaSets(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
 				if err != nil {
 					log.Warnf("failed to retrieve replicaset from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
 				}
 			}
 		}
-
-		if err != nil || len(rs.GetOwnerReferences()) != 1 {
-			return strings.ToLower(parent.Kind), parent.Name
-		}
-		rsParent := rs.GetOwnerReferences()[0]
-		return strings.ToLower(rsParent.Kind), rsParent.Name
+	default:
+		return strings.ToLower(parent.Kind), parent.Name
 	}
 
+	if err == nil && len(parentObj.GetOwnerReferences()) == 1 {
+		grandParent := parentObj.GetOwnerReferences()[0]
+		return strings.ToLower(grandParent.Kind), grandParent.Name
+	}
 	return strings.ToLower(parent.Kind), parent.Name
 }
 
@@ -432,6 +462,24 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 	case *corev1.Namespace:
 		namespace = typed.Name
 		selector = labels.Everything()
+
+	case *batchv1beta1.CronJob:
+		namespace = typed.Namespace
+		selector = labels.Everything()
+		jobs, err := api.Job().Lister().Jobs(namespace).List(selector)
+		if err != nil {
+			return nil, err
+		}
+		for _, job := range jobs {
+			if isOwner(typed.UID, job.GetOwnerReferences()) {
+				jobPods, err := api.GetPodsFor(job, includeFailed)
+				if err != nil {
+					return nil, err
+				}
+				pods = append(pods, jobPods...)
+			}
+		}
+		return pods, nil
 
 	case *appsv1.DaemonSet:
 		namespace = typed.Namespace
@@ -509,9 +557,7 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 	allPods := []*corev1.Pod{}
 	for _, pod := range pods {
 		if isPendingOrRunning(pod) || (includeFailed && isFailed(pod)) {
-			if ownerUID == "" {
-				allPods = append(allPods, pod)
-			} else if isOwner(ownerUID, pod.GetOwnerReferences()) {
+			if ownerUID == "" || isOwner(ownerUID, pod.GetOwnerReferences()) {
 				allPods = append(allPods, pod)
 			}
 		}
@@ -533,6 +579,9 @@ func GetNameAndNamespaceOf(obj runtime.Object) (string, string, error) {
 	switch typed := obj.(type) {
 	case *corev1.Namespace:
 		return typed.Name, typed.Name, nil
+
+	case *batchv1beta1.CronJob:
+		return typed.Name, typed.Namespace, nil
 
 	case *appsv1.DaemonSet:
 		return typed.Name, typed.Namespace, nil
@@ -777,6 +826,56 @@ func (api *API) getServices(namespace, name string) ([]runtime.Object, error) {
 	objects := []runtime.Object{}
 	for _, svc := range services {
 		objects = append(objects, svc)
+	}
+
+	return objects, nil
+}
+
+func (api *API) getCronjobs(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var cronjobs []*batchv1beta1.CronJob
+
+	if namespace == "" {
+		cronjobs, err = api.CJ().Lister().List(labels.Everything())
+	} else if name == "" {
+		cronjobs, err = api.CJ().Lister().CronJobs(namespace).List(labels.Everything())
+	} else {
+		var cronjob *batchv1beta1.CronJob
+		cronjob, err = api.CJ().Lister().CronJobs(namespace).Get(name)
+		cronjobs = []*batchv1beta1.CronJob{cronjob}
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, cronjob := range cronjobs {
+		objects = append(objects, cronjob)
+	}
+
+	return objects, nil
+}
+
+func (api *API) getReplicasets(namespace, name string) ([]runtime.Object, error) {
+	var err error
+	var replicasets []*appsv1.ReplicaSet
+
+	if namespace == "" {
+		replicasets, err = api.RS().Lister().List(labels.Everything())
+	} else if name == "" {
+		replicasets, err = api.RS().Lister().ReplicaSets(namespace).List(labels.Everything())
+	} else {
+		var replicaset *appsv1.ReplicaSet
+		replicaset, err = api.RS().Lister().ReplicaSets(namespace).Get(name)
+		replicasets = []*appsv1.ReplicaSet{replicaset}
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	objects := []runtime.Object{}
+	for _, replicaset := range replicasets {
+		objects = append(objects, replicaset)
 	}
 
 	return objects, nil

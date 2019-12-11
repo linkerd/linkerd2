@@ -46,18 +46,22 @@ func newCmdEdges() *cobra.Command {
   The RESOURCETYPE argument specifies the type of resource to display edges within.
 
   Examples:
+  * cronjob
   * deploy
   * ds
   * job
   * po
   * rc
+  * rs
   * sts
 
   Valid resource types include:
+  * cronjobs
   * daemonsets
   * deployments
   * jobs
   * pods
+  * replicasets
   * replicationcontrollers
   * statefulsets`,
 		Example: `  # Get all edges between pods that either originate from or terminate in the demo namespace.

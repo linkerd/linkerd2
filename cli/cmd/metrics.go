@@ -62,6 +62,7 @@ func newCmdMetrics() *cobra.Command {
   (TYPE/NAME)
 
   Examples:
+  * cronjob/my-cronjob
   * deploy/my-deploy
   * ds/my-daemonset
   * job/my-job
@@ -70,6 +71,7 @@ func newCmdMetrics() *cobra.Command {
   * sts/my-statefulset
 
   Valid resource types include:
+  * cronjobs
   * daemonsets
   * deployments
   * jobs
@@ -207,6 +209,23 @@ func getPodsFor(clientset kubernetes.Interface, namespace string, resource strin
 
 	var matchLabels map[string]string
 	switch res.GetType() {
+	case k8s.CronJob:
+		jobs, err := clientset.BatchV1().Jobs(namespace).List(metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		var pods []corev1.Pod
+		for _, job := range jobs.Items {
+			if isOwner(res.GetName(), job.GetOwnerReferences()) {
+				jobPods, err := getPodsFor(clientset, namespace, fmt.Sprintf("%s/%s", k8s.Job, job.GetName()))
+				if err != nil {
+					return nil, err
+				}
+				pods = append(pods, jobPods...)
+			}
+		}
+		return pods, nil
+
 	case k8s.DaemonSet:
 		ds, err := clientset.AppsV1().DaemonSets(namespace).Get(res.GetName(), metav1.GetOptions{})
 		if err != nil {
@@ -266,4 +285,13 @@ func getPodsFor(clientset kubernetes.Interface, namespace string, resource strin
 	}
 
 	return podList.Items, nil
+}
+
+func isOwner(resourceName string, ownerRefs []metav1.OwnerReference) bool {
+	for _, or := range ownerRefs {
+		if resourceName == or.Name {
+			return true
+		}
+	}
+	return false
 }

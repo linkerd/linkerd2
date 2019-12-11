@@ -15,7 +15,7 @@ rules:
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
+  resources: ["cronjobs", "jobs"]
   verbs: ["list" , "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]

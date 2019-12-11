@@ -82,7 +82,7 @@ rules:
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
+  resources: ["cronjobs", "jobs"]
   verbs: ["list" , "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
@@ -473,7 +473,7 @@ rules:
   resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
+  resources: ["cronjobs", "jobs"]
   verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
@@ -655,7 +655,7 @@ rules:
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
+  resources: ["cronjobs", "jobs"]
   verbs: ["list" , "get", "watch"]
 ---
 kind: ClusterRole

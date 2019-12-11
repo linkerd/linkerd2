@@ -58,6 +58,10 @@ const (
 	// StatefulSet that this proxy belongs to.
 	ProxyStatefulSetLabel = Prefix + "/proxy-statefulset"
 
+	// ProxyCronJobLabel is injected into mesh-enabled apps, identifying the
+	// CronJob that this proxy belongs to.
+	ProxyCronJobLabel = Prefix + "/proxy-cronjob"
+
 	/*
 	 * Annotations
 	 */

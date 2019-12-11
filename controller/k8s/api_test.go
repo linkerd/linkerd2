@@ -193,6 +193,26 @@ metadata:
 			},
 			{
 				err:       nil,
+				namespace: "my-ns",
+				resType:   k8s.CronJob,
+				name:      "my-cronjob",
+				k8sResResults: []string{`
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: my-cronjob
+  namespace: my-ns`,
+				},
+				k8sResMisc: []string{`
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: my-cronjob
+  namespace: not-my-ns`,
+				},
+			},
+			{
+				err:       nil,
 				namespace: "",
 				resType:   k8s.StatefulSet,
 				name:      "",
@@ -470,6 +490,46 @@ metadata:
     app: emoji-svc
 status:
   phase: Running`,
+				},
+			},
+			// Cronjob
+			{
+				err: nil,
+				k8sResInput: `
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: emoji
+  namespace: emojivoto
+  uid: cronjob`,
+				k8sResResults: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emojivoto-meshed
+  namespace: emojivoto
+  labels:
+    app: emoji-svc
+  ownerReferences:
+  - apiVersion: batch/v1
+    uid: job
+status:
+  phase: Running`,
+				},
+				k8sResMisc: []string{`
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: emoji
+  namespace: emojivoto
+  uid: job
+  ownerReferences:
+  - apiVersion: batch/v1beta1
+    uid: cronjob
+spec:
+  selector:
+    matchLabels:
+      app: emoji-svc`,
 				},
 			},
 			// Daemonset
@@ -971,6 +1031,31 @@ kind: Pod
 metadata:
   name: vote-bot
   namespace: default`,
+		},
+		{
+			expectedOwnerKind: "cronjob",
+			expectedOwnerName: "my-cronjob",
+			podConfig: `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: my-ns
+  ownerReferences:
+  - apiVersion: batch/v1
+    kind: Job
+    name: my-job`,
+			extraConfigs: []string{`
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-job
+  namespace: my-ns
+  ownerReferences:
+  - apiVersion: batch/v1beta1
+    kind: CronJob
+    name: my-cronjob`,
+			},
 		},
 	} {
 		tt := tt // pin
