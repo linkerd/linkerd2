@@ -2335,110 +2335,92 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 		tlsSecretScheme    string
 		schemeInConfig     string
 		expectedOutput     []string
+		checkerToTest      string
 	}{
 		{
+			checkerToTest:    "certificate config is valid",
 			checkDescription: "works with valid cert and linkerd.io/tls secret",
 			tlsSecretScheme:  k8s.IdentityIssuerSchemeLinkerd,
 			schemeInConfig:   k8s.IdentityIssuerSchemeLinkerd,
-			expectedOutput: []string{
-				"linkerd-identity certificate config is valid",
-				"linkerd-identity control plane is using supported trust roots",
-				"linkerd-identity identity is using supported issuer certificate",
-				"linkerd-identity all control plane trust roots have valid lifetimes",
-				"linkerd-identity no control plane trust roots are near expiry",
-				"linkerd-identity issuer cert has valid lifetime",
-				"linkerd-identity issuer cert is not near expiry",
-				"linkerd-identity issuer cert can be verified with trust root",
-			},
+			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid"},
 		},
 
 		{
+			checkerToTest:    "certificate config is valid",
 			checkDescription: "works with valid cert and kubernetes.io/tls secret",
 			tlsSecretScheme:  string(corev1.SecretTypeTLS),
 			schemeInConfig:   string(corev1.SecretTypeTLS),
-			expectedOutput: []string{
-				"linkerd-identity certificate config is valid",
-				"linkerd-identity control plane is using supported trust roots",
-				"linkerd-identity identity is using supported issuer certificate",
-				"linkerd-identity all control plane trust roots have valid lifetimes",
-				"linkerd-identity no control plane trust roots are near expiry",
-				"linkerd-identity issuer cert has valid lifetime",
-				"linkerd-identity issuer cert is not near expiry",
-				"linkerd-identity issuer cert can be verified with trust root",
-			},
+			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid"},
 		},
 		{
+			checkerToTest:    "certificate config is valid",
 			checkDescription: "works if config scheme is empty and secret scheme is linkerd.io/tls (pre 2.7)",
 			tlsSecretScheme:  k8s.IdentityIssuerSchemeLinkerd,
 			schemeInConfig:   "",
-			expectedOutput: []string{
-				"linkerd-identity certificate config is valid",
-				"linkerd-identity control plane is using supported trust roots",
-				"linkerd-identity identity is using supported issuer certificate",
-				"linkerd-identity all control plane trust roots have valid lifetimes",
-				"linkerd-identity no control plane trust roots are near expiry",
-				"linkerd-identity issuer cert has valid lifetime",
-				"linkerd-identity issuer cert is not near expiry",
-				"linkerd-identity issuer cert can be verified with trust root",
-			},
+			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid"},
 		},
 		{
+			checkerToTest:    "certificate config is valid",
 			checkDescription: "fails if config scheme is empty and secret scheme is kubernetes.io/tls (pre 2.7)",
 			tlsSecretScheme:  string(corev1.SecretTypeTLS),
 			schemeInConfig:   "",
-			expectedOutput:   []string{"linkerd-identity certificate config is valid: key crt.pem containing the issuer certificate needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=false"},
+			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid: key crt.pem containing the issuer certificate needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=false"},
 		},
 		{
+			checkerToTest:    "certificate config is valid",
 			checkDescription: "fails when config scheme is linkerd.io/tls but secret scheme is kubernetes.io/tls in config is different than the one in the issuer secret",
 			tlsSecretScheme:  string(corev1.SecretTypeTLS),
 			schemeInConfig:   k8s.IdentityIssuerSchemeLinkerd,
-			expectedOutput:   []string{"linkerd-identity certificate config is valid: key crt.pem containing the issuer certificate needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=false"},
+			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid: key crt.pem containing the issuer certificate needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=false"},
 		},
 		{
+			checkerToTest:    "certificate config is valid",
 			checkDescription: "fails when config scheme is kubernetes.io/tls but secret scheme is linkerd.io/tls in config is different than the one in the issuer secret",
 			tlsSecretScheme:  k8s.IdentityIssuerSchemeLinkerd,
 			schemeInConfig:   string(corev1.SecretTypeTLS),
-			expectedOutput:   []string{"linkerd-identity certificate config is valid: key ca.crt containing the trust anchors needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=true"},
+			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid: key ca.crt containing the trust anchors needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=true"},
 		},
 		{
+			checkerToTest:      "issuer cert can be verified with trust root",
 			checkDescription:   "fails when cert dns is wrong",
 			certificateDNSName: "wrong.linkerd.cluster.local",
-			expectedOutput: []string{
-				"linkerd-identity certificate config is valid",
-				"linkerd-identity control plane is using supported trust roots",
-				"linkerd-identity identity is using supported issuer certificate",
-				"linkerd-identity all control plane trust roots have valid lifetimes",
-				"linkerd-identity no control plane trust roots are near expiry",
-				"linkerd-identity issuer cert has valid lifetime",
-				"linkerd-identity issuer cert is not near expiry",
-				"linkerd-identity issuer cert can be verified with trust root: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local",
-			},
+			expectedOutput:     []string{"linkerd-identity-test-cat issuer cert can be verified with trust root: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"},
 		},
 		{
+			checkerToTest:    "all control plane trust roots have valid lifetimes",
 			checkDescription: "fails when the only root cert is not valid yet",
 			lifespan: &lifeSpan{
 				starts: time.Date(2100, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(2101, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedOutput: []string{
-				"linkerd-identity certificate config is valid",
-				"linkerd-identity control plane is using supported trust roots",
-				"linkerd-identity identity is using supported issuer certificate",
-				"linkerd-identity all control plane trust roots have valid lifetimes: Invalid roots:\n\t* 1 identity.linkerd.cluster.local not valid before: 2100-01-01T01:00:51Z",
-			},
+			expectedOutput: []string{"linkerd-identity-test-cat all control plane trust roots have valid lifetimes: Invalid roots:\n\t* 1 identity.linkerd.cluster.local not valid before: 2100-01-01T01:00:51Z"},
 		},
 		{
+			checkerToTest:    "all control plane trust roots have valid lifetimes",
 			checkDescription: "fails when the only root cert is expired",
 			lifespan: &lifeSpan{
 				starts: time.Date(1989, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(1990, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedOutput: []string{
-				"linkerd-identity certificate config is valid",
-				"linkerd-identity control plane is using supported trust roots",
-				"linkerd-identity identity is using supported issuer certificate",
-				"linkerd-identity all control plane trust roots have valid lifetimes: Invalid roots:\n\t* 1 identity.linkerd.cluster.local not valid anymore. Expired on 1990-01-01T01:01:11Z",
+			expectedOutput: []string{"linkerd-identity-test-cat all control plane trust roots have valid lifetimes: Invalid roots:\n\t* 1 identity.linkerd.cluster.local not valid anymore. Expired on 1990-01-01T01:01:11Z"},
+		},
+		{
+			checkerToTest:    "issuer cert has valid lifetime",
+			checkDescription: "fails when the issuer cert is not valid yet",
+			lifespan: &lifeSpan{
+				starts: time.Date(2100, 1, 1, 1, 1, 1, 1, time.UTC),
+				ends:   time.Date(2101, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
+			expectedOutput: []string{"linkerd-identity-test-cat issuer cert has valid lifetime: issuer certiifcate is not valid before: 2100-01-01T01:00:51Z"},
+		},
+		{
+			checkerToTest:    "issuer cert has valid lifetime",
+			checkDescription: "fails when the issuer cert is expired",
+			lifespan: &lifeSpan{
+				starts: time.Date(1989, 1, 1, 1, 1, 1, 1, time.UTC),
+				ends:   time.Date(1990, 1, 1, 1, 1, 1, 1, time.UTC),
+			},
+			expectedOutput: []string{"linkerd-identity-test-cat issuer cert has valid lifetime: issuer certiifcate is not valid anymore. Expired on 1990-01-01T01:01:11Z"},
 		},
 	}
 
@@ -2462,17 +2444,22 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 
 		t.Run(fmt.Sprintf("%d/%s", id, testCase.checkDescription), func(t *testing.T) {
 			hc := NewHealthChecker(
-				[]CategoryID{LinkerdIdentity},
+				[]CategoryID{},
 				&Options{
 					DataPlaneNamespace: "linkerd",
 				},
 			)
+			hc.addCheckAsCategory("linkerd-identity-test-cat", LinkerdIdentity, testCase.checkerToTest)
 			var err error
 			hc.ControlPlaneNamespace = "linkerd"
 			issuerData := createIssuerData(testCase.certificateDNSName, testCase.lifespan.starts, testCase.lifespan.ends)
 			config := getFakeConfig(testCase.tlsSecretScheme, testCase.schemeInConfig, issuerData)
 			hc.kubeAPI, err = k8s.NewFakeAPI(config...)
 			_, hc.linkerdConfig, _ = hc.checkLinkerdConfigConfigMap()
+
+			if testCase.checkDescription != "certificate config is valid" {
+				hc.issuerCert, hc.roots, _ = hc.checkCertificatesConfig()
+			}
 
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
