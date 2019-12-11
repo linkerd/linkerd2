@@ -112,6 +112,16 @@ func CheckCertTimeValidity(cert *x509.Certificate) error {
 	return nil
 }
 
+// CheckExpiringSoon returns an error if a certificate is expiring soon
+func CheckExpiringSoon(cert *x509.Certificate) error {
+	lifetime := cert.NotAfter.Unix() - cert.NotBefore.Unix()
+	timeLeft := cert.NotAfter.Unix() - time.Now().Unix()
+	if (float64(timeLeft) / float64(lifetime)) < 0.1 {
+		return fmt.Errorf("will expire on %s", cert.NotAfter.Format(time.RFC3339))
+	}
+	return nil
+}
+
 // CheckCertAlgoRequirements ensures the certificate respects with the constraints
 // we have posed on the public key and signature algorithms
 func CheckCertAlgoRequirements(cert *x509.Certificate) error {

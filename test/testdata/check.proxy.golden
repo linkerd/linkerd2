@@ -29,6 +29,21 @@ linkerd-existence
 √ can initialize the client
 √ can query the control plane API
 
+linkerd-identity
+----------------
+√ certificate config is valid
+√ control plane is using supported trust roots
+√ identity is using supported issuer certificate
+√ all control plane trust roots have valid lifetimes
+√ no control plane trust roots are near expiry
+√ issuer cert has valid lifetime
+√ issuer cert is not near expiry
+√ issuer cert can be verified with trust root
+
+linkerd-identity-data-plane
+---------------------------
+√ data plane proxies certificate match CA
+
 linkerd-api
 -----------
 √ control plane pods are ready
@@ -48,6 +63,5 @@ linkerd-data-plane
 √ data plane proxy metrics are present in Prometheus
 √ data plane is up-to-date
 √ data plane and cli versions match
-√ data plane proxies certificate match CA
 
 Status check results are √

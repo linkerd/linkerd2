@@ -157,9 +157,11 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		if stage != configStage {
 			checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 			checks = append(checks, healthcheck.LinkerdAPIChecks)
+			checks = append(checks, healthcheck.LinkerdIdentity)
 
 			if options.dataPlaneOnly {
 				checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
+				checks = append(checks, healthcheck.LinkerdIdentityDataPlane)
 			} else {
 				checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
 			}

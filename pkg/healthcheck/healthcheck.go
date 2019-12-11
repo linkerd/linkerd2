@@ -768,12 +768,40 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
+					description: "no control plane trust roots are near expiry",
+					hintAnchor:  "l5d-certs-rotation",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						var expiringRoots []string
+						rootInfoFormat := "* %v %s %s"
+						for _, root := range hc.roots {
+							if err := issuercerts.CheckExpiringSoon(root); err != nil {
+								expiringRoots = append(expiringRoots, fmt.Sprintf(rootInfoFormat, root.SerialNumber, root.Subject.CommonName, err))
+							}
+						}
+						if len(expiringRoots) > 0 {
+							return fmt.Errorf("Roots expiring soon:\n%s", strings.Join(expiringRoots, "\n\t"))
+						}
+						return nil
+					},
+				},
+				{
 					description: "issuer cert has valid lifetime",
 					hintAnchor:  "l5d-certs-rotation",
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						if err := issuercerts.CheckCertTimeValidity(hc.issuerCert.Certificate); err != nil {
 							return fmt.Errorf("issuer certiifcate is %s", err)
+						}
+						return nil
+					},
+				},
+				{
+					description: "issuer cert is not near expiry",
+					hintAnchor:  "l5d-certs-rotation",
+					check: func(context.Context) error {
+						if err := issuercerts.CheckExpiringSoon(hc.issuerCert.Certificate); err != nil {
+							return fmt.Errorf("issuer certiifcate %s", err)
 						}
 						return nil
 					},
