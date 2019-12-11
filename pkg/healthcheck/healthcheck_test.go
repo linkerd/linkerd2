@@ -1726,13 +1726,13 @@ data:
 			checkDescription: "some proxies match CA certificate (all namespaces)",
 			resources:        proxiesWithCertificates(currentCertificate, oldCertificate),
 			namespace:        "",
-			expectedErr:      errors.New("The following pods have old proxy certificate information; please, restart them:\n\tnamespace-1/pod-1"),
+			expectedErr:      errors.New("Some pods do not have the current trust bundle and must be restarted:\n\t* namespace-1/pod-1"),
 		},
 		{
 			checkDescription: "no proxies match CA certificate (all namespaces)",
 			resources:        proxiesWithCertificates(oldCertificate, oldCertificate),
 			namespace:        "",
-			expectedErr:      errors.New("The following pods have old proxy certificate information; please, restart them:\n\tnamespace-0/pod-0\n\tnamespace-1/pod-1"),
+			expectedErr:      errors.New("Some pods do not have the current trust bundle and must be restarted:\n\t* namespace-0/pod-0\n\t* namespace-1/pod-1"),
 		},
 		{
 			checkDescription: "some proxies match CA certificate (match in target namespace)",
@@ -1744,13 +1744,13 @@ data:
 			checkDescription: "some proxies match CA certificate (unmatch in target namespace)",
 			resources:        proxiesWithCertificates(currentCertificate, oldCertificate),
 			namespace:        "namespace-1",
-			expectedErr:      errors.New("The following pods have old proxy certificate information; please, restart them:\n\tpod-1"),
+			expectedErr:      errors.New("Some pods do not have the current trust bundle and must be restarted:\n\t* pod-1"),
 		},
 		{
 			checkDescription: "no proxies match CA certificate (specific namespace)",
 			resources:        proxiesWithCertificates(oldCertificate, oldCertificate),
 			namespace:        "namespace-0",
-			expectedErr:      errors.New("The following pods have old proxy certificate information; please, restart them:\n\tpod-0"),
+			expectedErr:      errors.New("Some pods do not have the current trust bundle and must be restarted:\n\t* pod-0"),
 		},
 	}
 

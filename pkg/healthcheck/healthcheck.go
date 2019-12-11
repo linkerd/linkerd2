@@ -2,12 +2,15 @@ package healthcheck
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
@@ -77,6 +80,16 @@ const (
 	// These checks are dependent on the output of KubernetesAPIChecks, so those
 	// checks must be added first.
 	LinkerdConfigChecks CategoryID = "linkerd-config"
+
+	// LinkerdIdentity Checks the integrity of the mTLS certificates
+	// that the control plane is configured with
+	LinkerdIdentity CategoryID = "linkerd-identity"
+
+	// LinkerdIdentityDataPlane checks that integrity of the mTLS
+	// certificates that the proxies are configured with and tries to
+	// report useful information with respect to whether the configuration
+	// is compatible with the one of the control plane
+	LinkerdIdentityDataPlane CategoryID = "linkerd-identity-data-plane"
 
 	// LinkerdControlPlaneExistenceChecks adds a series of checks to validate that
 	// the control plane namespace and controller pod exist.
@@ -284,6 +297,8 @@ type HealthChecker struct {
 	serverVersion    string
 	linkerdConfig    *configPb.All
 	uuid             string
+	issuerCert       *tls.Cred
+	roots            []*x509.Certificate
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -695,6 +710,99 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
+			id: LinkerdIdentity,
+			checkers: []checker{
+				{
+					description: "certificate config is valid",
+					hintAnchor:  "l5d-crt-config-is-valid",
+					fatal:       true,
+					check: func(context.Context) (err error) {
+						hc.issuerCert, hc.roots, err = hc.checkCertificatesConfig()
+						return
+					},
+				},
+				{
+					description: "control plane is using supported trust roots",
+					hintAnchor:  "l5d-supported-certs-type",
+					fatal:       true,
+					check: func(context.Context) error {
+						var invalidRoots []string
+						for _, root := range hc.roots {
+							if err := issuercerts.CheckCertAlgoRequirements(root); err != nil {
+								invalidRoots = append(invalidRoots, fmt.Sprintf("* %v %s %s", root.SerialNumber, root.Subject.CommonName, err))
+							}
+						}
+						if len(invalidRoots) > 0 {
+							return fmt.Errorf("Invalid roots:\n%s", strings.Join(invalidRoots, "\n\t"))
+						}
+						return nil
+					},
+				},
+				{
+					description: "identity is using supported issuer certificate",
+					hintAnchor:  "l5d-supported-certs-type",
+					fatal:       true,
+					check: func(context.Context) error {
+						if err := issuercerts.CheckCertAlgoRequirements(hc.issuerCert.Certificate); err != nil {
+							return fmt.Errorf("issuer certificate %s", err)
+						}
+						return nil
+					},
+				},
+				{
+					description: "all control plane trust roots have valid lifetimes",
+					hintAnchor:  "l5d-certs-rotation",
+					fatal:       true,
+					check: func(ctx context.Context) error {
+						var expiredRoots []string
+						for _, root := range hc.roots {
+							if err := issuercerts.CheckCertTimeValidity(root); err != nil {
+								expiredRoots = append(expiredRoots, fmt.Sprintf("* %v %s %s", root.SerialNumber, root.Subject.CommonName, err))
+							}
+						}
+						if len(expiredRoots) > 0 {
+							return fmt.Errorf("Expired roots:\n%s", strings.Join(expiredRoots, "\n\t"))
+						}
+
+						return nil
+					},
+				},
+				{
+					description: "issuer cert has valid lifetime",
+					hintAnchor:  "l5d-certs-rotation",
+					fatal:       true,
+					check: func(ctx context.Context) error {
+						if err := issuercerts.CheckCertTimeValidity(hc.issuerCert.Certificate); err != nil {
+							return fmt.Errorf("issuer certiifcate is %s", err)
+						}
+						return nil
+					},
+				},
+				{
+					description: "issuer cert can be verified with trust root",
+					hintAnchor:  "l5d-certs-rotation",
+					check: func(ctx context.Context) error {
+						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.roots), hc.issuerDNS())
+					},
+				},
+			},
+		},
+
+		{
+			id: LinkerdIdentityDataPlane,
+			checkers: []checker{
+				{
+					description: "data plane proxies certificate match CA",
+					hintAnchor:  "l5d-data-plane-proxies-certificate-match-ca",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkDataPlaneProxiesCertificate()
+					},
+				},
+			},
+		},
+
+		{
 			id: LinkerdAPIChecks,
 			checkers: []checker{
 				{
@@ -855,17 +963,13 @@ func (hc *HealthChecker) allCategories() []category {
 						return nil
 					},
 				},
-				{
-					description: "data plane proxies certificate match CA",
-					hintAnchor:  "l5d-data-plane-proxies-certificate-match-ca",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkDataPlaneProxiesCertificate()
-					},
-				},
 			},
 		},
 	}
+}
+
+func (hc *HealthChecker) issuerDNS() string {
+	return fmt.Sprintf("identity.%s.%s", hc.ControlPlaneNamespace, hc.linkerdConfig.Global.IdentityContext.TrustDomain)
 }
 
 // Add adds an arbitrary checker. This should only be used for testing. For
@@ -1020,6 +1124,43 @@ func (hc *HealthChecker) checkLinkerdConfigConfigMap() (string, *configPb.All, e
 	}
 
 	return string(cm.GetUID()), configPB, nil
+}
+
+func (hc *HealthChecker) checkCertificatesConfig() (*tls.Cred, []*x509.Certificate, error) {
+	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	idctx := configPB.Global.IdentityContext
+	var data *issuercerts.IssuerCertData
+
+	if idctx.Scheme == "" || idctx.Scheme == k8s.IdentityIssuerSchemeLinkerd {
+		data, err = issuercerts.FetchIssuerData(hc.kubeAPI, idctx.TrustAnchorsPem, hc.ControlPlaneNamespace)
+	} else {
+		data, err = issuercerts.FetchExternalIssuerData(hc.kubeAPI, hc.ControlPlaneNamespace)
+		// ensure trust trustRoots in config matches whats in the secret
+		if data != nil && idctx.TrustAnchorsPem != data.TrustAnchors {
+			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
+			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
+		}
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	issuerCreds, err := tls.ValidateAndCreateCreds(data.IssuerCrt, data.IssuerKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	roots, err := tls.DecodePEMCertificates(data.TrustAnchors)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return issuerCreds, roots, nil
 }
 
 // FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from
@@ -1245,9 +1386,9 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate() error {
 				}
 				if strings.TrimSpace(envVar.Value) != strings.TrimSpace(trustAnchorsPem) {
 					if hc.DataPlaneNamespace == "" {
-						offendingPods = append(offendingPods, fmt.Sprintf("%s/%s", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name))
+						offendingPods = append(offendingPods, fmt.Sprintf("* %s/%s", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name))
 					} else {
-						offendingPods = append(offendingPods, pod.ObjectMeta.Name)
+						offendingPods = append(offendingPods, fmt.Sprintf("* %s", pod.ObjectMeta.Name))
 					}
 				}
 			}
@@ -1256,7 +1397,7 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate() error {
 	if len(offendingPods) == 0 {
 		return nil
 	}
-	return fmt.Errorf("The following pods have old proxy certificate information; please, restart them:\n\t%s", strings.Join(offendingPods, "\n\t"))
+	return fmt.Errorf("Some pods do not have the current trust bundle and must be restarted:\n\t%s", strings.Join(offendingPods, "\n\t"))
 }
 
 func checkResources(resourceName string, objects []runtime.Object, expectedNames []string, shouldExist bool) error {
