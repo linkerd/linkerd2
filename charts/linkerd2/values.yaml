@@ -87,15 +87,15 @@ proxy:
     collectorSvcAddr: ""
     collectorSvcAccount: default
   uid: 2102
-  # If not empty, the proxy sidecar container will stay alive for at least the given period
+  # If not empty, the proxy sidecar will stay alive for at least the given period
   # before receiving SIGTERM signal from Kubernetes
   # but no longer than terminationGracePeriodSeconds value for the entire pod.
   # Depending on the goals, the application container (to which the proxy sidecar is attached)
   # can also have its own preStop hook with a period of waiting
   # smaller than the proxy sidecar WaitBeforeExitSeconds period
-  # but enough big to wait until a load balancer deregisters the target.
+  # but big enough to wait until a load balancer deregisters the target.
   # After that the application container can gracefully shutdown
-  # and the proxy sidecar container should finally exit last
+  # and the proxy sidecar should finally exit last
   WaitBeforeExitSeconds: 0
 
 # proxy-init configuration

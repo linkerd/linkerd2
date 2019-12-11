@@ -3,6 +3,7 @@ package inject
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
@@ -15,24 +16,24 @@ import (
 )
 
 type expectedProxyConfigs struct {
-	identityContext       *config.IdentityContext
-	image                 string
-	imagePullPolicy       string
-	proxyVersion          string
-	controlPort           int32
-	inboundPort           int32
-	adminPort             int32
-	outboundPort          int32
-	waitBeforeExitSeconds int32
-	logLevel              string
-	resourceRequirements  *l5dcharts.Resources
-	proxyUID              int64
-	initImage             string
-	initImagePullPolicy   string
-	initVersion           string
-	inboundSkipPorts      string
-	outboundSkipPorts     string
-	trace                 *l5dcharts.Trace
+	identityContext      *config.IdentityContext
+	image                string
+	imagePullPolicy      string
+	proxyVersion         string
+	controlPort          int32
+	inboundPort          int32
+	adminPort            int32
+	outboundPort         int32
+	proxyWaitBeforeExit  time.Duration
+	logLevel             string
+	resourceRequirements *l5dcharts.Resources
+	proxyUID             int64
+	initImage            string
+	initImagePullPolicy  string
+	initVersion          string
+	inboundSkipPorts     string
+	outboundSkipPorts    string
+	trace                *l5dcharts.Trace
 }
 
 func TestConfigAccessors(t *testing.T) {
@@ -66,7 +67,6 @@ func TestConfigAccessors(t *testing.T) {
 		LogLevel:                &config.LogLevel{Level: "info,linkerd2_proxy=debug"},
 		DisableExternalProfiles: false,
 		ProxyVersion:            proxyVersion,
-		WaitBeforeExitSeconds:   0,
 	}
 
 	globalConfig := &config.Global{
@@ -109,22 +109,22 @@ func TestConfigAccessors(t *testing.T) {
 							k8s.ProxyVersionOverrideAnnotation:          proxyVersionOverride,
 							k8s.ProxyTraceCollectorSvcAddrAnnotation:    "oc-collector.tracing:55678",
 							k8s.ProxyTraceCollectorSvcAccountAnnotation: "default",
-							k8s.WaitBeforeExitSecondsAnnotation:         "123",
+							k8s.ProxyWaitBeforeExitAnnotation:           "2m3s",
 						},
 					},
 					Spec: corev1.PodSpec{},
 				},
 			},
 			expected: expectedProxyConfigs{
-				image:                 "gcr.io/linkerd-io/proxy",
-				imagePullPolicy:       "Always",
-				proxyVersion:          proxyVersionOverride,
-				controlPort:           int32(4000),
-				inboundPort:           int32(5000),
-				adminPort:             int32(5001),
-				outboundPort:          int32(5002),
-				waitBeforeExitSeconds: int32(123),
-				logLevel:              "debug,linkerd2_proxy=debug",
+				image:               "gcr.io/linkerd-io/proxy",
+				imagePullPolicy:     "Always",
+				proxyVersion:        proxyVersionOverride,
+				controlPort:         int32(4000),
+				inboundPort:         int32(5000),
+				adminPort:           int32(5001),
+				outboundPort:        int32(5002),
+				proxyWaitBeforeExit: time.Duration(123) * time.Second,
+				logLevel:            "debug,linkerd2_proxy=debug",
 				resourceRequirements: &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1500m",
@@ -155,16 +155,16 @@ func TestConfigAccessors(t *testing.T) {
 				},
 			},
 			expected: expectedProxyConfigs{
-				identityContext:       &config.IdentityContext{},
-				image:                 "gcr.io/linkerd-io/proxy",
-				imagePullPolicy:       "IfNotPresent",
-				proxyVersion:          proxyVersion,
-				controlPort:           int32(9000),
-				inboundPort:           int32(6000),
-				adminPort:             int32(6001),
-				outboundPort:          int32(6002),
-				waitBeforeExitSeconds: int32(0),
-				logLevel:              "info,linkerd2_proxy=debug",
+				identityContext:     &config.IdentityContext{},
+				image:               "gcr.io/linkerd-io/proxy",
+				imagePullPolicy:     "IfNotPresent",
+				proxyVersion:        proxyVersion,
+				controlPort:         int32(9000),
+				inboundPort:         int32(6000),
+				adminPort:           int32(6001),
+				outboundPort:        int32(6002),
+				proxyWaitBeforeExit: time.Duration(0),
+				logLevel:            "info,linkerd2_proxy=debug",
 				resourceRequirements: &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1",
@@ -205,7 +205,7 @@ func TestConfigAccessors(t *testing.T) {
 				k8s.ProxyVersionOverrideAnnotation:          proxyVersionOverride,
 				k8s.ProxyTraceCollectorSvcAddrAnnotation:    "oc-collector.tracing:55678",
 				k8s.ProxyTraceCollectorSvcAccountAnnotation: "default",
-				k8s.WaitBeforeExitSecondsAnnotation:         "123",
+				k8s.ProxyWaitBeforeExitAnnotation:           "2m3s",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -213,15 +213,15 @@ func TestConfigAccessors(t *testing.T) {
 				},
 			},
 			expected: expectedProxyConfigs{
-				image:                 "gcr.io/linkerd-io/proxy",
-				imagePullPolicy:       "Always",
-				proxyVersion:          proxyVersionOverride,
-				controlPort:           int32(4000),
-				inboundPort:           int32(5000),
-				adminPort:             int32(5001),
-				outboundPort:          int32(5002),
-				waitBeforeExitSeconds: int32(123),
-				logLevel:              "debug,linkerd2_proxy=debug",
+				image:               "gcr.io/linkerd-io/proxy",
+				imagePullPolicy:     "Always",
+				proxyVersion:        proxyVersionOverride,
+				controlPort:         int32(4000),
+				inboundPort:         int32(5000),
+				adminPort:           int32(5001),
+				outboundPort:        int32(5002),
+				proxyWaitBeforeExit: time.Duration(123) * time.Second,
+				logLevel:            "debug,linkerd2_proxy=debug",
 				resourceRequirements: &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1500m",
@@ -242,6 +242,45 @@ func TestConfigAccessors(t *testing.T) {
 					CollectorSvcAddr:    "oc-collector.tracing:55678",
 					CollectorSvcAccount: "default.tracing",
 				},
+			},
+		},
+		{id: "wait before exit annotation is integer",
+			nsAnnotations: map[string]string{
+				k8s.ProxyWaitBeforeExitAnnotation: "222",
+			},
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       corev1.PodSpec{},
+				},
+			},
+			expected: expectedProxyConfigs{
+				identityContext:     &config.IdentityContext{},
+				image:               "gcr.io/linkerd-io/proxy",
+				imagePullPolicy:     "IfNotPresent",
+				proxyVersion:        proxyVersion,
+				controlPort:         int32(9000),
+				inboundPort:         int32(6000),
+				adminPort:           int32(6001),
+				outboundPort:        int32(6002),
+				proxyWaitBeforeExit: time.Duration(222) * time.Second,
+				logLevel:            "info,linkerd2_proxy=debug",
+				resourceRequirements: &l5dcharts.Resources{
+					CPU: l5dcharts.Constraints{
+						Limit:   "1",
+						Request: "200m",
+					},
+					Memory: l5dcharts.Constraints{
+						Limit:   "128",
+						Request: "64",
+					},
+				},
+				proxyUID:            int64(8888),
+				initImage:           "gcr.io/linkerd-io/proxy-init",
+				initImagePullPolicy: "IfNotPresent",
+				initVersion:         version.ProxyInitVersion,
+				inboundSkipPorts:    "53",
+				outboundSkipPorts:   "9079",
 			},
 		},
 	}
@@ -322,9 +361,9 @@ func TestConfigAccessors(t *testing.T) {
 				}
 			})
 
-			t.Run("proxyWaitBeforeExitSeconds", func(t *testing.T) {
-				expected := testCase.expected.waitBeforeExitSeconds
-				if actual := resourceConfig.proxyWaitBeforeExitSeconds(); expected != actual {
+			t.Run("proxyWaitBeforeExit", func(t *testing.T) {
+				expected := testCase.expected.proxyWaitBeforeExit
+				if actual := resourceConfig.proxyWaitBeforeExit(); expected != actual {
 					t.Errorf("Expected: %v Actual: %v", expected, actual)
 				}
 			})

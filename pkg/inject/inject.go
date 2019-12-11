@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -469,7 +470,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		},
 		UID:                   conf.proxyUID(),
 		Resources:             conf.proxyResourceRequirements(),
-		WaitBeforeExitSeconds: conf.proxyWaitBeforeExitSeconds(),
+		WaitBeforeExitSeconds: int32(conf.proxyWaitBeforeExit() / time.Second),
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -758,15 +759,20 @@ func (conf *ResourceConfig) tapDisabled() bool {
 	return false
 }
 
-func (conf *ResourceConfig) proxyWaitBeforeExitSeconds() int32 {
-	if override := conf.getOverride(k8s.WaitBeforeExitSecondsAnnotation); override != "" {
-		waitBeforeExitSeconds, err := strconv.ParseInt(override, 10, 32)
-		if err == nil {
-			return int32(waitBeforeExitSeconds)
+func (conf *ResourceConfig) proxyWaitBeforeExit() time.Duration {
+	if override := conf.getOverride(k8s.ProxyWaitBeforeExitAnnotation); override != "" {
+		waitBeforeExit, err := time.ParseDuration(override)
+
+		// Try to parse plain integer as value in seconds if it is not formatted as Duration
+		if err != nil {
+			waitInSeconds, _ := strconv.ParseUint(override, 10, 32)
+			waitBeforeExit = time.Duration(waitInSeconds) * time.Second
 		}
+
+		return waitBeforeExit
 	}
 
-	return conf.configs.GetProxy().GetWaitBeforeExitSeconds()
+	return 0
 }
 
 func (conf *ResourceConfig) proxyResourceRequirements() *l5dcharts.Resources {

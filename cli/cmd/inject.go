@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/docker/docker/api/types/time"
+
 	jsonpatch "github.com/evanphx/json-patch"
 	cfg "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/controller/gen/public"
@@ -100,10 +102,10 @@ sub-folders, or coming from stdin.`,
 		&manualOption, "manual", manualOption,
 		"Include the proxy sidecar container spec in the YAML output (the auto-injector won't pick it up, so config annotations aren't supported) (default false)",
 	)
-	flags.UintVar(
-		&options.waitBeforeExitSeconds, "wait-before-exit-seconds", options.waitBeforeExitSeconds,
-		"The periods during which the proxy sidecar container must stay alive while its pod is terminating. "+
-			"Must be smaller than terminationGracePeriodSeconds for the pod (default 0)",
+	flags.DurationVar(
+		&options.waitBeforeExit, "wait-before-exit", options.waitBeforeExit,
+		"The period during which the proxy sidecar must stay alive while its pod is terminating. "+
+			"Must be smaller than terminationGracePeriodSeconds for the pod (default 0). E.g.: 2m, 10s, 2m3s",
 	)
 	flags.BoolVar(
 		&options.disableIdentity, "disable-identity", options.disableIdentity,
@@ -444,13 +446,9 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	if options.traceCollectorSvcAccount != "" {
 		overrideAnnotations[k8s.ProxyTraceCollectorSvcAccountAnnotation] = options.traceCollectorSvcAccount
 	}
-	if options.waitBeforeExitSeconds != 0 {
-		overrideAnnotations[k8s.WaitBeforeExitSecondsAnnotation] = uintToString(options.waitBeforeExitSeconds)
+	if options.waitBeforeExit != 0 {
+		overrideAnnotations[k8s.ProxyWaitBeforeExitAnnotation] = time.DurationToSecondsString(options.waitBeforeExit) + "s"
 	}
-}
-
-func uintToString(v uint) string {
-	return strconv.FormatUint(uint64(v), 10)
 }
 
 func toPort(p uint) *cfg.Port {

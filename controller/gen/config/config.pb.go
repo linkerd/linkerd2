@@ -182,7 +182,6 @@ type Proxy struct {
 	DisableExternalProfiles bool                  `protobuf:"varint,12,opt,name=disable_external_profiles,json=disableExternalProfiles,proto3" json:"disable_external_profiles,omitempty"`
 	ProxyVersion            string                `protobuf:"bytes,13,opt,name=proxy_version,json=proxyVersion,proto3" json:"proxy_version,omitempty"`
 	ProxyInitImageVersion   string                `protobuf:"bytes,14,opt,name=proxy_init_image_version,json=proxyInitImageVersion,proto3" json:"proxy_init_image_version,omitempty"`
-	WaitBeforeExitSeconds   int32                 `protobuf:"varint,15,opt,name=wait_before_exit_seconds,json=waitBeforeExitSeconds,proto3" json:"wait_before_exit_seconds,omitempty"`
 	XXX_NoUnkeyedLiteral    struct{}              `json:"-"`
 	XXX_unrecognized        []byte                `json:"-"`
 	XXX_sizecache           int32                 `json:"-"`
@@ -267,13 +266,6 @@ func (m *Proxy) GetOutboundPort() *Port {
 		return m.OutboundPort
 	}
 	return nil
-}
-
-func (m *Proxy) GetWaitBeforeExitSeconds() int32 {
-	if m != nil {
-		return m.WaitBeforeExitSeconds
-	}
-	return 0
 }
 
 func (m *Proxy) GetResource() *ResourceRequirements {
