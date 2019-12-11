@@ -18,11 +18,7 @@ printf 'Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\n' "$linker
 upgrade_integration_tests
 helm_integration_tests
 deep_integration_tests
-# The external_issuer_integration_tests are disabled for now because they use
-# a hardcoded certificate that assumes a specific Linkerd namespace.  For the
-# cloud integration tests, this namespace does not match and the installation
-# fails.
-# external_issuer_integration_tests
+external_issuer_integration_tests
 
 if [ $exit_code -eq 0 ]; then
     printf '\n=== PASS: all tests passed\n'
