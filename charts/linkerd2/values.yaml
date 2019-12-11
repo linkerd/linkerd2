@@ -9,7 +9,7 @@ ImagePullPolicy: &image_pull_policy IfNotPresent
 # control plane version. See Proxy section for proxy version
 LinkerdVersion: &linkerd_version edge-19.12.1
 
-Namespace: linkerd
+Namespace: &namespace linkerd
 OmitWebhookSideEffects: false
 WebhookFailurePolicy: Ignore
 
@@ -24,7 +24,7 @@ Dashboard:
   Replicas: 1
 
 # identity configuration
-Identity:
+Identity: &identity
   Issuer:
     Scheme: linkerd.io/tls
 
@@ -61,10 +61,10 @@ PrometheusImage: prom/prometheus:v2.11.1
 PrometheusLogLevel: *controller_log_level
 
 # Control Plane Trace Configuration
-ControlPlaneTracing: false
+ControlPlaneTracing: true
 
 # proxy configuration
-Proxy:
+Proxy: &proxy
   EnableExternalProfiles: false
   Image:
     Name: gcr.io/linkerd-io/proxy
@@ -89,7 +89,7 @@ Proxy:
   UID: 2102
 
 # proxy-init configuration
-ProxyInit:
+ProxyInit: &proxy_init
   IgnoreInboundPorts: ""
   IgnoreOutboundPorts: ""
   Image:
@@ -129,14 +129,14 @@ Tap:
 WebImage: gcr.io/linkerd-io/web
 
 # control plane annotations - do not edit
-CreatedByAnnotation: linkerd.io/created-by
-ProxyInjectAnnotation: linkerd.io/inject
-ProxyInjectDisabled: disabled
+CreatedByAnnotation: &created_by_annotation linkerd.io/created-by
+ProxyInjectAnnotation: &proxy_inject_annotation linkerd.io/inject
+ProxyInjectDisabled: &proxy_inject_disabled disabled
 
 # control plane labels - do not edit
-ControllerComponentLabel: linkerd.io/control-plane-component
-ControllerNamespaceLabel: linkerd.io/control-plane-ns
-LinkerdNamespaceLabel: linkerd.io/is-control-plane
+ControllerComponentLabel: &controller_component_label linkerd.io/control-plane-component
+ControllerNamespaceLabel: &controller_namespace_label linkerd.io/control-plane-ns
+LinkerdNamespaceLabel: &linkerd_namespace_label linkerd.io/is-control-plane
 
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:
@@ -149,3 +149,21 @@ InstallNamespace: true
 # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector.
 NodeSelector:
   beta.kubernetes.io/os: linux
+
+tracing: 
+  ClusterDomain: *cluster_domain
+  # control plane annotations - do not edit
+  CreatedByAnnotation: *created_by_annotation
+  ProxyInjectAnnotation: *proxy_inject_annotation
+  ProxyInjectDisabled: *proxy_inject_disabled
+
+  LinkerdVersion: *linkerd_version
+
+  # control plane labels - do not edit
+  ControllerComponentLabel: *controller_component_label
+  ControllerNamespaceLabel: *controller_namespace_label
+  LinkerdNamespaceLabel: *linkerd_namespace_label
+
+  Proxy: *proxy
+  ProxyInit: *proxy_init
+  Identity: *identity
