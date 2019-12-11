@@ -137,8 +137,7 @@ func (iw *IPWatcher) addPod(obj interface{}) {
 		return
 	}
 	ss := iw.getOrNewServiceSubscriptions(pod.Status.PodIP)
-
-	ss.updatePod(ss.pod)
+	ss.publish()
 }
 
 func (iw *IPWatcher) deletePod(obj interface{}) {
@@ -277,19 +276,17 @@ func (ss *serviceSubscriptions) deleteService() {
 	ss.service = ServiceID{}
 }
 
-func (ss *serviceSubscriptions) updatePod(podSet PodSet) {
+func (ss *serviceSubscriptions) publish() {
 	ss.Lock()
 	defer ss.Unlock()
 
 	for listener, port := range ss.listeners {
 		listener.NoEndpoints(true) // Clear out previous endpoints.
-		if len(podSet.Pods) != 0 {
-			podSetWithPort := withPort(podSet, port)
+		if len(ss.pod.Pods) != 0 {
+			podSetWithPort := withPort(ss.pod, port)
 			listener.Add(podSetWithPort)
 		}
 	}
-	ss.pod = podSet
-	ss.service = ServiceID{}
 }
 
 func (ss *serviceSubscriptions) deletePod() {
