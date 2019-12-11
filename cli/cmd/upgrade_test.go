@@ -328,7 +328,8 @@ metadata:
     linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
 data:
   tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJnekNDQVNtZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDAKZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTVRrd05EQTBNak0xTXpNM1doY05NakF3TkRBegpNak0xTXpVM1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqCllXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBVCtTYjVYNHdpNFhQMFgzckp3TXAyM1ZCZGcKRU1NVThFVStLRzhVSTJMbUM1VmpnNVJXTE9XNkJKakJtalhWaUtNK2IrMS9vS0FlT2c2RnJKazhxeUZsbzBJdwpRREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0NnWUlLb1pJemowRUF3SURTQUF3UlFJaEFLVUZHM3NZT1MrK2Jha1cKWW1KWlU0NWlDZFRMdGFlbE1EU0ZpSG9DOWVCS0FpQkRXenpvKy9DWUxMbW4zM2JBRW44cFFub2dQNEZ4MDZhagorVTlLNFdsYnpBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  tls.key: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUhaaEFWTnNwSlRzMWZ4YmZ4VmptTTJvMTNTOFd4U2VVdTlrNFhZK0NPY3JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFL2ttK1YrTUl1Rno5Rjk2eWNES2R0MVFYWUJEREZQQkZQaWh2RkNOaTVndVZZNE9VVml6bAp1Z1NZd1pvMTFZaWpQbS90ZjZDZ0hqb09oYXlaUEtzaFpRPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=`,
+  tls.key: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUhaaEFWTnNwSlRzMWZ4YmZ4VmptTTJvMTNTOFd4U2VVdTlrNFhZK0NPY3JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFL2ttK1YrTUl1Rno5Rjk2eWNES2R0MVFYWUJEREZQQkZQaWh2RkNOaTVndVZZNE9VVml6bAp1Z1NZd1pvMTFZaWpQbS90ZjZDZ0hqb09oYXlaUEtzaFpRPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
+  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJnekNDQVNtZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDAKZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTVRrd05EQTBNak0xTXpNM1doY05NakF3TkRBegpNak0xTXpVM1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqCllXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBVCtTYjVYNHdpNFhQMFgzckp3TXAyM1ZCZGcKRU1NVThFVStLRzhVSTJMbUM1VmpnNVJXTE9XNkJKakJtalhWaUtNK2IrMS9vS0FlT2c2RnJKazhxeUZsbzBJdwpRREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0NnWUlLb1pJemowRUF3SURTQUF3UlFJaEFLVUZHM3NZT1MrK2Jha1cKWW1KWlU0NWlDZFRMdGFlbE1EU0ZpSG9DOWVCS0FpQkRXenpvKy9DWUxMbW4zM2JBRW44cFFub2dQNEZ4MDZhagorVTlLNFdsYnpBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==`,
 				`
 apiVersion: v1
 kind: Secret
@@ -459,7 +460,7 @@ data:
 type: Opaque`,
 			},
 			"",
-			errors.New("not PEM-encoded"),
+			errors.New("key ca.crt containing the trust anchors needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=true"),
 			nil,
 		},
 		{
@@ -544,8 +545,8 @@ type: Opaque`,
 			"upgrade_overwrite_issuer.golden",
 			nil,
 			func(options *upgradeOptions) {
-				options.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
-				options.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
+				options.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
+				options.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
 			},
 		},
 
@@ -631,7 +632,7 @@ type: Opaque`,
 			"upgrade_overwrite_trust_anchors.golden",
 			nil,
 			func(options *upgradeOptions) {
-				options.identityOptions.trustPEMFile = filepath.Join("testdata", "trust-anchors.pem")
+				options.identityOptions.trustPEMFile = filepath.Join("testdata", "valid-trust-anchors.pem")
 			},
 		},
 		{
@@ -657,7 +658,7 @@ data:
 			"",
 			errors.New("a private key file must be specified if a certificate is provided"),
 			func(options *upgradeOptions) {
-				options.identityOptions.crtPEMFile = filepath.Join("testdata", "crt.pem")
+				options.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
 			},
 		},
 		{
@@ -683,7 +684,61 @@ data:
 			"",
 			errors.New("a certificate file must be specified if a private key is provided"),
 			func(options *upgradeOptions) {
-				options.identityOptions.keyPEMFile = filepath.Join("testdata", "key.pem")
+				options.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
+			},
+		},
+		{
+			"",
+			[]string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+  annotations:
+    linkerd.io/created-by: linkerd/cli edge-19.4.1
+data:
+  global: |
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"kubernetes.io/tls"}, "clusterDomain":"cluster.local"}
+  proxy: |
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true}
+  install: |
+    {"cliVersion":"edge-19.4.1","flags":[]}`,
+			},
+			"",
+			errors.New("cannot update issuer certificates if you are using external cert management solution"),
+			func(options *upgradeOptions) {
+				options.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
+				options.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
+
+			},
+		},
+		{
+			"",
+			[]string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: controller
+  annotations:
+    linkerd.io/created-by: linkerd/cli edge-19.4.1
+data:
+  global: |
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"kubernetes.io/tls"}, "clusterDomain":"cluster.local"}
+  proxy: |
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true}
+  install: |
+    {"cliVersion":"edge-19.4.1","flags":[]}`,
+			},
+			"",
+			errors.New("cannot update trust roots if you are using external cert management solution"),
+			func(options *upgradeOptions) {
+				options.identityOptions.trustPEMFile = filepath.Join("testdata", "valid-trust-anchors.pem")
 			},
 		},
 	}
