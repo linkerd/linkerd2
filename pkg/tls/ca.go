@@ -52,6 +52,10 @@ type (
 		// processes the certificates must have a system clock that is off by no
 		// more than this allowance in either direction.
 		ClockSkewAllowance time.Duration
+
+		// ValidFrom is the point in time from which the certificate is valid.
+		// This is cert.NotBefore with some clock skew allowance.
+		ValidFrom *time.Time
 	}
 
 	// Issuer implementors signs certificate requests.
@@ -232,7 +236,11 @@ func createTemplate(
 	// anyway since a P-256 scalar is only 256 bits long.
 	const SignatureAlgorithm = x509.ECDSAWithSHA256
 
-	notBefore, notAfter := v.Window(time.Now())
+	if v.ValidFrom == nil {
+		now := time.Now()
+		v.ValidFrom = &now
+	}
+	notBefore, notAfter := v.Window(*v.ValidFrom)
 
 	return &x509.Certificate{
 		SerialNumber:       big.NewInt(int64(serialNumber)),

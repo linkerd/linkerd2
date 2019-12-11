@@ -733,7 +733,7 @@ func (hc *HealthChecker) allCategories() []category {
 							}
 						}
 						if len(invalidRoots) > 0 {
-							return fmt.Errorf("Invalid roots:\n%s", strings.Join(invalidRoots, "\n\t"))
+							return fmt.Errorf("Invalid roots:\n\t%s", strings.Join(invalidRoots, "\n\t"))
 						}
 						return nil
 					},
@@ -761,7 +761,7 @@ func (hc *HealthChecker) allCategories() []category {
 							}
 						}
 						if len(expiredRoots) > 0 {
-							return fmt.Errorf("Expired roots:\n%s", strings.Join(expiredRoots, "\n\t"))
+							return fmt.Errorf("Invalid roots:\n\t%s", strings.Join(expiredRoots, "\n\t"))
 						}
 
 						return nil
@@ -773,14 +773,13 @@ func (hc *HealthChecker) allCategories() []category {
 					warning:     true,
 					check: func(ctx context.Context) error {
 						var expiringRoots []string
-						rootInfoFormat := "* %v %s %s"
 						for _, root := range hc.roots {
 							if err := issuercerts.CheckExpiringSoon(root); err != nil {
-								expiringRoots = append(expiringRoots, fmt.Sprintf(rootInfoFormat, root.SerialNumber, root.Subject.CommonName, err))
+								expiringRoots = append(expiringRoots, fmt.Sprintf("* %v %s %s", root.SerialNumber, root.Subject.CommonName, err))
 							}
 						}
 						if len(expiringRoots) > 0 {
-							return fmt.Errorf("Roots expiring soon:\n%s", strings.Join(expiringRoots, "\n\t"))
+							return fmt.Errorf("Roots expiring soon:\n\t%s", strings.Join(expiringRoots, "\n\t"))
 						}
 						return nil
 					},
@@ -815,7 +814,6 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 			},
 		},
-
 		{
 			id: LinkerdIdentityDataPlane,
 			checkers: []checker{
@@ -829,7 +827,6 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 			},
 		},
-
 		{
 			id: LinkerdAPIChecks,
 			checkers: []checker{
