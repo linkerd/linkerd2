@@ -16,7 +16,8 @@ describe('ApiHelpers', () => {
     fetchStub = sinon.stub(window, 'fetch');
     fetchStub.resolves({
       ok: true,
-      json: () => Promise.resolve({})
+      json: () => Promise.resolve({}),
+      text: () => Promise.resolve({})
     });
     api = ApiHelpers('');
   });
