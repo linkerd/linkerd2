@@ -52,10 +52,13 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 	span.AddAttributes(trace.StringAttribute("queryString", query))
 
 	// single data point (aka summary) query
-	res, err := s.prometheusAPI.Query(ctx, query, time.Time{})
+	res, warn, err := s.prometheusAPI.Query(ctx, query, time.Time{})
 	if err != nil {
 		log.Errorf("Query(%+v) failed with: %+v", query, err)
 		return nil, err
+	}
+	if warn != nil {
+		log.Warnf("%v", warn)
 	}
 	log.Debugf("Query response:\n\t%+v", res)
 
