@@ -20,156 +20,160 @@ const (
 type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
-		Stage                       string
-		Namespace                   string
-		ClusterDomain               string
-		ControllerImage             string
-		ControllerImageVersion      string
-		WebImage                    string
-		PrometheusImage             string
-		GrafanaImage                string
-		ImagePullPolicy             string
-		CliVersion                  string
-		ControllerReplicas          uint
-		ControllerLogLevel          string
-		PrometheusLogLevel          string
-		ControllerComponentLabel    string
-		ControllerNamespaceLabel    string
-		CreatedByAnnotation         string
-		ProxyContainerName          string
-		ProxyInjectAnnotation       string
-		ProxyInjectDisabled         string
-		LinkerdNamespaceLabel       string
-		ControllerUID               int64
-		EnableH2Upgrade             bool
-		EnablePodAntiAffinity       bool
-		HighAvailability            bool
-		NoInitContainer             bool
-		WebhookFailurePolicy        string
-		OmitWebhookSideEffects      bool
-		RestrictDashboardPrivileges bool
-		DisableHeartBeat            bool
-		HeartbeatSchedule           string
-		InstallNamespace            bool
-		ControlPlaneTracing         bool
-		Configs                     ConfigJSONs
-		Dashboard                   *Dashboard
-		Identity                    *Identity
-		ProxyInjector               *ProxyInjector
-		ProfileValidator            *ProfileValidator
-		Tap                         *Tap
-		Proxy                       *Proxy
-		ProxyInit                   *ProxyInit
-		NodeSelector                map[string]string
+		Stage                       string            `json:"stage"`
+		Namespace                   string            `json:"namespace"`
+		ClusterDomain               string            `json:"clusterDomain"`
+		ControllerImage             string            `json:"controllerImage"`
+		ControllerImageVersion      string            `json:"controllerImageVersion"`
+		WebImage                    string            `json:"webImage"`
+		PrometheusImage             string            `json:"prometheusImage"`
+		GrafanaImage                string            `json:"grafanaImage"`
+		ImagePullPolicy             string            `json:"imagePullPolicy"`
+		CliVersion                  string            `json:"cliVersion"`
+		ControllerReplicas          uint              `json:"controllerReplicas"`
+		ControllerLogLevel          string            `json:"controllerLogLevel"`
+		PrometheusLogLevel          string            `json:"prometheusLogLevel"`
+		ControllerComponentLabel    string            `json:"controllerComponentLabel"`
+		ControllerNamespaceLabel    string            `json:"controllerNamespaceLabel"`
+		CreatedByAnnotation         string            `json:"createdByAnnotation"`
+		ProxyContainerName          string            `json:"proxyContainerName"`
+		ProxyInjectAnnotation       string            `json:"proxyInjectAnnotation"`
+		ProxyInjectDisabled         string            `json:"proxyInjectDisabled"`
+		LinkerdNamespaceLabel       string            `json:"linkerdNamespaceLabel"`
+		ControllerUID               int64             `json:"controllerUID"`
+		EnableH2Upgrade             bool              `json:"enableH2Upgrade"`
+		EnablePodAntiAffinity       bool              `json:"enablePodAntiAffinity"`
+		HighAvailability            bool              `json:"highAvailability"`
+		NoInitContainer             bool              `json:"noInitContainer"`
+		WebhookFailurePolicy        string            `json:"webhookFailurePolicy"`
+		OmitWebhookSideEffects      bool              `json:"omitWebhookSideEffects"`
+		RestrictDashboardPrivileges bool              `json:"restrictDashboardPrivileges"`
+		DisableHeartBeat            bool              `json:"disableHeartBeat"`
+		HeartbeatSchedule           string            `json:"heartbeatSchedule"`
+		InstallNamespace            bool              `json:"installNamespace"`
+		ControlPlaneTracing         bool              `json:"controlPlaneTracing"`
+		Configs                     ConfigJSONs       `json:"configs"`
+		Dashboard                   *Dashboard        `json:"dashboard"`
+		Identity                    *Identity         `json:"identity"`
+		ProxyInjector               *ProxyInjector    `json:"proxyInjector"`
+		ProfileValidator            *ProfileValidator `json:"profileValidator"`
+		Tap                         *Tap              `json:"tap"`
+		Proxy                       *Proxy            `json:"proxy"`
+		ProxyInit                   *ProxyInit        `json:"proxyInit"`
+		NodeSelector                map[string]string `json:"nodeSelector"`
 
-		DestinationResources,
-		GrafanaResources,
-		HeartbeatResources,
-		IdentityResources,
-		PrometheusResources,
-		ProxyInjectorResources,
-		PublicAPIResources,
-		SPValidatorResources,
-		TapResources,
-		WebResources *Resources
+		DestinationResources   *Resources `json:"destinationResources"`
+		GrafanaResources       *Resources `json:"grafanaResources"`
+		HeartbeatResources     *Resources `json:"heartbeatResources"`
+		IdentityResources      *Resources `json:"identityResources"`
+		PrometheusResources    *Resources `json:"prometheusResources"`
+		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
+		PublicAPIResources     *Resources `json:"publicAPIResources"`
+		SPValidatorResources   *Resources `json:"spValidatorResources"`
+		TapResources           *Resources `json:"tapResources"`
+		WebResources           *Resources `json:"webResources"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
-	ConfigJSONs struct{ Global, Proxy, Install string }
+	ConfigJSONs struct {
+		Global  string `json:"global"`
+		Proxy   string `json:"proxy"`
+		Install string `json:"install"`
+	}
 
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
-		Capabilities           *Capabilities
-		Component              string
-		DisableIdentity        bool
-		DisableTap             bool
-		EnableExternalProfiles bool
-		Image                  *Image
-		LogLevel               string
-		SAMountPath            *SAMountPath
-		Ports                  *Ports
-		Resources              *Resources
-		Trace                  *Trace
-		UID                    int64
+		Capabilities           *Capabilities `json:"capabilities"`
+		Component              string        `json:"component"`
+		DisableIdentity        bool          `json:"disableIdentity"`
+		DisableTap             bool          `json:"disableTap"`
+		EnableExternalProfiles bool          `json:"enableExternalProfiles"`
+		Image                  *Image        `json:"image"`
+		LogLevel               string        `json:"logLevel"`
+		SAMountPath            *SAMountPath  `json:"saMountPath"`
+		Ports                  *Ports        `json:"ports"`
+		Resources              *Resources    `json:"resources"`
+		Trace                  *Trace        `json:"trace"`
+		UID                    int64         `json:"uid"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
 	ProxyInit struct {
-		Capabilities        *Capabilities
-		IgnoreInboundPorts  string
-		IgnoreOutboundPorts string
-		Image               *Image
-		SAMountPath         *SAMountPath
-		Resources           *Resources
+		Capabilities        *Capabilities `json:"capabilities"`
+		IgnoreInboundPorts  string        `json:"ignoreInboundPorts"`
+		IgnoreOutboundPorts string        `json:"ignoreOutboundPorts"`
+		Image               *Image        `json:"image"`
+		SAMountPath         *SAMountPath  `json:"saMountPath"`
+		Resources           *Resources    `json:"resources"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar
 	DebugContainer struct {
-		Image *Image
+		Image *Image `json:"image"`
 	}
 
 	// Image contains the details to define a container image
 	Image struct {
-		Name       string
-		PullPolicy string
-		Version    string
+		Name       string `json:"name"`
+		PullPolicy string `json:"pullPolicy"`
+		Version    string `json:"version"`
 	}
 
 	// Ports contains all the port-related setups
 	Ports struct {
-		Admin    int32
-		Control  int32
-		Inbound  int32
-		Outbound int32
+		Admin    int32 `json:"admin"`
+		Control  int32 `json:"control"`
+		Inbound  int32 `json:"inbound"`
+		Outbound int32 `json:"outbound"`
 	}
 
 	// Constraints wraps the Limit and Request settings for computational resources
 	Constraints struct {
-		Limit   string
-		Request string
+		Limit   string `json:"limit"`
+		Request string `json:"request"`
 	}
 
 	// Capabilities contains the SecurityContext capabilities to add/drop into the injected
 	// containers
 	Capabilities struct {
-		Add  []string
-		Drop []string
+		Add  []string `json:"add"`
+		Drop []string `json:"drop"`
 	}
 
 	// SAMountPath contains the details for ServiceAccount volume mount
 	SAMountPath struct {
-		Name      string
-		MountPath string
-		ReadOnly  bool
+		Name      string `json:"name"`
+		MountPath string `json:"mountPath"`
+		ReadOnly  bool   `json:"readOnly"`
 	}
 
 	// Resources represents the computational resources setup for a given container
 	Resources struct {
-		CPU    Constraints
-		Memory Constraints
+		CPU    Constraints `json:"cpu"`
+		Memory Constraints `json:"memory"`
 	}
 
 	// Dashboard has the Helm variables for the web dashboard
 	Dashboard struct {
-		Replicas int32
+		Replicas int32 `json:"replicas"`
 	}
 
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
-		TrustAnchorsPEM string
-		TrustDomain     string
-		Issuer          *Issuer
+		TrustAnchorsPEM string  `json:"trustAnchorsPEM"`
+		TrustDomain     string  `json:"trustDomain"`
+		Issuer          *Issuer `json:"issuer"`
 	}
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		Scheme              string
-		ClockSkewAllowance  string
-		IssuanceLifetime    string
-		CrtExpiryAnnotation string
-		CrtExpiry           time.Time
-		TLS                 *TLS
+		Scheme              string    `json:"scheme"`
+		ClockSkewAllowance  string    `json:"clockSkewAllowance"`
+		IssuanceLifetime    string    `json:"issuanceLifetime"`
+		CrtExpiryAnnotation string    `json:"crtExpiryAnnotation"`
+		CrtExpiry           time.Time `json:"crtExpiry"`
+		TLS                 *TLS      `json:"tls"`
 	}
 
 	// ProxyInjector has all the proxy injector's Helm variables
@@ -190,13 +194,14 @@ type (
 	// TLS has a pair of PEM-encoded key and certificate variables used in the
 	// Helm templates
 	TLS struct {
-		KeyPEM, CrtPEM string
+		KeyPEM string `json:"keyPEM"`
+		CrtPEM string `json:"crtPEM"`
 	}
 
 	// Trace has all the tracing-related Helm variables
 	Trace struct {
-		CollectorSvcAddr    string
-		CollectorSvcAccount string
+		CollectorSvcAddr    string `json:"collectorSvcAddr"`
+		CollectorSvcAccount string `json:"collectorSvcAccount"`
 	}
 )
 
