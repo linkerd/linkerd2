@@ -1,20 +1,20 @@
 {{- define "partials.resources" -}}
 resources:
-  {{- if or .CPU.Limit .Memory.Limit }}
+  {{- if or .cpu.limit .memory.limit }}
   limits:
-    {{- with .CPU.Limit }}
+    {{- with .cpu.limit }}
     cpu: {{. | quote}}
     {{- end }}
-    {{- with .Memory.Limit }}
+    {{- with .memory.limit }}
     memory: {{. | quote}}
     {{- end }}
   {{- end }}
-  {{- if or .CPU.Request .Memory.Request }}
+  {{- if or .cpu.request .memory.request }}
   requests:
-    {{- with .CPU.Request }}
+    {{- with .cpu.request }}
     cpu: {{. | quote}}
     {{- end }}
-    {{- with .Memory.Request }}
+    {{- with .memory.request }}
     memory: {{. | quote}}
     {{- end }}
   {{- end }}

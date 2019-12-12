@@ -6,10 +6,10 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.Namespace}}-sp-validator
+  name: linkerd-{{.Values.namespace}}-sp-validator
   labels:
-    {{.Values.ControllerComponentLabel}}: sp-validator
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: sp-validator
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -18,52 +18,52 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.Namespace}}-sp-validator
+  name: linkerd-{{.Values.namespace}}-sp-validator
   labels:
-    {{.Values.ControllerComponentLabel}}: sp-validator
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: sp-validator
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-{{.Values.Namespace}}-sp-validator
+  name: linkerd-{{.Values.namespace}}-sp-validator
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: sp-validator
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: sp-validator
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 ---
 kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-sp-validator-tls
-  namespace: {{ .Values.Namespace }}
+  namespace: {{ .Values.namespace }}
   labels:
-    {{.Values.ControllerComponentLabel}}: sp-validator
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: sp-validator
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 type: Opaque
 data:
-  {{ $ca := genCA (printf "linkerd-sp-validator.%s.svc" .Values.Namespace) 365 -}}
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.ProfileValidator.CrtPEM)) (empty .Values.ProfileValidator.CrtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.ProfileValidator.KeyPEM)) (empty .Values.ProfileValidator.KeyPEM) }}
+  {{ $ca := genCA (printf "linkerd-sp-validator.%s.svc" .Values.namespace) 365 -}}
+  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
+  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.profileValidator.keyPEM)) (empty .Values.profileValidator.keyPEM) }}
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
   labels:
-    {{.Values.ControllerComponentLabel}}: sp-validator
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: sp-validator
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   namespaceSelector:
@@ -75,15 +75,15 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-sp-validator
-      namespace: {{ .Values.Namespace }}
+      namespace: {{ .Values.namespace }}
       path: "/"
-    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.ProfileValidator.CrtPEM)) (empty .Values.ProfileValidator.CrtPEM) }}
-  failurePolicy: {{.Values.WebhookFailurePolicy}}
+    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
+  failurePolicy: {{.Values.webhookFailurePolicy}}
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]
     apiVersions: ["v1alpha1", "v1alpha2"]
     resources: ["serviceprofiles"]
-  {{- if not .Values.OmitWebhookSideEffects }}
+  {{- if not .Values.omitWebhookSideEffects }}
   sideEffects: None
   {{- end }}

@@ -7,66 +7,66 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-dst
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: destination
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: destination
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.ControllerComponentLabel}}: destination
+    {{.Values.controllerComponentLabel}}: destination
   ports:
   - name: grpc
     port: 8086
     targetPort: 8086
 ---
-{{ $_ := set .Values.Proxy "WorkloadKind" "deployment" -}}
-{{ $_ := set .Values.Proxy "Component" "linkerd-destination" -}}
-{{ include "linkerd.proxy.validation" .Values.Proxy -}}
+{{ $_ := set .Values.proxy "workloadKind" "deployment" -}}
+{{ $_ := set .Values.proxy "component" "linkerd-destination" -}}
+{{ include "linkerd.proxy.validation" .Values.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
   labels:
-    {{.Values.ControllerComponentLabel}}: destination
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: destination
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   name: linkerd-destination
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 spec:
-  replicas: {{.Values.ControllerReplicas}}
+  replicas: {{.Values.controllerReplicas}}
   selector:
     matchLabels:
-      {{.Values.ControllerComponentLabel}}: destination
-      {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
-      {{- include "partials.proxy.labels" .Values.Proxy | nindent 6}}
+      {{.Values.controllerComponentLabel}}: destination
+      {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+      {{- include "partials.proxy.labels" .Values.proxy | nindent 6}}
   template:
     metadata:
       annotations:
-        {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
-        {{- include "partials.proxy.annotations" .Values.Proxy| nindent 8}}
+        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+        {{- include "partials.proxy.annotations" .Values.proxy| nindent 8}}
       labels:
-        {{.Values.ControllerComponentLabel}}: destination
-        {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
-        {{- include "partials.proxy.labels" .Values.Proxy | nindent 8}}
+        {{.Values.controllerComponentLabel}}: destination
+        {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+        {{- include "partials.proxy.labels" .Values.proxy | nindent 8}}
     spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
-      {{- if .Values.EnablePodAntiAffinity -}}
-      {{- $local := dict "Component" "destination" "Label" .Values.ControllerComponentLabel -}}
+      {{- if .Values.enablePodAntiAffinity -}}
+      {{- $local := dict "component" "destination" "label" .Values.controllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       containers:
       - args:
         - destination
         - -addr=:8086
-        - -controller-namespace={{.Values.Namespace}}
-        - -enable-h2-upgrade={{.Values.EnableH2Upgrade}}
-        - -log-level={{.Values.ControllerLogLevel}}
+        - -controller-namespace={{.Values.namespace}}
+        - -enable-h2-upgrade={{.Values.enableH2Upgrade}}
+        - -log-level={{.Values.controllerLogLevel}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
-        image: {{.Values.ControllerImage}}:{{default .Values.LinkerdVersion .Values.ControllerImageVersion}}
-        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
+        imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
@@ -83,16 +83,16 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-        {{- if .Values.DestinationResources -}}
-        {{- include "partials.resources" .Values.DestinationResources | nindent 8 }}
+        {{- if .Values.destinationResources -}}
+        {{- include "partials.resources" .Values.destinationResources | nindent 8 }}
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.ControllerUID}}
+          runAsUser: {{.Values.controllerUID}}
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ if not .Values.NoInitContainer -}}
+      {{ if not .Values.noInitContainer -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
