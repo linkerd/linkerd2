@@ -1,28 +1,22 @@
 ## edge-19.12.2
 
 * CLI
-  * Added support for injecting CronJobs and ReplicaSets, and the ability to use
-    them as targets in the CLI subcomands
-  * Added ability to update the trust anchor and issuer certificates during
-    `linkerd upgrade` with the new flags `--identity-issuer-certificate-file`,
-    `--identity-issuer-key-file` and `identity-trust-anchors-file`
-
+  * Added support for injecting CronJobs and ReplicaSets, as well as the ability
+    to use them as targets in the CLI subcommands
+  * Introduced the new flags `--identity-issuer-certificate-file`,
+    `--identity-issuer-key-file` and `identity-trust-anchors-file` to `linkerd
+    upgrade` to support trust anchor and issuer certificate rotation
 * Controller
-  * Fixed bug causing pods having security context capabilities to fail to be
-    injected
-  * Upgraded Prometheus to v1.2.1 (thanks @daxmc99!)
-
+  * Fixed inject failures for pods with security context capabilities
 * Web UI
   * Added support for CronJobs and ReplicaSets, including new Grafana dashboards
     for them
-
 * Proxy
-  * Increased destination controller client's connection receive window to avoid
-    it becoming exhausted, by single stalled streams
-  * Eagerly read profiles off the wire
-
+  * Fixes a bug where the proxy could stop receiving service discovery updates,
+    resulting in 503 errors
 * Internal
-  * Moved CNI template into a Helm chart, soon to be published
+  * Moved CNI template into a Helm chart to prepare for future publication
+  * Upgraded the Prometheus Go client library to v1.2.1 (thanks @daxmc99!)
   * Reenabled certificates rotation integration tests
 
 ## edge-19.12.1
