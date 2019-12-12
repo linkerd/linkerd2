@@ -270,7 +270,6 @@ jobs:
         DOCKER_HOST: ssh://linkerd-docker
       run: |
         export PATH="`pwd`/bin:$PATH"
-        bin/docker image prune -f
         DOCKER_TRACE=1 bin/docker-build
 
   kind_setup:
