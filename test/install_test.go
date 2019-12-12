@@ -339,14 +339,14 @@ func TestInstallHelm(t *testing.T) {
 	}
 
 	args := []string{
-		"--set", "ControllerLogLevel=debug",
-		"--set", "LinkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "Proxy.Image.Version=" + TestHelper.GetVersion(),
-		"--set", "Identity.TrustDomain=cluster.local",
-		"--set", "Identity.TrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
-		"--set", "Identity.Issuer.TLS.CrtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
-		"--set", "Identity.Issuer.TLS.KeyPEM=" + root.Cred.EncodePrivateKeyPEM(),
-		"--set", "Identity.Issuer.CrtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
+		"--set", "controllerLogLevel=debug",
+		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
+		"--set", "proxy.image.version=" + TestHelper.GetVersion(),
+		"--set", "identity.trustDomain=cluster.local",
+		"--set", "identity.trustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
+		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
 	if stdout, stderr, err := TestHelper.HelmRun("install", args...); err != nil {
 		t.Fatalf("helm install command failed\n%s\n%s", stdout, stderr)
