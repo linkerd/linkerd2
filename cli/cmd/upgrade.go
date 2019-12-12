@@ -267,11 +267,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 
 	if options.identityOptions.trustPEMFile != "" {
-
-		if configs.Global.IdentityContext.Scheme == string(corev1.SecretTypeTLS) {
-			return nil, nil, errors.New("cannot update trust roots if you are using external cert management solution")
-		}
-
 		if err := checkFilesExist([]string{options.identityOptions.trustPEMFile}); err != nil {
 			return nil, nil, err
 		}
@@ -472,6 +467,9 @@ func fetchIssuer(k kubernetes.Interface, trustPEM string, scheme string) (*issue
 		issuerData, err = issuercerts.FetchExternalIssuerData(k, controlPlaneNamespace)
 	default:
 		issuerData, err = issuercerts.FetchIssuerData(k, trustPEM, controlPlaneNamespace)
+		if issuerData != nil && issuerData.TrustAnchors != trustPEM {
+			issuerData.TrustAnchors = trustPEM
+		}
 	}
 	if err != nil {
 		return nil, err

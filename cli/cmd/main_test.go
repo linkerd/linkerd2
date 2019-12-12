@@ -55,6 +55,7 @@ func diffTestdata(t *testing.T, path, actual string) {
 	if actual == expected {
 		return
 	}
+	println(actual)
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(expected, actual, true)
 	diffs = dmp.DiffCleanupSemantic(diffs)
