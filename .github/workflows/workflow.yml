@@ -271,7 +271,7 @@ jobs:
       run: |
         export PATH="`pwd`/bin:$PATH"
         DOCKER_TRACE=1 bin/docker-build
-
+        bin/docker image prune -f
   kind_setup:
     strategy:
       max-parallel: 3
