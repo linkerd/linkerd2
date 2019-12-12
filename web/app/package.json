@@ -49,7 +49,7 @@
     "clean-webpack-plugin": "3.0.0",
     "css-loader": "2.1.1",
     "enzyme": "3.7.0",
-    "enzyme-adapter-react-16": "1.6.0",
+    "enzyme-adapter-react-16": "1.15.1",
     "eslint": "4.18.2",
     "eslint-config-airbnb": "16.1.0",
     "eslint-loader": "2.0.0",

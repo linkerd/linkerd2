@@ -60,7 +60,8 @@ describe('Navigation', () => {
     );
 
     return withPromise(() => {
-      expect(component).toIncludeText("Linkerd is up to date");
+      expect(component.find("NavigationBase").state("isLatest")).toBeTruthy();
+      expect(component.find("NavigationBase").state("latestVersion")).toBe(curVer);
     });
   });
 
@@ -86,7 +87,8 @@ describe('Navigation', () => {
     );
 
     return withPromise(() => {
-      expect(component).toIncludeText("A new version (2.3.4) is available.");
+      expect(component.find("NavigationBase").state("isLatest")).toBeFalsy();
+      expect(component.find("NavigationBase").state("latestVersion")).toBe(newVer);
     });
   });
 
@@ -117,8 +119,8 @@ describe('Navigation', () => {
     );
 
     return withPromise(() => {
-      expect(component).toIncludeText("Version check failed: Fake error.");
-      expect(component).toIncludeText(errMsg);
+      expect(component.find("NavigationBase").state("error")).toBeDefined();
+      expect(component.find("NavigationBase").state("error").statusText).toBe("Fake error");
     });
   });
 });
