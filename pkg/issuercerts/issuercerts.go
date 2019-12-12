@@ -151,6 +151,10 @@ func (ic *IssuerCertData) VerifyAndBuildCreds(dnsName string) (*tls.Cred, error)
 		return nil, err
 	}
 
+	if !creds.Certificate.IsCA {
+		return nil, fmt.Errorf("issuer cert is not a CA")
+	}
+
 	roots, err := tls.DecodePEMCertPool(ic.TrustAnchors)
 	if err != nil {
 		return nil, err
