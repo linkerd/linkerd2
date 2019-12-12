@@ -16,6 +16,7 @@ import (
 )
 
 const keyMissingError = "key %s containing the %s needs to exist in secret %s if --identity-external-issuer=%v"
+const expirationWarningThresholdInDays = 60
 
 // IssuerCertData holds the root cert data used by the CA
 type IssuerCertData struct {
@@ -114,9 +115,7 @@ func CheckCertTimeValidity(cert *x509.Certificate) error {
 
 // CheckExpiringSoon returns an error if a certificate is expiring soon
 func CheckExpiringSoon(cert *x509.Certificate) error {
-	lifetime := cert.NotAfter.Unix() - cert.NotBefore.Unix()
-	timeLeft := cert.NotAfter.Unix() - time.Now().Unix()
-	if (float64(timeLeft) / float64(lifetime)) < 0.1 {
+	if time.Now().AddDate(0, 0, expirationWarningThresholdInDays).After(cert.NotAfter) {
 		return fmt.Errorf("will expire on %s", cert.NotAfter.Format(time.RFC3339))
 	}
 	return nil

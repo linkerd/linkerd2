@@ -2411,7 +2411,7 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 				starts: time.Date(2100, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(2101, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedOutput: []string{"linkerd-identity-test-cat issuer cert has valid lifetime: issuer certiifcate is not valid before: 2100-01-01T01:00:51Z"},
+			expectedOutput: []string{"linkerd-identity-test-cat issuer cert has valid lifetime: issuer certificate is not valid before: 2100-01-01T01:00:51Z"},
 		},
 		{
 			checkerToTest:    "issuer cert has valid lifetime",
@@ -2420,7 +2420,7 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 				starts: time.Date(1989, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(1990, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedOutput: []string{"linkerd-identity-test-cat issuer cert has valid lifetime: issuer certiifcate is not valid anymore. Expired on 1990-01-01T01:01:11Z"},
+			expectedOutput: []string{"linkerd-identity-test-cat issuer cert has valid lifetime: issuer certificate is not valid anymore. Expired on 1990-01-01T01:01:11Z"},
 		},
 	}
 

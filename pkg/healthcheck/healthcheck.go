@@ -790,17 +790,18 @@ func (hc *HealthChecker) allCategories() []category {
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						if err := issuercerts.CheckCertTimeValidity(hc.issuerCert.Certificate); err != nil {
-							return fmt.Errorf("issuer certiifcate is %s", err)
+							return fmt.Errorf("issuer certificate is %s", err)
 						}
 						return nil
 					},
 				},
 				{
 					description: "issuer cert is not near expiry",
+					warning:     true,
 					hintAnchor:  "l5d-certs-rotation",
 					check: func(context.Context) error {
 						if err := issuercerts.CheckExpiringSoon(hc.issuerCert.Certificate); err != nil {
-							return fmt.Errorf("issuer certiifcate %s", err)
+							return fmt.Errorf("issuer certificate %s", err)
 						}
 						return nil
 					},
@@ -809,7 +810,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "issuer cert can be verified with trust root",
 					hintAnchor:  "l5d-certs-rotation",
 					check: func(ctx context.Context) error {
-						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.roots), hc.issuerDNS())
+						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.roots), hc.issuerIdentity())
 					},
 				},
 			},
@@ -993,7 +994,7 @@ func (hc *HealthChecker) allCategories() []category {
 	}
 }
 
-func (hc *HealthChecker) issuerDNS() string {
+func (hc *HealthChecker) issuerIdentity() string {
 	return fmt.Sprintf("identity.%s.%s", hc.ControlPlaneNamespace, hc.linkerdConfig.Global.IdentityContext.TrustDomain)
 }
 
@@ -1151,6 +1152,11 @@ func (hc *HealthChecker) checkLinkerdConfigConfigMap() (string, *configPb.All, e
 	return string(cm.GetUID()), configPB, nil
 }
 
+// Checks whether the configuration of the linkerd-identity-issuer is correct. This means:
+// 1. There is a config map present with identity context
+// 2. The scheme in the identity context corresponds to the format of the issuer secret
+// 3. The trust anchors (if scheme == kubernetes.io/tls) in the secret equal the ones in config
+// 4. The certs and key are parsable
 func (hc *HealthChecker) checkCertificatesConfig() (*tls.Cred, []*x509.Certificate, error) {
 	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
