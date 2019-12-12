@@ -127,7 +127,7 @@ describe('Utils', () => {
   });
 
   describe('regexFilterString', () => {
-    it('converts string to a valid regex for namespaces', () => {
+    it('converts input string to a valid regex for filtering', () => {
       expect(regexFilterString('emojivoto')).toEqual(new RegExp(/emojivoto/));
       expect(regexFilterString('emojivoto123')).toEqual(new RegExp(/emojivoto123/));
       expect(regexFilterString('emojivoto*')).toEqual(new RegExp(/emojivoto.+/));
@@ -137,6 +137,9 @@ describe('Utils', () => {
       expect(regexFilterString('emojivoto_.')).toEqual(new RegExp(/emojivoto_./));
       expect(regexFilterString('emojivoto_.{')).toEqual(new RegExp(/emojivoto_./));
       expect(regexFilterString('emojivoto//')).toEqual(new RegExp(/emojivoto\/\//));
+      expect(regexFilterString('emojivoto//')).toEqual(new RegExp(/emojivoto\/\//));
+      expect(regexFilterString('emojivoto-prod-1')).toEqual(new RegExp(/emojivoto-prod-1/));
+      expect(regexFilterString('emoji??Voto-pr##od-1')).toEqual(new RegExp(/emojivoto-prod-1/));
     })
   });
 });
