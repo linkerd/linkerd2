@@ -24,7 +24,6 @@ type checkOptions struct {
 	namespace       string
 	cniEnabled      bool
 	output          string
-	dryRun          bool
 }
 
 func newCheckOptions() *checkOptions {
@@ -36,7 +35,6 @@ func newCheckOptions() *checkOptions {
 		namespace:       "",
 		cniEnabled:      false,
 		output:          tableOutput,
-		dryRun:          true,
 	}
 }
 
@@ -48,7 +46,6 @@ func (options *checkOptions) nonConfigFlagSet() *pflag.FlagSet {
 	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	flags.BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
 	flags.BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
-	flags.BoolVar(&options.dryRun, "dry-run", options.dryRun, "Include checks that rely on k8s dry-run (they may require special write permissions)")
 
 	return flags
 }
@@ -158,12 +155,11 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		checks = append(checks, healthcheck.LinkerdConfigChecks)
 
 		if stage != configStage {
-			checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
-			if options.dryRun {
-				checks = append(checks, healthcheck.LinkerdControlPlaneDryRunChecks)
-			}
-			checks = append(checks, healthcheck.LinkerdAPIChecks)
-			checks = append(checks, healthcheck.LinkerdIdentity)
+			checks = append(checks,
+				healthcheck.LinkerdControlPlaneExistenceChecks,
+				healthcheck.LinkerdControlPlaneDryRunChecks,
+				healthcheck.LinkerdAPIChecks,
+				healthcheck.LinkerdIdentity)
 
 			if options.dataPlaneOnly {
 				checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
