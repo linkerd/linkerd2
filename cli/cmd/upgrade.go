@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
@@ -34,6 +35,7 @@ const (
 
 type upgradeOptions struct {
 	manifests string
+	force     bool
 	*installOptions
 
 	verifyTLS func(tls *charts.TLS, service string) error
@@ -61,6 +63,10 @@ func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
 	flags.StringVar(
 		&options.manifests, "from-manifests", options.manifests,
 		"Read config from a Linkerd install YAML rather than from Kubernetes",
+	)
+	flags.BoolVar(
+		&options.force, "force", options.force,
+		"Force upgrade operation despite validation errors",
 	)
 
 	return flags
@@ -379,6 +385,32 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 	return value, nil
 }
 
+func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred) error {
+	meshedPods, err := healthcheck.GetMeshedPodsIdentitiyData(k, "")
+	var problematicPods []string
+	if err != nil {
+		return err
+	}
+	for _, pod := range meshedPods {
+		roots, err := tls.DecodePEMCertPool(pod.Anchors)
+
+		if roots != nil {
+			err = cred.Verify(roots, "")
+		}
+
+		if err != nil {
+			problematicPods = append(problematicPods, fmt.Sprintf("* %s", pod.Name))
+		}
+	}
+
+	if len(problematicPods) > 0 {
+		errorMessageHeader := "You are attempting to use an issuer certificate which does not validate against the trust roots of the following pods:"
+		errorMessageFooter := "These pods do not have the current trust bundle and must be restarted.  Use the --force flag to proceed anyway (this will likely prevent those pods from sending or receiving traffic)."
+		return fmt.Errorf("%s\n\t%s\n%s", errorMessageHeader, strings.Join(problematicPods, "\n\t"), errorMessageFooter)
+	}
+	return nil
+}
+
 // fetchIdentityValue checks the kubernetes API to fetch an existing
 // linkerd identity configuration.
 //
@@ -410,13 +442,27 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 		trustAnchorsPEM = idctx.GetTrustAnchorsPem()
 	}
 
-	if options.identityOptions.crtPEMFile != "" && options.identityOptions.keyPEMFile != "" {
+	updatingIssuerCert := options.identityOptions.crtPEMFile != "" && options.identityOptions.keyPEMFile != ""
+
+	if updatingIssuerCert {
 		issuerData, err = readIssuer(trustAnchorsPEM, options.identityOptions.crtPEMFile, options.identityOptions.keyPEMFile)
 	} else {
 		issuerData, err = fetchIssuer(k, trustAnchorsPEM, idctx.Scheme)
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	cred, err := issuerData.VerifyAndBuildCreds("")
+	if err != nil {
+		return nil, err
+	}
+	issuerData.Expiry = &cred.Crt.Certificate.NotAfter
+
+	if updatingIssuerCert && !options.force {
+		if err := ensureIssuerCertWorksWithAllProxies(k, cred); err != nil {
+			return nil, err
+		}
 	}
 
 	return &charts.Identity{
@@ -446,13 +492,6 @@ func readIssuer(trustPEM, issuerCrtPath, issuerKeyPath string) (*issuercerts.Iss
 		IssuerCrt:    crt,
 		IssuerKey:    key,
 	}
-
-	cred, err := issuerData.VerifyAndBuildCreds("")
-	if err != nil {
-		return nil, err
-	}
-
-	issuerData.Expiry = &cred.Crt.Certificate.NotAfter
 
 	return issuerData, nil
 }
