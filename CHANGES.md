@@ -12,7 +12,7 @@
   * Added support for CronJobs and ReplicaSets, including new Grafana dashboards
     for them
 * Proxy
-  * Fixes a bug where the proxy could stop receiving service discovery updates,
+  * Fixed a bug where the proxy could stop receiving service discovery updates,
     resulting in 503 errors
 * Internal
   * Moved CNI template into a Helm chart to prepare for future publication
