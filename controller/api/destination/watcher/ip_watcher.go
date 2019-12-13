@@ -137,7 +137,7 @@ func (iw *IPWatcher) addPod(obj interface{}) {
 		return
 	}
 	ss := iw.getOrNewServiceSubscriptions(pod.Status.PodIP)
-	ss.publish()
+	ss.updatePod(iw.podToPodSet(pod))
 }
 
 func (iw *IPWatcher) deletePod(obj interface{}) {
@@ -202,23 +202,7 @@ func (iw *IPWatcher) getOrNewServiceSubscriptions(clusterIP string) *serviceSubs
 				iw.log.Errorf("Pod IP conflict: %v, %v", objs[0], objs[1])
 			}
 			if len(pods) == 1 {
-				pod := pods[0]
-				ownerKind, ownerName := iw.k8sAPI.GetOwnerKindAndName(pod, true)
-				ss.pod = PodSet{
-					Pods: map[PodID]Address{
-						PodID{
-							Name:      pod.Name,
-							Namespace: pod.Namespace,
-						}: Address{
-							IP:        pod.Status.PodIP,
-							Port:      0, // Will be set by individual subscriptions
-							Pod:       pod,
-							OwnerName: ownerName,
-							OwnerKind: ownerKind,
-						},
-					},
-					Labels: map[string]string{},
-				}
+				ss.pod = iw.podToPodSet(pods[0])
 			}
 		}
 
@@ -232,6 +216,29 @@ func (iw *IPWatcher) getServiceSubscriptions(clusterIP string) (ss *serviceSubsc
 	defer iw.RUnlock()
 	ss, ok = iw.publishers[clusterIP]
 	return
+}
+
+func (iw *IPWatcher) podToPodSet(pod *corev1.Pod) PodSet {
+	if pod.Spec.HostNetwork {
+		return PodSet{}
+	}
+
+	ownerKind, ownerName := iw.k8sAPI.GetOwnerKindAndName(pod, true)
+	return PodSet{
+		Pods: map[PodID]Address{
+			PodID{
+				Name:      pod.Name,
+				Namespace: pod.Namespace,
+			}: Address{
+				IP:        pod.Status.PodIP,
+				Port:      0, // Will be set by individual subscriptions
+				Pod:       pod,
+				OwnerName: ownerName,
+				OwnerKind: ownerKind,
+			},
+		},
+		Labels: map[string]string{},
+	}
 }
 
 ////////////////////////
@@ -276,17 +283,18 @@ func (ss *serviceSubscriptions) deleteService() {
 	ss.service = ServiceID{}
 }
 
-func (ss *serviceSubscriptions) publish() {
+func (ss *serviceSubscriptions) updatePod(podSet PodSet) {
 	ss.Lock()
 	defer ss.Unlock()
 
 	for listener, port := range ss.listeners {
 		listener.NoEndpoints(true) // Clear out previous endpoints.
-		if len(ss.pod.Pods) != 0 {
-			podSetWithPort := withPort(ss.pod, port)
+		if len(podSet.Pods) != 0 {
+			podSetWithPort := withPort(podSet, port)
 			listener.Add(podSetWithPort)
 		}
 	}
+	ss.pod = podSet
 }
 
 func (ss *serviceSubscriptions) deletePod() {
