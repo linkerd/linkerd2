@@ -62,7 +62,7 @@ var (
 		`.* linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
 		`.* linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
 		`.* linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer, retrying with get request .*-smoke-test.*/smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`,
-		`.* linkerd-destination-.* destination time=".*" level=warning msg="failed to retrieve replicaset from indexer .* not found"`,
+		`.*linkerd-destination-.* destination time=".*" level=warning msg="failed to retrieve replicaset from indexer .* not found"`,
 	}, "|"))
 
 	knownProxyErrorsRegex = regexp.MustCompile(strings.Join([]string{
