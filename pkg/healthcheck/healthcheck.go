@@ -722,7 +722,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "control plane is using supported trust roots",
+					description: "trust roots are using supported crypto algorithm",
 					hintAnchor:  "l5d-supported-certs-type",
 					fatal:       true,
 					check: func(context.Context) error {
@@ -739,24 +739,13 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "identity is using supported issuer certificate",
-					hintAnchor:  "l5d-supported-certs-type",
-					fatal:       true,
-					check: func(context.Context) error {
-						if err := issuercerts.CheckCertAlgoRequirements(hc.issuerCert.Certificate); err != nil {
-							return fmt.Errorf("issuer certificate %s", err)
-						}
-						return nil
-					},
-				},
-				{
-					description: "all control plane trust roots have valid lifetimes",
+					description: "trust roots are within their validity period",
 					hintAnchor:  "l5d-certs-rotation",
 					fatal:       true,
 					check: func(ctx context.Context) error {
 						var expiredRoots []string
 						for _, root := range hc.roots {
-							if err := issuercerts.CheckCertTimeValidity(root); err != nil {
+							if err := issuercerts.CheckCertValidityPeriod(root); err != nil {
 								expiredRoots = append(expiredRoots, fmt.Sprintf("* %v %s %s", root.SerialNumber, root.Subject.CommonName, err))
 							}
 						}
@@ -768,7 +757,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "no control plane trust roots are near expiry",
+					description: "trust roots are valid for at least 60 days",
 					hintAnchor:  "l5d-certs-rotation",
 					warning:     true,
 					check: func(ctx context.Context) error {
@@ -785,18 +774,29 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "issuer cert has valid lifetime",
+					description: "issuer cert is using supported crypto algorithm",
+					hintAnchor:  "l5d-supported-certs-type",
+					fatal:       true,
+					check: func(context.Context) error {
+						if err := issuercerts.CheckCertAlgoRequirements(hc.issuerCert.Certificate); err != nil {
+							return fmt.Errorf("issuer certificate %s", err)
+						}
+						return nil
+					},
+				},
+				{
+					description: "issuer cert is within its validity period",
 					hintAnchor:  "l5d-certs-rotation",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						if err := issuercerts.CheckCertTimeValidity(hc.issuerCert.Certificate); err != nil {
+						if err := issuercerts.CheckCertValidityPeriod(hc.issuerCert.Certificate); err != nil {
 							return fmt.Errorf("issuer certificate is %s", err)
 						}
 						return nil
 					},
 				},
 				{
-					description: "issuer cert is not near expiry",
+					description: "issuer cert is valid for at least 60 days",
 					warning:     true,
 					hintAnchor:  "l5d-certs-rotation",
 					check: func(context.Context) error {
@@ -807,7 +807,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "issuer cert can be verified with trust root",
+					description: "issuer cert is issued by the trust root",
 					hintAnchor:  "l5d-certs-rotation",
 					check: func(ctx context.Context) error {
 						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.roots), hc.issuerIdentity())

@@ -32,13 +32,13 @@ linkerd-existence
 linkerd-identity
 ----------------
 √ certificate config is valid
-√ control plane is using supported trust roots
-√ identity is using supported issuer certificate
-√ all control plane trust roots have valid lifetimes
-√ no control plane trust roots are near expiry
-√ issuer cert has valid lifetime
-√ issuer cert is not near expiry
-√ issuer cert can be verified with trust root
+√ trust roots are using supported crypto algorithm
+√ trust roots are within their validity period
+√ trust roots are valid for at least 60 days
+√ issuer cert is using supported crypto algorithm
+√ issuer cert is within its validity period
+√ issuer cert is valid for at least 60 days
+√ issuer cert is issued by the trust root
 
 linkerd-identity-data-plane
 ---------------------------

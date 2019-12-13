@@ -2381,46 +2381,46 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid: key ca.crt containing the trust anchors needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=true"},
 		},
 		{
-			checkerToTest:      "issuer cert can be verified with trust root",
+			checkerToTest:      "issuer cert is issued by the trust root",
 			checkDescription:   "fails when cert dns is wrong",
 			certificateDNSName: "wrong.linkerd.cluster.local",
-			expectedOutput:     []string{"linkerd-identity-test-cat issuer cert can be verified with trust root: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"},
+			expectedOutput:     []string{"linkerd-identity-test-cat issuer cert is issued by the trust root: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"},
 		},
 		{
-			checkerToTest:    "all control plane trust roots have valid lifetimes",
+			checkerToTest:    "trust roots are within their validity period",
 			checkDescription: "fails when the only root cert is not valid yet",
 			lifespan: &lifeSpan{
 				starts: time.Date(2100, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(2101, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedOutput: []string{"linkerd-identity-test-cat all control plane trust roots have valid lifetimes: Invalid roots:\n\t* 1 identity.linkerd.cluster.local not valid before: 2100-01-01T01:00:51Z"},
+			expectedOutput: []string{"linkerd-identity-test-cat trust roots are within their validity period: Invalid roots:\n\t* 1 identity.linkerd.cluster.local not valid before: 2100-01-01T01:00:51Z"},
 		},
 		{
-			checkerToTest:    "all control plane trust roots have valid lifetimes",
+			checkerToTest:    "trust roots are within their validity period",
 			checkDescription: "fails when the only root cert is expired",
 			lifespan: &lifeSpan{
 				starts: time.Date(1989, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(1990, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedOutput: []string{"linkerd-identity-test-cat all control plane trust roots have valid lifetimes: Invalid roots:\n\t* 1 identity.linkerd.cluster.local not valid anymore. Expired on 1990-01-01T01:01:11Z"},
+			expectedOutput: []string{"linkerd-identity-test-cat trust roots are within their validity period: Invalid roots:\n\t* 1 identity.linkerd.cluster.local not valid anymore. Expired on 1990-01-01T01:01:11Z"},
 		},
 		{
-			checkerToTest:    "issuer cert has valid lifetime",
+			checkerToTest:    "issuer cert is within its validity period",
 			checkDescription: "fails when the issuer cert is not valid yet",
 			lifespan: &lifeSpan{
 				starts: time.Date(2100, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(2101, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedOutput: []string{"linkerd-identity-test-cat issuer cert has valid lifetime: issuer certificate is not valid before: 2100-01-01T01:00:51Z"},
+			expectedOutput: []string{"linkerd-identity-test-cat issuer cert is within its validity period: issuer certificate is not valid before: 2100-01-01T01:00:51Z"},
 		},
 		{
-			checkerToTest:    "issuer cert has valid lifetime",
+			checkerToTest:    "issuer cert is within its validity period",
 			checkDescription: "fails when the issuer cert is expired",
 			lifespan: &lifeSpan{
 				starts: time.Date(1989, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(1990, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedOutput: []string{"linkerd-identity-test-cat issuer cert has valid lifetime: issuer certificate is not valid anymore. Expired on 1990-01-01T01:01:11Z"},
+			expectedOutput: []string{"linkerd-identity-test-cat issuer cert is within its validity period: issuer certificate is not valid anymore. Expired on 1990-01-01T01:01:11Z"},
 		},
 	}
 

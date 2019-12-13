@@ -29,7 +29,7 @@ const (
 	controlPlaneMessage    = "Don't forget to run `linkerd upgrade control-plane`!"
 	visitMessage           = "Visit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps"
 	failMessage            = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
-	trustRootChangeMessage = "Rotating the trust anchors will affect existing proxies\nSee https://linkerd.io/cert-rotation for more information"
+	trustRootChangeMessage = "Rotating the trust anchors will affect existing proxies\nSee https://linkerd.io/2/tasks/rotating_identity_certificates/ for more information"
 )
 
 type upgradeOptions struct {
