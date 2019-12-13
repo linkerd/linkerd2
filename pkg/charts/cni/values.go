@@ -15,23 +15,23 @@ const (
 
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
-	Namespace                string
-	ControllerNamespaceLabel string
-	CNIResourceAnnotation    string
-	InboundProxyPort         uint
-	OutboundProxyPort        uint
-	IgnoreInboundPorts       string
-	IgnoreOutboundPorts      string
-	CreatedByAnnotation      string
-	CliVersion               string
-	CNIPluginImage           string
-	CNIPluginVersion         string
-	LogLevel                 string
-	PortsToRedirect          string
-	ProxyUID                 int64
-	DestCNINetDir            string
-	DestCNIBinDir            string
-	UseWaitFlag              bool
+	Namespace                string `json:"namespace"`
+	ControllerNamespaceLabel string `json:"controllerNamespaceLabel"`
+	CNIResourceAnnotation    string `json:"cniResourceAnnotation"`
+	InboundProxyPort         uint   `json:"inboundProxyPort"`
+	OutboundProxyPort        uint   `json:"outboundProxyPort"`
+	IgnoreInboundPorts       string `json:"ignoreInboundPorts"`
+	IgnoreOutboundPorts      string `json:"ignoreOutboundPorts"`
+	CreatedByAnnotation      string `json:"createdByAnnotation"`
+	CliVersion               string `json:"cliVersion"`
+	CNIPluginImage           string `json:"cniPluginImage"`
+	CNIPluginVersion         string `json:"cniPluginVersion"`
+	LogLevel                 string `json:"logLevel"`
+	PortsToRedirect          string `json:"portsToRedirect"`
+	ProxyUID                 int64  `json:"proxyUID"`
+	DestCNINetDir            string `json:"destCNINetDir"`
+	DestCNIBinDir            string `json:"destCNIBinDir"`
+	UseWaitFlag              bool   `json:"useWaitFlag"`
 }
 
 // NewValues returns a new instance of the Values type.
