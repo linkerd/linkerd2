@@ -38,7 +38,7 @@ describe('Navigation', () => {
     window.fetch.restore();
   });
 
-  it('renders up to date message when versions match', () => {
+  it('checks state when versions match', () => {
     fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ edge: curVer })
@@ -60,11 +60,12 @@ describe('Navigation', () => {
     );
 
     return withPromise(() => {
-      expect(component).toIncludeText("Linkerd is up to date");
+      expect(component.find("NavigationBase").state("isLatest")).toBeTruthy();
+      expect(component.find("NavigationBase").state("latestVersion")).toBe(curVer);
     });
   });
 
-  it('renders update message when versions do not match', () => {
+  it('checks state when versions do not match', () => {
     fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ edge: newVer })
@@ -86,11 +87,12 @@ describe('Navigation', () => {
     );
 
     return withPromise(() => {
-      expect(component).toIncludeText("A new version (2.3.4) is available.");
+      expect(component.find("NavigationBase").state("isLatest")).toBeFalsy();
+      expect(component.find("NavigationBase").state("latestVersion")).toBe(newVer);
     });
   });
 
-  it('renders error when version check fails', () => {
+  it('checks state when version check fails', () => {
     let errMsg = "Fake error";
 
     fetchStub.rejects({
@@ -117,8 +119,8 @@ describe('Navigation', () => {
     );
 
     return withPromise(() => {
-      expect(component).toIncludeText("Version check failed: Fake error.");
-      expect(component).toIncludeText(errMsg);
+      expect(component.find("NavigationBase").state("error")).toBeDefined();
+      expect(component.find("NavigationBase").state("error").statusText).toBe("Fake error");
     });
   });
 });
