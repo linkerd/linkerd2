@@ -33,20 +33,20 @@ func testRenderCniHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 	)
 	overrideJSON :=
 		`{
-			"Namespace": "linkerd-test",
-  			"ControllerNamespaceLabel": "linkerd.io/control-plane-ns-test",
-  			"CNIResourceAnnotation": "linkerd.io/cni-resource-test",
-  			"InboundProxyPort": 1234,
-  			"OutboundProxyPort": 5678,
-			"CreatedByAnnotation": "linkerd.io/created-by-test",
-  			"CNIPluginImage": "gcr.io/linkerd-io/cni-plugin-test",
-  			"CNIPluginVersion": "test-version",
-  			"LogLevel": "debug",
-  			"ProxyUID": 1111,
-  			"DestCNINetDir": "/etc/cni/net.d-test",
-  			"DestCNIBinDir": "/opt/cni/bin-test",
-  			"UseWaitFlag": true,
-			"CliVersion": "test-version"
+			"namespace": "linkerd-test",
+  			"controllerNamespaceLabel": "linkerd.io/control-plane-ns-test",
+  			"cniResourceAnnotation": "linkerd.io/cni-resource-test",
+  			"inboundProxyPort": 1234,
+  			"outboundProxyPort": 5678,
+			"createdByAnnotation": "linkerd.io/created-by-test",
+  			"cniPluginImage": "gcr.io/linkerd-io/cni-plugin-test",
+  			"cniPluginVersion": "test-version",
+  			"logLevel": "debug",
+  			"proxyUID": 1111,
+  			"destCNINetDir": "/etc/cni/net.d-test",
+  			"destCNIBinDir": "/opt/cni/bin-test",
+  			"useWaitFlag": true,
+			"cliVersion": "test-version"
 		}`
 
 	overrideConfig := &pb.Config{Raw: overrideJSON}
