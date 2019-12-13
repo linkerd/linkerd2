@@ -53,8 +53,11 @@ describe("Tests for <TopRoutesTable>", () => {
       enableFilter: true
     });
     const component = mount(routerWrap(TopRoutesTable, extraProps));
+
     const table = component.find("BaseTable");
+
     const enableFilter = table.prop("enableFilter");
+
     expect(enableFilter).toEqual(true);
     expect(table.html()).toContain("authors:7001");
     expect(table.html()).toContain("localhost");

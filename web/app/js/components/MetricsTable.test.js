@@ -46,8 +46,11 @@ describe('Tests for <MetricsTable>', () => {
       enableFilter: true
     });
     const component = mount(routerWrap(MetricsTable, extraProps));
+
     const table = component.find('BaseTable');
+
     const enableFilter = table.prop('enableFilter');
+
     expect(enableFilter).toEqual(true);
     expect(table.html()).toContain('books');
     expect(table.html()).toContain('authors');

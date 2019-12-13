@@ -38,7 +38,7 @@ describe('Navigation', () => {
     window.fetch.restore();
   });
 
-  it('renders up to date message when versions match', () => {
+  it('checks state when versions match', () => {
     fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ edge: curVer })
@@ -65,7 +65,7 @@ describe('Navigation', () => {
     });
   });
 
-  it('renders update message when versions do not match', () => {
+  it('checks state when versions do not match', () => {
     fetchStub.resolves({
       ok: true,
       json: () => Promise.resolve({ edge: newVer })
@@ -92,7 +92,7 @@ describe('Navigation', () => {
     });
   });
 
-  it('renders error when version check fails', () => {
+  it('checks state when version check fails', () => {
     let errMsg = "Fake error";
 
     fetchStub.rejects({
