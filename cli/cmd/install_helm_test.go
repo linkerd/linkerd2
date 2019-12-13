@@ -19,7 +19,7 @@ func TestRenderHelm(t *testing.T) {
 	// override certain defaults with pinned values.
 	// use the Helm lib to render the templates.
 	// the golden file is generated using the following `helm template` command:
-	// helm template --set Identity.TrustAnchorsPEM="test-crt-pem" --set Identity.Issuer.TLS.CrtPEM="test-crt-pem" --set Identity.Issuer.TLS.KeyPEM="test-key-pem" charts/linkerd2  --set Identity.Issuer.CrtExpiry="Jul 30 17:21:14 2020" --set ProxyInjector.KeyPEM="test-proxy-injector-key-pem" --set ProxyInjector.CrtPEM="test-proxy-injector-crt-pem" --set ProfileValidator.KeyPEM="test-profile-validator-key-pem" --set ProfileValidator.CrtPEM="test-profile-validator-crt-pem" --set Tap.KeyPEM="test-tap-key-pem" --set Tap.CrtPEM="test-tap-crt-pem" --set LinkerdVersion="linkerd-version"  > cli/cmd/testdata/install_helm_output.golden
+	// helm template --set identity.trustAnchorsPEM="test-crt-pem" --set identity.issuer.tls.crtPEM="test-crt-pem" --set identity.issuer.tls.keyPEM="test-key-pem" charts/linkerd2  --set identity.issuer.crtExpiry="Jul 30 17:21:14 2020" --set proxyInjector.keyPEM="test-proxy-injector-key-pem" --set proxyInjector.crtPEM="test-proxy-injector-crt-pem" --set profileValidator.keyPEM="test-profile-validator-key-pem" --set profileValidator.crtPEM="test-profile-validator-crt-pem" --set tap.keyPEM="test-tap-key-pem" --set tap.crtPEM="test-tap-crt-pem" --set linkerdVersion="linkerd-version"  > cli/cmd/testdata/install_helm_output.golden
 
 	t.Run("Non-HA mode", func(t *testing.T) {
 		ha := false
