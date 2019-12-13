@@ -101,8 +101,8 @@ func LoadIssuerDataFromFiles(keyPEMFile, crtPEMFile, trustPEMFile string) (*Issu
 	return &IssuerCertData{string(anchors), crt, key, nil}, nil
 }
 
-// CheckCertTimeValidity ensures the certificate is valid time - wise
-func CheckCertTimeValidity(cert *x509.Certificate) error {
+// CheckCertValidityPeriod ensures the certificate is valid time - wise
+func CheckCertValidityPeriod(cert *x509.Certificate) error {
 	if cert.NotBefore.After(time.Now()) {
 		return fmt.Errorf("not valid before: %s", cert.NotBefore.Format(time.RFC3339))
 	}
@@ -151,7 +151,7 @@ func (ic *IssuerCertData) VerifyAndBuildCreds(dnsName string) (*tls.Cred, error)
 	}
 
 	// we check the time validity of the issuer cert
-	if err := CheckCertTimeValidity(creds.Certificate); err != nil {
+	if err := CheckCertValidityPeriod(creds.Certificate); err != nil {
 		return nil, err
 	}
 
