@@ -30,7 +30,7 @@ identity:
 
     clockSkewAllowance: 20s
 
-    # must match the expiry date in CrtPEM
+    # must match the expiry date in crtPEM
     crtExpiry:
 
     # control plane annotation - do not edit
@@ -140,7 +140,7 @@ linkerdNamespaceLabel: linkerd.io/is-control-plane
 
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:
-# - The namespace created by the external tool must match the Namespace value above
+# - The namespace created by the external tool must match the namespace value above
 # - The external tool needs to create the namespace with the label:
 #     config.linkerd.io/admission-webhooks: disabled
 installNamespace: true
