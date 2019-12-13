@@ -399,7 +399,7 @@ func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred)
 		}
 
 		if err != nil {
-			problematicPods = append(problematicPods, fmt.Sprintf("* %s", pod.Name))
+			problematicPods = append(problematicPods, fmt.Sprintf("* %s/%s", pod.Namespace, pod.Name))
 		}
 	}
 
@@ -455,7 +455,7 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 
 	cred, err := issuerData.VerifyAndBuildCreds("")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("issuer certificate does not work with the provided provided roots: %s\nFor more information: https://linkerd.io/2/tasks/rotating_identity_trust_root/", err)
 	}
 	issuerData.Expiry = &cred.Crt.Certificate.NotAfter
 

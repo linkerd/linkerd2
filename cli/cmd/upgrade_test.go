@@ -1013,7 +1013,7 @@ spec:
 			},
 			"upgrade_overwrite_issuer.golden",
 			// use Errorf here to stop the linter complaining that our error message is capitalized...
-			fmt.Errorf("%s", "You are attempting to use an issuer certificate which does not validate against the trust roots of the following pods:\n\t* backend-wrong-anchors\nThese pods do not have the current trust bundle and must be restarted.  Use the --force flag to proceed anyway (this will likely prevent those pods from sending or receiving traffic)."),
+			fmt.Errorf("%s", "You are attempting to use an issuer certificate which does not validate against the trust roots of the following pods:\n\t* some-namespace/backend-wrong-anchors\nThese pods do not have the current trust bundle and must be restarted.  Use the --force flag to proceed anyway (this will likely prevent those pods from sending or receiving traffic)."),
 			func(options *upgradeOptions) {
 				options.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
 				options.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
