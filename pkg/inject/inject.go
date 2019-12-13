@@ -115,14 +115,14 @@ type ResourceConfig struct {
 
 type patch struct {
 	l5dcharts.Values
-	PathPrefix            string
-	AddRootAnnotations    bool
-	Annotations           map[string]string
-	AddRootLabels         bool
-	AddRootInitContainers bool
-	AddRootVolumes        bool
-	Labels                map[string]string
-	DebugContainer        *l5dcharts.DebugContainer
+	PathPrefix            string                    `json:"pathPrefix"`
+	AddRootAnnotations    bool                      `json:"addRootAnnotations"`
+	Annotations           map[string]string         `json:"annotations"`
+	AddRootLabels         bool                      `json:"addRootLabels"`
+	AddRootInitContainers bool                      `json:"addRootInitContainers"`
+	AddRootVolumes        bool                      `json:"addRootVolumes"`
+	Labels                map[string]string         `json:"labels"`
+	DebugContainer        *l5dcharts.DebugContainer `json:"debugContainer"`
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig

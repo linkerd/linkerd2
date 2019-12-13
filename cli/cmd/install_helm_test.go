@@ -19,7 +19,7 @@ func TestRenderHelm(t *testing.T) {
 	// override certain defaults with pinned values.
 	// use the Helm lib to render the templates.
 	// the golden file is generated using the following `helm template` command:
-	// helm template --set Identity.TrustAnchorsPEM="test-crt-pem" --set Identity.Issuer.TLS.CrtPEM="test-crt-pem" --set Identity.Issuer.TLS.KeyPEM="test-key-pem" charts/linkerd2  --set Identity.Issuer.CrtExpiry="Jul 30 17:21:14 2020" --set ProxyInjector.KeyPEM="test-proxy-injector-key-pem" --set ProxyInjector.CrtPEM="test-proxy-injector-crt-pem" --set ProfileValidator.KeyPEM="test-profile-validator-key-pem" --set ProfileValidator.CrtPEM="test-profile-validator-crt-pem" --set Tap.KeyPEM="test-tap-key-pem" --set Tap.CrtPEM="test-tap-crt-pem" --set LinkerdVersion="linkerd-version"  > cli/cmd/testdata/install_helm_output.golden
+	// helm template --set identity.trustAnchorsPEM="test-crt-pem" --set identity.issuer.tls.crtPEM="test-crt-pem" --set identity.issuer.tls.keyPEM="test-key-pem" charts/linkerd2  --set identity.issuer.crtExpiry="Jul 30 17:21:14 2020" --set proxyInjector.keyPEM="test-proxy-injector-key-pem" --set proxyInjector.crtPEM="test-proxy-injector-crt-pem" --set profileValidator.keyPEM="test-profile-validator-key-pem" --set profileValidator.crtPEM="test-profile-validator-crt-pem" --set tap.keyPEM="test-tap-key-pem" --set tap.crtPEM="test-tap-crt-pem" --set linkerdVersion="linkerd-version"  > cli/cmd/testdata/install_helm_output.golden
 
 	t.Run("Non-HA mode", func(t *testing.T) {
 		ha := false
@@ -42,42 +42,42 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 
 	// pin values that are changed by Helm functions on each test run
 	overrideJSON := `{
-  "CliVersion":"",
-  "LinkerdVersion":"linkerd-version",
-  "Identity":{
-    "TrustAnchorsPEM":"test-trust-anchor",
-    "TrustDomain":"test.trust.domain",
-    "Issuer":{
-      "CrtExpiry":"Jul 30 17:21:14 2020",
-      "CrtExpiryAnnotation":"%s",
-      "TLS":{
-        "KeyPEM":"test-key-pem",
-        "CrtPEM":"test-crt-pem"
+  "cliVersion":"",
+  "linkerdVersion":"linkerd-version",
+  "identity":{
+    "trustAnchorsPEM":"test-trust-anchor",
+    "trustDomain":"test.trust.domain",
+    "issuer":{
+      "crtExpiry":"Jul 30 17:21:14 2020",
+      "crtExpiryAnnotation":"%s",
+      "tls":{
+        "keyPEM":"test-key-pem",
+        "crtPEM":"test-crt-pem"
       }
     }
   },
-  "Configs": null,
-  "Proxy":{
-    "Image":{
-      "Version":"test-proxy-version"
+  "configs": null,
+  "proxy":{
+    "image":{
+      "version":"test-proxy-version"
     }
   },
-  "ProxyInit":{
-    "Image":{
-      "Version":"test-proxy-init-version"
+  "proxyInit":{
+    "image":{
+      "version":"test-proxy-init-version"
     }
   },
-  "ProxyInjector":{
-    "KeyPEM":"test-proxy-injector-key-pem",
-    "CrtPEM":"test-proxy-injector-crt-pem"
+  "proxyInjector":{
+    "keyPEM":"test-proxy-injector-key-pem",
+    "crtPEM":"test-proxy-injector-crt-pem"
   },
-  "ProfileValidator":{
-    "KeyPEM":"test-profile-validator-key-pem",
-    "CrtPEM":"test-profile-validator-crt-pem"
+  "profileValidator":{
+    "keyPEM":"test-profile-validator-key-pem",
+    "crtPEM":"test-profile-validator-crt-pem"
   },
-  "Tap":{
-    "KeyPEM":"test-tap-key-pem",
-    "CrtPEM":"test-tap-crt-pem"
+  "tap":{
+    "keyPEM":"test-tap-key-pem",
+    "crtPEM":"test-tap-crt-pem"
   }
 }`
 	overrideConfig := &pb.Config{

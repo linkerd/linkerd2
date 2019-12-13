@@ -7,12 +7,12 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-prometheus-config
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: prometheus
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: prometheus
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 data:
   prometheus.yml: |-
     global:
@@ -32,7 +32,7 @@ data:
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['{{.Values.Namespace}}']
+          names: ['{{.Values.namespace}}']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_container_name
@@ -70,7 +70,7 @@ data:
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['{{.Values.Namespace}}']
+          names: ['{{.Values.namespace}}']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
@@ -90,7 +90,7 @@ data:
         - __meta_kubernetes_pod_container_port_name
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
         action: keep
-        regex: ^{{default .Values.ProxyContainerName "linkerd-proxy" .Values.ProxyContainerName}};linkerd-admin;{{.Values.Namespace}}$
+        regex: ^{{default .Values.proxyContainerName "linkerd-proxy" .Values.proxyContainerName}};linkerd-admin;{{.Values.namespace}}$
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
@@ -123,53 +123,53 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-prometheus
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: prometheus
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: prometheus
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.ControllerComponentLabel}}: prometheus
+    {{.Values.controllerComponentLabel}}: prometheus
   ports:
   - name: admin-http
     port: 9090
     targetPort: 9090
 ---
-{{ if empty .Values.Proxy.Image.Version -}}
-{{ $_ := set .Values.Proxy.Image "Version" .Values.LinkerdVersion -}}
+{{ if empty .Values.proxy.image.version -}}
+{{ $_ := set .Values.proxy.image "Version" .Values.linkerdVersion -}}
 {{ end -}}
-{{ $_ := set .Values.Proxy "WorkloadKind" "deployment" -}}
-{{ $_ := set .Values.Proxy "Component" "linkerd-prometheus" -}}
-{{ include "linkerd.proxy.validation" .Values.Proxy -}}
+{{ $_ := set .Values.proxy "workloadKind" "deployment" -}}
+{{ $_ := set .Values.proxy "component" "linkerd-prometheus" -}}
+{{ include "linkerd.proxy.validation" .Values.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
   labels:
-    {{.Values.ControllerComponentLabel}}: prometheus
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: prometheus
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   name: linkerd-prometheus
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{.Values.ControllerComponentLabel}}: prometheus
-      {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
-      {{- include "partials.proxy.labels" .Values.Proxy | nindent 6}}
+      {{.Values.controllerComponentLabel}}: prometheus
+      {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+      {{- include "partials.proxy.labels" .Values.proxy | nindent 6}}
   template:
     metadata:
       annotations:
-        {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
-        {{- include "partials.proxy.annotations" .Values.Proxy| nindent 8}}
+        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+        {{- include "partials.proxy.annotations" .Values.proxy| nindent 8}}
       labels:
-        {{.Values.ControllerComponentLabel}}: prometheus
-        {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
-        {{- include "partials.proxy.labels" .Values.Proxy | nindent 8}}
+        {{.Values.controllerComponentLabel}}: prometheus
+        {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+        {{- include "partials.proxy.labels" .Values.proxy | nindent 8}}
     spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
@@ -177,9 +177,9 @@ spec:
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
         - --config.file=/etc/prometheus/prometheus.yml
-        - --log.level={{lower .Values.PrometheusLogLevel}}
-        image: {{.Values.PrometheusImage}}
-        imagePullPolicy: {{.Values.ImagePullPolicy}}
+        - --log.level={{lower .Values.prometheusLogLevel}}
+        image: {{.Values.prometheusImage}}
+        imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /-/healthy
@@ -196,8 +196,8 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        {{- if .Values.PrometheusResources -}}
-        {{- include "partials.resources" .Values.PrometheusResources | nindent 8 }}
+        {{- if .Values.prometheusResources -}}
+        {{- include "partials.resources" .Values.prometheusResources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsUser: 65534
@@ -208,7 +208,7 @@ spec:
           name: prometheus-config
           readOnly: true
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ if not .Values.NoInitContainer -}}
+      {{ if not .Values.noInitContainer -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
