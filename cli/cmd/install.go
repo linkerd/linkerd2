@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -1007,75 +1007,25 @@ func (idopts *installIdentityOptions) genValues() (*l5dcharts.Identity, error) {
 	}, nil
 }
 
-type externalIssuerData struct {
-	trustAnchors string
-	issuerCrt    string
-	issuerKey    string
-}
+func (idopts *installIdentityOptions) readExternallyManaged() (*l5dcharts.Identity, error) {
 
-func loadExternalIssuerData() (*externalIssuerData, error) {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching external issuer config: %s", err)
 	}
 
-	secret, err := kubeAPI.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
+	externalIssuerData, err := issuercerts.FetchExternalIssuerData(kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		return nil, err
 	}
-
-	keyMissingError := "key %s containing the %s needs to exist in secret %s if --identity-external-issuer=true"
-
-	anchors, ok := secret.Data[consts.IdentityIssuerTrustAnchorsNameExternal]
-	if !ok {
-		return nil, fmt.Errorf(keyMissingError, consts.IdentityIssuerTrustAnchorsNameExternal, "trust anchors", consts.IdentityIssuerSecretName)
-	}
-
-	crt, ok := secret.Data[corev1.TLSCertKey]
-	if !ok {
-		return nil, fmt.Errorf(keyMissingError, corev1.TLSCertKey, "issuer certificate", consts.IdentityIssuerSecretName)
-	}
-
-	key, ok := secret.Data[corev1.TLSPrivateKeyKey]
-	if !ok {
-		return nil, fmt.Errorf(keyMissingError, corev1.TLSPrivateKeyKey, "issuer key", consts.IdentityIssuerSecretName)
-	}
-
-	return &externalIssuerData{string(anchors), string(crt), string(key)}, nil
-}
-
-func verifyCreds(creds *tls.Cred, trustAnchors, dns string) error {
-	roots, err := tls.DecodePEMCertPool(trustAnchors)
-	if err != nil {
-		return err
-	}
-
-	if err := creds.Verify(roots, dns); err != nil {
-		return fmt.Errorf("invalid credentials: %s", err)
-	}
-	return nil
-}
-
-func (idopts *installIdentityOptions) readExternallyManaged() (*l5dcharts.Identity, error) {
-
-	externalIssuerData, err := loadExternalIssuerData()
-	if err != nil {
-		return nil, err
-	}
-
-	creds, err := tls.ValidateAndCreateCreds(externalIssuerData.issuerCrt, externalIssuerData.issuerKey)
-
+	_, err = externalIssuerData.VerifyAndBuildCreds(idopts.issuerName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA from %s: %s", consts.IdentityIssuerSecretName, err)
 	}
 
-	if err := verifyCreds(creds, externalIssuerData.trustAnchors, idopts.issuerName()); err != nil {
-		return nil, err
-	}
-
 	return &l5dcharts.Identity{
 		TrustDomain:     idopts.trustDomain,
-		TrustAnchorsPEM: externalIssuerData.trustAnchors,
+		TrustAnchorsPEM: externalIssuerData.TrustAnchors,
 		Issuer: &l5dcharts.Issuer{
 			Scheme:             string(corev1.SecretTypeTLS),
 			ClockSkewAllowance: idopts.clockSkewAllowance.String(),
@@ -1090,24 +1040,19 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*l5dcharts.Identi
 //
 // The identity options must have already been validated.
 func (idopts *installIdentityOptions) readValues() (*l5dcharts.Identity, error) {
-	creds, err := tls.ReadPEMCreds(idopts.keyPEMFile, idopts.crtPEMFile)
+	issuerData, err := issuercerts.LoadIssuerDataFromFiles(idopts.keyPEMFile, idopts.crtPEMFile, idopts.trustPEMFile)
 	if err != nil {
 		return nil, err
 	}
 
-	trustb, err := ioutil.ReadFile(idopts.trustPEMFile)
+	creds, err := issuerData.VerifyAndBuildCreds(idopts.issuerName())
 	if err != nil {
-		return nil, err
-	}
-	trustAnchorsPEM := string(trustb)
-
-	if err := verifyCreds(creds, trustAnchorsPEM, idopts.issuerName()); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to verify issuer certs stored on disk: %s", err)
 	}
 
 	return &l5dcharts.Identity{
 		TrustDomain:     idopts.trustDomain,
-		TrustAnchorsPEM: trustAnchorsPEM,
+		TrustAnchorsPEM: issuerData.TrustAnchors,
 		Issuer: &l5dcharts.Issuer{
 			Scheme:              consts.IdentityIssuerSchemeLinkerd,
 			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"time"
 
 	"github.com/linkerd/linkerd2/pkg/config"
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
@@ -251,6 +251,10 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 
 	if options.identityOptions.crtPEMFile != "" || options.identityOptions.keyPEMFile != "" {
 
+		if configs.Global.IdentityContext.Scheme == string(corev1.SecretTypeTLS) {
+			return nil, nil, errors.New("cannot update issuer certificates if you are using external cert management solution")
+		}
+
 		if options.identityOptions.crtPEMFile == "" {
 			return nil, nil, errors.New("a certificate file must be specified if a private key is provided")
 		}
@@ -393,7 +397,7 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 	}
 
 	var trustAnchorsPEM string
-	var issuerData *issuerData
+	var issuerData *issuercerts.IssuerCertData
 	var err error
 
 	if options.identityOptions.trustPEMFile != "" {
@@ -422,82 +426,62 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 			Scheme:              idctx.Scheme,
 			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
 			IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
-			CrtExpiry:           issuerData.exp,
+			CrtExpiry:           *issuerData.Expiry,
 			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
 			TLS: &charts.TLS{
-				KeyPEM: issuerData.key,
-				CrtPEM: issuerData.crt,
+				KeyPEM: issuerData.IssuerKey,
+				CrtPEM: issuerData.IssuerCrt,
 			},
 		},
 	}, nil
 }
 
-type issuerData struct {
-	key string
-	crt string
-	exp time.Time
+func readIssuer(trustPEM, issuerCrtPath, issuerKeyPath string) (*issuercerts.IssuerCertData, error) {
+	key, crt, err := issuercerts.LoadIssuerCrtAndKeyFromFiles(issuerKeyPath, issuerCrtPath)
+	if err != nil {
+		return nil, err
+	}
+	issuerData := &issuercerts.IssuerCertData{
+		TrustAnchors: trustPEM,
+		IssuerCrt:    crt,
+		IssuerKey:    key,
+	}
+
+	cred, err := issuerData.VerifyAndBuildCreds("")
+	if err != nil {
+		return nil, err
+	}
+
+	issuerData.Expiry = &cred.Crt.Certificate.NotAfter
+
+	return issuerData, nil
 }
 
-func readIssuer(trustPEM, issuerCrtPath, issuerKeyPath string) (*issuerData, error) {
-	creds, err := tls.ReadPEMCreds(issuerKeyPath, issuerCrtPath)
+func fetchIssuer(k kubernetes.Interface, trustPEM string, scheme string) (*issuercerts.IssuerCertData, error) {
+	var (
+		issuerData *issuercerts.IssuerCertData
+		err        error
+	)
+	switch scheme {
+	case string(corev1.SecretTypeTLS):
+		issuerData, err = issuercerts.FetchExternalIssuerData(k, controlPlaneNamespace)
+	default:
+		issuerData, err = issuercerts.FetchIssuerData(k, trustPEM, controlPlaneNamespace)
+		if issuerData != nil && issuerData.TrustAnchors != trustPEM {
+			issuerData.TrustAnchors = trustPEM
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	if err := verifyCreds(creds, trustPEM, ""); err != nil {
-		return nil, fmt.Errorf("invalid issuer credentials: %s", err)
-	}
-
-	return &issuerData{
-		key: creds.EncodePrivateKeyPEM(),
-		crt: creds.EncodeCertificatePEM(),
-		exp: creds.Certificate.NotAfter,
-	}, nil
-}
-
-func fetchIssuer(k kubernetes.Interface, trustPEM string, scheme string) (*issuerData, error) {
-	crtName := k8s.IdentityIssuerCrtName
-	keyName := k8s.IdentityIssuerKeyName
-
-	roots, err := tls.DecodePEMCertPool(trustPEM)
+	cred, err := issuerData.VerifyAndBuildCreds("")
 	if err != nil {
 		return nil, err
 	}
 
-	secret, err := k.CoreV1().
-		Secrets(controlPlaneNamespace).
-		Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-	if scheme == string(corev1.SecretTypeTLS) {
-		crtName = corev1.TLSCertKey
-		keyName = corev1.TLSPrivateKeyKey
-	}
-
-	keyPEM := string(secret.Data[keyName])
-	key, err := tls.DecodePEMKey(keyPEM)
-	if err != nil {
-		return nil, err
-	}
-
-	crtPEM := string(secret.Data[crtName])
-	crt, err := tls.DecodePEMCrt(crtPEM)
-	if err != nil {
-		return nil, err
-	}
-
-	cred := &tls.Cred{PrivateKey: key, Crt: *crt}
-	if err = cred.Verify(roots, ""); err != nil {
-		return nil, fmt.Errorf("invalid issuer credentials: %s", err)
-	}
-
-	return &issuerData{
-		key: keyPEM,
-		crt: crtPEM,
-		exp: crt.Certificate.NotAfter,
-	}, nil
-
+	issuerData.Expiry = &cred.Crt.Certificate.NotAfter
+	return issuerData, nil
 }
 
 // upgradeErrorf prints the error message and quits the upgrade process
