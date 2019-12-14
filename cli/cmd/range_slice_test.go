@@ -6,41 +6,20 @@ import (
 )
 
 func TestValidateRangeSlice(t *testing.T) {
-	tests := [][]string{
-		nil,
-		{},
-		{"0"},
-		{"23"},
-		{"23-23"},
-		{"25-27"},
-	}
-	for _, tt := range tests {
-		t.Run(strings.Join(tt, ","), func(t *testing.T) { //scopelint:ignore
-			assertNoError(t, validateRangeSlice(tt))
-		})
-	}
-}
+	assertNoError(t, validateRangeSlice(nil))
+	assertNoError(t, validateRangeSlice([]string{}))
+	assertNoError(t, validateRangeSlice([]string{"23"}))
+	assertNoError(t, validateRangeSlice([]string{"23-23"}))
+	assertNoError(t, validateRangeSlice([]string{"25-27"}))
 
-func TestValidateRangeSlice_Errors(t *testing.T) {
-	tests := []struct {
-		input  []string
-		expect string
-	}{
-		{[]string{""}, "not a valid port"},
-		{[]string{"notanumber"}, "not a valid port"},
-		{[]string{"not-number"}, "not a valid lower-bound"},
-		{[]string{"-23-25"}, "ranges expected as"},
-		{[]string{"-23"}, "not a valid lower-bound"},
-		{[]string{"23-"}, "not a valid upper-bound"},
-		{[]string{"25-23"}, "upper-bound must be greater than or equal to"},
-		{[]string{"65536"}, "not a valid port"},
-		{[]string{"10-65536"}, "not a valid upper-bound"},
-	}
-	for _, tt := range tests {
-		t.Run(strings.Join(tt.input, ","), func(t *testing.T) { //scopelint:ignore
-			assertError(t, validateRangeSlice(tt.input), tt.expect)
-		})
-	}
+	assertError(t, validateRangeSlice([]string{""}), "not a valid port")
+	assertError(t, validateRangeSlice([]string{"notanumber"}), "not a valid port")
+	assertError(t, validateRangeSlice([]string{"not-number"}), "not a valid lower-bound")
+	assertError(t, validateRangeSlice([]string{"-23-25"}), "ranges expected as")
+	assertError(t, validateRangeSlice([]string{"-23"}), "not a valid lower-bound")
+	assertError(t, validateRangeSlice([]string{"25-23"}), "upper-bound must be greater than or equal to")
+	assertError(t, validateRangeSlice([]string{"65536"}), "not a valid port")
+	assertError(t, validateRangeSlice([]string{"10-65536"}), "not a valid upper-bound")
 }
 
 func assertNoError(t *testing.T, err error) {
