@@ -15,7 +15,7 @@ func TestValidateRangeSlice(t *testing.T) {
 		{"25-27"},
 	}
 	for _, tt := range tests {
-		t.Run(strings.Join(tt, ","), func(t *testing.T) {
+		t.Run(strings.Join(tt, ","), func(t *testing.T) { //scopelint:ignore
 			assertNoError(t, validateRangeSlice(tt))
 		})
 	}
@@ -37,7 +37,7 @@ func TestValidateRangeSlice_Errors(t *testing.T) {
 		{[]string{"10-65536"}, "not a valid upper-bound"},
 	}
 	for _, tt := range tests {
-		t.Run(strings.Join(tt.input, ","), func(t *testing.T) {
+		t.Run(strings.Join(tt.input, ","), func(t *testing.T) { //scopelint:ignore
 			assertError(t, validateRangeSlice(tt.input), tt.expect)
 		})
 	}
