@@ -197,6 +197,32 @@ func TestRender(t *testing.T) {
 	}
 }
 
+func TestValidateAndBuild_Errors(t *testing.T) {
+	t.Run("Fails validation for invalid ignoreInboundPorts", func(t *testing.T) {
+		installOptions, err := testInstallOptions()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+		installOptions.ignoreInboundPorts = []string{"-25"}
+		_, _, err = installOptions.validateAndBuild("", nil)
+		if err == nil {
+			t.Fatal("expected error but got nothing")
+		}
+	})
+
+	t.Run("Fails validation for invalid ignoreOutboundPorts", func(t *testing.T) {
+		installOptions, err := testInstallOptions()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+		installOptions.ignoreOutboundPorts = []string{"-25"}
+		_, _, err = installOptions.validateAndBuild("", nil)
+		if err == nil {
+			t.Fatal("expected error but got nothing")
+		}
+	})
+}
+
 func testInstallOptions() (*installOptions, error) {
 	o, err := newInstallOptionsWithDefaults()
 	if err != nil {
