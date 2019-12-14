@@ -323,8 +323,8 @@ metadata:
   name: linkerd-web-check-injector
   namespace: default
   labels:
-    linkerd.io/control-plane-component: web
-    linkerd.io/control-plane-ns: linkerd
+    : web
+    : 
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -336,8 +336,8 @@ metadata:
   name: linkerd-web-check-injector
   namespace: default
   labels:
-    linkerd.io/control-plane-component: web
-    linkerd.io/control-plane-ns: linkerd
+    : web
+    : 
 roleRef:
   kind: Role
   name: linkerd-web-check-injector
@@ -345,7 +345,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-web
-  namespace: linkerd
+  namespace: 
 ---
 kind: ServiceAccount
 apiVersion: v1

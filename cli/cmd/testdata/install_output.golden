@@ -311,8 +311,8 @@ metadata:
   name: linkerd-web-check-injector
   namespace: default
   labels:
-    ControllerComponentLabel: web
-    ControllerNamespaceLabel: Namespace
+    : web
+    : 
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -324,8 +324,8 @@ metadata:
   name: linkerd-web-check-injector
   namespace: default
   labels:
-    ControllerComponentLabel: web
-    ControllerNamespaceLabel: Namespace
+    : web
+    : 
 roleRef:
   kind: Role
   name: linkerd-web-check-injector
@@ -333,7 +333,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-web
-  namespace: Namespace
+  namespace: 
 ---
 kind: ServiceAccount
 apiVersion: v1
