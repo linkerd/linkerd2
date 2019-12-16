@@ -78,6 +78,11 @@ class BreadcrumbHeader extends React.Component {
 
     if (isMeshResource) {
       if (numCrumbs === 1 || index !== 0) {
+        // If the segment is a K8s resource type, it should be pluralized if
+        // the complete breadcrumb group describes a single-word list of
+        // resources ("Namespaces") OR if the breadcrumb group describes a list
+        // of resources within a specific namespace ("Namespace > linkerd >
+        // Deployments")
         return this.segmentToFriendlyTitle(segment, true);
       }
       return friendlyTitle(segment).singular;
