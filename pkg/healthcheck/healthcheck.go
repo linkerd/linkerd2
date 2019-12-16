@@ -1391,15 +1391,15 @@ func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 	return checkResources("PodSecurityPolicies", objects, []string{fmt.Sprintf("linkerd-%s-control-plane", hc.ControlPlaneNamespace)}, shouldExist)
 }
 
-// MeshedPodIdentitiyData contains meshed pod details + root anchors of the proxy
-type MeshedPodIdentitiyData struct {
+// MeshedPodIdentityData contains meshed pod details + root anchors of the proxy
+type MeshedPodIdentityData struct {
 	Name      string
 	Namespace string
 	Anchors   string
 }
 
-// GetMeshedPodsIdentitiyData obtains the identity data (trust anchors) for all meshed pods
-func GetMeshedPodsIdentitiyData(api kubernetes.Interface, dataPlaneNamespace string) ([]MeshedPodIdentitiyData, error) {
+// GetMeshedPodsIdentityData obtains the identity data (trust anchors) for all meshed pods
+func GetMeshedPodsIdentityData(api kubernetes.Interface, dataPlaneNamespace string) ([]MeshedPodIdentityData, error) {
 	podList, err := api.CoreV1().Pods(dataPlaneNamespace).List(metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
 	if err != nil {
 		return nil, err
@@ -1407,7 +1407,7 @@ func GetMeshedPodsIdentitiyData(api kubernetes.Interface, dataPlaneNamespace str
 	if len(podList.Items) == 0 {
 		return nil, nil
 	}
-	pods := []MeshedPodIdentitiyData{}
+	pods := []MeshedPodIdentityData{}
 	for _, pod := range podList.Items {
 		for _, containerSpec := range pod.Spec.Containers {
 			if containerSpec.Name != k8s.ProxyContainerName {
@@ -1417,7 +1417,7 @@ func GetMeshedPodsIdentitiyData(api kubernetes.Interface, dataPlaneNamespace str
 				if envVar.Name != identity.EnvTrustAnchors {
 					continue
 				}
-				pods = append(pods, MeshedPodIdentitiyData{
+				pods = append(pods, MeshedPodIdentityData{
 					pod.Name, pod.Namespace, strings.TrimSpace(envVar.Value),
 				})
 			}
@@ -1427,7 +1427,7 @@ func GetMeshedPodsIdentitiyData(api kubernetes.Interface, dataPlaneNamespace str
 }
 
 func (hc *HealthChecker) checkDataPlaneProxiesCertificate() error {
-	meshedPods, err := GetMeshedPodsIdentitiyData(hc.kubeAPI.Interface, hc.DataPlaneNamespace)
+	meshedPods, err := GetMeshedPodsIdentityData(hc.kubeAPI.Interface, hc.DataPlaneNamespace)
 	if err != nil {
 		return err
 	}

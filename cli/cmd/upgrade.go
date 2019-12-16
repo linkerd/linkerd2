@@ -66,7 +66,7 @@ func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
 	)
 	flags.BoolVar(
 		&options.force, "force", options.force,
-		"Force upgrade operation despite validation errors",
+		"Force upgrade operation even when issuer certificate does not work with the roots of all proxies",
 	)
 
 	return flags
@@ -251,10 +251,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		configs.GetGlobal().ClusterDomain = defaultClusterDomain
 	}
 
-	if options.identityOptions.trustPEMFile != "" && (options.identityOptions.crtPEMFile != "" || options.identityOptions.keyPEMFile != "") {
-		return nil, nil, errors.New("the trust root and issuer certificate/key must be upgraded separately")
-	}
-
 	if options.identityOptions.crtPEMFile != "" || options.identityOptions.keyPEMFile != "" {
 
 		if configs.Global.IdentityContext.Scheme == string(corev1.SecretTypeTLS) {
@@ -386,7 +382,7 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 }
 
 func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred) error {
-	meshedPods, err := healthcheck.GetMeshedPodsIdentitiyData(k, "")
+	meshedPods, err := healthcheck.GetMeshedPodsIdentityData(k, "")
 	var problematicPods []string
 	if err != nil {
 		return err
@@ -455,7 +451,7 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 
 	cred, err := issuerData.VerifyAndBuildCreds("")
 	if err != nil {
-		return nil, fmt.Errorf("issuer certificate does not work with the provided provided roots: %s\nFor more information: https://linkerd.io/2/tasks/rotating_identity_trust_root/", err)
+		return nil, fmt.Errorf("issuer certificate does not work with the provided roots: %s\nFor more information: https://linkerd.io/2/tasks/rotating_identity_certificates/", err)
 	}
 	issuerData.Expiry = &cred.Crt.Certificate.NotAfter
 
@@ -514,12 +510,6 @@ func fetchIssuer(k kubernetes.Interface, trustPEM string, scheme string) (*issue
 		return nil, err
 	}
 
-	cred, err := issuerData.VerifyAndBuildCreds("")
-	if err != nil {
-		return nil, err
-	}
-
-	issuerData.Expiry = &cred.Crt.Certificate.NotAfter
 	return issuerData, nil
 }
 
