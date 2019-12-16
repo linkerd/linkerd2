@@ -142,6 +142,18 @@ func Register(g *grpc.Server, s *Service) {
 	pb.RegisterIdentityServer(g, s)
 }
 
+// ensureIssuerStillValid should check that the CA is still good time wise
+// and verifies just fine with the provided trust anchors
+func (svc *Service) ensureIssuerStillValid() error {
+	issuer := *svc.issuer
+	switch is := issuer.(type) {
+	case *tls.CA:
+		return is.Cred.Verify(svc.trustAnchors, svc.expectedName)
+	default:
+		return fmt.Errorf("unsupported issuer type. Expected *tls.CA, got %v", is)
+	}
+}
+
 // Certify validates identity and signs certificates.
 func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.CertifyResponse, error) {
 	svc.issuerMutex.RLock()
@@ -157,6 +169,12 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+
+	if err := svc.ensureIssuerStillValid(); err != nil {
+		log.Errorf("could not process CSR because of CA cert validation failure: %s", err)
+		return nil, err
+	}
+
 	if err = checkCSR(csr, reqIdentity); err != nil {
 		log.Debugf("requester sent invalid CSR: %s", err)
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
