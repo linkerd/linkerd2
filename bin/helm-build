@@ -12,7 +12,7 @@ rootdir=$( cd "$bindir"/.. && pwd )
 "$bindir"/helm init --client-only
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2
 "$bindir"/helm dep up "$rootdir"/charts/patch
-"$bindir"/helm lint --set Identity.TrustAnchorsPEM="fake-trust" --set Identity.Issuer.TLS.CrtPEM="fake-cert" --set Identity.Issuer.TLS.KeyPEM="fake-key" --set Identity.Issuer.CrtExpiry="fake-expiry-date" "$rootdir"/charts/linkerd2
+"$bindir"/helm lint --set identity.trustAnchorsPEM="fake-trust" --set identity.issuer.tls.crtPEM="fake-cert" --set identity.issuer.tls.keyPEM="fake-key" --set identity.issuer.crtExpiry="fake-expiry-date" "$rootdir"/charts/linkerd2
 
 # `bin/helm-build package` assumes the presence of "$rootdir"/target/helm/index-pre.yaml which is downloaded in the chart_deploy CI job
 if [ "$1" = package ]; then
