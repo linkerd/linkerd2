@@ -29,6 +29,17 @@ linkerd-existence
 √ can initialize the client
 √ can query the control plane API
 
+linkerd-identity
+----------------
+√ certificate config is valid
+√ trust roots are using supported crypto algorithm
+√ trust roots are within their validity period
+√ trust roots are valid for at least 60 days
+√ issuer cert is using supported crypto algorithm
+√ issuer cert is within its validity period
+√ issuer cert is valid for at least 60 days
+√ issuer cert is issued by the trust root
+
 linkerd-api
 -----------
 √ control plane pods are ready

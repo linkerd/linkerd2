@@ -16,6 +16,7 @@ import (
 )
 
 const keyMissingError = "key %s containing the %s needs to exist in secret %s if --identity-external-issuer=%v"
+const expirationWarningThresholdInDays = 60
 
 // IssuerCertData holds the root cert data used by the CA
 type IssuerCertData struct {
@@ -100,14 +101,22 @@ func LoadIssuerDataFromFiles(keyPEMFile, crtPEMFile, trustPEMFile string) (*Issu
 	return &IssuerCertData{string(anchors), crt, key, nil}, nil
 }
 
-// CheckCertTimeValidity ensures the certificate is valid time - wise
-func CheckCertTimeValidity(cert *x509.Certificate) error {
+// CheckCertValidityPeriod ensures the certificate is valid time - wise
+func CheckCertValidityPeriod(cert *x509.Certificate) error {
 	if cert.NotBefore.After(time.Now()) {
 		return fmt.Errorf("not valid before: %s", cert.NotBefore.Format(time.RFC3339))
 	}
 
 	if cert.NotAfter.Before(time.Now()) {
 		return fmt.Errorf("not valid anymore. Expired on %s", cert.NotAfter.Format(time.RFC3339))
+	}
+	return nil
+}
+
+// CheckExpiringSoon returns an error if a certificate is expiring soon
+func CheckExpiringSoon(cert *x509.Certificate) error {
+	if time.Now().AddDate(0, 0, expirationWarningThresholdInDays).After(cert.NotAfter) {
+		return fmt.Errorf("will expire on %s", cert.NotAfter.Format(time.RFC3339))
 	}
 	return nil
 }
@@ -142,7 +151,7 @@ func (ic *IssuerCertData) VerifyAndBuildCreds(dnsName string) (*tls.Cred, error)
 	}
 
 	// we check the time validity of the issuer cert
-	if err := CheckCertTimeValidity(creds.Certificate); err != nil {
+	if err := CheckCertValidityPeriod(creds.Certificate); err != nil {
 		return nil, err
 	}
 
