@@ -1391,21 +1391,23 @@ func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 	return checkResources("PodSecurityPolicies", objects, []string{fmt.Sprintf("linkerd-%s-control-plane", hc.ControlPlaneNamespace)}, shouldExist)
 }
 
-func (hc *HealthChecker) checkDataPlaneProxiesCertificate() error {
-	podList, err := hc.kubeAPI.CoreV1().Pods(hc.DataPlaneNamespace).List(metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
+// MeshedPodIdentityData contains meshed pod details + root anchors of the proxy
+type MeshedPodIdentityData struct {
+	Name      string
+	Namespace string
+	Anchors   string
+}
+
+// GetMeshedPodsIdentityData obtains the identity data (trust anchors) for all meshed pods
+func GetMeshedPodsIdentityData(api kubernetes.Interface, dataPlaneNamespace string) ([]MeshedPodIdentityData, error) {
+	podList, err := api.CoreV1().Pods(dataPlaneNamespace).List(metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	// Return early if no proxies are deployed on the cluster yet (or on the targeted namespace)
 	if len(podList.Items) == 0 {
-		return nil
+		return nil, nil
 	}
-	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
-	if err != nil {
-		return err
-	}
-	trustAnchorsPem := configPB.GetGlobal().GetIdentityContext().GetTrustAnchorsPem()
-	offendingPods := []string{}
+	pods := []MeshedPodIdentityData{}
 	for _, pod := range podList.Items {
 		for _, containerSpec := range pod.Spec.Containers {
 			if containerSpec.Name != k8s.ProxyContainerName {
@@ -1415,13 +1417,34 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate() error {
 				if envVar.Name != identity.EnvTrustAnchors {
 					continue
 				}
-				if strings.TrimSpace(envVar.Value) != strings.TrimSpace(trustAnchorsPem) {
-					if hc.DataPlaneNamespace == "" {
-						offendingPods = append(offendingPods, fmt.Sprintf("* %s/%s", pod.ObjectMeta.Namespace, pod.ObjectMeta.Name))
-					} else {
-						offendingPods = append(offendingPods, fmt.Sprintf("* %s", pod.ObjectMeta.Name))
-					}
-				}
+				pods = append(pods, MeshedPodIdentityData{
+					pod.Name, pod.Namespace, strings.TrimSpace(envVar.Value),
+				})
+			}
+		}
+	}
+	return pods, nil
+}
+
+func (hc *HealthChecker) checkDataPlaneProxiesCertificate() error {
+	meshedPods, err := GetMeshedPodsIdentityData(hc.kubeAPI.Interface, hc.DataPlaneNamespace)
+	if err != nil {
+		return err
+	}
+
+	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+	if err != nil {
+		return err
+	}
+
+	trustAnchorsPem := configPB.GetGlobal().GetIdentityContext().GetTrustAnchorsPem()
+	offendingPods := []string{}
+	for _, pod := range meshedPods {
+		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {
+			if hc.DataPlaneNamespace == "" {
+				offendingPods = append(offendingPods, fmt.Sprintf("* %s/%s", pod.Namespace, pod.Name))
+			} else {
+				offendingPods = append(offendingPods, fmt.Sprintf("* %s", pod.Name))
 			}
 		}
 	}
