@@ -35,10 +35,6 @@ export const dashboardTheme = {
       lg: 1200,
     },
   },
-  typography: {
-    useNextVariants: true,
-    suppressDeprecationWarnings: true // https://github.com/mui-org/material-ui/issues/13175
-  },
   status
 };
 

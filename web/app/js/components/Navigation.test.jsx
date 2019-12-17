@@ -1,10 +1,21 @@
 import ApiHelpers from './util/ApiHelpers.jsx';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
+import mediaQuery from 'css-mediaquery';
+import Menu from '@material-ui/core/Menu';
+import MenuItem from '@material-ui/core/MenuItem';
 import Navigation from './Navigation.jsx';
 import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 import { mount } from 'enzyme';
+
+function createMatchMedia(width) {
+  return query => ({
+    matches: mediaQuery.match(query, { width }),
+    addListener: () => {},
+    removeListener: () => {},
+  });
+}
 
 sinonStubPromise(sinon);
 
@@ -131,6 +142,11 @@ describe('Navigation', () => {
 });
 
 describe('Namespace Select Button', () => {
+  beforeEach(() => {
+    // https://material-ui.com/components/use-media-query/#testing
+    window.matchMedia = createMatchMedia(window.innerWidth);
+  });
+
   it('displays All Namespaces as button text if the selected namespace is _all', () => {
     const component = mount(
       <BrowserRouter>
@@ -147,7 +163,7 @@ describe('Namespace Select Button', () => {
       </BrowserRouter>
     );
 
-    const button = component.find("Button");
+    const button = component.find("button");
     expect(button).toIncludeText("All Namespaces");
   });
 
@@ -167,11 +183,16 @@ describe('Namespace Select Button', () => {
       </BrowserRouter>
     );
 
-    const button = component.find("Button");
+    const button = component.find("button");
     expect(button).toIncludeText("emojivoto");
   });
 
   it('opens the Namespace Selection menu if button is clicked', () => {
+    // Material-UI v4 requires that the popover needs a valid anchorEl
+    // if NODE_ENV is not "test"
+    delete process.env.NODE_ENV;
+    process.env.NODE_ENV = "test";
+
     const component = mount(
       <BrowserRouter>
         <Navigation
@@ -187,15 +208,20 @@ describe('Namespace Select Button', () => {
       </BrowserRouter>
     );
 
-    expect(component.find("Menu").props().open).toBeFalsy();
+    expect(component.find(Menu).props().open).toBeFalsy();
 
-    const button = component.find("Button");
+    const button = component.find("button");
     button.simulate("click");
 
-    expect(component.find("Menu").props().open).toBeTruthy();
+    expect(component.find(Menu).props().open).toBeTruthy();
   });
 
   describe('renders namespace selection menu with correct number of options', () => {
+    beforeEach(() => {
+      // https://material-ui.com/components/use-media-query/#testing
+      window.matchMedia = createMatchMedia(window.innerWidth);
+    });
+
     it('5 options', () => {
       const component = mount(
         <BrowserRouter>
@@ -212,14 +238,14 @@ describe('Namespace Select Button', () => {
         </BrowserRouter>
       );
 
-      expect(component.find("Menu").find("MenuItem")).toHaveLength(2);
+      expect(component.find(Menu).find(MenuItem)).toHaveLength(2);
 
       component.find("NavigationBase").instance().setState({
         namespaces: namespaces,
       });
       component.update();
       // 5 items = Input - "Select Namespace..." + "All Namespaces" item + 3 added namespaces
-      expect(component.find("Menu").find("MenuItem")).toHaveLength(5);
+      expect(component.find(Menu).find(MenuItem)).toHaveLength(5);
     });
 
     it('3 options', () => {
@@ -238,7 +264,7 @@ describe('Namespace Select Button', () => {
         </BrowserRouter>
       );
 
-      expect(component.find("Menu").find("MenuItem")).toHaveLength(2);
+      expect(component.find(Menu).find(MenuItem)).toHaveLength(2);
 
       component.find("NavigationBase").instance().setState({
         namespaces: namespaces,
@@ -246,7 +272,7 @@ describe('Namespace Select Button', () => {
       });
       component.update();
       // 3 items = "Input - Select Namespace..." + "All Namespaces" item + 1 namespace which matches "de" string
-      expect(component.find("Menu").find("MenuItem")).toHaveLength(3);
+      expect(component.find(Menu).find(MenuItem)).toHaveLength(3);
     });
   });
 });

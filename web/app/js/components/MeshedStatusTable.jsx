@@ -26,7 +26,7 @@ const namespacesColumns = PrefixedLink => [
     render: d => {
       return  (
         <React.Fragment>
-          <Grid container alignItems="center" spacing={8}>
+          <Grid container alignItems="center" spacing={1}>
             <Grid item><PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink></Grid>
             { _isEmpty(d.errors) ? null :
             <Grid item><ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" /></Grid>

@@ -21,6 +21,7 @@ const HeadersContentBase = ({headers, classes}) => {
             <Typography
               className={classes.headerName}
               variant="inherit"
+              display="block"
               color="textPrimary">
               {header.name}
             </Typography>

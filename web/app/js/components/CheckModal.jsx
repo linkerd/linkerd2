@@ -47,7 +47,7 @@ const styles = theme => ({
   },
   content: {
     fontSize: "14px",
-    padding: theme.spacing.unit * 2,
+    padding: theme.spacing(2),
     color: "white",
   },
   title: {
@@ -118,17 +118,17 @@ const Results = ({title, results, classes}) => {
               <Icon type={resultType} classes={classes} />
             </Grid>
             <Grid item xs>
-              <Typography className={classes.result} color="inherit" data-i18n={`${title}_${index + 1}`}>
+              <Typography className={classes.result} variant="body2" color="inherit" data-i18n={`${title}_${index + 1}`}>
                 {result.Description}
               </Typography>
 
               {resultType !== "success" && (
                 <React.Fragment>
-                  <Typography className={classes.resultError} color="inherit">
+                  <Typography className={classes.resultError} variant="body2" color="inherit">
                     {result.ErrMsg}
                   </Typography>
 
-                  <Typography className={classes.resultError} color="inherit" gutterBottom>
+                  <Typography className={classes.resultError} variant="body2" color="inherit" gutterBottom>
                     see
                     <a
                       className={classes.link}
@@ -247,7 +247,7 @@ class CheckModal extends React.Component {
           direction="row"
           justify="center"
           alignItems="center"
-          spacing={24}>
+          spacing={3}>
           <Grid className={classes.wrapper} item>
             <Button
               variant="outlined"
@@ -292,7 +292,7 @@ class CheckModal extends React.Component {
           </DialogTitle>
 
           <DialogContent className={classes.dialogContent}>
-            <Paper className={classes.contentWrapper}>
+            <Paper className={classes.contentWrapper} elevation={3}>
               <div className={classes.content}>
                 { running ? (
                   <CircularProgress size={80} className={classes.spinner} />

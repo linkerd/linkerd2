@@ -162,21 +162,21 @@ class Octopus extends React.Component {
         {resource.isLeafService &&
         <TableRow>
           <TableCell><Typography>Weight</Typography></TableCell>
-          <TableCell numeric={true}><Typography>{resource.tsStats.weight}</Typography></TableCell>
+          <TableCell align="right"><Typography>{resource.tsStats.weight}</Typography></TableCell>
         </TableRow>
         }
         <TableRow>
           <TableCell><Typography>SR</Typography></TableCell>
-          <TableCell numeric={true}><Typography>{metricToFormatter["SUCCESS_RATE"](resource.successRate)}</Typography></TableCell>
+          <TableCell align="right"><Typography>{metricToFormatter["SUCCESS_RATE"](resource.successRate)}</Typography></TableCell>
         </TableRow>
         <TableRow>
           <TableCell><Typography>RPS</Typography></TableCell>
-          <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
+          <TableCell align="right"><Typography>{metricToFormatter["NO_UNIT"](resource.requestRate)}</Typography></TableCell>
         </TableRow>
         {!resource.isApexService &&
         <TableRow>
           <TableCell><Typography>P99</Typography></TableCell>
-          <TableCell numeric={true}><Typography>{metricToFormatter["LATENCY"](_get(resource, "latency.P99"))}</Typography></TableCell>
+          <TableCell align="right"><Typography>{metricToFormatter["LATENCY"](_get(resource, "latency.P99"))}</Typography></TableCell>
         </TableRow>
         }
       </TableBody>
@@ -189,15 +189,15 @@ class Octopus extends React.Component {
       <TableBody>
         <TableRow>
           <TableCell><Typography>Conn</Typography></TableCell>
-          <TableCell numeric={true}><Typography>{metricToFormatter["NO_UNIT"](tcp.openConnections)}</Typography></TableCell>
+          <TableCell align="right"><Typography>{metricToFormatter["NO_UNIT"](tcp.openConnections)}</Typography></TableCell>
         </TableRow>
         <TableRow>
           <TableCell><Typography>Read</Typography></TableCell>
-          <TableCell numeric={true}><Typography>{metricToFormatter["BYTES"](tcp.readRate)}</Typography></TableCell>
+          <TableCell align="right"><Typography>{metricToFormatter["BYTES"](tcp.readRate)}</Typography></TableCell>
         </TableRow>
         <TableRow>
           <TableCell><Typography>Write</Typography></TableCell>
-          <TableCell numeric={true}><Typography>{metricToFormatter["BYTES"](tcp.writeRate)}</Typography></TableCell>
+          <TableCell align="right"><Typography>{metricToFormatter["BYTES"](tcp.writeRate)}</Typography></TableCell>
         </TableRow>
       </TableBody>
     );
@@ -322,7 +322,7 @@ class Octopus extends React.Component {
             <RootRef rootRef={this.upstreamsContainer}>
               <Grid
                 container
-                spacing={24}
+                spacing={3}
                 direction="column"
                 justify="center"
                 alignItems="center"
@@ -350,7 +350,7 @@ class Octopus extends React.Component {
             <RootRef rootRef={this.downstreamsContainer}>
               <Grid
                 container
-                spacing={24}
+                spacing={3}
                 direction="column"
                 justify="center"
                 alignItems="center"

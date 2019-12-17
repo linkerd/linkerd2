@@ -14,7 +14,7 @@ const styles = () => ({
 
 const EmptyCard = ({ content, classes }) => {
   return (
-    <Card className={classes.card}>
+    <Card className={classes.card} elevation={3}>
       <CardContent>
         <Typography>
           {content}

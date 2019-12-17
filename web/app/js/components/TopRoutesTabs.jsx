@@ -16,7 +16,7 @@ const styles = theme => ({
   root: {
     flexGrow: 1,
     backgroundColor: theme.palette.background.paper,
-    marginBottom: theme.spacing.unit * 3,
+    marginBottom: theme.spacing(3),
   },
 });
 
@@ -80,7 +80,7 @@ class TopRoutesTabs extends React.Component {
     const { value } = this.state;
 
     return (
-      <Paper className={classes.root}>
+      <Paper className={classes.root} elevation={3}>
         <AppBar position="static" className={classes.root}>
 
           <Tabs
