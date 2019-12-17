@@ -91,7 +91,7 @@ proxy:
   # and wait for this duration before letting the proxy process the SIGTERM signal.
   # See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
   # for more info on container lifecycle hooks.
-  WaitBeforeExitSeconds: 0
+  waitBeforeExitSeconds: 0
 
 # proxy-init configuration
 proxyInit:

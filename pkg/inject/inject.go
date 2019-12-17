@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -452,6 +451,7 @@ func (conf *ResourceConfig) complete(template *corev1.PodTemplateSpec) {
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func (conf *ResourceConfig) injectPodSpec(values *patch) {
+	waitBeforeExitSeconds, _ := conf.proxyWaitBeforeExitSeconds()
 	values.Proxy = &l5dcharts.Proxy{
 		Component:              conf.pod.labels[k8s.ProxyDeploymentLabel],
 		EnableExternalProfiles: conf.enableExternalProfiles(),
@@ -470,7 +470,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		},
 		UID:                   conf.proxyUID(),
 		Resources:             conf.proxyResourceRequirements(),
-		WaitBeforeExitSeconds: int32(conf.proxyWaitBeforeExit() / time.Second),
+		WaitBeforeExitSeconds: waitBeforeExitSeconds,
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -759,20 +759,18 @@ func (conf *ResourceConfig) tapDisabled() bool {
 	return false
 }
 
-func (conf *ResourceConfig) proxyWaitBeforeExit() time.Duration {
-	if override := conf.getOverride(k8s.ProxyWaitBeforeExitAnnotation); override != "" {
-		waitBeforeExit, err := time.ParseDuration(override)
-
-		// Try to parse plain integer as value in seconds if it is not formatted as Duration
-		if err != nil {
-			waitInSeconds, _ := strconv.ParseUint(override, 10, 32)
-			waitBeforeExit = time.Duration(waitInSeconds) * time.Second
+func (conf *ResourceConfig) proxyWaitBeforeExitSeconds() (uint64, error) {
+	if override := conf.getOverride(k8s.ProxyWaitBeforeExitSecondsAnnotation); override != "" {
+		waitBeforeExitSeconds, err := strconv.ParseUint(override, 10, 64)
+		if nil != err {
+			log.Warnf("unrecognized value used for the %s annotation, uint64 is expected: %s",
+				k8s.ProxyWaitBeforeExitSecondsAnnotation, override)
 		}
 
-		return waitBeforeExit
+		return waitBeforeExitSeconds, err
 	}
 
-	return 0
+	return 0, nil
 }
 
 func (conf *ResourceConfig) proxyResourceRequirements() *l5dcharts.Resources {

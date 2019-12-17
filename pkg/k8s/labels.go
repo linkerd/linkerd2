@@ -181,10 +181,10 @@ const (
 	// its value.
 	ProxyTraceCollectorSvcAddrAnnotation = ProxyConfigAnnotationsPrefix + "/trace-collector"
 
-	// ProxyWaitBeforeExitAnnotation makes the proxy container to wait for the given period before exiting
+	// ProxyWaitBeforeExitSecondsAnnotation makes the proxy container to wait for the given period before exiting
 	// after the Pod entered the Terminating state. Must be smaller than terminationGracePeriodSeconds
 	// configured for the Pod
-	ProxyWaitBeforeExitAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit"
+	ProxyWaitBeforeExitSecondsAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit-seconds"
 
 	// ProxyTraceCollectorSvcAccountAnnotation is used to specify the service account
 	// associated with the trace collector. It is used to create the service's

@@ -208,8 +208,8 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "The trace collector's service account name. E.g., `tracing-service-account`. If not provided, it will be defaulted to `default`.",
 		},
 		{
-			Name:        k8s.ProxyWaitBeforeExitAnnotation,
-			Description: "The proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. Accepts values in two formats: time.Duration or as an unsigned integer (number of seconds). If not provided, it will be defaulted to `0`.",
+			Name:        k8s.ProxyWaitBeforeExitSecondsAnnotation,
+			Description: "The proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. If not provided, it will be defaulted to `0`",
 		},
 	}
 }
