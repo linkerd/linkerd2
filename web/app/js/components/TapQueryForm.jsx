@@ -59,7 +59,7 @@ const styles = theme => ({
     minWidth: 200,
   },
   formControl: {
-    padding: theme.spacing.unit,
+    padding: theme.spacing(1),
     paddingLeft: 0,
     margin: 0,
     minWidth: 'inherit',
@@ -90,7 +90,7 @@ const styles = theme => ({
     transform: 'rotate(180deg)',
   },
   resetButton: {
-    marginLeft: theme.spacing.unit,
+    marginLeft: theme.spacing(1),
   }
 });
 
