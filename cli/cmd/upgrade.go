@@ -297,11 +297,11 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
-	values.Identity = identity
+	values.Global.Identity = identity
 	// we need to do that if we have updated the anchors as the config map json has already been generated
-	if values.Identity.TrustAnchorsPEM != configs.Global.IdentityContext.TrustAnchorsPem {
+	if values.Global.Identity.TrustAnchorsPEM != configs.Global.IdentityContext.TrustAnchorsPem {
 		// override the anchors in config
-		configs.Global.IdentityContext.TrustAnchorsPem = values.Identity.TrustAnchorsPEM
+		configs.Global.IdentityContext.TrustAnchorsPem = values.Global.Identity.TrustAnchorsPEM
 		// rebuild the json config map
 		globalJSON, _, _, _ := config.ToJSON(configs)
 		values.Configs.Global = globalJSON

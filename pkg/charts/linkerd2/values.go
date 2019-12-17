@@ -21,29 +21,18 @@ type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
 		Stage                       string            `json:"stage"`
-		Namespace                   string            `json:"namespace"`
-		ClusterDomain               string            `json:"clusterDomain"`
 		ControllerImage             string            `json:"controllerImage"`
 		ControllerImageVersion      string            `json:"controllerImageVersion"`
 		WebImage                    string            `json:"webImage"`
 		PrometheusImage             string            `json:"prometheusImage"`
 		GrafanaImage                string            `json:"grafanaImage"`
-		ImagePullPolicy             string            `json:"imagePullPolicy"`
-		CliVersion                  string            `json:"cliVersion"`
 		ControllerReplicas          uint              `json:"controllerReplicas"`
 		ControllerLogLevel          string            `json:"controllerLogLevel"`
 		PrometheusLogLevel          string            `json:"prometheusLogLevel"`
-		ControllerComponentLabel    string            `json:"controllerComponentLabel"`
-		ControllerNamespaceLabel    string            `json:"controllerNamespaceLabel"`
-		CreatedByAnnotation         string            `json:"createdByAnnotation"`
 		ProxyContainerName          string            `json:"proxyContainerName"`
-		ProxyInjectAnnotation       string            `json:"proxyInjectAnnotation"`
-		ProxyInjectDisabled         string            `json:"proxyInjectDisabled"`
-		LinkerdNamespaceLabel       string            `json:"linkerdNamespaceLabel"`
 		ControllerUID               int64             `json:"controllerUID"`
 		EnableH2Upgrade             bool              `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity       bool              `json:"enablePodAntiAffinity"`
-		HighAvailability            bool              `json:"highAvailability"`
 		NoInitContainer             bool              `json:"noInitContainer"`
 		WebhookFailurePolicy        string            `json:"webhookFailurePolicy"`
 		OmitWebhookSideEffects      bool              `json:"omitWebhookSideEffects"`
@@ -53,13 +42,11 @@ type (
 		InstallNamespace            bool              `json:"installNamespace"`
 		ControlPlaneTracing         bool              `json:"controlPlaneTracing"`
 		Configs                     ConfigJSONs       `json:"configs"`
+		Global                      *Global           `json:"global"`
 		Dashboard                   *Dashboard        `json:"dashboard"`
-		Identity                    *Identity         `json:"identity"`
 		ProxyInjector               *ProxyInjector    `json:"proxyInjector"`
 		ProfileValidator            *ProfileValidator `json:"profileValidator"`
 		Tap                         *Tap              `json:"tap"`
-		Proxy                       *Proxy            `json:"proxy"`
-		ProxyInit                   *ProxyInit        `json:"proxyInit"`
 		NodeSelector                map[string]string `json:"nodeSelector"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
@@ -72,6 +59,25 @@ type (
 		SPValidatorResources   *Resources `json:"spValidatorResources"`
 		TapResources           *Resources `json:"tapResources"`
 		WebResources           *Resources `json:"webResources"`
+	}
+
+	// global values common across all charts
+	Global struct {
+		Namespace                string `json:"namespace"`
+		ClusterDomain            string `json:"clusterDomain"`
+		ImagePullPolicy          string `json:"imagePullPolicy"`
+		CliVersion               string `json:"cliVersion"`
+		ControllerComponentLabel string `json:"controllerComponentLabel"`
+		ControllerNamespaceLabel string `json:"controllerNamespaceLabel"`
+		CreatedByAnnotation      string `json:"createdByAnnotation"`
+		ProxyInjectAnnotation    string `json:"proxyInjectAnnotation"`
+		ProxyInjectDisabled      string `json:"proxyInjectDisabled"`
+		LinkerdNamespaceLabel    string `json:"linkerdNamespaceLabel"`
+		HighAvailability         bool   `json:"highAvailability"`
+
+		Identity  *Identity  `json:"identity"`
+		Proxy     *Proxy     `json:"proxy"`
+		ProxyInit *ProxyInit `json:"proxyInit"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
@@ -214,7 +220,7 @@ func NewValues(ha bool) (*Values, error) {
 		return nil, err
 	}
 
-	v.CliVersion = k8s.CreatedByAnnotationValue()
+	v.Global.CliVersion = k8s.CreatedByAnnotationValue()
 	v.ProfileValidator = &ProfileValidator{TLS: &TLS{}}
 	v.ProxyInjector = &ProxyInjector{TLS: &TLS{}}
 	v.ProxyContainerName = k8s.ProxyContainerName
