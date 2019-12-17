@@ -23,6 +23,7 @@
     "react": "16.11.0",
     "react-dom": "16.11.0",
     "react-linkify": "1.0.0-alpha",
+    "react-page-visibility": "^5.1.0",
     "react-router": "5.1.2",
     "react-router-dom": "5.1.2",
     "react-router-prop-types": "1.0.4",

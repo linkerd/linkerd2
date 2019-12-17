@@ -1,4 +1,5 @@
 import { StringParam, withQueryParams } from 'use-query-params';
+import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
@@ -61,6 +62,7 @@ class TopRoutes extends React.Component {
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
     classes: PropTypes.shape({}).isRequired,
+    isPageVisible: PropTypes.bool.isRequired,
     query: topRoutesQueryPropType.isRequired,
     setQuery: PropTypes.func.isRequired,
   }
@@ -94,6 +96,15 @@ class TopRoutes extends React.Component {
   componentDidMount() {
     this._isMounted = true; // https://reactjs.org/blog/2015/12/16/ismounted-antipattern.html
     this.startServerPolling();
+  }
+
+  componentDidUpdate(prevProps) {
+    handlePageVisibility({
+      prevVisibilityState: prevProps.isPageVisible,
+      currentVisibilityState: this.props.isPageVisible,
+      onVisible: () => this.startServerPolling(),
+      onHidden: () => this.stopServerPolling(),
+    });
   }
 
   componentWillUnmount() {
@@ -149,6 +160,7 @@ class TopRoutes extends React.Component {
   stopServerPolling = () => {
     window.clearInterval(this.timerId);
     this.api.cancelCurrentRequests();
+    this.setState({ pendingRequests: false });
   }
 
   handleBtnClick = inProgress => () => {
@@ -336,4 +348,4 @@ class TopRoutes extends React.Component {
   }
 }
 
-export default withQueryParams(topRoutesQueryConfig, (withContext(withStyles(styles, { withTheme: true })(TopRoutes))));
+export default withPageVisibility(withQueryParams(topRoutesQueryConfig, (withContext(withStyles(styles, { withTheme: true })(TopRoutes)))));

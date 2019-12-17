@@ -1,5 +1,6 @@
 import 'whatwg-fetch';
 
+import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 import ErrorBanner from './ErrorBanner.jsx';
 import MetricsTable from './MetricsTable.jsx';
 import NetworkGraph from './NetworkGraph.jsx';
@@ -31,6 +32,7 @@ class Namespaces extends React.Component {
       setCurrentRequests: PropTypes.func.isRequired,
       urlsForResource: PropTypes.func.isRequired,
     }).isRequired,
+    isPageVisible: PropTypes.bool.isRequired,
     match: PropTypes.shape({
       params: PropTypes.shape({
         namespace: PropTypes.string,
@@ -62,9 +64,8 @@ class Namespaces extends React.Component {
   }
 
   componentDidMount() {
-    this.loadFromServer();
+    this.startServerPolling();
     this.checkNamespaceMatch();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
   }
 
   componentDidUpdate(prevProps) {
@@ -73,11 +74,28 @@ class Namespaces extends React.Component {
       this.api.cancelCurrentRequests();
       this.setState(this.getInitialState(this.props.match.params));
     }
+
+    handlePageVisibility({
+      prevVisibilityState: prevProps.isPageVisible,
+      currentVisibilityState: this.props.isPageVisible,
+      onVisible: () => this.startServerPolling(),
+      onHidden: () => this.stopServerPolling(),
+    });
   }
 
   componentWillUnmount() {
+    this.stopServerPolling();
+  }
+
+  startServerPolling() {
+    this.loadFromServer();
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+  }
+
+  stopServerPolling() {
     window.clearInterval(this.timerId);
     this.api.cancelCurrentRequests();
+    this.setState({ pendingRequests: false });
   }
 
   loadFromServer() {
@@ -175,4 +193,4 @@ class Namespaces extends React.Component {
   }
 }
 
-export default withContext(Namespaces);
+export default withPageVisibility(withContext(Namespaces));

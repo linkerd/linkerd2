@@ -1,5 +1,6 @@
 import { StringParam, withQueryParams } from 'use-query-params';
 import { WS_ABNORMAL_CLOSURE, WS_NORMAL_CLOSURE, WS_POLICY_VIOLATION, emptyTapQuery, processTapEvent, setMaxRps, wsCloseCodes } from './util/TapUtils.jsx';
+import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 
 import ErrorBanner from './ErrorBanner.jsx';
 import PropTypes from 'prop-types';
@@ -26,6 +27,7 @@ class Tap extends React.Component {
       PrefixedLink: PropTypes.func.isRequired,
     }).isRequired,
     autostart: PropTypes.string,
+    isPageVisible: PropTypes.bool.isRequired,
     pathPrefix: PropTypes.string.isRequired
   }
 
@@ -70,6 +72,26 @@ class Tap extends React.Component {
     if (this.props.autostart === "true") {
       this.startTapStreaming();
     }
+  }
+
+  componentDidUpdate(prevProps) {
+    handlePageVisibility({
+      prevVisibilityState: prevProps.isPageVisible,
+      currentVisibilityState: this.props.isPageVisible,
+      onVisible: () => {
+        this.startServerPolling();
+        if (this.props.autostart === "true") {
+          this.startTapStreaming();
+        }
+      },
+      onHidden: () => {
+        if (this.ws) {
+          this.ws.close(1000);
+        }
+        this.throttledWebsocketRecvHandler.cancel();
+        this.stopServerPolling();
+      },
+    });
   }
 
   componentWillUnmount() {
@@ -182,6 +204,7 @@ class Tap extends React.Component {
   stopServerPolling() {
     window.clearInterval(this.timerId);
     this.api.cancelCurrentRequests();
+    this.setState({ pendingRequests: false });
   }
 
   startTapStreaming() {
@@ -303,4 +326,4 @@ class Tap extends React.Component {
   }
 }
 
-export default withQueryParams(urlPropsQueryConfig, withContext(Tap));
+export default withPageVisibility(withQueryParams(urlPropsQueryConfig, withContext(Tap)));

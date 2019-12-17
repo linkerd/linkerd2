@@ -1,4 +1,5 @@
 import { cronJobIcon, daemonsetIcon, deploymentIcon, githubIcon, jobIcon, linkerdWordLogo, namespaceIcon, podIcon, replicaSetIcon, slackIcon, statefulSetIcon } from './util/SvgWrappers.jsx';
+import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 import AppBar from '@material-ui/core/AppBar';
 import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import Badge from '@material-ui/core/Badge';
@@ -188,24 +189,40 @@ class NavigationBase extends React.Component {
   }
 
   componentDidMount() {
-    this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.startServerPolling();
     this.fetchVersion();
     this.fetchLatestCommunityUpdate();
     this.updateWindowDimensions();
     window.addEventListener("resize", this.updateWindowDimensions);
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps) {
     if (this.props.history) {
       this.props.checkNamespaceMatch(this.props.history.location.pathname);
     }
+
+    handlePageVisibility({
+      prevVisibilityState: prevProps.isPageVisible,
+      currentVisibilityState: this.props.isPageVisible,
+      onVisible: () => this.startServerPolling(),
+      onHidden: () => this.stopServerPolling(),
+    });
   }
 
   componentWillUnmount() {
     window.removeEventListener("resize", this.updateWindowDimensions);
+    this.stopServerPolling();
+  }
+
+  startServerPolling() {
+    this.loadFromServer();
+    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+  }
+
+  stopServerPolling() {
     window.clearInterval(this.timerId);
     this.api.cancelCurrentRequests();
+    this.setState({ pendingRequests: false });
   }
 
   // API returns namespaces for namespace select button. No metrics returned.
@@ -609,6 +626,7 @@ NavigationBase.propTypes = {
     PropTypes.object,
   ]).isRequired,
   classes: PropTypes.shape({}).isRequired,
+  isPageVisible: PropTypes.bool.isRequired,
   location: ReactRouterPropTypes.location.isRequired,
   pathPrefix: PropTypes.string.isRequired,
   releaseVersion: PropTypes.string.isRequired,
@@ -616,4 +634,4 @@ NavigationBase.propTypes = {
   uuid: PropTypes.string.isRequired,
 };
 
-export default withContext(withStyles(styles, { withTheme: true })(NavigationBase));
+export default withPageVisibility(withContext(withStyles(styles, { withTheme: true })(NavigationBase)));
