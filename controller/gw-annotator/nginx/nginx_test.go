@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func TestIsAnnotated(t *testing.T) {
+func TestNeedsAnnotation(t *testing.T) {
 	testCases := []struct {
 		desc           string
 		annotations    map[string]interface{}
@@ -19,63 +19,63 @@ func TestIsAnnotated(t *testing.T) {
 		{
 			desc:           "no annotations",
 			annotations:    nil,
-			expectedOutput: false,
+			expectedOutput: true,
 		},
 		{
 			desc: "empty nginx configuration snippet annotation",
 			annotations: map[string]interface{}{
 				DefaultPrefix + ConfigSnippetKey: "",
 			},
-			expectedOutput: false,
+			expectedOutput: true,
 		},
 		{
 			desc: "nginx configuration snippet annotation present but no l5d header",
 			annotations: map[string]interface{}{
 				DefaultPrefix + ConfigSnippetKey: "entry1",
 			},
-			expectedOutput: false,
+			expectedOutput: true,
 		},
 		{
 			desc: "invalid l5d header for http traffic",
 			annotations: map[string]interface{}{
 				DefaultPrefix + ConfigSnippetKey: "proxy_set_header l5d-dst-override",
 			},
-			expectedOutput: false,
+			expectedOutput: true,
 		},
 		{
 			desc: "another invalid l5d header for http traffic",
 			annotations: map[string]interface{}{
 				DefaultPrefix + ConfigSnippetKey: "proxy_set_header l5d-dst-overide test",
 			},
-			expectedOutput: false,
+			expectedOutput: true,
 		},
 		{
 			desc: "valid l5d header for http traffic",
 			annotations: map[string]interface{}{
 				DefaultPrefix + ConfigSnippetKey: L5DHeaderTestsValueHTTP,
 			},
-			expectedOutput: true,
+			expectedOutput: false,
 		},
 		{
 			desc: "valid l5d header for http traffic (not using default annotation prefix)",
 			annotations: map[string]interface{}{
 				"custom-prefix" + ConfigSnippetKey: L5DHeaderTestsValueHTTP,
 			},
-			expectedOutput: true,
+			expectedOutput: false,
 		},
 		{
 			desc: "valid l5d header for grpc traffic",
 			annotations: map[string]interface{}{
 				DefaultPrefix + ConfigSnippetKey: L5DHeaderTestsValueGRPC,
 			},
-			expectedOutput: true,
+			expectedOutput: false,
 		},
 		{
 			desc: "valid l5d header for http and grpc traffic",
 			annotations: map[string]interface{}{
 				DefaultPrefix + ConfigSnippetKey: L5DHeaderTestsValueHTTP + "\n" + L5DHeaderTestsValueGRPC,
 			},
-			expectedOutput: true,
+			expectedOutput: false,
 		},
 	}
 
@@ -90,7 +90,7 @@ func TestIsAnnotated(t *testing.T) {
 				},
 			}
 			g := &Gateway{Object: obj}
-			output := g.IsAnnotated()
+			output := g.NeedsAnnotation()
 			if output != tc.expectedOutput {
 				t.Errorf("expecting output to be %v but got %v", tc.expectedOutput, output)
 			}

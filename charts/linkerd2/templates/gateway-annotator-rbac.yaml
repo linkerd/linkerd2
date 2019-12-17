@@ -80,7 +80,7 @@ webhooks:
     caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.gatewayAnnotator.crtPEM)) (empty .Values.gatewayAnnotator.crtPEM) }}
   failurePolicy: {{.Values.webhookFailurePolicy}}
   rules:
-  - operations: ["CREATE"]
+  - operations: [ "CREATE", "UPDATE" ]
     apiGroups: ["extensions", "networking.k8s.io"]
     apiVersions: ["v1beta1"]
     resources: ["ingresses"]

@@ -28,16 +28,16 @@ type Gateway struct {
 	ConfigMode gateway.ConfigMode
 }
 
-// IsAnnotated implements the Gateway interface.
-func (g *Gateway) IsAnnotated() bool {
+// NeedsAnnotation implements the Gateway interface.
+func (g *Gateway) NeedsAnnotation() bool {
 	switch g.ConfigMode {
 	case gateway.Ingress:
 		headers, ok := NewCustomRequestHeaders(g.Object, HeadersSeparator)
 		if ok {
-			return headers.ContainsL5DHeader()
+			return !headers.ContainsL5DHeader()
 		}
 	}
-	return false
+	return true
 }
 
 // GenerateAnnotationPatch implements the Gateway interface.

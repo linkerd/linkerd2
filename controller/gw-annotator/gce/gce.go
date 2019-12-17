@@ -10,8 +10,8 @@ type Gateway struct {
 	Object *unstructured.Unstructured
 }
 
-// IsAnnotated implements the Gateway interface.
-func (g *Gateway) IsAnnotated() bool {
+// NeedsAnnotation implements the Gateway interface.
+func (g *Gateway) NeedsAnnotation() bool {
 	// TODO (tegioz)
 	return false
 }

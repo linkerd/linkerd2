@@ -12,13 +12,13 @@ type Gateway struct {
 	Object *unstructured.Unstructured
 }
 
-// IsAnnotated implements the Gateway interface.
-func (g *Gateway) IsAnnotated() bool {
+// NeedsAnnotation implements the Gateway interface.
+func (g *Gateway) NeedsAnnotation() bool {
 	cs, ok := NewConfigSnippet(g.Object)
 	if !ok {
-		return false
+		return true
 	}
-	return cs.ContainsL5DHeader()
+	return !cs.ContainsL5DHeader()
 }
 
 // GenerateAnnotationPatch implements the Gateway interface.

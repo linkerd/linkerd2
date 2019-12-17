@@ -2,7 +2,7 @@ package gloo
 
 import "testing"
 
-func TestIsAnnotated(t *testing.T) {
+func TestNeedsAnnotation(t *testing.T) {
 	// TODO (tegioz)
 }
 

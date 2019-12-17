@@ -47,7 +47,7 @@ func AnnotateGateway(
 
 	// Check if object represents a gateway and if it's been already annotated
 	ok, gw := isGateway(obj)
-	if !ok || gw.IsAnnotated() {
+	if !ok || !gw.NeedsAnnotation() {
 		return admissionResponse, nil
 	}
 

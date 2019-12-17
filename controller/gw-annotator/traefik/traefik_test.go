@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func TestIsAnnotated(t *testing.T) {
+func TestNeedsAnnotation(t *testing.T) {
 	testCases := []struct {
 		desc           string
 		configMode     gateway.ConfigMode
@@ -22,7 +22,7 @@ func TestIsAnnotated(t *testing.T) {
 			desc:           "no annotations",
 			configMode:     gateway.Ingress,
 			annotations:    nil,
-			expectedOutput: false,
+			expectedOutput: true,
 		},
 		{
 			desc:       "no custom request headers annotation",
@@ -30,7 +30,7 @@ func TestIsAnnotated(t *testing.T) {
 			annotations: map[string]interface{}{
 				"k1": "v1",
 			},
-			expectedOutput: false,
+			expectedOutput: true,
 		},
 		{
 			desc:       "empty custom request headers annotation",
@@ -38,7 +38,7 @@ func TestIsAnnotated(t *testing.T) {
 			annotations: map[string]interface{}{
 				CustomRequestHeadersKey: "",
 			},
-			expectedOutput: false,
+			expectedOutput: true,
 		},
 		{
 			desc:       "custom request headers annotation present but no l5d header",
@@ -46,7 +46,7 @@ func TestIsAnnotated(t *testing.T) {
 			annotations: map[string]interface{}{
 				CustomRequestHeadersKey: "k1:v1||k2:v2",
 			},
-			expectedOutput: false,
+			expectedOutput: true,
 		},
 		{
 			desc:       "custom request headers annotation present with l5d header",
@@ -54,7 +54,7 @@ func TestIsAnnotated(t *testing.T) {
 			annotations: map[string]interface{}{
 				CustomRequestHeadersKey: fmt.Sprintf("k1:v1||%s:%s||k2:v2", gateway.L5DHeader, "value"),
 			},
-			expectedOutput: true,
+			expectedOutput: false,
 		},
 	}
 
@@ -69,7 +69,7 @@ func TestIsAnnotated(t *testing.T) {
 				},
 			}
 			g := &Gateway{Object: obj, ConfigMode: tc.configMode}
-			output := g.IsAnnotated()
+			output := g.NeedsAnnotation()
 			if output != tc.expectedOutput {
 				t.Errorf("expecting output to be %v but got %v", tc.expectedOutput, output)
 			}
