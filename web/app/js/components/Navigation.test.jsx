@@ -188,7 +188,8 @@ describe('Namespace Select Button', () => {
   });
 
   it('opens the Namespace Selection menu if button is clicked', () => {
-    // Material UI - Popover needs a proper anchorEl if NOVE_ENV is different to "test"
+    // Material-UI v4 requires that the popover needs a valid anchorEl
+    // if NODE_ENV is not "test"
     delete process.env.NODE_ENV;
     process.env.NODE_ENV = "test";
 
