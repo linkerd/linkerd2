@@ -1,3 +1,17 @@
+## stable-2.6.1
+
+This release improves proxy stability by fixing a bug where the proxy could stop
+receiving service discovery updates, resulting in 503 errors.
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Full release notes**:
+
+* Proxy
+  * Fixed a bug where the proxy could stop receiving service discovery updates,
+    resulting in 503 errors
+  * Improved debug/error logging to include detailed contextual information
+
 ## stable-2.6.0
 
 This release introduces distributed tracing support, adds request and response
