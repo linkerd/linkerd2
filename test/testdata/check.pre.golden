@@ -26,15 +26,6 @@ pre-kubernetes-capability
 √ has NET_ADMIN capability
 √ has NET_RAW capability
 
-pre-linkerd-global-resources
-----------------------------
-√ no ClusterRoles exist
-√ no ClusterRoleBindings exist
-√ no CustomResourceDefinitions exist
-√ no MutatingWebhookConfigurations exist
-√ no ValidatingWebhookConfigurations exist
-√ no PodSecurityPolicies exist
-
 linkerd-version
 ---------------
 √ can determine the latest version
