@@ -194,7 +194,8 @@ func TestGenerateAnnotationPatch(t *testing.T) {
 				},
 			}
 			g := &Gateway{Object: obj}
-			output, _ := g.GenerateAnnotationPatch(tc.clusterDomain)
+			g.SetClusterDomain(tc.clusterDomain)
+			output, _ := g.GenerateAnnotationPatch()
 			if !reflect.DeepEqual(output, tc.expectedOutput) {
 				t.Errorf("expecting output to be\n %v\n but got\n %v", tc.expectedOutput, output)
 			}

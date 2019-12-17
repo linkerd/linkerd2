@@ -45,20 +45,24 @@ func AnnotateGateway(
 	}
 	obj := &unstructured.Unstructured{Object: objMap}
 
-	// Check if object represents a gateway and if it requires to be annotated
-	ok, gw := isGateway(obj)
-	if !ok || !gw.NeedsAnnotation() {
-		return admissionResponse, nil
-	}
-
 	// Get cluster domain from global config
 	globalConfig, err := config.Global(globalConfigFile)
 	if err != nil {
 		return nil, err
 	}
 
+	// Check if object represents a gateway and if it requires to be annotated
+	ok, gw := isGateway(obj)
+	if !ok {
+		return admissionResponse, nil
+	}
+	gw.SetClusterDomain(globalConfig.ClusterDomain)
+	if !gw.NeedsAnnotation() {
+		return admissionResponse, nil
+	}
+
 	// Generate annotation patch and attach it to admission response
-	patch, err := gw.GenerateAnnotationPatch(globalConfig.ClusterDomain)
+	patch, err := gw.GenerateAnnotationPatch()
 	if err != nil {
 		return nil, err
 	}

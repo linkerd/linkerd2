@@ -7,7 +7,13 @@ import (
 
 // Gateway represents a Gateway interface implementation for GCE.
 type Gateway struct {
-	Object *unstructured.Unstructured
+	Object        *unstructured.Unstructured
+	clusterDomain string
+}
+
+// SetClusterDomain implements the Gateway interface.
+func (g *Gateway) SetClusterDomain(clusterDomain string) {
+	g.clusterDomain = clusterDomain
 }
 
 // NeedsAnnotation implements the Gateway interface.
@@ -17,7 +23,7 @@ func (g *Gateway) NeedsAnnotation() bool {
 }
 
 // GenerateAnnotationPatch implements the Gateway interface.
-func (g *Gateway) GenerateAnnotationPatch(clusterDomain string) (gateway.Patch, error) {
+func (g *Gateway) GenerateAnnotationPatch() (gateway.Patch, error) {
 	// TODO (tegioz)
 	return nil, nil
 }

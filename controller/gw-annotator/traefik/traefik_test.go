@@ -14,45 +14,103 @@ func TestNeedsAnnotation(t *testing.T) {
 	testCases := []struct {
 		desc           string
 		configMode     gateway.ConfigMode
-		annotations    map[string]interface{}
+		obj            *unstructured.Unstructured
 		expectedOutput bool
 	}{
 		// Ingress
 		{
-			desc:           "no annotations",
-			configMode:     gateway.Ingress,
-			annotations:    nil,
+			desc:       "no annotations",
+			configMode: gateway.Ingress,
+			obj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"annotations": nil,
+					},
+				},
+			},
 			expectedOutput: true,
 		},
 		{
 			desc:       "no custom request headers annotation",
 			configMode: gateway.Ingress,
-			annotations: map[string]interface{}{
-				"k1": "v1",
+			obj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"k1": "v1",
+						},
+					},
+				},
 			},
 			expectedOutput: true,
 		},
 		{
 			desc:       "empty custom request headers annotation",
 			configMode: gateway.Ingress,
-			annotations: map[string]interface{}{
-				CustomRequestHeadersKey: "",
+			obj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							CustomRequestHeadersKey: "",
+						},
+					},
+				},
 			},
 			expectedOutput: true,
 		},
 		{
 			desc:       "custom request headers annotation present but no l5d header",
 			configMode: gateway.Ingress,
-			annotations: map[string]interface{}{
-				CustomRequestHeadersKey: "k1:v1||k2:v2",
+			obj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							CustomRequestHeadersKey: "k1:v1||k2:v2",
+						},
+					},
+				},
 			},
 			expectedOutput: true,
 		},
 		{
-			desc:       "custom request headers annotation present with l5d header",
+			desc:       "custom request headers annotation present with invalid l5d header (svc and port changed)",
 			configMode: gateway.Ingress,
-			annotations: map[string]interface{}{
-				CustomRequestHeadersKey: fmt.Sprintf("k1:v1||%s:%s||k2:v2", gateway.L5DHeader, "value"),
+			obj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"namespace": "test-ns",
+						"annotations": map[string]interface{}{
+							CustomRequestHeadersKey: fmt.Sprintf("k1:v1||%s:%s||k2:v2", gateway.L5DHeader, L5DHeaderTestsValue),
+						},
+					},
+					"spec": map[string]interface{}{
+						"backend": map[string]interface{}{
+							"serviceName": "test-svc2",
+							"servicePort": float64(8889),
+						},
+					},
+				},
+			},
+			expectedOutput: true,
+		},
+		{
+			desc:       "custom request headers annotation present with valid l5d header",
+			configMode: gateway.Ingress,
+			obj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"namespace": "test-ns",
+						"annotations": map[string]interface{}{
+							CustomRequestHeadersKey: fmt.Sprintf("k1:v1||%s:%s||k2:v2", gateway.L5DHeader, L5DHeaderTestsValue),
+						},
+					},
+					"spec": map[string]interface{}{
+						"backend": map[string]interface{}{
+							"serviceName": "test-svc",
+							"servicePort": float64(8888),
+						},
+					},
+				},
 			},
 			expectedOutput: false,
 		},
@@ -61,14 +119,8 @@ func TestNeedsAnnotation(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("test_%d: %s", i, tc.desc), func(t *testing.T) {
-			obj := &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"metadata": map[string]interface{}{
-						"annotations": tc.annotations,
-					},
-				},
-			}
-			g := &Gateway{Object: obj, ConfigMode: tc.configMode}
+			g := &Gateway{Object: tc.obj, ConfigMode: tc.configMode}
+			g.SetClusterDomain(gateway.DefaultClusterDomain)
 			output := g.NeedsAnnotation()
 			if output != tc.expectedOutput {
 				t.Errorf("expecting output to be %v but got %v", tc.expectedOutput, output)
@@ -344,13 +396,41 @@ func TestGenerateAnnotationPatch(t *testing.T) {
 			}},
 			expectedError: nil,
 		},
+		{
+			desc:       "custom request headers annotation present with invalid l5d header (svc and port changed)",
+			configMode: gateway.Ingress,
+			obj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"namespace": "test-ns",
+						"annotations": map[string]interface{}{
+							CustomRequestHeadersKey: fmt.Sprintf("k1:v1||%s:%s||k2:v2", gateway.L5DHeader, "test-svc2:8889"),
+						},
+					},
+					"spec": map[string]interface{}{
+						"backend": map[string]interface{}{
+							"serviceName": "test-svc",
+							"servicePort": float64(8888),
+						},
+					},
+				},
+			},
+			clusterDomain: gateway.DefaultClusterDomain,
+			expectedOutput: []gateway.PatchOperation{{
+				Op:    "replace",
+				Path:  annotationPath,
+				Value: fmt.Sprintf("k1:v1||k2:v2||%s:%s", gateway.L5DHeader, L5DHeaderTestsValue),
+			}},
+			expectedError: nil,
+		},
 	}
 
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("test_%d: %s", i, tc.desc), func(t *testing.T) {
 			g := &Gateway{Object: tc.obj, ConfigMode: gateway.Ingress}
-			output, err := g.GenerateAnnotationPatch(tc.clusterDomain)
+			g.SetClusterDomain(tc.clusterDomain)
+			output, err := g.GenerateAnnotationPatch()
 			if err != tc.expectedError {
 				t.Fatalf("expecting error to be %v but got %v", tc.expectedError, err)
 			}

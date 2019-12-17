@@ -30,6 +30,7 @@ const (
 // many cases a gateway will be an ingress object, but in some cases it can be
 // a service with a special annotation or a controller specific CRD.
 type Gateway interface {
+	SetClusterDomain(clusterDomain string)
 	NeedsAnnotation() bool
-	GenerateAnnotationPatch(clusterDomain string) (Patch, error)
+	GenerateAnnotationPatch() (Patch, error)
 }

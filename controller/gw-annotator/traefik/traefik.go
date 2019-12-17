@@ -24,25 +24,33 @@ var (
 
 // Gateway represents a Gateway interface implementation for Traefik.
 type Gateway struct {
-	Object     *unstructured.Unstructured
-	ConfigMode gateway.ConfigMode
+	Object        *unstructured.Unstructured
+	ConfigMode    gateway.ConfigMode
+	clusterDomain string
+}
+
+// SetClusterDomain implements the Gateway interface.
+func (g *Gateway) SetClusterDomain(clusterDomain string) {
+	g.clusterDomain = clusterDomain
 }
 
 // NeedsAnnotation implements the Gateway interface.
 func (g *Gateway) NeedsAnnotation() bool {
 	switch g.ConfigMode {
 	case gateway.Ingress:
-		headers, ok := NewCustomRequestHeaders(g.Object, HeadersSeparator)
-		if ok {
-			return !headers.ContainsL5DHeader()
+		h, ok := NewCustomRequestHeaders(g.Object, HeadersSeparator)
+		if ok && h.ContainsL5DHeader() {
+			expectedHeader, err := g.buildHeader()
+			if err != nil || h[gateway.L5DHeader] == expectedHeader {
+				return false
+			}
 		}
 	}
 	return true
 }
 
 // GenerateAnnotationPatch implements the Gateway interface.
-func (g *Gateway) GenerateAnnotationPatch(clusterDomain string) (gateway.Patch, error) {
-	g.Object.GetNamespace()
+func (g *Gateway) GenerateAnnotationPatch() (gateway.Patch, error) {
 	switch g.ConfigMode {
 	case gateway.Ingress:
 		headers, found := NewCustomRequestHeaders(g.Object, HeadersSeparator)
@@ -50,15 +58,11 @@ func (g *Gateway) GenerateAnnotationPatch(clusterDomain string) (gateway.Patch, 
 		if found {
 			op = "replace"
 		}
-		service, port, err := g.getIngressServiceAndPort()
+		var err error
+		headers[gateway.L5DHeader], err = g.buildHeader()
 		if err != nil {
 			return nil, err
 		}
-		headers[gateway.L5DHeader] = fmt.Sprintf("%s.%s.svc.%s:%.0f",
-			service,
-			g.Object.GetNamespace(),
-			clusterDomain,
-			port)
 
 		return []gateway.PatchOperation{{
 			Op:    op,
@@ -67,6 +71,18 @@ func (g *Gateway) GenerateAnnotationPatch(clusterDomain string) (gateway.Patch, 
 		}}, nil
 	}
 	return nil, nil
+}
+
+func (g *Gateway) buildHeader() (string, error) {
+	service, port, err := g.getIngressServiceAndPort()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s.%s.svc.%s:%.0f",
+		service,
+		g.Object.GetNamespace(),
+		g.clusterDomain,
+		port), nil
 }
 
 func (g *Gateway) getIngressServiceAndPort() (string, float64, error) {

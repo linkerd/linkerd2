@@ -9,7 +9,13 @@ import (
 
 // Gateway represents a Gateway interface implementation for Nginx.
 type Gateway struct {
-	Object *unstructured.Unstructured
+	Object        *unstructured.Unstructured
+	clusterDomain string
+}
+
+// SetClusterDomain implements the Gateway interface.
+func (g *Gateway) SetClusterDomain(clusterDomain string) {
+	g.clusterDomain = clusterDomain
 }
 
 // NeedsAnnotation implements the Gateway interface.
@@ -22,7 +28,7 @@ func (g *Gateway) NeedsAnnotation() bool {
 }
 
 // GenerateAnnotationPatch implements the Gateway interface.
-func (g *Gateway) GenerateAnnotationPatch(clusterDomain string) (gateway.Patch, error) {
+func (g *Gateway) GenerateAnnotationPatch() (gateway.Patch, error) {
 	cs, found := NewConfigSnippet(g.Object)
 	op := "add"
 	if found {
@@ -30,8 +36,8 @@ func (g *Gateway) GenerateAnnotationPatch(clusterDomain string) (gateway.Patch, 
 	}
 
 	cs.Entries = append(cs.Entries,
-		"proxy_set_header l5d-dst-override $service_name.$namespace.svc."+clusterDomain+":$service_port;",
-		"grpc_set_header l5d-dst-override $service_name.$namespace.svc."+clusterDomain+":$service_port;",
+		"proxy_set_header l5d-dst-override $service_name.$namespace.svc."+g.clusterDomain+":$service_port;",
+		"grpc_set_header l5d-dst-override $service_name.$namespace.svc."+g.clusterDomain+":$service_port;",
 	)
 
 	return []gateway.PatchOperation{{

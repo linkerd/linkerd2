@@ -209,12 +209,47 @@ spec:
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
+  namespace: test-ns
   annotations:
     kubernetes.io/ingress.class: traefik
-    ingress.kubernetes.io/custom-request-headers: l5d-dst-override:test-svc.test-ns.svc.cluster.local:8888`,
+    ingress.kubernetes.io/custom-request-headers: l5d-dst-override:test-svc.test-ns.svc.cluster.local:8888
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /test-path
+        backend:
+          serviceName: test-svc
+          servicePort: 8888`,
 			),
 			expectedOutput: buildTestAdmissionResponse(nil),
 			expectedError:  false,
+		},
+		{
+			desc: "traefik ingress with custom request headers annotation already annotated for l5d (but svc and port have changed)",
+			objectYAML: []byte(`
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  namespace: test-ns
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    ingress.kubernetes.io/custom-request-headers: l5d-dst-override:test-svc2.test-ns.svc.cluster.local:8889
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /test-path
+        backend:
+          serviceName: test-svc
+          servicePort: 8888`,
+			),
+			expectedOutput: buildTestAdmissionResponse([]gateway.PatchOperation{{
+				Op:    "replace",
+				Path:  traefikAnnotPath,
+				Value: fmt.Sprintf("%s:%s", gateway.L5DHeader, traefik.L5DHeaderTestsValue),
+			}}),
+			expectedError: false,
 		},
 	}
 
