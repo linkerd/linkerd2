@@ -237,7 +237,7 @@ func (iw *IPWatcher) podToPodSet(pod *corev1.Pod) PodSet {
 				OwnerKind: ownerKind,
 			},
 		},
-		Labels: map[string]string{},
+		Labels: map[string]string{"namespace": pod.Namespace},
 	}
 }
 
