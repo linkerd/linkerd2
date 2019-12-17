@@ -45,7 +45,7 @@ func AnnotateGateway(
 	}
 	obj := &unstructured.Unstructured{Object: objMap}
 
-	// Check if object represents a gateway and if it's been already annotated
+	// Check if object represents a gateway and if it requires to be annotated
 	ok, gw := isGateway(obj)
 	if !ok || !gw.NeedsAnnotation() {
 		return admissionResponse, nil
