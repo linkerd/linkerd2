@@ -61,7 +61,7 @@ type (
 		WebResources           *Resources `json:"webResources"`
 	}
 
-	// global values common across all charts
+	// Global values common across all charts
 	Global struct {
 		Namespace                string `json:"namespace"`
 		ClusterDomain            string `json:"clusterDomain"`
