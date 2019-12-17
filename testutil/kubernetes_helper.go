@@ -54,6 +54,11 @@ func (h *KubernetesHelper) CheckIfNamespaceExists(namespace string) error {
 	return err
 }
 
+// GetSecret retrieves a Kubernetes Secret
+func (h *KubernetesHelper) GetSecret(namespace, name string) (*corev1.Secret, error) {
+	return h.clientset.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+}
+
 func (h *KubernetesHelper) createNamespaceIfNotExists(namespace string, annotations, labels map[string]string) error {
 	err := h.CheckIfNamespaceExists(namespace)
 

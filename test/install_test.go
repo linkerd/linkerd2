@@ -217,7 +217,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 	)
 
-	if TestHelper.GetClusterDomain() != "" {
+	if TestHelper.GetClusterDomain() != "cluster.local" {
 		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())
 	}
 
@@ -231,15 +231,38 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			t.Fatalf("failed to create %s namespace: %s", TestHelper.GetLinkerdNamespace(), err)
 		}
 
-		secretResource, err := testutil.ReadFile("testdata/issuer_secret_1.yaml")
+		identity := fmt.Sprintf("identity.%s.%s", TestHelper.GetLinkerdNamespace(), TestHelper.GetClusterDomain())
+
+		root, err := tls.GenerateRootCAWithDefaults(identity)
 		if err != nil {
-			t.Fatalf("failed to load linkerd-identity-issuer resource: %s", err)
+			t.Fatal(err)
 		}
 
-		out, err := TestHelper.KubectlApply(secretResource, TestHelper.GetLinkerdNamespace())
+		// instead of passing the roots and key around we generate
+		// two secrets here. The second one will be used in the
+		// external_issuer_test to update the first one and trigger
+		// cert rotation in the identity service. That allows us
+		// to generated the certs on the fly and use custom domain.
 
+		if err = TestHelper.CreateTLSSecret(
+			k8s.IdentityIssuerSecretName,
+			root.Cred.Crt.EncodeCertificatePEM(),
+			root.Cred.Crt.EncodeCertificatePEM(),
+			root.Cred.EncodePrivateKeyPEM()); err != nil {
+			t.Fatal(err)
+		}
+
+		crt2, err := root.GenerateCA(identity, root.Validity, -1)
 		if err != nil {
-			t.Fatalf("failed to create linkerd-identity-issuer resource: %s", out)
+			t.Fatal(err)
+		}
+
+		if err = TestHelper.CreateTLSSecret(
+			k8s.IdentityIssuerSecretName+"-new",
+			root.Cred.Crt.EncodeCertificatePEM(),
+			crt2.Cred.EncodeCertificatePEM(),
+			crt2.Cred.EncodePrivateKeyPEM()); err != nil {
+			t.Fatal(err)
 		}
 	}
 
@@ -317,14 +340,14 @@ func TestInstallHelm(t *testing.T) {
 	}
 
 	args := []string{
-		"--set", "ControllerLogLevel=debug",
-		"--set", "LinkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "Proxy.Image.Version=" + TestHelper.GetVersion(),
-		"--set", "Identity.TrustDomain=cluster.local",
-		"--set", "Identity.TrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
-		"--set", "Identity.Issuer.TLS.CrtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
-		"--set", "Identity.Issuer.TLS.KeyPEM=" + root.Cred.EncodePrivateKeyPEM(),
-		"--set", "Identity.Issuer.CrtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
+		"--set", "controllerLogLevel=debug",
+		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
+		"--set", "proxy.image.version=" + TestHelper.GetVersion(),
+		"--set", "identity.trustDomain=cluster.local",
+		"--set", "identity.trustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
+		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
 	if stdout, stderr, err := TestHelper.HelmRun("install", args...); err != nil {
 		t.Fatalf("helm install command failed\n%s\n%s", stdout, stderr)

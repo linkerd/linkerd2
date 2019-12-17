@@ -6,13 +6,13 @@
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: linkerd-{{.Values.Namespace}}-control-plane
+  name: linkerd-{{.Values.namespace}}-control-plane
   labels:
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 spec:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
-  {{- if empty .Values.NoInitContainer }}
+  {{- if empty .Values.noInitContainer }}
   allowedCapabilities:
   - NET_ADMIN
   - NET_RAW
@@ -25,7 +25,7 @@ spec:
   seLinux:
     rule: RunAsAny
   runAsUser:
-    {{- if .Values.NoInitContainer }}
+    {{- if .Values.noInitContainer }}
     rule: MustRunAsNonRoot
     {{- else }}
     rule: RunAsAny
@@ -33,7 +33,7 @@ spec:
   supplementalGroups:
     rule: MustRunAs
     ranges:
-    {{- if .Values.NoInitContainer }}
+    {{- if .Values.noInitContainer }}
     - min: 10001
       max: 65535
     {{- else }}
@@ -43,7 +43,7 @@ spec:
   fsGroup:
     rule: MustRunAs
     ranges:
-    {{- if .Values.NoInitContainer }}
+    {{- if .Values.noInitContainer }}
     - min: 10001
       max: 65535
     {{- else }}
@@ -62,23 +62,23 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-psp
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
   verbs: ['use']
   resourceNames:
-  - linkerd-{{.Values.Namespace}}-control-plane
+  - linkerd-{{.Values.namespace}}-control-plane
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-psp
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 roleRef:
   kind: Role
   name: linkerd-psp
@@ -86,33 +86,33 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-controller
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 - kind: ServiceAccount
   name: linkerd-destination
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 - kind: ServiceAccount
   name: linkerd-grafana
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 {{ if not .DisableHeartBeat -}}
 - kind: ServiceAccount
   name: linkerd-heartbeat
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 {{ end -}}
 - kind: ServiceAccount
   name: linkerd-identity
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 - kind: ServiceAccount
   name: linkerd-prometheus
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 - kind: ServiceAccount
   name: linkerd-proxy-injector
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 - kind: ServiceAccount
   name: linkerd-sp-validator
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 - kind: ServiceAccount
   name: linkerd-tap
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 - kind: ServiceAccount
   name: linkerd-web
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}

@@ -51,19 +51,13 @@ describe('Tests for <MetricsTable>', () => {
 
     const enableFilter = table.prop('enableFilter');
 
-    const filterIcon = table.find("FilterListIcon");
-
     expect(enableFilter).toEqual(true);
-    expect(filterIcon).toBeDefined();
     expect(table.html()).toContain('books');
     expect(table.html()).toContain('authors');
-    filterIcon.simulate("click");
-    setTimeout(() => {
-      const input = table.find("input");
-      input.simulate("change", {target: {value: "authors"}});
-      expect(table.html()).not.toContain('books');
-      expect(table.html()).toContain('authors');
-      }, 100);
+    table.instance().setState({ showFilter: true, filterBy: /authors/ });
+    component.update();
+    expect(table.html()).not.toContain('books');
+    expect(table.html()).toContain('authors');
   });
 
   it('omits the namespace column for the namespace resource', () => {

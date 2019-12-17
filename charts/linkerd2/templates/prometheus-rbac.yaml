@@ -6,10 +6,10 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.Namespace}}-prometheus
+  name: linkerd-{{.Values.namespace}}-prometheus
   labels:
-    {{.Values.ControllerComponentLabel}}: prometheus
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: prometheus
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["nodes", "nodes/proxy", "pods"]
@@ -18,24 +18,24 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.Namespace}}-prometheus
+  name: linkerd-{{.Values.namespace}}-prometheus
   labels:
-    {{.Values.ControllerComponentLabel}}: prometheus
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: prometheus
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-{{.Values.Namespace}}-prometheus
+  name: linkerd-{{.Values.namespace}}-prometheus
 subjects:
 - kind: ServiceAccount
   name: linkerd-prometheus
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-prometheus
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: prometheus
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: prometheus
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}

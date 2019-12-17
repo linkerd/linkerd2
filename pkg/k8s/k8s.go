@@ -35,6 +35,7 @@ const (
 // AllResources is a sorted list of all resources defined as constants above.
 var AllResources = []string{
 	Authority,
+	CronJob,
 	DaemonSet,
 	Deployment,
 	Job,
@@ -60,6 +61,8 @@ var StatAllResourceTypes = []string{
 	Service,
 	TrafficSplit,
 	Authority,
+	CronJob,
+	ReplicaSet,
 }
 
 // GetConfig returns kubernetes config based on the current environment.
@@ -84,6 +87,8 @@ func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) 
 	switch friendlyName {
 	case "au", "authority", "authorities":
 		return Authority, nil
+	case "cj", "cronjob", "cronjobs":
+		return CronJob, nil
 	case "ds", "daemonset", "daemonsets":
 		return DaemonSet, nil
 	case "deploy", "deployment", "deployments":
@@ -119,6 +124,8 @@ func ShortNameFromCanonicalResourceName(canonicalName string) string {
 	switch canonicalName {
 	case Authority:
 		return "au"
+	case CronJob:
+		return "cj"
 	case DaemonSet:
 		return "ds"
 	case Deployment:

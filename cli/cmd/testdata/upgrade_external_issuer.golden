@@ -3,18 +3,15 @@
 ### Linkerd Namespace
 ###
 ---
-apiVersion: v1
 kind: Namespace
+apiVersion: v1
 metadata:
+  name: linkerd
   annotations:
     linkerd.io/inject: disabled
-  creationTimestamp: null
   labels:
-    config.linkerd.io/admission-webhooks: disabled
     linkerd.io/is-control-plane: "true"
-  name: linkerd
-spec: {}
-status: {}
+    config.linkerd.io/admission-webhooks: disabled
 ---
 ###
 ### Identity Controller Service RBAC
@@ -79,7 +76,7 @@ rules:
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
+  resources: ["cronjobs", "jobs"]
   verbs: ["list" , "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services", "replicationcontrollers", "namespaces"]
@@ -454,7 +451,7 @@ rules:
   resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
+  resources: ["cronjobs", "jobs"]
   verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
@@ -632,7 +629,7 @@ rules:
   resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
+  resources: ["cronjobs", "jobs"]
   verbs: ["list" , "get", "watch"]
 ---
 kind: ClusterRole
@@ -3022,4 +3019,3 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-tap-tls
----

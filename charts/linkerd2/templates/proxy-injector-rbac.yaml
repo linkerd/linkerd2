@@ -6,10 +6,10 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.Namespace}}-proxy-injector
+  name: linkerd-{{.Values.namespace}}-proxy-injector
   labels:
-    {{.Values.ControllerComponentLabel}}: proxy-injector
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: proxy-injector
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["events"]
@@ -24,58 +24,58 @@ rules:
   resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["extensions", "batch"]
-  resources: ["jobs"]
+  resources: ["cronjobs", "jobs"]
   verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.Namespace}}-proxy-injector
+  name: linkerd-{{.Values.namespace}}-proxy-injector
   labels:
-    {{.Values.ControllerComponentLabel}}: proxy-injector
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: proxy-injector
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 subjects:
 - kind: ServiceAccount
   name: linkerd-proxy-injector
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-{{.Values.Namespace}}-proxy-injector
+  name: linkerd-{{.Values.namespace}}-proxy-injector
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: {{.Values.Namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.ControllerComponentLabel}}: proxy-injector
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: proxy-injector
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 ---
 kind: Secret
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector-tls
-  namespace: {{ .Values.Namespace }}
+  namespace: {{ .Values.namespace }}
   labels:
-    {{.Values.ControllerComponentLabel}}: proxy-injector
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: proxy-injector
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   annotations:
-    {{.Values.CreatedByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.LinkerdVersion) .Values.CliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 type: Opaque
 data:
-  {{ $ca := genCA (printf "linkerd-proxy-injector.%s.svc" .Values.Namespace) 365 -}}
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.ProxyInjector.CrtPEM)) (empty .Values.ProxyInjector.CrtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.ProxyInjector.KeyPEM)) (empty .Values.ProxyInjector.KeyPEM) }}
+  {{ $ca := genCA (printf "linkerd-proxy-injector.%s.svc" .Values.namespace) 365 -}}
+  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.proxyInjector.crtPEM)) (empty .Values.proxyInjector.crtPEM) }}
+  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.proxyInjector.keyPEM)) (empty .Values.proxyInjector.keyPEM) }}
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-injector-webhook-config
   labels:
-    {{.Values.ControllerComponentLabel}}: proxy-injector
-    {{.Values.ControllerNamespaceLabel}}: {{.Values.Namespace}}
+    {{.Values.controllerComponentLabel}}: proxy-injector
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
@@ -87,15 +87,15 @@ webhooks:
   clientConfig:
     service:
       name: linkerd-proxy-injector
-      namespace: {{ .Values.Namespace }}
+      namespace: {{ .Values.namespace }}
       path: "/"
-    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.ProxyInjector.CrtPEM)) (empty .Values.ProxyInjector.CrtPEM) }}
-  failurePolicy: {{.Values.WebhookFailurePolicy}}
+    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.proxyInjector.crtPEM)) (empty .Values.proxyInjector.crtPEM) }}
+  failurePolicy: {{.Values.webhookFailurePolicy}}
   rules:
   - operations: [ "CREATE" ]
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
-  {{- if not .Values.OmitWebhookSideEffects }}
+  {{- if not .Values.omitWebhookSideEffects }}
   sideEffects: None
   {{- end }}

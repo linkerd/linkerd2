@@ -16,6 +16,7 @@ import (
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"google.golang.org/grpc"
@@ -178,25 +179,30 @@ type PodCounts struct {
 }
 
 // Query performs a query for the given time.
-func (m *MockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, error) {
+func (m *MockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, api.Warnings, error) {
 	m.rwLock.Lock()
 	defer m.rwLock.Unlock()
 	m.QueriesExecuted = append(m.QueriesExecuted, query)
-	return m.Res, nil
+	return m.Res, nil, nil
 }
 
 // QueryRange performs a query for the given range.
-func (m *MockProm) QueryRange(ctx context.Context, query string, r promv1.Range) (model.Value, error) {
+func (m *MockProm) QueryRange(ctx context.Context, query string, r promv1.Range) (model.Value, api.Warnings, error) {
 	m.rwLock.Lock()
 	defer m.rwLock.Unlock()
 	m.QueriesExecuted = append(m.QueriesExecuted, query)
-	return m.Res, nil
+	return m.Res, nil, nil
 }
 
 // AlertManagers returns an overview of the current state of the Prometheus alert
 // manager discovery.
 func (m *MockProm) AlertManagers(ctx context.Context) (promv1.AlertManagersResult, error) {
 	return promv1.AlertManagersResult{}, nil
+}
+
+// Alerts returns a list of all active alerts.
+func (m *MockProm) Alerts(ctx context.Context) (promv1.AlertsResult, error) {
+	return promv1.AlertsResult{}, nil
 }
 
 // CleanTombstones removes the deleted data from disk and cleans up the existing
@@ -221,13 +227,13 @@ func (m *MockProm) Flags(ctx context.Context) (promv1.FlagsResult, error) {
 }
 
 // LabelValues performs a query for the values of the given label.
-func (m *MockProm) LabelValues(ctx context.Context, label string) (model.LabelValues, error) {
-	return nil, nil
+func (m *MockProm) LabelValues(ctx context.Context, label string) (model.LabelValues, api.Warnings, error) {
+	return nil, nil, nil
 }
 
 // Series finds series by label matchers.
-func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, error) {
-	return nil, nil
+func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, api.Warnings, error) {
+	return nil, nil, nil
 }
 
 // Snapshot creates a snapshot of all current data into
@@ -241,6 +247,21 @@ func (m *MockProm) Snapshot(ctx context.Context, skipHead bool) (promv1.Snapshot
 // discovery.
 func (m *MockProm) Targets(ctx context.Context) (promv1.TargetsResult, error) {
 	return promv1.TargetsResult{}, nil
+}
+
+// LabelNames returns all the unique label names present in the block in sorted order.
+func (m *MockProm) LabelNames(ctx context.Context) ([]string, api.Warnings, error) {
+	return []string{}, nil, nil
+}
+
+// Rules returns a list of alerting and recording rules that are currently loaded.
+func (m *MockProm) Rules(ctx context.Context) (promv1.RulesResult, error) {
+	return promv1.RulesResult{}, nil
+}
+
+// TargetsMetadata returns metadata about metrics currently scraped by the target.
+func (m *MockProm) TargetsMetadata(ctx context.Context, matchTarget string, metric string, limit string) ([]promv1.MetricMetadata, error) {
+	return []promv1.MetricMetadata{}, nil
 }
 
 // GenStatSummaryResponse generates a mock Public API StatSummaryResponse

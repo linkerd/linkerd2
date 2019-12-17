@@ -20,26 +20,12 @@ type Chart struct {
 	Files     []*chartutil.BufferedFile
 }
 
-// Render returns a bytes buffer with the result of rendering a Helm chart
-func (chart *Chart) Render() (bytes.Buffer, error) {
-	if err := filesReader(chart.Dir+"/", chart.Files); err != nil {
+func (chart *Chart) render(partialsFiles []*chartutil.BufferedFile) (bytes.Buffer, error) {
+	if err := FilesReader(chart.Dir+"/", chart.Files); err != nil {
 		return bytes.Buffer{}, err
 	}
 
-	// Keep this slice synced with the contents of /charts/partials
-	partialsFiles := []*chartutil.BufferedFile{
-		{Name: "charts/partials/" + chartutil.ChartfileName},
-		{Name: "charts/partials/templates/_proxy.tpl"},
-		{Name: "charts/partials/templates/_proxy-init.tpl"},
-		{Name: "charts/partials/templates/_volumes.tpl"},
-		{Name: "charts/partials/templates/_resources.tpl"},
-		{Name: "charts/partials/templates/_metadata.tpl"},
-		{Name: "charts/partials/templates/_helpers.tpl"},
-		{Name: "charts/partials/templates/_debug.tpl"},
-		{Name: "charts/partials/templates/_capabilities.tpl"},
-		{Name: "charts/partials/templates/_trace.tpl"},
-	}
-	if err := filesReader("", partialsFiles); err != nil {
+	if err := FilesReader("", partialsFiles); err != nil {
 		return bytes.Buffer{}, err
 	}
 
@@ -78,22 +64,57 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 	return buf, nil
 }
 
-func filesReader(dir string, files []*chartutil.BufferedFile) error {
+// Render returns a bytes buffer with the result of rendering a Helm chart
+func (chart *Chart) Render() (bytes.Buffer, error) {
+
+	// Keep this slice synced with the contents of /charts/partials
+	l5dPartials := []*chartutil.BufferedFile{
+		{Name: "charts/partials/" + chartutil.ChartfileName},
+		{Name: "charts/partials/templates/_proxy.tpl"},
+		{Name: "charts/partials/templates/_proxy-init.tpl"},
+		{Name: "charts/partials/templates/_volumes.tpl"},
+		{Name: "charts/partials/templates/_resources.tpl"},
+		{Name: "charts/partials/templates/_metadata.tpl"},
+		{Name: "charts/partials/templates/_helpers.tpl"},
+		{Name: "charts/partials/templates/_debug.tpl"},
+		{Name: "charts/partials/templates/_capabilities.tpl"},
+		{Name: "charts/partials/templates/_trace.tpl"},
+	}
+	return chart.render(l5dPartials)
+}
+
+// RenderCNI returns a bytes buffer with the result of rendering a Helm chart
+func (chart *Chart) RenderCNI() (bytes.Buffer, error) {
+	return chart.render([]*chartutil.BufferedFile{})
+}
+
+// ReadFile updates the buffered file with the data read from disk
+func ReadFile(dir string, f *chartutil.BufferedFile) error {
+	filename := dir + f.Name
+	if dir == "" {
+		filename = filename[7:]
+	}
+	file, err := static.Templates.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	buf := new(bytes.Buffer)
+	if _, err := buf.ReadFrom(file); err != nil {
+		return err
+	}
+
+	f.Data = buf.Bytes()
+	return nil
+}
+
+// FilesReader reads all the files from a directory
+func FilesReader(dir string, files []*chartutil.BufferedFile) error {
 	for _, f := range files {
-		filename := dir + f.Name
-		if dir == "" {
-			filename = filename[7:]
-		}
-		file, err := static.Templates.Open(filename)
-		if err != nil {
+		if err := ReadFile(dir, f); err != nil {
 			return err
 		}
-		defer file.Close()
-
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(file)
-
-		f.Data = buf.Bytes()
 	}
 	return nil
 }

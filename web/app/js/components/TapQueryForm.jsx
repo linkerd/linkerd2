@@ -55,9 +55,16 @@ const styles = theme => ({
     display: 'flex',
     flexWrap: 'wrap',
   },
-  formControl: {
-    margin: theme.spacing.unit,
+  formControlWrapper: {
     minWidth: 200,
+  },
+  formControl: {
+    padding: theme.spacing.unit,
+    paddingLeft: 0,
+    margin: 0,
+    minWidth: 'inherit',
+    maxWidth: '100%',
+    width: 'auto',
   },
   selectEmpty: {
     'margin-top': '32px'
@@ -81,6 +88,9 @@ const styles = theme => ({
   },
   expandOpen: {
     transform: 'rotate(180deg)',
+  },
+  resetButton: {
+    marginLeft: theme.spacing.unit,
   }
 });
 
@@ -316,12 +326,12 @@ class TapQueryForm extends React.Component {
       <Grid container>
 
         <Grid container spacing={24}>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             <FormControl className={classes.formControl}>
               {this.renderNamespaceSelect("To Namespace", "toNamespace", "toResource")}
             </FormControl>
           </Grid>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             <FormControl className={classes.formControl} disabled={_isEmpty(this.state.query.toNamespace)}>
               {this.renderResourceSelect("toResource", "toNamespace")}
             </FormControl>
@@ -329,7 +339,7 @@ class TapQueryForm extends React.Component {
         </Grid>
 
         <Grid container spacing={24}>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} classes={{ item: classes.formControlWrapper }}>
             <FormControl className={classes.formControl}>
               <InputLabel htmlFor="authority">Authority</InputLabel>
               <Select
@@ -346,19 +356,19 @@ class TapQueryForm extends React.Component {
               <FormHelperText>Display requests with this :authority</FormHelperText>
             </FormControl>
           </Grid>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             { this.renderTextInput("Path", "path", "Display requests with paths that start with this prefix") }
           </Grid>
         </Grid>
 
         <Grid container spacing={24}>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             { this.renderTextInput("Scheme", "scheme", "Display requests with this scheme") }
           </Grid>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             { this.renderTextInput("Max RPS", "maxRps", `Maximum requests per second to tap. Default ${defaultMaxRps}`) }
           </Grid>
-          <Grid item xs={6} md={3}>
+          <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             <FormControl className={classes.formControl}>
               <InputLabel htmlFor="method">HTTP method</InputLabel>
               <Select
@@ -404,24 +414,21 @@ class TapQueryForm extends React.Component {
       <Card className={classes.card}>
         <CardContent>
           <Grid container spacing={24}>
-            <Grid item xs={6} md={3}>
-              <FormControl className={classes.formControl}>
+            <Grid item xs={6} md="auto" className={classes.formControlWrapper}>
+              <FormControl className={classes.formControl} fullWidth>
                 {this.renderNamespaceSelect("Namespace", "namespace", "resource")}
               </FormControl>
             </Grid>
 
-            <Grid item xs={6} md={3}>
-              <FormControl className={classes.formControl} disabled={_isEmpty(this.state.query.namespace)}>
+            <Grid item xs={6} md="auto" className={classes.formControlWrapper}>
+              <FormControl className={classes.formControl} disabled={_isEmpty(this.state.query.namespace)} fullWidth>
                 {this.renderResourceSelect("resource", "namespace")}
               </FormControl>
             </Grid>
 
-            <Grid item xs={4} md={1}>
+            <Grid item>
               { this.renderTapButton(this.props.tapRequestInProgress, this.props.tapIsClosing) }
-            </Grid>
-
-            <Grid item xs={4} md={1}>
-              <Button onClick={this.resetTapForm} disabled={this.props.tapRequestInProgress}>Reset</Button>
+              <Button onClick={this.resetTapForm} disabled={this.props.tapRequestInProgress} className={classes.resetButton}>Reset</Button>
             </Grid>
           </Grid>
         </CardContent>

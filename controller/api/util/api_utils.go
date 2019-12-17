@@ -30,11 +30,13 @@ var (
 	// destination resource on an outbound 'from' query
 	ValidTargets = []string{
 		k8s.Authority,
+		k8s.CronJob,
 		k8s.DaemonSet,
 		k8s.Deployment,
 		k8s.Job,
 		k8s.Namespace,
 		k8s.Pod,
+		k8s.ReplicaSet,
 		k8s.ReplicationController,
 		k8s.StatefulSet,
 	}
@@ -42,11 +44,13 @@ var (
 	// ValidTapDestinations specifies resource types allowed as a tap destination:
 	// destination resource on an outbound 'to' query
 	ValidTapDestinations = []string{
+		k8s.CronJob,
 		k8s.DaemonSet,
 		k8s.Deployment,
 		k8s.Job,
 		k8s.Namespace,
 		k8s.Pod,
+		k8s.ReplicaSet,
 		k8s.ReplicationController,
 		k8s.Service,
 		k8s.StatefulSet,

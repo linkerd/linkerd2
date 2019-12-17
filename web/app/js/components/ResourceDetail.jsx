@@ -28,7 +28,7 @@ import { withContext } from './util/AppContext.jsx';
 // if there has been no traffic for some time, show a warning
 const showNoTrafficMsgDelayMs = 6000;
 // resource types supported when querying API for edge data
-const edgeDataAvailable = ["daemonset", "deployment", "job", "pod", "replicationcontroller", "statefulset"];
+const edgeDataAvailable = ["cronjob", "daemonset", "deployment", "job", "pod", "replicaset", "replicationcontroller", "statefulset"];
 
 const getResourceFromUrl = (match, pathPrefix) => {
   let resource = {

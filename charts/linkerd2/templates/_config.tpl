@@ -1,36 +1,36 @@
 {{- define "linkerd.configs.global" -}}
 {
-  "linkerdNamespace": "{{.Values.Namespace}}",
+  "linkerdNamespace": "{{.Values.namespace}}",
   "cniEnabled": false,
-  "version": "{{.Values.LinkerdVersion}}",
+  "version": "{{.Values.linkerdVersion}}",
   "identityContext":{
-    "trustDomain": "{{.Values.Identity.TrustDomain}}",
-    "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Values.Identity.TrustAnchorsPEM | trim | replace "\n" "\\n"}}",
-    "issuanceLifeTime": "{{.Values.Identity.Issuer.IssuanceLifeTime}}",
-    "clockSkewAllowance": "{{.Values.Identity.Issuer.ClockSkewAllowance}}",
-    "scheme": "{{.Values.Identity.Issuer.Scheme}}"
+    "trustDomain": "{{.Values.identity.trustDomain}}",
+    "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Values.identity.trustAnchorsPEM | trim | replace "\n" "\\n"}}",
+    "issuanceLifeTime": "{{.Values.identity.issuer.issuanceLifeTime}}",
+    "clockSkewAllowance": "{{.Values.identity.issuer.clockSkewAllowance}}",
+    "scheme": "{{.Values.identity.issuer.scheme}}"
   },
   "autoInjectContext": null,
-  "omitWebhookSideEffects": {{.Values.OmitWebhookSideEffects}},
-  "clusterDomain": "{{.Values.ClusterDomain}}"
+  "omitWebhookSideEffects": {{.Values.omitWebhookSideEffects}},
+  "clusterDomain": "{{.Values.clusterDomain}}"
 }
 {{- end -}}
 
 {{- define "linkerd.configs.proxy" -}}
 {
   "proxyImage":{
-    "imageName":"{{.Values.Proxy.Image.Name}}",
-    "pullPolicy":"{{.Values.Proxy.Image.PullPolicy}}"
+    "imageName":"{{.Values.proxy.image.name}}",
+    "pullPolicy":"{{.Values.proxy.image.pullPolicy}}"
   },
   "proxyInitImage":{
-    "imageName":"{{.Values.ProxyInit.Image.Name}}",
-    "pullPolicy":"{{.Values.ProxyInit.Image.PullPolicy}}"
+    "imageName":"{{.Values.proxyInit.image.name}}",
+    "pullPolicy":"{{.Values.proxyInit.image.pullPolicy}}"
   },
   "controlPort":{
-    "port": {{.Values.Proxy.Ports.Control}}
+    "port": {{.Values.proxy.ports.control}}
   },
   "ignoreInboundPorts":[
-    {{- $ports := splitList "," .Values.ProxyInit.IgnoreInboundPorts -}}
+    {{- $ports := splitList "," .Values.proxyInit.ignoreInboundPorts -}}
     {{- if gt (len $ports) 1}}
     {{- $last := sub (len $ports) 1 -}}
     {{- range $i,$port := $ports -}}
@@ -39,7 +39,7 @@
     {{- end -}}
   ],
   "ignoreOutboundPorts":[
-    {{- $ports := splitList "," .Values.ProxyInit.IgnoreOutboundPorts -}}
+    {{- $ports := splitList "," .Values.proxyInit.ignoreOutboundPorts -}}
     {{- if gt (len $ports) 1}}
     {{- $last := sub (len $ports) 1 -}}
     {{- range $i,$port := $ports -}}
@@ -48,33 +48,33 @@
     {{- end -}}
   ],
   "inboundPort":{
-    "port": {{.Values.Proxy.Ports.Inbound}}
+    "port": {{.Values.proxy.ports.inbound}}
   },
   "adminPort":{
-    "port": {{.Values.Proxy.Ports.Admin}}
+    "port": {{.Values.proxy.ports.admin}}
   },
   "outboundPort":{
-    "port": {{.Values.Proxy.Ports.Outbound}}
+    "port": {{.Values.proxy.ports.outbound}}
   },
   "resource":{
-    "requestCpu": "{{.Values.Proxy.Resources.CPU.Request}}",
-    "limitCpu": "{{.Values.Proxy.Resources.CPU.Limit}}",
-    "requestMemory": "{{.Values.Proxy.Resources.Memory.Request}}",
-    "limitMemory": "{{.Values.Proxy.Resources.Memory.Limit}}"
+    "requestCpu": "{{.Values.proxy.resources.cpu.request}}",
+    "limitCpu": "{{.Values.proxy.resources.cpu.limit}}",
+    "requestMemory": "{{.Values.proxy.resources.memory.request}}",
+    "limitMemory": "{{.Values.proxy.resources.memory.limit}}"
   },
-  "proxyUid": {{.Values.Proxy.UID}},
+  "proxyUid": {{.Values.proxy.uid}},
   "logLevel":{
-    "level": "{{.Values.Proxy.LogLevel}}"
+    "level": "{{.Values.proxy.logLevel}}"
   },
-  "disableExternalProfiles": {{not .Values.Proxy.EnableExternalProfiles}},
-  "proxyVersion": "{{.Values.Proxy.Image.Version}}",
-  "proxyInitImageVersion": "{{.Values.ProxyInit.Image.Version}}"
+  "disableExternalProfiles": {{not .Values.proxy.enableExternalProfiles}},
+  "proxyVersion": "{{.Values.proxy.image.version}}",
+  "proxyInitImageVersion": "{{.Values.proxyInit.image.version}}"
 }
 {{- end -}}
 
 {{- define "linkerd.configs.install" -}}
 {
-  "cliVersion":"{{ .Values.LinkerdVersion }}",
+  "cliVersion":"{{ .Values.linkerdVersion }}",
   "flags":[]
 }
 {{- end -}}

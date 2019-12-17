@@ -1,0 +1,16 @@
+Namespace: linkerd
+ControllerNamespaceLabel: linkerd.io/control-plane-ns
+CniResourceAnnotation: linkerd.io/cni-resource
+InboundProxyPort: 4143
+OutboundProxyPort: 4140
+IgnoreInboundPorts: ""
+IgnoreOutboundPorts: ""
+CreatedByAnnotation: linkerd.io/created-by
+CniPluginImage:   "gcr.io/linkerd-io/cni-plugin"
+CniPluginVersion: stable-2.6.0
+LogLevel:         info
+PortsToRedirect:  ""
+ProxyUID:         2102
+DestCNINetDir:    "/etc/cni/net.d"
+DestCNIBinDir:    "/opt/cni/bin"
+UseWaitFlag:      false

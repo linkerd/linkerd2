@@ -1250,6 +1250,13 @@ status:
 								{
 									Table: &pb.StatTable_PodGroup_{
 										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{},
+										},
+									},
+								},
+								{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
 											Rows: []*pb.StatTable_PodGroup_Row{
 												{
 													Resource: &pb.Resource{
@@ -1305,6 +1312,24 @@ status:
 														Name:      "emojivoto-pod-2",
 													},
 													Status:          "Running",
+													TimeWindow:      "1m",
+													MeshedPodCount:  1,
+													RunningPodCount: 1,
+												},
+											},
+										},
+									},
+								},
+								{
+									Table: &pb.StatTable_PodGroup_{
+										PodGroup: &pb.StatTable_PodGroup{
+											Rows: []*pb.StatTable_PodGroup_Row{
+												{
+													Resource: &pb.Resource{
+														Namespace: "emojivoto",
+														Type:      pkgK8s.ReplicaSet,
+														Name:      "emojivoto-meshed_2",
+													},
 													TimeWindow:      "1m",
 													MeshedPodCount:  1,
 													RunningPodCount: 1,
