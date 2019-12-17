@@ -70,7 +70,6 @@ func main() {
 		healthcheck.LinkerdAPIChecks,
 		healthcheck.LinkerdVersionChecks,
 		healthcheck.LinkerdControlPlaneVersionChecks,
-		healthcheck.LinkerdControlPlaneDryRunChecks,
 	}
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: *controllerNamespace,
