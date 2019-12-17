@@ -716,7 +716,7 @@ webhooks:
     caBundle: dGVzdC1nYXRld2F5LWFubm90YXRvci1jcnQtcGVt
   failurePolicy: Fail
   rules:
-  - operations: ["CREATE"]
+  - operations: [ "CREATE", "UPDATE" ]
     apiGroups: ["extensions", "networking.k8s.io"]
     apiVersions: ["v1beta1"]
     resources: ["ingresses"]
