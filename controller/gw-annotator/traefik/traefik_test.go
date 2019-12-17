@@ -423,6 +423,55 @@ func TestGenerateAnnotationPatch(t *testing.T) {
 			}},
 			expectedError: nil,
 		},
+		{
+			desc:       "custom request headers annotation present with invalid l5d header (multiple services in ingress - different ports)",
+			configMode: gateway.Ingress,
+			obj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"namespace": "test-ns",
+						"annotations": map[string]interface{}{
+							CustomRequestHeadersKey: fmt.Sprintf("%s:%s", gateway.L5DHeader, L5DHeaderTestsValue),
+						},
+					},
+					"spec": map[string]interface{}{
+						"rules": []interface{}{
+							map[string]interface{}{
+								"http": map[string]interface{}{
+									"paths": []interface{}{
+										map[string]interface{}{
+											"backend": map[string]interface{}{
+												"serviceName": "test-svc",
+												"servicePort": float64(8888),
+											},
+										},
+									},
+								},
+							},
+							map[string]interface{}{
+								"http": map[string]interface{}{
+									"paths": []interface{}{
+										map[string]interface{}{
+											"backend": map[string]interface{}{
+												"serviceName": "test-svc2",
+												"servicePort": float64(8889),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			clusterDomain: gateway.DefaultClusterDomain,
+			expectedOutput: []gateway.PatchOperation{{
+				Op:    "replace",
+				Path:  annotationPath,
+				Value: fmt.Sprintf("%s:", gateway.L5DHeader),
+			}},
+			expectedError: nil,
+		},
 	}
 
 	for i, tc := range testCases {

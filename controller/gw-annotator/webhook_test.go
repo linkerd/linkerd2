@@ -251,6 +251,36 @@ spec:
 			}}),
 			expectedError: false,
 		},
+		{
+			desc: "traefik ingress with custom request headers annotation already annotated for l5d (but multiple services found now)",
+			objectYAML: []byte(`
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  namespace: test-ns
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    ingress.kubernetes.io/custom-request-headers: l5d-dst-override:test-svc.test-ns.svc.cluster.local:8888
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /test-path
+        backend:
+          serviceName: test-svc
+          servicePort: 8888
+      - path: /test-path
+        backend:
+          serviceName: test-svc2
+          servicePort: 8889`,
+			),
+			expectedOutput: buildTestAdmissionResponse([]gateway.PatchOperation{{
+				Op:    "replace",
+				Path:  traefikAnnotPath,
+				Value: fmt.Sprintf("%s:", gateway.L5DHeader),
+			}}),
+			expectedError: false,
+		},
 	}
 
 	recorder := &mockEventRecorder{}

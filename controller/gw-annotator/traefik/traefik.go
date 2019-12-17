@@ -41,7 +41,7 @@ func (g *Gateway) NeedsAnnotation() bool {
 		h, ok := NewCustomRequestHeaders(g.Object, HeadersSeparator)
 		if ok && h.ContainsL5DHeader() {
 			expectedHeader, err := g.buildHeader()
-			if err != nil || h[gateway.L5DHeader] == expectedHeader {
+			if err == nil && h[gateway.L5DHeader] == expectedHeader {
 				return false
 			}
 		}
@@ -58,11 +58,16 @@ func (g *Gateway) GenerateAnnotationPatch() (gateway.Patch, error) {
 		if found {
 			op = "replace"
 		}
-		var err error
-		headers[gateway.L5DHeader], err = g.buildHeader()
-		if err != nil {
+		header, err := g.buildHeader()
+		if _, ok := headers[gateway.L5DHeader]; !ok && err != nil {
+			// If the header is present but the build process fails, we reset
+			// it to an empty value as the value currently set is most likely
+			// invalid. A case where this could happen is when a second rule
+			// using a different service is added to an ingress which was
+			// correctly annotated.
 			return nil, err
 		}
+		headers[gateway.L5DHeader] = header
 
 		return []gateway.PatchOperation{{
 			Op:    op,
