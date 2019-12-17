@@ -42,31 +42,33 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 
 	// pin values that are changed by Helm functions on each test run
 	overrideJSON := `{
-  "cliVersion":"",
-  "linkerdVersion":"linkerd-version",
-  "identity":{
-    "trustAnchorsPEM":"test-trust-anchor",
-    "trustDomain":"test.trust.domain",
-    "issuer":{
-      "crtExpiry":"Jul 30 17:21:14 2020",
-      "crtExpiryAnnotation":"%s",
-      "tls":{
-        "keyPEM":"test-key-pem",
-        "crtPEM":"test-crt-pem"
-      }
-    }
+  "global": {
+	"cliVersion":"",
+	"linkerdVersion":"linkerd-version",
+	"identity":{
+		"trustAnchorsPEM":"test-trust-anchor",
+		"trustDomain":"test.trust.domain",
+		"issuer":{
+		  "crtExpiry":"Jul 30 17:21:14 2020",
+		  "crtExpiryAnnotation":"%s",
+		  "tls":{
+			"keyPEM":"test-key-pem",
+			"crtPEM":"test-crt-pem"
+		  }
+		}
+	   },
+	  "proxyInit":{
+		"image":{
+		  "version":"test-proxy-init-version"
+		}
+	  },
+	"proxy":{
+		"image":{
+		"version":"test-proxy-version"
+		}
+	}
   },
   "configs": null,
-  "proxy":{
-    "image":{
-      "version":"test-proxy-version"
-    }
-  },
-  "proxyInit":{
-    "image":{
-      "version":"test-proxy-init-version"
-    }
-  },
   "proxyInjector":{
     "keyPEM":"test-proxy-injector-key-pem",
     "crtPEM":"test-proxy-injector-crt-pem"
