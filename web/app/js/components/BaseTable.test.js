@@ -1,6 +1,8 @@
 import _merge from 'lodash/merge';
 import ApiHelpers from './util/ApiHelpers.jsx';
 import BaseTable from './BaseTable.jsx';
+import TableBody from '@material-ui/core/TableBody';
+import TableRow from '@material-ui/core/TableRow';
 import { routerWrap } from '../../test/testHelpers.jsx';
 import { mount } from 'enzyme';
 
@@ -101,10 +103,11 @@ describe("Tests for <BaseTable>", () => {
       enableFilter: true
     });
 
-    const component = mount(<BaseTable {...extraProps} />);
-    expect(component.find("TableBody").find("TableRow")).toHaveLength(2);
+    const component = shallow(<BaseTable {...extraProps} />);
+    const table = component.dive();
+    expect(table.find(TableBody).find(TableRow)).toHaveLength(2);
     const enableFilter = component.prop("enableFilter");
-    const filterIcon = component.find("FilterListIcon");
+    const filterIcon = table.find("FilterListIcon");
     expect(enableFilter).toEqual(true);
     expect(filterIcon).toHaveLength(1);
 
@@ -114,7 +117,7 @@ describe("Tests for <BaseTable>", () => {
       input.simulate("change", {target: {value: "authors"}});
       expect(table.html()).not.toContain('books');
       expect(table.html()).toContain('authors');
-      expect(component.find("TableBody").find("TableRow")).toHaveLength(1);
+      expect(table.find(TableBody).find(TableRow)).toHaveLength(1);
     }, 100);
   });
 });
