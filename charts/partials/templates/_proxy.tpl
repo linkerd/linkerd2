@@ -110,6 +110,15 @@ securityContext:
   readOnlyRootFilesystem: true
   runAsUser: {{.Values.proxy.uid}}
 terminationMessagePolicy: FallbackToLogsOnError
+{{- if .Values.proxy.waitBeforeExitSeconds }}
+lifecycle:
+  preStop:
+    exec:
+      command:
+        - /bin/bash
+        - -c
+        - sleep {{.Values.proxy.waitBeforeExitSeconds}}
+{{- end }}
 {{- if or (not .Values.proxy.disableIdentity) (.Values.proxy.saMountPath) }}
 volumeMounts:
 {{- if not .Values.proxy.disableIdentity }}

@@ -87,6 +87,11 @@ proxy:
     collectorSvcAddr: ""
     collectorSvcAccount: default
   uid: 2102
+  # If set, the proxy's pre-stop hook will postpone the Kubernetes's SIGTERM signal
+  # and wait for this duration before letting the proxy process the SIGTERM signal.
+  # See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
+  # for more info on container lifecycle hooks.
+  waitBeforeExitSeconds: 0
 
 # proxy-init configuration
 proxyInit:

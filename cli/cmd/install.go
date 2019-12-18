@@ -198,6 +198,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			proxyCPULimit:          defaults.Proxy.Resources.CPU.Limit,
 			proxyMemoryLimit:       defaults.Proxy.Resources.Memory.Limit,
 			enableExternalProfiles: defaults.Proxy.EnableExternalProfiles,
+			waitBeforeExitSeconds:  defaults.Proxy.WaitBeforeExitSeconds,
 		},
 		identityOptions: &installIdentityOptions{
 			trustDomain:            defaults.Identity.TrustDomain,

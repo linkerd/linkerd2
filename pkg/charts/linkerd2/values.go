@@ -95,6 +95,7 @@ type (
 		Resources              *Resources    `json:"resources"`
 		Trace                  *Trace        `json:"trace"`
 		UID                    int64         `json:"uid"`
+		WaitBeforeExitSeconds  uint64        `json:"waitBeforeExitSeconds"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
