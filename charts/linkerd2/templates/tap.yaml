@@ -34,6 +34,9 @@ metadata:
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
   labels:
+    app.kubernetes.io/name: tap
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
     {{.Values.controllerComponentLabel}}: tap
     {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   name: linkerd-tap

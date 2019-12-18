@@ -10,6 +10,9 @@ metadata:
   name: linkerd-heartbeat
   namespace: {{.Values.namespace}}
   labels:
+    app.kubernetes.io/name: heartbeat
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
     {{.Values.controllerComponentLabel}}: heartbeat
     {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   annotations:

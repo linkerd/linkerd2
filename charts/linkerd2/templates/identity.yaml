@@ -51,6 +51,9 @@ metadata:
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
   labels:
+    app.kubernetes.io/name: identity
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
     {{.Values.controllerComponentLabel}}: identity
     {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   name: linkerd-identity

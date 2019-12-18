@@ -896,6 +896,9 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
   labels:
+    app.kubernetes.io/name: identity
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: identity
     ControllerNamespaceLabel: Namespace
   name: linkerd-identity
@@ -1110,6 +1113,9 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
   labels:
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: controller
     ControllerNamespaceLabel: Namespace
   name: linkerd-controller
@@ -1322,6 +1328,9 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
   labels:
+    app.kubernetes.io/name: destination
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: destination
     ControllerNamespaceLabel: Namespace
   name: linkerd-destination
@@ -1515,6 +1524,9 @@ metadata:
   name: linkerd-heartbeat
   namespace: Namespace
   labels:
+    app.kubernetes.io/name: heartbeat
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: heartbeat
     ControllerNamespaceLabel: Namespace
   annotations:
@@ -1579,6 +1591,9 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
   labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: web
     ControllerNamespaceLabel: Namespace
   name: linkerd-web
@@ -1907,6 +1922,9 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
   labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: prometheus
     ControllerNamespaceLabel: Namespace
   name: linkerd-prometheus
@@ -2185,6 +2203,9 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
   labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: grafana
     ControllerNamespaceLabel: Namespace
   name: linkerd-grafana
@@ -2384,6 +2405,9 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
   labels:
+    app.kubernetes.io/name: proxy-injector
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: proxy-injector
     ControllerNamespaceLabel: Namespace
   name: linkerd-proxy-injector
@@ -2616,6 +2640,9 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
   labels:
+    app.kubernetes.io/name: sp-validator
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: sp-validator
     ControllerNamespaceLabel: Namespace
   name: linkerd-sp-validator
@@ -2827,6 +2854,9 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
   labels:
+    app.kubernetes.io/name: tap
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: tap
     ControllerNamespaceLabel: Namespace
   name: linkerd-tap
