@@ -451,7 +451,6 @@ func (conf *ResourceConfig) complete(template *corev1.PodTemplateSpec) {
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func (conf *ResourceConfig) injectPodSpec(values *patch) {
-	waitBeforeExitSeconds, _ := conf.proxyWaitBeforeExitSeconds()
 	values.Proxy = &l5dcharts.Proxy{
 		Component:              conf.pod.labels[k8s.ProxyDeploymentLabel],
 		EnableExternalProfiles: conf.enableExternalProfiles(),
@@ -470,7 +469,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		},
 		UID:                   conf.proxyUID(),
 		Resources:             conf.proxyResourceRequirements(),
-		WaitBeforeExitSeconds: waitBeforeExitSeconds,
+		WaitBeforeExitSeconds: conf.proxyWaitBeforeExitSeconds(),
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -759,7 +758,7 @@ func (conf *ResourceConfig) tapDisabled() bool {
 	return false
 }
 
-func (conf *ResourceConfig) proxyWaitBeforeExitSeconds() (uint64, error) {
+func (conf *ResourceConfig) proxyWaitBeforeExitSeconds() uint64 {
 	if override := conf.getOverride(k8s.ProxyWaitBeforeExitSecondsAnnotation); override != "" {
 		waitBeforeExitSeconds, err := strconv.ParseUint(override, 10, 64)
 		if nil != err {
@@ -767,10 +766,10 @@ func (conf *ResourceConfig) proxyWaitBeforeExitSeconds() (uint64, error) {
 				k8s.ProxyWaitBeforeExitSecondsAnnotation, override)
 		}
 
-		return waitBeforeExitSeconds, err
+		return waitBeforeExitSeconds
 	}
 
-	return 0, nil
+	return 0
 }
 
 func (conf *ResourceConfig) proxyResourceRequirements() *l5dcharts.Resources {

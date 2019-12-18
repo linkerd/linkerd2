@@ -362,11 +362,7 @@ func TestConfigAccessors(t *testing.T) {
 
 			t.Run("proxyWaitBeforeExitSeconds", func(t *testing.T) {
 				expected := testCase.expected.proxyWaitBeforeExitSeconds
-				actual, err := resourceConfig.proxyWaitBeforeExitSeconds()
-				if nil != err {
-					// negative test cases above cover the situation
-				}
-				if expected != actual {
+				if actual := resourceConfig.proxyWaitBeforeExitSeconds(); expected != actual {
 					t.Errorf("Expected: %v Actual: %v", expected, actual)
 				}
 			})
