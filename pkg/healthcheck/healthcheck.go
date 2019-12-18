@@ -1,10 +1,12 @@
 package healthcheck
 
 import (
+	"bufio"
 	"context"
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,10 +28,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/yaml"
 )
 
 // CategoryID is an identifier for the types of health checks.
@@ -280,6 +285,7 @@ type Options struct {
 	VersionOverride       string
 	RetryDeadline         time.Time
 	NoInitContainer       bool
+	InstallManifest       string
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -388,38 +394,10 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "can create Namespaces",
+					description: "can create non-namespaced resources",
 					hintAnchor:  "pre-k8s-cluster-k8s",
 					check: func(context.Context) error {
-						return hc.checkCanCreate("", "", "v1", "namespaces")
-					},
-				},
-				{
-					description: "can create ClusterRoles",
-					hintAnchor:  "pre-k8s-cluster-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "clusterroles")
-					},
-				},
-				{
-					description: "can create ClusterRoleBindings",
-					hintAnchor:  "pre-k8s-cluster-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate("", "rbac.authorization.k8s.io", "v1beta1", "clusterrolebindings")
-					},
-				},
-				{
-					description: "can create CustomResourceDefinitions",
-					hintAnchor:  "pre-k8s-cluster-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate("", "apiextensions.k8s.io", "v1beta1", "customresourcedefinitions")
-					},
-				},
-				{
-					description: "can create PodSecurityPolicies",
-					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "policy", "v1beta1", "podsecuritypolicies")
+						return hc.checkCanCreateNonNamespacedResources()
 					},
 				},
 				{
@@ -1550,6 +1528,54 @@ func (hc *HealthChecker) checkCanPerformAction(verb, namespace, group, version, 
 
 func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
 	return hc.checkCanPerformAction("create", namespace, group, version, resource)
+}
+
+func (hc *HealthChecker) checkCanCreateNonNamespacedResources() error {
+	var errs []string
+	dryRun := metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}
+
+	// Iterate over all resources in install manifest
+	installManifestReader := strings.NewReader(hc.Options.InstallManifest)
+	yamlReader := yamlDecoder.NewYAMLReader(bufio.NewReader(installManifestReader))
+	for {
+		// Read single object YAML
+		objYAML, err := yamlReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("error reading install manifest: %v", err)
+		}
+
+		// Create unstructured object from YAML
+		objMap := map[string]interface{}{}
+		err = yaml.Unmarshal(objYAML, &objMap)
+		if err != nil {
+			return fmt.Errorf("error unmarshaling yaml object %s: %v", objYAML, err)
+		}
+		if len(objMap) == 0 {
+			// Ignore header blocks with only comments
+			continue
+		}
+		obj := &unstructured.Unstructured{Object: objMap}
+
+		// Skip namespaced resources (dry-run requires namespace to exist)
+		if obj.GetNamespace() != "" {
+			continue
+		}
+
+		// Attempt to create resource using dry-run
+		resource, _ := meta.UnsafeGuessKindToResource(obj.GroupVersionKind())
+		_, err = hc.kubeAPI.DynamicClient.Resource(resource).Create(obj, dryRun)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("cannot create %s/%s: %v", obj.GetKind(), obj.GetName(), err))
+		}
+	}
+
+	if len(errs) > 0 {
+		return errors.New(strings.Join(errs, "\n    "))
+	}
+	return nil
 }
 
 func (hc *HealthChecker) checkCanGet(namespace, group, version, resource string) error {
