@@ -5,7 +5,7 @@ description: Linkerd gives you observability, reliability, and security for your
 home: https://linkerd.io
 keywords:
 - service-mesh
-kubeVersion: ">=1.12.0-0"
+kubeVersion: ">=1.13.0-0"
 name: "linkerd2"
 sources:
 - https://github.com/linkerd/linkerd2/

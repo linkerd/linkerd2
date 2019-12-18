@@ -7,7 +7,7 @@ Linkerd is a Cloud Native Computing Foundation ([CNCF][cncf]) project.
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.12+ cluster in a matter of seconds. See
+You can run Linkerd on any Kubernetes 1.13+ cluster in a matter of seconds. See
 the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
