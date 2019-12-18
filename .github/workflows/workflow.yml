@@ -402,6 +402,57 @@ jobs:
           ${{ matrix.integration_test }}_integration_tests
         )
 
+  kind_cleanup:
+    if: always()
+    strategy:
+      fail-fast: false # always attempt to cleanup all clusters
+      matrix:
+        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
+    needs: [kind_integration]
+    name: Cluster cleanup (${{ matrix.integration_test }})
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Download .git artifact
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      uses: actions/download-artifact@v1
+      with:
+        name: linkerd2-src-${{ github.sha }}
+        path: ${{ runner.temp }}
+    - name: Clone source
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      run: |
+        tar -C $RUNNER_TEMP -zxf $RUNNER_TEMP/linkerd2.$GITHUB_SHA.tar.gz
+        git clone $RUNNER_TEMP/.git $GITHUB_WORKSPACE
+    # for debugging
+    - name: Dump env
+      run: |
+        env | sort
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT"
+    - name: Dump job context
+      env:
+        JOB_CONTEXT: ${{ toJson(job) }}
+      run: echo "$JOB_CONTEXT"
+    - name: Docker SSH setup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      run: |
+        mkdir -p ~/.ssh/
+        touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
+        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
+        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+        ssh linkerd-docker docker version
+    - name: Kind cluster cleanup
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      env:
+        DOCKER_HOST: ssh://linkerd-docker
+      run: |
+        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
+        export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
+        bin/kind delete cluster --name=$KIND_CLUSTER
+
   #
   # Docker deploy and cloud integration tests run for:
   # - every master push
@@ -411,7 +462,7 @@ jobs:
   docker_deploy:
     name: Docker deploy
     runs-on: ubuntu-18.04
-    needs: [validate_go_deps, go_unit_tests, go_lint, js_unit_tests, kind_integration]
+    needs: [validate_go_deps, go_unit_tests, go_lint, js_unit_tests, kind_integration, kind_cleanup]
     steps:
     - name: Download .git artifact
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')

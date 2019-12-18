@@ -95,7 +95,7 @@ func TestServiceProfiles(t *testing.T) {
 					"--tap-route-limit",
 					"1",
 					"--tap-duration",
-					"60s",
+					"25s",
 				}
 			}
 
