@@ -4,7 +4,8 @@ This edge release adds support for pod IP and service cluster IP lookups,
 improves performance of the dashboard, and makes `linkerd check --pre` perform 
 more comprehensive checks.
 
-The `--wait-before-seconds` flag has been added to allow Linkerd users to opt in
+The `--wait-before-exit-seconds` flag has been added to allow Linkerd users to
+ opt in
 to `preStop hooks`. The details of this change are in 
 [#3798](https://github.com/linkerd/linkerd2/pull/3798).
 
