@@ -33,7 +33,7 @@ metadata:
   labels:
     app.kubernetes.io/name: controller
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: controller
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   name: linkerd-controller
