@@ -1,3 +1,26 @@
+## edge-19.12.3
+
+* CLI
+  * Increased the comprehensiveness of `linkerd check --pre`
+  * Added TLS certificate validation to `check` and `upgrade` commands
+* Controller
+  * Increased minimum kubernetes version to 1.13.0
+  * Added support for pod ip and service cluster ip lookups in the destination 
+    service
+  * Added recommended kubernetes labels to control-plane
+  * Added preStop hook into the proxy sidecar container to stop it last (a huge 
+    commit from @KIVagant, thanks!)
+  * Added a pre-sign check to te identity service
+* Web UI
+  * Added logic to pause dashboard polling activity when the page is not in 
+    focus
+* Proxy
+  * Added a timeout to release resolutions to idle balancers
+  * Reclassified gRPC status codes as non-errors
+* Internal
+  * Updated helm charts to follow best practices using proper casing (thanks 
+    @Pothulapati!)
+  
 ## edge-19.12.2
 
 * CLI
