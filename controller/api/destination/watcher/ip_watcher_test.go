@@ -1,7 +1,6 @@
 package watcher
 
 import (
-	"fmt"
 	"sort"
 	"testing"
 
@@ -10,47 +9,11 @@ import (
 	logging "github.com/sirupsen/logrus"
 )
 
-type bufferingEndpointListener struct {
-	added             []string
-	removed           []string
-	noEndpointsCalled bool
-	noEndpointsExists bool
-}
-
-func newBufferingEndpointListener() *bufferingEndpointListener {
-	return &bufferingEndpointListener{
-		added:   []string{},
-		removed: []string{},
-	}
-}
-
-func addressString(address Address) string {
-	return fmt.Sprintf("%s:%d", address.IP, address.Port)
-}
-
-func (bel *bufferingEndpointListener) Add(set PodSet) {
-	for _, address := range set.Pods {
-		bel.added = append(bel.added, addressString(address))
-	}
-}
-
-func (bel *bufferingEndpointListener) Remove(set PodSet) {
-	for _, address := range set.Pods {
-		bel.removed = append(bel.removed, addressString(address))
-	}
-}
-
-func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
-	bel.noEndpointsCalled = true
-	bel.noEndpointsExists = exists
-}
-
-func TestEndpointsWatcher(t *testing.T) {
+func TestIPWatcher(t *testing.T) {
 	for _, tt := range []struct {
 		serviceType                      string
 		k8sConfigs                       []string
-		id                               ServiceID
-		hostname                         string
+		host                             string
 		port                             Port
 		expectedAddresses                []string
 		expectedNoEndpoints              bool
@@ -67,6 +30,7 @@ metadata:
   namespace: ns
 spec:
   type: LoadBalancer
+  clusterIP: 192.168.210.92
   ports:
   - port: 8989`,
 				`
@@ -132,7 +96,7 @@ status:
   phase: Running
   podIP: 172.17.0.20`,
 			},
-			id:   ServiceID{Name: "name1", Namespace: "ns"},
+			host: "192.168.210.92",
 			port: 8989,
 			expectedAddresses: []string{
 				"172.17.0.12:8989",
@@ -155,6 +119,7 @@ metadata:
   namespace: ns
 spec:
   type: NodePort
+  clusterIP: 192.168.210.92
   ports:
   - port: 8989
     targetPort: port1`,
@@ -204,7 +169,7 @@ status:
   podIp: 10.233.88.244
   phase: Running`,
 			},
-			id:   ServiceID{Name: "name1", Namespace: "ns"},
+			host: "192.168.210.92",
 			port: 8989,
 			expectedAddresses: []string{
 				"10.233.66.239:8990",
@@ -224,6 +189,7 @@ metadata:
   name: world
   namespace: ns
 spec:
+  clusterIP: 192.168.210.92
   type: ClusterIP
   ports:
     - name: app
@@ -259,7 +225,7 @@ status:
   podIp: 10.1.30.135
   phase: Running`,
 			},
-			id:   ServiceID{Name: "world", Namespace: "ns"},
+			host: "192.168.210.92",
 			port: 7778,
 			expectedAddresses: []string{
 				"10.1.30.135:7779",
@@ -278,6 +244,7 @@ metadata:
   namespace: ns
 spec:
   type: LoadBalancer
+  clusterIP: 192.168.210.92
   ports:
   - port: 8989`,
 				`
@@ -318,7 +285,7 @@ status:
   phase: Running
   podIP: 172.17.0.25`,
 			},
-			id:   ServiceID{Name: "name1", Namespace: "ns"},
+			host: "192.168.210.92",
 			port: 8989,
 			expectedAddresses: []string{
 				"172.17.0.25:8989",
@@ -337,10 +304,11 @@ metadata:
   namespace: ns
 spec:
   type: LoadBalancer
+  clusterIP: 192.168.210.92
   ports:
   - port: 7979`,
 			},
-			id:                               ServiceID{Name: "name2", Namespace: "ns"},
+			host:                             "192.168.210.92",
 			port:                             7979,
 			expectedAddresses:                []string{},
 			expectedNoEndpoints:              true,
@@ -357,9 +325,10 @@ metadata:
   namespace: ns
 spec:
   type: ExternalName
+  clusterIP: 192.168.210.92
   externalName: foo`,
 			},
-			id:                               ServiceID{Name: "name3", Namespace: "ns"},
+			host:                             "192.168.210.92",
 			port:                             6969,
 			expectedAddresses:                []string{},
 			expectedNoEndpoints:              false,
@@ -369,54 +338,16 @@ spec:
 		{
 			serviceType:                      "services that do not yet exist",
 			k8sConfigs:                       []string{},
-			id:                               ServiceID{Name: "name4", Namespace: "ns"},
+			host:                             "192.168.210.92",
 			port:                             5959,
-			expectedAddresses:                []string{},
-			expectedNoEndpoints:              true,
+			expectedAddresses:                []string{"192.168.210.92:5959"},
+			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
 			expectedError:                    false,
 		},
 		{
-			serviceType: "stateful sets",
+			serviceType: "pod ip",
 			k8sConfigs: []string{`
-apiVersion: v1
-kind: Service
-metadata:
-  name: name1
-  namespace: ns
-spec:
-  type: LoadBalancer
-  ports:
-  - port: 8989`,
-				`
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: name1
-  namespace: ns
-subsets:
-- addresses:
-  - ip: 172.17.0.12
-    hostname: name1-1
-    targetRef:
-      kind: Pod
-      name: name1-1
-      namespace: ns
-  - ip: 172.17.0.19
-    hostname: name1-2
-    targetRef:
-      kind: Pod
-      name: name1-2
-      namespace: ns
-  - ip: 172.17.0.20
-    hostname: name1-3
-    targetRef:
-      kind: Pod
-      name: name1-3
-      namespace: ns
-  ports:
-  - port: 8989`,
-				`
 apiVersion: v1
 kind: Pod
 metadata:
@@ -453,12 +384,40 @@ status:
   phase: Running
   podIP: 172.17.0.20`,
 			},
-			id:                               ServiceID{Name: "name1", Namespace: "ns"},
-			hostname:                         "name1-3",
-			port:                             5959,
-			expectedAddresses:                []string{"172.17.0.20:5959"},
+			host: "172.17.0.12",
+			port: 8989,
+			expectedAddresses: []string{
+				"172.17.0.12:8989",
+			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
+		},
+		{
+			serviceType: "pod with hostNetwork",
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+spec:
+  hostNetwork: true
+status:
+  phase: Running
+  podIP: 172.17.0.12`,
+			},
+			host: "172.17.0.12",
+			port: 8989,
+			expectedAddresses: []string{
+				"172.17.0.12:8989",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
 		},
 	} {
 		tt := tt // pin
@@ -468,13 +427,14 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name))
+			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name))
+			watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name))
 
 			k8sAPI.Sync()
 
 			listener := newBufferingEndpointListener()
 
-			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			err = watcher.Subscribe(tt.host, tt.port, listener)
 			if tt.expectedError && err == nil {
 				t.Fatal("Expected error but was ok")
 			}
