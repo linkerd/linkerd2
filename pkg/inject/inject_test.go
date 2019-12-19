@@ -278,8 +278,8 @@ func TestConfigAccessors(t *testing.T) {
 				initImage:           "gcr.io/linkerd-io/proxy-init",
 				initImagePullPolicy: "IfNotPresent",
 				initVersion:         version.ProxyInitVersion,
-				inboundSkipPorts:    "53",
-				outboundSkipPorts:   "9079",
+				inboundSkipPorts:    "53,58-59",
+				outboundSkipPorts:   "9079-9080",
 			},
 		},
 	}

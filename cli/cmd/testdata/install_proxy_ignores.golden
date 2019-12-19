@@ -128,6 +128,9 @@ rules:
 - apiGroups: ["apps"]
   resources: ["replicasets"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["list", "get", "watch"]
 - apiGroups: [""]
   resources: ["pods", "endpoints", "services"]
   verbs: ["list", "get", "watch"]
@@ -848,7 +851,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"},"autoInjectContext":null,"omitWebhookSideEffects":false,"clusterDomain":"cluster.local"}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[{"portRange":"22"},{"portRange":"8100-8102"}],"ignoreOutboundPorts":[{"portRange":"5432"}],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxyInitImageVersion":"v1.2.0"}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[{"portRange":"22"},{"portRange":"8100-8102"}],"ignoreOutboundPorts":[{"portRange":"5432"}],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxyInitImageVersion":"v1.3.0"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
 ---
@@ -896,6 +899,9 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    app.kubernetes.io/name: identity
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: install-control-plane-version
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-identity
@@ -1049,7 +1055,7 @@ spec:
         - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
         - 443,5432
-        image: gcr.io/linkerd-io/proxy-init:v1.2.0
+        image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1111,6 +1117,9 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: install-control-plane-version
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-controller
@@ -1265,7 +1274,7 @@ spec:
         - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
         - 443,5432
-        image: gcr.io/linkerd-io/proxy-init:v1.2.0
+        image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1324,6 +1333,9 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    app.kubernetes.io/name: destination
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: install-control-plane-version
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-destination
@@ -1478,7 +1490,7 @@ spec:
         - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
         - 443,5432
-        image: gcr.io/linkerd-io/proxy-init:v1.2.0
+        image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1518,6 +1530,9 @@ metadata:
   name: linkerd-heartbeat
   namespace: linkerd
   labels:
+    app.kubernetes.io/name: heartbeat
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: install-control-plane-version
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: linkerd
   annotations:
@@ -1582,6 +1597,9 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: install-control-plane-version
     linkerd.io/control-plane-component: web
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-web
@@ -1736,7 +1754,7 @@ spec:
         - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
         - 443,5432
-        image: gcr.io/linkerd-io/proxy-init:v1.2.0
+        image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1911,6 +1929,9 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: install-control-plane-version
     linkerd.io/control-plane-component: prometheus
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-prometheus
@@ -2069,7 +2090,7 @@ spec:
         - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
         - 443,5432
-        image: gcr.io/linkerd-io/proxy-init:v1.2.0
+        image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2190,6 +2211,9 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: install-control-plane-version
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-grafana
@@ -2341,7 +2365,7 @@ spec:
         - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
         - 443,5432
-        image: gcr.io/linkerd-io/proxy-init:v1.2.0
+        image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2390,6 +2414,9 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    app.kubernetes.io/name: proxy-injector
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: install-control-plane-version
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-proxy-injector
@@ -2542,7 +2569,7 @@ spec:
         - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
         - 443,5432
-        image: gcr.io/linkerd-io/proxy-init:v1.2.0
+        image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2623,6 +2650,9 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    app.kubernetes.io/name: sp-validator
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: install-control-plane-version
     linkerd.io/control-plane-component: sp-validator
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-sp-validator
@@ -2773,7 +2803,7 @@ spec:
         - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
         - 443,5432
-        image: gcr.io/linkerd-io/proxy-init:v1.2.0
+        image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2835,6 +2865,9 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
+    app.kubernetes.io/name: tap
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: install-control-plane-version
     linkerd.io/control-plane-component: tap
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-tap
@@ -2992,7 +3025,7 @@ spec:
         - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
         - 443,5432
-        image: gcr.io/linkerd-io/proxy-init:v1.2.0
+        image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
