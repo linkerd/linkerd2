@@ -211,6 +211,7 @@ github.com/linkerd/linkerd2-proxy-api v0.1.10 h1:zGwz2Fek7fdfCxyZW7jq8IE6sexeVFW
 github.com/linkerd/linkerd2-proxy-api v0.1.10/go.mod h1:2WJHEYXoww5ALM6c1QspRFiROGZg08tGxCO1js0tTVA=
 github.com/linkerd/linkerd2-proxy-init v1.2.0 h1:cTuiVw2udZbcnuYgj9B/3Lqy2ZtiiXPf2w2QIzhsfOQ=
 github.com/linkerd/linkerd2-proxy-init v1.2.0/go.mod h1:lK/sORPZDP6aFhPZps+AHMKphX5v9bKVDNESllz18C0=
+github.com/linkerd/linkerd2-proxy-init v1.3.0/go.mod h1:lK/sORPZDP6aFhPZps+AHMKphX5v9bKVDNESllz18C0=
 github.com/linkerd/stern v0.0.0-20190907020106-201e8ccdff9c h1:v8RmXOGO65HHLqcDpVNGGe3krA8FptfxcYS3wSS8bJU=
 github.com/linkerd/stern v0.0.0-20190907020106-201e8ccdff9c/go.mod h1:aaP5eLMmFcyJUsZB6FwAO+0eILWeBKvupuHeeEuY0qQ=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
