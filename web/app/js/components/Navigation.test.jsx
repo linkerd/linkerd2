@@ -163,8 +163,8 @@ describe('Namespace Select Button', () => {
       </BrowserRouter>
     );
 
-    const button = component.find("button");
-    expect(button).toIncludeText("All Namespaces");
+    const input = component.find("input");
+    expect(input.instance().value).toEqual("ALL NAMESPACES")
   });
 
   it('renders emojivoto text', () => {
@@ -183,96 +183,7 @@ describe('Namespace Select Button', () => {
       </BrowserRouter>
     );
 
-    const button = component.find("button");
-    expect(button).toIncludeText("emojivoto");
-  });
-
-  it('opens the Namespace Selection menu if button is clicked', () => {
-    // Material-UI v4 requires that the popover needs a valid anchorEl
-    // if NODE_ENV is not "test"
-    delete process.env.NODE_ENV;
-    process.env.NODE_ENV = "test";
-
-    const component = mount(
-      <BrowserRouter>
-        <Navigation
-          ChildComponent={() => null}
-          classes={{}}
-          theme={{}}
-          location={loc}
-          api={ApiHelpers("")}
-          releaseVersion="edge-1.2.3"
-          selectedNamespace="emojivoto"
-          pathPrefix=""
-          uuid="fakeuuid" />
-      </BrowserRouter>
-    );
-
-    expect(component.find(Menu).props().open).toBeFalsy();
-
-    const button = component.find("button");
-    button.simulate("click");
-
-    expect(component.find(Menu).props().open).toBeTruthy();
-  });
-
-  describe('renders namespace selection menu with correct number of options', () => {
-    beforeEach(() => {
-      // https://material-ui.com/components/use-media-query/#testing
-      window.matchMedia = createMatchMedia(window.innerWidth);
-    });
-
-    it('5 options', () => {
-      const component = mount(
-        <BrowserRouter>
-          <Navigation
-            ChildComponent={() => null}
-            classes={{}}
-            theme={{}}
-            location={loc}
-            api={ApiHelpers("")}
-            releaseVersion="edge-1.2.3"
-            selectedNamespace="emojivoto"
-            pathPrefix=""
-            uuid="fakeuuid" />
-        </BrowserRouter>
-      );
-
-      expect(component.find(Menu).find(MenuItem)).toHaveLength(2);
-
-      component.find("NavigationBase").instance().setState({
-        namespaces: namespaces,
-      });
-      component.update();
-      // 5 items = Input - "Select Namespace..." + "All Namespaces" item + 3 added namespaces
-      expect(component.find(Menu).find(MenuItem)).toHaveLength(5);
-    });
-
-    it('3 options', () => {
-      const component = mount(
-        <BrowserRouter>
-          <Navigation
-            ChildComponent={() => null}
-            classes={{}}
-            theme={{}}
-            location={loc}
-            api={ApiHelpers("")}
-            releaseVersion="edge-1.2.3"
-            selectedNamespace="emojivoto"
-            pathPrefix=""
-            uuid="fakeuuid" />
-        </BrowserRouter>
-      );
-
-      expect(component.find(Menu).find(MenuItem)).toHaveLength(2);
-
-      component.find("NavigationBase").instance().setState({
-        namespaces: namespaces,
-        formattedNamespaceFilter: "de",
-      });
-      component.update();
-      // 3 items = "Input - Select Namespace..." + "All Namespaces" item + 1 namespace which matches "de" string
-      expect(component.find(Menu).find(MenuItem)).toHaveLength(3);
-    });
+    const input = component.find("input");
+    expect(input.instance().value).toEqual("EMOJIVOTO")
   });
 });
