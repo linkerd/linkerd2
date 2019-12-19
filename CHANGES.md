@@ -1,5 +1,23 @@
 ## edge-19.12.3
 
+This edge release adds support for pod IP and service cluster IP lookups, 
+improves performance of the dashboard, and makes `linkerd check --pre` perform 
+more comprehensive checks.
+
+The `--wait-before-seconds` flag has been added to allow Linkerd users to opt in
+to `preStop hooks`. The details of this change are in 
+[#3798](https://github.com/linkerd/linkerd2/pull/3798).
+
+Also, the proxy has been updated to `v2.82.0` which improves gRPC error
+classification and 
+[ensures that resolutions](https://github.com/linkerd/linkerd2/pull/3848) are 
+released when the associated balancer becomes idle.
+
+Finally, an update to follow best practices in the Helm charts has caused a
+*breaking change*. Users who have installed Linkerd using Helm must be
+certain to read the details of 
+[#3822](https://github.com/linkerd/linkerd2/issues/3822)
+
 * CLI
   * Increased the comprehensiveness of `linkerd check --pre`
   * Added TLS certificate validation to `check` and `upgrade` commands
@@ -8,18 +26,19 @@
   * Added support for pod ip and service cluster ip lookups in the destination 
     service
   * Added recommended kubernetes labels to control-plane
-  * Added preStop hook into the proxy sidecar container to stop it last (a huge 
-    commit from @KIVagant, thanks!)
-  * Added a pre-sign check to te identity service
+  * Added the `--wait-before-exit-seconds` flag to linkerd inject for the proxy 
+    sidecar to delay the start of its shutdown process (a huge commit from 
+    @KIVagant, thanks!)
+  * Added a pre-sign check to the identity service
 * Web UI
-  * Added logic to pause dashboard polling activity when the page is not in 
-    focus
+  * Increased the speed of the dashboard by pausing network activity when the 
+    dashboard is not visible to the user
 * Proxy
   * Added a timeout to release resolutions to idle balancers
-  * Reclassified gRPC status codes as non-errors
+  * Improved error classification for gRPC services
 * Internal
-  * Updated helm charts to follow best practices using proper casing (thanks 
-    @Pothulapati!)
+  * **Breaking Change** Updated Helm charts to follow best practices using
+    proper casing (thanks @Pothulapati!)
   
 ## edge-19.12.2
 
