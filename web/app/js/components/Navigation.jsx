@@ -112,11 +112,33 @@ const styles = theme => {
       width: `${navLogoWidth}px`,
     },
     namespaceChangeButton: {
+      borderRadius: "5px",
       backgroundColor: grey[400],
       marginLeft: `${drawerWidth * .075}px`,
       marginRight: `${drawerWidth * .075}px`,
       marginTop: "11px",
       width: `${drawerWidth * .85}px`,
+    },
+    namespaceChangeButtonInputRoot: {
+      backgroundColor: grey[300],
+      boxShadow: "rgba(0, 0, 0, 0.2) 0px 3px 1px -2px, rgba(0, 0, 0, 0.14) 0px 2px 2px 0px, rgba(0, 0, 0, 0.12) 0px 1px 5px 0px",
+      padding: "4px 12px !important",
+      border: 0,
+      "&:hover": {
+        borderColor: "transparent",
+      },
+    },
+    namespaceChangeButtonInput: {
+      textAlign: "center",
+    },
+    namespaceChangeButtonInputFocused: {
+      textAlign: "center",
+    },
+    namespaceChangeButtonPopupIndicator: {
+      backgroundColor: "transparent",
+      "&:hover": {
+        backgroundColor: "transparent",
+      }
     },
     navMenuItem: {
       paddingLeft: `${contentPadding}px`,
@@ -436,7 +458,13 @@ class NavigationBase extends React.Component {
           autoSelect={true}
           getOptionLabel={option => { if (option.name !== "_all") {return option.name;} else {return "All Namespaces";}}}
           onChange={this.handleNamespaceChange}
-          style={{ borderRadius:"5px" }}
+          size="small"
+          classes={{
+            root: classes.namespaceChangeButton,
+            inputRoot: classes.namespaceChangeButtonInputRoot,
+            input: classes.namespaceChangeButtonInput,
+            popupIndicator: classes.namespaceChangeButtonPopupIndicator,
+          }}
           className={classes.namespaceChangeButton}
           renderInput={params => (
             <TextField
