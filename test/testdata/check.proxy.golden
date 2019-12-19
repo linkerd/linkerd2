@@ -28,7 +28,6 @@ linkerd-existence
 √ controller pod is running
 √ can initialize the client
 √ can query the control plane API
-√ injector is operating correctly
 
 linkerd-identity
 ----------------
@@ -56,6 +55,10 @@ linkerd-version
 ---------------
 √ can determine the latest version
 √ cli is up-to-date
+
+linkerd-control-plane-dry-run
+-----------------------------
+√ injector is operating correctly
 
 linkerd-data-plane
 ------------------
