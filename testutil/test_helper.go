@@ -98,15 +98,15 @@ func NewTestHelper() *TestHelper {
 		externalIssuer: *externalIssuer,
 	}
 
-	version, _, err := testHelper.LinkerdRun("version", "--client", "--short")
+	version, stderr, err := testHelper.LinkerdRun("version", "--client", "--short")
 	if err != nil {
-		exit(1, "error getting linkerd version: "+err.Error())
+		exit(1, fmt.Sprintf("error getting linkerd version: %s\n%s", err.Error(), stderr))
 	}
 	testHelper.version = strings.TrimSpace(version)
 
 	kubernetesHelper, err := NewKubernetesHelper(*k8sContext, testHelper.RetryFor)
 	if err != nil {
-		exit(1, "error creating kubernetes helper: "+err.Error())
+		exit(1, fmt.Sprintf("error creating kubernetes helper: %s\n%s", err.Error(), stderr))
 	}
 	testHelper.KubernetesHelper = *kubernetesHelper
 
