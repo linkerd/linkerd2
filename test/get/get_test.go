@@ -50,9 +50,9 @@ var (
 //////////////////////
 
 func TestCliGet(t *testing.T) {
-	out, _, err := TestHelper.LinkerdRun("inject", "testdata/to_be_injected_application.yaml")
+	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/to_be_injected_application.yaml")
 	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+		t.Fatalf("Unexpected error: %v\n%s", err, stderr)
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace("get-test")
@@ -83,10 +83,9 @@ func TestCliGet(t *testing.T) {
 	}
 
 	t.Run("get pods from --all-namespaces", func(t *testing.T) {
-		out, _, err = TestHelper.LinkerdRun("get", "pods", "--all-namespaces")
-
+		out, stderr, err = TestHelper.LinkerdRun("get", "pods", "--all-namespaces")
 		if err != nil {
-			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
+			t.Fatalf("Unexpected error: %v output:\n%s\n%s", err, out, stderr)
 		}
 
 		err := checkPodOutput(out, deployReplicas, "", prefixedNs)
@@ -96,10 +95,9 @@ func TestCliGet(t *testing.T) {
 	})
 
 	t.Run("get pods from the linkerd namespace", func(t *testing.T) {
-		out, _, err = TestHelper.LinkerdRun("get", "pods", "-n", TestHelper.GetLinkerdNamespace())
-
+		out, stderr, err = TestHelper.LinkerdRun("get", "pods", "-n", TestHelper.GetLinkerdNamespace())
 		if err != nil {
-			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
+			t.Fatalf("Unexpected error: %v output:\n%s\n%s", err, out, stderr)
 		}
 
 		err := checkPodOutput(out, linkerdPods, "linkerd-heartbeat", TestHelper.GetLinkerdNamespace())

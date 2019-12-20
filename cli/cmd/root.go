@@ -184,8 +184,8 @@ type proxyConfigOptions struct {
 	initImageVersion         string
 	dockerRegistry           string
 	imagePullPolicy          string
-	ignoreInboundPorts       []uint
-	ignoreOutboundPorts      []uint
+	ignoreInboundPorts       []string
+	ignoreOutboundPorts      []string
 	proxyUID                 int64
 	proxyLogLevel            string
 	proxyInboundPort         uint
@@ -266,6 +266,14 @@ func (options *proxyConfigOptions) validate() error {
 			options.proxyLogLevel)
 	}
 
+	if err := validateRangeSlice(options.ignoreInboundPorts); err != nil {
+		return err
+	}
+
+	if err := validateRangeSlice(options.ignoreOutboundPorts); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -285,8 +293,8 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	flags.StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
 	flags.UintVar(&options.proxyInboundPort, "inbound-port", options.proxyInboundPort, "Proxy port to use for inbound traffic")
 	flags.UintVar(&options.proxyOutboundPort, "outbound-port", options.proxyOutboundPort, "Proxy port to use for outbound traffic")
-	flags.UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
-	flags.UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
+	flags.StringSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports and/or port ranges (inclusive) that should skip the proxy and send directly to the application")
+	flags.StringSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports and/or port ranges (inclusive) that should skip the proxy")
 	flags.Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
 	flags.StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
 	flags.UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")

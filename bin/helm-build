@@ -9,6 +9,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 
 "$bindir"/helm lint "$rootdir"/charts/partials
+"$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
 "$bindir"/helm init --client-only
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2
 "$bindir"/helm dep up "$rootdir"/charts/patch
@@ -28,6 +29,7 @@ if [ "$1" = package ]; then
     repo=${BASH_REMATCH[1]}
     version=${BASH_REMATCH[2]}
     "$bindir"/helm --version $version --app-version $tag -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2
+    "$bindir"/helm --version $version --app-version $tag -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-cni
     mv "$rootdir"/target/helm/index-pre.yaml "$rootdir"/target/helm/index-pre-$version.yaml
     "$bindir"/helm repo index --url "https://helm.linkerd.io/$repo/" --merge "$rootdir"/target/helm/index-pre-$version.yaml "$rootdir"/target/helm
 fi

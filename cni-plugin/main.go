@@ -37,14 +37,14 @@ import (
 
 // ProxyInit is the configuration for the proxy-init binary
 type ProxyInit struct {
-	IncomingProxyPort     int   `json:"incoming-proxy-port"`
-	OutgoingProxyPort     int   `json:"outgoing-proxy-port"`
-	ProxyUID              int   `json:"proxy-uid"`
-	PortsToRedirect       []int `json:"ports-to-redirect"`
-	InboundPortsToIgnore  []int `json:"inbound-ports-to-ignore"`
-	OutboundPortsToIgnore []int `json:"outbound-ports-to-ignore"`
-	Simulate              bool  `json:"simulate"`
-	UseWaitFlag           bool  `json:"use-wait-flag"`
+	IncomingProxyPort     int      `json:"incoming-proxy-port"`
+	OutgoingProxyPort     int      `json:"outgoing-proxy-port"`
+	ProxyUID              int      `json:"proxy-uid"`
+	PortsToRedirect       []int    `json:"ports-to-redirect"`
+	InboundPortsToIgnore  []string `json:"inbound-ports-to-ignore"`
+	OutboundPortsToIgnore []string `json:"outbound-ports-to-ignore"`
+	Simulate              bool     `json:"simulate"`
+	UseWaitFlag           bool     `json:"use-wait-flag"`
 }
 
 // Kubernetes a K8s specific struct to hold config

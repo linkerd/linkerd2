@@ -551,13 +551,13 @@ func TestConfig(t *testing.T) {
 			t.Fatalf("Unexpected response: \"%s\" != \"%s\"", expectedVersion, v)
 		}
 
-		expectedPort := uint32(123)
-		ports := rsp.GetProxy().GetIgnoreOutboundPorts()
-		if len(ports) != 1 {
+		expectedPort := "123"
+		portRanges := rsp.GetProxy().GetIgnoreOutboundPorts()
+		if len(portRanges) != 1 {
 			t.Fatal("Unexpected response: didn't get the outbound port")
 		}
-		if p := ports[0].GetPort(); p != expectedPort {
-			t.Fatalf("Unexpected response: %d != %d", expectedPort, p)
+		if p := portRanges[0].GetPortRange(); p != expectedPort {
+			t.Fatalf("Unexpected response: %s != %s", expectedPort, p)
 		}
 	})
 }

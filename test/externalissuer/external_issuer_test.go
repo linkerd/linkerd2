@@ -37,9 +37,9 @@ func TestExternalIssuer(t *testing.T) {
 }
 
 func verifyInstallApp(t *testing.T) {
-	out, _, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/external_issuer_application.yaml")
+	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/external_issuer_application.yaml")
 	if err != nil {
-		t.Fatalf("linkerd inject command failed\n%s", out)
+		t.Fatalf("linkerd inject command failed\n%s\n%s", out, stderr)
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace(TestAppNamespaceSuffix)
