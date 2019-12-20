@@ -46,16 +46,7 @@ func TestNewValues(t *testing.T) {
 			ProxyInjectDisabled:      "disabled",
 			LinkerdNamespaceLabel:    "linkerd.io/is-control-plane",
 			HighAvailability:         false,
-			Identity: &Identity{
-				TrustDomain: "cluster.local",
-				Issuer: &Issuer{
-					ClockSkewAllowance:  "20s",
-					IssuanceLifetime:    "86400s",
-					CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
-					TLS:                 &TLS{},
-					Scheme:              "linkerd.io/tls",
-				},
-			},
+			IdentityTrustDomain:      "cluster.local",
 			Proxy: &Proxy{
 				EnableExternalProfiles: false,
 				Image: &Image{
@@ -103,6 +94,15 @@ func TestNewValues(t *testing.T) {
 						Request: "10Mi",
 					},
 				},
+			},
+		},
+		Identity: &Identity{
+			Issuer: &Issuer{
+				ClockSkewAllowance:  "20s",
+				IssuanceLifetime:    "86400s",
+				CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
+				TLS:                 &TLS{},
+				Scheme:              "linkerd.io/tls",
 			},
 		},
 		NodeSelector: map[string]string{

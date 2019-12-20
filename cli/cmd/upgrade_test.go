@@ -1142,12 +1142,12 @@ type: Opaque`,
 		t.Fatalf("validateAndBuild failed with %s", err)
 	}
 
-	if values.Global.Identity == nil ||
-		values.Global.Identity.TrustAnchorsPEM == "" ||
-		values.Global.Identity.TrustDomain == "" ||
-		values.Global.Identity.Issuer == nil ||
-		values.Global.Identity.Issuer.TLS.CrtPEM == "" ||
-		values.Global.Identity.Issuer.TLS.KeyPEM == "" {
+	if values.Identity == nil ||
+		values.Global.IdentityTrustAnchorsPEM == "" ||
+		values.Global.IdentityTrustDomain == "" ||
+		values.Identity.Issuer == nil ||
+		values.Identity.Issuer.TLS.CrtPEM == "" ||
+		values.Identity.Issuer.TLS.KeyPEM == "" {
 		t.Errorf("issuer values not generated")
 	}
 	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {

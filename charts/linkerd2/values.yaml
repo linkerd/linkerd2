@@ -12,31 +12,9 @@ global:
 
   namespace: linkerd
 
-  # identity configuration
-  identity:
-    issuer:
-      scheme: linkerd.io/tls
+  identityTrustAnchorsPEM: |
 
-      clockSkewAllowance: 20s
-
-      # must match the expiry date in crtPEM
-      crtExpiry:
-
-      # control plane annotation - do not edit
-      crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
-
-      issuanceLifeTime: 86400s
-
-      tls:
-        # PEM-encoded certificate
-        crtPEM: |
-
-        # PEM-encoded ECDSA private key
-        keyPEM: |
-
-    trustAnchorsPEM: |
-
-    trustDomain: *cluster_domain
+  identityTrustDomain: *cluster_domain
 
   # proxy configuration
   proxy:
@@ -110,6 +88,27 @@ controllerUID: 2103
 dashboard:
   replicas: 1
 
+# identity configuration
+identity:
+  issuer:
+    scheme: linkerd.io/tls
+
+    clockSkewAllowance: 20s
+
+    # must match the expiry date in crtPEM
+    crtExpiry:
+
+    # control plane annotation - do not edit
+    crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
+
+    issuanceLifeTime: 86400s
+
+    tls:
+      # PEM-encoded certificate
+      crtPEM: |
+
+      # PEM-encoded ECDSA private key
+      keyPEM: |
 
 # grafana configuration
 grafanaImage: gcr.io/linkerd-io/grafana

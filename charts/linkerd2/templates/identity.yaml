@@ -1,9 +1,9 @@
-{{if .Values.global.identity -}}
+{{if .Values.identity -}}
 ---
 ###
 ### Identity Controller Service
 ###
-{{ if and (.Values.global.identity.issuer) (eq .Values.global.identity.issuer.scheme "linkerd.io/tls") -}}
+{{ if and (.Values.identity.issuer) (eq .Values.identity.issuer.scheme "linkerd.io/tls") -}}
 ---
 kind: Secret
 apiVersion: v1
@@ -15,12 +15,12 @@ metadata:
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-    {{- if .Values.global.identity.issuer.crtExpiryAnnotation}}
-    {{.Values.global.identity.issuer.crtExpiryAnnotation}}: {{required "Please provide the identity issuer certificate expiry date" .Values.global.identity.issuer.crtExpiry}}
+    {{- if .Values.identity.issuer.crtExpiryAnnotation}}
+    {{.Values.identity.issuer.crtExpiryAnnotation}}: {{required "Please provide the identity issuer certificate expiry date" .Values.identity.issuer.crtExpiry}}
     {{- end}}
 data:
-  crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Values.global.identity.issuer.tls.crtPEM | trim)}}
-  key.pem: {{b64enc (required "Please provide the identity issue private key" .Values.global.identity.issuer.tls.keyPEM | trim)}}
+  crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Values.identity.issuer.tls.crtPEM | trim)}}
+  key.pem: {{b64enc (required "Please provide the identity issue private key" .Values.identity.issuer.tls.keyPEM | trim)}}
 {{- end}}
 ---
 kind: Service

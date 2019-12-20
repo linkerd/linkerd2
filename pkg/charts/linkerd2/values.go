@@ -43,6 +43,7 @@ type (
 		ControlPlaneTracing         bool              `json:"controlPlaneTracing"`
 		Configs                     ConfigJSONs       `json:"configs"`
 		Global                      *Global           `json:"global"`
+		Identity                    *Identity         `json:"identity"`
 		Dashboard                   *Dashboard        `json:"dashboard"`
 		ProxyInjector               *ProxyInjector    `json:"proxyInjector"`
 		ProfileValidator            *ProfileValidator `json:"profileValidator"`
@@ -74,8 +75,9 @@ type (
 		ProxyInjectDisabled      string `json:"proxyInjectDisabled"`
 		LinkerdNamespaceLabel    string `json:"linkerdNamespaceLabel"`
 		HighAvailability         bool   `json:"highAvailability"`
+		IdentityTrustAnchorsPEM  string `json:"identityTrustAnchorsPEM"`
+		IdentityTrustDomain      string `json:"identityTrustDomain"`
 
-		Identity  *Identity  `json:"identity"`
 		Proxy     *Proxy     `json:"proxy"`
 		ProxyInit *ProxyInit `json:"proxyInit"`
 	}
@@ -168,9 +170,7 @@ type (
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
-		TrustAnchorsPEM string  `json:"trustAnchorsPEM"`
-		TrustDomain     string  `json:"trustDomain"`
-		Issuer          *Issuer `json:"issuer"`
+		Issuer *Issuer `json:"issuer"`
 	}
 
 	// Issuer has the Helm variables of the identity issuer

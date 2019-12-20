@@ -4,11 +4,11 @@
   "cniEnabled": false,
   "version": "{{.Values.global.linkerdVersion}}",
   "identityContext":{
-    "trustDomain": "{{.Values.global.identity.trustDomain}}",
-    "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Values.global.identity.trustAnchorsPEM | trim | replace "\n" "\\n"}}",
-    "issuanceLifeTime": "{{.Values.global.identity.issuer.issuanceLifeTime}}",
-    "clockSkewAllowance": "{{.Values.global.identity.issuer.clockSkewAllowance}}",
-    "scheme": "{{.Values.global.identity.issuer.scheme}}"
+    "trustDomain": "{{.Values.global.identityTrustDomain}}",
+    "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Values.global.identityTrustAnchorsPEM | trim | replace "\n" "\\n"}}",
+    "issuanceLifeTime": "{{.Values.identity.issuer.issuanceLifeTime}}",
+    "clockSkewAllowance": "{{.Values.identity.issuer.clockSkewAllowance}}",
+    "scheme": "{{.Values.identity.issuer.scheme}}"
   },
   "autoInjectContext": null,
   "omitWebhookSideEffects": {{.Values.omitWebhookSideEffects}},

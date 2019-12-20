@@ -41,12 +41,14 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	identityContext := toIdentityContext(&charts.Identity{
-		Issuer: &charts.Issuer{
-			ClockSkewAllowance: "20s",
-			IssuanceLifetime:   "86400s",
-		},
+	identityContext := toIdentityContext(&completeIdentity{
 		TrustAnchorsPEM: "test-trust-anchor",
+		Identity: &charts.Identity{
+			Issuer: &charts.Issuer{
+				ClockSkewAllowance: "20s",
+				IssuanceLifetime:   "86400s",
+			},
+		},
 	})
 	metaConfig := metaOptions.configs(identityContext)
 	metaConfig.Global.LinkerdNamespace = "Namespace"
@@ -66,6 +68,7 @@ func TestRender(t *testing.T) {
 		OmitWebhookSideEffects:      false,
 		RestrictDashboardPrivileges: false,
 		InstallNamespace:            true,
+		Identity:                    defaultValues.Identity,
 		NodeSelector:                defaultValues.NodeSelector,
 		Global: &charts.Global{
 			Namespace:                "Namespace",
@@ -78,7 +81,8 @@ func TestRender(t *testing.T) {
 			ProxyInjectAnnotation:    "ProxyInjectAnnotation",
 			ProxyInjectDisabled:      "ProxyInjectDisabled",
 			LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
-			Identity:                 defaultValues.Global.Identity,
+			IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
+			IdentityTrustAnchorsPEM:  defaultValues.Global.IdentityTrustAnchorsPEM,
 			Proxy: &charts.Proxy{
 				Image: &charts.Image{
 					Name:       "ProxyImageName",

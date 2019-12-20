@@ -529,11 +529,9 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		values.Global.Proxy.DisableIdentity = true
 		return
 	}
-
-	values.Global.Identity = &l5dcharts.Identity{
-		TrustAnchorsPEM: idctx.GetTrustAnchorsPem(),
-		TrustDomain:     idctx.GetTrustDomain(),
-	}
+	values.Global.IdentityTrustAnchorsPEM = idctx.GetTrustAnchorsPem()
+	values.Global.IdentityTrustDomain = idctx.GetTrustDomain()
+	values.Identity = &l5dcharts.Identity{}
 
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
 

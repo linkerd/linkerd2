@@ -69,6 +69,12 @@ type (
 		trustPEMFile, crtPEMFile, keyPEMFile string
 		identityExternalIssuer               bool
 	}
+
+	completeIdentity struct {
+		Identity        *l5dcharts.Identity
+		TrustAnchorsPEM string
+		TrustDomain     string
+	}
 )
 
 const (
@@ -153,12 +159,12 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		return nil, err
 	}
 
-	issuanceLifetime, err := time.ParseDuration(defaults.Global.Identity.Issuer.IssuanceLifetime)
+	issuanceLifetime, err := time.ParseDuration(defaults.Identity.Issuer.IssuanceLifetime)
 	if err != nil {
 		return nil, err
 	}
 
-	clockSkewAllowance, err := time.ParseDuration(defaults.Global.Identity.Issuer.ClockSkewAllowance)
+	clockSkewAllowance, err := time.ParseDuration(defaults.Identity.Issuer.ClockSkewAllowance)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +206,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			waitBeforeExitSeconds:  defaults.Global.Proxy.WaitBeforeExitSeconds,
 		},
 		identityOptions: &installIdentityOptions{
-			trustDomain:            defaults.Global.Identity.TrustDomain,
+			trustDomain:            defaults.Global.IdentityTrustDomain,
 			issuanceLifetime:       issuanceLifetime,
 			clockSkewAllowance:     clockSkewAllowance,
 			identityExternalIssuer: false,
@@ -406,7 +412,9 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	if err != nil {
 		return nil, nil, err
 	}
-	values.Global.Identity = identityValues
+	values.Identity = identityValues.Identity
+	values.Global.IdentityTrustAnchorsPEM = identityValues.TrustAnchorsPEM
+	values.Global.IdentityTrustDomain = identityValues.TrustDomain
 	values.Stage = stage
 
 	return values, configs, nil
@@ -953,7 +961,7 @@ func (idopts *installIdentityOptions) validate() error {
 	return nil
 }
 
-func (idopts *installIdentityOptions) validateAndBuild() (*l5dcharts.Identity, error) {
+func (idopts *installIdentityOptions) validateAndBuild() (*completeIdentity, error) {
 	if idopts == nil {
 		return nil, nil
 	}
@@ -975,30 +983,32 @@ func (idopts *installIdentityOptions) issuerName() string {
 	return fmt.Sprintf("identity.%s.%s", controlPlaneNamespace, idopts.trustDomain)
 }
 
-func (idopts *installIdentityOptions) genValues() (*l5dcharts.Identity, error) {
+func (idopts *installIdentityOptions) genValues() (*completeIdentity, error) {
 	root, err := tls.GenerateRootCAWithDefaults(idopts.issuerName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate root certificate for identity: %s", err)
 	}
 
-	return &l5dcharts.Identity{
+	return &completeIdentity{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
-		Issuer: &l5dcharts.Issuer{
-			Scheme:              consts.IdentityIssuerSchemeLinkerd,
-			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
-			IssuanceLifetime:    idopts.issuanceLifetime.String(),
-			CrtExpiry:           root.Cred.Crt.Certificate.NotAfter,
-			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-			TLS: &l5dcharts.TLS{
-				KeyPEM: root.Cred.EncodePrivateKeyPEM(),
-				CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
+		Identity: &l5dcharts.Identity{
+			Issuer: &l5dcharts.Issuer{
+				Scheme:              consts.IdentityIssuerSchemeLinkerd,
+				ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
+				IssuanceLifetime:    idopts.issuanceLifetime.String(),
+				CrtExpiry:           root.Cred.Crt.Certificate.NotAfter,
+				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
+				TLS: &l5dcharts.TLS{
+					KeyPEM: root.Cred.EncodePrivateKeyPEM(),
+					CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
+				},
 			},
 		},
 	}, nil
 }
 
-func (idopts *installIdentityOptions) readExternallyManaged() (*l5dcharts.Identity, error) {
+func (idopts *installIdentityOptions) readExternallyManaged() (*completeIdentity, error) {
 
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 	if err != nil {
@@ -1014,13 +1024,15 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*l5dcharts.Identi
 		return nil, fmt.Errorf("failed to read CA from %s: %s", consts.IdentityIssuerSecretName, err)
 	}
 
-	return &l5dcharts.Identity{
+	return &completeIdentity{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: externalIssuerData.TrustAnchors,
-		Issuer: &l5dcharts.Issuer{
-			Scheme:             string(corev1.SecretTypeTLS),
-			ClockSkewAllowance: idopts.clockSkewAllowance.String(),
-			IssuanceLifetime:   idopts.issuanceLifetime.String(),
+		Identity: &l5dcharts.Identity{
+			Issuer: &l5dcharts.Issuer{
+				Scheme:             string(corev1.SecretTypeTLS),
+				ClockSkewAllowance: idopts.clockSkewAllowance.String(),
+				IssuanceLifetime:   idopts.issuanceLifetime.String(),
+			},
 		},
 	}, nil
 
@@ -1030,7 +1042,7 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*l5dcharts.Identi
 // to produce an `installIdentityValues`.
 //
 // The identity options must have already been validated.
-func (idopts *installIdentityOptions) readValues() (*l5dcharts.Identity, error) {
+func (idopts *installIdentityOptions) readValues() (*completeIdentity, error) {
 	issuerData, err := issuercerts.LoadIssuerDataFromFiles(idopts.keyPEMFile, idopts.crtPEMFile, idopts.trustPEMFile)
 	if err != nil {
 		return nil, err
@@ -1041,34 +1053,36 @@ func (idopts *installIdentityOptions) readValues() (*l5dcharts.Identity, error) 
 		return nil, fmt.Errorf("failed to verify issuer certs stored on disk: %s", err)
 	}
 
-	return &l5dcharts.Identity{
+	return &completeIdentity{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: issuerData.TrustAnchors,
-		Issuer: &l5dcharts.Issuer{
-			Scheme:              consts.IdentityIssuerSchemeLinkerd,
-			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
-			IssuanceLifetime:    idopts.issuanceLifetime.String(),
-			CrtExpiry:           creds.Crt.Certificate.NotAfter,
-			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-			TLS: &l5dcharts.TLS{
-				KeyPEM: creds.EncodePrivateKeyPEM(),
-				CrtPEM: creds.EncodeCertificatePEM(),
+		Identity: &l5dcharts.Identity{
+			Issuer: &l5dcharts.Issuer{
+				Scheme:              consts.IdentityIssuerSchemeLinkerd,
+				ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
+				IssuanceLifetime:    idopts.issuanceLifetime.String(),
+				CrtExpiry:           creds.Crt.Certificate.NotAfter,
+				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
+				TLS: &l5dcharts.TLS{
+					KeyPEM: creds.EncodePrivateKeyPEM(),
+					CrtPEM: creds.EncodeCertificatePEM(),
+				},
 			},
 		},
 	}, nil
 }
 
-func toIdentityContext(idvals *l5dcharts.Identity) *pb.IdentityContext {
+func toIdentityContext(idvals *completeIdentity) *pb.IdentityContext {
 	if idvals == nil {
 		return nil
 	}
 
-	il, err := time.ParseDuration(idvals.Issuer.IssuanceLifetime)
+	il, err := time.ParseDuration(idvals.Identity.Issuer.IssuanceLifetime)
 	if err != nil {
 		il = defaultIdentityIssuanceLifetime
 	}
 
-	csa, err := time.ParseDuration(idvals.Issuer.ClockSkewAllowance)
+	csa, err := time.ParseDuration(idvals.Identity.Issuer.ClockSkewAllowance)
 	if err != nil {
 		csa = defaultIdentityClockSkewAllowance
 	}
@@ -1078,6 +1092,6 @@ func toIdentityContext(idvals *l5dcharts.Identity) *pb.IdentityContext {
 		TrustAnchorsPem:    idvals.TrustAnchorsPEM,
 		IssuanceLifetime:   ptypes.DurationProto(il),
 		ClockSkewAllowance: ptypes.DurationProto(csa),
-		Scheme:             idvals.Issuer.Scheme,
+		Scheme:             idvals.Identity.Issuer.Scheme,
 	}
 }

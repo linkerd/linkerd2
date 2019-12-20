@@ -45,18 +45,8 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
   "global": {
 	"cliVersion":"",
 	"linkerdVersion":"linkerd-version",
-	"identity":{
-		"trustAnchorsPEM":"test-trust-anchor",
-		"trustDomain":"test.trust.domain",
-		"issuer":{
-		  "crtExpiry":"Jul 30 17:21:14 2020",
-		  "crtExpiryAnnotation":"%s",
-		  "tls":{
-			"keyPEM":"test-key-pem",
-			"crtPEM":"test-crt-pem"
-		  }
-		}
-	   },
+    "identityTrustAnchorsPEM":"test-trust-anchor",
+    "identityTrustDomain":"test.trust.domain",
 	  "proxyInit":{
 		"image":{
 		  "version":"test-proxy-init-version"
@@ -69,6 +59,16 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 	}
   },
   "configs": null,
+  "identity":{
+	 "issuer":{
+	   "crtExpiry":"Jul 30 17:21:14 2020",
+	   "crtExpiryAnnotation":"%s",
+	   "tls":{
+	 	"keyPEM":"test-key-pem",
+	 	"crtPEM":"test-crt-pem"
+	   }
+     }
+  },
   "proxyInjector":{
     "keyPEM":"test-proxy-injector-key-pem",
     "crtPEM":"test-proxy-injector-crt-pem"
