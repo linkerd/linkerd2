@@ -42,46 +42,46 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 
 	// pin values that are changed by Helm functions on each test run
 	overrideJSON := `{
-  "global": {
-	"cliVersion":"",
-	"linkerdVersion":"linkerd-version",
-    "identityTrustAnchorsPEM":"test-trust-anchor",
-    "identityTrustDomain":"test.trust.domain",
-	  "proxyInit":{
-		"image":{
-		  "version":"test-proxy-init-version"
+		"global":{
+			"cliVersion":"",
+			"linkerdVersion":"linkerd-version",
+			"identityTrustAnchorsPEM":"test-trust-anchor",
+			"identityTrustDomain":"test.trust.domain",
+			"proxy":{
+				"image":{
+					"version":"test-proxy-version"
+				}
+			},
+			"proxyInit":{
+				"image":{
+					"version":"test-proxy-init-version"
+				}
+			}
+		},
+		"identity":{
+			"issuer":{
+				"crtExpiry":"Jul 30 17:21:14 2020",
+				"crtExpiryAnnotation":"%s",
+				"tls":{
+					"keyPEM":"test-key-pem",
+					"crtPEM":"test-crt-pem"
+				}
+			}
+		},
+		"configs": null,
+		"proxyInjector":{
+			"keyPEM":"test-proxy-injector-key-pem",
+			"crtPEM":"test-proxy-injector-crt-pem"
+		},
+		"profileValidator":{
+			"keyPEM":"test-profile-validator-key-pem",
+			"crtPEM":"test-profile-validator-crt-pem"
+		},
+		"tap":{
+			"keyPEM":"test-tap-key-pem",
+			"crtPEM":"test-tap-crt-pem"
 		}
-	  },
-	"proxy":{
-		"image":{
-		"version":"test-proxy-version"
-		}
-	}
-  },
-  "configs": null,
-  "identity":{
-	 "issuer":{
-	   "crtExpiry":"Jul 30 17:21:14 2020",
-	   "crtExpiryAnnotation":"%s",
-	   "tls":{
-	 	"keyPEM":"test-key-pem",
-	 	"crtPEM":"test-crt-pem"
-	   }
-     }
-  },
-  "proxyInjector":{
-    "keyPEM":"test-proxy-injector-key-pem",
-    "crtPEM":"test-proxy-injector-crt-pem"
-  },
-  "profileValidator":{
-    "keyPEM":"test-profile-validator-key-pem",
-    "crtPEM":"test-profile-validator-crt-pem"
-  },
-  "tap":{
-    "keyPEM":"test-tap-key-pem",
-    "crtPEM":"test-tap-crt-pem"
-  }
-}`
+	}`
 	overrideConfig := &pb.Config{
 		Raw: fmt.Sprintf(overrideJSON, k8s.IdentityIssuerExpiryAnnotation),
 	}
