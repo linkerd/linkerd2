@@ -341,10 +341,10 @@ func TestInstallHelm(t *testing.T) {
 
 	args := []string{
 		"--set", "controllerLogLevel=debug",
-		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "proxy.image.version=" + TestHelper.GetVersion(),
-		"--set", "identity.trustDomain=cluster.local",
-		"--set", "identity.trustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "global.linkerdVersion=" + TestHelper.GetVersion(),
+		"--set", "global.proxy.image.version=" + TestHelper.GetVersion(),
+		"--set", "global.identityTrustDomain=cluster.local",
+		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
