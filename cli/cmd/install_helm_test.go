@@ -42,22 +42,22 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 
 	// pin values that are changed by Helm functions on each test run
 	overrideJSON := `{
-		"global":{
-			"cliVersion":"",
-			"linkerdVersion":"linkerd-version",
-			"identityTrustAnchorsPEM":"test-trust-anchor",
-			"identityTrustDomain":"test.trust.domain",
-			"proxy":{
+  "global":{
+   "cliVersion":"",
+   "linkerdVersion":"linkerd-version",
+   "identityTrustAnchorsPEM":"test-trust-anchor",
+   "identityTrustDomain":"test.trust.domain",
+   "proxy":{
     "image":{
-      "version":"test-proxy-version"
+     "version":"test-proxy-version"
     }
    },
    "proxyInit":{
     "image":{
-      "version":"test-proxy-init-version"
+     "version":"test-proxy-init-version"
     }
-  	}
-		},
+   }
+  },
   "identity":{
     "issuer":{
       "crtExpiry":"Jul 30 17:21:14 2020",
