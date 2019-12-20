@@ -48,40 +48,40 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 			"identityTrustAnchorsPEM":"test-trust-anchor",
 			"identityTrustDomain":"test.trust.domain",
 			"proxy":{
-				"image":{
-					"version":"test-proxy-version"
-				}
-			},
-			"proxyInit":{
-				"image":{
-					"version":"test-proxy-init-version"
-				}
-			}
+    "image":{
+      "version":"test-proxy-version"
+    }
+   },
+   "proxyInit":{
+    "image":{
+      "version":"test-proxy-init-version"
+    }
+  	}
 		},
-		"identity":{
-			"issuer":{
-				"crtExpiry":"Jul 30 17:21:14 2020",
-				"crtExpiryAnnotation":"%s",
-				"tls":{
-					"keyPEM":"test-key-pem",
-					"crtPEM":"test-crt-pem"
-				}
-			}
-		},
-		"configs": null,
-		"proxyInjector":{
-			"keyPEM":"test-proxy-injector-key-pem",
-			"crtPEM":"test-proxy-injector-crt-pem"
-		},
-		"profileValidator":{
-			"keyPEM":"test-profile-validator-key-pem",
-			"crtPEM":"test-profile-validator-crt-pem"
-		},
-		"tap":{
-			"keyPEM":"test-tap-key-pem",
-			"crtPEM":"test-tap-crt-pem"
-		}
-	}`
+  "identity":{
+    "issuer":{
+      "crtExpiry":"Jul 30 17:21:14 2020",
+      "crtExpiryAnnotation":"%s",
+      "tls":{
+        "keyPEM":"test-key-pem",
+        "crtPEM":"test-crt-pem"
+      }
+    }
+  },
+  "configs": null,
+  "proxyInjector":{
+    "keyPEM":"test-proxy-injector-key-pem",
+    "crtPEM":"test-proxy-injector-crt-pem"
+  },
+  "profileValidator":{
+    "keyPEM":"test-profile-validator-key-pem",
+    "crtPEM":"test-profile-validator-crt-pem"
+  },
+  "tap":{
+    "keyPEM":"test-tap-key-pem",
+    "crtPEM":"test-tap-crt-pem"
+  }
+}`
 	overrideConfig := &pb.Config{
 		Raw: fmt.Sprintf(overrideJSON, k8s.IdentityIssuerExpiryAnnotation),
 	}
