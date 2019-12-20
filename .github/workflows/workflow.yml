@@ -354,7 +354,7 @@ jobs:
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        ssh -T linkerd-docker &> /dev/null << EOF
+        ssh -T linkerd-docker > /dev/null << EOF
           # TODO: This is using the kind binary on the remote host.
           kind load docker-image gcr.io/linkerd-io/proxy-init:v1.3.0 --name=$KIND_CLUSTER
           kind load docker-image prom/prometheus:v2.11.1 --name=$KIND_CLUSTER
