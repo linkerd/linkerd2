@@ -41,7 +41,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	identityContext := toIdentityContext(&completeIdentity{
+	identityContext := toIdentityContext(&identityWithAnchorsAndTrustDomain{
 		TrustAnchorsPEM: "test-trust-anchor",
 		Identity: &charts.Identity{
 			Issuer: &charts.Issuer{

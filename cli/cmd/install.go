@@ -70,7 +70,8 @@ type (
 		identityExternalIssuer               bool
 	}
 
-	completeIdentity struct {
+	// helper struct to move those values together
+	identityWithAnchorsAndTrustDomain struct {
 		Identity        *l5dcharts.Identity
 		TrustAnchorsPEM string
 		TrustDomain     string
@@ -961,7 +962,7 @@ func (idopts *installIdentityOptions) validate() error {
 	return nil
 }
 
-func (idopts *installIdentityOptions) validateAndBuild() (*completeIdentity, error) {
+func (idopts *installIdentityOptions) validateAndBuild() (*identityWithAnchorsAndTrustDomain, error) {
 	if idopts == nil {
 		return nil, nil
 	}
@@ -983,13 +984,13 @@ func (idopts *installIdentityOptions) issuerName() string {
 	return fmt.Sprintf("identity.%s.%s", controlPlaneNamespace, idopts.trustDomain)
 }
 
-func (idopts *installIdentityOptions) genValues() (*completeIdentity, error) {
+func (idopts *installIdentityOptions) genValues() (*identityWithAnchorsAndTrustDomain, error) {
 	root, err := tls.GenerateRootCAWithDefaults(idopts.issuerName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate root certificate for identity: %s", err)
 	}
 
-	return &completeIdentity{
+	return &identityWithAnchorsAndTrustDomain{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
 		Identity: &l5dcharts.Identity{
@@ -1008,7 +1009,7 @@ func (idopts *installIdentityOptions) genValues() (*completeIdentity, error) {
 	}, nil
 }
 
-func (idopts *installIdentityOptions) readExternallyManaged() (*completeIdentity, error) {
+func (idopts *installIdentityOptions) readExternallyManaged() (*identityWithAnchorsAndTrustDomain, error) {
 
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 	if err != nil {
@@ -1024,7 +1025,7 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*completeIdentity
 		return nil, fmt.Errorf("failed to read CA from %s: %s", consts.IdentityIssuerSecretName, err)
 	}
 
-	return &completeIdentity{
+	return &identityWithAnchorsAndTrustDomain{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: externalIssuerData.TrustAnchors,
 		Identity: &l5dcharts.Identity{
@@ -1042,7 +1043,7 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*completeIdentity
 // to produce an `installIdentityValues`.
 //
 // The identity options must have already been validated.
-func (idopts *installIdentityOptions) readValues() (*completeIdentity, error) {
+func (idopts *installIdentityOptions) readValues() (*identityWithAnchorsAndTrustDomain, error) {
 	issuerData, err := issuercerts.LoadIssuerDataFromFiles(idopts.keyPEMFile, idopts.crtPEMFile, idopts.trustPEMFile)
 	if err != nil {
 		return nil, err
@@ -1053,7 +1054,7 @@ func (idopts *installIdentityOptions) readValues() (*completeIdentity, error) {
 		return nil, fmt.Errorf("failed to verify issuer certs stored on disk: %s", err)
 	}
 
-	return &completeIdentity{
+	return &identityWithAnchorsAndTrustDomain{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: issuerData.TrustAnchors,
 		Identity: &l5dcharts.Identity{
@@ -1072,7 +1073,7 @@ func (idopts *installIdentityOptions) readValues() (*completeIdentity, error) {
 	}, nil
 }
 
-func toIdentityContext(idvals *completeIdentity) *pb.IdentityContext {
+func toIdentityContext(idvals *identityWithAnchorsAndTrustDomain) *pb.IdentityContext {
 	if idvals == nil {
 		return nil
 	}

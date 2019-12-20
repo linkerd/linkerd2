@@ -274,7 +274,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 	}
 
-	var identity *completeIdentity
+	var identity *identityWithAnchorsAndTrustDomain
 	idctx := configs.GetGlobal().GetIdentityContext()
 	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
 		// If there wasn't an idctx, or if it doesn't specify the required fields, we
@@ -414,7 +414,7 @@ func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred)
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*completeIdentity, error) {
+func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*identityWithAnchorsAndTrustDomain, error) {
 	if idctx == nil {
 		return nil, nil
 	}
@@ -463,7 +463,7 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 		}
 	}
 
-	return &completeIdentity{
+	return &identityWithAnchorsAndTrustDomain{
 		TrustDomain:     idctx.GetTrustDomain(),
 		TrustAnchorsPEM: trustAnchorsPEM,
 		Identity: &charts.Identity{
