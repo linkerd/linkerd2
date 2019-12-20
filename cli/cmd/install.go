@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -688,20 +687,11 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 		UID: options.proxyUID,
 	}
 
-	inboundPortStrs := []string{}
-	for _, port := range options.ignoreInboundPorts {
-		inboundPortStrs = append(inboundPortStrs, strconv.FormatUint(uint64(port), 10))
-	}
-	outboundPortStrs := []string{}
-	for _, port := range options.ignoreOutboundPorts {
-		outboundPortStrs = append(outboundPortStrs, strconv.FormatUint(uint64(port), 10))
-	}
-
 	installValues.ProxyInit.Image.Name = registryOverride(options.initImage, options.dockerRegistry)
 	installValues.ProxyInit.Image.PullPolicy = options.imagePullPolicy
 	installValues.ProxyInit.Image.Version = options.initImageVersion
-	installValues.ProxyInit.IgnoreInboundPorts = strings.Join(inboundPortStrs, ",")
-	installValues.ProxyInit.IgnoreOutboundPorts = strings.Join(outboundPortStrs, ",")
+	installValues.ProxyInit.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
+	installValues.ProxyInit.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
 
 	return installValues, nil
 }
@@ -785,14 +775,14 @@ func (options *installOptions) installConfig() *pb.Install {
 }
 
 func (options *installOptions) proxyConfig() *pb.Proxy {
-	ignoreInboundPorts := []*pb.Port{}
-	for _, port := range options.ignoreInboundPorts {
-		ignoreInboundPorts = append(ignoreInboundPorts, &pb.Port{Port: uint32(port)})
+	ignoreInboundPorts := []*pb.PortRange{}
+	for _, portOrRange := range options.ignoreInboundPorts {
+		ignoreInboundPorts = append(ignoreInboundPorts, &pb.PortRange{PortRange: portOrRange})
 	}
 
-	ignoreOutboundPorts := []*pb.Port{}
-	for _, port := range options.ignoreOutboundPorts {
-		ignoreOutboundPorts = append(ignoreOutboundPorts, &pb.Port{Port: uint32(port)})
+	ignoreOutboundPorts := []*pb.PortRange{}
+	for _, portOrRange := range options.ignoreOutboundPorts {
+		ignoreOutboundPorts = append(ignoreOutboundPorts, &pb.PortRange{PortRange: portOrRange})
 	}
 
 	return &pb.Proxy{

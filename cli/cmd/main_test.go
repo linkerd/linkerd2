@@ -14,7 +14,7 @@ var (
 	// updateFixtures is set by the `-update` flag.
 	updateFixtures bool
 
-	// prettyDiff is set by the `-verbose-diff` flag.
+	// prettyDiff is set by the `-pretty-diff` flag.
 	prettyDiff bool
 )
 

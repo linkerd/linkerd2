@@ -519,7 +519,7 @@ webhooks:
       namespace: linkerd
       path: "/"
     caBundle: cHJveHkgaW5qZWN0b3IgY3J0
-  failurePolicy: Fail
+  failurePolicy: Ignore
   rules:
   - operations: [ "CREATE" ]
     apiGroups: [""]
@@ -605,7 +605,7 @@ webhooks:
       namespace: linkerd
       path: "/"
     caBundle: cHJveHkgaW5qZWN0b3IgY3J0
-  failurePolicy: Fail
+  failurePolicy: Ignore
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
     apiGroups: ["linkerd.io"]
@@ -851,9 +851,9 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"},"autoInjectContext":null,"omitWebhookSideEffects":false,"clusterDomain":"cluster.local"}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"400m","requestMemory":"300Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxyInitImageVersion":"v1.3.0"}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[{"portRange":"22"},{"portRange":"8100-8102"}],"ignoreOutboundPorts":[{"portRange":"5432"}],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd2_proxy=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxyInitImageVersion":"v1.3.0"}
   install: |
-    {"cliVersion":"dev-undefined","flags":[{"name":"ha","value":"true"},{"name":"controller-replicas","value":"2"},{"name":"proxy-cpu-request","value":"400m"},{"name":"proxy-memory-request","value":"300Mi"}]}
+    {"cliVersion":"dev-undefined","flags":[]}
 ---
 ###
 ### Identity Controller Service
@@ -907,7 +907,7 @@ metadata:
   name: linkerd-identity
   namespace: linkerd
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
@@ -926,26 +926,6 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - identity
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - identity
-            topologyKey: kubernetes.io/hostname
       containers:
       - args:
         - identity
@@ -968,13 +948,6 @@ spec:
           httpGet:
             path: /ready
             port: 9990
-        resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "10Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1062,12 +1035,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "400m"
-            memory: "300Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1085,9 +1052,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,5432
         image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1158,7 +1125,7 @@ metadata:
   name: linkerd-controller
   namespace: linkerd
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: controller
@@ -1177,26 +1144,6 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - controller
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - controller
-            topologyKey: kubernetes.io/hostname
       containers:
       - args:
         - public-api
@@ -1222,13 +1169,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1314,12 +1254,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "400m"
-            memory: "300Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1337,9 +1271,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,5432
         image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1407,7 +1341,7 @@ metadata:
   name: linkerd-destination
   namespace: linkerd
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
@@ -1426,26 +1360,6 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - destination
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - destination
-            topologyKey: kubernetes.io/hostname
       containers:
       - args:
         - destination
@@ -1471,13 +1385,6 @@ spec:
           httpGet:
             path: /ready
             port: 9996
-        resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1563,12 +1470,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "400m"
-            memory: "300Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1586,9 +1487,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,5432
         image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1661,13 +1562,6 @@ spec:
             - "-prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090"
             - "-controller-namespace=linkerd"
             - "-log-level=info"
-            resources:
-              limits:
-                cpu: "1"
-                memory: "250Mi"
-              requests:
-                cpu: "100m"
-                memory: "50Mi"
             securityContext:
               runAsUser: 2103
 ---
@@ -1755,13 +1649,6 @@ spec:
           httpGet:
             path: /ready
             port: 9994
-        resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -1847,12 +1734,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "400m"
-            memory: "300Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1870,9 +1751,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,5432
         image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2099,13 +1980,6 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        resources:
-          limits:
-            cpu: "4"
-            memory: "8192Mi"
-          requests:
-            cpu: "300m"
-            memory: "300Mi"
         securityContext:
           runAsUser: 65534
         volumeMounts:
@@ -2196,12 +2070,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "400m"
-            memory: "300Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -2219,9 +2087,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,5432
         image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2389,13 +2257,6 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-        resources:
-          limits:
-            cpu: "1"
-            memory: "1024Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -2484,12 +2345,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "400m"
-            memory: "300Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -2507,9 +2362,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,5432
         image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2567,7 +2422,7 @@ metadata:
   name: linkerd-proxy-injector
   namespace: linkerd
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
@@ -2584,26 +2439,6 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - proxy-injector
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - proxy-injector
-            topologyKey: kubernetes.io/hostname
       containers:
       - args:
         - proxy-injector
@@ -2626,13 +2461,6 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -2721,12 +2549,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "400m"
-            memory: "300Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -2744,9 +2566,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,5432
         image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2836,7 +2658,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: linkerd
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: sp-validator
@@ -2853,26 +2675,6 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - sp-validator
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - sp-validator
-            topologyKey: kubernetes.io/hostname
       containers:
       - args:
         - sp-validator
@@ -2895,13 +2697,6 @@ spec:
           httpGet:
             path: /ready
             port: 9997
-        resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -2988,12 +2783,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "400m"
-            memory: "300Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -3011,9 +2800,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,5432
         image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -3084,7 +2873,7 @@ metadata:
   name: linkerd-tap
   namespace: linkerd
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: tap
@@ -3103,26 +2892,6 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: linkerd.io/control-plane-component
-                  operator: In
-                  values:
-                  - tap
-              topologyKey: failure-domain.beta.kubernetes.io/zone
-            weight: 100
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: linkerd.io/control-plane-component
-                operator: In
-                values:
-                - tap
-            topologyKey: kubernetes.io/hostname
       containers:
       - args:
         - tap
@@ -3148,13 +2917,6 @@ spec:
           httpGet:
             path: /ready
             port: 9998
-        resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "100m"
-            memory: "50Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:
@@ -3243,12 +3005,6 @@ spec:
             port: 4191
           initialDelaySeconds: 2
         resources:
-          limits:
-            cpu: "1"
-            memory: "250Mi"
-          requests:
-            cpu: "400m"
-            memory: "300Mi"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -3266,9 +3022,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,22,8100-8102
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,5432
         image: gcr.io/linkerd-io/proxy-init:v1.3.0
         imagePullPolicy: IfNotPresent
         name: linkerd-init

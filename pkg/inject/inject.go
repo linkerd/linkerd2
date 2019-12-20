@@ -875,12 +875,11 @@ func (conf *ResourceConfig) proxyInboundSkipPorts() string {
 		return override
 	}
 
-	ports := []string{}
-	for _, port := range conf.configs.GetProxy().GetIgnoreInboundPorts() {
-		portStr := strconv.FormatUint(uint64(port.GetPort()), 10)
-		ports = append(ports, portStr)
+	portRanges := []string{}
+	for _, portOrRange := range conf.configs.GetProxy().GetIgnoreInboundPorts() {
+		portRanges = append(portRanges, portOrRange.GetPortRange())
 	}
-	return strings.Join(ports, ",")
+	return strings.Join(portRanges, ",")
 }
 
 func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
@@ -888,12 +887,11 @@ func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
 		return override
 	}
 
-	ports := []string{}
+	portRanges := []string{}
 	for _, port := range conf.configs.GetProxy().GetIgnoreOutboundPorts() {
-		portStr := strconv.FormatUint(uint64(port.GetPort()), 10)
-		ports = append(ports, portStr)
+		portRanges = append(portRanges, port.GetPortRange())
 	}
-	return strings.Join(ports, ",")
+	return strings.Join(portRanges, ",")
 }
 
 // GetOverriddenConfiguration returns a map of the overridden proxy annotations
