@@ -154,7 +154,7 @@ export class ResourceDetailBase extends React.Component {
 
     let apiRequests =
       [
-        // inbound stats for this resource
+      // inbound stats for this resource
         this.api.fetchMetrics(
           `${this.api.urlsForResource(resource.type, resource.namespace, true)}&resource_name=${resource.name}`
         ),
@@ -168,6 +168,7 @@ export class ResourceDetailBase extends React.Component {
         )
       ];
 
+    // Fetch pods in a resource and their metrics (except when resource type is pod)
     if (resource.type !== "pod") {
       // list of all pods in this namespace (hack since we can't currently query for all pods in a resource)
       apiRequests.push(this.api.fetchPods(resource.namespace));
