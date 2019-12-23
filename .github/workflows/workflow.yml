@@ -313,11 +313,11 @@ jobs:
         # retry cluster creation once in case of port conflict or kubeadm failure
         if [ "${{ matrix.integration_test }}" == "custom_domain" ]
         then
-          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug --config=$CUSTOM_DOMAIN_CONFIG ||
-            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug --config=$CUSTOM_DOMAIN_CONFIG
+          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug --config=$CUSTOM_DOMAIN_CONFIG --image kindest/node:v1.15.6 ||
+            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug --config=$CUSTOM_DOMAIN_CONFIG --image kindest/node:v1.15.6
         else
-          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug ||
-            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug
+          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug --image kindest/node:v1.15.6 ||
+            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug --image kindest/node:v1.15.6
         fi
         scp /tmp/kind-config-$KIND_CLUSTER linkerd-docker:/tmp
 
