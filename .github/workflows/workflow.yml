@@ -395,7 +395,8 @@ jobs:
         scp linkerd-docker:/tmp/kind-config-$KIND_CLUSTER $HOME/.kube
         export KUBECONFIG=$HOME/.kube/kind-config-$KIND_CLUSTER
         # Start ssh tunnel to allow kubectl to connect via localhost.
-        export KIND_PORT=$(bin/kubectl config view -o jsonpath="{.clusters[?(@.name=='$KIND_CLUSTER')].cluster.server}" | cut -d':' -f3)
+        export KIND_PORT=$(bin/kubectl config view -o jsonpath="{.clusters[?(@.name=='kind-$KIND_CLUSTER')].cluster.server}" | cut -d':' -f3)
+        echo "KIND_PORT: $KIND_PORT"
         ssh -4 -N -L $KIND_PORT:localhost:$KIND_PORT linkerd-docker &
         sleep 2 # Wait for ssh tunnel to come up.
         bin/kubectl version --short # Test connection to kind cluster.
