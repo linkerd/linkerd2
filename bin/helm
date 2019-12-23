@@ -2,7 +2,7 @@
 
 set -eu
 
-helmversion=v2.14.3
+helmversion=v2.16.1
 bindir=$( cd "${0%/*}" && pwd )
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
 helmbin=$targetbin/helm-$helmversion
