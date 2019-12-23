@@ -22,6 +22,11 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: {{.Values.namespace}}
+  annotations:
+    {{.Values.proxyInjectAnnotation}}: {{.Values.proxyInjectDisabled}}
+  labels:
+    {{.Values.linkerdNamespaceLabel}}: "true"
+    config.linkerd.io/admission-webhooks: disabled
 ---
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
