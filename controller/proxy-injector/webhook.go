@@ -35,7 +35,6 @@ func Inject(api *k8s.API,
 	if err != nil {
 		return nil, err
 	}
-
 	proxyConfig, err := config.Proxy(pkgK8s.MountPathProxyConfig)
 	if err != nil {
 		return nil, err
@@ -78,6 +77,13 @@ func Inject(api *k8s.API,
 		ownerKind = strings.ToLower(ownerRef.Kind)
 	}
 	proxyInjectionAdmissionRequests.With(admissionRequestLabels(ownerKind, request.Namespace, report.InjectAnnotationAt, configLabels)).Inc()
+
+	for k, v := range nsAnnotations {
+		if k == pkgK8s.ProxyInjectAnnotation && v != pkgK8s.ProxyInjectEnabled {
+			log.Warnf("invalid value detected for annotation %s : %s", k, v)
+			recorder.Eventf(*parent, v1.EventTypeNormal, eventTypeSkipped, "Invalid value detected for annotation %s: %s", k, v)
+		}
+	}
 
 	if injectable, reasons := report.Injectable(); !injectable {
 		var readableReasons, metricReasons string
