@@ -14,19 +14,16 @@ import { withContext } from './util/AppContext.jsx';
 import withREST from './util/withREST.jsx';
 
 // create a Object with only the subset of functions/submodules/plugins that we need
-const d3 = Object.assign(
-  {},
-  {
-    drag,
-    forceCenter,
-    forceLink,
-    forceManyBody,
-    forceSimulation,
-    select,
-    selectAll,
-    format,
-  }
-);
+const d3 = {
+  drag,
+  forceCenter,
+  forceLink,
+  forceManyBody,
+  forceSimulation,
+  select,
+  selectAll,
+  format,
+};
 
 const defaultSvgWidth = 524;
 const defaultSvgHeight = 325;
@@ -42,20 +39,11 @@ const simulation = d3.forceSimulation()
   .force("center", d3.forceCenter(defaultSvgWidth / 2, defaultSvgHeight / 2));
 
 export class NetworkGraphBase extends React.Component {
-  static defaultProps = {
-    deployments: []
-  }
-
-  static propTypes = {
-    data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
-    deployments: PropTypes.arrayOf(PropTypes.object),
-  }
-
   constructor(props) {
     super(props);
 
     // https://github.com/d3/d3-zoom/issues/32
-    d3.getEvent = (() => require("d3-selection").event).bind(this);
+    d3.getEvent = (() => require("d3-selection").event); // eslint-disable-line
   }
 
   componentDidMount() {
@@ -77,13 +65,13 @@ export class NetworkGraphBase extends React.Component {
   }
 
   getGraphData() {
-    const { data } = this.props;
+    const { data, deployments } = this.props;
     let links = [];
     let nodeList = [];
 
     _map(data, (resp, i) => {
       let rows = _get(resp, ["ok", "statTables", 0, "podGroup", "rows"]);
-      let dst = this.props.deployments[i].name;
+      let dst = deployments[i].name;
       _map(rows, row => {
         links.push({
           source: row.resource.name,
@@ -105,7 +93,7 @@ export class NetworkGraphBase extends React.Component {
     let graphData = this.getGraphData();
 
     // check if graph is present to prevent drawing of multiple graphs
-    if (this.svg.select("circle")._groups[0][0]) {
+    if (this.svg.select("circle")._groups[0][0]) { // eslint-disable-line
       return;
     }
     this.drawGraphComponents(graphData.links, graphData.nodes);
@@ -212,12 +200,22 @@ export class NetworkGraphBase extends React.Component {
   }
 }
 
+NetworkGraphBase.defaultProps = {
+  deployments: []
+};
+
+NetworkGraphBase.propTypes = {
+  data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
+  deployments: PropTypes.arrayOf(PropTypes.object),
+};
+
 export default withREST(
   withContext(NetworkGraphBase),
-  ({api, namespace, deployments}) =>
-    _map(deployments, d => {
+  ({api, namespace, deployments}) => {
+    return _map(deployments, d => {
       return api.fetchMetrics(api.urlsForResource("deployment", namespace) + "&to_name=" + d.name);
-    }),
+    });
+  },
   {
     poll: false,
     resetProps: ["deployment"],

@@ -30,7 +30,6 @@ function SimpleChip(props) {
 }
 
 SimpleChip.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   label: PropTypes.string.isRequired,
   type: PropTypes.string.isRequired
 };

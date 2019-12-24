@@ -11,29 +11,13 @@ import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import withREST from './util/withREST.jsx';
 
 export class ResourceListBase extends React.Component {
-  static defaultProps = {
-    error: null
-  }
-
-  static propTypes = {
-    data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
-    error: apiErrorPropType,
-    loading: PropTypes.bool.isRequired,
-    resource: PropTypes.string.isRequired,
-  }
-
   banner = () => {
     const {error} = this.props;
-
-    if (!error) {
-      return;
-    }
-
-    return <ErrorBanner message={error} />;
+    return error ? <ErrorBanner message={error} /> : null;
   }
 
   content = () => {
-    const {data, loading, error} = this.props;
+    const {data, loading, error, resource} = this.props;
 
     if (loading && !error) {
       return <Spinner />;
@@ -41,19 +25,19 @@ export class ResourceListBase extends React.Component {
 
     let processedMetrics = [];
     if (data.length === 1) {
-      processedMetrics = processSingleResourceRollup(data[0], this.props.resource);
+      processedMetrics = processSingleResourceRollup(data[0], resource);
     }
 
     return (
       <React.Fragment>
         <MetricsTable
-          resource={this.props.resource}
+          resource={resource}
           metrics={processedMetrics}
           title="HTTP metrics" />
 
-        {this.props.resource !== "trafficsplit" &&
+        {resource !== "trafficsplit" &&
         <MetricsTable
-          resource={this.props.resource}
+          resource={resource}
           isTcpTable={true}
           metrics={processedMetrics}
           title="TCP metrics" />
@@ -63,7 +47,6 @@ export class ResourceListBase extends React.Component {
   }
 
   render() {
-
     return (
       <div className="page-content">
         <div>
@@ -74,6 +57,17 @@ export class ResourceListBase extends React.Component {
     );
   }
 }
+
+ResourceListBase.propTypes = {
+  data: PropTypes.arrayOf(metricsPropType.isRequired).isRequired,
+  error: apiErrorPropType,
+  loading: PropTypes.bool.isRequired,
+  resource: PropTypes.string.isRequired,
+};
+
+ResourceListBase.defaultProps = {
+  error: null
+};
 
 // When constructing a ResourceList for type "namespace", we query the API for metrics for all namespaces. For all other resource types, we limit our API query to the selectedNamespace.
 export default withREST(

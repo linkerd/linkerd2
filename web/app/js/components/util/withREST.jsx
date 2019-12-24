@@ -20,18 +20,9 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
   }, options);
 
   class RESTWrapper extends React.Component {
-    static propTypes = {
-      api: PropTypes.shape({
-        cancelCurrentRequests: PropTypes.func.isRequired,
-        getCurrentPromises: PropTypes.func.isRequired,
-        setCurrentRequests: PropTypes.func.isRequired,
-      }).isRequired,
-      isPageVisible: PropTypes.bool.isRequired,
-    }
-
     constructor(props) {
       super(props);
-      this.api = this.props.api;
+      this.api = props.api;
 
       this.state = this.getInitialState(this.props);
     }
@@ -49,9 +40,10 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
     }
 
     componentDidUpdate(prevProps) {
+      const { isPageVisible } = this.props;
       handlePageVisibility({
         prevVisibilityState: prevProps.isPageVisible,
-        currentVisibilityState: this.props.isPageVisible,
+        currentVisibilityState: isPageVisible,
         onVisible: () => this.startServerPolling(this.props),
         onHidden: () => this.stopServerPolling(),
       });
@@ -73,10 +65,12 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
     }
 
     startServerPolling = props => {
+      const { pollingInterval } = this.state;
       this.loadFromServer(props);
       if (localOptions.poll) {
         this.timerId = window.setInterval(
-          this.loadFromServer, this.state.pollingInterval, props);
+          this.loadFromServer, pollingInterval, props
+        );
       }
     }
 
@@ -89,7 +83,9 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
     }
 
     loadFromServer = props => {
-      if (this.state.pendingRequests) {
+      const { pendingRequests } = this.state;
+
+      if (pendingRequests) {
         return; // don't make more requests if the ones we sent haven't completed
       }
 
@@ -119,15 +115,26 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
     }
 
     render() {
+      const { data, error, loading } = this.state;
+
       return (
         <WrappedComponent
-          data={this.state.data}
-          error={this.state.error}
-          loading={this.state.loading}
+          data={data}
+          error={error}
+          loading={loading}
           {...this.props} />
       );
     }
   }
+
+  RESTWrapper.propTypes = {
+    api: PropTypes.shape({
+      cancelCurrentRequests: PropTypes.func.isRequired,
+      getCurrentPromises: PropTypes.func.isRequired,
+      setCurrentRequests: PropTypes.func.isRequired,
+    }).isRequired,
+    isPageVisible: PropTypes.bool.isRequired,
+  };
 
   return withPageVisibility(withContext(RESTWrapper));
 };

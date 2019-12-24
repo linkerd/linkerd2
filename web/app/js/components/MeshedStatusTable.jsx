@@ -71,18 +71,14 @@ const namespacesColumns = PrefixedLink => [
   }
 ];
 
-class MeshedStatusTable extends React.Component {
-  render() {
-    return (
-      <BaseTable
-        tableClassName="metric-table mesh-completion-table"
-        tableRows={this.props.tableRows}
-        tableColumns={namespacesColumns(this.props.api.PrefixedLink)}
-        defaultOrderBy="namespace"
-        rowKey={d => d.namespace} />
-    );
-  }
-}
+const MeshedStatusTable = ({ api, tableRows }) => (
+  <BaseTable
+    tableClassName="metric-table mesh-completion-table"
+    tableRows={tableRows}
+    tableColumns={namespacesColumns(api.PrefixedLink)}
+    defaultOrderBy="namespace"
+    rowKey={d => d.namespace} />
+);
 
 MeshedStatusTable.propTypes = {
   api: PropTypes.shape({

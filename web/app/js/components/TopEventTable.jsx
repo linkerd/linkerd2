@@ -83,32 +83,32 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
   }
 ];
 
-class TopEventTable extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      PrefixedLink: PropTypes.func.isRequired,
-    }).isRequired,
-    resourceType: PropTypes.string.isRequired,
-    tableRows: PropTypes.arrayOf(PropTypes.shape({}))
-  };
-  static defaultProps = {
-    tableRows: []
-  };
+const TopEventTable = ({ tableRows, resourceType, api }) => {
+  let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
 
-  render() {
-    const { tableRows, resourceType, api } = this.props;
-    let columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
-    return (
-      <BaseTable
-        enableFilter={true}
-        tableRows={tableRows}
-        tableColumns={columns}
-        tableClassName="metric-table"
-        defaultOrderBy="count"
-        defaultOrder="desc"
-        padding="dense" />
-    );
-  }
-}
+  return (
+    <BaseTable
+      enableFilter={true}
+      tableRows={tableRows}
+      tableColumns={columns}
+      tableClassName="metric-table"
+      defaultOrderBy="count"
+      defaultOrder="desc"
+      padding="dense" />
+  );
+};
+
+TopEventTable.propTypes = {
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired,
+    ResourceLink: PropTypes.func.isRequired
+  }).isRequired,
+  resourceType: PropTypes.string.isRequired,
+  tableRows: PropTypes.arrayOf(PropTypes.shape({}))
+};
+
+TopEventTable.defaultProps = {
+  tableRows: []
+};
 
 export default withContext(TopEventTable);

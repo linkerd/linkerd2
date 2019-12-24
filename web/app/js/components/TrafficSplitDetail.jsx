@@ -23,7 +23,7 @@ export const getAggregatedTrafficSplitMetrics = resourceMetrics => {
     }
   });
   let sumSuccessRates = _reduce(successRates, (acc, n) => {
-    return acc+= n;
+    return acc + n;
   }, 0);
   let aggregatedSuccessRate = sumSuccessRates/totalRPS || 0;
   return {successRate: aggregatedSuccessRate,
@@ -54,35 +54,35 @@ const formatLeaves = resourceRsp => {
   });
   return leaves;
 };
-export default class TrafficSplitDetail extends React.Component {
-  static propTypes = {
-    resourceMetrics: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
-    resourceName: PropTypes.string.isRequired,
-    resourceRsp: PropTypes.shape({}).isRequired,
-    resourceType: PropTypes.string.isRequired,
-  };
 
-  render() {
-    const { resourceMetrics, resourceName, resourceRsp, resourceType } = this.props;
-    const apexResource = generateApexMetrics(resourceMetrics);
+const TrafficSplitDetail = ({ resourceMetrics, resourceName, resourceRsp, resourceType }) => {
+  const apexResource = generateApexMetrics(resourceMetrics);
 
-    return (
-      <div>
-        <Grid container justify="space-between" alignItems="center">
-          <Grid item><Typography variant="h5">{resourceType}/{resourceName}</Typography></Grid>
-        </Grid>
+  return (
+    <div>
+      <Grid container justify="space-between" alignItems="center">
+        <Grid item><Typography variant="h5">{resourceType}/{resourceName}</Typography></Grid>
+      </Grid>
 
-        <Octopus
-          resource={apexResource}
-          neighbors={{ upstream: [], downstream: formatLeaves(resourceRsp) }} />
+      <Octopus
+        resource={apexResource}
+        neighbors={{ upstream: [], downstream: formatLeaves(resourceRsp) }} />
 
-        <MetricsTable
-          resource="trafficsplit"
-          metrics={resourceMetrics}
-          showName={false}
-          showNamespaceColumn={false}
-          title="Leaf Services" />
-      </div>
-    );
-  }
-}
+      <MetricsTable
+        resource="trafficsplit"
+        metrics={resourceMetrics}
+        showName={false}
+        showNamespaceColumn={false}
+        title="Leaf Services" />
+    </div>
+  );
+};
+
+TrafficSplitDetail.propTypes = {
+  resourceMetrics: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
+  resourceName: PropTypes.string.isRequired,
+  resourceRsp: PropTypes.shape({}).isRequired,
+  resourceType: PropTypes.string.isRequired,
+};
+
+export default TrafficSplitDetail;

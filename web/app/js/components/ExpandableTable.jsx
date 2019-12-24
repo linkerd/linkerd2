@@ -61,6 +61,7 @@ class ExpandableTable extends React.Component {
   };
 
   render() {
+    const { datum, open } = this.state;
     const { expandedRowRender, classes, tableRows, tableColumns, tableClassName } = this.props;
     let columns = [{
       title: " ",
@@ -85,8 +86,7 @@ class ExpandableTable extends React.Component {
                     className={`${classes.tableHeader} ${classes.denseTable}`}
                     align={c.isNumeric ? "right" : "left"}>{c.title}
                   </TableCell>
-                  )
-                )
+                ))
               }
             </TableRow>
           </TableHead>
@@ -94,15 +94,15 @@ class ExpandableTable extends React.Component {
             { tableRows.length > 0 && (
               <React.Fragment>
                 { tableRows.map(d => {
-                    return (
-                      <React.Fragment key={"frag-" + d.key}>
-                        <TableRow
-                          key={d.key}
-                          onClick={this.handleClick}
-                          ref={ref => {
-                            this.container = ref;
-                          }}>
-                          {
+                  return (
+                    <React.Fragment key={"frag-" + d.key}>
+                      <TableRow
+                        key={d.key}
+                        onClick={this.handleClick}
+                        ref={ref => {
+                          this.container = ref;
+                        }}>
+                        {
                             columns.map(c => (
                               <TableCell
                                 key={`table-${d.key}-${c.key}`}
@@ -112,11 +112,10 @@ class ExpandableTable extends React.Component {
                               </TableCell>
                             ))
                           }
-                        </TableRow>
-                      </React.Fragment>
-                    );
-                  }
-                )}
+                      </TableRow>
+                    </React.Fragment>
+                  );
+                })}
               </React.Fragment>
             )}
           </TableBody>
@@ -129,12 +128,12 @@ class ExpandableTable extends React.Component {
         <Dialog
           maxWidth="md"
           fullWidth
-          open={this.state.open}
+          open={open}
           onClose={this.handleDialogClose}
           aria-labelledby="form-dialog-title">
           <DialogTitle id="form-dialog-title">Request Details</DialogTitle>
           <DialogContent>
-            {expandedRowRender(this.state.datum, classes.expandedWrap)}
+            {expandedRowRender(datum, classes.expandedWrap)}
           </DialogContent>
           <DialogActions>
             <Button onClick={this.handleDialogClose} color="primary">Close</Button>
@@ -146,7 +145,6 @@ class ExpandableTable extends React.Component {
 }
 
 ExpandableTable.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   expandedRowRender: PropTypes.func.isRequired,
   tableClassName: PropTypes.string,
   tableColumns: PropTypes.arrayOf(PropTypes.shape({

@@ -21,11 +21,14 @@ const styles = theme => ({
 });
 
 class TopRoutesTabs extends React.Component {
-  state = {
-    value: 0,
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      value: 0,
+    };
+  }
 
-  handleChange = (_event, value) => {
+  handleChange = (_, value) => {
     this.setState({ value });
   };
 
@@ -100,10 +103,13 @@ class TopRoutesTabs extends React.Component {
 }
 
 TopRoutesTabs.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   disableTop: PropTypes.bool,
   pathPrefix: PropTypes.string.isRequired,
-  query: PropTypes.shape({}),
+  query: PropTypes.shape({
+    namespace: PropTypes.string,
+    resourceType: PropTypes.string,
+    resourceName: PropTypes.string
+  }),
   theme: PropTypes.shape({}).isRequired,
   updateUnmeshedSources: PropTypes.func
 };

@@ -17,20 +17,12 @@ const routeToCrumbTitle = {
 };
 
 class BreadcrumbHeader extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      PrefixedLink: PropTypes.func.isRequired,
-    }).isRequired,
-    location: ReactRouterPropTypes.location.isRequired,
-    pathPrefix: PropTypes.string.isRequired
-  }
-
   constructor(props) {
     super(props);
-    this.api = this.props.api;
+    this.api = props.api;
   }
 
-  processResourceDetailURL(segments) {
+  processResourceDetailURL = segments => {
     if (segments.length === 4) {
       let splitSegments = _chunk(segments, 2);
       let resourceNameSegment = splitSegments[1];
@@ -41,7 +33,7 @@ class BreadcrumbHeader extends React.Component {
     }
   }
 
-  convertURLToBreadcrumbs(location) {
+  convertURLToBreadcrumbs = location => {
     if (location.length === 0) {
       return [];
     } else {
@@ -65,7 +57,7 @@ class BreadcrumbHeader extends React.Component {
     }
   }
 
-  segmentToFriendlyTitle(segment, isResourceType) {
+  segmentToFriendlyTitle = (segment, isResourceType) => {
     if (isResourceType) {
       return routeToCrumbTitle[segment] || friendlyTitle(segment).plural;
     } else {
@@ -91,8 +83,9 @@ class BreadcrumbHeader extends React.Component {
   }
 
   render() {
-    let prefix = this.props.pathPrefix;
-    let breadcrumbs = this.convertURLToBreadcrumbs(this.props.location.pathname.replace(prefix, ""));
+    const { pathPrefix, location } = this.props;
+    let { pathname } = location;
+    let breadcrumbs = this.convertURLToBreadcrumbs(pathname.replace(pathPrefix, ""));
 
     return breadcrumbs.map((pathSegment, index) => {
       return (
@@ -104,5 +97,13 @@ class BreadcrumbHeader extends React.Component {
     });
   }
 }
+
+BreadcrumbHeader.propTypes = {
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired,
+  }).isRequired,
+  location: ReactRouterPropTypes.location.isRequired,
+  pathPrefix: PropTypes.string.isRequired
+};
 
 export default withContext(BreadcrumbHeader);

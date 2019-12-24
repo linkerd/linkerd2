@@ -150,7 +150,6 @@ const Results = ({title, results, classes}) => {
 };
 
 Results.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   results: PropTypes.arrayOf(PropTypes.shape({
     Description: PropTypes.string.isRequired,
     Err: PropTypes.any,
@@ -173,7 +172,7 @@ const Icon = ({type, classes}) => {
           case "warning":
             return <PriorityHigh className={`${classes.icon} ${classes.iconWarning}`} fontSize="small" />;
           default:
-            null;
+            return null;
         }
       })()}
     </React.Fragment>
@@ -189,6 +188,7 @@ class CheckModal extends React.Component {
   constructor(props) {
     super(props);
 
+    this.api = props.api;
     this.handleOpenChange = this.handleOpenChange.bind(this);
     this.runCheck = this.runCheck.bind(this);
     this.handleApiError = this.handleApiError.bind(this);
@@ -216,8 +216,8 @@ class CheckModal extends React.Component {
       open: true,
     });
 
-    this.props.api.setCurrentRequests([this.props.api.fetchCheck()]);
-    this.serverPromise = Promise.all(this.props.api.getCurrentPromises())
+    this.api.setCurrentRequests([this.api.fetchCheck()]);
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([response]) => {
         this.setState({
           running: false,
@@ -259,7 +259,7 @@ class CheckModal extends React.Component {
           </Grid>
         </Grid>
 
-        { this.state.error !== undefined && <ErrorBanner message={error} /> }
+        { error !== undefined && <ErrorBanner message={error} /> }
 
         <Dialog
           className={classes.dialog}
@@ -334,7 +334,6 @@ CheckModal.propTypes = {
     getCurrentPromises: PropTypes.func.isRequired,
     setCurrentRequests: PropTypes.func.isRequired,
   }).isRequired,
-  classes: PropTypes.shape({}).isRequired,
   fullScreen: PropTypes.bool.isRequired,
   theme: PropTypes.shape({}).isRequired,
 };

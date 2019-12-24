@@ -25,7 +25,6 @@ const EmptyCard = ({ content, classes }) => {
 };
 
 EmptyCard.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   content: PropTypes.string,
 };
 

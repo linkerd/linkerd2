@@ -94,38 +94,33 @@ const generateEdgesTableTitle = edges => {
   return title;
 };
 
-class EdgesTable extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      prefixedUrl: PropTypes.func.isRequired,
-    }).isRequired,
-    classes: PropTypes.shape({}).isRequired,
-    edges: PropTypes.arrayOf(processedEdgesPropType),
-    namespace: PropTypes.string.isRequired,
-    type: PropTypes.string.isRequired
-  };
+const EdgesTable = ({ edges, api, namespace, type, classes }) => {
+  let edgesColumns = edgesColumnDefinitions(api.PrefixedLink, namespace, type, classes);
+  let edgesTableTitle = generateEdgesTableTitle(edges);
 
-  static defaultProps = {
-    edges: [],
-  };
+  return (
+    <BaseTable
+      defaultOrderBy="name"
+      enableFilter={true}
+      tableRows={edges}
+      tableColumns={edgesColumns}
+      tableClassName="metric-table"
+      title={edgesTableTitle}
+      padding="dense" />
+  );
+};
 
+EdgesTable.propTypes = {
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired,
+  }).isRequired,
+  edges: PropTypes.arrayOf(processedEdgesPropType),
+  namespace: PropTypes.string.isRequired,
+  type: PropTypes.string.isRequired
+};
 
-  render() {
-    const { edges, api, namespace, type, classes } = this.props;
-    let edgesColumns = edgesColumnDefinitions(api.PrefixedLink, namespace, type, classes);
-    let edgesTableTitle = generateEdgesTableTitle(edges);
-
-    return (
-      <BaseTable
-        defaultOrderBy="name"
-        enableFilter={true}
-        tableRows={edges}
-        tableColumns={edgesColumns}
-        tableClassName="metric-table"
-        title={edgesTableTitle}
-        padding="dense" />
-    );
-  }
-}
+EdgesTable.defaultProps = {
+  edges: [],
+};
 
 export default withStyles(styles)(EdgesTable);

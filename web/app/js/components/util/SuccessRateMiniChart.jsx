@@ -5,21 +5,15 @@ import SuccessRateDot from "./SuccessRateDot.jsx";
 import _isNil from 'lodash/isNil';
 import { metricToFormatter } from './Utils.js';
 
-class SuccessRateMiniChart extends React.Component {
-  render() {
-    const { sr } = this.props;
-
-    return (
-      <Grid container justify="flex-end" alignItems="center" spacing={1}>
-        <Grid item>{metricToFormatter["SUCCESS_RATE"](sr)}</Grid>
-        <Grid item>{_isNil(sr) ? null :
-        <SuccessRateDot sr={sr} />
-        }
-        </Grid>
-      </Grid>
-    );
-  }
-}
+const SuccessRateMiniChart = ({ sr }) => (
+  <Grid container justify="flex-end" alignItems="center" spacing={1}>
+    <Grid item>{metricToFormatter["SUCCESS_RATE"](sr)}</Grid>
+    <Grid item>{_isNil(sr) ? null :
+    <SuccessRateDot sr={sr} />
+    }
+    </Grid>
+  </Grid>
+);
 
 SuccessRateMiniChart.propTypes = {
   sr: PropTypes.number,

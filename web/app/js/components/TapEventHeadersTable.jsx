@@ -38,7 +38,6 @@ const HeadersContentBase = ({headers, classes}) => {
 };
 
 HeadersContentBase.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   headers: PropTypes.arrayOf(PropTypes.shape({
     name: PropTypes.string.isRequired,
     valueStr: PropTypes.string.isRequired,

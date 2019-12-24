@@ -67,31 +67,11 @@ const componentsToDeployNames = {
 };
 
 class ServiceMesh extends React.Component {
-  static defaultProps = {
-    productName: 'controller'
-  }
-
-  static propTypes = {
-    api: PropTypes.shape({
-      cancelCurrentRequests: PropTypes.func.isRequired,
-      PrefixedLink: PropTypes.func.isRequired,
-      fetchMetrics: PropTypes.func.isRequired,
-      getCurrentPromises: PropTypes.func.isRequired,
-      setCurrentRequests: PropTypes.func.isRequired,
-      urlsForResourceNoStats: PropTypes.func.isRequired,
-    }).isRequired,
-    classes: PropTypes.shape({}).isRequired,
-    controllerNamespace: PropTypes.string.isRequired,
-    isPageVisible: PropTypes.bool.isRequired,
-    productName: PropTypes.string,
-    releaseVersion: PropTypes.string.isRequired,
-  }
-
   constructor(props) {
     super(props);
     this.loadFromServer = this.loadFromServer.bind(this);
     this.handleApiError = this.handleApiError.bind(this);
-    this.api = this.props.api;
+    this.api = props.api;
 
     this.state = {
       pollingInterval: 2000,
@@ -108,9 +88,10 @@ class ServiceMesh extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
+    const { isPageVisible } = this.props;
     handlePageVisibility({
       prevVisibilityState: prevProps.isPageVisible,
-      currentVisibilityState: this.props.isPageVisible,
+      currentVisibilityState: isPageVisible,
       onVisible: () => this.startServerPolling(),
       onHidden: () => this.stopServerPolling(),
     });
@@ -121,15 +102,18 @@ class ServiceMesh extends React.Component {
   }
 
   getServiceMeshDetails() {
+    const { components } = this.state;
+    const { productName, releaseVersion, controllerNamespace } = this.props;
+
     return [
-      { key: 1, name: this.props.productName + " version", value: this.props.releaseVersion },
-      { key: 2, name: this.props.productName + " namespace", value: this.props.controllerNamespace },
-      { key: 3, name: "Control plane components", value: this.componentCount() },
+      { key: 1, name: productName + " version", value: releaseVersion },
+      { key: 2, name: productName + " namespace", value: controllerNamespace },
+      { key: 3, name: "Control plane components", value: components.length },
       { key: 4, name: "Data plane proxies", value: this.proxyCount() }
     ];
   }
 
-  getControllerComponentData(podData) {
+  getControllerComponentData = podData => {
     let podDataByDeploy = _groupBy(_filter(podData.pods, d => d.controlPlane), p => p.deployment);
     let byDeployName = _mapKeys(podDataByDeploy, (_pods, dep) => dep.split("/")[1]);
 
@@ -137,8 +121,8 @@ class ServiceMesh extends React.Component {
       return {
         name: component,
         pods: _map(byDeployName[deployName], p => {
-          let uptimeSec = !p.uptime ? 0 : p.uptime.split(".")[0];
-          let uptime = distanceInWordsToNow(subSeconds(Date.now(), parseInt(uptimeSec, 10)));
+          let uptimeSec = !p.uptime ? 0 : parseInt(p.uptime.split(".")[0], 10);
+          let uptime = distanceInWordsToNow(subSeconds(Date.now(), uptimeSec));
 
           return {
             name: p.name,
@@ -152,8 +136,9 @@ class ServiceMesh extends React.Component {
   }
 
   startServerPolling() {
+    const { pollingInterval } = this.state;
     this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.timerId = window.setInterval(this.loadFromServer, pollingInterval);
   }
 
   stopServerPolling() {
@@ -162,7 +147,7 @@ class ServiceMesh extends React.Component {
     this.setState({ pendingRequests: false });
   }
 
-  extractNsStatuses(nsData) {
+  extractNsStatuses = nsData => {
     let podsByNs = _get(nsData, ["ok", "statTables", 0, "podGroup", "rows"], []);
     let dataPlaneNamepaces = podsByNs.map(ns => {
       let meshedPods = parseInt(ns.meshedPodCount, 10);
@@ -183,13 +168,16 @@ class ServiceMesh extends React.Component {
   }
 
   loadFromServer() {
-    if (this.state.pendingRequests) {
+    const { pendingRequests } = this.state;
+    const { controllerNamespace } = this.props;
+
+    if (pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
     }
     this.setState({ pendingRequests: true });
 
     this.api.setCurrentRequests([
-      this.api.fetchPods(this.props.controllerNamespace),
+      this.api.fetchPods(controllerNamespace),
       this.api.fetchMetrics(this.api.urlsForResourceNoStats("namespace"))
     ]);
 
@@ -218,17 +206,18 @@ class ServiceMesh extends React.Component {
     });
   }
 
-  componentCount() {
-    return this.state.components.length;
-  }
-
   proxyCount() {
-    return _sumBy(this.state.nsStatuses, d => {
-      return d.namespace === this.props.controllerNamespace ? 0 : d.meshedPods;
+    const { nsStatuses } = this.state;
+    const { controllerNamespace } = this.props;
+
+    return _sumBy(nsStatuses, d => {
+      return d.namespace === controllerNamespace ? 0 : d.meshedPods;
     });
   }
 
   renderControlPlaneDetails() {
+    const { components } = this.state;
+
     return (
       <React.Fragment>
         <Grid container justify="space-between">
@@ -237,12 +226,12 @@ class ServiceMesh extends React.Component {
           </Grid>
           <Grid item xs={3}>
             <Typography align="right">Components</Typography>
-            <Typography align="right">{this.componentCount()}</Typography>
+            <Typography align="right">{components.length}</Typography>
           </Grid>
         </Grid>
 
         <StatusTable
-          data={this.state.components}
+          data={components}
           statusColumnTitle="Pod Status"
           shouldLink={false}
           api={this.api} />
@@ -266,17 +255,20 @@ class ServiceMesh extends React.Component {
   }
 
   renderAddResourcesMessage() {
+    const { nsStatuses } = this.state;
+    const { productName } = this.props;
+
     let message = "";
     let numUnadded = 0;
 
-    if (_isEmpty(this.state.nsStatuses)) {
+    if (_isEmpty(nsStatuses)) {
       message = "No resources detected.";
     } else {
-      let meshedCount = _countBy(this.state.nsStatuses, pod => {
+      let meshedCount = _countBy(nsStatuses, pod => {
         return pod.meshedPercent.get() > 0;
       });
       numUnadded = meshedCount["false"] || 0;
-      message = numUnadded === 0 ? `All namespaces have a ${this.props.productName} install.` :
+      message = numUnadded === 0 ? `All namespaces have a ${productName} install.` :
         `${numUnadded} ${numUnadded === 1 ? "namespace has" : "namespaces have"} no meshed resources.`;
     }
 
@@ -291,23 +283,24 @@ class ServiceMesh extends React.Component {
   }
 
   render() {
+    const { error, loaded, nsStatuses } = this.state;
     const { classes } = this.props;
 
     return (
       <div className="page-content">
-        { !this.state.error ? null : <ErrorBanner message={this.state.error} /> }
-        { !this.state.loaded ? <Spinner /> : (
+        { !error ? null : <ErrorBanner message={error} /> }
+        { !loaded ? <Spinner /> : (
           <div>
             {this.proxyCount() === 0 ?
               <CallToAction
-                numResources={this.state.nsStatuses.length}
+                numResources={nsStatuses.length}
                 resource="namespace" /> : null}
 
             <Grid container spacing={3}>
               <Grid item xs={8} container direction="column" >
                 <Grid item>{this.renderControlPlaneDetails()}</Grid>
                 <Grid item>
-                  <MeshedStatusTable tableRows={this.state.nsStatuses} />
+                  <MeshedStatusTable tableRows={nsStatuses} />
                 </Grid>
               </Grid>
 
@@ -323,5 +316,24 @@ class ServiceMesh extends React.Component {
     );
   }
 }
+
+ServiceMesh.propTypes = {
+  api: PropTypes.shape({
+    cancelCurrentRequests: PropTypes.func.isRequired,
+    PrefixedLink: PropTypes.func.isRequired,
+    fetchMetrics: PropTypes.func.isRequired,
+    getCurrentPromises: PropTypes.func.isRequired,
+    setCurrentRequests: PropTypes.func.isRequired,
+    urlsForResourceNoStats: PropTypes.func.isRequired,
+  }).isRequired,
+  controllerNamespace: PropTypes.string.isRequired,
+  isPageVisible: PropTypes.bool.isRequired,
+  productName: PropTypes.string,
+  releaseVersion: PropTypes.string.isRequired,
+};
+
+ServiceMesh.defaultProps = {
+  productName: 'controller'
+};
 
 export default withPageVisibility(withStyles(styles)(withContext(ServiceMesh)));

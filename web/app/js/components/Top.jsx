@@ -11,17 +11,9 @@ import { emptyTapQuery } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 class Top extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      PrefixedLink: PropTypes.func.isRequired,
-    }).isRequired,
-    isPageVisible: PropTypes.bool.isRequired,
-    pathPrefix: PropTypes.string.isRequired
-  }
-
   constructor(props) {
     super(props);
-    this.api = this.props.api;
+    this.api = props.api;
     this.loadFromServer = this.loadFromServer.bind(this);
     this.updateTapClosingState = this.updateTapClosingState.bind(this);
 
@@ -41,9 +33,10 @@ class Top extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
+    const { isPageVisible } = this.props;
     handlePageVisibility({
       prevVisibilityState: prevProps.isPageVisible,
-      currentVisibilityState: this.props.isPageVisible,
+      currentVisibilityState: isPageVisible,
       onVisible: () => this.startServerPolling(),
       onHidden: () => this.stopServerPolling(),
     });
@@ -53,7 +46,7 @@ class Top extends React.Component {
     this.stopServerPolling();
   }
 
-  getResourcesByNs(rsp) {
+  getResourcesByNs = rsp => {
     let statTables = _get(rsp, [0, "ok", "statTables"]);
     let authoritiesByNs = {};
     let resourcesByNs = _reduce(statTables, (mem, table) => {
@@ -86,8 +79,9 @@ class Top extends React.Component {
   }
 
   startServerPolling() {
+    const { pollingInterval } = this.state;
     this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.timerId = window.setInterval(this.loadFromServer, pollingInterval);
   }
 
   stopServerPolling() {
@@ -97,7 +91,9 @@ class Top extends React.Component {
   }
 
   loadFromServer() {
-    if (this.state.pendingRequests) {
+    const { pendingRequests } = this.state;
+
+    if (pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
     }
     this.setState({
@@ -164,31 +160,42 @@ class Top extends React.Component {
   }
 
   render() {
+    const { query, resourcesByNs, authoritiesByNs, tapRequestInProgress, tapIsClosing, error } = this.state;
+    const { pathPrefix } = this.props;
+
     return (
       <div>
-        {!this.state.error ? null :
-        <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
+        {!error ? null :
+        <ErrorBanner message={error} onHideMessage={() => this.setState({ error: null })} />}
         <TapQueryForm
           enableAdvancedForm={false}
           cmdName="top"
           handleTapStart={this.handleTapStart}
           handleTapStop={this.handleTapStop}
           handleTapClear={this.handleTapClear}
-          resourcesByNs={this.state.resourcesByNs}
-          authoritiesByNs={this.state.authoritiesByNs}
-          tapRequestInProgress={this.state.tapRequestInProgress}
-          tapIsClosing={this.state.tapIsClosing}
+          resourcesByNs={resourcesByNs}
+          authoritiesByNs={authoritiesByNs}
+          tapRequestInProgress={tapRequestInProgress}
+          tapIsClosing={tapIsClosing}
           updateQuery={this.updateQuery}
-          currentQuery={this.state.query} />
+          currentQuery={query} />
 
         <TopModule
-          pathPrefix={this.props.pathPrefix}
-          query={this.state.query}
-          startTap={this.state.tapRequestInProgress}
+          pathPrefix={pathPrefix}
+          query={query}
+          startTap={tapRequestInProgress}
           updateTapClosingState={this.updateTapClosingState} />
       </div>
     );
   }
 }
+
+Top.propTypes = {
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired,
+  }).isRequired,
+  isPageVisible: PropTypes.bool.isRequired,
+  pathPrefix: PropTypes.string.isRequired
+};
 
 export default withPageVisibility(withContext(Top));

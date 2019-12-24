@@ -198,33 +198,30 @@ const expandedRowRender = (d, expandedWrapStyle) => {
   );
 };
 
-class TapEventTable extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      ResourceLink: PropTypes.func.isRequired,
-    }).isRequired,
-    resource: PropTypes.string,
-    tableRows: PropTypes.arrayOf(PropTypes.shape({})),
-  }
+const TapEventTable = ({ tableRows, resource, api }) => {
+  let resourceType = resource.split("/")[0];
+  let columns = tapColumns(resourceType, api.ResourceLink);
 
-  static defaultProps = {
-    resource: "",
-    tableRows: []
-  }
+  return (
+    <ExpandableTable
+      tableRows={tableRows}
+      tableColumns={columns}
+      expandedRowRender={expandedRowRender}
+      tableClassName="metric-table" />
+  );
+};
 
-  render() {
-    const { tableRows, resource, api } = this.props;
-    let resourceType = resource.split("/")[0];
-    let columns = tapColumns(resourceType, api.ResourceLink);
+TapEventTable.propTypes = {
+  api: PropTypes.shape({
+    ResourceLink: PropTypes.func.isRequired,
+  }).isRequired,
+  resource: PropTypes.string,
+  tableRows: PropTypes.arrayOf(PropTypes.shape({})),
+};
 
-    return (
-      <ExpandableTable
-        tableRows={tableRows}
-        tableColumns={columns}
-        expandedRowRender={expandedRowRender}
-        tableClassName="metric-table" />
-    );
-  }
-}
+TapEventTable.defaultProps = {
+  resource: "",
+  tableRows: []
+};
 
 export default withContext(TapEventTable);

@@ -19,21 +19,6 @@ const styles = theme => ({
   }
 });
 class Version extends React.Component {
-  static defaultProps = {
-    error: null,
-    latestVersion: '',
-    productName: 'controller'
-  }
-
-  static propTypes = {
-    classes: PropTypes.shape({}).isRequired,
-    error: apiErrorPropType,
-    isLatest: PropTypes.bool.isRequired,
-    latestVersion: PropTypes.string,
-    productName: PropTypes.string,
-    releaseVersion: PropTypes.string.isRequired,
-  }
-
   numericVersion = version => {
     let parts = version.split("-", 2);
     if (parts.length === 2) {
@@ -45,9 +30,7 @@ class Version extends React.Component {
 
   versionChannel = version => {
     let parts = version.split("-", 2);
-    if (parts.length === 2) {
-      return parts[0];
-    }
+    return parts.length === 2 ? parts[0] : null;
   }
 
   renderVersionCheck = () => {
@@ -98,5 +81,19 @@ class Version extends React.Component {
     );
   }
 }
+
+Version.propTypes = {
+  error: apiErrorPropType,
+  isLatest: PropTypes.bool.isRequired,
+  latestVersion: PropTypes.string,
+  productName: PropTypes.string,
+  releaseVersion: PropTypes.string.isRequired,
+};
+
+Version.defaultProps = {
+  error: null,
+  latestVersion: '',
+  productName: 'controller'
+};
 
 export default withStyles(styles, { withTheme: true })(withContext(Version));

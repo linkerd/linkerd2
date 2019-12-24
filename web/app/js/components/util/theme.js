@@ -39,7 +39,6 @@ export const dashboardTheme = {
 };
 
 
-
 export const statusClassNames = theme => {
   theme.status = theme.status || status; // tests don't inject custom variables
 

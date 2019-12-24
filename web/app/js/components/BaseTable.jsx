@@ -68,9 +68,11 @@ const styles = theme => ({
 class BaseTable extends React.Component {
   constructor(props) {
     super(props);
+
+    const { defaultOrder, defaultOrderBy } = props;
     this.state = {
-      order: this.props.defaultOrder || "asc",
-      orderBy: this.props.defaultOrderBy,
+      order: defaultOrder || "asc",
+      orderBy: defaultOrderBy,
       filterBy: ""
     };
     this.handleFilterInputChange = this.handleFilterInputChange.bind(this);
@@ -78,14 +80,16 @@ class BaseTable extends React.Component {
   }
 
   createSortHandler = col => () => {
-    let orderBy = col.dataIndex;
-    let order = col.defaultSortOrder || 'asc';
+    const { order, orderBy } = this.state;
 
-    if (this.state.orderBy === orderBy && this.state.order === order) {
-      order = order === 'asc' ? 'desc' : 'asc';
+    let newOrderBy = col.dataIndex;
+    let newOrder = col.defaultSortOrder || 'asc';
+
+    if (orderBy === newOrderBy && order === newOrder) {
+      newOrder = newOrder === 'asc' ? 'desc' : 'asc';
     }
 
-    this.setState({ order, orderBy });
+    this.setState({ order: newOrder, orderBy: newOrderBy });
   };
 
   handleFilterInputChange = event => {
@@ -93,8 +97,8 @@ class BaseTable extends React.Component {
   }
 
   handleFilterToggle = () => {
-    let newFilterStatus = !this.state.showFilter;
-    this.setState({ showFilter: newFilterStatus, filterBy: "" });
+    const { showFilter } = this.state;
+    this.setState({ showFilter: !showFilter, filterBy: "" });
   }
 
   generateRows = (tableRows, tableColumns, order, orderBy, filterBy) => {
@@ -105,10 +109,10 @@ class BaseTable extends React.Component {
       rows = _orderBy(rows, row => col.sorter(row), order);
     }
     if (filterBy) {
-      let columnsToFilter = tableColumns.filter(col => col.filter);
+      let columnsToFilter = tableColumns.filter(c => c.filter);
       let filteredRows = rows.filter(row => {
-        return columnsToFilter.some(col => {
-          let rowText = col.filter(row);
+        return columnsToFilter.some(c => {
+          let rowText = c.filter(row);
           return rowText.match(filterBy);
         });
       });
@@ -164,6 +168,8 @@ class BaseTable extends React.Component {
   }
 
   renderToolbar = (classes, title) => {
+    const { showFilter } = this.state;
+
     return (
       <Toolbar className={classes.toolbar}>
         <Typography
@@ -171,19 +177,19 @@ class BaseTable extends React.Component {
           variant="h5">
           {title}
         </Typography>
-        {this.state.showFilter &&
+        {showFilter &&
           <TextField
             id="input-with-icon-textfield"
             onChange={this.handleFilterInputChange}
             placeholder="Filter by text"
             autoFocus />}
-        {!this.state.showFilter &&
+        {!showFilter &&
         <Hidden smDown>
           <FilterListIcon
             className={classes.toolbarIcon}
             onClick={this.handleFilterToggle} />
         </Hidden>}
-        {this.state.showFilter &&
+        {showFilter &&
           <CloseIcon
             className={classes.toolbarIcon}
             onClick={this.handleFilterToggle} />}
@@ -213,24 +219,22 @@ class BaseTable extends React.Component {
               <React.Fragment>
                 {
                   sortedTableRows.map(d => {
-                  let key = !rowKey ? d.key : rowKey(d);
-                  let tableRow = (
-                    <TableRow key={key}>
-                      { tableColumns.map(c => (
-                        <TableCell
-                          className={classNames({[classes.denseTable]: padding === 'dense'})}
-                          key={`table-${key}-${c.key || c.dataIndex}`}
-                          align={c.isNumeric ? "right" : "left"}>
-                          {c.render ? c.render(d) : _get(d, c.dataIndex)}
-                        </TableCell>
-                        )
-                      )}
-                    </TableRow>
-                  );
-                  return _isNil(d.tooltip) ? tableRow :
-                  <Tooltip key={`table-row-${key}`} placement="left" title={d.tooltip}>{tableRow}</Tooltip>;
-                  }
-                )}
+                    let key = !rowKey ? d.key : rowKey(d);
+                    let tableRow = (
+                      <TableRow key={key}>
+                        {tableColumns.map(c => (
+                          <TableCell
+                            className={classNames({[classes.denseTable]: padding === 'dense'})}
+                            key={`table-${key}-${c.key || c.dataIndex}`}
+                            align={c.isNumeric ? "right" : "left"}>
+                            {c.render ? c.render(d) : _get(d, c.dataIndex)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    );
+                    return _isNil(d.tooltip) ? tableRow :
+                    <Tooltip key={`table-row-${key}`} placement="left" title={d.tooltip}>{tableRow}</Tooltip>;
+                  })}
               </React.Fragment>
             )}
           </TableBody>
@@ -245,7 +249,6 @@ class BaseTable extends React.Component {
 }
 
 BaseTable.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   defaultOrder: PropTypes.string,
   defaultOrderBy: PropTypes.string,
   enableFilter: PropTypes.bool,

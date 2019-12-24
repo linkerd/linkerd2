@@ -10,9 +10,12 @@ const styles = theme => ({
 });
 
 class ClickablePopover extends React.Component {
-  state = {
-    anchorEl: null,
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      anchorEl: null,
+    };
+  }
 
   handleClick = event => {
     this.setState({ anchorEl: event.currentTarget });
@@ -62,7 +65,6 @@ class ClickablePopover extends React.Component {
 
 ClickablePopover.propTypes = {
   baseContent: PropTypes.node.isRequired,
-  classes: PropTypes.shape({}).isRequired,
   popoverContent: PropTypes.node.isRequired
 };
 

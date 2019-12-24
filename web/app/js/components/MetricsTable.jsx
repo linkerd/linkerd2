@@ -100,9 +100,9 @@ const trafficSplitDetailColumns = [
     filter: d => !d.tsStats ? null : d.tsStats.weight,
     render: d => !d.tsStats ? null : d.tsStats.weight,
     sorter: d => {
-      if (!d.tsStats) {return;}
-      if (parseInt(d.tsStats.weight)) {
-        return parseInt(d.tsStats.weight);
+      if (!d.tsStats) {return -1;}
+      if (parseInt(d.tsStats.weight, 10)) {
+        return parseInt(d.tsStats.weight, 10);
       } else {
         return d.tsStats.weight;
       }
@@ -224,48 +224,44 @@ const preprocessMetrics = metrics => {
   return tableData;
 };
 
-class MetricsTable extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      PrefixedLink: PropTypes.func.isRequired,
-    }).isRequired,
-    isTcpTable: PropTypes.bool,
-    metrics: PropTypes.arrayOf(processedMetricsPropType),
-    resource: PropTypes.string.isRequired,
-    selectedNamespace: PropTypes.string.isRequired,
-    showName: PropTypes.bool,
-    showNamespaceColumn: PropTypes.bool,
-    title: PropTypes.string
-  };
+const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace }) => {
+  let showNsColumn = resource === "namespace" || selectedNamespace !== "_all" ? false : showNamespaceColumn;
+  let showNameColumn = resource !== "trafficsplit" ? true : showName;
+  let orderBy = "name";
+  if (resource === "trafficsplit" && !showNameColumn) {orderBy = "leaf";}
+  let columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable);
+  let rows = preprocessMetrics(metrics);
+  return (
+    <BaseTable
+      enableFilter={true}
+      tableRows={rows}
+      tableColumns={columns}
+      tableClassName="metric-table"
+      title={title}
+      defaultOrderBy={orderBy}
+      padding="dense" />
+  );
+};
 
-  static defaultProps = {
-    showNamespaceColumn: true,
-    showName: true,
-    title: "",
-    isTcpTable: false,
-    metrics: []
-  };
+MetricsTable.propTypes = {
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired,
+  }).isRequired,
+  isTcpTable: PropTypes.bool,
+  metrics: PropTypes.arrayOf(processedMetricsPropType),
+  resource: PropTypes.string.isRequired,
+  selectedNamespace: PropTypes.string.isRequired,
+  showName: PropTypes.bool,
+  showNamespaceColumn: PropTypes.bool,
+  title: PropTypes.string
+};
 
-  render() {
-    const { metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace } = this.props;
-
-    let showNsColumn = resource === "namespace" || selectedNamespace !== "_all" ? false : showNamespaceColumn;
-    let showNameColumn = resource !== "trafficsplit" ? true : showName;
-    let orderBy = "name";
-    if (resource === "trafficsplit" && !showNameColumn) {orderBy = "leaf";}
-    let columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable);
-    let rows = preprocessMetrics(metrics);
-    return (
-      <BaseTable
-        enableFilter={true}
-        tableRows={rows}
-        tableColumns={columns}
-        tableClassName="metric-table"
-        title={title}
-        defaultOrderBy={orderBy}
-        padding="dense" />
-    );
-  }
-}
+MetricsTable.defaultProps = {
+  showNamespaceColumn: true,
+  showName: true,
+  title: "",
+  isTcpTable: false,
+  metrics: []
+};
 
 export default withContext(MetricsTable);

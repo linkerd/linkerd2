@@ -319,9 +319,7 @@ export const linkerdWordLogo = (
       </g>
     </g>
   </svg>
-)
-;
-
+);
 export const namespaceIcon = (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -361,18 +359,18 @@ export const namespaceIcon = (
           textDecoration="none"
           transform="matrix(1.01489 0 0 1.01489 16.902 -2.699)"
           style={{
-              lineHeight: "normal",
-              InkscapeFontSpecification: "Sans",
-              WebkitTextIndent: "0",
-              textIndent: "0",
-              WebkitTextAlign: "start",
-              textAlign: "start",
-              WebkitTextDecorationLine: "none",
-              textDecorationLine: "none",
-              WebkitTextTransform: "none",
-              textTransform: "none",
-              marker: "none"
-            }}
+            lineHeight: "normal",
+            InkscapeFontSpecification: "Sans",
+            WebkitTextIndent: "0",
+            textIndent: "0",
+            WebkitTextAlign: "start",
+            textAlign: "start",
+            WebkitTextDecorationLine: "none",
+            textDecorationLine: "none",
+            WebkitTextTransform: "none",
+            textTransform: "none",
+            marker: "none"
+          }}
           visibility="visible"
           wordSpacing="normal"
           writingMode="lr-tb" />
@@ -392,9 +390,7 @@ export const namespaceIcon = (
         opacity="1" />
     </g>
   </svg>
-)
-;
-
+);
 export const daemonsetIcon = (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -434,18 +430,18 @@ export const daemonsetIcon = (
         textDecoration="none"
         transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)"
         style={{
-            lineHeight: "normal",
-            InkscapeFontSpecification: "Sans",
-            WebkitTextIndent: "0",
-            textIndent: "0",
-            WebkitTextAlign: "start",
-            textAlign: "start",
-            WebkitTextDecorationLine: "none",
-            textDecorationLine: "none",
-            WebkitTextTransform: "none",
-            textTransform: "none",
-            marker: "none"
-          }}
+          lineHeight: "normal",
+          InkscapeFontSpecification: "Sans",
+          WebkitTextIndent: "0",
+          textIndent: "0",
+          WebkitTextAlign: "start",
+          textAlign: "start",
+          WebkitTextDecorationLine: "none",
+          textDecorationLine: "none",
+          WebkitTextTransform: "none",
+          textTransform: "none",
+          marker: "none"
+        }}
         visibility="visible"
         wordSpacing="normal"
         writingMode="lr-tb" />
@@ -548,18 +544,18 @@ export const deploymentIcon = (
           textDecoration="none"
           transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)"
           style={{
-              lineHeight: "normal",
-              InkscapeFontSpecification: "Sans",
-              WebkitTextIndent: "0",
-              textIndent: "0",
-              WebkitTextAlign: "start",
-              textAlign: "start",
-              WebkitTextDecorationLine: "none",
-              textDecorationLine: "none",
-              WebkitTextTransform: "none",
-              textTransform: "none",
-              marker: "none"
-            }}
+            lineHeight: "normal",
+            InkscapeFontSpecification: "Sans",
+            WebkitTextIndent: "0",
+            textIndent: "0",
+            WebkitTextAlign: "start",
+            textAlign: "start",
+            WebkitTextDecorationLine: "none",
+            textDecorationLine: "none",
+            WebkitTextTransform: "none",
+            textTransform: "none",
+            marker: "none"
+          }}
           visibility="visible"
           wordSpacing="normal"
           writingMode="lr-tb" />
@@ -616,18 +612,18 @@ export const jobIcon = (
           textDecoration="none"
           transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)"
           style={{
-              lineHeight: "normal",
-              InkscapeFontSpecification: "Sans",
-              WebkitTextIndent: "0",
-              textIndent: "0",
-              WebkitTextAlign: "start",
-              textAlign: "start",
-              WebkitTextDecorationLine: "none",
-              textDecorationLine: "none",
-              WebkitTextTransform: "none",
-              textTransform: "none",
-              marker: "none"
-            }}
+            lineHeight: "normal",
+            InkscapeFontSpecification: "Sans",
+            WebkitTextIndent: "0",
+            textIndent: "0",
+            WebkitTextAlign: "start",
+            textAlign: "start",
+            WebkitTextDecorationLine: "none",
+            textDecorationLine: "none",
+            WebkitTextTransform: "none",
+            textTransform: "none",
+            marker: "none"
+          }}
           visibility="visible"
           wordSpacing="normal"
           writingMode="lr-tb" />
@@ -700,18 +696,18 @@ export const podIcon = (
           textDecoration="none"
           transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)"
           style={{
-              lineHeight: "normal",
-              InkscapeFontSpecification: "Sans",
-              WebkitTextIndent: "0",
-              textIndent: "0",
-              WebkitTextAlign: "start",
-              textAlign: "start",
-              WebkitTextDecorationLine: "none",
-              textDecorationLine: "none",
-              WebkitTextTransform: "none",
-              textTransform: "none",
-              marker: "none"
-            }}
+            lineHeight: "normal",
+            InkscapeFontSpecification: "Sans",
+            WebkitTextIndent: "0",
+            textIndent: "0",
+            WebkitTextAlign: "start",
+            textAlign: "start",
+            WebkitTextDecorationLine: "none",
+            textDecorationLine: "none",
+            WebkitTextTransform: "none",
+            textTransform: "none",
+            marker: "none"
+          }}
           visibility="visible"
           wordSpacing="normal"
           writingMode="lr-tb" />
@@ -769,18 +765,18 @@ export const replicaSetIcon = (
         textDecoration="none"
         transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.902 -2.699)"
         style={{
-            lineHeight: "normal",
-            InkscapeFontSpecification: "Sans",
-            WebkitTextIndent: "0",
-            textIndent: "0",
-            WebkitTextAlign: "start",
-            textAlign: "start",
-            WebkitTextDecorationLine: "none",
-            textDecorationLine: "none",
-            WebkitTextTransform: "none",
-            textTransform: "none",
-            marker: "none"
-          }}
+          lineHeight: "normal",
+          InkscapeFontSpecification: "Sans",
+          WebkitTextIndent: "0",
+          textIndent: "0",
+          WebkitTextAlign: "start",
+          textAlign: "start",
+          WebkitTextDecorationLine: "none",
+          textDecorationLine: "none",
+          WebkitTextTransform: "none",
+          textTransform: "none",
+          marker: "none"
+        }}
         visibility="visible"
         wordSpacing="normal"
         writingMode="lr-tb" />
@@ -869,18 +865,18 @@ export const statefulSetIcon = (
         textDecoration="none"
         transform="translate(-.993 -1.174) matrix(1.01489 0 0 1.01489 16.937 -2.699)"
         style={{
-            lineHeight: "normal",
-            InkscapeFontSpecification: "Sans",
-            WebkitTextIndent: "0",
-            textIndent: "0",
-            WebkitTextAlign: "start",
-            textAlign: "start",
-            WebkitTextDecorationLine: "none",
-            textDecorationLine: "none",
-            WebkitTextTransform: "none",
-            textTransform: "none",
-            marker: "none"
-          }}
+          lineHeight: "normal",
+          InkscapeFontSpecification: "Sans",
+          WebkitTextIndent: "0",
+          textIndent: "0",
+          WebkitTextAlign: "start",
+          textAlign: "start",
+          WebkitTextDecorationLine: "none",
+          textDecorationLine: "none",
+          WebkitTextTransform: "none",
+          textTransform: "none",
+          marker: "none"
+        }}
         visibility="visible"
         wordSpacing="normal"
         writingMode="lr-tb" />

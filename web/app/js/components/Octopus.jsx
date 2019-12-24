@@ -47,19 +47,6 @@ const styles = () => ({
   },
 });
 class Octopus extends React.Component {
-  static defaultProps = {
-    neighbors: {},
-    resource: {},
-    unmeshedSources: []
-  }
-
-  static propTypes = {
-    classes: PropTypes.shape({}).isRequired,
-    neighbors: PropTypes.shape({}),
-    resource: PropTypes.shape({}),
-    unmeshedSources: PropTypes.arrayOf(PropTypes.shape({})),
-  }
-
   constructor(props) {
     super(props);
 
@@ -156,7 +143,7 @@ class Octopus extends React.Component {
     );
   }
 
-  renderHttpStats(resource) {
+  renderHttpStats = resource => {
     return (
       <TableBody>
         {resource.isLeafService &&
@@ -183,7 +170,7 @@ class Octopus extends React.Component {
     );
   }
 
-  renderTCPStats(resource) {
+  renderTCPStats = resource => {
     let { tcp } = resource;
     return (
       <TableBody>
@@ -366,5 +353,17 @@ class Octopus extends React.Component {
     );
   }
 }
+
+Octopus.propTypes = {
+  neighbors: PropTypes.shape({}),
+  resource: PropTypes.shape({}),
+  unmeshedSources: PropTypes.arrayOf(PropTypes.shape({})),
+};
+
+Octopus.defaultProps = {
+  neighbors: {},
+  resource: {},
+  unmeshedSources: []
+};
 
 export default withStyles(styles)(Octopus);

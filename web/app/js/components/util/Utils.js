@@ -69,7 +69,7 @@ export function addCommas(nStr) {
   let x2 = x.length > 1 ? '.' + x[1] : '';
   let rgx = /(\d+)(\d{3})/;
   while (rgx.test(x1)) {
-    x1 = x1.replace(rgx, '$1' + ',' + '$2');
+    x1 = x1.replace(rgx, '$1,$2');
   }
   return x1 + x2;
 }
@@ -78,7 +78,7 @@ export function addCommas(nStr) {
 * Round a number to a given number of decimals
 */
 export const roundNumber = (num, dec) => {
-  return Math.round(num * Math.pow(10, dec)) / Math.pow(10, dec);
+  return Math.round(num * 10 ** dec) / 10 ** dec;
 };
 
 /*
@@ -220,9 +220,9 @@ export const isResource = name => {
 const decodeIPToOctets = ip => {
   ip = parseInt(ip, 10);
   return [
-    ip >> 24 & 255,
-    ip >> 16 & 255,
-    ip >> 8 & 255,
+    (ip >> 24) & 255,
+    (ip >> 16) & 255,
+    (ip >> 8) & 255,
     ip & 255
   ];
 };

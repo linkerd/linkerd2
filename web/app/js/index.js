@@ -31,17 +31,17 @@ if (proxyPathMatch) {
   pathPrefix = proxyPathMatch[0];
 }
 
-let selectedNamespace = "default";
+let defaultNamespace = "default";
 let pathArray = window.location.pathname.split("/");
 
 // if the current URL path specifies a namespace, this should become the
-// selectedNamespace
+// defaultNamespace
 if (pathArray[0] === "" && pathArray[1] === "namespaces" && pathArray[2]) {
-  selectedNamespace = pathArray[2];
+  defaultNamespace = pathArray[2];
 // if the current URL path is a legacy path such as `/daemonsets`, the
-// selectedNamespace should be "_all", unless the path is `/namespaces`
+// defaultNamespace should be "_all", unless the path is `/namespaces`
 } else if (pathArray.length === 2 && pathArray[1] !== "" && pathArray[1] !== "namespaces") {
-  selectedNamespace = "_all";
+  defaultNamespace = "_all";
 }
 
 class App extends React.Component {
@@ -55,15 +55,16 @@ class App extends React.Component {
     this.state.api = ApiHelpers(pathPrefix);
     this.state.pathPrefix = pathPrefix;
     this.state.productName = "Linkerd";
-    this.state.selectedNamespace = selectedNamespace;
+    this.state.selectedNamespace = defaultNamespace;
 
     this.state.updateNamespaceInContext = name => {
       this.setState({selectedNamespace:name});
     };
 
     this.state.checkNamespaceMatch = path => {
+      let { selectedNamespace } = this.state;
       let pathNamespace = path.split("/")[2];
-      if (pathNamespace && pathNamespace !== this.state.selectedNamespace) {
+      if (pathNamespace && pathNamespace !== selectedNamespace) {
         this.setState({selectedNamespace:pathNamespace});
       }
     };

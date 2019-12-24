@@ -2,7 +2,6 @@ import { podOwnerLookup, toShortResourceName } from './Utils.js';
 import BaseTable from '../BaseTable.jsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Grid from '@material-ui/core/Grid';
-import { Link } from 'react-router-dom';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import Popover from '../Popover.jsx';
 import PropTypes from 'prop-types';
@@ -191,9 +190,9 @@ const tapEventKey = (d, eventType) => {
 const decodeIPToOctets = ip => {
   ip = parseInt(ip, 10);
   return [
-    ip >> 24 & 255,
-    ip >> 16 & 255,
-    ip >> 8 & 255,
+    (ip >> 24) & 255,
+    (ip >> 16) & 255,
+    (ip >> 8) & 255,
     ip & 255
   ];
 };
@@ -343,9 +342,7 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
   };
 
   let baseContent = (
-    <Link to="#" onClick={linkFn}>
-      <OpenInNewIcon fontSize="small" />
-    </Link>
+    <OpenInNewIcon fontSize="small" style={{color: "var(--linkblue)"}} onClick={linkFn} />
   );
 
   return (
@@ -386,10 +383,10 @@ export const tapLink = (d, resourceType, PrefixedLink) => {
   let toResource = "";
 
   if (_has(d.destinationLabels, resourceType)) {
-    toNamespace = d.destinationLabels.namespace,
+    toNamespace = d.destinationLabels.namespace;
     toResource = `${resourceType}/${d.destinationLabels[resourceType]}`;
   } else if (_has(d.destinationLabels, "pod")) {
-    toNamespace = d.destinationLabels.namespace,
+    toNamespace = d.destinationLabels.namespace;
     toResource = `${resourceType}/${d.destinationLabels.pod}`;
   }
 

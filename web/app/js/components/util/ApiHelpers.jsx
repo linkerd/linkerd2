@@ -185,29 +185,27 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   // prefix all links in the app with `pathPrefix`
-  class PrefixedLink extends React.Component {
-    static defaultProps = {
-      targetBlank: false,
-    }
+  const PrefixedLink = ({ to, targetBlank, children }) => {
+    let url = prefixLink(to);
 
-    static propTypes = {
-      children: PropTypes.node.isRequired,
-      targetBlank: PropTypes.bool,
-      to: PropTypes.string.isRequired,
-    }
+    return (
+      <Link
+        to={url}
+        {...(targetBlank ? { target: '_blank' } : {})}>
+        {children}
+      </Link>
+    );
+  };
 
-    render() {
-      let url = prefixLink(this.props.to);
+  PrefixedLink.propTypes = {
+    children: PropTypes.node.isRequired,
+    targetBlank: PropTypes.bool,
+    to: PropTypes.string.isRequired,
+  };
 
-      return (
-        <Link
-          to={url}
-          {...(this.props.targetBlank ? { target: '_blank' } : {})}>
-          {this.props.children}
-        </Link>
-      );
-    }
-  }
+  PrefixedLink.defaultProps = {
+    targetBlank: false,
+  };
 
   const prefixLink = to => `${pathPrefix}${to}`;
 

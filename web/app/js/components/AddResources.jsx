@@ -3,20 +3,16 @@ import React from 'react';
 import { friendlyTitle } from './util/Utils.js';
 import { incompleteMeshMessage } from './util/CopyUtils.jsx';
 
-export default class AddResources extends React.Component {
-  static propTypes = {
-    resourceName: PropTypes.string.isRequired,
-    resourceType: PropTypes.string.isRequired
-  }
+const AddResources = ({ resourceName, resourceType }) => (
+  <div className="mesh-completion-message">
+    {friendlyTitle(resourceType).singular} {resourceName} is not in the mesh.
+    {incompleteMeshMessage()}
+  </div>
+);
 
-  render() {
-    const {resourceName, resourceType} = this.props;
+AddResources.propTypes = {
+  resourceName: PropTypes.string.isRequired,
+  resourceType: PropTypes.string.isRequired
+};
 
-    return (
-      <div className="mesh-completion-message">
-        {friendlyTitle(resourceType).singular} {resourceName} is not in the mesh.
-        {incompleteMeshMessage()}
-      </div>
-    );
-  }
-}
+export default AddResources;

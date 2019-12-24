@@ -25,13 +25,6 @@ const toCliParam = {
   could be pasted into a terminal
 */
 class QueryToCliCmd extends React.Component {
-  static propTypes = {
-    cmdName: PropTypes.string.isRequired,
-    controllerNamespace: PropTypes.string.isRequired,
-    query: PropTypes.shape({}).isRequired,
-    resource: PropTypes.string.isRequired
-  }
-
   renderCliItem = (queryLabel, queryVal) => {
     return _isEmpty(queryVal) ? null : ` ${queryLabel} ${queryVal}`;
   }
@@ -49,7 +42,7 @@ class QueryToCliCmd extends React.Component {
         <br />
 
         <code>
-          linkerd {this.props.cmdName} {resource}
+          linkerd {cmdName} {resource}
           { displayOrder(cmdName, query).map(item => {
             return !toCliParam[item] ? null : this.renderCliItem(toCliParam[item], query[item]);
           })}
@@ -59,5 +52,12 @@ class QueryToCliCmd extends React.Component {
     );
   }
 }
+
+QueryToCliCmd.propTypes = {
+  cmdName: PropTypes.string.isRequired,
+  controllerNamespace: PropTypes.string.isRequired,
+  query: PropTypes.shape({}).isRequired,
+  resource: PropTypes.string.isRequired
+};
 
 export default withContext(QueryToCliCmd);

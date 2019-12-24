@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import PropTypes from 'prop-types';
 import _has from 'lodash/has';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -35,10 +34,6 @@ const Community = ({classes}) => {
       style={{ height: iframeHeight > 0 ? iframeHeight : "100vh" }}
       className={classes.iframe} />
   );
-};
-
-Community.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
 };
 
 export default withStyles(styles)(Community);

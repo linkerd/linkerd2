@@ -55,26 +55,23 @@ const routesColumns = [
   }
 ];
 
-export default class TopRoutesTable extends React.Component {
-  static propTypes = {
-    rows: PropTypes.arrayOf(PropTypes.shape({}))
-  };
+const TopRoutesTable = ({ rows }) => (
+  <BaseTable
+    enableFilter={true}
+    tableRows={rows}
+    tableColumns={routesColumns}
+    tableClassName="metric-table"
+    defaultOrderBy="route"
+    rowKey={r => r.route + r.authority}
+    padding="dense" />
+);
 
-  static defaultProps = {
-    rows: []
-  };
+TopRoutesTable.propTypes = {
+  rows: PropTypes.arrayOf(PropTypes.shape({}))
+};
 
-  render() {
-    const { rows } = this.props;
-    return (
-      <BaseTable
-        enableFilter={true}
-        tableRows={rows}
-        tableColumns={routesColumns}
-        tableClassName="metric-table"
-        defaultOrderBy="route"
-        rowKey={r => r.route + r.authority}
-        padding="dense" />
-    );
-  }
-}
+TopRoutesTable.defaultProps = {
+  rows: []
+};
+
+export default TopRoutesTable;

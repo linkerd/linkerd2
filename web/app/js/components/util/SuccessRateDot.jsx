@@ -15,18 +15,11 @@ const styles = theme => _merge({}, statusClassNames(theme), {
   }
 });
 
-class SuccessRateDot extends React.Component {
-  render() {
-    const { sr, classes } = this.props;
-
-    return (
-      <div className={classNames(classes.successRateDot, classes[getSuccessRateClassification(sr)])} />
-    );
-  }
-}
+const SuccessRateDot = ({ sr, classes }) => (
+  <div className={classNames(classes.successRateDot, classes[getSuccessRateClassification(sr)])} />
+);
 
 SuccessRateDot.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   sr: PropTypes.number,
 };
 

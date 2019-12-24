@@ -176,7 +176,7 @@ const styles = theme => {
 class NavigationBase extends React.Component {
   constructor(props) {
     super(props);
-    this.api = this.props.api;
+    this.api = props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.handleConfirmNamespaceChange = this.handleConfirmNamespaceChange.bind(this);
     this.handleCommunityClick = this.handleCommunityClick.bind(this);
@@ -216,13 +216,14 @@ class NavigationBase extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (this.props.history) {
-      this.props.checkNamespaceMatch(this.props.history.location.pathname);
+    const { history, checkNamespaceMatch, isPageVisible } = this.props;
+    if (history) {
+      checkNamespaceMatch(history.location.pathname);
     }
 
     handlePageVisibility({
       prevVisibilityState: prevProps.isPageVisible,
-      currentVisibilityState: this.props.isPageVisible,
+      currentVisibilityState: isPageVisible,
       onVisible: () => this.startServerPolling(),
       onHidden: () => this.stopServerPolling(),
     });
@@ -234,8 +235,9 @@ class NavigationBase extends React.Component {
   }
 
   startServerPolling() {
+    const { pollingInterval } = this.state;
     this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.timerId = window.setInterval(this.loadFromServer, pollingInterval);
   }
 
   stopServerPolling() {
@@ -246,7 +248,9 @@ class NavigationBase extends React.Component {
 
   // API returns namespaces for namespace select button. No metrics returned.
   loadFromServer() {
-    if (this.state.pendingRequests) {
+    const { pendingRequests } = this.state;
+
+    if (pendingRequests) {
       return;
     }
     this.setState({ pendingRequests: true });
@@ -272,18 +276,20 @@ class NavigationBase extends React.Component {
   }
 
   fetchVersion() {
-    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}&uuid=${this.props.uuid}&source=web`;
+    const { releaseVersion, uuid } = this.props;
+
+    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${releaseVersion}&uuid=${uuid}&source=web`;
     this.versionPromise = fetch(versionUrl, { credentials: 'include' })
       .then(rsp => rsp.json())
       .then(versionRsp => {
         let latestVersion;
-        let parts = this.props.releaseVersion.split("-", 2);
+        let parts = releaseVersion.split("-", 2);
         if (parts.length === 2) {
           latestVersion = versionRsp[parts[0]];
         }
         this.setState({
           latestVersion,
-          isLatest: latestVersion === this.props.releaseVersion
+          isLatest: latestVersion === releaseVersion
         });
       }).catch(this.handleApiError);
   }
@@ -326,7 +332,8 @@ class NavigationBase extends React.Component {
   }
 
   handleDrawerClick = () => {
-    if (!this.state.mobileSidebarOpen) {
+    const { mobileSidebarOpen } = this.state;
+    if (!mobileSidebarOpen) {
       this.setState({ mobileSidebarOpen: true });
     } else {
       this.setState({ mobileSidebarOpen: false });
@@ -334,7 +341,6 @@ class NavigationBase extends React.Component {
         let linkerdHash = document.querySelector(".linkerd-word-logo #linkerd-hash");
         linkerdHash.style.display='none';
         window.setTimeout(function() {
-          linkerdHash.offsetHeight;
           linkerdHash.style.display='';
         }, 15);
       }, 300);
@@ -342,9 +348,11 @@ class NavigationBase extends React.Component {
   };
 
   handleConfirmNamespaceChange = () => {
+    const { newNamespace } = this.state;
+    const { updateNamespaceInContext, history } = this.props;
     this.setState({showNamespaceChangeDialog: false});
-    this.props.updateNamespaceInContext(this.state.newNamespace);
-    this.props.history.push(`/namespaces/${this.state.newNamespace}`);
+    updateNamespaceInContext(newNamespace);
+    history.push(`/namespaces/${newNamespace}`);
   }
 
   handleFilterInputChange = event => {
@@ -359,26 +367,30 @@ class NavigationBase extends React.Component {
   }
 
   handleNamespaceChange = (event, values) => {
+    const { history, updateNamespaceInContext, selectedNamespace } = this.props;
+
     //event.stopPropagation();
     let namespace = values.name;
-    if (namespace === this.props.selectedNamespace) {
+    if (namespace === selectedNamespace) {
       return;
     }
-    let path = this.props.history.location.pathname;
+    let path = history.location.pathname;
     let pathParts = path.split("/");
     if (pathParts.length === 3 || pathParts.length === 4) {
       // path is /namespaces/someNamespace/resourceType
       //      or /namespaces/someNamespace
-      path = path.replace(this.props.selectedNamespace, namespace);
-      this.props.history.push(path);
-      this.props.updateNamespaceInContext(namespace);
+      path = path.replace(selectedNamespace, namespace);
+      history.push(path);
+      updateNamespaceInContext(namespace);
     } else if (pathParts.length === 5) {
       // path is /namespace/someNamespace/resourceType/someResource
-      this.setState({ showNamespaceChangeDialog: true,
-        newNamespace: namespace });
+      this.setState({
+        showNamespaceChangeDialog: true,
+        newNamespace: namespace
+      });
     } else {
       // update the selectedNamespace in context with no path changes
-      this.props.updateNamespaceInContext(namespace);
+      updateNamespaceInContext(namespace);
     }
   }
 
@@ -389,17 +401,16 @@ class NavigationBase extends React.Component {
   }
 
   menuItem(path, title, icon, onClick) {
-    const { classes, api } = this.props;
-    let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
-    let isCurrentPage = path => path === normalizedPath;
+    const { classes, location, pathPrefix } = this.props;
+    let normalizedPath = location.pathname.replace(pathPrefix, "");
 
     return (
       <MenuItem
         component={Link}
         onClick={onClick}
-        to={api.prefixLink(path)}
+        to={this.api.prefixLink(path)}
         className={classes.navMenuItem}
-        selected={isCurrentPage(path)}>
+        selected={path === normalizedPath}>
         <ListItemIcon>{icon}</ListItemIcon>
         <ListItemText primary={title} />
       </MenuItem>
@@ -414,10 +425,10 @@ class NavigationBase extends React.Component {
   }
 
   render() {
-    const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
-    let { namespaces, formattedNamespaceFilter,
-      showNamespaceChangeDialog, newNamespace, mobileSidebarOpen } = this.state;
-    namespaces = namespaces.filter(ns => {
+    const { api, classes, selectedNamespace, ChildComponent, uuid, releaseVersion, ...otherProps } = this.props;
+    let { namespaces, formattedNamespaceFilter, hideUpdateBadge, isLatest, latestVersion,
+      showNamespaceChangeDialog, newNamespace, mobileSidebarOpen, error } = this.state;
+    let filteredNamespaces = namespaces.filter(ns => {
       return ns.name.match(formattedNamespaceFilter);
     });
     let formattedNamespaceName = selectedNamespace;
@@ -454,7 +465,7 @@ class NavigationBase extends React.Component {
           onClick={this.handleAutocompleteClick}
           disableClearable={true}
           value={{name:formattedNamespaceName.toUpperCase()}}
-          options={namespaces}
+          options={filteredNamespaces}
           autoSelect={true}
           getOptionLabel={option => { if (option.name !== "_all") {return option.name;} else {return "All Namespaces";}}}
           onChange={this.handleNamespaceChange}
@@ -472,7 +483,7 @@ class NavigationBase extends React.Component {
               key={params.name}
               variant="outlined"
               fullWidth />
-              )} />
+          )} />
 
         <NamespaceConfirmationModal
           open={showNamespaceChangeDialog}
@@ -527,11 +538,10 @@ class NavigationBase extends React.Component {
           { this.menuItem("/community", "Community",
             <Badge
               classes={{ badge: classes.badge }}
-              invisible={this.state.hideUpdateBadge}
+              invisible={hideUpdateBadge}
               badgeContent="1">
               <FontAwesomeIcon icon={faSmile} className={classes.shrinkIcon} />
-            </Badge>, this.handleCommunityClick
-              ) }
+            </Badge>, this.handleCommunityClick) }
 
           <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
@@ -558,11 +568,11 @@ class NavigationBase extends React.Component {
           </MenuItem>
 
           <Version
-            isLatest={this.state.isLatest}
-            latestVersion={this.state.latestVersion}
-            releaseVersion={this.props.releaseVersion}
-            error={this.state.error}
-            uuid={this.props.uuid} />
+            isLatest={isLatest}
+            latestVersion={latestVersion}
+            releaseVersion={releaseVersion}
+            error={error}
+            uuid={uuid} />
 
         </MenuList>
 
@@ -627,16 +637,19 @@ class NavigationBase extends React.Component {
 
 NavigationBase.propTypes = {
   api: PropTypes.shape({}).isRequired,
+  checkNamespaceMatch: PropTypes.func.isRequired,
   ChildComponent: PropTypes.oneOfType([
     PropTypes.func,
     PropTypes.object,
   ]).isRequired,
-  classes: PropTypes.shape({}).isRequired,
   isPageVisible: PropTypes.bool.isRequired,
+  history: ReactRouterPropTypes.history.isRequired,
   location: ReactRouterPropTypes.location.isRequired,
   pathPrefix: PropTypes.string.isRequired,
   releaseVersion: PropTypes.string.isRequired,
+  selectedNamespace: PropTypes.string.isRequired,
   theme: PropTypes.shape({}).isRequired,
+  updateNamespaceInContext: PropTypes.func.isRequired,
   uuid: PropTypes.string.isRequired,
 };
 

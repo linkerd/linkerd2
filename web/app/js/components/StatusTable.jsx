@@ -64,10 +64,11 @@ const StatusDot = ({status, columnName, classes}) => (
 );
 
 StatusDot.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   columnName: PropTypes.string.isRequired,
   status: PropTypes.shape({
     name: PropTypes.string.isRequired,
+    uptime: PropTypes.string.isRequired,
+    uptimeSec: PropTypes.number.isRequired,
     value: PropTypes.string.isRequired,
   }).isRequired,
 };
@@ -100,34 +101,30 @@ const columns = {
   }
 };
 
-class StatusTable extends React.Component {
-  static propTypes = {
-    classes: PropTypes.shape({}).isRequired,
-    data: PropTypes.arrayOf(PropTypes.shape({
-      name: PropTypes.string.isRequired,
-      pods: PropTypes.arrayOf(PropTypes.object).isRequired, // TODO: What's the real shape here.
-      added: PropTypes.bool,
-    })).isRequired,
-    statusColumnTitle: PropTypes.string.isRequired,
-  }
+const StatusTable = ({ classes, statusColumnTitle, data }) => {
+  let tableCols = [
+    columns.resourceName,
+    columns.pods,
+    columns.status(statusColumnTitle, classes)
+  ];
 
-  render() {
-    const { classes, statusColumnTitle, data } = this.props;
-    let tableCols = [
-      columns.resourceName,
-      columns.pods,
-      columns.status(statusColumnTitle, classes)
-    ];
+  return (
+    <BaseTable
+      tableRows={data}
+      tableColumns={tableCols}
+      tableClassName="metric-table"
+      defaultOrderBy="name"
+      rowKey={r => r.name} />
+  );
+};
 
-    return (
-      <BaseTable
-        tableRows={data}
-        tableColumns={tableCols}
-        tableClassName="metric-table"
-        defaultOrderBy="name"
-        rowKey={r => r.name} />
-    );
-  }
-}
+StatusTable.propTypes = {
+  data: PropTypes.arrayOf(PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    pods: PropTypes.arrayOf(PropTypes.object).isRequired, // TODO: What's the real shape here.
+    added: PropTypes.bool,
+  })).isRequired,
+  statusColumnTitle: PropTypes.string.isRequired,
+};
 
 export default withStyles(styles, { withTheme: true })(StatusTable);

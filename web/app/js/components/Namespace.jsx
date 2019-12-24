@@ -16,38 +16,12 @@ import { processMultiResourceRollup } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 class Namespaces extends React.Component {
-  static defaultProps = {
-    match: {
-      params: {
-        namespace: 'default',
-      },
-    },
-  }
-
-  static propTypes = {
-    api: PropTypes.shape({
-      cancelCurrentRequests: PropTypes.func.isRequired,
-      fetchMetrics: PropTypes.func.isRequired,
-      getCurrentPromises: PropTypes.func.isRequired,
-      setCurrentRequests: PropTypes.func.isRequired,
-      urlsForResource: PropTypes.func.isRequired,
-    }).isRequired,
-    isPageVisible: PropTypes.bool.isRequired,
-    match: PropTypes.shape({
-      params: PropTypes.shape({
-        namespace: PropTypes.string,
-      }),
-    }),
-    selectedNamespace: PropTypes.string.isRequired,
-    updateNamespaceInContext: PropTypes.func.isRequired,
-  }
-
   constructor(props) {
     super(props);
-    this.api = this.props.api;
+    this.api = props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
-    this.state = this.getInitialState(this.props.match.params);
+    this.state = this.getInitialState(props.match.params);
   }
 
   getInitialState(params) {
@@ -69,15 +43,17 @@ class Namespaces extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (!_isEqual(prevProps.match.params.namespace, this.props.match.params.namespace)) {
+    const { match, isPageVisible } = this.props;
+    const { params } = match;
+    if (!_isEqual(prevProps.match.params.namespace, params.namespace)) {
       // React won't unmount this component when switching resource pages so we need to clear state
       this.api.cancelCurrentRequests();
-      this.setState(this.getInitialState(this.props.match.params));
+      this.setState(this.getInitialState(params));
     }
 
     handlePageVisibility({
       prevVisibilityState: prevProps.isPageVisible,
-      currentVisibilityState: this.props.isPageVisible,
+      currentVisibilityState: isPageVisible,
       onVisible: () => this.startServerPolling(),
       onHidden: () => this.stopServerPolling(),
     });
@@ -88,8 +64,9 @@ class Namespaces extends React.Component {
   }
 
   startServerPolling() {
+    const { pollingInterval } = this.state;
     this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.timerId = window.setInterval(this.loadFromServer, pollingInterval);
   }
 
   stopServerPolling() {
@@ -99,12 +76,13 @@ class Namespaces extends React.Component {
   }
 
   loadFromServer() {
-    if (this.state.pendingRequests) {
+    const { pendingRequests, ns } = this.state;
+    if (pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
     }
     this.setState({ pendingRequests: true });
 
-    this.api.setCurrentRequests([this.api.fetchMetrics(this.api.urlsForResource("all", this.state.ns, true))]);
+    this.api.setCurrentRequests([this.api.fetchMetrics(this.api.urlsForResource("all", ns, true))]);
 
     Promise.all(this.api.getCurrentPromises())
       .then(([allRollup]) => {
@@ -132,12 +110,15 @@ class Namespaces extends React.Component {
   }
 
   checkNamespaceMatch = () => {
-    if (this.state.ns !== this.props.selectedNamespace) {
-      this.props.updateNamespaceInContext(this.state.ns);
+    const { ns } = this.state;
+    const { selectedNamespace, updateNamespaceInContext } = this.props;
+
+    if (ns !== selectedNamespace) {
+      updateNamespaceInContext(ns);
     }
   }
 
-  renderResourceSection(resource, metrics) {
+  renderResourceSection = (resource, metrics) => {
     if (_isEmpty(metrics)) {
       return null;
     }
@@ -153,19 +134,19 @@ class Namespaces extends React.Component {
   }
 
   render() {
-    const { metrics } = this.state;
+    const { metrics, ns, loaded, error } = this.state;
     let noMetrics = _isEmpty(metrics.pod);
     let deploymentsWithMetrics = _filter(metrics.deployment, d => d.requestRate > 0);
 
     return (
       <div className="page-content">
-        {!this.state.error ? null : <ErrorBanner message={this.state.error} />}
-        {!this.state.loaded ? <Spinner /> : (
+        {!error ? null : <ErrorBanner message={error} />}
+        {!loaded ? <Spinner /> : (
           <div>
             {noMetrics ? <div>No resources detected.</div> : null}
             {
               _isEmpty(deploymentsWithMetrics) ? null :
-              <NetworkGraph namespace={this.state.ns} deployments={metrics.deployment} />
+              <NetworkGraph namespace={ns} deployments={metrics.deployment} />
             }
             {this.renderResourceSection("deployment", metrics.deployment)}
             {this.renderResourceSection("daemonset", metrics.daemonset)}
@@ -189,8 +170,35 @@ class Namespaces extends React.Component {
             }
           </div>
         )}
-      </div>);
+      </div>
+    );
   }
 }
+
+Namespaces.propTypes = {
+  api: PropTypes.shape({
+    cancelCurrentRequests: PropTypes.func.isRequired,
+    fetchMetrics: PropTypes.func.isRequired,
+    getCurrentPromises: PropTypes.func.isRequired,
+    setCurrentRequests: PropTypes.func.isRequired,
+    urlsForResource: PropTypes.func.isRequired,
+  }).isRequired,
+  isPageVisible: PropTypes.bool.isRequired,
+  match: PropTypes.shape({
+    params: PropTypes.shape({
+      namespace: PropTypes.string,
+    }),
+  }),
+  selectedNamespace: PropTypes.string.isRequired,
+  updateNamespaceInContext: PropTypes.func.isRequired,
+};
+
+Namespaces.defaultProps = {
+  match: {
+    params: {
+      namespace: 'default',
+    },
+  },
+};
 
 export default withPageVisibility(withContext(Namespaces));
