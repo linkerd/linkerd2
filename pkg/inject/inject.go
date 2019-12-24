@@ -138,6 +138,11 @@ func NewResourceConfig(configs *config.All, origin Origin) *ResourceConfig {
 	return config
 }
 
+//GetPodAnnotations returns pod annotations
+func (conf *ResourceConfig) GetPodAnnotations() map[string]string {
+	return conf.pod.meta.Annotations
+}
+
 // WithKind enriches ResourceConfig with the workload kind
 func (conf *ResourceConfig) WithKind(kind string) *ResourceConfig {
 	conf.workload.metaType = metav1.TypeMeta{Kind: kind}

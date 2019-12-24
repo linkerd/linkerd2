@@ -35,7 +35,6 @@ func Inject(api *k8s.API,
 	if err != nil {
 		return nil, err
 	}
-
 	proxyConfig, err := config.Proxy(pkgK8s.MountPathProxyConfig)
 	if err != nil {
 		return nil, err
@@ -78,6 +77,23 @@ func Inject(api *k8s.API,
 		ownerKind = strings.ToLower(ownerRef.Kind)
 	}
 	proxyInjectionAdmissionRequests.With(admissionRequestLabels(ownerKind, request.Namespace, report.InjectAnnotationAt, configLabels)).Inc()
+
+	//Check if Namespace has valid inject annotation
+	if isNsAnnotationValid, val := isInjectionValid(nsAnnotations); !isNsAnnotationValid {
+		log.Warnf("invalid value \"%s\" for annotation \"%s\" detected at namespace level", val, pkgK8s.ProxyInjectAnnotation)
+		if parent != nil {
+			recorder.Eventf(*parent, v1.EventTypeWarning, eventTypeSkipped, "Invalid value \"%s\" for annotation \"%s\" detected at namespace level", val, pkgK8s.ProxyInjectAnnotation)
+		}
+	}
+
+	//Check if Pod-template has valid inject annotation
+	podAnnotations := resourceConfig.GetPodAnnotations()
+	if isPodAnnotationValid, val := isInjectionValid(podAnnotations); !isPodAnnotationValid {
+		log.Warnf("invalid value \"%s\" for annotation \"%s\" detected at pod-template %s/%s", val, pkgK8s.ProxyInjectAnnotation, request.Namespace, report.ResName())
+		if parent != nil {
+			recorder.Eventf(*parent, v1.EventTypeWarning, eventTypeSkipped, "Invalid value \"%s\" for annotation \"%s\" detected at pod-template", val, pkgK8s.ProxyInjectAnnotation)
+		}
+	}
 
 	if injectable, reasons := report.Injectable(); !injectable {
 		var readableReasons, metricReasons string
@@ -128,4 +144,14 @@ func ownerRetriever(api *k8s.API, ns string) inject.OwnerRetrieverFunc {
 		p.SetNamespace(ns)
 		return api.GetOwnerKindAndName(p, true)
 	}
+}
+
+//isInjectionValid method checks if inject annotation has a valid value - enabled/disabled
+func isInjectionValid(annotations map[string]string) (bool, string) {
+	for k, v := range annotations {
+		if k == pkgK8s.ProxyInjectAnnotation && !(v == pkgK8s.ProxyInjectEnabled || v == pkgK8s.ProxyInjectDisabled) {
+			return false, v
+		}
+	}
+	return true, ""
 }
