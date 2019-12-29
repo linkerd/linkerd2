@@ -77,6 +77,7 @@ func TestUninjectAndInject(t *testing.T) {
 	defaultConfig := testInstallConfig()
 	defaultConfig.Global.Version = "test-inject-control-plane-version"
 	defaultConfig.Proxy.ProxyVersion = "test-inject-proxy-version"
+	defaultConfig.Debug.DebugImageVersion = "test-inject-debug-version"
 
 	emptyVersionConfig := testInstallConfig()
 	emptyVersionConfig.Global.Version = ""
@@ -568,5 +569,128 @@ func TestWalk(t *testing.T) {
 		if string(b) != string(data) {
 			t.Errorf("Content mismatch. Expected %q, but got %q", data, b)
 		}
+	}
+}
+
+func TestOverrideConfigsParameterized(t *testing.T) {
+
+	tests := []struct {
+		description       string
+		configOptions     proxyConfigOptions
+		expectedOverrides map[string]string
+	}{
+		{
+			description: "proxy configuration overrides",
+			configOptions: proxyConfigOptions{
+				ignoreInboundPorts:       []string{"8500-8505"},
+				ignoreOutboundPorts:      []string{"3306"},
+				proxyAdminPort:           1234,
+				proxyControlPort:         4190,
+				proxyInboundPort:         4143,
+				proxyOutboundPort:        4140,
+				proxyUID:                 999,
+				proxyLogLevel:            "debug",
+				disableIdentity:          true,
+				disableTap:               true,
+				enableExternalProfiles:   true,
+				proxyCPURequest:          "10m",
+				proxyCPULimit:            "100m",
+				proxyMemoryRequest:       "10Mi",
+				proxyMemoryLimit:         "50Mi",
+				traceCollector:           "oc-collector.tracing:55678",
+				traceCollectorSvcAccount: "default",
+				waitBeforeExitSeconds:    10,
+			},
+			expectedOverrides: map[string]string{
+				k8s.ProxyIgnoreInboundPortsAnnotation:       "8500-8505",
+				k8s.ProxyIgnoreOutboundPortsAnnotation:      "3306",
+				k8s.ProxyAdminPortAnnotation:                "1234",
+				k8s.ProxyControlPortAnnotation:              "4190",
+				k8s.ProxyInboundPortAnnotation:              "4143",
+				k8s.ProxyOutboundPortAnnotation:             "4140",
+				k8s.ProxyUIDAnnotation:                      "999",
+				k8s.ProxyLogLevelAnnotation:                 "debug",
+				k8s.ProxyDisableIdentityAnnotation:          "true",
+				k8s.ProxyDisableTapAnnotation:               "true",
+				k8s.ProxyEnableExternalProfilesAnnotation:   "true",
+				k8s.ProxyCPURequestAnnotation:               "10m",
+				k8s.ProxyCPULimitAnnotation:                 "100m",
+				k8s.ProxyMemoryRequestAnnotation:            "10Mi",
+				k8s.ProxyMemoryLimitAnnotation:              "50Mi",
+				k8s.ProxyTraceCollectorSvcAddrAnnotation:    "oc-collector.tracing:55678",
+				k8s.ProxyTraceCollectorSvcAccountAnnotation: "default",
+				k8s.ProxyWaitBeforeExitSecondsAnnotation:    "10",
+			},
+		},
+		{
+			description: "proxy image overrides",
+			configOptions: proxyConfigOptions{
+				proxyImage:      "gcr.io/linkerd-io/proxy",
+				proxyVersion:    "test-proxy-version",
+				imagePullPolicy: "IfNotPresent",
+			},
+			expectedOverrides: map[string]string{
+				k8s.ProxyImageAnnotation:           "gcr.io/linkerd-io/proxy",
+				k8s.ProxyVersionOverrideAnnotation: "test-proxy-version",
+				k8s.ProxyImagePullPolicyAnnotation: "IfNotPresent",
+			},
+		},
+		{
+			description: "proxy-init image overrides",
+			configOptions: proxyConfigOptions{
+				initImage:        "gcr.io/linkerd-io/proxyInit",
+				initImageVersion: "test-proxy-init-version",
+				imagePullPolicy:  "IfNotPresent",
+			},
+			expectedOverrides: map[string]string{
+				k8s.ProxyInitImageAnnotation:        "gcr.io/linkerd-io/proxyInit",
+				k8s.ProxyInitImageVersionAnnotation: "test-proxy-init-version",
+				k8s.ProxyImagePullPolicyAnnotation:  "IfNotPresent",
+			},
+		},
+		{
+			description: "custom docker registry with proxy and proxy-init",
+			configOptions: proxyConfigOptions{
+				proxyImage:     "gcr.io/linkerd-io/proxy",
+				initImage:      "gcr.io/linkerd-io/proxyInit",
+				dockerRegistry: "my.custom.registry/linkerd-io",
+			},
+			expectedOverrides: map[string]string{
+				k8s.ProxyImageAnnotation:     "my.custom.registry/linkerd-io/proxy",
+				k8s.ProxyInitImageAnnotation: "my.custom.registry/linkerd-io/proxyInit",
+				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
+			},
+		},
+		{
+			description: "custom docker registry",
+			configOptions: proxyConfigOptions{
+				dockerRegistry: "my.custom.registry/linkerd-io",
+			},
+			expectedOverrides: map[string]string{
+				k8s.DebugImageAnnotation: "my.custom.registry/linkerd-io/debug",
+			},
+		},
+		{
+			description:       "no overrides",
+			configOptions:     proxyConfigOptions{},
+			expectedOverrides: map[string]string{},
+		},
+	}
+
+	defaultConfig := testInstallConfig()
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			actualOverrides := map[string]string{}
+			tt.configOptions.overrideConfigs(defaultConfig, actualOverrides)
+			if len(tt.expectedOverrides) != len(actualOverrides) {
+				t.Fatalf("expected %d annotation(s), but received %d", len(tt.expectedOverrides), len(actualOverrides))
+			}
+			for key, expected := range tt.expectedOverrides {
+				actual := actualOverrides[key]
+				if actual != expected {
+					t.Fatalf("expected annotation %q with %q, but got %q", key, expected, actual)
+				}
+			}
+		})
 	}
 }

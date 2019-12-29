@@ -41,13 +41,18 @@ func Inject(api *k8s.API,
 		return nil, err
 	}
 
+	debugConfig, err := config.Debug(pkgK8s.MountPathDebugConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	namespace, err := api.NS().Lister().Get(request.Namespace)
 	if err != nil {
 		return nil, err
 	}
 	nsAnnotations := namespace.GetAnnotations()
 
-	configs := &pb.All{Global: globalConfig, Proxy: proxyConfig}
+	configs := &pb.All{Global: globalConfig, Proxy: proxyConfig, Debug: debugConfig}
 	resourceConfig := inject.NewResourceConfig(configs, inject.OriginWebhook).
 		WithOwnerRetriever(ownerRetriever(api, request.Namespace)).
 		WithNsAnnotations(nsAnnotations).

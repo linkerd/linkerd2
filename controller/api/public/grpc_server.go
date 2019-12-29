@@ -33,14 +33,16 @@ type APIServer interface {
 }
 
 type grpcServer struct {
-	prometheusAPI         promv1.API
-	destinationClient     destinationPb.DestinationClient
-	k8sAPI                *k8s.API
-	controllerNamespace   string
-	clusterDomain         string
-	ignoredNamespaces     []string
-	mountPathGlobalConfig string
-	mountPathProxyConfig  string
+	prometheusAPI          promv1.API
+	destinationClient      destinationPb.DestinationClient
+	k8sAPI                 *k8s.API
+	controllerNamespace    string
+	clusterDomain          string
+	ignoredNamespaces      []string
+	mountPathGlobalConfig  string
+	mountPathProxyConfig   string
+	mountPathInstallConfig string
+	mountPathDebugConfig   string
 }
 
 type podReport struct {
@@ -66,14 +68,16 @@ func newGrpcServer(
 ) *grpcServer {
 
 	grpcServer := &grpcServer{
-		prometheusAPI:         promAPI,
-		destinationClient:     destinationClient,
-		k8sAPI:                k8sAPI,
-		controllerNamespace:   controllerNamespace,
-		clusterDomain:         clusterDomain,
-		ignoredNamespaces:     ignoredNamespaces,
-		mountPathGlobalConfig: pkgK8s.MountPathGlobalConfig,
-		mountPathProxyConfig:  pkgK8s.MountPathProxyConfig,
+		prometheusAPI:          promAPI,
+		destinationClient:      destinationClient,
+		k8sAPI:                 k8sAPI,
+		controllerNamespace:    controllerNamespace,
+		clusterDomain:          clusterDomain,
+		ignoredNamespaces:      ignoredNamespaces,
+		mountPathGlobalConfig:  pkgK8s.MountPathGlobalConfig,
+		mountPathProxyConfig:   pkgK8s.MountPathProxyConfig,
+		mountPathInstallConfig: pkgK8s.MountPathInstallConfig,
+		mountPathDebugConfig:   pkgK8s.MountPathDebugConfig,
 	}
 
 	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)
@@ -234,7 +238,15 @@ func (s *grpcServer) Config(ctx context.Context, req *pb.Empty) (*configPb.All, 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving proxy config - %s", err)
 	}
-	return &configPb.All{Global: global, Proxy: proxy}, nil
+	install, err := config.Install(s.mountPathInstallConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving install config - %s", err)
+	}
+	debug, err := config.Debug(s.mountPathDebugConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving debug config - %s", err)
+	}
+	return &configPb.All{Global: global, Proxy: proxy, Install: install, Debug: debug}, nil
 }
 
 func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {

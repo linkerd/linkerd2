@@ -10,6 +10,7 @@ message All {
   Global global = 1;
   Proxy proxy = 2;
   Install install = 3;
+  Debug debug = 4;
 }
 
 message Global {
@@ -105,4 +106,10 @@ message Install {
     string name = 1;
     string value = 2;
   }
+}
+
+// Configuration settings for debug containers
+message Debug {
+  Image debug_image = 1;
+  string debug_image_version = 2;
 }

@@ -937,6 +937,14 @@ data:
       "cliVersion":"linkerd-version",
       "flags":[]
     }
+  debug: |
+    {
+      "debugImage":{
+        "imageName":"gcr.io/linkerd-io/debug",
+        "pullPolicy":"IfNotPresent"
+      },
+      "debugImageVersion": "test-debug-version"
+    }
 ---
 # Source: linkerd2/templates/identity.yaml
 ---

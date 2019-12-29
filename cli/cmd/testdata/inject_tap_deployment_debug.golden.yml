@@ -83,7 +83,7 @@ spec:
           readOnly: true
         - mountPath: /var/run/linkerd/config
           name: config
-      - image: gcr.io/linkerd-io/debug:test-inject-control-plane-version
+      - image: gcr.io/linkerd-io/debug:test-inject-debug-version
         imagePullPolicy: IfNotPresent
         name: linkerd-debug
         terminationMessagePolicy: FallbackToLogsOnError

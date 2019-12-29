@@ -69,6 +69,11 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
     }
   },
   "configs": null,
+  "debugContainer":{
+    "image":{
+      "version":"test-debug-version"
+    }
+  },
   "proxyInjector":{
     "keyPEM":"test-proxy-injector-key-pem",
     "crtPEM":"test-proxy-injector-crt-pem"

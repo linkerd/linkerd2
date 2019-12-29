@@ -78,3 +78,13 @@
   "flags":[]
 }
 {{- end -}}
+
+{{- define "linkerd.configs.debug" -}}
+{
+  "debugImage":{
+    "imageName":"{{.Values.debugContainer.image.name}}",
+    "pullPolicy":"{{.Values.debugContainer.image.pullPolicy}}"
+  },
+  "debugImageVersion": "{{.Values.debugContainer.image.version}}"
+}
+{{- end -}}

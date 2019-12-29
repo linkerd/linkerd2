@@ -854,6 +854,8 @@ data:
     ProxyConfig
   install: |
     InstallConfig
+  debug: |
+    DebugConfig
 ---
 ###
 ### Identity Controller Service

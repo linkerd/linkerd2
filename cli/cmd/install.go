@@ -189,6 +189,8 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			proxyImage:             defaults.Global.Proxy.Image.Name,
 			initImage:              defaults.Global.ProxyInit.Image.Name,
 			initImageVersion:       version.ProxyInitVersion,
+			debugImage:             defaults.DebugContainer.Image.Name,
+			debugImageVersion:      version.Version,
 			dockerRegistry:         defaultDockerRegistry,
 			imagePullPolicy:        defaults.Global.ImagePullPolicy,
 			ignoreInboundPorts:     nil,
@@ -639,7 +641,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 		options.identityOptions.replicas = options.controllerReplicas
 	}
 
-	globalJSON, proxyJSON, installJSON, err := config.ToJSON(configs)
+	globalJSON, proxyJSON, installJSON, debugJSON, err := config.ToJSON(configs)
 	if err != nil {
 		return nil, err
 	}
@@ -649,6 +651,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Configs.Global = globalJSON
 	installValues.Configs.Proxy = proxyJSON
 	installValues.Configs.Install = installJSON
+	installValues.Configs.Debug = debugJSON
 	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
 	installValues.ControllerImageVersion = configs.GetGlobal().GetVersion()
 	installValues.ControllerLogLevel = options.controllerLogLevel
@@ -701,6 +704,10 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.ProxyInit.Image.Version = options.initImageVersion
 	installValues.Global.ProxyInit.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
 	installValues.Global.ProxyInit.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
+
+	installValues.DebugContainer.Image.Name = registryOverride(options.debugImage, options.dockerRegistry)
+	installValues.DebugContainer.Image.PullPolicy = options.imagePullPolicy
+	installValues.DebugContainer.Image.Version = options.debugImageVersion
 
 	return installValues, nil
 }
@@ -762,6 +769,7 @@ func (options *installOptions) configs(identity *pb.IdentityContext) *pb.All {
 		Global:  options.globalConfig(identity),
 		Proxy:   options.proxyConfig(),
 		Install: options.installConfig(),
+		Debug:   options.debugConfig(),
 	}
 }
 
@@ -830,6 +838,16 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 		DisableExternalProfiles: !options.enableExternalProfiles,
 		ProxyVersion:            options.proxyVersion,
 		ProxyInitImageVersion:   options.initImageVersion,
+	}
+}
+
+func (options *installOptions) debugConfig() *pb.Debug {
+	return &pb.Debug{
+		DebugImage: &pb.Image{
+			ImageName:  registryOverride(options.debugImage, options.dockerRegistry),
+			PullPolicy: options.imagePullPolicy,
+		},
+		DebugImageVersion: options.debugImageVersion,
 	}
 }
 

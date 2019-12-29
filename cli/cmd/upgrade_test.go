@@ -16,6 +16,7 @@ import (
 const (
 	upgradeProxyVersion        = "UPGRADE-PROXY-VERSION"
 	upgradeControlPlaneVersion = "UPGRADE-CONTROL-PLANE-VERSION"
+	upgradeDebugVersion        = "UPGRADE-DEBUG-VERSION"
 )
 
 func testUpgradeOptions() (*upgradeOptions, error) {
@@ -26,6 +27,7 @@ func testUpgradeOptions() (*upgradeOptions, error) {
 
 	o.controlPlaneVersion = upgradeControlPlaneVersion
 	o.proxyVersion = upgradeProxyVersion
+	o.debugImageVersion = upgradeDebugVersion
 	o.heartbeatSchedule = fakeHeartbeatSchedule
 	return o, nil
 }
@@ -57,7 +59,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
+    {"cliVersion":"edge-19.4.1","flags":[]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 				`
 kind: Secret
 apiVersion: v1
@@ -140,7 +144,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[{"name":"ha","value":"true"}]}`,
+    {"cliVersion":"edge-19.4.1","flags":[{"name":"ha","value":"true"}]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 				`
 kind: Secret
 apiVersion: v1
@@ -223,7 +229,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[{"name":"ha","value":"true"}]}`,
+    {"cliVersion":"edge-19.4.1","flags":[{"name":"ha","value":"true"}]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 				`
 kind: Secret
 apiVersion: v1
@@ -314,7 +322,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
+    {"cliVersion":"edge-19.4.1","flags":[]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 				`
 kind: Secret
 apiVersion: v1
@@ -398,7 +408,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
+    {"cliVersion":"edge-19.4.1","flags":[]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 				`
 kind: Secret
 apiVersion: v1
@@ -481,7 +493,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
+    {"cliVersion":"edge-19.4.1","flags":[]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 				`
 kind: Secret
 apiVersion: v1
@@ -567,7 +581,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
+    {"cliVersion":"edge-19.4.1","flags":[]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 				`
 kind: Secret
 apiVersion: v1
@@ -652,7 +668,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
+    {"cliVersion":"edge-19.4.1","flags":[]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 			},
 			"",
 			errors.New("a private key file must be specified if a certificate is provided"),
@@ -678,7 +696,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
+    {"cliVersion":"edge-19.4.1","flags":[]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 			},
 			"",
 			errors.New("a certificate file must be specified if a private key is provided"),
@@ -704,7 +724,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
+    {"cliVersion":"edge-19.4.1","flags":[]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 			},
 			"",
 			errors.New("cannot update issuer certificates if you are using external cert management solution"),
@@ -731,7 +753,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
+    {"cliVersion":"edge-19.4.1","flags":[]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 				`
 kind: Secret
 apiVersion: v1
@@ -818,7 +842,9 @@ data:
   proxy: |
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
+    {"cliVersion":"edge-19.4.1","flags":[]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}`,
 				`
 kind: Secret
 apiVersion: v1
@@ -1077,6 +1103,8 @@ data:
     {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
   install: |
     {"cliVersion":"edge-19.3.1","flags":[]}
+  debug: |
+    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION"}
 `,
 		`
 apiVersion: v1

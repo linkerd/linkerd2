@@ -495,9 +495,9 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 			log.Infof("inject debug container")
 			values.DebugContainer = &l5dcharts.DebugContainer{
 				Image: &l5dcharts.Image{
-					Name:       k8s.DebugSidecarImage,
-					Version:    conf.configs.GetGlobal().GetVersion(),
-					PullPolicy: conf.proxyImagePullPolicy(),
+					Name:       conf.debugSidecarImage(),
+					Version:    conf.debugSidecarImageVersion(),
+					PullPolicy: conf.debugSidecarImagePullPolicy(),
 				},
 			}
 		}
@@ -902,6 +902,33 @@ func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
 		portRanges = append(portRanges, port.GetPortRange())
 	}
 	return strings.Join(portRanges, ",")
+}
+
+func (conf *ResourceConfig) debugSidecarImage() string {
+	if override := conf.getOverride(k8s.DebugImageAnnotation); override != "" {
+		return override
+	}
+	return conf.configs.GetDebug().GetDebugImage().GetImageName()
+}
+
+func (conf *ResourceConfig) debugSidecarImageVersion() string {
+	if override := conf.getOverride(k8s.DebugImageVersionAnnotation); override != "" {
+		return override
+	}
+	if debugVersion := conf.configs.GetDebug().GetDebugImageVersion(); debugVersion != "" {
+		return debugVersion
+	}
+	if controlPlaneVersion := conf.configs.GetGlobal().GetVersion(); controlPlaneVersion != "" {
+		return controlPlaneVersion
+	}
+	return version.Version
+}
+
+func (conf *ResourceConfig) debugSidecarImagePullPolicy() string {
+	if override := conf.getOverride(k8s.DebugImagePullPolicyAnnotation); override != "" {
+		return override
+	}
+	return conf.configs.GetDebug().GetDebugImage().GetPullPolicy()
 }
 
 // GetOverriddenConfiguration returns a map of the overridden proxy annotations

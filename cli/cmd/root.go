@@ -182,6 +182,8 @@ type proxyConfigOptions struct {
 	proxyImage               string
 	initImage                string
 	initImageVersion         string
+	debugImage               string
+	debugImageVersion        string
 	dockerRegistry           string
 	imagePullPolicy          string
 	ignoreInboundPorts       []string
@@ -200,10 +202,9 @@ type proxyConfigOptions struct {
 	traceCollector           string
 	traceCollectorSvcAccount string
 	waitBeforeExitSeconds    uint64
-	// ignoreCluster is not validated by validate().
-	ignoreCluster   bool
-	disableIdentity bool
-	disableTap      bool
+	ignoreCluster            bool // not validated by validate()
+	disableIdentity          bool
+	disableTap               bool
 }
 
 func (options *proxyConfigOptions) validate() error {

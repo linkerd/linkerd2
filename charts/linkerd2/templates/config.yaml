@@ -34,3 +34,11 @@ data:
   {{- else -}}
   {{- include "linkerd.configs.install" . | nindent 4}}
   {{- end }}
+  debug: |
+  {{- if .Values.configs -}}
+  {{- if .Values.configs.debug -}}
+    {{.Values.configs.debug | nindent 4}}
+  {{- end }}
+  {{- else -}}
+  {{- include "linkerd.configs.debug" . | nindent 4}}
+  {{- end }}

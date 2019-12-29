@@ -42,6 +42,10 @@ var (
 			LogLevel:                &config.LogLevel{Level: "warn,linkerd=info"},
 			DisableExternalProfiles: false,
 		},
+		Debug: &config.Debug{
+			DebugImage:        &config.Image{ImageName: "gcr.io/linkerd-io/debug", PullPolicy: "IfNotPresent"},
+			DebugImageVersion: "debug-image-version",
+		},
 	}
 )
 
@@ -88,6 +92,11 @@ func TestGetPatch(t *testing.T) {
 				ns:       nsDisabled,
 				conf:     confNsDisabled(),
 			},
+			{
+				filename: "pod-with-debug-disabled.yaml",
+				ns:       nsDisabled,
+				conf:     confNsDisabled(),
+			},
 		}
 
 		expectedPatchBytes, err := factory.FileContents("pod.patch.json")
@@ -131,6 +140,42 @@ func TestGetPatch(t *testing.T) {
 
 			})
 		}
+	})
+
+	t.Run("by checking annotations with debug", func(t *testing.T) {
+		expectedPatchBytes, err := factory.FileContents("pod-with-debug.patch.json")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		expectedPatch, err := unmarshalPatch(expectedPatchBytes)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+
+		pod, err := factory.FileContents("pod-with-debug-enabled.yaml")
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		fakeReq := getFakeReq(pod)
+		conf := confNsEnabled().WithKind(fakeReq.Kind.Kind).WithOwnerRetriever(ownerRetrieverFake)
+		_, err = conf.ParseMetaAndYAML(fakeReq.Object.Raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		patchJSON, err := conf.GetPatch(true)
+		if err != nil {
+			t.Fatalf("Unexpected PatchForAdmissionRequest error: %s", err)
+		}
+		actualPatch, err := unmarshalPatch(patchJSON)
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		if !reflect.DeepEqual(expectedPatch, actualPatch) {
+			t.Fatalf("The actual patch didn't match what was expected.\nExpected: %s\nActual: %s",
+				expectedPatchBytes, patchJSON)
+		}
+
 	})
 
 	t.Run("by checking container spec", func(t *testing.T) {

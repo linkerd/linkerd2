@@ -88,6 +88,13 @@ controllerUID: 2103
 dashboard:
   replicas: 1
 
+# debug configuration
+debugContainer:
+  image:
+    name: gcr.io/linkerd-io/debug
+    pullPolicy: *image_pull_policy
+    version: *linkerd_version
+
 # identity configuration
 identity:
   issuer:

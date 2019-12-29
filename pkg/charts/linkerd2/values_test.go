@@ -113,6 +113,13 @@ func TestNewValues(t *testing.T) {
 		Dashboard: &Dashboard{
 			Replicas: 1,
 		},
+		DebugContainer: &DebugContainer{
+			Image: &Image{
+				Name:       "gcr.io/linkerd-io/debug",
+				PullPolicy: "IfNotPresent",
+				Version:    testVersion,
+			},
+		},
 
 		ProxyInjector:    &ProxyInjector{TLS: &TLS{}},
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
@@ -125,6 +132,7 @@ func TestNewValues(t *testing.T) {
 	actual.ControllerImageVersion = testVersion
 	actual.Global.Proxy.Image.Version = testVersion
 	actual.Global.ProxyInit.Image.Version = testVersion
+	actual.DebugContainer.Image.Version = testVersion
 
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected, actual)
@@ -208,6 +216,7 @@ func TestNewValues(t *testing.T) {
 		actual.ControllerImageVersion = testVersion
 		actual.Global.Proxy.Image.Version = testVersion
 		actual.Global.ProxyInit.Image.Version = testVersion
+		actual.DebugContainer.Image.Version = testVersion
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)

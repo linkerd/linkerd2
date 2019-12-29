@@ -305,7 +305,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		// override the anchors in config
 		configs.Global.IdentityContext.TrustAnchorsPem = values.Global.IdentityTrustAnchorsPEM
 		// rebuild the json config map
-		globalJSON, _, _, _ := config.ToJSON(configs)
+		globalJSON, _, _, _, _ := config.ToJSON(configs)
 		values.Configs.Global = globalJSON
 	}
 

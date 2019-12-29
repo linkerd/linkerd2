@@ -119,6 +119,15 @@ const (
 	// ProxyInitImageVersionAnnotation can be used to overrided the proxy-init image version
 	ProxyInitImageVersionAnnotation = ProxyConfigAnnotationsPrefix + "/init-image-version"
 
+	// DebugImageAnnotation can be used to override the debugImage config.
+	DebugImageAnnotation = ProxyConfigAnnotationsPrefix + "/debug-image"
+
+	// DebugImageVersionAnnotation can be used to override the debugImageVersion config.
+	DebugImageVersionAnnotation = ProxyConfigAnnotationsPrefix + "/debug-image-version"
+
+	// DebugImagePullPolicyAnnotation can be used to override the debugImagePullPolicy config.
+	DebugImagePullPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/debug-image-pull-policy"
+
 	// ProxyControlPortAnnotation can be used to override the controlPort config.
 	ProxyControlPortAnnotation = ProxyConfigAnnotationsPrefix + "/control-port"
 
@@ -209,9 +218,6 @@ const (
 	// DebugSidecarName is the name of the default linkerd debug container
 	DebugSidecarName = "linkerd-debug"
 
-	// DebugSidecarImage is the image name of the default linkerd debug container
-	DebugSidecarImage = "gcr.io/linkerd-io/debug"
-
 	// InitContainerName is the name assigned to the injected init container.
 	InitContainerName = "linkerd-init"
 
@@ -280,6 +286,9 @@ const (
 
 	// MountPathInstallConfig is the path at which the install config file is mounted.
 	MountPathInstallConfig = MountPathBase + "/config/install"
+
+	// MountPathDebugConfig is the path at which the debug config file is mounted.
+	MountPathDebugConfig = MountPathBase + "/config/debug"
 
 	// MountPathEndEntity is the path at which a tmpfs directory is mounted to
 	// store identity credentials.

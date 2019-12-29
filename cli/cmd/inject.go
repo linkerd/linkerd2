@@ -392,7 +392,18 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	if options.imagePullPolicy != "" {
 		configs.Proxy.ProxyImage.PullPolicy = options.imagePullPolicy
 		configs.Proxy.ProxyInitImage.PullPolicy = options.imagePullPolicy
+		configs.Debug.DebugImage.PullPolicy = options.imagePullPolicy
 		overrideAnnotations[k8s.ProxyImagePullPolicyAnnotation] = options.imagePullPolicy
+	}
+
+	if options.dockerRegistry != "" {
+		currentDebugImage := configs.Debug.DebugImage.ImageName
+		currentRegistry := getFlagValue(configs.GetInstall().GetFlags(), "registry")
+		if currentRegistry == "" {
+			currentRegistry = defaultDockerRegistry
+		}
+		override := strings.Replace(currentDebugImage, currentRegistry, options.dockerRegistry, 1)
+		overrideAnnotations[k8s.DebugImageAnnotation] = override
 	}
 
 	if options.proxyUID != 0 {
@@ -478,4 +489,13 @@ func parsePortRanges(portRanges []*cfg.PortRange) string {
 	}
 
 	return strings.TrimSuffix(str, ",")
+}
+
+func getFlagValue(flags []*cfg.Install_Flag, name string) string {
+	for _, flag := range flags {
+		if flag.Name == name {
+			return flag.Value
+		}
+	}
+	return ""
 }
