@@ -679,6 +679,7 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 
 	defaultConfig := testInstallConfig()
 	for _, tt := range tests {
+		tt := tt // pin
 		t.Run(tt.description, func(t *testing.T) {
 			actualOverrides := map[string]string{}
 			tt.configOptions.overrideConfigs(defaultConfig, actualOverrides)
