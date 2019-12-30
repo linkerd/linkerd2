@@ -4,6 +4,11 @@ kind: Namespace
 apiVersion: v1
 metadata:
   name: linkerd-test
+  annotations:
+    linkerd.io/inject: disabled
+  labels:
+    linkerd.io/is-control-plane: "true"
+    config.linkerd.io/admission-webhooks: disabled
 ---
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
