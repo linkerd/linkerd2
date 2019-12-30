@@ -319,7 +319,6 @@ jobs:
           bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug ||
             bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug
         fi
-        scp $KUBECONFIG linkerd-docker:/tmp
 
   kind_integration:
     strategy:
@@ -393,7 +392,7 @@ jobs:
         # Restore kubeconfig from remote docker host.
         mkdir -p $HOME/.kube
         export KUBECONFIG=$HOME/.kube/kind-config-$KIND_CLUSTER
-        scp linkerd-docker:/tmp/kind-config-$KIND_CLUSTER $KUBECONFIG
+        bin/kind export kubeconfig --name=$KIND_CLUSTER $KUBECONFIG
         # Start ssh tunnel to allow kubectl to connect via localhost.
         export KIND_PORT=$(bin/kubectl config view -o jsonpath="{.clusters[?(@.name=='kind-$KIND_CLUSTER')].cluster.server}" | cut -d':' -f3)
         echo "KIND_PORT: $KIND_PORT"
