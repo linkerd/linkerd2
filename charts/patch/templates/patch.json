@@ -28,7 +28,7 @@
     "value": "{{$value}}"
   },
   {{- end }}
-  {{- if and .Values.proxyInit (not .Values.noInitContainer) }}
+  {{- if .Values.proxyInit }}
   {{- if .Values.addRootInitContainers }}
   {
     "op": "add",
