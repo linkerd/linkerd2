@@ -93,7 +93,7 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-grafana
   namespace: {{.Values.namespace}}
-{{ if not .DisableHeartBeat -}}
+{{ if not .Values.disableHeartBeat -}}
 - kind: ServiceAccount
   name: linkerd-heartbeat
   namespace: {{.Values.namespace}}
