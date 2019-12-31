@@ -16,7 +16,7 @@ rules:
   resources: ["configmaps"]
   verbs: ["get"]
   resourceNames: ["linkerd-config"]
-  {{- if not .Values.RestrictDashboardPrivileges }}
+  {{- if not .Values.restrictDashboardPrivileges }}
 - apiGroups: [""]
   resources: ["namespaces", "configmaps"]
   verbs: ["get"]
@@ -45,7 +45,7 @@ subjects:
   name: linkerd-web
   namespace: {{.Values.global.namespace}}
 ---
-{{- if not .Values.RestrictDashboardPrivileges }}
+{{- if not .Values.restrictDashboardPrivileges }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

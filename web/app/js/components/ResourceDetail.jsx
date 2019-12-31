@@ -158,12 +158,6 @@ export class ResourceDetailBase extends React.Component {
         this.api.fetchMetrics(
           `${this.api.urlsForResource(resource.type, resource.namespace, true)}&resource_name=${resource.name}`
         ),
-        // list of all pods in this namespace (hack since we can't currently query for all pods in a resource)
-        this.api.fetchPods(resource.namespace),
-        // metrics for all pods in this namespace (hack, continued)
-        this.api.fetchMetrics(
-          `${this.api.urlsForResource("pod", resource.namespace, true)}`
-        ),
         // upstream resources of this resource (meshed traffic only)
         this.api.fetchMetrics(
           `${this.api.urlsForResource("all")}&to_name=${resource.name}&to_type=${resource.type}&to_namespace=${resource.namespace}`
@@ -173,6 +167,14 @@ export class ResourceDetailBase extends React.Component {
           `${this.api.urlsForResource("all")}&from_name=${resource.name}&from_type=${resource.type}&from_namespace=${resource.namespace}`
         )
       ];
+
+    // Fetch pods in a resource and their metrics (except when resource type is pod)
+    if (resource.type !== "pod") {
+      // list of all pods in this namespace (hack since we can't currently query for all pods in a resource)
+      apiRequests.push(this.api.fetchPods(resource.namespace));
+      // metrics for all pods in this namespace (hack, continued)
+      apiRequests.push(this.api.fetchMetrics(`${this.api.urlsForResource("pod", resource.namespace, true)}`));
+    }
 
     if (this.state.queryForDefinition) {
       // definition for this resource
@@ -188,10 +190,18 @@ export class ResourceDetailBase extends React.Component {
     this.api.setCurrentRequests(apiRequests);
 
     Promise.all(this.api.getCurrentPromises())
-      .then(results => {
-        const [resourceRsp, podListRsp, podMetricsRsp, upstreamRsp, downstreamRsp, ...rsp] = [...results];
+      .then(apiResponses => {
+        let podMetrics;
+        let resourceRsp, upstreamRsp, downstreamRsp, podListRsp, podMetricsRsp, rsp;
+
+        if (resource.type === "pod") {
+          [resourceRsp, upstreamRsp, downstreamRsp, ...rsp] = [...apiResponses];
+        } else {
+          [resourceRsp, upstreamRsp, downstreamRsp, podListRsp, podMetricsRsp, ...rsp] = [...apiResponses];
+          podMetrics = processSingleResourceRollup(podMetricsRsp, resource.type);
+        }
+
         let resourceMetrics = processSingleResourceRollup(resourceRsp, resource.type);
-        let podMetrics = processSingleResourceRollup(podMetricsRsp, resource.type);
         let upstreamMetrics = processMultiResourceRollup(upstreamRsp, resource.type);
         let downstreamMetrics = processMultiResourceRollup(downstreamRsp, resource.type);
         let resourceDefinition = this.state.queryForDefinition ? rsp[0] : this.state.resourceDefinition;
@@ -210,9 +220,7 @@ export class ResourceDetailBase extends React.Component {
         let podMetricsForResource;
 
         if (resource.type === "pod") {
-          // get only info for the pod whose ResourceDetail is being shown
-          // pod.name in podMetrics is of the form `pod-name`
-          podMetricsForResource = _filter(podMetrics, pod => pod.name === resource.name);
+          podMetricsForResource = resourceMetrics;
         } else {
           let podBelongsToResource = _reduce(podListRsp.pods, (mem, pod) => {
             if (_get(pod, resourceTypeToCamelCase(resource.type)) === resourceName) {

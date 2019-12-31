@@ -177,6 +177,30 @@ func TestRender(t *testing.T) {
 	withProxyIgnoresValues, _, _ := withProxyIgnoresOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(withProxyIgnoresValues)
 
+	withHeartBeatDisabled, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withHeartBeatDisabled.disableHeartbeat = true
+	withHeartBeatDisabledValues, _, _ := withHeartBeatDisabled.validateAndBuild("", nil)
+	addFakeTLSSecrets(withHeartBeatDisabledValues)
+
+	withRestrictedDashboardPriviliges, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withRestrictedDashboardPriviliges.restrictDashboardPrivileges = true
+	withRestrictedDashboardPriviligesValues, _, _ := withRestrictedDashboardPriviliges.validateAndBuild("", nil)
+	addFakeTLSSecrets(withRestrictedDashboardPriviligesValues)
+
+	withControlPlaneTracing, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withControlPlaneTracing.controlPlaneTracing = true
+	withControlPlaneTracingValues, _, _ := withControlPlaneTracing.validateAndBuild("", nil)
+	addFakeTLSSecrets(withControlPlaneTracingValues)
+
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
@@ -189,6 +213,9 @@ func TestRender(t *testing.T) {
 		{haWithOverridesValues, "install_ha_with_overrides_output.golden"},
 		{noInitContainerValues, "install_no_init_container.golden"},
 		{withProxyIgnoresValues, "install_proxy_ignores.golden"},
+		{withHeartBeatDisabledValues, "install_heartbeat_disabled_output.golden"},
+		{withRestrictedDashboardPriviligesValues, "install_restricted_dashboard.golden"},
+		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
 	}
 
 	for i, tc := range testCases {
