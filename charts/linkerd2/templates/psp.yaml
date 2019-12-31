@@ -92,13 +92,8 @@ subjects:
   namespace: {{.Values.global.namespace}}
 - kind: ServiceAccount
   name: linkerd-grafana
-<<<<<<< HEAD
   namespace: {{.Values.global.namespace}}
-{{ if not .DisableHeartBeat -}}
-=======
-  namespace: {{.Values.namespace}}
 {{ if not .Values.disableHeartBeat -}}
->>>>>>> master
 - kind: ServiceAccount
   name: linkerd-heartbeat
   namespace: {{.Values.global.namespace}}
