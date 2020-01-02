@@ -416,7 +416,7 @@ jobs:
   docker_deploy:
     name: Docker deploy
     runs-on: ubuntu-18.04
-    needs: [validate_go_deps, go_unit_tests, go_lint, js_unit_tests, kind_integration]
+    needs: [validate_go_deps, go_unit_tests, go_lint, js_unit_tests, kind_integration, kind_cleanup]
     steps:
     - name: Download .git artifact
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
