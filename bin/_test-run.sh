@@ -130,7 +130,7 @@ run_test(){
     shift
 
     printf 'Test script: [%s] Params: [%s]\n' "$(basename $filename 2>/dev/null || echo $filename )" "$*"
-    GO111MODULE=on go test --failfast --mod=readonly $filename --linkerd="$linkerd_path" --k8s-context="$k8s_context" --integration-tests "$@"
+    GO111MODULE=on go test -v --failfast --mod=readonly $filename --linkerd="$linkerd_path" --k8s-context="$k8s_context" --integration-tests "$@"
 }
 
 # Install the latest stable release.
