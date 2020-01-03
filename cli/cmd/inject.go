@@ -366,6 +366,13 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = parsePort(configs.Proxy.OutboundPort)
 	}
 
+	if options.dockerRegistry != "" {
+		configs.Proxy.ProxyImage.ImageName = registryOverride(configs.Proxy.ProxyImage.ImageName, options.dockerRegistry)
+		configs.Proxy.ProxyInitImage.ImageName = registryOverride(configs.Proxy.ProxyInitImage.ImageName, options.dockerRegistry)
+		overrideAnnotations[k8s.ProxyImageAnnotation] = configs.Proxy.ProxyImage.ImageName
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = configs.Proxy.ProxyInitImage.ImageName
+	}
+
 	if options.proxyImage != "" {
 		configs.Proxy.ProxyImage.ImageName = options.proxyImage
 		overrideAnnotations[k8s.ProxyImageAnnotation] = configs.Proxy.ProxyImage.ImageName
@@ -374,13 +381,6 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	if options.initImage != "" {
 		configs.Proxy.ProxyInitImage.ImageName = options.initImage
 
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = configs.Proxy.ProxyInitImage.ImageName
-	}
-
-	if options.dockerRegistry != "" {
-		configs.Proxy.ProxyImage.ImageName = registryOverride(configs.Proxy.ProxyImage.ImageName, options.dockerRegistry)
-		configs.Proxy.ProxyInitImage.ImageName = registryOverride(configs.Proxy.ProxyInitImage.ImageName, options.dockerRegistry)
-		overrideAnnotations[k8s.ProxyImageAnnotation] = configs.Proxy.ProxyImage.ImageName
 		overrideAnnotations[k8s.ProxyInitImageAnnotation] = configs.Proxy.ProxyInitImage.ImageName
 	}
 
