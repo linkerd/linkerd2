@@ -313,11 +313,11 @@ jobs:
         # retry cluster creation once in case of port conflict or kubeadm failure
         if [ "${{ matrix.integration_test }}" == "custom_domain" ]
         then
-          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug --config=$CUSTOM_DOMAIN_CONFIG ||
-            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug --config=$CUSTOM_DOMAIN_CONFIG
+          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3 --config=$CUSTOM_DOMAIN_CONFIG ||
+            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3 --config=$CUSTOM_DOMAIN_CONFIG
         else
-          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug ||
-            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --loglevel debug
+          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3 ||
+            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3
         fi
 
   kind_integration:
