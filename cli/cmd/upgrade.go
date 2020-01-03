@@ -222,9 +222,9 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		return nil, nil, fmt.Errorf("could not fetch configs from kubernetes: %s", err)
 	}
 
-	// If the install config needs to be repaired--either because it did not
+	// If the configs need to be repaired--either because sections did not
 	// exist or because it is missing expected fields, repair it.
-	repairInstall(configs.Install)
+	repairConfigs(configs)
 
 	// We recorded flags during a prior install. If we haven't overridden the
 	// flag on this upgrade, reset that prior value as if it were specified now.
@@ -352,15 +352,21 @@ func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) 
 	}
 }
 
-func repairInstall(install *pb.Install) {
-	if install == nil {
-		install = &pb.Install{}
+func repairConfigs(configs *pb.All) {
+	// Repair the "install" section; install flags are updated separately
+	if configs.Install == nil {
+		configs.Install = &pb.Install{}
 	}
-
 	// ALWAYS update the CLI version to the most recent.
-	install.CliVersion = version.Version
+	configs.Install.CliVersion = version.Version
 
-	// Install flags are updated separately.
+	// Repair the "debug" section
+	if configs.Debug == nil {
+		configs.Debug = &pb.Debug{}
+	}
+	if configs.Debug.DebugImage == nil {
+		configs.Debug.DebugImage = &pb.Image{}
+	}
 }
 
 func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
