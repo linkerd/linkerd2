@@ -21,24 +21,14 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
 	"github.com/linkerd/linkerd2/pkg/tap"
-	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	// Control Frame payload size can be no bigger than 125 bytes. 2 bytes are
-	// reserved for the status code when formatting the message.
-	maxControlFrameMsgSize = 123
-
-	// statExpiration indicates when items in the stat cache expire.
-	statExpiration = 1500 * time.Millisecond
-
-	// statCleanupInterval indicates how often expired items in the stat cache
-	// are cleaned up.
-	statCleanupInterval = 5 * time.Minute
-)
+// Control Frame payload size can be no bigger than 125 bytes. 2 bytes are
+// reserved for the status code when formatting the message.
+const maxControlFrameMsgSize = 123
 
 type (
 	jsonError struct {
@@ -136,11 +126,6 @@ func (h *handler) handleAPIServices(w http.ResponseWriter, req *http.Request, p 
 }
 
 func (h *handler) handleAPIStat(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
-	// Initialize stat cache if needed
-	if h.statCache == nil {
-		h.statCache = cache.New(statExpiration, statCleanupInterval)
-	}
-
 	// Try to get stat summary from cache using the query as key
 	cachedResultJSON, ok := h.statCache.Get(req.URL.RawQuery)
 	if ok {
