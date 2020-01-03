@@ -1,48 +1,48 @@
 import React from 'react';
 import grey from '@material-ui/core/colors/grey';
 
-const strokeOpacity = "0.7";
+const strokeOpacity = '0.7';
 const arrowColor = grey[500];
 
 const controlPoint = 10; // width and height of the control points for the bezier curves
 export const inboundAlignment = controlPoint * 2;
 
 const generateSvgComponents = (y1, width, height) => {
-  let segmentWidth = width / 2 - controlPoint; // width of each horizontal arrow segment
+  const segmentWidth = width / 2 - controlPoint; // width of each horizontal arrow segment
 
-  let x1 = 0;
+  const x1 = 0;
 
-  let x2 = x1 + segmentWidth;
-  let x3 = x2 + controlPoint;
+  const x2 = x1 + segmentWidth;
+  const x3 = x2 + controlPoint;
 
-  let y2 = y1 - controlPoint;
-  let y3 = y2 - height;
-  let y4 = y3 - controlPoint;
+  const y2 = y1 - controlPoint;
+  const y3 = y2 - height;
+  const y4 = y3 - controlPoint;
 
-  let x4 = x3 + controlPoint;
-  let x5 = x4 + segmentWidth;
+  const x4 = x3 + controlPoint;
+  const x5 = x4 + segmentWidth;
 
-  let start = `M ${x1},${y1}`;
-  let horizLine1 = `L ${x2},${y1}`;
-  let curve1 = `C ${x3},${y1} ${x3},${y1}`;
-  let curve1End = `${x3},${y2}`;
-  let verticalLineEnd = `L ${x3},${y3}`;
-  let curve2 = `C ${x3},${y4} ${x3},${y4}`;
-  let curve2End = `${x4},${y4}`;
-  let horizLine2 = `L ${x5},${y4}`;
+  const start = `M ${x1},${y1}`;
+  const horizLine1 = `L ${x2},${y1}`;
+  const curve1 = `C ${x3},${y1} ${x3},${y1}`;
+  const curve1End = `${x3},${y2}`;
+  const verticalLineEnd = `L ${x3},${y3}`;
+  const curve2 = `C ${x3},${y4} ${x3},${y4}`;
+  const curve2End = `${x4},${y4}`;
+  const horizLine2 = `L ${x5},${y4}`;
 
-  let arrowPath = [start, horizLine1, curve1, curve1End, verticalLineEnd, curve2, curve2End, horizLine2].join(" ");
+  const arrowPath = [start, horizLine1, curve1, curve1End, verticalLineEnd, curve2, curve2End, horizLine2].join(' ');
 
-  let arrowEndX = width;
-  let arrowEndY = y4;
-  let arrowHead = `${arrowEndX - 4} ${arrowEndY - 4} ${arrowEndX} ${arrowEndY} ${arrowEndX - 4} ${arrowEndY + 4}`;
+  const arrowEndX = width;
+  const arrowEndY = y4;
+  const arrowHead = `${arrowEndX - 4} ${arrowEndY - 4} ${arrowEndX} ${arrowEndY} ${arrowEndX - 4} ${arrowEndY + 4}`;
 
-  let circle = { cx: x1, cy: y1 };
+  const circle = { cx: x1, cy: y1 };
 
   return {
     arrowPath,
     circle,
-    arrowHead
+    arrowHead,
   };
 };
 
@@ -70,22 +70,22 @@ const arrowG = (id, arm, transform) => {
 };
 
 const up = (width, svgHeight, arrowHeight, isOutbound) => {
-  let height = arrowHeight;
+  const height = arrowHeight;
 
   // up arrows start and the center of the middle node for outbound arms,
   // and at the noce position for inbound arms
-  let y1 = isOutbound ? svgHeight / 2 : arrowHeight;
-  let arm = generateSvgComponents(y1, width, height);
+  const y1 = isOutbound ? svgHeight / 2 : arrowHeight;
+  const arm = generateSvgComponents(y1, width, height);
 
-  let translate = isOutbound ? null : `translate(0, ${svgHeight / 2 + inboundAlignment})`;
+  const translate = isOutbound ? null : `translate(0, ${svgHeight / 2 + inboundAlignment})`;
 
   return arrowG(`up-arrow-${height}`, arm, translate);
 };
 
 const flat = (width, height) => {
-  let arrowY = height / 2;
-  let arrowEndX = width;
-  let polylinePoints = `${arrowEndX - 4} ${arrowY - 4} ${arrowEndX} ${arrowY} ${arrowEndX - 4} ${arrowY + 4}`;
+  const arrowY = height / 2;
+  const arrowEndX = width;
+  const polylinePoints = `${arrowEndX - 4} ${arrowY - 4} ${arrowEndX} ${arrowY} ${arrowEndX - 4} ${arrowY + 4}`;
 
   return (
     <g key="flat-arrow" id="downstream-flat" fill="none" stroke="none" strokeWidth="1">
@@ -102,17 +102,17 @@ const flat = (width, height) => {
 const down = (width, svgHeight, arrowHeight, isOutbound, elementHeight) => {
   // down outbound arrows start at the middle of the svg's height, and
   // have end of block n at (1/2 block height) + (block height * n-1)
-  let height = (svgHeight / 2) - arrowHeight;
+  const height = (svgHeight / 2) - arrowHeight;
 
   // inbound arrows start at the offset of the card, and end in the center of the middle card
   // outbound arrows start in the center of the middle card, and end at the card's height
-  let y1 = isOutbound ? svgHeight / 2 : elementHeight / 2;
+  const y1 = isOutbound ? svgHeight / 2 : elementHeight / 2;
 
-  let arm = generateSvgComponents(y1, width, height);
+  const arm = generateSvgComponents(y1, width, height);
 
-  let translate = `translate(0, ${isOutbound ? svgHeight : svgHeight / 2 - height + elementHeight / 2 - inboundAlignment})`;
-  let reflect = "scale(1, -1)";
-  let transform = `${translate} ${reflect}`;
+  const translate = `translate(0, ${isOutbound ? svgHeight : svgHeight / 2 - height + elementHeight / 2 - inboundAlignment})`;
+  const reflect = 'scale(1, -1)';
+  const transform = `${translate} ${reflect}`;
 
   return arrowG(`down-arrow-${height}`, arm, transform);
 };
@@ -120,5 +120,5 @@ const down = (width, svgHeight, arrowHeight, isOutbound, elementHeight) => {
 export const OctopusArms = {
   up,
   flat,
-  down
+  down,
 };

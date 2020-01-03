@@ -38,19 +38,19 @@ const topRoutesQueryProps = {
 };
 const topRoutesQueryPropType = PropTypes.shape(topRoutesQueryProps);
 
-let topRoutesQueryConfig = {};
+const topRoutesQueryConfig = {};
 Object.keys(topRoutesQueryProps).forEach(value => {
   topRoutesQueryConfig[value] = StringParam;
 });
 
 const toResourceName = (query, typeKey, nameKey) => {
-  return `${query[typeKey] || ""}${!query[nameKey] ? "" : "/"}${query[nameKey] || ""}`;
+  return `${query[typeKey] || ''}${!query[nameKey] ? '' : '/'}${query[nameKey] || ''}`;
 };
 
 const styles = theme => ({
   root: {
     marginTop: theme.spacing(3),
-    marginBottom:theme.spacing(1),
+    marginBottom: theme.spacing(1),
   },
   formControl: {
     minWidth: 200,
@@ -68,19 +68,19 @@ class TopRoutes extends React.Component {
       namespace: '',
       to_name: '',
       to_type: '',
-      to_namespace: ''
+      to_namespace: '',
     }, _pick(props.query, Object.keys(topRoutesQueryProps)));
 
 
     this.state = {
-      query: query,
+      query,
       error: null,
       services: [],
-      namespaces: ["default"],
+      namespaces: ['default'],
       resourcesByNs: {},
       pollingInterval: 5000,
       pendingRequests: false,
-      requestInProgress: false
+      requestInProgress: false,
     };
   }
 
@@ -112,24 +112,24 @@ class TopRoutes extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    let allMetricsUrl = this.api.urlsForResourceNoStats("all");
+    const allMetricsUrl = this.api.urlsForResourceNoStats('all');
     this.api.setCurrentRequests([
       this.api.fetchServices(),
-      this.api.fetchMetrics(allMetricsUrl)
+      this.api.fetchMetrics(allMetricsUrl),
     ]);
 
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([svcList, allMetrics]) => {
-        let services =  _get(svcList, 'services', []);
-        let namespaces = _uniq(services.map(s => s.namespace));
-        let { resourcesByNs } = groupResourcesByNs(allMetrics);
+        const services = _get(svcList, 'services', []);
+        const namespaces = _uniq(services.map(s => s.namespace));
+        const { resourcesByNs } = groupResourcesByNs(allMetrics);
 
         this.setState({
           services,
           namespaces,
           resourcesByNs,
           pendingRequests: false,
-          error: null
+          error: null,
         });
       })
       .catch(this.handleApiError);
@@ -142,7 +142,7 @@ class TopRoutes extends React.Component {
 
     this.setState({
       pendingRequests: false,
-      error: e
+      error: e,
     });
   }
 
@@ -160,7 +160,7 @@ class TopRoutes extends React.Component {
 
   handleBtnClick = inProgress => () => {
     this.setState({
-      requestInProgress: inProgress
+      requestInProgress: inProgress,
     });
   }
 
@@ -174,19 +174,19 @@ class TopRoutes extends React.Component {
 
   handleNamespaceSelect = nsKey => e => {
     const { query } = this.state;
-    let newQuery = query;
-    let formVal = _get(e, 'target.value');
+    const newQuery = query;
+    const formVal = _get(e, 'target.value');
     newQuery[nsKey] = formVal;
     this.handleUrlUpdate(newQuery);
     this.setState({ query: newQuery });
   };
 
   handleResourceSelect = (nameKey, typeKey) => e => {
-    let { query } = this.state;
-    let resource = _get(e, 'target.value');
-    let [resourceType, resourceName] = resource.split('/');
+    const { query } = this.state;
+    const resource = _get(e, 'target.value');
+    const [resourceType, resourceName] = resource.split('/');
 
-    query[nameKey] = resourceName || "";
+    query[nameKey] = resourceName || '';
     query[typeKey] = resourceType;
 
     this.handleUrlUpdate(query);
@@ -202,11 +202,11 @@ class TopRoutes extends React.Component {
         <Grid container direction="column" spacing={2}>
           <Grid item container spacing={4} alignItems="center" justify="flex-start">
             <Grid item>
-              { this.renderNamespaceDropdown("Namespace", "namespace", "Namespace to query") }
+              { this.renderNamespaceDropdown('Namespace', 'namespace', 'Namespace to query') }
             </Grid>
 
             <Grid item>
-              { this.renderResourceDropdown("Resource", "resource_name", "resource_type", "Resource to query") }
+              { this.renderResourceDropdown('Resource', 'resource_name', 'resource_type', 'Resource to query') }
             </Grid>
 
             <Grid item>
@@ -232,16 +232,16 @@ class TopRoutes extends React.Component {
 
           <Grid item container spacing={4} alignItems="center" justify="flex-start">
             <Grid item>
-              { this.renderNamespaceDropdown("To Namespace", "to_namespace", "Namespece of target resource") }
+              { this.renderNamespaceDropdown('To Namespace', 'to_namespace', 'Namespece of target resource') }
             </Grid>
 
             <Grid item>
-              { this.renderResourceDropdown("To Resource", "to_name", "to_type", "Target resource") }
+              { this.renderResourceDropdown('To Resource', 'to_name', 'to_type', 'Target resource') }
             </Grid>
           </Grid>
         </Grid>
         <Divider light className={classes.root} />
-        <Typography variant="caption">You can also create a new profile <ConfigureProfilesMsg showAsIcon={true} /></Typography>
+        <Typography variant="caption">You can also create a new profile <ConfigureProfilesMsg showAsIcon /></Typography>
       </CardContent>
     );
   }
@@ -254,7 +254,7 @@ class TopRoutes extends React.Component {
       <FormControl className={classes.formControl}>
         <InputLabel htmlFor={`${key}-dropdown`}>{title}</InputLabel>
         <Select
-          value={namespaces.includes(query[key]) ? query[key] : ""}
+          value={namespaces.includes(query[key]) ? query[key] : ''}
           onChange={this.handleNamespaceSelect(key)}
           inputProps={{
             name: key,
@@ -276,22 +276,22 @@ class TopRoutes extends React.Component {
     const { query, services, resourcesByNs } = this.state;
     const { classes } = this.props;
 
-    let nsFilterKey = "namespace";
-    if (typeKey === "to_type") {
-      nsFilterKey = "to_namespace";
+    let nsFilterKey = 'namespace';
+    if (typeKey === 'to_type') {
+      nsFilterKey = 'to_namespace';
     }
 
-    let servicesWithPrefix = services
+    const servicesWithPrefix = services
       .filter(s => s[nsFilterKey] === query[nsFilterKey])
       .map(svc => `service/${svc.name}`);
-    let otherResources = resourcesByNs[query[nsFilterKey]] || [];
+    const otherResources = resourcesByNs[query[nsFilterKey]] || [];
 
     let dropdownOptions = servicesWithPrefix
       .concat(otherResources)
       .concat(tapResourceTypes)
       .sort();
 
-    let dropdownVal = toResourceName(query, typeKey, nameKey);
+    const dropdownVal = toResourceName(query, typeKey, nameKey);
 
     if (_isEmpty(dropdownOptions) && !_isEmpty(dropdownVal)) {
       dropdownOptions = [dropdownVal]; // populate from url if autocomplete hasn't loaded
@@ -301,7 +301,7 @@ class TopRoutes extends React.Component {
       <FormControl className={classes.formControl}>
         <InputLabel htmlFor={`${nameKey}-dropdown`}>{title}</InputLabel>
         <Select
-          value={dropdownOptions.includes(dropdownVal) ? dropdownVal : ""}
+          value={dropdownOptions.includes(dropdownVal) ? dropdownVal : ''}
           onChange={this.handleResourceSelect(nameKey, typeKey)}
           disabled={_isEmpty(query.namespace)}
           inputProps={{
@@ -321,8 +321,8 @@ class TopRoutes extends React.Component {
 
   render() {
     const { query, requestInProgress, error } = this.state;
-    let emptyQuery = _isEmpty(query.resource_type);
-    let cliQueryToDisplay = _merge({}, query, {toResource: toResourceName(query, "to_type", "to_name"), toNamespace: query.to_namespace});
+    const emptyQuery = _isEmpty(query.resource_type);
+    const cliQueryToDisplay = _merge({}, query, { toResource: toResourceName(query, 'to_type', 'to_name'), toNamespace: query.to_namespace });
 
     return (
       <div>
@@ -337,7 +337,7 @@ class TopRoutes extends React.Component {
             <QueryToCliCmd
               cmdName="routes"
               query={cliQueryToDisplay}
-              resource={toResourceName(query, "resource_type", "resource_name")} />
+              resource={toResourceName(query, 'resource_type', 'resource_name')} />
             }
           { !requestInProgress || !this._isMounted ? null : <TopRoutesModule query={query} /> }
         </Card>

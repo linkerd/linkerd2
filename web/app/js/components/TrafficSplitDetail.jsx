@@ -12,29 +12,29 @@ import { processSingleResourceRollup } from './util/MetricUtils.jsx';
 // calculates the aggregated successRate and RPS for an entire trafficsplit
 export const getAggregatedTrafficSplitMetrics = resourceMetrics => {
   let totalRPS = 0;
-  let successRates = [];
+  const successRates = [];
   _each(resourceMetrics, row => {
     if (!_isNil(row.requestRate)) {
-      totalRPS+= row.requestRate;
+      totalRPS += row.requestRate;
     }
     if (!_isNil(row.successRate)) {
-      let weightedSuccessRate = row.successRate * row.requestRate;
+      const weightedSuccessRate = row.successRate * row.requestRate;
       successRates.push(weightedSuccessRate);
     }
   });
-  let sumSuccessRates = _reduce(successRates, (acc, n) => {
+  const sumSuccessRates = _reduce(successRates, (acc, n) => {
     return acc + n;
   }, 0);
-  let aggregatedSuccessRate = sumSuccessRates/totalRPS || 0;
-  return {successRate: aggregatedSuccessRate,
-    totalRPS: totalRPS};
+  const aggregatedSuccessRate = sumSuccessRates / totalRPS || 0;
+  return { successRate: aggregatedSuccessRate,
+    totalRPS };
 };
 
 const generateApexMetrics = resourceMetrics => {
-  let aggregatedMetrics = getAggregatedTrafficSplitMetrics(resourceMetrics);
+  const aggregatedMetrics = getAggregatedTrafficSplitMetrics(resourceMetrics);
   return {
     name: resourceMetrics[0].tsStats.apex,
-    type: "service",
+    type: 'service',
     requestRate: aggregatedMetrics.totalRPS,
     successRate: aggregatedMetrics.successRate,
     isApexService: true,
@@ -46,10 +46,10 @@ const generateApexMetrics = resourceMetrics => {
 // the leaf name. here we replace the trafficsplit name with the leaf name for
 // the octopus graph.
 const formatLeaves = resourceRsp => {
-  let leaves = processSingleResourceRollup(resourceRsp, "trafficsplit");
+  const leaves = processSingleResourceRollup(resourceRsp, 'trafficsplit');
   _each(leaves, leaf => {
     leaf.name = leaf.tsStats.leaf;
-    leaf.type = "service";
+    leaf.type = 'service';
     leaf.isLeafService = true;
   });
   return leaves;

@@ -13,7 +13,7 @@ import { withContext } from './AppContext.jsx';
  * @param {List[string]} requestURLs - List of URLs to poll.
  * @param {List[string]} options - Options for withREST
  */
-const withREST = (WrappedComponent, componentPromises, options={}) => {
+const withREST = (WrappedComponent, componentPromises, options = {}) => {
   const localOptions = _merge({}, {
     resetProps: [],
     poll: true,
@@ -32,7 +32,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
       data: [],
       pendingRequests: false,
       loading: true,
-      error: null
+      error: null,
     });
 
     componentDidMount() {
@@ -49,7 +49,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
       });
 
       const changed = localOptions.resetProps.filter(
-        prop => _get(prevProps, prop) !== _get(this.props, prop)
+        prop => _get(prevProps, prop) !== _get(this.props, prop),
       );
 
       if (_isEmpty(changed)) { return; }
@@ -69,7 +69,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
       this.loadFromServer(props);
       if (localOptions.poll) {
         this.timerId = window.setInterval(
-          this.loadFromServer, pollingInterval, props
+          this.loadFromServer, pollingInterval, props,
         );
       }
     }
@@ -96,7 +96,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
       Promise.all(this.api.getCurrentPromises())
         .then(data => {
           this.setState({
-            data: data,
+            data,
             loading: false,
             pendingRequests: false,
             error: null,
@@ -110,7 +110,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
 
       this.setState({
         pendingRequests: false,
-        error: e
+        error: e,
       });
     }
 

@@ -25,15 +25,15 @@ class Namespaces extends React.Component {
   }
 
   getInitialState(params) {
-    let ns = _get(params, "namespace", "default");
+    const ns = _get(params, 'namespace', 'default');
 
     return {
-      ns: ns,
+      ns,
       pollingInterval: 2000,
       metrics: {},
       pendingRequests: false,
       loaded: false,
-      error: null
+      error: null,
     };
   }
 
@@ -82,17 +82,17 @@ class Namespaces extends React.Component {
     }
     this.setState({ pendingRequests: true });
 
-    this.api.setCurrentRequests([this.api.fetchMetrics(this.api.urlsForResource("all", ns, true))]);
+    this.api.setCurrentRequests([this.api.fetchMetrics(this.api.urlsForResource('all', ns, true))]);
 
     Promise.all(this.api.getCurrentPromises())
       .then(([allRollup]) => {
-        let metrics = processMultiResourceRollup(allRollup, "all");
+        const metrics = processMultiResourceRollup(allRollup, 'all');
 
         this.setState({
-          metrics: metrics,
+          metrics,
           loaded: true,
           pendingRequests: false,
-          error: null
+          error: null,
         });
       })
       .catch(this.handleApiError);
@@ -105,7 +105,7 @@ class Namespaces extends React.Component {
 
     this.setState({
       pendingRequests: false,
-      error: e
+      error: e,
     });
   }
 
@@ -135,8 +135,8 @@ class Namespaces extends React.Component {
 
   render() {
     const { metrics, ns, loaded, error } = this.state;
-    let noMetrics = _isEmpty(metrics.pod);
-    let deploymentsWithMetrics = _filter(metrics.deployment, d => d.requestRate > 0);
+    const noMetrics = _isEmpty(metrics.pod);
+    const deploymentsWithMetrics = _filter(metrics.deployment, d => d.requestRate > 0);
 
     return (
       <div className="page-content">
@@ -148,15 +148,15 @@ class Namespaces extends React.Component {
               _isEmpty(deploymentsWithMetrics) ? null :
               <NetworkGraph namespace={ns} deployments={metrics.deployment} />
             }
-            {this.renderResourceSection("deployment", metrics.deployment)}
-            {this.renderResourceSection("daemonset", metrics.daemonset)}
-            {this.renderResourceSection("pod", metrics.pod)}
-            {this.renderResourceSection("replicationcontroller", metrics.replicationcontroller)}
-            {this.renderResourceSection("statefulset", metrics.statefulset)}
-            {this.renderResourceSection("job", metrics.job)}
-            {this.renderResourceSection("trafficsplit", metrics.trafficsplit)}
-            {this.renderResourceSection("cronjob", metrics.cronjob)}
-            {this.renderResourceSection("replicaset", metrics.replicaset)}
+            {this.renderResourceSection('deployment', metrics.deployment)}
+            {this.renderResourceSection('daemonset', metrics.daemonset)}
+            {this.renderResourceSection('pod', metrics.pod)}
+            {this.renderResourceSection('replicationcontroller', metrics.replicationcontroller)}
+            {this.renderResourceSection('statefulset', metrics.statefulset)}
+            {this.renderResourceSection('job', metrics.job)}
+            {this.renderResourceSection('trafficsplit', metrics.trafficsplit)}
+            {this.renderResourceSection('cronjob', metrics.cronjob)}
+            {this.renderResourceSection('replicaset', metrics.replicaset)}
 
             {
               noMetrics ? null :
@@ -165,7 +165,7 @@ class Namespaces extends React.Component {
                   title="TCP"
                   resource="pod"
                   metrics={metrics.pod}
-                  isTcpTable={true} />
+                  isTcpTable />
               </div>
             }
           </div>

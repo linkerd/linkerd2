@@ -7,8 +7,8 @@ import { withStyles } from '@material-ui/core/styles';
 
 const styles = () => ({
   card: {
-    textAlign: "center",
-    paddingTop: "8px",
+    textAlign: 'center',
+    paddingTop: '8px',
   },
 });
 
@@ -29,7 +29,7 @@ EmptyCard.propTypes = {
 };
 
 EmptyCard.defaultProps = {
-  content: "No data to display",
+  content: 'No data to display',
 };
 
 export default withStyles(styles)(EmptyCard);

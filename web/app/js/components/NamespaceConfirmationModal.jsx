@@ -8,7 +8,6 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 class NamespaceConfirmationModal extends React.Component {
-
   render() {
     const { open, selectedNamespace, newNamespace, handleConfirmNamespaceChange, handleDialogCancel } = this.props;
 
@@ -44,7 +43,7 @@ NamespaceConfirmationModal.propTypes = {
   handleDialogCancel: PropTypes.func.isRequired,
   newNamespace: PropTypes.string.isRequired,
   open: PropTypes.bool.isRequired,
-  selectedNamespace: PropTypes.string.isRequired
+  selectedNamespace: PropTypes.string.isRequired,
 };
 
 export default NamespaceConfirmationModal;

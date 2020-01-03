@@ -2,11 +2,11 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { grafanaIcon } from './util/SvgWrappers.jsx';
 
-const GrafanaLink = ({PrefixedLink, name, namespace, resource}) => {
+const GrafanaLink = ({ PrefixedLink, name, namespace, resource }) => {
   return (
     <PrefixedLink
       to={`/grafana/dashboard/db/linkerd-${resource}?var-namespace=${namespace}&var-${resource}=${name}`}
-      targetBlank={true}>
+      targetBlank>
       &nbsp;&nbsp;
       {grafanaIcon}
     </PrefixedLink>

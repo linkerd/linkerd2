@@ -24,7 +24,7 @@ class Top extends React.Component {
       query: emptyTapQuery(),
       pollingInterval: 10000,
       tapRequestInProgress: false,
-      pendingRequests: false
+      pendingRequests: false,
     };
   }
 
@@ -47,11 +47,11 @@ class Top extends React.Component {
   }
 
   getResourcesByNs = rsp => {
-    let statTables = _get(rsp, [0, "ok", "statTables"]);
-    let authoritiesByNs = {};
-    let resourcesByNs = _reduce(statTables, (mem, table) => {
+    const statTables = _get(rsp, [0, 'ok', 'statTables']);
+    const authoritiesByNs = {};
+    const resourcesByNs = _reduce(statTables, (mem, table) => {
       _each(table.podGroup.rows, row => {
-        if (row.meshedPodCount === "0") {
+        if (row.meshedPodCount === '0') {
           return;
         }
 
@@ -61,9 +61,9 @@ class Top extends React.Component {
         }
 
         switch (row.resource.type.toLowerCase()) {
-          case "service":
+          case 'service':
             break;
-          case "authority":
+          case 'authority':
             authoritiesByNs[row.resource.namespace].push(row.resource.name);
             break;
           default:
@@ -74,7 +74,7 @@ class Top extends React.Component {
     }, {});
     return {
       authoritiesByNs,
-      resourcesByNs
+      resourcesByNs,
     };
   }
 
@@ -97,19 +97,19 @@ class Top extends React.Component {
       return; // don't make more requests if the ones we sent haven't completed
     }
     this.setState({
-      pendingRequests: true
+      pendingRequests: true,
     });
 
-    let url = this.api.urlsForResourceNoStats("all");
+    const url = this.api.urlsForResourceNoStats('all');
     this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(rsp => {
-        let { resourcesByNs, authoritiesByNs } = this.getResourcesByNs(rsp);
+        const { resourcesByNs, authoritiesByNs } = this.getResourcesByNs(rsp);
 
         this.setState({
           resourcesByNs,
           authoritiesByNs,
-          pendingRequests: false
+          pendingRequests: false,
         });
       })
       .catch(this.handleApiError);
@@ -122,40 +122,40 @@ class Top extends React.Component {
 
     this.setState({
       pendingRequests: false,
-      error: e
+      error: e,
     });
   }
 
   updateQuery = query => {
     this.setState({
-      query
+      query,
     });
   }
 
   handleTapStart = () => {
     this.setState({
-      tapRequestInProgress: true
+      tapRequestInProgress: true,
     });
   }
 
   handleTapStop = () => {
     this.setState({
       tapRequestInProgress: false,
-      tapIsClosing: true
+      tapIsClosing: true,
     });
   }
 
   handleTapClear = () => {
     this.setState({
       error: null,
-      query: emptyTapQuery()
+      query: emptyTapQuery(),
     });
   }
 
   updateTapClosingState() {
     this.setState({
       tapRequestInProgress: false,
-      tapIsClosing: false
+      tapIsClosing: false,
     });
   }
 
@@ -195,7 +195,7 @@ Top.propTypes = {
     PrefixedLink: PropTypes.func.isRequired,
   }).isRequired,
   isPageVisible: PropTypes.bool.isRequired,
-  pathPrefix: PropTypes.string.isRequired
+  pathPrefix: PropTypes.string.isRequired,
 };
 
 export default withPageVisibility(withContext(Top));

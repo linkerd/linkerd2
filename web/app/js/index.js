@@ -1,5 +1,5 @@
-import './../css/styles.css';
-import './../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
+import '../css/styles.css';
+import '../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
 
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
@@ -22,26 +22,26 @@ import Top from './components/Top.jsx';
 import TopRoutes from './components/TopRoutes.jsx';
 import { dashboardTheme } from './components/util/theme.js';
 
-let appMain = document.getElementById('main');
-let appData = !appMain ? {} : appMain.dataset;
+const appMain = document.getElementById('main');
+const appData = !appMain ? {} : appMain.dataset;
 
-let pathPrefix = "";
-let proxyPathMatch = window.location.pathname.match(/\/api\/v1\/namespaces\/.*\/proxy/g);
+let pathPrefix = '';
+const proxyPathMatch = window.location.pathname.match(/\/api\/v1\/namespaces\/.*\/proxy/g);
 if (proxyPathMatch) {
   pathPrefix = proxyPathMatch[0];
 }
 
-let defaultNamespace = "default";
-let pathArray = window.location.pathname.split("/");
+let defaultNamespace = 'default';
+const pathArray = window.location.pathname.split('/');
 
 // if the current URL path specifies a namespace, this should become the
 // defaultNamespace
-if (pathArray[0] === "" && pathArray[1] === "namespaces" && pathArray[2]) {
+if (pathArray[0] === '' && pathArray[1] === 'namespaces' && pathArray[2]) {
   defaultNamespace = pathArray[2];
 // if the current URL path is a legacy path such as `/daemonsets`, the
 // defaultNamespace should be "_all", unless the path is `/namespaces`
-} else if (pathArray.length === 2 && pathArray[1] !== "" && pathArray[1] !== "namespaces") {
-  defaultNamespace = "_all";
+} else if (pathArray.length === 2 && pathArray[1] !== '' && pathArray[1] !== 'namespaces') {
+  defaultNamespace = '_all';
 }
 
 class App extends React.Component {
@@ -49,23 +49,23 @@ class App extends React.Component {
     super(props);
 
     this.state = {
-      ...appData
+      ...appData,
     };
 
     this.state.api = ApiHelpers(pathPrefix);
     this.state.pathPrefix = pathPrefix;
-    this.state.productName = "Linkerd";
+    this.state.productName = 'Linkerd';
     this.state.selectedNamespace = defaultNamespace;
 
     this.state.updateNamespaceInContext = name => {
-      this.setState({selectedNamespace:name});
+      this.setState({ selectedNamespace: name });
     };
 
     this.state.checkNamespaceMatch = path => {
-      let { selectedNamespace } = this.state;
-      let pathNamespace = path.split("/")[2];
+      const { selectedNamespace } = this.state;
+      const pathNamespace = path.split('/')[2];
       if (pathNamespace && pathNamespace !== selectedNamespace) {
-        this.setState({selectedNamespace:pathNamespace});
+        this.setState({ selectedNamespace: pathNamespace });
       }
     };
   }

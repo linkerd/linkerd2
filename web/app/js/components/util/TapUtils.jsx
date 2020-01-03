@@ -19,9 +19,9 @@ import _size from 'lodash/size';
 import _take from 'lodash/take';
 import { faLongArrowAltRight } from '@fortawesome/free-solid-svg-icons/faLongArrowAltRight';
 
-export const httpMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
+export const httpMethods = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH'];
 
-export const defaultMaxRps = "100.0";
+export const defaultMaxRps = '100.0';
 export const setMaxRps = query => {
   if (!_isEmpty(query.maxRps)) {
     query.maxRps = parseFloat(query.maxRps);
@@ -32,27 +32,27 @@ export const setMaxRps = query => {
 
 // resources you can tap/top to tap all pods in the resource
 export const tapResourceTypes = [
-  "deployment",
-  "daemonset",
-  "pod",
-  "replicationcontroller",
-  "statefulset",
-  "job",
-  "replicaset",
-  "cronjob"
+  'deployment',
+  'daemonset',
+  'pod',
+  'replicationcontroller',
+  'statefulset',
+  'job',
+  'replicaset',
+  'cronjob',
 ];
 
 // use a generator to get this object, to prevent it from being overwritten
 export const emptyTapQuery = () => ({
-  resource: "",
-  namespace: "",
-  toResource: "",
-  toNamespace: "",
-  method: "",
-  path: "",
-  scheme: "",
-  authority: "",
-  maxRps: ""
+  resource: '',
+  namespace: '',
+  toResource: '',
+  toNamespace: '',
+  method: '',
+  path: '',
+  scheme: '',
+  authority: '',
+  maxRps: '',
 });
 
 export const tapQueryProps = {
@@ -72,22 +72,22 @@ export const tapQueryPropType = PropTypes.shape(tapQueryProps);
 
 // from https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
 export const wsCloseCodes = {
-  1000: "Normal Closure",
-  1001: "Going Away",
-  1002: "Protocol Error",
-  1003: "Unsupported Data",
-  1004: "Reserved",
-  1005: "No Status Recvd",
-  1006: "Abnormal Closure",
-  1007: "Invalid frame payload data",
-  1008: "Policy Violation",
-  1009: "Message too big",
-  1010: "Missing Extension",
-  1011: "Internal Error",
-  1012: "Service Restart",
-  1013: "Try Again Later",
-  1014: "Bad Gateway",
-  1015: "TLS Handshake"
+  1000: 'Normal Closure',
+  1001: 'Going Away',
+  1002: 'Protocol Error',
+  1003: 'Unsupported Data',
+  1004: 'Reserved',
+  1005: 'No Status Recvd',
+  1006: 'Abnormal Closure',
+  1007: 'Invalid frame payload data',
+  1008: 'Policy Violation',
+  1009: 'Message too big',
+  1010: 'Missing Extension',
+  1011: 'Internal Error',
+  1012: 'Service Restart',
+  1013: 'Try Again Later',
+  1014: 'Bad Gateway',
+  1015: 'TLS Handshake',
 };
 
 export const WS_NORMAL_CLOSURE = 1000;
@@ -107,23 +107,23 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
     neighb = {
       type: resourceType,
       name: labels[resourceType],
-      namespace: labels.namespace
+      namespace: labels.namespace,
     };
-  } else if (_has(labels, "pod")) {
+  } else if (_has(labels, 'pod')) {
     neighb = {
-      type: "pod",
+      type: 'pod',
       name: labels.pod,
-      namespace: labels.namespace
+      namespace: labels.namespace,
     };
-  } else if (_has(labels, "node")) {
+  } else if (_has(labels, 'node')) {
     neighb = {
-      type: "node",
+      type: 'node',
       name: labels.node,
     };
   } else {
     neighb = {
-      type: "ip",
-      name: source.str
+      type: 'ip',
+      name: source.str,
     };
   }
 
@@ -133,8 +133,8 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
     neighb.pods[labels.pod] = true;
   }
 
-  let key = neighb.type + "/" + neighb.name;
-  if (_has(labels, "control_plane_ns")) {
+  const key = `${neighb.type}/${neighb.name}`;
+  if (_has(labels, 'control_plane_ns')) {
     delete resourceAgg[key];
   } else {
     if (_has(resourceAgg, key)) {
@@ -147,27 +147,27 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
 };
 
 export const processTapEvent = jsonString => {
-  let d = JSON.parse(jsonString);
+  const d = JSON.parse(jsonString);
 
-  d.source.str = publicAddressToString(_get(d, "source.ip.ipv4"));
-  d.source.pod = _get(d, "sourceMeta.labels.pod", null);
+  d.source.str = publicAddressToString(_get(d, 'source.ip.ipv4'));
+  d.source.pod = _get(d, 'sourceMeta.labels.pod', null);
   d.source.owner = extractPodOwner(d.sourceMeta.labels);
-  d.source.namespace = _get(d, "sourceMeta.labels.namespace", null);
+  d.source.namespace = _get(d, 'sourceMeta.labels.namespace', null);
 
-  d.destination.str = publicAddressToString(_get(d, "destination.ip.ipv4"));
-  d.destination.pod = _get(d, "destinationMeta.labels.pod", null);
+  d.destination.str = publicAddressToString(_get(d, 'destination.ip.ipv4'));
+  d.destination.pod = _get(d, 'destinationMeta.labels.pod', null);
   d.destination.owner = extractPodOwner(d.destinationMeta.labels);
-  d.destination.namespace = _get(d, "destinationMeta.labels.namespace", null);
+  d.destination.namespace = _get(d, 'destinationMeta.labels.namespace', null);
 
   if (_isNil(d.http)) {
-    this.setState({ error: "Undefined request type"});
+    this.setState({ error: 'Undefined request type' });
   } else {
     if (!_isNil(d.http.requestInit)) {
-      d.eventType = "requestInit";
+      d.eventType = 'requestInit';
     } else if (!_isNil(d.http.responseInit)) {
-      d.eventType = "responseInit";
+      d.eventType = 'responseInit';
     } else if (!_isNil(d.http.responseEnd)) {
-      d.eventType = "responseEnd";
+      d.eventType = 'responseEnd';
     }
     d.id = tapEventKey(d, d.eventType);
   }
@@ -181,7 +181,7 @@ export const processTapEvent = jsonString => {
   current key: (src, dst, stream)
 */
 const tapEventKey = (d, eventType) => {
-  return `${d.source.str},${d.destination.str},${_get(d, ["http", eventType, "id", "stream"])}`;
+  return `${d.source.str},${d.destination.str},${_get(d, ['http', eventType, 'id', 'stream'])}`;
 };
 
 /*
@@ -193,7 +193,7 @@ const decodeIPToOctets = ip => {
     (ip >> 24) & 255,
     (ip >> 16) & 255,
     (ip >> 8) & 255,
-    ip & 255
+    ip & 255,
   ];
 };
 
@@ -201,8 +201,8 @@ const decodeIPToOctets = ip => {
   converts an address to an ipv4 formatted host
 */
 const publicAddressToString = ipv4 => {
-  let octets = decodeIPToOctets(ipv4);
-  return octets.join(".");
+  const octets = decodeIPToOctets(ipv4);
+  return octets.join('.');
 };
 
 /*
@@ -211,23 +211,23 @@ const publicAddressToString = ipv4 => {
 const resourceShortLink = (resourceType, labels, ResourceLink) => (
   <ResourceLink
     key={`${labels[resourceType]}-${labels.namespace}`}
-    resource={{ type: resourceType, name: labels[resourceType], namespace: labels.namespace}}
-    linkText={toShortResourceName(resourceType) + "/" + labels[resourceType]} />
+    resource={{ type: resourceType, name: labels[resourceType], namespace: labels.namespace }}
+    linkText={`${toShortResourceName(resourceType)}/${labels[resourceType]}`} />
 );
 
 const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
 const popoverSrcDstColumns = [
-  { title: "Source", dataIndex: "source" },
-  { title: "", key: "arrow", render: () => <FontAwesomeIcon icon={faLongArrowAltRight} /> },
-  { title: "Destination", dataIndex: "destination" }
+  { title: 'Source', dataIndex: 'source' },
+  { title: '', key: 'arrow', render: () => <FontAwesomeIcon icon={faLongArrowAltRight} /> },
+  { title: 'Destination', dataIndex: 'destination' },
 ];
 
 const getPodOwner = (labels, ResourceLink) => {
-  let podOwner = extractPodOwner(labels);
+  const podOwner = extractPodOwner(labels);
   if (!podOwner) {
     return null;
   } else {
-    let [labelName] = podOwner.split("/");
+    const [labelName] = podOwner.split('/');
     return (
       <div className="popover-td">
         { resourceShortLink(labelName, labels, ResourceLink) }
@@ -237,10 +237,10 @@ const getPodOwner = (labels, ResourceLink) => {
 };
 
 const getPodList = (endpoint, display, labels, ResourceLink) => {
-  let podList = "---";
+  let podList = '---';
   if (!display) {
     if (endpoint.pod) {
-      podList = resourceShortLink("pod", { pod: endpoint.pod, namespace: labels.namespace }, ResourceLink);
+      podList = resourceShortLink('pod', { pod: endpoint.pod, namespace: labels.namespace }, ResourceLink);
     }
   } else if (!_isEmpty(display.pods)) {
     podList = (
@@ -250,11 +250,11 @@ const getPodList = (endpoint, display, labels, ResourceLink) => {
             if (i > displayLimit) {
               return null;
             } else {
-              return <div key={pod}>{resourceShortLink("pod", { pod, namespace }, ResourceLink)}</div>;
+              return <div key={pod}>{resourceShortLink('pod', { pod, namespace }, ResourceLink)}</div>;
             }
           })
         }
-        { (_size(display.pods) > displayLimit ? "..." : "") }
+        { (_size(display.pods) > displayLimit ? '...' : '') }
       </React.Fragment>
     );
   }
@@ -265,29 +265,29 @@ const getPodList = (endpoint, display, labels, ResourceLink) => {
 const getIpList = (endpoint, display) => {
   let ipList = endpoint.str;
   if (display) {
-    ipList = _take(Object.keys(display.ips), displayLimit).join(", ") +
-      (_size(display.ips) > displayLimit ? "..." : "");
+    ipList = _take(Object.keys(display.ips), displayLimit).join(', ') +
+      (_size(display.ips) > displayLimit ? '...' : '');
   }
   return <div className="popover-td">{ipList}</div>;
 };
 
 const popoverResourceTable = (d, ResourceLink) => { // eslint-disable-line no-unused-vars
-  let tableData = [
+  const tableData = [
     {
       source: getPodOwner(d.sourceLabels, ResourceLink),
       destination: getPodOwner(d.destinationLabels, ResourceLink),
-      key: "podOwner"
+      key: 'podOwner',
     },
     {
       source: getPodList(d.source, d.sourceDisplay, d.sourceLabels, ResourceLink),
       destination: getPodList(d.destination, d.destinationDisplay, d.destinationLabels, ResourceLink),
-      key: "podList"
+      key: 'podList',
     },
     {
       source: getIpList(d.source, d.sourceDisplay),
       destination: getIpList(d.destination, d.destinationDisplay),
-      key: "ipList"
-    }
+      key: 'ipList',
+    },
   ];
 
   return (
@@ -299,10 +299,10 @@ const popoverResourceTable = (d, ResourceLink) => { // eslint-disable-line no-un
 };
 
 export const extractPodOwner = labels => {
-  let podOwner = "";
+  let podOwner = '';
   _each(labels, (labelVal, labelName) => {
     if (_has(podOwnerLookup, labelName)) {
-      podOwner = labelName + "/" + labelVal;
+      podOwner = `${labelName}/${labelVal}`;
     }
   });
   return podOwner;
@@ -310,7 +310,7 @@ export const extractPodOwner = labels => {
 
 export const directionColumn = d => (
   <Tooltip title={d} placement="right">
-    <span>{d === "INBOUND" ? "FROM" : "TO"}</span>
+    <span>{d === 'INBOUND' ? 'FROM' : 'TO'}</span>
   </Tooltip>
 );
 
@@ -318,7 +318,7 @@ export const extractDisplayName = d => {
   let display = {};
   let labels = {};
 
-  if (d.direction === "INBOUND") {
+  if (d.direction === 'INBOUND') {
     display = d.source;
     labels = d.sourceLabels;
   } else {
@@ -329,9 +329,9 @@ export const extractDisplayName = d => {
 };
 
 export const srcDstColumn = (d, resourceType, ResourceLink) => {
-  let [labels, display] = extractDisplayName(d);
+  const [labels, display] = extractDisplayName(d);
 
-  let link = (
+  const link = (
     !_isEmpty(labels[resourceType]) ?
       resourceShortLink(resourceType, labels, ResourceLink) :
       display.str
@@ -341,8 +341,8 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
     e.preventDefault();
   };
 
-  let baseContent = (
-    <OpenInNewIcon fontSize="small" style={{color: "var(--linkblue)"}} onClick={linkFn} />
+  const baseContent = (
+    <OpenInNewIcon fontSize="small" style={{ color: 'var(--linkblue)' }} onClick={linkFn} />
   );
 
   return (
@@ -365,27 +365,27 @@ export const srcDstColumn = (d, resourceType, ResourceLink) => {
 
 export const tapLink = (d, resourceType, PrefixedLink) => {
   let disabled = false;
-  let namespace = d.sourceLabels.namespace;
-  let resource = "";
+  const namespace = d.sourceLabels.namespace;
+  let resource = '';
 
   if (!d.meshed) {
     disabled = true;
   } else if (_has(d.sourceLabels, resourceType)) {
     resource = `${resourceType}/${d.sourceLabels[resourceType]}`;
-  } else if (_has(d.sourceLabels, "pod")) {
+  } else if (_has(d.sourceLabels, 'pod')) {
     resource = `pod/${d.sourceLabels.pod}`;
   } else {
     // can't tap a resource by IP from the web UI
     disabled = true;
   }
 
-  let toNamespace = "";
-  let toResource = "";
+  let toNamespace = '';
+  let toResource = '';
 
   if (_has(d.destinationLabels, resourceType)) {
     toNamespace = d.destinationLabels.namespace;
     toResource = `${resourceType}/${d.destinationLabels[resourceType]}`;
-  } else if (_has(d.destinationLabels, "pod")) {
+  } else if (_has(d.destinationLabels, 'pod')) {
     toNamespace = d.destinationLabels.namespace;
     toResource = `${resourceType}/${d.destinationLabels.pod}`;
   }

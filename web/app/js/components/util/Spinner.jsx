@@ -5,7 +5,7 @@ import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
   progress: {
-    margin: "auto",
+    margin: 'auto',
     color: theme.palette.primary.main,
   },
 });

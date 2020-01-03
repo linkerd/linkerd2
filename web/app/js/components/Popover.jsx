@@ -65,7 +65,7 @@ class ClickablePopover extends React.Component {
 
 ClickablePopover.propTypes = {
   baseContent: PropTypes.node.isRequired,
-  popoverContent: PropTypes.node.isRequired
+  popoverContent: PropTypes.node.isRequired,
 };
 
 export default withStyles(styles)(ClickablePopover);

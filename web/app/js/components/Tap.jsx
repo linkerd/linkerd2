@@ -35,21 +35,21 @@ class Tap extends React.Component {
       resourcesByNs: {},
       authoritiesByNs: {},
       query: {
-        resource: "",
-        namespace: "",
-        toResource: "",
-        toNamespace: "",
-        method: "",
-        path: "",
-        scheme: "",
-        authority: "",
-        maxRps: ""
+        resource: '',
+        namespace: '',
+        toResource: '',
+        toNamespace: '',
+        method: '',
+        path: '',
+        scheme: '',
+        authority: '',
+        maxRps: '',
       },
       maxLinesToDisplay: 40,
       tapRequestInProgress: false,
       tapIsClosing: false,
       pollingInterval: 10000,
-      pendingRequests: false
+      pendingRequests: false,
     };
   }
 
@@ -57,7 +57,7 @@ class Tap extends React.Component {
     const { autostart } = this.props;
     this._isMounted = true; // https://reactjs.org/blog/2015/12/16/ismounted-antipattern.html
     this.startServerPolling();
-    if (autostart === "true") {
+    if (autostart === 'true') {
       this.startTapStreaming();
     }
   }
@@ -69,7 +69,7 @@ class Tap extends React.Component {
       currentVisibilityState: isPageVisible,
       onVisible: () => {
         this.startServerPolling();
-        if (autostart === "true") {
+        if (autostart === 'true') {
           this.startTapStreaming();
         }
       },
@@ -94,16 +94,16 @@ class Tap extends React.Component {
 
   onWebsocketOpen = () => {
     const { query } = this.state;
-    let tapQuery = _cloneDeep(query);
+    const tapQuery = _cloneDeep(query);
     setMaxRps(tapQuery);
 
     this.ws.send(JSON.stringify({
-      id: "tap-web",
+      id: 'tap-web',
       ...tapQuery,
       extract: true,
     }));
     this.setState({
-      error: null
+      error: null,
     });
   }
 
@@ -123,14 +123,14 @@ class Tap extends React.Component {
       if (e.code === WS_POLICY_VIOLATION) {
         this.setState({
           error: {
-            error: e.reason
-          }
+            error: e.reason,
+          },
         });
       } else {
         this.setState({
           error: {
-            error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
-          }
+            error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ':' : ''} ${e.reason}`,
+          },
         });
       }
     }
@@ -138,7 +138,7 @@ class Tap extends React.Component {
 
   onWebsocketError = e => {
     this.setState({
-      error: { error: `Websocket error: ${e.message}` }
+      error: { error: `Websocket error: ${e.message}` },
     });
 
     this.stopTapStreaming();
@@ -149,8 +149,8 @@ class Tap extends React.Component {
   // as opposed to three separate rows as in the CLI
   indexTapResult = data => {
     const { maxLinesToDisplay } = this.state;
-    let resultIndex = this.tapResultsById;
-    let d = processTapEvent(data);
+    const resultIndex = this.tapResultsById;
+    const d = processTapEvent(data);
 
     if (_isNil(resultIndex[d.id])) {
       // don't let tapResultsById grow unbounded
@@ -162,20 +162,20 @@ class Tap extends React.Component {
     }
     resultIndex[d.id][d.eventType] = d;
     // assumption: requests of a given id all share the same high level metadata
-    resultIndex[d.id]["base"] = d;
+    resultIndex[d.id].base = d;
     resultIndex[d.id].key = d.id;
     resultIndex[d.id].lastUpdated = Date.now();
   }
 
   updateTapResults = () => {
     this.setState({
-      tapResultsById: this.tapResultsById
+      tapResultsById: this.tapResultsById,
     });
   }
 
   deleteOldestTapResult = resultIndex => {
     let oldest = Date.now();
-    let oldestId = "";
+    let oldestId = '';
 
     _each(resultIndex, (res, id) => {
       if (res.lastUpdated < oldest) {
@@ -205,11 +205,11 @@ class Tap extends React.Component {
 
     this.setState({
       tapRequestInProgress: true,
-      tapResultsById: this.tapResultsById
+      tapResultsById: this.tapResultsById,
     });
 
-    let protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    let tapWebSocket = `${protocol}://${window.location.host}${pathPrefix}/api/tap`;
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const tapWebSocket = `${protocol}://${window.location.host}${pathPrefix}/api/tap`;
 
     this.ws = new WebSocket(tapWebSocket);
     this.ws.onmessage = this.onWebsocketRecv;
@@ -225,7 +225,7 @@ class Tap extends React.Component {
 
     this.setState({
       tapRequestInProgress: false,
-      tapIsClosing: false
+      tapIsClosing: false,
     });
   }
 
@@ -247,7 +247,7 @@ class Tap extends React.Component {
     this.tapResultsById = {};
     this.setState({
       tapResultsById: {},
-      query: emptyTapQuery()
+      query: emptyTapQuery(),
     });
   }
 
@@ -258,19 +258,19 @@ class Tap extends React.Component {
       return; // don't make more requests if the ones we sent haven't completed
     }
     this.setState({
-      pendingRequests: true
+      pendingRequests: true,
     });
 
-    let url = this.api.urlsForResourceNoStats("all");
+    const url = this.api.urlsForResourceNoStats('all');
     this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([rsp]) => {
-        let { resourcesByNs, authoritiesByNs } = groupResourcesByNs(rsp);
+        const { resourcesByNs, authoritiesByNs } = groupResourcesByNs(rsp);
 
         this.setState({
           resourcesByNs,
           authoritiesByNs,
-          pendingRequests: false
+          pendingRequests: false,
         });
       })
       .catch(this.handleApiError);
@@ -283,19 +283,19 @@ class Tap extends React.Component {
 
     this.setState({
       pendingRequests: false,
-      error: e
+      error: e,
     });
   }
 
   updateQuery = query => {
     this.setState({
-      query
+      query,
     });
   }
 
   render() {
     const { tapResultsById, tapRequestInProgress, tapIsClosing, resourcesByNs, authoritiesByNs, query, error } = this.state;
-    let tableRows = _orderBy(_values(tapResultsById), r => r.lastUpdated, "desc");
+    const tableRows = _orderBy(_values(tapResultsById), r => r.lastUpdated, 'desc');
 
     return (
       <div>
@@ -328,11 +328,11 @@ Tap.propTypes = {
   }).isRequired,
   autostart: PropTypes.string,
   isPageVisible: PropTypes.bool.isRequired,
-  pathPrefix: PropTypes.string.isRequired
+  pathPrefix: PropTypes.string.isRequired,
 };
 
 Tap.defaultProps = {
-  autostart: ""
+  autostart: '',
 };
 
 export default withPageVisibility(withQueryParams(urlPropsQueryConfig, withContext(Tap)));

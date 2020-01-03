@@ -10,7 +10,7 @@ import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 
-const defaultMessage = "An error has occurred.";
+const defaultMessage = 'An error has occurred.';
 
 const styles = theme => ({
   close: {
@@ -63,16 +63,16 @@ class ErrorSnackbar extends React.Component {
         ContentProps={{
           'aria-describedby': 'message-id',
           variantMapping: { // https://github.com/mui-org/material-ui/issues/13144
-            body1: "div",
-            body2: "div"
+            body1: 'div',
+            body2: 'div',
           },
-          className: classNames(classes.error, classes.margin)
+          className: classNames(classes.error, classes.margin),
         }}
         message={(
-          <div id="message-id" className="errorMessage" >
+          <div id="message-id" className="errorMessage">
             <div className={classes.message}>
               <WarningIcon className={classNames(classes.icon, classes.iconVariant)} />
-              { !status ? null : status + " " }{ _isEmpty(statusText) ? defaultMessage : statusText }
+              { !status ? null : `${status} ` }{ _isEmpty(statusText) ? defaultMessage : statusText }
             </div>
             <Linkify>{ !error ? null : <div>{error}</div> }</Linkify>
             { !url ? null : <div>{url}</div> }
@@ -100,9 +100,9 @@ ErrorSnackbar.defaultProps = {
   message: {
     status: null,
     statusText: defaultMessage,
-    url: "",
-    error: ""
-  }
+    url: '',
+    error: '',
+  },
 };
 
 export default withStyles(styles)(ErrorSnackbar);

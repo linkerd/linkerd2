@@ -8,19 +8,19 @@ import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
   version: {
-    maxWidth: "250px",
+    maxWidth: '250px',
     padding: theme.spacing(3),
   },
   versionMsg: {
-    fontSize: "12px"
+    fontSize: '12px',
   },
   updateBtn: {
     marginTop: theme.spacing(1),
-  }
+  },
 });
 class Version extends React.Component {
   numericVersion = version => {
-    let parts = version.split("-", 2);
+    const parts = version.split('-', 2);
     if (parts.length === 2) {
       return parts[1];
     } else {
@@ -29,12 +29,12 @@ class Version extends React.Component {
   }
 
   versionChannel = version => {
-    let parts = version.split("-", 2);
+    const parts = version.split('-', 2);
     return parts.length === 2 ? parts[0] : null;
   }
 
   renderVersionCheck = () => {
-    const {classes, latestVersion, error, isLatest} = this.props;
+    const { classes, latestVersion, error, isLatest } = this.props;
 
     if (!latestVersion) {
       return (
@@ -65,13 +65,13 @@ class Version extends React.Component {
 
   render() {
     const { classes, releaseVersion, productName } = this.props;
-    let channel = this.versionChannel(releaseVersion);
-    let message = `Running ${productName || "controller"}`;
+    const channel = this.versionChannel(releaseVersion);
+    let message = `Running ${productName || 'controller'}`;
     message += ` ${this.numericVersion(releaseVersion)}`;
     if (channel) {
       message += ` (${channel})`;
     }
-    message += ".";
+    message += '.';
 
     return (
       <div className={classes.version}>
@@ -93,7 +93,7 @@ Version.propTypes = {
 Version.defaultProps = {
   error: null,
   latestVersion: '',
-  productName: 'controller'
+  productName: 'controller',
 };
 
 export default withStyles(styles, { withTheme: true })(withContext(Version));

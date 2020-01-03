@@ -10,47 +10,47 @@ import { withContext } from './util/AppContext.jsx';
 
 const getClassification = (meshedPodCount, failedPodCount) => {
   if (failedPodCount > 0) {
-    return "poor";
+    return 'poor';
   } else if (meshedPodCount === 0) {
-    return "default";
+    return 'default';
   } else {
-    return "good";
+    return 'good';
   }
 };
 
 const namespacesColumns = PrefixedLink => [
   {
-    title: "Namespace",
-    dataIndex: "namespace",
+    title: 'Namespace',
+    dataIndex: 'namespace',
     sorter: d => d.namespace,
     render: d => {
-      return  (
+      return (
         <React.Fragment>
           <Grid container alignItems="center" spacing={1}>
-            <Grid item><PrefixedLink to={"/namespaces/" + d.namespace}>{d.namespace}</PrefixedLink></Grid>
+            <Grid item><PrefixedLink to={`/namespaces/${d.namespace}`}>{d.namespace}</PrefixedLink></Grid>
             { _isEmpty(d.errors) ? null :
             <Grid item><ErrorModal errors={d.errors} resourceName={d.namespace} resourceType="namespace" /></Grid>
           }
           </Grid>
         </React.Fragment>
       );
-    }
+    },
   },
   {
-    title: "Meshed pods",
-    dataIndex: "meshedPodsStr",
-    isNumeric: true
+    title: 'Meshed pods',
+    dataIndex: 'meshedPodsStr',
+    isNumeric: true,
   },
   {
-    title: "Meshed Status",
-    key: "meshification",
+    title: 'Meshed Status',
+    key: 'meshification',
     render: row => {
-      let percent = row.meshedPercent.get();
-      let barType = _isEmpty(row.errors) ?
-        getClassification(row.meshedPods, row.failedPods) : "warning";
-      let Progress = StyledProgress(barType);
+      const percent = row.meshedPercent.get();
+      const barType = _isEmpty(row.errors) ?
+        getClassification(row.meshedPods, row.failedPods) : 'warning';
+      const Progress = StyledProgress(barType);
 
-      let percentMeshedMsg = "";
+      let percentMeshedMsg = '';
       if (row.meshedPercent.get() >= 0) {
         percentMeshedMsg = `(${row.meshedPercent.prettyRate()})`;
       }
@@ -67,8 +67,8 @@ const namespacesColumns = PrefixedLink => [
           <Progress variant="determinate" value={Math.round(percent * 100)} />
         </Tooltip>
       );
-    }
-  }
+    },
+  },
 ];
 
 const MeshedStatusTable = ({ api, tableRows }) => (
@@ -82,13 +82,13 @@ const MeshedStatusTable = ({ api, tableRows }) => (
 
 MeshedStatusTable.propTypes = {
   api: PropTypes.shape({
-    PrefixedLink: PropTypes.func.isRequired
+    PrefixedLink: PropTypes.func.isRequired,
   }).isRequired,
-  tableRows: PropTypes.arrayOf(PropTypes.shape({}))
+  tableRows: PropTypes.arrayOf(PropTypes.shape({})),
 };
 
 MeshedStatusTable.defaultProps = {
-  tableRows: []
+  tableRows: [],
 };
 
 export default withContext(MeshedStatusTable);

@@ -11,8 +11,8 @@ const styles = theme => _merge({}, statusClassNames(theme), {
     width: theme.spacing(1),
     height: theme.spacing(1),
     minWidth: theme.spacing(1),
-    borderRadius: "50%"
-  }
+    borderRadius: '50%',
+  },
 });
 
 const SuccessRateDot = ({ sr, classes }) => (
@@ -24,7 +24,7 @@ SuccessRateDot.propTypes = {
 };
 
 SuccessRateDot.defaultProps = {
-  sr: null
+  sr: null,
 };
 
 export default withStyles(styles, { withTheme: true })(SuccessRateDot);

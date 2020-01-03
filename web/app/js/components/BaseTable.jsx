@@ -31,12 +31,12 @@ const styles = theme => ({
     overflowX: 'auto',
   },
   tableHeader: {
-    fontSize: "12px",
+    fontSize: '12px',
     opacity: 0.6,
     lineHeight: 1,
   },
   tableHeaderActive: {
-    fontSize: "12px",
+    fontSize: '12px',
     opacity: 1,
     lineHeight: 1,
   },
@@ -44,25 +44,25 @@ const styles = theme => ({
     opacity: 1,
   },
   toolbar: {
-    paddingLeft: "24px"
+    paddingLeft: '24px',
   },
   toolbarIcon: {
-    cursor: "pointer",
-    opacity: 0.8
+    cursor: 'pointer',
+    opacity: 0.8,
   },
   sortIcon: {
-    fontSize: "16px",
+    fontSize: '16px',
     opacity: 0.4,
   },
   denseTable: {
-    paddingRight: "8px",
-    "&:last-child": {
-      paddingRight: "24px",
+    paddingRight: '8px',
+    '&:last-child': {
+      paddingRight: '24px',
     },
   },
   title: {
-    flexGrow: 1
-  }
+    flexGrow: 1,
+  },
 });
 
 class BaseTable extends React.Component {
@@ -71,9 +71,9 @@ class BaseTable extends React.Component {
 
     const { defaultOrder, defaultOrderBy } = props;
     this.state = {
-      order: defaultOrder || "asc",
+      order: defaultOrder || 'asc',
       orderBy: defaultOrderBy,
-      filterBy: ""
+      filterBy: '',
     };
     this.handleFilterInputChange = this.handleFilterInputChange.bind(this);
     this.handleFilterToggle = this.handleFilterToggle.bind(this);
@@ -82,7 +82,7 @@ class BaseTable extends React.Component {
   createSortHandler = col => () => {
     const { order, orderBy } = this.state;
 
-    let newOrderBy = col.dataIndex;
+    const newOrderBy = col.dataIndex;
     let newOrder = col.defaultSortOrder || 'asc';
 
     if (orderBy === newOrderBy && order === newOrder) {
@@ -98,21 +98,21 @@ class BaseTable extends React.Component {
 
   handleFilterToggle = () => {
     const { showFilter } = this.state;
-    this.setState({ showFilter: !showFilter, filterBy: "" });
+    this.setState({ showFilter: !showFilter, filterBy: '' });
   }
 
   generateRows = (tableRows, tableColumns, order, orderBy, filterBy) => {
     let rows = tableRows;
-    let col = _find(tableColumns, d => d.dataIndex === orderBy);
+    const col = _find(tableColumns, d => d.dataIndex === orderBy);
 
     if (orderBy && col.sorter) {
       rows = _orderBy(rows, row => col.sorter(row), order);
     }
     if (filterBy) {
-      let columnsToFilter = tableColumns.filter(c => c.filter);
-      let filteredRows = rows.filter(row => {
+      const columnsToFilter = tableColumns.filter(c => c.filter);
+      const filteredRows = rows.filter(row => {
         return columnsToFilter.some(c => {
-          let rowText = c.filter(row);
+          const rowText = c.filter(row);
           return rowText.match(filterBy);
         });
       });
@@ -123,7 +123,7 @@ class BaseTable extends React.Component {
   }
 
   renderHeaderCell = (col, order, orderBy) => {
-    let active = orderBy === col.dataIndex;
+    const active = orderBy === col.dataIndex;
     const { classes, padding } = this.props;
     let tableCell;
 
@@ -131,12 +131,12 @@ class BaseTable extends React.Component {
       tableCell = (
         <TableCell
           key={col.key || col.dataIndex}
-          align={col.isNumeric ? "right" : "left"}
+          align={col.isNumeric ? 'right' : 'left'}
           sortDirection={orderBy === col.dataIndex ? order : false}
           classes={{
             root: active ? classes.tableHeaderActive : classes.tableHeader,
           }}
-          className={classNames({[classes.denseTable]: padding === 'dense'})}>
+          className={classNames({ [classes.denseTable]: padding === 'dense' })}>
           <TableSortLabel
             active={active}
             direction={active ? order : col.defaultSortOrder || 'asc'}
@@ -153,9 +153,9 @@ class BaseTable extends React.Component {
       tableCell = (
         <TableCell
           key={col.key || col.dataIndex}
-          align={col.isNumeric ? "right" : "left"}
+          align={col.isNumeric ? 'right' : 'left'}
           className={classNames(
-            {[classes.denseTable]: padding === 'dense'},
+            { [classes.denseTable]: padding === 'dense' },
             classes.tableHeader,
           )}>
           {col.title}
@@ -198,8 +198,8 @@ class BaseTable extends React.Component {
   }
 
   render() {
-    const { classes, enableFilter, tableRows, tableColumns, tableClassName, title, rowKey, padding} = this.props;
-    const {order, orderBy, filterBy} = this.state;
+    const { classes, enableFilter, tableRows, tableColumns, tableClassName, title, rowKey, padding } = this.props;
+    const { order, orderBy, filterBy } = this.state;
     const sortedTableRows = tableRows.length > 0 ? this.generateRows(tableRows, tableColumns, order, orderBy, filterBy) : tableRows;
 
     return (
@@ -219,14 +219,14 @@ class BaseTable extends React.Component {
               <React.Fragment>
                 {
                   sortedTableRows.map(d => {
-                    let key = !rowKey ? d.key : rowKey(d);
-                    let tableRow = (
+                    const key = !rowKey ? d.key : rowKey(d);
+                    const tableRow = (
                       <TableRow key={key}>
                         {tableColumns.map(c => (
                           <TableCell
-                            className={classNames({[classes.denseTable]: padding === 'dense'})}
+                            className={classNames({ [classes.denseTable]: padding === 'dense' })}
                             key={`table-${key}-${c.key || c.dataIndex}`}
-                            align={c.isNumeric ? "right" : "left"}>
+                            align={c.isNumeric ? 'right' : 'left'}>
                             {c.render ? c.render(d) : _get(d, c.dataIndex)}
                           </TableCell>
                         ))}
@@ -261,21 +261,21 @@ BaseTable.propTypes = {
     isNumeric: PropTypes.bool,
     render: PropTypes.func,
     sorter: PropTypes.func,
-    title: PropTypes.string
+    title: PropTypes.string,
   })).isRequired,
   tableRows: PropTypes.arrayOf(PropTypes.shape({})),
-  title: PropTypes.string
+  title: PropTypes.string,
 };
 
 BaseTable.defaultProps = {
-  defaultOrder: "asc",
+  defaultOrder: 'asc',
   defaultOrderBy: null,
   enableFilter: false,
-  padding: "default",
+  padding: 'default',
   rowKey: null,
-  tableClassName: "",
+  tableClassName: '',
   tableRows: [],
-  title: ""
+  title: '',
 };
 
 export default withStyles(styles)(BaseTable);

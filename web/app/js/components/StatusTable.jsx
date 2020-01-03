@@ -13,25 +13,25 @@ const styles = theme => _merge({}, statusClassNames(theme), {
     width: theme.spacing(2),
     height: theme.spacing(2),
     minWidth: theme.spacing(2),
-    borderRadius: "50%",
-    display: "inline-block",
+    borderRadius: '50%',
+    display: 'inline-block',
     marginRight: theme.spacing(1),
-  }
+  },
 });
 
 const columnConfig = {
-  "Pod Status": {
+  'Pod Status': {
     width: 200,
     wrapDotsAt: 7, // dots take up more than one line in the table; space them out
     dotExplanation: status => {
-      return status.value === "good" ? "is up and running" : "has not been started";
-    }
+      return status.value === 'good' ? 'is up and running' : 'has not been started';
+    },
   },
-  "Proxy Status": {
+  'Proxy Status': {
     width: 250,
     wrapDotsAt: 9,
     dotExplanation: pod => {
-      let addedStatus = !pod.added ? "Not in mesh" : "Added to mesh";
+      const addedStatus = !pod.added ? 'Not in mesh' : 'Added to mesh';
 
       return (
         <React.Fragment>
@@ -39,17 +39,17 @@ const columnConfig = {
           <div>{addedStatus}</div>
         </React.Fragment>
       );
-    }
-  }
+    },
+  },
 };
 
-const StatusDot = ({status, columnName, classes}) => (
+const StatusDot = ({ status, columnName, classes }) => (
   <Tooltip
     placement="top"
     title={(
       <div>
         <div>{status.name}</div>
-        <div>{_get(columnConfig, [columnName, "dotExplanation"])(status)}</div>
+        <div>{_get(columnConfig, [columnName, 'dotExplanation'])(status)}</div>
         <div>Uptime: {status.uptime} ({status.uptimeSec}s)</div>
       </div>
     )}>
@@ -75,19 +75,19 @@ StatusDot.propTypes = {
 
 const columns = {
   resourceName: {
-    title: "Deployment",
-    dataIndex: "name"
+    title: 'Deployment',
+    dataIndex: 'name',
   },
   pods: {
-    title: "Pods",
-    key: "numEntities",
+    title: 'Pods',
+    key: 'numEntities',
     isNumeric: true,
-    render: d => d.pods.length
+    render: d => d.pods.length,
   },
   status: (name, classes) => {
     return {
       title: name,
-      key: "status",
+      key: 'status',
       render: d => {
         return d.pods.map(status => (
           <StatusDot
@@ -96,16 +96,16 @@ const columns = {
             classes={classes}
             key={`${status.name}-pod-status`} />
         ));
-      }
+      },
     };
-  }
+  },
 };
 
 const StatusTable = ({ classes, statusColumnTitle, data }) => {
-  let tableCols = [
+  const tableCols = [
     columns.resourceName,
     columns.pods,
-    columns.status(statusColumnTitle, classes)
+    columns.status(statusColumnTitle, classes),
   ];
 
   return (

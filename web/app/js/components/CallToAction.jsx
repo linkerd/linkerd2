@@ -24,8 +24,8 @@ const styles = theme => ({
 function getSteps(numResources, resource) {
   return [
     { label: 'Controller successfully installed' },
-    { label: `${numResources ? numResources : 'No'} ${resource}s detected` },
-    { label: `Connect your first ${resource}`, content: incompleteMeshMessage() }
+    { label: `${numResources || 'No'} ${resource}s detected` },
+    { label: `Connect your first ${resource}`, content: incompleteMeshMessage() },
   ];
 }
 
@@ -63,7 +63,7 @@ CallToAction.propTypes = {
 };
 
 CallToAction.defaultProps = {
-  numResources: null
+  numResources: null,
 };
 
 export default withStyles(styles)(CallToAction);

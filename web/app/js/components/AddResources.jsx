@@ -12,7 +12,7 @@ const AddResources = ({ resourceName, resourceType }) => (
 
 AddResources.propTypes = {
   resourceName: PropTypes.string.isRequired,
-  resourceType: PropTypes.string.isRequired
+  resourceType: PropTypes.string.isRequired,
 };
 
 export default AddResources;

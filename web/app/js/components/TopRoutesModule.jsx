@@ -17,10 +17,10 @@ const TopRoutesBase = ({ data, loading, error }) => {
   let results = _get(data, '[0].ok.routes', []);
   results = _sortBy(results, o => o.resource);
 
-  let metricsByResource = results.map(r => {
+  const metricsByResource = results.map(r => {
     return {
       resource: r.resource,
-      rows: processTopRoutesResults(r.rows)
+      rows: processTopRoutesResults(r.rows),
     };
   });
 
@@ -44,20 +44,20 @@ const TopRoutesBase = ({ data, loading, error }) => {
 };
 
 TopRoutesBase.defaultProps = {
-  error: null
+  error: null,
 };
 
 TopRoutesBase.propTypes = {
   data: PropTypes.arrayOf(PropTypes.shape({})).isRequired,
-  error:  apiErrorPropType,
+  error: apiErrorPropType,
   loading: PropTypes.bool.isRequired,
   query: PropTypes.shape({}).isRequired,
 };
 
 export default withREST(
   TopRoutesBase,
-  ({api, query}) => {
-    let queryParams = new URLSearchParams(query).toString();
+  ({ api, query }) => {
+    const queryParams = new URLSearchParams(query).toString();
     return [api.fetchMetrics(`/api/routes?${queryParams}`)];
-  }
+  },
 );

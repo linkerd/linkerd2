@@ -12,12 +12,12 @@ import withREST from './util/withREST.jsx';
 
 export class ResourceListBase extends React.Component {
   banner = () => {
-    const {error} = this.props;
+    const { error } = this.props;
     return error ? <ErrorBanner message={error} /> : null;
   }
 
   content = () => {
-    const {data, loading, error, resource} = this.props;
+    const { data, loading, error, resource } = this.props;
 
     if (loading && !error) {
       return <Spinner />;
@@ -35,10 +35,10 @@ export class ResourceListBase extends React.Component {
           metrics={processedMetrics}
           title="HTTP metrics" />
 
-        {resource !== "trafficsplit" &&
+        {resource !== 'trafficsplit' &&
         <MetricsTable
           resource={resource}
-          isTcpTable={true}
+          isTcpTable
           metrics={processedMetrics}
           title="TCP metrics" />
         }
@@ -66,13 +66,13 @@ ResourceListBase.propTypes = {
 };
 
 ResourceListBase.defaultProps = {
-  error: null
+  error: null,
 };
 
 // When constructing a ResourceList for type "namespace", we query the API for metrics for all namespaces. For all other resource types, we limit our API query to the selectedNamespace.
 export default withREST(
   ResourceListBase,
-  ({ api, resource, selectedNamespace }) => [api.fetchMetrics(api.urlsForResource(resource, resource === "namespace" ? "all" : selectedNamespace, true))],
+  ({ api, resource, selectedNamespace }) => [api.fetchMetrics(api.urlsForResource(resource, resource === 'namespace' ? 'all' : selectedNamespace, true))],
   {
     resetProps: ['resource', 'selectedNamespace'],
   },

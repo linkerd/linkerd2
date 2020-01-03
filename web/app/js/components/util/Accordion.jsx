@@ -58,7 +58,7 @@ class Accordion extends React.Component {
                 {panel.header}
               </ExpansionPanelSummary>
               <ExpansionPanelDetails>
-                {panel.body || "No data present."}
+                {panel.body || 'No data present.'}
               </ExpansionPanelDetails>
             </ExpansionPanel>
           ))
@@ -74,13 +74,13 @@ Accordion.propTypes = {
   panels: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string,
     header: PropTypes.node,
-    body: PropTypes.node
-  }))
+    body: PropTypes.node,
+  })),
 };
 
 Accordion.defaultProps = {
   defaultOpenPanel: null,
-  panels: []
+  panels: [],
 };
 
 export default withStyles(styles)(Accordion);

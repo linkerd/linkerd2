@@ -34,7 +34,7 @@ class TopModule extends React.Component {
 
     this.state = {
       error: null,
-      topEventIndex: {}
+      topEventIndex: {},
     };
   }
 
@@ -66,15 +66,15 @@ class TopModule extends React.Component {
 
   onWebsocketOpen = () => {
     const { query } = this.props;
-    let tapQuery = _cloneDeep(query);
+    const tapQuery = _cloneDeep(query);
     setMaxRps(tapQuery);
 
     this.ws.send(JSON.stringify({
-      id: "top-web",
-      ...tapQuery
+      id: 'top-web',
+      ...tapQuery,
     }));
     this.setState({
-      error: null
+      error: null,
     });
   }
 
@@ -93,15 +93,15 @@ class TopModule extends React.Component {
     if (e.code !== WS_NORMAL_CLOSURE && e.code !== WS_ABNORMAL_CLOSURE) {
       this.setState({
         error: {
-          error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ":" : ""} ${e.reason}`
-        }
+          error: `Websocket close error [${e.code}: ${wsCloseCodes[e.code]}] ${e.reason ? ':' : ''} ${e.reason}`,
+        },
       });
     }
   }
 
   onWebsocketError = e => {
     this.setState({
-      error: { error: `Websocket error: ${e.message}` }
+      error: { error: `Websocket error: ${e.message}` },
     });
   }
 
@@ -112,10 +112,10 @@ class TopModule extends React.Component {
   }
 
   parseTapResult = data => {
-    let d = processTapEvent(data);
+    const d = processTapEvent(data);
 
-    if (d.eventType === "responseEnd") {
-      d.latency = parseFloat(d.http.responseEnd.sinceRequestInit.replace("s", ""));
+    if (d.eventType === 'responseEnd') {
+      d.latency = parseFloat(d.http.responseEnd.sinceRequestInit.replace('s', ''));
       d.completed = true;
     }
 
@@ -123,26 +123,26 @@ class TopModule extends React.Component {
   }
 
   topEventKey = event => {
-    let sourceKey = event.source.owner || event.source.pod || event.source.str;
-    let dstKey = event.destination.owner || event.destination.pod || event.destination.str;
+    const sourceKey = event.source.owner || event.source.pod || event.source.str;
+    const dstKey = event.destination.owner || event.destination.pod || event.destination.str;
 
-    return [sourceKey, dstKey, _get(event, "http.requestInit.method.registered"), event.http.requestInit.path].join("_");
+    return [sourceKey, dstKey, _get(event, 'http.requestInit.method.registered'), event.http.requestInit.path].join('_');
   }
 
   initialTopResult = (d, eventKey) => {
     // in the event that we key on resources with multiple pods/ips, store them so we can display
-    let sourceDisplay = {
+    const sourceDisplay = {
       ips: {},
-      pods: {}
+      pods: {},
     };
     sourceDisplay.ips[d.base.source.str] = true;
     if (!_isNil(d.base.source.pod)) {
       sourceDisplay.pods[d.base.source.pod] = d.base.source.namespace;
     }
 
-    let destinationDisplay = {
+    const destinationDisplay = {
       ips: {},
-      pods: {}
+      pods: {},
     };
     destinationDisplay.ips[d.base.destination.str] = true;
     if (!_isNil(d.base.destination.pod)) {
@@ -165,10 +165,10 @@ class TopModule extends React.Component {
       destination: d.requestInit.destination,
       destinationLabels: d.requestInit.destinationMeta.labels,
       destinationDisplay,
-      httpMethod: _get(d, "requestInit.http.requestInit.method.registered"),
+      httpMethod: _get(d, 'requestInit.http.requestInit.method.registered'),
       path: d.requestInit.http.requestInit.path,
       key: eventKey,
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
     };
   }
 
@@ -209,7 +209,7 @@ class TopModule extends React.Component {
       return topResults;
     }
 
-    let eventKey = this.topEventKey(d.requestInit);
+    const eventKey = this.topEventKey(d.requestInit);
     this.addSuccessCount(d);
 
     if (!topResults[eventKey]) {
@@ -222,11 +222,11 @@ class TopModule extends React.Component {
       this.deleteOldestIndexedResult(topResults);
     }
 
-    if (d.base.proxyDirection === "INBOUND") {
-      this.updateNeighborsFromTapData(d.requestInit.source, _get(d, "requestInit.sourceMeta.labels"));
-      let isPod = query.resource.split("/")[0] === "pod";
+    if (d.base.proxyDirection === 'INBOUND') {
+      this.updateNeighborsFromTapData(d.requestInit.source, _get(d, 'requestInit.sourceMeta.labels'));
+      const isPod = query.resource.split('/')[0] === 'pod';
       if (isPod) {
-        topResults[eventKey].meshed = !_has(this.unmeshedSources, "pod/" + d.base.source.pod);
+        topResults[eventKey].meshed = !_has(this.unmeshedSources, `pod/${d.base.source.pod}`);
       } else {
         topResults[eventKey].meshed = !_isEmpty(d.base.source.owner) && !_has(this.unmeshedSources, d.base.source.owner);
       }
@@ -241,7 +241,7 @@ class TopModule extends React.Component {
     // and causes the page to freeze. To fix this, limit the times we
     // update the state (and thus trigger a render)
     this.setState({
-      topEventIndex: this.topEventIndex
+      topEventIndex: this.topEventIndex,
     });
   }
 
@@ -250,7 +250,7 @@ class TopModule extends React.Component {
 
     // store this outside of state, as updating the state upon every websocket event received
     // is very costly and causes the page to freeze up
-    let resourceType = _isNil(query.resource) ? "" : query.resource.split("/")[0];
+    const resourceType = _isNil(query.resource) ? '' : query.resource.split('/')[0];
     this.unmeshedSources = processNeighborData(source, sourceLabels, this.unmeshedSources, resourceType);
     updateUnmeshedSources(this.unmeshedSources);
   }
@@ -261,8 +261,8 @@ class TopModule extends React.Component {
   indexTapResult = data => {
     const { maxRowsToStore } = this.props;
 
-    let resultIndex = this.tapResultsById;
-    let d = this.parseTapResult(data);
+    const resultIndex = this.tapResultsById;
+    const d = this.parseTapResult(data);
 
     if (_isNil(resultIndex[d.id])) {
       // don't let tapResultsById grow unbounded
@@ -289,12 +289,12 @@ class TopModule extends React.Component {
   addSuccessCount = d => {
     // cope with the fact that gRPC failures are returned with HTTP status 200
     // and correctly classify gRPC failures as failures
-    let success = parseInt(_get(d, "responseInit.http.responseInit.httpStatus"), 10) < 500;
+    let success = parseInt(_get(d, 'responseInit.http.responseInit.httpStatus'), 10) < 500;
     if (success) {
-      let grpcStatusCode = _get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode");
+      const grpcStatusCode = _get(d, 'responseEnd.http.responseEnd.eos.grpcStatusCode');
       if (!_isNil(grpcStatusCode)) {
         success = !_includes(grpcErrorStatusCodes, grpcStatusCode);
-      } else if (!_isNil(_get(d, "responseEnd.http.responseEnd.eos.resetErrorCode"))) {
+      } else if (!_isNil(_get(d, 'responseEnd.http.responseEnd.eos.resetErrorCode'))) {
         success = false;
       }
     }
@@ -304,7 +304,7 @@ class TopModule extends React.Component {
 
   deleteOldestIndexedResult = resultIndex => {
     let oldest = Date.now();
-    let oldestId = "";
+    let oldestId = '';
 
     _each(resultIndex, (res, id) => {
       if (res.lastUpdated < oldest) {
@@ -320,7 +320,7 @@ class TopModule extends React.Component {
     this.tapResultsById = {};
     this.topEventIndex = {};
     this.setState({
-      topEventIndex: {}
+      topEventIndex: {},
     });
   }
 
@@ -329,8 +329,8 @@ class TopModule extends React.Component {
 
     this.clearTopTable();
 
-    let protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    let tapWebSocket = `${protocol}://${window.location.host}${pathPrefix}/api/tap`;
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const tapWebSocket = `${protocol}://${window.location.host}${pathPrefix}/api/tap`;
 
     this.ws = new WebSocket(tapWebSocket);
     this.ws.onmessage = this.onWebsocketRecv;
@@ -352,8 +352,8 @@ class TopModule extends React.Component {
     const { topEventIndex } = this.state;
     const { query, maxRowsToDisplay } = this.props;
 
-    let tableRows = _take(_values(topEventIndex), maxRowsToDisplay);
-    let resourceType = _isNil(query.resource) ? "" : query.resource.split("/")[0];
+    const tableRows = _take(_values(topEventIndex), maxRowsToDisplay);
+    const resourceType = _isNil(query.resource) ? '' : query.resource.split('/')[0];
 
     return (
       <React.Fragment>
@@ -369,11 +369,11 @@ TopModule.propTypes = {
   maxRowsToStore: PropTypes.number,
   pathPrefix: PropTypes.string.isRequired,
   query: PropTypes.shape({
-    resource: PropTypes.string
+    resource: PropTypes.string,
   }),
   startTap: PropTypes.bool.isRequired,
   updateTapClosingState: PropTypes.func,
-  updateUnmeshedSources: PropTypes.func
+  updateUnmeshedSources: PropTypes.func,
 };
 
 TopModule.defaultProps = {
@@ -386,8 +386,8 @@ TopModule.defaultProps = {
   updateTapClosingState: _noop,
   updateUnmeshedSources: _noop,
   query: {
-    resource: ""
-  }
+    resource: '',
+  },
 };
 
 export default withContext(TopModule);

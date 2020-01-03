@@ -23,21 +23,21 @@ const styles = theme => ({
     overflowX: 'auto',
   },
   expandedWrap: {
-    wordBreak: `break-word`,
-    paddingTop: "10px",
+    wordBreak: 'break-word',
+    paddingTop: '10px',
   },
   table: {
-    minWidth: 700
+    minWidth: 700,
   },
   tableHeader: {
-    fontSize: "12px",
+    fontSize: '12px',
     opacity: 0.6,
     lineHeight: 1,
   },
   denseTable: {
-    paddingRight: "8px",
-    "&:last-child": {
-      paddingRight: "24px",
+    paddingRight: '8px',
+    '&:last-child': {
+      paddingRight: '24px',
     },
   },
 });
@@ -48,7 +48,7 @@ class ExpandableTable extends React.Component {
 
     this.state = {
       open: false,
-      datum: {}
+      datum: {},
     };
   }
 
@@ -63,14 +63,14 @@ class ExpandableTable extends React.Component {
   render() {
     const { datum, open } = this.state;
     const { expandedRowRender, classes, tableRows, tableColumns, tableClassName } = this.props;
-    let columns = [{
-      title: " ",
-      key: "expansion",
+    const columns = [{
+      title: ' ',
+      key: 'expansion',
       render: d => {
         return (
           <IconButton onClick={this.handleDialogOpen(d)}><ExpandMoreIcon /></IconButton>
         );
-      }
+      },
     }].concat(tableColumns);
 
     return (
@@ -84,7 +84,7 @@ class ExpandableTable extends React.Component {
                   <TableCell
                     key={c.key}
                     className={`${classes.tableHeader} ${classes.denseTable}`}
-                    align={c.isNumeric ? "right" : "left"}>{c.title}
+                    align={c.isNumeric ? 'right' : 'left'}>{c.title}
                   </TableCell>
                 ))
               }
@@ -95,7 +95,7 @@ class ExpandableTable extends React.Component {
               <React.Fragment>
                 { tableRows.map(d => {
                   return (
-                    <React.Fragment key={"frag-" + d.key}>
+                    <React.Fragment key={`frag-${d.key}`}>
                       <TableRow
                         key={d.key}
                         onClick={this.handleClick}
@@ -107,7 +107,7 @@ class ExpandableTable extends React.Component {
                               <TableCell
                                 key={`table-${d.key}-${c.key}`}
                                 className={classes.denseTable}
-                                align={c.isNumeric ? "right" : "left"}>
+                                align={c.isNumeric ? 'right' : 'left'}>
                                 {c.render(d)}
                               </TableCell>
                             ))
@@ -150,14 +150,14 @@ ExpandableTable.propTypes = {
   tableColumns: PropTypes.arrayOf(PropTypes.shape({
     title: PropTypes.string,
     isNumeric: PropTypes.bool,
-    render: PropTypes.func
+    render: PropTypes.func,
   })).isRequired,
-  tableRows: PropTypes.arrayOf(PropTypes.shape({}))
+  tableRows: PropTypes.arrayOf(PropTypes.shape({})),
 };
 
 ExpandableTable.defaultProps = {
-  tableClassName: "",
-  tableRows: []
+  tableClassName: '',
+  tableRows: [],
 };
 
 export default withStyles(styles)(ExpandableTable);
