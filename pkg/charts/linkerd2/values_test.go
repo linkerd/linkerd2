@@ -20,7 +20,7 @@ func TestNewValues(t *testing.T) {
 		ControllerImage:             "gcr.io/linkerd-io/controller",
 		ControllerImageVersion:      testVersion,
 		WebImage:                    "gcr.io/linkerd-io/web",
-		PrometheusImage:             "prom/prometheus:v2.15.0",
+		PrometheusImage:             "prom/prometheus:v2.15.1",
 		GrafanaImage:                "gcr.io/linkerd-io/grafana",
 		ImagePullPolicy:             "IfNotPresent",
 		CliVersion:                  "linkerd/cli dev-undefined",
