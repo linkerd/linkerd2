@@ -1,7 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   name: web
   namespace: emojivoto
 spec:
@@ -9,10 +8,8 @@ spec:
   selector:
     matchLabels:
       app: web-svc
-  strategy: {}
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: web-svc
     spec:
@@ -32,7 +29,5 @@ spec:
         - containerPort: 9100
           hostPort: 9100
           name: http
-        resources: {}
       hostNetwork: true
-status: {}
 ---

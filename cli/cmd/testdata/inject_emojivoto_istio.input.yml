@@ -1,7 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   name: web
   namespace: emojivoto
 spec:
@@ -9,10 +8,8 @@ spec:
   selector:
     matchLabels:
       app: web-svc
-  strategy: {}
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: web-svc
     spec:
@@ -31,13 +28,9 @@ spec:
         ports:
         - containerPort: 80
           name: http
-        resources: {}
       - image: gcr.io/istio-release/proxyv2:1.0.2
         name: istio-proxy
-        resources: {}
       initContainers:
       - image: gcr.io/istio-release/proxy_init:1.0.2
         name: istio-init
-        resources: {}
-status: {}
 ---

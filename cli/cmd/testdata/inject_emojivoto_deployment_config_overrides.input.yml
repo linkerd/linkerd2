@@ -1,7 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   name: web
   namespace: emojivoto
 spec:
@@ -9,7 +8,6 @@ spec:
   selector:
     matchLabels:
       app: web-svc
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -22,7 +20,6 @@ spec:
         config.linkerd.io/proxy-version: override
         config.linkerd.io/skip-inbound-ports: 7777,8888
         config.linkerd.io/skip-outbound-ports: "9999"
-      creationTimestamp: null
       labels:
         app: web-svc
     spec:
@@ -41,6 +38,4 @@ spec:
         ports:
         - containerPort: 80
           name: http
-        resources: {}
-status: {}
 ---
