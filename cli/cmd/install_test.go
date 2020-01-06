@@ -41,34 +41,26 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	identityContext := toIdentityContext(&charts.Identity{
-		Issuer: &charts.Issuer{
-			ClockSkewAllowance: "20s",
-			IssuanceLifetime:   "86400s",
-		},
+	identityContext := toIdentityContext(&identityWithAnchorsAndTrustDomain{
 		TrustAnchorsPEM: "test-trust-anchor",
+		Identity: &charts.Identity{
+			Issuer: &charts.Issuer{
+				ClockSkewAllowance: "20s",
+				IssuanceLifetime:   "86400s",
+			},
+		},
 	})
 	metaConfig := metaOptions.configs(identityContext)
 	metaConfig.Global.LinkerdNamespace = "Namespace"
 	metaValues := &charts.Values{
-		Namespace:                   "Namespace",
-		ClusterDomain:               "cluster.local",
 		ControllerImage:             "ControllerImage",
 		ControllerImageVersion:      "ControllerImageVersion",
 		WebImage:                    "WebImage",
 		PrometheusImage:             "PrometheusImage",
 		GrafanaImage:                "GrafanaImage",
-		ImagePullPolicy:             "ImagePullPolicy",
-		CliVersion:                  "CliVersion",
 		ControllerLogLevel:          "ControllerLogLevel",
 		PrometheusLogLevel:          "PrometheusLogLevel",
-		ControllerComponentLabel:    "ControllerComponentLabel",
-		ControllerNamespaceLabel:    "ControllerNamespaceLabel",
-		CreatedByAnnotation:         "CreatedByAnnotation",
 		ProxyContainerName:          "ProxyContainerName",
-		ProxyInjectAnnotation:       "ProxyInjectAnnotation",
-		ProxyInjectDisabled:         "ProxyInjectDisabled",
-		LinkerdNamespaceLabel:       "LinkerdNamespaceLabel",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		NoInitContainer:             false,
@@ -76,49 +68,63 @@ func TestRender(t *testing.T) {
 		OmitWebhookSideEffects:      false,
 		RestrictDashboardPrivileges: false,
 		InstallNamespace:            true,
+		Identity:                    defaultValues.Identity,
 		NodeSelector:                defaultValues.NodeSelector,
+		Global: &charts.Global{
+			Namespace:                "Namespace",
+			ClusterDomain:            "cluster.local",
+			ImagePullPolicy:          "ImagePullPolicy",
+			CliVersion:               "CliVersion",
+			ControllerComponentLabel: "ControllerComponentLabel",
+			ControllerNamespaceLabel: "ControllerNamespaceLabel",
+			CreatedByAnnotation:      "CreatedByAnnotation",
+			ProxyInjectAnnotation:    "ProxyInjectAnnotation",
+			ProxyInjectDisabled:      "ProxyInjectDisabled",
+			LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
+			IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
+			IdentityTrustAnchorsPEM:  defaultValues.Global.IdentityTrustAnchorsPEM,
+			Proxy: &charts.Proxy{
+				Image: &charts.Image{
+					Name:       "ProxyImageName",
+					PullPolicy: "ImagePullPolicy",
+					Version:    "ProxyVersion",
+				},
+				LogLevel: "warn,linkerd2_proxy=info",
+				Ports: &charts.Ports{
+					Admin:    4191,
+					Control:  4190,
+					Inbound:  4143,
+					Outbound: 4140,
+				},
+				UID: 2102,
+			},
+			ProxyInit: &charts.ProxyInit{
+				Image: &charts.Image{
+					Name:       "ProxyInitImageName",
+					PullPolicy: "ImagePullPolicy",
+					Version:    "ProxyInitVersion",
+				},
+				Resources: &charts.Resources{
+					CPU: charts.Constraints{
+						Limit:   "100m",
+						Request: "10m",
+					},
+					Memory: charts.Constraints{
+						Limit:   "50Mi",
+						Request: "10Mi",
+					},
+				},
+			},
+		},
 		Configs: charts.ConfigJSONs{
 			Global:  "GlobalConfig",
 			Proxy:   "ProxyConfig",
 			Install: "InstallConfig",
 		},
 		ControllerReplicas: 1,
-		Identity:           defaultValues.Identity,
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
 		Tap:                defaultValues.Tap,
-		Proxy: &charts.Proxy{
-			Image: &charts.Image{
-				Name:       "ProxyImageName",
-				PullPolicy: "ImagePullPolicy",
-				Version:    "ProxyVersion",
-			},
-			LogLevel: "warn,linkerd2_proxy=info",
-			Ports: &charts.Ports{
-				Admin:    4191,
-				Control:  4190,
-				Inbound:  4143,
-				Outbound: 4140,
-			},
-			UID: 2102,
-		},
-		ProxyInit: &charts.ProxyInit{
-			Image: &charts.Image{
-				Name:       "ProxyInitImageName",
-				PullPolicy: "ImagePullPolicy",
-				Version:    "ProxyInitVersion",
-			},
-			Resources: &charts.Resources{
-				CPU: charts.Constraints{
-					Limit:   "100m",
-					Request: "10m",
-				},
-				Memory: charts.Constraints{
-					Limit:   "50Mi",
-					Request: "10Mi",
-				},
-			},
-		},
 		Dashboard: &charts.Dashboard{
 			Replicas: 1,
 		},

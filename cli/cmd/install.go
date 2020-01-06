@@ -69,6 +69,13 @@ type (
 		trustPEMFile, crtPEMFile, keyPEMFile string
 		identityExternalIssuer               bool
 	}
+
+	// helper struct to move those values together
+	identityWithAnchorsAndTrustDomain struct {
+		Identity        *l5dcharts.Identity
+		TrustAnchorsPEM string
+		TrustDomain     string
+	}
 )
 
 const (
@@ -164,11 +171,11 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 	}
 
 	return &installOptions{
-		clusterDomain:               defaults.ClusterDomain,
+		clusterDomain:               defaults.Global.ClusterDomain,
 		controlPlaneVersion:         version.Version,
 		controllerReplicas:          defaults.ControllerReplicas,
 		controllerLogLevel:          defaults.ControllerLogLevel,
-		highAvailability:            defaults.HighAvailability,
+		highAvailability:            defaults.Global.HighAvailability,
 		controllerUID:               defaults.ControllerUID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
 		disableHeartbeat:            defaults.DisableHeartBeat,
@@ -179,28 +186,28 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
-			proxyImage:             defaults.Proxy.Image.Name,
-			initImage:              defaults.ProxyInit.Image.Name,
+			proxyImage:             defaults.Global.Proxy.Image.Name,
+			initImage:              defaults.Global.ProxyInit.Image.Name,
 			initImageVersion:       version.ProxyInitVersion,
 			dockerRegistry:         defaultDockerRegistry,
-			imagePullPolicy:        defaults.ImagePullPolicy,
+			imagePullPolicy:        defaults.Global.ImagePullPolicy,
 			ignoreInboundPorts:     nil,
 			ignoreOutboundPorts:    nil,
-			proxyUID:               defaults.Proxy.UID,
-			proxyLogLevel:          defaults.Proxy.LogLevel,
-			proxyControlPort:       uint(defaults.Proxy.Ports.Control),
-			proxyAdminPort:         uint(defaults.Proxy.Ports.Admin),
-			proxyInboundPort:       uint(defaults.Proxy.Ports.Inbound),
-			proxyOutboundPort:      uint(defaults.Proxy.Ports.Outbound),
-			proxyCPURequest:        defaults.Proxy.Resources.CPU.Request,
-			proxyMemoryRequest:     defaults.Proxy.Resources.Memory.Request,
-			proxyCPULimit:          defaults.Proxy.Resources.CPU.Limit,
-			proxyMemoryLimit:       defaults.Proxy.Resources.Memory.Limit,
-			enableExternalProfiles: defaults.Proxy.EnableExternalProfiles,
-			waitBeforeExitSeconds:  defaults.Proxy.WaitBeforeExitSeconds,
+			proxyUID:               defaults.Global.Proxy.UID,
+			proxyLogLevel:          defaults.Global.Proxy.LogLevel,
+			proxyControlPort:       uint(defaults.Global.Proxy.Ports.Control),
+			proxyAdminPort:         uint(defaults.Global.Proxy.Ports.Admin),
+			proxyInboundPort:       uint(defaults.Global.Proxy.Ports.Inbound),
+			proxyOutboundPort:      uint(defaults.Global.Proxy.Ports.Outbound),
+			proxyCPURequest:        defaults.Global.Proxy.Resources.CPU.Request,
+			proxyMemoryRequest:     defaults.Global.Proxy.Resources.Memory.Request,
+			proxyCPULimit:          defaults.Global.Proxy.Resources.CPU.Limit,
+			proxyMemoryLimit:       defaults.Global.Proxy.Resources.Memory.Limit,
+			enableExternalProfiles: defaults.Global.Proxy.EnableExternalProfiles,
+			waitBeforeExitSeconds:  defaults.Global.Proxy.WaitBeforeExitSeconds,
 		},
 		identityOptions: &installIdentityOptions{
-			trustDomain:            defaults.Identity.TrustDomain,
+			trustDomain:            defaults.Global.IdentityTrustDomain,
 			issuanceLifetime:       issuanceLifetime,
 			clockSkewAllowance:     clockSkewAllowance,
 			identityExternalIssuer: false,
@@ -406,7 +413,9 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	if err != nil {
 		return nil, nil, err
 	}
-	values.Identity = identityValues
+	values.Identity = identityValues.Identity
+	values.Global.IdentityTrustAnchorsPEM = identityValues.TrustAnchorsPEM
+	values.Global.IdentityTrustDomain = identityValues.TrustDomain
 	values.Stage = stage
 
 	return values, configs, nil
@@ -594,19 +603,19 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 		}
 
 		if options.proxyCPURequest == "" {
-			options.proxyCPURequest = installValues.Proxy.Resources.CPU.Request
+			options.proxyCPURequest = installValues.Global.Proxy.Resources.CPU.Request
 		}
 
 		if options.proxyMemoryRequest == "" {
-			options.proxyMemoryRequest = installValues.Proxy.Resources.Memory.Request
+			options.proxyMemoryRequest = installValues.Global.Proxy.Resources.Memory.Request
 		}
 
 		if options.proxyCPULimit == "" {
-			options.proxyCPULimit = installValues.Proxy.Resources.CPU.Limit
+			options.proxyCPULimit = installValues.Global.Proxy.Resources.CPU.Limit
 		}
 
 		if options.proxyMemoryLimit == "" {
-			options.proxyMemoryLimit = installValues.Proxy.Resources.Memory.Limit
+			options.proxyMemoryLimit = installValues.Global.Proxy.Resources.Memory.Limit
 		}
 
 		// `configs` was built before the HA option is evaluated, so we need
@@ -636,7 +645,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	}
 
 	// override default values with CLI options
-	installValues.ClusterDomain = configs.GetGlobal().GetClusterDomain()
+	installValues.Global.ClusterDomain = configs.GetGlobal().GetClusterDomain()
 	installValues.Configs.Global = globalJSON
 	installValues.Configs.Proxy = proxyJSON
 	installValues.Configs.Install = installJSON
@@ -648,10 +657,10 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.ControlPlaneTracing = options.controlPlaneTracing
 	installValues.EnableH2Upgrade = !options.disableH2Upgrade
 	installValues.EnablePodAntiAffinity = options.highAvailability
-	installValues.HighAvailability = options.highAvailability
-	installValues.ImagePullPolicy = options.imagePullPolicy
+	installValues.Global.HighAvailability = options.highAvailability
+	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
-	installValues.Namespace = controlPlaneNamespace
+	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.NoInitContainer = options.noInitContainer
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
 	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
@@ -660,7 +669,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.DisableHeartBeat = options.disableHeartbeat
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
 
-	installValues.Proxy = &l5dcharts.Proxy{
+	installValues.Global.Proxy = &l5dcharts.Proxy{
 		EnableExternalProfiles: options.enableExternalProfiles,
 		Image: &l5dcharts.Image{
 			Name:       registryOverride(options.proxyImage, options.dockerRegistry),
@@ -687,11 +696,11 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 		UID: options.proxyUID,
 	}
 
-	installValues.ProxyInit.Image.Name = registryOverride(options.initImage, options.dockerRegistry)
-	installValues.ProxyInit.Image.PullPolicy = options.imagePullPolicy
-	installValues.ProxyInit.Image.Version = options.initImageVersion
-	installValues.ProxyInit.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
-	installValues.ProxyInit.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
+	installValues.Global.ProxyInit.Image.Name = registryOverride(options.initImage, options.dockerRegistry)
+	installValues.Global.ProxyInit.Image.PullPolicy = options.imagePullPolicy
+	installValues.Global.ProxyInit.Image.Version = options.initImageVersion
+	installValues.Global.ProxyInit.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
+	installValues.Global.ProxyInit.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
 
 	return installValues, nil
 }
@@ -953,7 +962,7 @@ func (idopts *installIdentityOptions) validate() error {
 	return nil
 }
 
-func (idopts *installIdentityOptions) validateAndBuild() (*l5dcharts.Identity, error) {
+func (idopts *installIdentityOptions) validateAndBuild() (*identityWithAnchorsAndTrustDomain, error) {
 	if idopts == nil {
 		return nil, nil
 	}
@@ -975,30 +984,32 @@ func (idopts *installIdentityOptions) issuerName() string {
 	return fmt.Sprintf("identity.%s.%s", controlPlaneNamespace, idopts.trustDomain)
 }
 
-func (idopts *installIdentityOptions) genValues() (*l5dcharts.Identity, error) {
+func (idopts *installIdentityOptions) genValues() (*identityWithAnchorsAndTrustDomain, error) {
 	root, err := tls.GenerateRootCAWithDefaults(idopts.issuerName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate root certificate for identity: %s", err)
 	}
 
-	return &l5dcharts.Identity{
+	return &identityWithAnchorsAndTrustDomain{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: root.Cred.Crt.EncodeCertificatePEM(),
-		Issuer: &l5dcharts.Issuer{
-			Scheme:              consts.IdentityIssuerSchemeLinkerd,
-			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
-			IssuanceLifetime:    idopts.issuanceLifetime.String(),
-			CrtExpiry:           root.Cred.Crt.Certificate.NotAfter,
-			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-			TLS: &l5dcharts.TLS{
-				KeyPEM: root.Cred.EncodePrivateKeyPEM(),
-				CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
+		Identity: &l5dcharts.Identity{
+			Issuer: &l5dcharts.Issuer{
+				Scheme:              consts.IdentityIssuerSchemeLinkerd,
+				ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
+				IssuanceLifetime:    idopts.issuanceLifetime.String(),
+				CrtExpiry:           root.Cred.Crt.Certificate.NotAfter,
+				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
+				TLS: &l5dcharts.TLS{
+					KeyPEM: root.Cred.EncodePrivateKeyPEM(),
+					CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
+				},
 			},
 		},
 	}, nil
 }
 
-func (idopts *installIdentityOptions) readExternallyManaged() (*l5dcharts.Identity, error) {
+func (idopts *installIdentityOptions) readExternallyManaged() (*identityWithAnchorsAndTrustDomain, error) {
 
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
 	if err != nil {
@@ -1014,13 +1025,15 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*l5dcharts.Identi
 		return nil, fmt.Errorf("failed to read CA from %s: %s", consts.IdentityIssuerSecretName, err)
 	}
 
-	return &l5dcharts.Identity{
+	return &identityWithAnchorsAndTrustDomain{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: externalIssuerData.TrustAnchors,
-		Issuer: &l5dcharts.Issuer{
-			Scheme:             string(corev1.SecretTypeTLS),
-			ClockSkewAllowance: idopts.clockSkewAllowance.String(),
-			IssuanceLifetime:   idopts.issuanceLifetime.String(),
+		Identity: &l5dcharts.Identity{
+			Issuer: &l5dcharts.Issuer{
+				Scheme:             string(corev1.SecretTypeTLS),
+				ClockSkewAllowance: idopts.clockSkewAllowance.String(),
+				IssuanceLifetime:   idopts.issuanceLifetime.String(),
+			},
 		},
 	}, nil
 
@@ -1030,7 +1043,7 @@ func (idopts *installIdentityOptions) readExternallyManaged() (*l5dcharts.Identi
 // to produce an `installIdentityValues`.
 //
 // The identity options must have already been validated.
-func (idopts *installIdentityOptions) readValues() (*l5dcharts.Identity, error) {
+func (idopts *installIdentityOptions) readValues() (*identityWithAnchorsAndTrustDomain, error) {
 	issuerData, err := issuercerts.LoadIssuerDataFromFiles(idopts.keyPEMFile, idopts.crtPEMFile, idopts.trustPEMFile)
 	if err != nil {
 		return nil, err
@@ -1041,34 +1054,36 @@ func (idopts *installIdentityOptions) readValues() (*l5dcharts.Identity, error) 
 		return nil, fmt.Errorf("failed to verify issuer certs stored on disk: %s", err)
 	}
 
-	return &l5dcharts.Identity{
+	return &identityWithAnchorsAndTrustDomain{
 		TrustDomain:     idopts.trustDomain,
 		TrustAnchorsPEM: issuerData.TrustAnchors,
-		Issuer: &l5dcharts.Issuer{
-			Scheme:              consts.IdentityIssuerSchemeLinkerd,
-			ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
-			IssuanceLifetime:    idopts.issuanceLifetime.String(),
-			CrtExpiry:           creds.Crt.Certificate.NotAfter,
-			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-			TLS: &l5dcharts.TLS{
-				KeyPEM: creds.EncodePrivateKeyPEM(),
-				CrtPEM: creds.EncodeCertificatePEM(),
+		Identity: &l5dcharts.Identity{
+			Issuer: &l5dcharts.Issuer{
+				Scheme:              consts.IdentityIssuerSchemeLinkerd,
+				ClockSkewAllowance:  idopts.clockSkewAllowance.String(),
+				IssuanceLifetime:    idopts.issuanceLifetime.String(),
+				CrtExpiry:           creds.Crt.Certificate.NotAfter,
+				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
+				TLS: &l5dcharts.TLS{
+					KeyPEM: creds.EncodePrivateKeyPEM(),
+					CrtPEM: creds.EncodeCertificatePEM(),
+				},
 			},
 		},
 	}, nil
 }
 
-func toIdentityContext(idvals *l5dcharts.Identity) *pb.IdentityContext {
+func toIdentityContext(idvals *identityWithAnchorsAndTrustDomain) *pb.IdentityContext {
 	if idvals == nil {
 		return nil
 	}
 
-	il, err := time.ParseDuration(idvals.Issuer.IssuanceLifetime)
+	il, err := time.ParseDuration(idvals.Identity.Issuer.IssuanceLifetime)
 	if err != nil {
 		il = defaultIdentityIssuanceLifetime
 	}
 
-	csa, err := time.ParseDuration(idvals.Issuer.ClockSkewAllowance)
+	csa, err := time.ParseDuration(idvals.Identity.Issuer.ClockSkewAllowance)
 	if err != nil {
 		csa = defaultIdentityClockSkewAllowance
 	}
@@ -1078,6 +1093,6 @@ func toIdentityContext(idvals *l5dcharts.Identity) *pb.IdentityContext {
 		TrustAnchorsPem:    idvals.TrustAnchorsPEM,
 		IssuanceLifetime:   ptypes.DurationProto(il),
 		ClockSkewAllowance: ptypes.DurationProto(csa),
-		Scheme:             idvals.Issuer.Scheme,
+		Scheme:             idvals.Identity.Issuer.Scheme,
 	}
 }

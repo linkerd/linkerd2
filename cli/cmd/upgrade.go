@@ -274,7 +274,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 	}
 
-	var identity *charts.Identity
+	var identity *identityWithAnchorsAndTrustDomain
 	idctx := configs.GetGlobal().GetIdentityContext()
 	if idctx.GetTrustDomain() == "" || idctx.GetTrustAnchorsPem() == "" {
 		// If there wasn't an idctx, or if it doesn't specify the required fields, we
@@ -297,11 +297,13 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
-	values.Identity = identity
+	values.Identity = identity.Identity
+	values.Global.IdentityTrustAnchorsPEM = identity.TrustAnchorsPEM
+	values.Global.IdentityTrustDomain = identity.TrustDomain
 	// we need to do that if we have updated the anchors as the config map json has already been generated
-	if values.Identity.TrustAnchorsPEM != configs.Global.IdentityContext.TrustAnchorsPem {
+	if values.Global.IdentityTrustAnchorsPEM != configs.Global.IdentityContext.TrustAnchorsPem {
 		// override the anchors in config
-		configs.Global.IdentityContext.TrustAnchorsPem = values.Identity.TrustAnchorsPEM
+		configs.Global.IdentityContext.TrustAnchorsPem = values.Global.IdentityTrustAnchorsPEM
 		// rebuild the json config map
 		globalJSON, _, _, _ := config.ToJSON(configs)
 		values.Configs.Global = globalJSON
@@ -412,7 +414,7 @@ func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred)
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*charts.Identity, error) {
+func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*identityWithAnchorsAndTrustDomain, error) {
 	if idctx == nil {
 		return nil, nil
 	}
@@ -461,21 +463,25 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 		}
 	}
 
-	return &charts.Identity{
+	return &identityWithAnchorsAndTrustDomain{
 		TrustDomain:     idctx.GetTrustDomain(),
 		TrustAnchorsPEM: trustAnchorsPEM,
-		Issuer: &charts.Issuer{
-			Scheme:              idctx.Scheme,
-			ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
-			IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
-			CrtExpiry:           *issuerData.Expiry,
-			CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-			TLS: &charts.TLS{
-				KeyPEM: issuerData.IssuerKey,
-				CrtPEM: issuerData.IssuerCrt,
+		Identity: &charts.Identity{
+
+			Issuer: &charts.Issuer{
+				Scheme:              idctx.Scheme,
+				ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
+				IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
+				CrtExpiry:           *issuerData.Expiry,
+				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
+				TLS: &charts.TLS{
+					KeyPEM: issuerData.IssuerKey,
+					CrtPEM: issuerData.IssuerCrt,
+				},
 			},
 		},
 	}, nil
+
 }
 
 func readIssuer(trustPEM, issuerCrtPath, issuerKeyPath string) (*issuercerts.IssuerCertData, error) {
