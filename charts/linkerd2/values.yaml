@@ -57,7 +57,7 @@ disableHeartBeat: false
 heartbeatSchedule: "0 0 * * *"
 
 # prometheus configuration
-prometheusImage: prom/prometheus:v2.15.1
+prometheusImage: prom/prometheus:v2.15.2
 prometheusLogLevel: *controller_log_level
 
 # Control Plane Trace Configuration
