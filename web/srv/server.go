@@ -17,11 +17,19 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
+	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
 	timeout = 10 * time.Second
+
+	// statExpiration indicates when items in the stat cache expire.
+	statExpiration = 1500 * time.Millisecond
+
+	// statCleanupInterval indicates how often expired items in the stat cache
+	// are cleaned up.
+	statCleanupInterval = 5 * time.Minute
 )
 
 type (
@@ -108,6 +116,7 @@ func NewServer(
 		clusterDomain:       clusterDomain,
 		grafanaProxy:        newGrafanaProxy(grafanaAddr),
 		hc:                  hc,
+		statCache:           cache.New(statExpiration, statCleanupInterval),
 	}
 
 	httpServer := &http.Server{
