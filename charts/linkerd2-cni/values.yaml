@@ -14,3 +14,8 @@ proxyUID:         2102
 destCNINetDir:    "/etc/cni/net.d"
 destCNIBinDir:    "/opt/cni/bin"
 useWaitFlag:      false
+
+# namespace annotation and labels - do not edit
+proxyInjectAnnotation: linkerd.io/inject
+proxyInjectDisabled: disabled
+linkerdNamespaceLabel: linkerd.io/is-control-plane

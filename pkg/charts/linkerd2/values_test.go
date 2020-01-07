@@ -15,29 +15,18 @@ func TestNewValues(t *testing.T) {
 
 	expected := &Values{
 		Stage:                       "",
-		Namespace:                   "linkerd",
-		ClusterDomain:               "cluster.local",
 		ControllerImage:             "gcr.io/linkerd-io/controller",
 		ControllerImageVersion:      testVersion,
 		WebImage:                    "gcr.io/linkerd-io/web",
 		PrometheusImage:             "prom/prometheus:v2.11.1",
 		GrafanaImage:                "gcr.io/linkerd-io/grafana",
-		ImagePullPolicy:             "IfNotPresent",
-		CliVersion:                  "linkerd/cli dev-undefined",
 		ControllerReplicas:          1,
 		ControllerLogLevel:          "info",
 		PrometheusLogLevel:          "info",
-		ControllerComponentLabel:    "linkerd.io/control-plane-component",
-		ControllerNamespaceLabel:    "linkerd.io/control-plane-ns",
-		CreatedByAnnotation:         "linkerd.io/created-by",
 		ProxyContainerName:          "linkerd-proxy",
-		ProxyInjectAnnotation:       "linkerd.io/inject",
-		ProxyInjectDisabled:         "disabled",
-		LinkerdNamespaceLabel:       "linkerd.io/is-control-plane",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		EnablePodAntiAffinity:       false,
-		HighAvailability:            false,
 		NoInitContainer:             false,
 		WebhookFailurePolicy:        "Ignore",
 		OmitWebhookSideEffects:      false,
@@ -45,16 +34,69 @@ func TestNewValues(t *testing.T) {
 		DisableHeartBeat:            false,
 		HeartbeatSchedule:           "0 0 * * *",
 		InstallNamespace:            true,
-		NodeSelector: map[string]string{
-			"beta.kubernetes.io/os": "linux",
+		Global: &Global{
+			Namespace:                "linkerd",
+			ClusterDomain:            "cluster.local",
+			ImagePullPolicy:          "IfNotPresent",
+			CliVersion:               "linkerd/cli dev-undefined",
+			ControllerComponentLabel: "linkerd.io/control-plane-component",
+			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
+			CreatedByAnnotation:      "linkerd.io/created-by",
+			ProxyInjectAnnotation:    "linkerd.io/inject",
+			ProxyInjectDisabled:      "disabled",
+			LinkerdNamespaceLabel:    "linkerd.io/is-control-plane",
+			HighAvailability:         false,
+			IdentityTrustDomain:      "cluster.local",
+			Proxy: &Proxy{
+				EnableExternalProfiles: false,
+				Image: &Image{
+					Name:       "gcr.io/linkerd-io/proxy",
+					PullPolicy: "IfNotPresent",
+					Version:    testVersion,
+				},
+				LogLevel: "warn,linkerd2_proxy=info",
+				Ports: &Ports{
+					Admin:    4191,
+					Control:  4190,
+					Inbound:  4143,
+					Outbound: 4140,
+				},
+				Resources: &Resources{
+					CPU: Constraints{
+						Limit:   "",
+						Request: "",
+					},
+					Memory: Constraints{
+						Limit:   "",
+						Request: "",
+					},
+				},
+				Trace: &Trace{
+					CollectorSvcAddr:    "",
+					CollectorSvcAccount: "default",
+				},
+				UID:                   2102,
+				WaitBeforeExitSeconds: 0,
+			},
+			ProxyInit: &ProxyInit{
+				Image: &Image{
+					Name:       "gcr.io/linkerd-io/proxy-init",
+					PullPolicy: "IfNotPresent",
+					Version:    testVersion,
+				},
+				Resources: &Resources{
+					CPU: Constraints{
+						Limit:   "100m",
+						Request: "10m",
+					},
+					Memory: Constraints{
+						Limit:   "50Mi",
+						Request: "10Mi",
+					},
+				},
+			},
 		},
-
-		Dashboard: &Dashboard{
-			Replicas: 1,
-		},
-
 		Identity: &Identity{
-			TrustDomain: "cluster.local",
 			Issuer: &Issuer{
 				ClockSkewAllowance:  "20s",
 				IssuanceLifetime:    "86400s",
@@ -63,70 +105,27 @@ func TestNewValues(t *testing.T) {
 				Scheme:              "linkerd.io/tls",
 			},
 		},
+		NodeSelector: map[string]string{
+			"beta.kubernetes.io/os": "linux",
+		},
+
+		Dashboard: &Dashboard{
+			Replicas: 1,
+		},
 
 		ProxyInjector:    &ProxyInjector{TLS: &TLS{}},
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
 		Tap:              &Tap{TLS: &TLS{}},
 
 		ControlPlaneTracing: false,
-
-		Proxy: &Proxy{
-			EnableExternalProfiles: false,
-			Image: &Image{
-				Name:       "gcr.io/linkerd-io/proxy",
-				PullPolicy: "IfNotPresent",
-				Version:    testVersion,
-			},
-			LogLevel: "warn,linkerd2_proxy=info",
-			Ports: &Ports{
-				Admin:    4191,
-				Control:  4190,
-				Inbound:  4143,
-				Outbound: 4140,
-			},
-			Resources: &Resources{
-				CPU: Constraints{
-					Limit:   "",
-					Request: "",
-				},
-				Memory: Constraints{
-					Limit:   "",
-					Request: "",
-				},
-			},
-			Trace: &Trace{
-				CollectorSvcAddr:    "",
-				CollectorSvcAccount: "default",
-			},
-			UID:                   2102,
-			WaitBeforeExitSeconds: 0,
-		},
-
-		ProxyInit: &ProxyInit{
-			Image: &Image{
-				Name:       "gcr.io/linkerd-io/proxy-init",
-				PullPolicy: "IfNotPresent",
-				Version:    testVersion,
-			},
-			Resources: &Resources{
-				CPU: Constraints{
-					Limit:   "100m",
-					Request: "10m",
-				},
-				Memory: Constraints{
-					Limit:   "50Mi",
-					Request: "10Mi",
-				},
-			},
-		},
 	}
 
 	// pin the versions to ensure consistent test result.
 	// in non-test environment, the default versions are read from the
 	// values.yaml.
 	actual.ControllerImageVersion = testVersion
-	actual.Proxy.Image.Version = testVersion
-	actual.ProxyInit.Image.Version = testVersion
+	actual.Global.Proxy.Image.Version = testVersion
+	actual.Global.ProxyInit.Image.Version = testVersion
 
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected, actual)
@@ -193,7 +192,7 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 
-		expected.Proxy.Resources = &Resources{
+		expected.Global.Proxy.Resources = &Resources{
 			CPU: Constraints{
 				Limit:   controllerResources.CPU.Limit,
 				Request: controllerResources.CPU.Request,
@@ -208,8 +207,8 @@ func TestNewValues(t *testing.T) {
 		// in non-test environment, the default versions are read from the
 		// values.yaml.
 		actual.ControllerImageVersion = testVersion
-		actual.Proxy.Image.Version = testVersion
-		actual.ProxyInit.Image.Version = testVersion
+		actual.Global.Proxy.Image.Version = testVersion
+		actual.Global.ProxyInit.Image.Version = testVersion
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)

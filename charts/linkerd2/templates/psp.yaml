@@ -6,9 +6,9 @@
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: linkerd-{{.Values.namespace}}-control-plane
+  name: linkerd-{{.Values.global.namespace}}-control-plane
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 spec:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -62,23 +62,23 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-psp
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 rules:
 - apiGroups: ['policy', 'extensions']
   resources: ['podsecuritypolicies']
   verbs: ['use']
   resourceNames:
-  - linkerd-{{.Values.namespace}}-control-plane
+  - linkerd-{{.Values.global.namespace}}-control-plane
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-psp
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 roleRef:
   kind: Role
   name: linkerd-psp
@@ -86,33 +86,33 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-controller
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
 - kind: ServiceAccount
   name: linkerd-destination
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
 - kind: ServiceAccount
   name: linkerd-grafana
-  namespace: {{.Values.namespace}}
-{{ if not .DisableHeartBeat -}}
+  namespace: {{.Values.global.namespace}}
+{{ if not .Values.disableHeartBeat -}}
 - kind: ServiceAccount
   name: linkerd-heartbeat
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
 {{ end -}}
 - kind: ServiceAccount
   name: linkerd-identity
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
 - kind: ServiceAccount
   name: linkerd-prometheus
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
 - kind: ServiceAccount
   name: linkerd-proxy-injector
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
 - kind: ServiceAccount
   name: linkerd-sp-validator
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
 - kind: ServiceAccount
   name: linkerd-tap
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
 - kind: ServiceAccount
   name: linkerd-web
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}

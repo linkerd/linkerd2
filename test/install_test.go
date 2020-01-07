@@ -84,7 +84,8 @@ var (
 	}, "|"))
 
 	knownEventWarningsRegex = regexp.MustCompile(strings.Join([]string{
-		`MountVolume.SetUp failed for volume .* : couldn't propagate object cache: timed out waiting for the condition`,
+		`MountVolume.SetUp failed for volume .* : couldn't propagate object cache: timed out waiting for the condition`, // pre k8s 1.16
+		`MountVolume.SetUp failed for volume .* : failed to sync .* cache: timed out waiting for the condition`,         // post k8s 1.16
 		`(Liveness|Readiness) probe failed: HTTP probe failed with statuscode: 50(2|3)`,
 		`(Liveness|Readiness) probe failed: Get http://.*: dial tcp .*: connect: connection refused`,
 		`(Liveness|Readiness) probe failed: Get http://.*: read tcp .*: read: connection reset by peer`,
@@ -341,10 +342,10 @@ func TestInstallHelm(t *testing.T) {
 
 	args := []string{
 		"--set", "controllerLogLevel=debug",
-		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "proxy.image.version=" + TestHelper.GetVersion(),
-		"--set", "identity.trustDomain=cluster.local",
-		"--set", "identity.trustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "global.linkerdVersion=" + TestHelper.GetVersion(),
+		"--set", "global.proxy.image.version=" + TestHelper.GetVersion(),
+		"--set", "global.identityTrustDomain=cluster.local",
+		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),

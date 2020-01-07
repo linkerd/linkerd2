@@ -3,51 +3,51 @@
 ### Proxy Injector
 ###
 ---
-{{ $_ := set .Values.proxy "workloadKind" "deployment" -}}
-{{ $_ := set .Values.proxy "component" "linkerd-proxy-injector" -}}
-{{ include "linkerd.proxy.validation" .Values.proxy -}}
+{{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
+{{ $_ := set .Values.global.proxy "component" "linkerd-proxy-injector" -}}
+{{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
   labels:
     app.kubernetes.io/name: proxy-injector
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
-    {{.Values.controllerComponentLabel}}: proxy-injector
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    {{.Values.global.controllerComponentLabel}}: proxy-injector
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   name: linkerd-proxy-injector
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
 spec:
   replicas: {{.Values.controllerReplicas}}
   selector:
     matchLabels:
-      {{.Values.controllerComponentLabel}}: proxy-injector
+      {{.Values.global.controllerComponentLabel}}: proxy-injector
   template:
     metadata:
       annotations:
-        {{- if empty .Values.cliVersion }}
+        {{- if empty .Values.global.cliVersion }}
         linkerd.io/helm-release-version: {{ $.Release.Revision | quote}}
         {{- end }}
-        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
-        {{- include "partials.proxy.annotations" .Values.proxy| nindent 8}}
+        {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+        {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
       labels:
-        {{.Values.controllerComponentLabel}}: proxy-injector
-        {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
-        {{- include "partials.proxy.labels" .Values.proxy | nindent 8}}
+        {{.Values.global.controllerComponentLabel}}: proxy-injector
+        {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+        {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- if .Values.enablePodAntiAffinity -}}
-      {{- $local := dict "component" "proxy-injector" "label" .Values.controllerComponentLabel -}}
+      {{- $local := dict "component" "proxy-injector" "label" .Values.global.controllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       containers:
       - args:
         - proxy-injector
         - -log-level={{.Values.controllerLogLevel}}
-        image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
-        imagePullPolicy: {{.Values.imagePullPolicy}}
+        image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+        imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
@@ -94,16 +94,16 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: {{.Values.namespace}}
+  namespace: {{.Values.global.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: proxy-injector
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    {{.Values.global.controllerComponentLabel}}: proxy-injector
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.controllerComponentLabel}}: proxy-injector
+    {{.Values.global.controllerComponentLabel}}: proxy-injector
   ports:
   - name: proxy-injector
     port: 443

@@ -1143,8 +1143,8 @@ type: Opaque`,
 	}
 
 	if values.Identity == nil ||
-		values.Identity.TrustAnchorsPEM == "" ||
-		values.Identity.TrustDomain == "" ||
+		values.Global.IdentityTrustAnchorsPEM == "" ||
+		values.Global.IdentityTrustDomain == "" ||
 		values.Identity.Issuer == nil ||
 		values.Identity.Issuer.TLS.CrtPEM == "" ||
 		values.Identity.Issuer.TLS.KeyPEM == "" {

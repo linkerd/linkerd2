@@ -1,36 +1,36 @@
 {{- define "linkerd.configs.global" -}}
 {
-  "linkerdNamespace": "{{.Values.namespace}}",
+  "linkerdNamespace": "{{.Values.global.namespace}}",
   "cniEnabled": false,
-  "version": "{{.Values.linkerdVersion}}",
+  "version": "{{.Values.global.linkerdVersion}}",
   "identityContext":{
-    "trustDomain": "{{.Values.identity.trustDomain}}",
-    "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Values.identity.trustAnchorsPEM | trim | replace "\n" "\\n"}}",
+    "trustDomain": "{{.Values.global.identityTrustDomain}}",
+    "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Values.global.identityTrustAnchorsPEM | trim | replace "\n" "\\n"}}",
     "issuanceLifeTime": "{{.Values.identity.issuer.issuanceLifeTime}}",
     "clockSkewAllowance": "{{.Values.identity.issuer.clockSkewAllowance}}",
     "scheme": "{{.Values.identity.issuer.scheme}}"
   },
   "autoInjectContext": null,
   "omitWebhookSideEffects": {{.Values.omitWebhookSideEffects}},
-  "clusterDomain": "{{.Values.clusterDomain}}"
+  "clusterDomain": "{{.Values.global.clusterDomain}}"
 }
 {{- end -}}
 
 {{- define "linkerd.configs.proxy" -}}
 {
   "proxyImage":{
-    "imageName":"{{.Values.proxy.image.name}}",
-    "pullPolicy":"{{.Values.proxy.image.pullPolicy}}"
+    "imageName":"{{.Values.global.proxy.image.name}}",
+    "pullPolicy":"{{.Values.global.proxy.image.pullPolicy}}"
   },
   "proxyInitImage":{
-    "imageName":"{{.Values.proxyInit.image.name}}",
-    "pullPolicy":"{{.Values.proxyInit.image.pullPolicy}}"
+    "imageName":"{{.Values.global.proxyInit.image.name}}",
+    "pullPolicy":"{{.Values.global.proxyInit.image.pullPolicy}}"
   },
   "controlPort":{
-    "port": {{.Values.proxy.ports.control}}
+    "port": {{.Values.global.proxy.ports.control}}
   },
   "ignoreInboundPorts":[
-    {{- $ports := splitList "," .Values.proxyInit.ignoreInboundPorts -}}
+    {{- $ports := splitList "," .Values.global.proxyInit.ignoreInboundPorts -}}
     {{- if gt (len $ports) 1}}
     {{- $last := sub (len $ports) 1 -}}
     {{- range $i,$port := $ports -}}
@@ -39,7 +39,7 @@
     {{- end -}}
   ],
   "ignoreOutboundPorts":[
-    {{- $ports := splitList "," .Values.proxyInit.ignoreOutboundPorts -}}
+    {{- $ports := splitList "," .Values.global.proxyInit.ignoreOutboundPorts -}}
     {{- if gt (len $ports) 1}}
     {{- $last := sub (len $ports) 1 -}}
     {{- range $i,$port := $ports -}}
@@ -48,33 +48,33 @@
     {{- end -}}
   ],
   "inboundPort":{
-    "port": {{.Values.proxy.ports.inbound}}
+    "port": {{.Values.global.proxy.ports.inbound}}
   },
   "adminPort":{
-    "port": {{.Values.proxy.ports.admin}}
+    "port": {{.Values.global.proxy.ports.admin}}
   },
   "outboundPort":{
-    "port": {{.Values.proxy.ports.outbound}}
+    "port": {{.Values.global.proxy.ports.outbound}}
   },
   "resource":{
-    "requestCpu": "{{.Values.proxy.resources.cpu.request}}",
-    "limitCpu": "{{.Values.proxy.resources.cpu.limit}}",
-    "requestMemory": "{{.Values.proxy.resources.memory.request}}",
-    "limitMemory": "{{.Values.proxy.resources.memory.limit}}"
+    "requestCpu": "{{.Values.global.proxy.resources.cpu.request}}",
+    "limitCpu": "{{.Values.global.proxy.resources.cpu.limit}}",
+    "requestMemory": "{{.Values.global.proxy.resources.memory.request}}",
+    "limitMemory": "{{.Values.global.proxy.resources.memory.limit}}"
   },
-  "proxyUid": {{.Values.proxy.uid}},
+  "proxyUid": {{.Values.global.proxy.uid}},
   "logLevel":{
-    "level": "{{.Values.proxy.logLevel}}"
+    "level": "{{.Values.global.proxy.logLevel}}"
   },
-  "disableExternalProfiles": {{not .Values.proxy.enableExternalProfiles}},
-  "proxyVersion": "{{.Values.proxy.image.version}}",
-  "proxyInitImageVersion": "{{.Values.proxyInit.image.version}}"
+  "disableExternalProfiles": {{not .Values.global.proxy.enableExternalProfiles}},
+  "proxyVersion": "{{.Values.global.proxy.image.version}}",
+  "proxyInitImageVersion": "{{.Values.global.proxyInit.image.version}}"
 }
 {{- end -}}
 
 {{- define "linkerd.configs.install" -}}
 {
-  "cliVersion":"{{ .Values.linkerdVersion }}",
+  "cliVersion":"{{ .Values.global.linkerdVersion }}",
   "flags":[]
 }
 {{- end -}}
