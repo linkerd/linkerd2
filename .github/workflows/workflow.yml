@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     # for debugging
     - name: Dump env
       run: |
@@ -72,7 +72,7 @@ jobs:
       image: golang:1.13.4
     steps:
     - name: Checkout code
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Go unit tests
       env:
         GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
@@ -88,7 +88,7 @@ jobs:
       image: golang:1.13.4
     steps:
     - name: Checkout code
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Go lint
       env:
         GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
@@ -105,7 +105,7 @@ jobs:
       image: golang:1.13.4
     steps:
     - name: Checkout code
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Format
       env:
         GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
@@ -120,7 +120,7 @@ jobs:
       image: node:10.16.0-stretch
     steps:
     - name: Checkout code
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Yarn setup
       run: |
         curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
@@ -144,7 +144,7 @@ jobs:
     steps:
     - name: Checkout code
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Docker SSH setup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
@@ -168,7 +168,7 @@ jobs:
     steps:
     - name: Checkout code
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Docker SSH setup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
@@ -196,7 +196,7 @@ jobs:
     steps:
     - name: Checkout code
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Docker SSH setup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
@@ -236,7 +236,7 @@ jobs:
     steps:
     - name: Checkout code
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Docker SSH setup
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
@@ -314,7 +314,7 @@ jobs:
     steps:
     - name: Checkout code
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     # for debugging
     - name: Dump env
       run: |
@@ -358,7 +358,7 @@ jobs:
     steps:
     - name: Checkout code
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Configure gcloud
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
@@ -411,7 +411,7 @@ jobs:
     steps:
     - name: Checkout code
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Configure gcloud
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
@@ -470,7 +470,7 @@ jobs:
     steps:
     - name: Checkout code
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Configure gcloud
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
@@ -512,7 +512,7 @@ jobs:
     steps:
     - name: Checkout code
       if: startsWith(github.ref, 'refs/tags')
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
     - name: Configure gsutils
       if: startsWith(github.ref, 'refs/tags')
       env:
