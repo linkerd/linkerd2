@@ -219,7 +219,7 @@ func (h *TestHelper) HelmRun(cmd string, arg ...string) (string, string, error) 
 		"--kube-context", h.k8sContext,
 		"--tiller-namespace", h.helm.tillerNs,
 		"--name", h.helm.releaseName,
-		"--set", "namespace=" + h.namespace,
+		"--set", "global.namespace=" + h.namespace,
 		h.helm.chart,
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)

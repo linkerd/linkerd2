@@ -32,6 +32,9 @@ type Values struct {
 	DestCNINetDir            string `json:"destCNINetDir"`
 	DestCNIBinDir            string `json:"destCNIBinDir"`
 	UseWaitFlag              bool   `json:"useWaitFlag"`
+	ProxyInjectAnnotation    string `json:"proxyInjectAnnotation"`
+	ProxyInjectDisabled      string `json:"proxyInjectDisabled"`
+	LinkerdNamespaceLabel    string `json:"linkerdNamespaceLabel"`
 }
 
 // NewValues returns a new instance of the Values type.

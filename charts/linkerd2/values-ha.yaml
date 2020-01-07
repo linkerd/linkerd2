@@ -4,6 +4,17 @@
 
 enablePodAntiAffinity: true
 
+global:
+  # proxy configuration
+  proxy:
+    resources:
+      cpu:
+        limit: "1"
+        request: 100m
+      memory:
+        limit: 250Mi
+        request: 20Mi
+
 # controller configuration
 controllerReplicas: 3
 controllerResources: &controller_resources
@@ -41,16 +52,6 @@ prometheusResources:
   memory:
     limit: 8192Mi
     request: 300Mi
-
-# proxy configuration
-proxy:
-  resources:
-    cpu:
-      limit: "1"
-      request: 100m
-    memory:
-      limit: 250Mi
-      request: 20Mi
 
 # proxy injector configuration
 proxyInjectorResources: *controller_resources

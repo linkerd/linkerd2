@@ -28,7 +28,7 @@
     "value": "{{$value}}"
   },
   {{- end }}
-  {{- if .Values.proxyInit }}
+  {{- if .Values.global.proxyInit }}
   {{- if .Values.addRootInitContainers }}
   {
     "op": "add",
@@ -51,7 +51,7 @@
       {{- include "partials.debug" . | fromYaml | toPrettyJson | nindent 6 }}
   },
   {{- end }}
-  {{- if .Values.proxy }}
+  {{- if .Values.global.proxy }}
   {{- if .Values.addRootVolumes }}
   {
     "op": "add",
@@ -59,7 +59,7 @@
     "value": []
   },
   {{- end }}
-  {{- if not .Values.proxy.disableIdentity -}}
+  {{- if not .Values.global.proxy.disableIdentity -}}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",
