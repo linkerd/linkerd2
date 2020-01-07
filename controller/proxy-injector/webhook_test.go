@@ -152,6 +152,66 @@ func TestGetPatch(t *testing.T) {
 	})
 }
 
+func TestIsInjectAnnotationValid(t *testing.T) {
+	factory := fake.NewFactory(filepath.Join("fake", "data"))
+
+	t.Run("by checking proxy inject annotations at ns level", func(t *testing.T) {
+		var testCases = []struct {
+			filename          string
+			isAnnotationValid bool
+		}{
+			{
+				filename:          "namespace-emojivoto-valid-inject-annotation.yaml",
+				isAnnotationValid: true,
+			},
+			{
+				filename:          "namespace-emojivoto-invalid-inject-annotation.yaml",
+				isAnnotationValid: false,
+			},
+		}
+
+		for id, testCase := range testCases {
+			t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
+				ns, err := factory.Namespace(testCase.filename)
+				if err != nil {
+					t.Fatalf("Unexpected error: %s", err)
+				}
+				if b, _ := isInjectionValid(ns.Annotations); b != testCase.isAnnotationValid {
+					t.Error("Mismatch is annotation validity")
+				}
+			})
+		}
+	})
+
+	t.Run("by checking proxy inject annotations at workload level", func(t *testing.T) {
+		var testCases = []struct {
+			filename          string
+			isAnnotationValid bool
+		}{
+			{
+				filename:          "deployment-emojivoto-valid-inject-annotation.yaml",
+				isAnnotationValid: true,
+			},
+			{
+				filename:          "deployment-emojivoto-invalid-inject-annotation.yaml",
+				isAnnotationValid: false,
+			},
+		}
+
+		for id, testCase := range testCases {
+			t.Run(fmt.Sprintf("%d", id), func(t *testing.T) {
+				workload, err := factory.Deployment(testCase.filename)
+				if err != nil {
+					t.Errorf("Unexpected error: %s", err)
+				}
+
+				if b, _ := isInjectionValid(workload.Spec.Template.Annotations); b != testCase.isAnnotationValid {
+					t.Error("Mismatch is annotation validity")
+				}
+			})
+		}
+	})
+}
 func getFakeReq(b []byte) *admissionv1beta1.AdmissionRequest {
 	return &admissionv1beta1.AdmissionRequest{
 		Kind:      metav1.GroupVersionKind{Kind: "Pod"},

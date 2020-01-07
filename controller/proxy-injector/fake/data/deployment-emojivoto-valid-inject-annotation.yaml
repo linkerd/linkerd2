@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: emoji
+    namespace: emojivoto
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: emoji-svc
+    template:
+        metadata:
+            labels:
+                app: emoji-svc
+            annotations:
+                linkerd.io/inject: enabled
+        spec:
+            containers:
+                - env:
+                      - name: GRPC_PORT
+                        value: "8080"
+                  image: buoyantio/emojivoto-emoji-svc:v9
+                  name: emoji-svc
+                  ports:
+                      - containerPort: 8080
+                        name: grpc
+                  resources:
+                      requests:
+                          cpu: 100m
+            serviceAccountName: emoji
