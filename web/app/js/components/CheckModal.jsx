@@ -20,56 +20,56 @@ import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
   wrapper: {
-    marginBottom: "20px",
+    marginBottom: '20px',
   },
   spinner: {
     color: theme.status.dark.default,
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    marginTop: "-40px",
-    marginLeft: "-40px",
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: '-40px',
+    marginLeft: '-40px',
   },
   dialog: {
-    minWidth: "60%",
+    minWidth: '60%',
   },
   dialogContent: {
-    overflow: "hidden",
-    display: "flex",
-    height: "860px",
+    overflow: 'hidden',
+    display: 'flex',
+    height: '860px',
   },
   contentWrapper: {
-    backgroundColor: "black",
-    borderRadius: "5px",
-    maxHeight: "100%",
-    width: "100%",
-    overflowY: "auto",
+    backgroundColor: 'black',
+    borderRadius: '5px',
+    maxHeight: '100%',
+    width: '100%',
+    overflowY: 'auto',
   },
   content: {
-    fontSize: "14px",
+    fontSize: '14px',
     padding: theme.spacing(2),
-    color: "white",
+    color: 'white',
   },
   title: {
-    fontFamily: `'Roboto Mono', monospace`,
-    textDecoration: "underline",
-    color: "white",
-    "&:not(:first-child)": {
-      paddingTop: "20px",
+    fontFamily: '\'Roboto Mono\', monospace',
+    textDecoration: 'underline',
+    color: 'white',
+    '&:not(:first-child)': {
+      paddingTop: '20px',
     },
   },
   result: {
-    marginLeft: "10px",
-    fontFamily: `'Roboto Mono', monospace`,
+    marginLeft: '10px',
+    fontFamily: '\'Roboto Mono\', monospace',
   },
   resultError: {
-    marginLeft: "20px",
-    fontFamily: `'Roboto Mono', monospace`,
-    fontSize: "12px",
+    marginLeft: '20px',
+    fontFamily: '\'Roboto Mono\', monospace',
+    fontSize: '12px',
   },
   icon: {
-    marginLeft: "10px",
-    verticalAlign: "bottom",
+    marginLeft: '10px',
+    verticalAlign: 'bottom',
   },
   iconError: {
     color: theme.status.dark.danger,
@@ -81,25 +81,25 @@ const styles = theme => ({
     color: theme.status.dark.warning,
   },
   link: {
-    padding: "0px 5px",
-    color: "white",
+    padding: '0px 5px',
+    color: 'white',
   },
 });
 
-const Transition = React.forwardRef(function Transition(props, ref) {
+const Transition = React.forwardRef((props, ref) => {
   return <Slide direction="down" ref={ref} {...props} />;
 });
 
-const Results = ({title, results, classes}) => {
-  let getResultType = (error, warning) => {
+const Results = ({ title, results, classes }) => {
+  const getResultType = (error, warning) => {
     if (error) {
       if (warning) {
-        return "warning";
+        return 'warning';
       } else {
-        return "error";
+        return 'error';
       }
     } else {
-      return "success";
+      return 'success';
     }
   };
 
@@ -122,7 +122,7 @@ const Results = ({title, results, classes}) => {
                 {result.Description}
               </Typography>
 
-              {resultType !== "success" && (
+              {resultType !== 'success' && (
                 <React.Fragment>
                   <Typography className={classes.resultError} variant="body2" color="inherit">
                     {result.ErrMsg}
@@ -150,7 +150,6 @@ const Results = ({title, results, classes}) => {
 };
 
 Results.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   results: PropTypes.arrayOf(PropTypes.shape({
     Description: PropTypes.string.isRequired,
     Err: PropTypes.any,
@@ -161,19 +160,19 @@ Results.propTypes = {
   title: PropTypes.string.isRequired,
 };
 
-const Icon = ({type, classes}) => {
+const Icon = ({ type, classes }) => {
   return (
     <React.Fragment>
       {(() => {
         switch (type) {
-          case "success":
+          case 'success':
             return <CheckIcon className={`${classes.icon} ${classes.iconSuccess}`} fontSize="small" />;
-          case "error":
+          case 'error':
             return <CloseIcon className={`${classes.icon} ${classes.iconError}`} fontSize="small" />;
-          case "warning":
+          case 'warning':
             return <PriorityHigh className={`${classes.icon} ${classes.iconWarning}`} fontSize="small" />;
           default:
-            null;
+            return null;
         }
       })()}
     </React.Fragment>
@@ -189,6 +188,7 @@ class CheckModal extends React.Component {
   constructor(props) {
     super(props);
 
+    this.api = props.api;
     this.handleOpenChange = this.handleOpenChange.bind(this);
     this.runCheck = this.runCheck.bind(this);
     this.handleApiError = this.handleApiError.bind(this);
@@ -216,8 +216,8 @@ class CheckModal extends React.Component {
       open: true,
     });
 
-    this.props.api.setCurrentRequests([this.props.api.fetchCheck()]);
-    this.serverPromise = Promise.all(this.props.api.getCurrentPromises())
+    this.api.setCurrentRequests([this.api.fetchCheck()]);
+    this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([response]) => {
         this.setState({
           running: false,
@@ -232,7 +232,7 @@ class CheckModal extends React.Component {
   handleApiError = error => {
     this.setState({
       running: false,
-      error: error,
+      error,
     });
   }
 
@@ -259,7 +259,7 @@ class CheckModal extends React.Component {
           </Grid>
         </Grid>
 
-        { this.state.error !== undefined && <ErrorBanner message={error} /> }
+        { error !== undefined && <ErrorBanner message={error} /> }
 
         <Dialog
           className={classes.dialog}
@@ -284,8 +284,8 @@ class CheckModal extends React.Component {
               {success !== undefined &&
                 <Grid item>
                   <SimpleChip
-                    label={success ? "Success" : "Error"}
-                    type={success ? "good" : "bad"} />
+                    label={success ? 'Success' : 'Error'}
+                    type={success ? 'good' : 'bad'} />
                 </Grid>
               }
             </Grid>
@@ -334,7 +334,6 @@ CheckModal.propTypes = {
     getCurrentPromises: PropTypes.func.isRequired,
     setCurrentRequests: PropTypes.func.isRequired,
   }).isRequired,
-  classes: PropTypes.shape({}).isRequired,
   fullScreen: PropTypes.bool.isRequired,
   theme: PropTypes.shape({}).isRequired,
 };

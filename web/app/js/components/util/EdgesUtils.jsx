@@ -3,7 +3,7 @@ import _each from 'lodash/each';
 import _isEmpty from 'lodash/isEmpty';
 
 export const processEdges = (rawEdges, resourceName) => {
-  let edges = [];
+  const edges = [];
   if (_isEmpty(rawEdges) || _isEmpty(rawEdges.ok) || _isEmpty(rawEdges.ok.edges)) {
     return edges;
   }
@@ -14,7 +14,7 @@ export const processEdges = (rawEdges, resourceName) => {
     // check if any of the returned edges match the current resourceName
     if (edge.src.name === resourceName) {
       // current resource is SRC
-      edge.direction = "OUTBOUND";
+      edge.direction = 'OUTBOUND';
       edge.identity = edge.serverId;
       edge.name = edge.dst.name;
       edge.namespace = edge.dst.namespace;
@@ -22,7 +22,7 @@ export const processEdges = (rawEdges, resourceName) => {
       edges.push(edge);
     } else if (edge.dst.name === resourceName) {
       // current resource is DST
-      edge.direction = "INBOUND";
+      edge.direction = 'INBOUND';
       edge.identity = edge.clientId;
       edge.name = edge.src.name;
       edge.namespace = edge.src.namespace;
@@ -37,7 +37,7 @@ export const processedEdgesPropType = PropTypes.shape({
   dst: PropTypes.shape({
     name: PropTypes.string,
     namespace: PropTypes.string,
-    type: PropTypes.string
+    type: PropTypes.string,
   }),
   clientId: PropTypes.string,
   direction: PropTypes.string,
@@ -49,6 +49,6 @@ export const processedEdgesPropType = PropTypes.shape({
   src: PropTypes.shape({
     name: PropTypes.string,
     namespace: PropTypes.string,
-    type: PropTypes.string
-  })
+    type: PropTypes.string,
+  }),
 });

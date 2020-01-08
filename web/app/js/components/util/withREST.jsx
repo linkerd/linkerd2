@@ -13,25 +13,16 @@ import { withContext } from './AppContext.jsx';
  * @param {List[string]} requestURLs - List of URLs to poll.
  * @param {List[string]} options - Options for withREST
  */
-const withREST = (WrappedComponent, componentPromises, options={}) => {
+const withREST = (WrappedComponent, componentPromises, options = {}) => {
   const localOptions = _merge({}, {
     resetProps: [],
     poll: true,
   }, options);
 
   class RESTWrapper extends React.Component {
-    static propTypes = {
-      api: PropTypes.shape({
-        cancelCurrentRequests: PropTypes.func.isRequired,
-        getCurrentPromises: PropTypes.func.isRequired,
-        setCurrentRequests: PropTypes.func.isRequired,
-      }).isRequired,
-      isPageVisible: PropTypes.bool.isRequired,
-    }
-
     constructor(props) {
       super(props);
-      this.api = this.props.api;
+      this.api = props.api;
 
       this.state = this.getInitialState(this.props);
     }
@@ -41,7 +32,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
       data: [],
       pendingRequests: false,
       loading: true,
-      error: null
+      error: null,
     });
 
     componentDidMount() {
@@ -49,15 +40,16 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
     }
 
     componentDidUpdate(prevProps) {
+      const { isPageVisible } = this.props;
       handlePageVisibility({
         prevVisibilityState: prevProps.isPageVisible,
-        currentVisibilityState: this.props.isPageVisible,
+        currentVisibilityState: isPageVisible,
         onVisible: () => this.startServerPolling(this.props),
         onHidden: () => this.stopServerPolling(),
       });
 
       const changed = localOptions.resetProps.filter(
-        prop => _get(prevProps, prop) !== _get(this.props, prop)
+        prop => _get(prevProps, prop) !== _get(this.props, prop),
       );
 
       if (_isEmpty(changed)) { return; }
@@ -73,10 +65,12 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
     }
 
     startServerPolling = props => {
+      const { pollingInterval } = this.state;
       this.loadFromServer(props);
       if (localOptions.poll) {
         this.timerId = window.setInterval(
-          this.loadFromServer, this.state.pollingInterval, props);
+          this.loadFromServer, pollingInterval, props,
+        );
       }
     }
 
@@ -89,7 +83,9 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
     }
 
     loadFromServer = props => {
-      if (this.state.pendingRequests) {
+      const { pendingRequests } = this.state;
+
+      if (pendingRequests) {
         return; // don't make more requests if the ones we sent haven't completed
       }
 
@@ -100,7 +96,7 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
       Promise.all(this.api.getCurrentPromises())
         .then(data => {
           this.setState({
-            data: data,
+            data,
             loading: false,
             pendingRequests: false,
             error: null,
@@ -114,20 +110,31 @@ const withREST = (WrappedComponent, componentPromises, options={}) => {
 
       this.setState({
         pendingRequests: false,
-        error: e
+        error: e,
       });
     }
 
     render() {
+      const { data, error, loading } = this.state;
+
       return (
         <WrappedComponent
-          data={this.state.data}
-          error={this.state.error}
-          loading={this.state.loading}
+          data={data}
+          error={error}
+          loading={loading}
           {...this.props} />
       );
     }
   }
+
+  RESTWrapper.propTypes = {
+    api: PropTypes.shape({
+      cancelCurrentRequests: PropTypes.func.isRequired,
+      getCurrentPromises: PropTypes.func.isRequired,
+      setCurrentRequests: PropTypes.func.isRequired,
+    }).isRequired,
+    isPageVisible: PropTypes.bool.isRequired,
+  };
 
   return withPageVisibility(withContext(RESTWrapper));
 };

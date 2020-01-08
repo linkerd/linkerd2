@@ -18,7 +18,7 @@ const status = {
     warning: orange[200],
     good: green[200],
     default: grey[200],
-  }
+  },
 };
 
 export const dashboardTheme = {
@@ -35,9 +35,8 @@ export const dashboardTheme = {
       lg: 1200,
     },
   },
-  status
+  status,
 };
-
 
 
 export const statusClassNames = theme => {

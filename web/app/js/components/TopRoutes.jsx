@@ -38,38 +38,29 @@ const topRoutesQueryProps = {
 };
 const topRoutesQueryPropType = PropTypes.shape(topRoutesQueryProps);
 
-let topRoutesQueryConfig = {};
-for (let value in topRoutesQueryProps) {
+const topRoutesQueryConfig = {};
+Object.keys(topRoutesQueryProps).forEach(value => {
   topRoutesQueryConfig[value] = StringParam;
-}
+});
 
 const toResourceName = (query, typeKey, nameKey) => {
-  return `${query[typeKey] || ""}${!query[nameKey] ? "" : "/"}${query[nameKey] || ""}`;
+  return `${query[typeKey] || ''}${!query[nameKey] ? '' : '/'}${query[nameKey] || ''}`;
 };
 
 const styles = theme => ({
   root: {
     marginTop: theme.spacing(3),
-    marginBottom:theme.spacing(1),
+    marginBottom: theme.spacing(1),
   },
   formControl: {
     minWidth: 200,
   },
 });
-class TopRoutes extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      PrefixedLink: PropTypes.func.isRequired,
-    }).isRequired,
-    classes: PropTypes.shape({}).isRequired,
-    isPageVisible: PropTypes.bool.isRequired,
-    query: topRoutesQueryPropType.isRequired,
-    setQuery: PropTypes.func.isRequired,
-  }
 
+class TopRoutes extends React.Component {
   constructor(props) {
     super(props);
-    this.api = this.props.api;
+    this.api = props.api;
 
     const query = _merge({
       resource_name: '',
@@ -77,19 +68,19 @@ class TopRoutes extends React.Component {
       namespace: '',
       to_name: '',
       to_type: '',
-      to_namespace: ''
+      to_namespace: '',
     }, _pick(props.query, Object.keys(topRoutesQueryProps)));
 
 
     this.state = {
-      query: query,
+      query,
       error: null,
       services: [],
-      namespaces: ["default"],
+      namespaces: ['default'],
       resourcesByNs: {},
       pollingInterval: 5000,
       pendingRequests: false,
-      requestInProgress: false
+      requestInProgress: false,
     };
   }
 
@@ -99,9 +90,10 @@ class TopRoutes extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
+    const { isPageVisible } = this.props;
     handlePageVisibility({
       prevVisibilityState: prevProps.isPageVisible,
-      currentVisibilityState: this.props.isPageVisible,
+      currentVisibilityState: isPageVisible,
       onVisible: () => this.startServerPolling(),
       onHidden: () => this.stopServerPolling(),
     });
@@ -113,29 +105,31 @@ class TopRoutes extends React.Component {
   }
 
   loadFromServer = () => {
-    if (this.state.pendingRequests) {
+    const { pendingRequests } = this.state;
+
+    if (pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
     }
     this.setState({ pendingRequests: true });
 
-    let allMetricsUrl = this.api.urlsForResourceNoStats("all");
+    const allMetricsUrl = this.api.urlsForResourceNoStats('all');
     this.api.setCurrentRequests([
       this.api.fetchServices(),
-      this.api.fetchMetrics(allMetricsUrl)
+      this.api.fetchMetrics(allMetricsUrl),
     ]);
 
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(([svcList, allMetrics]) => {
-        let services =  _get(svcList, 'services', []);
-        let namespaces = _uniq(services.map(s => s.namespace));
-        let { resourcesByNs } = groupResourcesByNs(allMetrics);
+        const services = _get(svcList, 'services', []);
+        const namespaces = _uniq(services.map(s => s.namespace));
+        const { resourcesByNs } = groupResourcesByNs(allMetrics);
 
         this.setState({
           services,
           namespaces,
           resourcesByNs,
           pendingRequests: false,
-          error: null
+          error: null,
         });
       })
       .catch(this.handleApiError);
@@ -148,13 +142,14 @@ class TopRoutes extends React.Component {
 
     this.setState({
       pendingRequests: false,
-      error: e
+      error: e,
     });
   }
 
   startServerPolling = () => {
+    const { pollingInterval } = this.state;
     this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.timerId = window.setInterval(this.loadFromServer, pollingInterval);
   }
 
   stopServerPolling = () => {
@@ -165,7 +160,7 @@ class TopRoutes extends React.Component {
 
   handleBtnClick = inProgress => () => {
     this.setState({
-      requestInProgress: inProgress
+      requestInProgress: inProgress,
     });
   }
 
@@ -173,24 +168,25 @@ class TopRoutes extends React.Component {
   // by useQueryParams HOC to partially update url query params that have
   // changed
   handleUrlUpdate = query => {
-    this.props.setQuery({ ...query });
+    const { setQuery } = this.props;
+    setQuery({ ...query });
   }
 
   handleNamespaceSelect = nsKey => e => {
-    let query = this.state.query;
-    let formVal = _get(e, 'target.value');
-    query[nsKey] = formVal;
-    this.handleUrlUpdate(query);
-    this.setState({ query });
+    const { query } = this.state;
+    const newQuery = query;
+    const formVal = _get(e, 'target.value');
+    newQuery[nsKey] = formVal;
+    this.handleUrlUpdate(newQuery);
+    this.setState({ query: newQuery });
   };
 
   handleResourceSelect = (nameKey, typeKey) => e => {
-    let query = this.state.query;
-    let resource = _get(e, 'target.value');
-    let [resourceType, resourceName] = resource.split("/");
+    const { query } = this.state;
+    const resource = _get(e, 'target.value');
+    const [resourceType, resourceName] = resource.split('/');
 
-    resourceName = resourceName || "";
-    query[nameKey] = resourceName;
+    query[nameKey] = resourceName || '';
     query[typeKey] = resourceType;
 
     this.handleUrlUpdate(query);
@@ -198,6 +194,7 @@ class TopRoutes extends React.Component {
   }
 
   renderRoutesQueryForm = () => {
+    const { query, requestInProgress } = this.state;
     const { classes } = this.props;
 
     return (
@@ -205,18 +202,18 @@ class TopRoutes extends React.Component {
         <Grid container direction="column" spacing={2}>
           <Grid item container spacing={4} alignItems="center" justify="flex-start">
             <Grid item>
-              { this.renderNamespaceDropdown("Namespace", "namespace", "Namespace to query") }
+              { this.renderNamespaceDropdown('Namespace', 'namespace', 'Namespace to query') }
             </Grid>
 
             <Grid item>
-              { this.renderResourceDropdown("Resource", "resource_name", "resource_type", "Resource to query") }
+              { this.renderResourceDropdown('Resource', 'resource_name', 'resource_type', 'Resource to query') }
             </Grid>
 
             <Grid item>
               <Button
                 color="primary"
                 variant="outlined"
-                disabled={this.state.requestInProgress || !this.state.query.namespace || !this.state.query.resource_type}
+                disabled={requestInProgress || !query.namespace || !query.resource_type}
                 onClick={this.handleBtnClick(true)}>
               Start
               </Button>
@@ -226,7 +223,7 @@ class TopRoutes extends React.Component {
               <Button
                 color="default"
                 variant="outlined"
-                disabled={!this.state.requestInProgress}
+                disabled={!requestInProgress}
                 onClick={this.handleBtnClick(false)}>
               Stop
               </Button>
@@ -235,28 +232,29 @@ class TopRoutes extends React.Component {
 
           <Grid item container spacing={4} alignItems="center" justify="flex-start">
             <Grid item>
-              { this.renderNamespaceDropdown("To Namespace", "to_namespace", "Namespece of target resource") }
+              { this.renderNamespaceDropdown('To Namespace', 'to_namespace', 'Namespece of target resource') }
             </Grid>
 
             <Grid item>
-              { this.renderResourceDropdown("To Resource", "to_name", "to_type", "Target resource") }
+              { this.renderResourceDropdown('To Resource', 'to_name', 'to_type', 'Target resource') }
             </Grid>
           </Grid>
         </Grid>
         <Divider light className={classes.root} />
-        <Typography variant="caption">You can also create a new profile <ConfigureProfilesMsg showAsIcon={true} /></Typography>
+        <Typography variant="caption">You can also create a new profile <ConfigureProfilesMsg showAsIcon /></Typography>
       </CardContent>
     );
   }
 
   renderNamespaceDropdown = (title, key, helperText) => {
+    const { query, namespaces } = this.state;
     const { classes } = this.props;
 
     return (
       <FormControl className={classes.formControl}>
         <InputLabel htmlFor={`${key}-dropdown`}>{title}</InputLabel>
         <Select
-          value={this.state.namespaces.includes(this.state.query[key]) ? this.state.query[key] : ""}
+          value={namespaces.includes(query[key]) ? query[key] : ''}
           onChange={this.handleNamespaceSelect(key)}
           inputProps={{
             name: key,
@@ -264,8 +262,9 @@ class TopRoutes extends React.Component {
           }}
           name={key}>
           {
-            this.state.namespaces.sort().map(ns =>
-              <MenuItem key={`namespace-${ns}`} value={ns}>{ns}</MenuItem>)
+            namespaces.sort().map(ns => {
+              return <MenuItem key={`namespace-${ns}`} value={ns}>{ns}</MenuItem>;
+            })
           }
         </Select>
         <FormHelperText>{helperText}</FormHelperText>
@@ -274,25 +273,25 @@ class TopRoutes extends React.Component {
   }
 
   renderResourceDropdown = (title, nameKey, typeKey, helperText) => {
+    const { query, services, resourcesByNs } = this.state;
     const { classes } = this.props;
-    let { query, services, resourcesByNs } = this.state;
 
-    let nsFilterKey = "namespace";
-    if (typeKey === "to_type") {
-      nsFilterKey = "to_namespace";
+    let nsFilterKey = 'namespace';
+    if (typeKey === 'to_type') {
+      nsFilterKey = 'to_namespace';
     }
 
-    let servicesWithPrefix = services
+    const servicesWithPrefix = services
       .filter(s => s[nsFilterKey] === query[nsFilterKey])
       .map(svc => `service/${svc.name}`);
-    let otherResources = resourcesByNs[query[nsFilterKey]] || [];
+    const otherResources = resourcesByNs[query[nsFilterKey]] || [];
 
     let dropdownOptions = servicesWithPrefix
       .concat(otherResources)
       .concat(tapResourceTypes)
       .sort();
 
-    let dropdownVal = toResourceName(query, typeKey, nameKey);
+    const dropdownVal = toResourceName(query, typeKey, nameKey);
 
     if (_isEmpty(dropdownOptions) && !_isEmpty(dropdownVal)) {
       dropdownOptions = [dropdownVal]; // populate from url if autocomplete hasn't loaded
@@ -302,7 +301,7 @@ class TopRoutes extends React.Component {
       <FormControl className={classes.formControl}>
         <InputLabel htmlFor={`${nameKey}-dropdown`}>{title}</InputLabel>
         <Select
-          value={dropdownOptions.includes(dropdownVal) ? dropdownVal : ""}
+          value={dropdownOptions.includes(dropdownVal) ? dropdownVal : ''}
           onChange={this.handleResourceSelect(nameKey, typeKey)}
           disabled={_isEmpty(query.namespace)}
           inputProps={{
@@ -320,17 +319,16 @@ class TopRoutes extends React.Component {
   }
 
 
-
   render() {
-    let query = this.state.query;
-    let emptyQuery = _isEmpty(query.resource_type);
-    let cliQueryToDisplay = _merge({}, query, {toResource: toResourceName(query, "to_type", "to_name"), toNamespace: query.to_namespace});
+    const { query, requestInProgress, error } = this.state;
+    const emptyQuery = _isEmpty(query.resource_type);
+    const cliQueryToDisplay = _merge({}, query, { toResource: toResourceName(query, 'to_type', 'to_name'), toNamespace: query.to_namespace });
 
     return (
       <div>
         {
-          !this.state.error ? null :
-          <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />
+          !error ? null :
+          <ErrorBanner message={error} onHideMessage={() => this.setState({ error: null })} />
         }
         <Card elevation={3}>
           { this.renderRoutesQueryForm() }
@@ -339,13 +337,22 @@ class TopRoutes extends React.Component {
             <QueryToCliCmd
               cmdName="routes"
               query={cliQueryToDisplay}
-              resource={toResourceName(query, "resource_type", "resource_name")} />
+              resource={toResourceName(query, 'resource_type', 'resource_name')} />
             }
-          { !this.state.requestInProgress || !this._isMounted ? null : <TopRoutesModule query={this.state.query} /> }
+          { !requestInProgress || !this._isMounted ? null : <TopRoutesModule query={query} /> }
         </Card>
       </div>
     );
   }
 }
+
+TopRoutes.propTypes = {
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired,
+  }).isRequired,
+  isPageVisible: PropTypes.bool.isRequired,
+  query: topRoutesQueryPropType.isRequired,
+  setQuery: PropTypes.func.isRequired,
+};
 
 export default withPageVisibility(withQueryParams(topRoutesQueryConfig, (withContext(withStyles(styles, { withTheme: true })(TopRoutes)))));

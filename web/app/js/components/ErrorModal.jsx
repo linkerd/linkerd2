@@ -23,11 +23,14 @@ import { friendlyTitle } from './util/Utils.js';
 const maxErrorLength = 500;
 
 class ErrorModal extends React.Component {
-  state = {
-    truncateErrors: true,
-    open: false,
-    scroll: 'paper',
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      truncateErrors: true,
+      open: false,
+      scroll: 'paper',
+    };
+  }
 
   handleClickOpen = () => {
     this.setState({ open: true });
@@ -38,26 +41,27 @@ class ErrorModal extends React.Component {
   };
 
   toggleTruncateErrors = () => {
+    const { truncateErrors } = this.state;
     this.setState({
-      truncateErrors: !this.state.truncateErrors
+      truncateErrors: !truncateErrors,
     });
   }
 
   processErrorData = errorsByPod => {
     let shouldTruncate = false;
 
-    let byPodAndContainer = _map(errorsByPod, (podErrors, pod) => {
-      let byContainer = _reduce(podErrors.errors, (errors, err) => {
+    const byPodAndContainer = _map(errorsByPod, (podErrors, pod) => {
+      const byContainer = _reduce(podErrors.errors, (errors, err) => {
         if (!_isEmpty(err.container)) {
-          let c = err.container;
+          const c = err.container;
           if (_isEmpty(errors[c.container])) {
             errors[c.container] = [];
           }
 
-          let errMsg = c.message;
+          const errMsg = c.message;
           if (errMsg.length > maxErrorLength) {
             shouldTruncate = true;
-            c.truncatedMessage = _take(errMsg, maxErrorLength).join("") + "...";
+            c.truncatedMessage = `${_take(errMsg, maxErrorLength).join('')}...`;
           }
           errors[c.container].push(c);
         }
@@ -66,19 +70,21 @@ class ErrorModal extends React.Component {
 
       return {
         pod,
-        byContainer
+        byContainer,
       };
     });
 
     return {
       byPodAndContainer,
-      shouldTruncate
+      shouldTruncate,
     };
   }
 
   renderContainerErrors = (pod, errorsByContainer) => {
+    const { truncateErrors } = this.state;
+
     if (_isEmpty(errorsByContainer)) {
-      return "No messages to display";
+      return 'No messages to display';
     }
 
     return _map(errorsByContainer, (errors, container) => (
@@ -93,7 +99,7 @@ class ErrorModal extends React.Component {
           </Grid>
           <Grid item>
             <Typography variant="subtitle1" gutterBottom align="right">
-              {_get(errors, [0, "image"])}
+              {_get(errors, [0, 'image'])}
             </Typography>
           </Grid>
         </Grid>
@@ -101,20 +107,19 @@ class ErrorModal extends React.Component {
         <div>
           {
             _map(errors, (er, i) => {
-                if (er.message.length === 0) {
-                  return null;
-                }
-
-                let message = !this.state.truncateErrors ? er.message :
-                  er.truncatedMessage || er.message;
-
-                return (
-                  <React.Fragment  key={`error-msg-long-${i}`}>
-                    <code>{!er.reason ? null : er.reason + ": "} {message}</code><br /><br />
-                  </React.Fragment>
-                );
+              if (_isEmpty(er.message)) {
+                return null;
               }
-            )
+
+              const message = !truncateErrors ? er.message :
+                er.truncatedMessage || er.message;
+
+              return (
+                <React.Fragment key={`error-msg-long-${i}`}>
+                  <code>{!er.reason ? null : `${er.reason}: `} {message}</code><br /><br />
+                </React.Fragment>
+              );
+            })
           }
         </div>
       </div>
@@ -137,7 +142,7 @@ class ErrorModal extends React.Component {
 
     _each(errors.byPodAndContainer, container => {
       _each(container.byContainer, con => {
-        if (con[0].reason !== "PodInitializing") {
+        if (con[0].reason !== 'PodInitializing') {
           showInit = false;
         }
       });
@@ -155,31 +160,33 @@ class ErrorModal extends React.Component {
   }
 
   render() {
-    let errors = this.processErrorData(this.props.errors);
+    const { open, scroll, truncateErrors } = this.state;
+    const { resourceType, resourceName, errors } = this.props;
+    const errorData = this.processErrorData(errors);
 
     return (
       <React.Fragment>
         {this.renderStatusIcon(errors)}
         <Dialog
-          open={this.state.open}
+          open={open}
           onClose={this.handleClose}
-          scroll={this.state.scroll}
+          scroll={scroll}
           aria-labelledby="scroll-dialog-title">
 
-          <DialogTitle id="scroll-dialog-title">Errors in {friendlyTitle(this.props.resourceType).singular} {this.props.resourceName}</DialogTitle>
+          <DialogTitle id="scroll-dialog-title">Errors in {friendlyTitle(resourceType).singular} {resourceName}</DialogTitle>
 
           <DialogContent>
             {
-              !errors.shouldTruncate ? null :
+              !errorData.shouldTruncate ? null :
               <React.Fragment>
                 Some of these error messages are very long. Show full error text?
                 <Switch
-                  checked={!this.state.truncateErrors}
+                  checked={!truncateErrors}
                   onChange={this.toggleTruncateErrors}
                   color="primary" />
               </React.Fragment>
             }
-            {this.renderPodErrors(errors.byPodAndContainer)}
+            {this.renderPodErrors(errorData.byPodAndContainer)}
 
 
           </DialogContent>
@@ -196,11 +203,11 @@ class ErrorModal extends React.Component {
 ErrorModal.propTypes = {
   errors: PropTypes.shape({}),
   resourceName: PropTypes.string.isRequired,
-  resourceType: PropTypes.string.isRequired
+  resourceType: PropTypes.string.isRequired,
 };
 
 ErrorModal.defaultProps = {
-  errors: {}
+  errors: {},
 };
 
 export default ErrorModal;

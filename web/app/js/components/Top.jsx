@@ -11,17 +11,9 @@ import { emptyTapQuery } from './util/TapUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
 
 class Top extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      PrefixedLink: PropTypes.func.isRequired,
-    }).isRequired,
-    isPageVisible: PropTypes.bool.isRequired,
-    pathPrefix: PropTypes.string.isRequired
-  }
-
   constructor(props) {
     super(props);
-    this.api = this.props.api;
+    this.api = props.api;
     this.loadFromServer = this.loadFromServer.bind(this);
     this.updateTapClosingState = this.updateTapClosingState.bind(this);
 
@@ -32,7 +24,7 @@ class Top extends React.Component {
       query: emptyTapQuery(),
       pollingInterval: 10000,
       tapRequestInProgress: false,
-      pendingRequests: false
+      pendingRequests: false,
     };
   }
 
@@ -41,9 +33,10 @@ class Top extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
+    const { isPageVisible } = this.props;
     handlePageVisibility({
       prevVisibilityState: prevProps.isPageVisible,
-      currentVisibilityState: this.props.isPageVisible,
+      currentVisibilityState: isPageVisible,
       onVisible: () => this.startServerPolling(),
       onHidden: () => this.stopServerPolling(),
     });
@@ -53,12 +46,12 @@ class Top extends React.Component {
     this.stopServerPolling();
   }
 
-  getResourcesByNs(rsp) {
-    let statTables = _get(rsp, [0, "ok", "statTables"]);
-    let authoritiesByNs = {};
-    let resourcesByNs = _reduce(statTables, (mem, table) => {
+  getResourcesByNs = rsp => {
+    const statTables = _get(rsp, [0, 'ok', 'statTables']);
+    const authoritiesByNs = {};
+    const resourcesByNs = _reduce(statTables, (mem, table) => {
       _each(table.podGroup.rows, row => {
-        if (row.meshedPodCount === "0") {
+        if (row.meshedPodCount === '0') {
           return;
         }
 
@@ -68,9 +61,9 @@ class Top extends React.Component {
         }
 
         switch (row.resource.type.toLowerCase()) {
-          case "service":
+          case 'service':
             break;
-          case "authority":
+          case 'authority':
             authoritiesByNs[row.resource.namespace].push(row.resource.name);
             break;
           default:
@@ -81,13 +74,14 @@ class Top extends React.Component {
     }, {});
     return {
       authoritiesByNs,
-      resourcesByNs
+      resourcesByNs,
     };
   }
 
   startServerPolling() {
+    const { pollingInterval } = this.state;
     this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.timerId = window.setInterval(this.loadFromServer, pollingInterval);
   }
 
   stopServerPolling() {
@@ -97,23 +91,25 @@ class Top extends React.Component {
   }
 
   loadFromServer() {
-    if (this.state.pendingRequests) {
+    const { pendingRequests } = this.state;
+
+    if (pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
     }
     this.setState({
-      pendingRequests: true
+      pendingRequests: true,
     });
 
-    let url = this.api.urlsForResourceNoStats("all");
+    const url = this.api.urlsForResourceNoStats('all');
     this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
       .then(rsp => {
-        let { resourcesByNs, authoritiesByNs } = this.getResourcesByNs(rsp);
+        const { resourcesByNs, authoritiesByNs } = this.getResourcesByNs(rsp);
 
         this.setState({
           resourcesByNs,
           authoritiesByNs,
-          pendingRequests: false
+          pendingRequests: false,
         });
       })
       .catch(this.handleApiError);
@@ -126,69 +122,80 @@ class Top extends React.Component {
 
     this.setState({
       pendingRequests: false,
-      error: e
+      error: e,
     });
   }
 
   updateQuery = query => {
     this.setState({
-      query
+      query,
     });
   }
 
   handleTapStart = () => {
     this.setState({
-      tapRequestInProgress: true
+      tapRequestInProgress: true,
     });
   }
 
   handleTapStop = () => {
     this.setState({
       tapRequestInProgress: false,
-      tapIsClosing: true
+      tapIsClosing: true,
     });
   }
 
   handleTapClear = () => {
     this.setState({
       error: null,
-      query: emptyTapQuery()
+      query: emptyTapQuery(),
     });
   }
 
   updateTapClosingState() {
     this.setState({
       tapRequestInProgress: false,
-      tapIsClosing: false
+      tapIsClosing: false,
     });
   }
 
   render() {
+    const { query, resourcesByNs, authoritiesByNs, tapRequestInProgress, tapIsClosing, error } = this.state;
+    const { pathPrefix } = this.props;
+
     return (
       <div>
-        {!this.state.error ? null :
-        <ErrorBanner message={this.state.error} onHideMessage={() => this.setState({ error: null })} />}
+        {!error ? null :
+        <ErrorBanner message={error} onHideMessage={() => this.setState({ error: null })} />}
         <TapQueryForm
           enableAdvancedForm={false}
           cmdName="top"
           handleTapStart={this.handleTapStart}
           handleTapStop={this.handleTapStop}
           handleTapClear={this.handleTapClear}
-          resourcesByNs={this.state.resourcesByNs}
-          authoritiesByNs={this.state.authoritiesByNs}
-          tapRequestInProgress={this.state.tapRequestInProgress}
-          tapIsClosing={this.state.tapIsClosing}
+          resourcesByNs={resourcesByNs}
+          authoritiesByNs={authoritiesByNs}
+          tapRequestInProgress={tapRequestInProgress}
+          tapIsClosing={tapIsClosing}
           updateQuery={this.updateQuery}
-          currentQuery={this.state.query} />
+          currentQuery={query} />
 
         <TopModule
-          pathPrefix={this.props.pathPrefix}
-          query={this.state.query}
-          startTap={this.state.tapRequestInProgress}
+          pathPrefix={pathPrefix}
+          query={query}
+          startTap={tapRequestInProgress}
           updateTapClosingState={this.updateTapClosingState} />
       </div>
     );
   }
 }
+
+Top.propTypes = {
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired,
+  }).isRequired,
+  isPageVisible: PropTypes.bool.isRequired,
+  pathPrefix: PropTypes.string.isRequired,
+};
 
 export default withPageVisibility(withContext(Top));

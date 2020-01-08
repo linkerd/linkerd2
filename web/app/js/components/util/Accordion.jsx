@@ -22,17 +22,22 @@ const styles = theme => ({
 });
 
 class Accordion extends React.Component {
-  state = {
-    expanded: this.props.defaultOpenPanel || null,
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      expanded: props.defaultOpenPanel || null,
+    };
+  }
 
   handlePanelSelect = panel => (_event, expanded) => {
+    const { onChange } = this.props;
+
     this.setState({
       expanded: expanded ? panel : false,
     });
 
     if (expanded) {
-      this.props.onChange(panel);
+      onChange(panel);
     }
   };
 
@@ -53,11 +58,10 @@ class Accordion extends React.Component {
                 {panel.header}
               </ExpansionPanelSummary>
               <ExpansionPanelDetails>
-                {panel.body || "No data present."}
+                {panel.body || 'No data present.'}
               </ExpansionPanelDetails>
             </ExpansionPanel>
-            )
-          )
+          ))
         }
       </div>
     );
@@ -65,19 +69,18 @@ class Accordion extends React.Component {
 }
 
 Accordion.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   defaultOpenPanel: PropTypes.string,
   onChange: PropTypes.func.isRequired,
   panels: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string,
     header: PropTypes.node,
-    body: PropTypes.node
-  }))
+    body: PropTypes.node,
+  })),
 };
 
 Accordion.defaultProps = {
   defaultOpenPanel: null,
-  panels: []
+  panels: [],
 };
 
 export default withStyles(styles)(Accordion);

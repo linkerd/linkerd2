@@ -29,39 +29,28 @@ import { withContext } from './util/AppContext.jsx';
 // if there has been no traffic for some time, show a warning
 const showNoTrafficMsgDelayMs = 6000;
 // resource types supported when querying API for edge data
-const edgeDataAvailable = ["cronjob", "daemonset", "deployment", "job", "pod", "replicaset", "replicationcontroller", "statefulset"];
+const edgeDataAvailable = ['cronjob', 'daemonset', 'deployment', 'job', 'pod', 'replicaset', 'replicationcontroller', 'statefulset'];
 
 const getResourceFromUrl = (match, pathPrefix) => {
-  let resource = {
-    namespace: match.params.namespace
+  const resource = {
+    namespace: match.params.namespace,
   };
-  let regExp = RegExp(`${pathPrefix || ""}/namespaces/${match.params.namespace}/([^/]+)/([^/]+)`);
-  let urlParts = match.url.match(regExp);
+  const regExp = RegExp(`${pathPrefix || ''}/namespaces/${match.params.namespace}/([^/]+)/([^/]+)`);
+  const urlParts = match.url.match(regExp);
 
   resource.type = singularResource(urlParts[1]);
   resource.name = urlParts[2];
 
   if (match.params[resource.type] !== resource.name) {
-    console.error("Failed to extract resource from URL");
+    console.error('Failed to extract resource from URL');
   }
   return resource;
 };
 
 export class ResourceDetailBase extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      PrefixedLink: PropTypes.func.isRequired,
-    }).isRequired,
-    isPageVisible: PropTypes.bool.isRequired,
-    match: PropTypes.shape({
-      url: PropTypes.string.isRequired
-    }).isRequired,
-    pathPrefix: PropTypes.string.isRequired
-  }
-
   constructor(props) {
     super(props);
-    this.api = this.props.api;
+    this.api = props.api;
     this.unmeshedSources = {};
     this.handleApiError = this.handleApiError.bind(this);
     this.loadFromServer = this.loadFromServer.bind(this);
@@ -69,12 +58,11 @@ export class ResourceDetailBase extends React.Component {
   }
 
   getInitialState(match, pathPrefix) {
-    let resource = getResourceFromUrl(match, pathPrefix);
+    const resource = getResourceFromUrl(match, pathPrefix);
     return {
       namespace: resource.namespace,
       resourceName: resource.name,
       resourceType: resource.type,
-      resource,
       lastMetricReceivedTime: Date.now(),
       isTcpOnly: false, // whether this resource only has TCP traffic
       pollingInterval: 2000,
@@ -99,16 +87,18 @@ export class ResourceDetailBase extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (!_isEqual(prevProps.match.url, this.props.match.url)) {
+    const { match, pathPrefix, isPageVisible } = this.props;
+
+    if (!_isEqual(prevProps.match.url, match.url)) {
       // React won't unmount this component when switching resource pages so we need to clear state
       this.api.cancelCurrentRequests();
       this.unmeshedSources = {};
-      this.setState(this.getInitialState(this.props.match, this.props.pathPrefix));
+      this.setState(this.getInitialState(match, pathPrefix));
     }
 
     handlePageVisibility({
       prevVisibilityState: prevProps.isPageVisible,
-      currentVisibilityState: this.props.isPageVisible,
+      currentVisibilityState: isPageVisible,
       onVisible: () => this.startServerPolling(),
       onHidden: () => this.stopServerPolling(),
     });
@@ -118,13 +108,14 @@ export class ResourceDetailBase extends React.Component {
     this.stopServerPolling();
   }
 
+  // if we're displaying a pod detail page, only display pod metrics
+  // if we're displaying another type of resource page, display metrics for
+  // rcs, deploys, replicasets, etc but not pods or authorities
   getDisplayMetrics(metricsByResource) {
-    // if we're displaying a pod detail page, only display pod metrics
-    // if we're displaying another type of resource page, display metrics for
-    // rcs, deploys, replicasets, etc but not pods or authorities
-    let shouldExclude = this.state.resourceType === "pod" ?
-      r => r !== "pod" :
-      r => r === "pod" || r === "authority" || r === "service";
+    const { resourceType } = this.state;
+    const shouldExclude = resourceType === 'pod' ?
+      r => r !== 'pod' :
+      r => r === 'pod' || r === 'authority' || r === 'service';
     return _reduce(metricsByResource, (mem, resourceMetrics, resource) => {
       if (shouldExclude(resource)) {
         return mem;
@@ -134,8 +125,9 @@ export class ResourceDetailBase extends React.Component {
   }
 
   startServerPolling() {
+    const { pollingInterval } = this.state;
     this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.timerId = window.setInterval(this.loadFromServer, pollingInterval);
   }
 
   stopServerPolling() {
@@ -145,45 +137,45 @@ export class ResourceDetailBase extends React.Component {
   }
 
   loadFromServer() {
-    if (this.state.pendingRequests) {
+    const { pendingRequests, queryForDefinition, resourceType, namespace, resourceName, resourceDefinition, lastMetricReceivedTime } = this.state;
+
+    if (pendingRequests) {
       return; // don't make more requests if the ones we sent haven't completed
     }
     this.setState({ pendingRequests: true });
-
-    let { resource } = this.state;
 
     let apiRequests =
       [
       // inbound stats for this resource
         this.api.fetchMetrics(
-          `${this.api.urlsForResource(resource.type, resource.namespace, true)}&resource_name=${resource.name}`
+          `${this.api.urlsForResource(resourceType, namespace, true)}&resource_name=${resourceName}`,
         ),
         // upstream resources of this resource (meshed traffic only)
         this.api.fetchMetrics(
-          `${this.api.urlsForResource("all")}&to_name=${resource.name}&to_type=${resource.type}&to_namespace=${resource.namespace}`
+          `${this.api.urlsForResource('all')}&to_name=${resourceName}&to_type=${resourceType}&to_namespace=${namespace}`,
         ),
         // downstream resources of this resource (meshed traffic only)
         this.api.fetchMetrics(
-          `${this.api.urlsForResource("all")}&from_name=${resource.name}&from_type=${resource.type}&from_namespace=${resource.namespace}`
-        )
+          `${this.api.urlsForResource('all')}&from_name=${resourceName}&from_type=${resourceType}&from_namespace=${namespace}`,
+        ),
       ];
 
     // Fetch pods in a resource and their metrics (except when resource type is pod)
-    if (resource.type !== "pod") {
+    if (resourceType !== 'pod') {
       // list of all pods in this namespace (hack since we can't currently query for all pods in a resource)
-      apiRequests.push(this.api.fetchPods(resource.namespace));
+      apiRequests.push(this.api.fetchPods(namespace));
       // metrics for all pods in this namespace (hack, continued)
-      apiRequests.push(this.api.fetchMetrics(`${this.api.urlsForResource("pod", resource.namespace, true)}`));
+      apiRequests.push(this.api.fetchMetrics(`${this.api.urlsForResource('pod', namespace, true)}`));
     }
 
-    if (this.state.queryForDefinition) {
+    if (queryForDefinition) {
       // definition for this resource
-      apiRequests.push(this.api.fetchResourceDefinition(resource.namespace, resource.type, resource.name));
+      apiRequests.push(this.api.fetchResourceDefinition(namespace, resourceType, resourceName));
     }
 
-    if (_indexOf(edgeDataAvailable, resource.type) > 0) {
+    if (_indexOf(edgeDataAvailable, resourceType) > 0) {
       apiRequests = apiRequests.concat([
-        this.api.fetchEdges(resource.namespace, resource.type)
+        this.api.fetchEdges(namespace, resourceType),
       ]);
     }
 
@@ -192,38 +184,43 @@ export class ResourceDetailBase extends React.Component {
     Promise.all(this.api.getCurrentPromises())
       .then(apiResponses => {
         let podMetrics;
-        let resourceRsp, upstreamRsp, downstreamRsp, podListRsp, podMetricsRsp, rsp;
+        let resourceRsp;
+        let upstreamRsp;
+        let downstreamRsp;
+        let podListRsp;
+        let podMetricsRsp;
+        let rsp;
 
-        if (resource.type === "pod") {
+        if (resourceType === 'pod') {
           [resourceRsp, upstreamRsp, downstreamRsp, ...rsp] = [...apiResponses];
         } else {
           [resourceRsp, upstreamRsp, downstreamRsp, podListRsp, podMetricsRsp, ...rsp] = [...apiResponses];
-          podMetrics = processSingleResourceRollup(podMetricsRsp, resource.type);
+          podMetrics = processSingleResourceRollup(podMetricsRsp, resourceType);
         }
 
-        let resourceMetrics = processSingleResourceRollup(resourceRsp, resource.type);
-        let upstreamMetrics = processMultiResourceRollup(upstreamRsp, resource.type);
-        let downstreamMetrics = processMultiResourceRollup(downstreamRsp, resource.type);
-        let resourceDefinition = this.state.queryForDefinition ? rsp[0] : this.state.resourceDefinition;
+        const resourceMetrics = processSingleResourceRollup(resourceRsp, resourceType);
+        const upstreamMetrics = processMultiResourceRollup(upstreamRsp, resourceType);
+        const downstreamMetrics = processMultiResourceRollup(downstreamRsp, resourceType);
+        const newResourceDefinition = queryForDefinition ? rsp[0] : resourceDefinition;
 
         let edges = [];
-        if (_indexOf(edgeDataAvailable, resource.type) > 0) {
+        if (_indexOf(edgeDataAvailable, resourceType) > 0) {
           const edgesRsp = rsp[rsp.length - 1];
-          edges = processEdges(edgesRsp, this.state.resource.name);
+          edges = processEdges(edgesRsp, resourceName);
         }
 
         // INEFFICIENT: get metrics for all the pods belonging to this resource.
         // Do this by querying for metrics for all pods in this namespace and then filtering
         // out those pods whose owner is not this resource
         // TODO: fix (#1467)
-        let resourceName = resource.namespace + "/" + resource.name;
+        const resourceKey = `${namespace}/${resourceName}`;
         let podMetricsForResource;
 
-        if (resource.type === "pod") {
+        if (resourceType === 'pod') {
           podMetricsForResource = resourceMetrics;
         } else {
-          let podBelongsToResource = _reduce(podListRsp.pods, (mem, pod) => {
-            if (_get(pod, resourceTypeToCamelCase(resource.type)) === resourceName) {
+          const podBelongsToResource = _reduce(podListRsp.pods, (mem, pod) => {
+            if (_get(pod, resourceTypeToCamelCase(resourceType)) === resourceKey) {
               // pod.name in podListRsp is of the form `namespace/pod-name`
               mem[pod.name] = true;
             }
@@ -232,33 +229,33 @@ export class ResourceDetailBase extends React.Component {
           }, {});
 
           // get all pods whose owner is this resource
-          podMetricsForResource = _filter(podMetrics, pod => podBelongsToResource[pod.namespace + "/" + pod.name]);
+          podMetricsForResource = _filter(podMetrics, pod => podBelongsToResource[`${pod.namespace}/${pod.name}`]);
         }
 
         let resourceIsMeshed = true;
-        if (!_isEmpty(this.state.resourceMetrics)) {
-          resourceIsMeshed = _get(this.state.resourceMetrics, '[0].pods.meshedPods') > 0;
+        if (!_isEmpty(resourceMetrics)) {
+          resourceIsMeshed = _get(resourceMetrics, '[0].pods.meshedPods') > 0;
         }
 
         let hasHttp = false;
         let hasTcp = false;
-        let metric = resourceMetrics[0];
+        const metric = resourceMetrics[0];
         if (!_isEmpty(metric)) {
           hasHttp = !_isNil(metric.requestRate) && !_isEmpty(metric.latency);
 
           if (!_isEmpty(metric.tcp)) {
-            let { tcp } = metric;
+            const { tcp } = metric;
             hasTcp = tcp.openConnections > 0 || tcp.readBytes > 0 || tcp.writeBytes > 0;
           }
         }
 
-        let isTcpOnly = !hasHttp && hasTcp;
-        let isTrafficSplit = resource.type === "trafficsplit";
+        const isTcpOnly = !hasHttp && hasTcp;
+        const isTrafficSplit = resourceType === 'trafficsplit';
 
         // figure out when the last traffic this resource received was so we can show a no traffic message
-        let lastMetricReceivedTime = this.state.lastMetricReceivedTime;
+        let newLastMetricReceivedTime = lastMetricReceivedTime;
         if (hasHttp || hasTcp) {
-          lastMetricReceivedTime = Date.now();
+          newLastMetricReceivedTime = Date.now();
         }
 
         this.setState({
@@ -269,14 +266,14 @@ export class ResourceDetailBase extends React.Component {
           upstreamMetrics,
           downstreamMetrics,
           edges,
-          lastMetricReceivedTime,
+          lastMetricReceivedTime: newLastMetricReceivedTime,
           isTcpOnly,
           isTrafficSplit,
           loaded: true,
           pendingRequests: false,
           error: null,
           unmeshedSources: this.unmeshedSources, // in place of debouncing, just update this when we update the rest of the state
-          resourceDefinition, // eslint-disable-line react/no-unused-state
+          resourceDefinition: newResourceDefinition,
         });
       })
       .catch(this.handleApiError);
@@ -290,7 +287,7 @@ export class ResourceDetailBase extends React.Component {
     this.setState({
       loaded: true,
       pendingRequests: false,
-      error: e
+      error: e,
     });
   }
 
@@ -299,19 +296,12 @@ export class ResourceDetailBase extends React.Component {
   }
 
   banner = () => {
-    if (!this.state.error) {
-      return;
-    }
-
-    return <ErrorBanner message={this.state.error} />;
+    const { error } = this.state;
+    return error ? <ErrorBanner message={error} /> : null;
   }
 
   content = () => {
-    if (!this.state.loaded && !this.state.error) {
-      return <Spinner />;
-    }
-
-    let {
+    const {
       resourceName,
       resourceType,
       resourceRsp,
@@ -323,29 +313,39 @@ export class ResourceDetailBase extends React.Component {
       lastMetricReceivedTime,
       isTcpOnly,
       isTrafficSplit,
+      loaded,
+      error,
+      upstreamMetrics,
+      downstreamMetrics,
+      podMetrics,
     } = this.state;
+    const { pathPrefix } = this.props;
 
-    let query = {
+    if (!loaded && !error) {
+      return <Spinner />;
+    }
+
+    const query = {
       resourceName,
       resourceType,
-      namespace
+      namespace,
     };
 
-    let unmeshed = _filter(unmeshedSources, d => d.type !== "pod")
+    const unmeshed = _filter(unmeshedSources, d => d.type !== 'pod')
       .map(d => _merge({}, emptyMetric, d, {
         unmeshed: true,
         pods: {
           totalPods: d.pods.length,
-          meshedPods: 0
-        }
+          meshedPods: 0,
+        },
       }));
 
-    let upstreamMetrics = this.getDisplayMetrics(this.state.upstreamMetrics);
-    let downstreamMetrics = this.getDisplayMetrics(this.state.downstreamMetrics);
+    const upstreamDisplayMetrics = this.getDisplayMetrics(upstreamMetrics);
+    const downstreamDisplayMetrics = this.getDisplayMetrics(downstreamMetrics);
 
-    let upstreams = upstreamMetrics.concat(unmeshed);
+    const upstreams = upstreamDisplayMetrics.concat(unmeshed);
 
-    let showNoTrafficMsg = resourceIsMeshed && (Date.now() - lastMetricReceivedTime > showNoTrafficMsgDelayMs);
+    const showNoTrafficMsg = resourceIsMeshed && (Date.now() - lastMetricReceivedTime > showNoTrafficMsgDelayMs);
 
     if (isTrafficSplit) {
       return (
@@ -384,13 +384,13 @@ export class ResourceDetailBase extends React.Component {
 
         <Octopus
           resource={resourceMetrics[0]}
-          neighbors={{ upstream: upstreamMetrics, downstream: downstreamMetrics }}
+          neighbors={{ upstream: upstreamDisplayMetrics, downstream: downstreamDisplayMetrics }}
           unmeshedSources={Object.values(unmeshedSources)}
           api={this.api} />
 
         {isTcpOnly ? null : <TopRoutesTabs
           query={query}
-          pathPrefix={this.props.pathPrefix}
+          pathPrefix={pathPrefix}
           updateUnmeshedSources={this.updateUnmeshedSources}
           disableTop={!resourceIsMeshed} />
         }
@@ -399,34 +399,34 @@ export class ResourceDetailBase extends React.Component {
         <MetricsTable
           resource="multi_resource"
           title="Inbound"
-          metrics={upstreamMetrics} />
+          metrics={upstreamDisplayMetrics} />
         }
 
-        {_isEmpty(this.state.downstreamMetrics) ? null :
+        {_isEmpty(downstreamDisplayMetrics) ? null :
         <MetricsTable
           resource="multi_resource"
           title="Outbound"
-          metrics={downstreamMetrics} />
+          metrics={downstreamDisplayMetrics} />
         }
 
         {
-          this.state.resource.type === "pod" || isTcpOnly ? null :
+          resourceType === 'pod' || isTcpOnly ? null :
           <MetricsTable
             resource="pod"
             title="Pods"
-            metrics={this.state.podMetrics} />
+            metrics={podMetrics} />
         }
 
         <MetricsTable
           resource="pod"
           title="TCP"
-          isTcpTable={true}
-          metrics={this.state.podMetrics} />
+          isTcpTable
+          metrics={podMetrics} />
 
         <EdgesTable
           api={this.api}
-          namespace={this.state.resource.namespace}
-          type={this.state.resource.type}
+          namespace={namespace}
+          type={resourceType}
           edges={edges} />
 
       </div>
@@ -444,5 +444,16 @@ export class ResourceDetailBase extends React.Component {
     );
   }
 }
+
+ResourceDetailBase.propTypes = {
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired,
+  }).isRequired,
+  isPageVisible: PropTypes.bool.isRequired,
+  match: PropTypes.shape({
+    url: PropTypes.string.isRequired,
+  }).isRequired,
+  pathPrefix: PropTypes.string.isRequired,
+};
 
 export default withPageVisibility(withContext(ResourceDetailBase));

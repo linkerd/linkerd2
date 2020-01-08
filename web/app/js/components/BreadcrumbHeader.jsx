@@ -1,6 +1,6 @@
-import { friendlyTitle, isResource, singularResource } from "./util/Utils.js";
+import { friendlyTitle, isResource, singularResource } from './util/Utils.js';
 
-import PropTypes from "prop-types";
+import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import _chunk from 'lodash/chunk';
@@ -8,32 +8,24 @@ import _takeWhile from 'lodash/takeWhile';
 import { withContext } from './util/AppContext.jsx';
 
 const routeToCrumbTitle = {
-  "controlplane": "Control Plane",
-  "overview": "Overview",
-  "tap": "Tap",
-  "top": "Top",
-  "routes": "Top Routes",
-  "community": "Community"
+  controlplane: 'Control Plane',
+  overview: 'Overview',
+  tap: 'Tap',
+  top: 'Top',
+  routes: 'Top Routes',
+  community: 'Community',
 };
 
 class BreadcrumbHeader extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      PrefixedLink: PropTypes.func.isRequired,
-    }).isRequired,
-    location: ReactRouterPropTypes.location.isRequired,
-    pathPrefix: PropTypes.string.isRequired
-  }
-
   constructor(props) {
     super(props);
-    this.api = this.props.api;
+    this.api = props.api;
   }
 
-  processResourceDetailURL(segments) {
+  processResourceDetailURL = segments => {
     if (segments.length === 4) {
-      let splitSegments = _chunk(segments, 2);
-      let resourceNameSegment = splitSegments[1];
+      const splitSegments = _chunk(segments, 2);
+      const resourceNameSegment = splitSegments[1];
       resourceNameSegment[0] = singularResource(resourceNameSegment[0]);
       return splitSegments[0].concat(resourceNameSegment.join('/'));
     } else {
@@ -41,15 +33,15 @@ class BreadcrumbHeader extends React.Component {
     }
   }
 
-  convertURLToBreadcrumbs(location) {
+  convertURLToBreadcrumbs = location => {
     if (location.length === 0) {
       return [];
     } else {
-      let segments = location.split('/').slice(1);
-      let finalSegments = this.processResourceDetailURL(segments);
+      const segments = location.split('/').slice(1);
+      const finalSegments = this.processResourceDetailURL(segments);
 
       return finalSegments.map(segment => {
-        let partialUrl = _takeWhile(segments, s => {
+        const partialUrl = _takeWhile(segments, s => {
           return s !== segment;
         });
 
@@ -58,14 +50,14 @@ class BreadcrumbHeader extends React.Component {
         }
 
         return {
-          link: `/${partialUrl.join("/")}`,
-          segment: segment
+          link: `/${partialUrl.join('/')}`,
+          segment,
         };
       });
     }
   }
 
-  segmentToFriendlyTitle(segment, isResourceType) {
+  segmentToFriendlyTitle = (segment, isResourceType) => {
     if (isResourceType) {
       return routeToCrumbTitle[segment] || friendlyTitle(segment).plural;
     } else {
@@ -74,7 +66,7 @@ class BreadcrumbHeader extends React.Component {
   }
 
   renderBreadcrumbSegment(segment, numCrumbs, index) {
-    let isMeshResource = isResource(segment);
+    const isMeshResource = isResource(segment);
 
     if (isMeshResource) {
       if (numCrumbs === 1 || index !== 0) {
@@ -91,18 +83,27 @@ class BreadcrumbHeader extends React.Component {
   }
 
   render() {
-    let prefix = this.props.pathPrefix;
-    let breadcrumbs = this.convertURLToBreadcrumbs(this.props.location.pathname.replace(prefix, ""));
+    const { pathPrefix, location } = this.props;
+    const { pathname } = location;
+    const breadcrumbs = this.convertURLToBreadcrumbs(pathname.replace(pathPrefix, ''));
 
     return breadcrumbs.map((pathSegment, index) => {
       return (
         <span key={pathSegment.segment}>
           {this.renderBreadcrumbSegment(pathSegment.segment, breadcrumbs.length, index)}
-          { index < breadcrumbs.length - 1 ? " > " : null }
+          { index < breadcrumbs.length - 1 ? ' > ' : null }
         </span>
       );
     });
   }
 }
+
+BreadcrumbHeader.propTypes = {
+  api: PropTypes.shape({
+    PrefixedLink: PropTypes.func.isRequired,
+  }).isRequired,
+  location: ReactRouterPropTypes.location.isRequired,
+  pathPrefix: PropTypes.string.isRequired,
+};
 
 export default withContext(BreadcrumbHeader);

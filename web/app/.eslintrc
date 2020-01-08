@@ -15,8 +15,9 @@
     "es6": true,
     "mocha": true
   },
-  "extends" : [
+  "extends": [
     "airbnb",
+    "airbnb/hooks",
     "eslint:recommended",
     "plugin:promise/recommended",
     "plugin:react/recommended"
@@ -24,28 +25,14 @@
   "rules": {
     "arrow-parens": [2, "as-needed"],
     "curly": [2, "all"],
-    "brace-style": [2, "1tbs", { "allowSingleLine": true }],
     "eqeqeq": [2, "smart"],
-    "import/extensions": [2, "ignorePackages"],
-    "import/prefer-default-export": 0,
-    "import/first": [2, ""],
+    "import/order": [2, { "groups": [["builtin", "external", "parent", "sibling", "index"]] }],
     "indent": 2,
-    "jsx-a11y/anchor-is-valid": 0,
-    "jsx-a11y/click-events-have-key-events": 0,
-    "jsx-quotes": 2,
-    "keyword-spacing": 2,
     "no-console": [1, { "allow": ["warn", "error"] }], // minor offense
-    "no-restricted-imports": [2, "lodash"],
-    "no-trailing-spaces": 2,
-    "no-var": 2,
-    "promise/always-return": 0,
-    "promise/avoid-new": 0,
-    "react/display-name": 0,
-    "react/jsx-boolean-value": 0,
+    "no-restricted-imports": [2, "lodash", "@material-ui/core", "@material-ui/icons"],
     "react/jsx-closing-bracket-location": [2, { "nonEmpty": "after-props", "selfClosing": "after-props" }],
     "react/jsx-curly-spacing": [2, "never", {"allowMultiline": false}],
-    "react/jsx-filename-extension": 0,
-    "react/jsx-first-prop-new-line": [2, "multiline"],
+    "react/jsx-no-duplicate-props": [2, {"ignoreCase": false}],
     "react/jsx-wrap-multilines": [
       2,
       {
@@ -55,13 +42,52 @@
         "arrow": "parens-new-line"
       }
     ],
-    "react/no-did-update-set-state": [0],
-    "react/prefer-stateless-function": 0, // TODO: convert to stateless functions and enable
-    "react/sort-prop-types": 2,
+    "react/prop-types": [2, {
+      "ignore": ["classes"],
+      "customValidators": [],
+      "skipUndeclared": false
+    }],
     "semi": [2, "always"],
     "sort-imports": [2],
     "space-before-blocks": [2, "always"],
     "space-before-function-paren": [2, "never"],
-    "strict": [2, "safe"]
+    "strict": [2, "safe"],
+
+    // The rest of this file disables airbnb defaults that don't work for our project
+
+    // These rules are stylistic in nature, and don't work with the existing project style
+    "arrow-body-style": 0,
+    "import/extensions": 0,
+    "import/prefer-default-export": 0,
+    "max-len": 0,
+    "no-confusing-arrow": 0,
+    "no-else-return": 0,
+    "no-nested-ternary": 0,
+    "object-curly-newline": 0,
+    "operator-linebreak": 0,
+    "prefer-destructuring": 0,
+    "react/display-name": 0,
+    "react/jsx-curly-newline": 0,
+    "react/jsx-filename-extension": 0,
+    "react/jsx-fragments": 0,
+    "react/jsx-one-expression-per-line": 0,
+
+    // These rules are disabled to support specific features/conventions that we use
+    "no-bitwise": 0,
+    "no-tabs": 0,
+    "no-throw-literal": 0,
+    "no-underscore-dangle": 0,
+    "prefer-promise-reject-errors": 0,
+    "promise/always-return": 0,
+    "react/jsx-props-no-spreading": 0,
+
+    // These rules represent best practices that we're not adhering to, and should be enabled
+    "jsx-a11y/click-events-have-key-events": 0,
+    "no-param-reassign": 0,
+    "react/no-did-update-set-state": 0,
+
+    // These rules require reordering and should be enabled in a follow-up branch
+    "no-use-before-define": 0,
+    "react/sort-comp": 0
   }
 }

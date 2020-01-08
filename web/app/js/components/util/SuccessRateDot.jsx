@@ -11,27 +11,20 @@ const styles = theme => _merge({}, statusClassNames(theme), {
     width: theme.spacing(1),
     height: theme.spacing(1),
     minWidth: theme.spacing(1),
-    borderRadius: "50%"
-  }
+    borderRadius: '50%',
+  },
 });
 
-class SuccessRateDot extends React.Component {
-  render() {
-    const { sr, classes } = this.props;
-
-    return (
-      <div className={classNames(classes.successRateDot, classes[getSuccessRateClassification(sr)])} />
-    );
-  }
-}
+const SuccessRateDot = ({ sr, classes }) => (
+  <div className={classNames(classes.successRateDot, classes[getSuccessRateClassification(sr)])} />
+);
 
 SuccessRateDot.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   sr: PropTypes.number,
 };
 
 SuccessRateDot.defaultProps = {
-  sr: null
+  sr: null,
 };
 
 export default withStyles(styles, { withTheme: true })(SuccessRateDot);

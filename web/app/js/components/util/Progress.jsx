@@ -18,10 +18,10 @@ const colorLookup = {
   default: {
     colorPrimary: dashboardTheme.status.light.default,
     barColorPrimary: dashboardTheme.status.dark.default,
-  }
+  },
 };
 
-export const StyledProgress = (classification = "default") => withStyles({
+export const StyledProgress = (classification = 'default') => withStyles({
   root: {
     flexGrow: 1,
   },

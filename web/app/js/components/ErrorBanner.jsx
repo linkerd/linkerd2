@@ -1,7 +1,6 @@
 import CloseIcon from '@material-ui/icons/Close';
 import IconButton from '@material-ui/core/IconButton';
 import Linkify from 'react-linkify';
-import PropTypes from 'prop-types';
 import React from 'react';
 import Slide from '@material-ui/core/Slide';
 import Snackbar from '@material-ui/core/Snackbar';
@@ -11,7 +10,7 @@ import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import classNames from 'classnames';
 import { withStyles } from '@material-ui/core/styles';
 
-const defaultMessage = "An error has occurred.";
+const defaultMessage = 'An error has occurred.';
 
 const styles = theme => ({
   close: {
@@ -35,41 +34,45 @@ const styles = theme => ({
 });
 
 class ErrorSnackbar extends React.Component {
-  state = {
-    open: true,
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      open: true,
+    };
+  }
 
   handleClose = () => {
     this.setState({ open: false });
   };
 
   render() {
-    const { classes } = this.props;
-    const { statusText, error, url, status } = this.props.message;
+    const { open } = this.state;
+    const { message, classes } = this.props;
+    const { statusText, error, url, status } = message;
 
     return (
       <Snackbar
         anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'left',
-          }}
-        open={this.state.open}
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        open={open}
         autoHideDuration={6000}
         onClose={this.handleClose}
         TransitionComponent={props => <Slide direction="up" {...props} />}
         ContentProps={{
-            'aria-describedby': 'message-id',
-            variantMapping: { // https://github.com/mui-org/material-ui/issues/13144
-              body1: "div",
-              body2: "div"
-            },
-            className: classNames(classes.error, classes.margin)
-          }}
+          'aria-describedby': 'message-id',
+          variantMapping: { // https://github.com/mui-org/material-ui/issues/13144
+            body1: 'div',
+            body2: 'div',
+          },
+          className: classNames(classes.error, classes.margin),
+        }}
         message={(
-          <div id="message-id" className="errorMessage" >
+          <div id="message-id" className="errorMessage">
             <div className={classes.message}>
               <WarningIcon className={classNames(classes.icon, classes.iconVariant)} />
-              { !status ? null : status + " " }{ _isEmpty(statusText) ? defaultMessage : statusText }
+              { !status ? null : `${status} ` }{ _isEmpty(statusText) ? defaultMessage : statusText }
             </div>
             <Linkify>{ !error ? null : <div>{error}</div> }</Linkify>
             { !url ? null : <div>{url}</div> }
@@ -84,13 +87,12 @@ class ErrorSnackbar extends React.Component {
             onClick={this.handleClose}>
             <CloseIcon />
           </IconButton>,
-          ]} />
+        ]} />
     );
   }
 }
 
 ErrorSnackbar.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   message: apiErrorPropType,
 };
 
@@ -98,9 +100,9 @@ ErrorSnackbar.defaultProps = {
   message: {
     status: null,
     statusText: defaultMessage,
-    url: "",
-    error: ""
-  }
+    url: '',
+    error: '',
+  },
 };
 
 export default withStyles(styles)(ErrorSnackbar);

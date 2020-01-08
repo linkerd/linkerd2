@@ -2,7 +2,7 @@ import ApiHelpers from './ApiHelpers.jsx';
 import React from 'react';
 
 const Context = React.createContext({
-  api: ApiHelpers(""),
+  api: ApiHelpers(''),
 });
 
 export const withContext = Component => props => (

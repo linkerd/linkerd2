@@ -4,19 +4,19 @@ import React from 'react';
 import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
 
 
-const TapLink = ({PrefixedLink, namespace, resource, toNamespace, toResource, path, disabled}) => {
-  if (disabled || namespace === "") {
+const TapLink = ({ PrefixedLink, namespace, resource, toNamespace, toResource, path, disabled }) => {
+  if (disabled || namespace === '') {
     return <FontAwesomeIcon icon={faMicroscope} className="tapGrayed" />;
   }
-  let params = {
-    autostart: "true",
+  const params = {
+    autostart: 'true',
     namespace,
     resource,
     toNamespace,
     toResource,
-    path
+    path,
   };
-  let queryStr = Object.entries(params).map(([k, v]) => `${k}=${v}`).join("&");
+  const queryStr = Object.entries(params).map(([k, v]) => `${k}=${v}`).join('&');
 
   return (
     <PrefixedLink to={`/tap?${queryStr}`}>
@@ -37,7 +37,7 @@ TapLink.propTypes = {
 
 TapLink.defaultProps = {
   disabled: false,
-  namespace: ""
+  namespace: '',
 };
 
 export default TapLink;

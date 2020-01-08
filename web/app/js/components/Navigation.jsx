@@ -40,8 +40,8 @@ import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
 import yellow from '@material-ui/core/colors/yellow';
 
-const jsonFeedUrl = "https://linkerd.io/dashboard/index.json";
-const localStorageKey = "linkerd-updates-last-clicked";
+const jsonFeedUrl = 'https://linkerd.io/dashboard/index.json';
+const localStorageKey = 'linkerd-updates-last-clicked';
 const minBrowserWidth = 960;
 
 const styles = theme => {
@@ -66,19 +66,19 @@ const styles = theme => {
       display: 'flex',
     },
     appBar: {
-      alignItems: "center",
-      position: "permanent",
+      alignItems: 'center',
+      position: 'permanent',
       color: 'white',
       transition: leaving,
     },
     bars: {
       color: 'white',
-      position: "fixed",
+      position: 'fixed',
       left: theme.spacing(2.5),
     },
     breadcrumbs: {
       color: 'white',
-      marginLeft: `${drawerWidth}px`
+      marginLeft: `${drawerWidth}px`,
     },
     drawer: {
       width: drawerWidth,
@@ -112,46 +112,46 @@ const styles = theme => {
       width: `${navLogoWidth}px`,
     },
     namespaceChangeButton: {
-      borderRadius: "5px",
+      borderRadius: '5px',
       backgroundColor: grey[400],
-      marginLeft: `${drawerWidth * .075}px`,
-      marginRight: `${drawerWidth * .075}px`,
-      marginTop: "11px",
-      width: `${drawerWidth * .85}px`,
+      marginLeft: `${drawerWidth * 0.075}px`,
+      marginRight: `${drawerWidth * 0.075}px`,
+      marginTop: '11px',
+      width: `${drawerWidth * 0.85}px`,
     },
     namespaceChangeButtonInputRoot: {
       backgroundColor: grey[300],
-      boxShadow: "rgba(0, 0, 0, 0.2) 0px 3px 1px -2px, rgba(0, 0, 0, 0.14) 0px 2px 2px 0px, rgba(0, 0, 0, 0.12) 0px 1px 5px 0px",
-      padding: "4px 12px !important",
+      boxShadow: 'rgba(0, 0, 0, 0.2) 0px 3px 1px -2px, rgba(0, 0, 0, 0.14) 0px 2px 2px 0px, rgba(0, 0, 0, 0.12) 0px 1px 5px 0px',
+      padding: '4px 12px !important',
       border: 0,
-      "&:hover": {
-        borderColor: "transparent",
+      '&:hover': {
+        borderColor: 'transparent',
       },
     },
     namespaceChangeButtonInput: {
-      textAlign: "center",
+      textAlign: 'center',
     },
     namespaceChangeButtonInputFocused: {
-      textAlign: "center",
+      textAlign: 'center',
     },
     namespaceChangeButtonPopupIndicator: {
-      backgroundColor: "transparent",
-      "&:hover": {
-        backgroundColor: "transparent",
-      }
+      backgroundColor: 'transparent',
+      '&:hover': {
+        backgroundColor: 'transparent',
+      },
     },
     navMenuItem: {
       paddingLeft: `${contentPadding}px`,
       paddingRight: `${contentPadding}px`,
     },
     shrinkIcon: {
-      fontSize: "24px",
-      paddingLeft: "3px",
-      paddingRight: "3px",
+      fontSize: '24px',
+      paddingLeft: '3px',
+      paddingRight: '3px',
     },
     shrinkCloudIcon: {
-      fontSize: "18px",
-      paddingLeft: "1px",
+      fontSize: '18px',
+      paddingLeft: '1px',
     },
     // color is consistent with Octopus Graph coloring
     externalLinkIcon: {
@@ -159,24 +159,24 @@ const styles = theme => {
     },
     sidebarHeading: {
       color: grey[500],
-      outline: "none",
-      paddingTop: "9px",
-      paddingBottom: "9px",
-      marginLeft: `${drawerWidth * .09}px`,
+      outline: 'none',
+      paddingTop: '9px',
+      paddingBottom: '9px',
+      marginLeft: `${drawerWidth * 0.09}px`,
     },
     badge: {
       backgroundColor: yellow[500],
     },
     inputBase: {
-      boxSizing: "border-box",
-    }
+      boxSizing: 'border-box',
+    },
   };
 };
 
 class NavigationBase extends React.Component {
   constructor(props) {
     super(props);
-    this.api = this.props.api;
+    this.api = props.api;
     this.handleApiError = this.handleApiError.bind(this);
     this.handleConfirmNamespaceChange = this.handleConfirmNamespaceChange.bind(this);
     this.handleCommunityClick = this.handleCommunityClick.bind(this);
@@ -212,30 +212,32 @@ class NavigationBase extends React.Component {
     this.fetchVersion();
     this.fetchLatestCommunityUpdate();
     this.updateWindowDimensions();
-    window.addEventListener("resize", this.updateWindowDimensions);
+    window.addEventListener('resize', this.updateWindowDimensions);
   }
 
   componentDidUpdate(prevProps) {
-    if (this.props.history) {
-      this.props.checkNamespaceMatch(this.props.history.location.pathname);
+    const { history, checkNamespaceMatch, isPageVisible } = this.props;
+    if (history) {
+      checkNamespaceMatch(history.location.pathname);
     }
 
     handlePageVisibility({
       prevVisibilityState: prevProps.isPageVisible,
-      currentVisibilityState: this.props.isPageVisible,
+      currentVisibilityState: isPageVisible,
       onVisible: () => this.startServerPolling(),
       onHidden: () => this.stopServerPolling(),
     });
   }
 
   componentWillUnmount() {
-    window.removeEventListener("resize", this.updateWindowDimensions);
+    window.removeEventListener('resize', this.updateWindowDimensions);
     this.stopServerPolling();
   }
 
   startServerPolling() {
+    const { pollingInterval } = this.state;
     this.loadFromServer();
-    this.timerId = window.setInterval(this.loadFromServer, this.state.pollingInterval);
+    this.timerId = window.setInterval(this.loadFromServer, pollingInterval);
   }
 
   stopServerPolling() {
@@ -246,13 +248,15 @@ class NavigationBase extends React.Component {
 
   // API returns namespaces for namespace select button. No metrics returned.
   loadFromServer() {
-    if (this.state.pendingRequests) {
+    const { pendingRequests } = this.state;
+
+    if (pendingRequests) {
       return;
     }
     this.setState({ pendingRequests: true });
 
-    let apiRequests = [
-      this.api.fetchMetrics(this.api.urlsForResourceNoStats("namespace"))
+    const apiRequests = [
+      this.api.fetchMetrics(this.api.urlsForResourceNoStats('namespace')),
     ];
 
     this.api.setCurrentRequests(apiRequests);
@@ -260,30 +264,32 @@ class NavigationBase extends React.Component {
     Promise.all(this.api.getCurrentPromises())
       .then(([allNs]) => {
         // add "All Namespaces" to the options
-        let namespaces = [{name:"_all", key:"ns-all"}];
+        let namespaces = [{ name: '_all', key: 'ns-all' }];
         namespaces = namespaces.concat(processSingleResourceRollup(allNs));
         this.setState({
           namespaces,
           pendingRequests: false,
-          error: null
+          error: null,
         });
       })
       .catch(this.handleApiError);
   }
 
   fetchVersion() {
-    let versionUrl = `https://versioncheck.linkerd.io/version.json?version=${this.props.releaseVersion}&uuid=${this.props.uuid}&source=web`;
+    const { releaseVersion, uuid } = this.props;
+
+    const versionUrl = `https://versioncheck.linkerd.io/version.json?version=${releaseVersion}&uuid=${uuid}&source=web`;
     this.versionPromise = fetch(versionUrl, { credentials: 'include' })
       .then(rsp => rsp.json())
       .then(versionRsp => {
         let latestVersion;
-        let parts = this.props.releaseVersion.split("-", 2);
+        const parts = releaseVersion.split('-', 2);
         if (parts.length === 2) {
           latestVersion = versionRsp[parts[0]];
         }
         this.setState({
           latestVersion,
-          isLatest: latestVersion === this.props.releaseVersion
+          isLatest: latestVersion === releaseVersion,
         });
       }).catch(this.handleApiError);
   }
@@ -294,57 +300,60 @@ class NavigationBase extends React.Component {
       .then(rsp => rsp.data.date)
       .then(rsp => {
         if (rsp.length > 0) {
-          let lastClicked = localStorage[localStorageKey];
+          const lastClicked = localStorage[localStorageKey];
           if (!lastClicked) {
             this.setState({ hideUpdateBadge: false });
           } else {
-            let lastClickedDateObject = new Date(lastClicked);
-            let latestArticle = _maxBy(rsp, update => update.date);
-            let latestArticleDateObject = new Date(latestArticle);
+            const lastClickedDateObject = new Date(lastClicked);
+            const latestArticle = _maxBy(rsp, update => update.date);
+            const latestArticleDateObject = new Date(latestArticle);
             if (latestArticleDateObject > lastClickedDateObject) {
               this.setState({ hideUpdateBadge: false });
             }
           }
         }
-      }).catch(this.handleApiError);
+      })
+      .catch(this.handleApiError);
   }
 
   handleApiError(e) {
     this.setState({
-      error: e
+      error: e,
     });
   }
 
   handleCommunityClick = () => {
-    let lastClicked = new Date();
+    const lastClicked = new Date();
     localStorage.setItem(localStorageKey, lastClicked);
     this.setState({ hideUpdateBadge: true });
   }
 
   handleDialogCancel = () => {
-    this.setState({showNamespaceChangeDialog: false});
+    this.setState({ showNamespaceChangeDialog: false });
   }
 
   handleDrawerClick = () => {
-    if (!this.state.mobileSidebarOpen) {
+    const { mobileSidebarOpen } = this.state;
+    if (!mobileSidebarOpen) {
       this.setState({ mobileSidebarOpen: true });
     } else {
       this.setState({ mobileSidebarOpen: false });
-      window.setTimeout(function() {
-        let linkerdHash = document.querySelector(".linkerd-word-logo #linkerd-hash");
-        linkerdHash.style.display='none';
-        window.setTimeout(function() {
-          linkerdHash.offsetHeight;
-          linkerdHash.style.display='';
+      window.setTimeout(() => {
+        const linkerdHash = document.querySelector('.linkerd-word-logo #linkerd-hash');
+        linkerdHash.style.display = 'none';
+        window.setTimeout(() => {
+          linkerdHash.style.display = '';
         }, 15);
       }, 300);
     }
   };
 
   handleConfirmNamespaceChange = () => {
-    this.setState({showNamespaceChangeDialog: false});
-    this.props.updateNamespaceInContext(this.state.newNamespace);
-    this.props.history.push(`/namespaces/${this.state.newNamespace}`);
+    const { newNamespace } = this.state;
+    const { updateNamespaceInContext, history } = this.props;
+    this.setState({ showNamespaceChangeDialog: false });
+    updateNamespaceInContext(newNamespace);
+    history.push(`/namespaces/${newNamespace}`);
   }
 
   handleFilterInputChange = event => {
@@ -359,47 +368,50 @@ class NavigationBase extends React.Component {
   }
 
   handleNamespaceChange = (event, values) => {
-    //event.stopPropagation();
-    let namespace = values.name;
-    if (namespace === this.props.selectedNamespace) {
+    const { history, updateNamespaceInContext, selectedNamespace } = this.props;
+
+    // event.stopPropagation();
+    const namespace = values.name;
+    if (namespace === selectedNamespace) {
       return;
     }
-    let path = this.props.history.location.pathname;
-    let pathParts = path.split("/");
+    let path = history.location.pathname;
+    const pathParts = path.split('/');
     if (pathParts.length === 3 || pathParts.length === 4) {
       // path is /namespaces/someNamespace/resourceType
       //      or /namespaces/someNamespace
-      path = path.replace(this.props.selectedNamespace, namespace);
-      this.props.history.push(path);
-      this.props.updateNamespaceInContext(namespace);
+      path = path.replace(selectedNamespace, namespace);
+      history.push(path);
+      updateNamespaceInContext(namespace);
     } else if (pathParts.length === 5) {
       // path is /namespace/someNamespace/resourceType/someResource
-      this.setState({ showNamespaceChangeDialog: true,
-        newNamespace: namespace });
+      this.setState({
+        showNamespaceChangeDialog: true,
+        newNamespace: namespace,
+      });
     } else {
       // update the selectedNamespace in context with no path changes
-      this.props.updateNamespaceInContext(namespace);
+      updateNamespaceInContext(namespace);
     }
   }
 
   handleNamespaceMenuClick = event => {
     // ensure that mobile drawer will not close on click
     event.stopPropagation();
-    this.setState({formattedNamespaceFilter: '' });
+    this.setState({ formattedNamespaceFilter: '' });
   }
 
   menuItem(path, title, icon, onClick) {
-    const { classes, api } = this.props;
-    let normalizedPath = this.props.location.pathname.replace(this.props.pathPrefix, "");
-    let isCurrentPage = path => path === normalizedPath;
+    const { classes, location, pathPrefix } = this.props;
+    const normalizedPath = location.pathname.replace(pathPrefix, '');
 
     return (
       <MenuItem
         component={Link}
         onClick={onClick}
-        to={api.prefixLink(path)}
+        to={this.api.prefixLink(path)}
         className={classes.navMenuItem}
-        selected={isCurrentPage(path)}>
+        selected={path === normalizedPath}>
         <ListItemIcon>{icon}</ListItemIcon>
         <ListItemText primary={title} />
       </MenuItem>
@@ -407,22 +419,22 @@ class NavigationBase extends React.Component {
   }
 
   updateWindowDimensions() {
-    let browserWidth = window.innerWidth;
+    const browserWidth = window.innerWidth;
     if (browserWidth > minBrowserWidth) {
       this.setState({ mobileSidebarOpen: false });
     }
   }
 
   render() {
-    const { api, classes, selectedNamespace, ChildComponent, ...otherProps } = this.props;
-    let { namespaces, formattedNamespaceFilter,
-      showNamespaceChangeDialog, newNamespace, mobileSidebarOpen } = this.state;
-    namespaces = namespaces.filter(ns => {
+    const { api, classes, selectedNamespace, ChildComponent, uuid, releaseVersion, ...otherProps } = this.props;
+    const { namespaces, formattedNamespaceFilter, hideUpdateBadge, isLatest, latestVersion,
+      showNamespaceChangeDialog, newNamespace, mobileSidebarOpen, error } = this.state;
+    const filteredNamespaces = namespaces.filter(ns => {
       return ns.name.match(formattedNamespaceFilter);
     });
     let formattedNamespaceName = selectedNamespace;
-    if (formattedNamespaceName === "_all") {
-      formattedNamespaceName = "All Namespaces";
+    if (formattedNamespaceName === '_all') {
+      formattedNamespaceName = 'All Namespaces';
     }
 
     const drawer = (
@@ -439,10 +451,10 @@ class NavigationBase extends React.Component {
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
                 Cluster
           </Typography>
-          { this.menuItem("/namespaces", "Namespaces", namespaceIcon) }
+          { this.menuItem('/namespaces', 'Namespaces', namespaceIcon) }
 
 
-          { this.menuItem("/controlplane", "Control Plane",
+          { this.menuItem('/controlplane', 'Control Plane',
             <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />) }
 
         </MenuList>
@@ -452,11 +464,11 @@ class NavigationBase extends React.Component {
         <Autocomplete
           id="namespace-autocomplete"
           onClick={this.handleAutocompleteClick}
-          disableClearable={true}
-          value={{name:formattedNamespaceName.toUpperCase()}}
-          options={namespaces}
-          autoSelect={true}
-          getOptionLabel={option => { if (option.name !== "_all") {return option.name;} else {return "All Namespaces";}}}
+          disableClearable
+          value={{ name: formattedNamespaceName.toUpperCase() }}
+          options={filteredNamespaces}
+          autoSelect
+          getOptionLabel={option => { if (option.name !== '_all') { return option.name; } else { return 'All Namespaces'; } }}
           onChange={this.handleNamespaceChange}
           size="small"
           classes={{
@@ -472,7 +484,7 @@ class NavigationBase extends React.Component {
               key={params.name}
               variant="outlined"
               fullWidth />
-              )} />
+          )} />
 
         <NamespaceConfirmationModal
           open={showNamespaceChangeDialog}
@@ -486,21 +498,21 @@ class NavigationBase extends React.Component {
                 Workloads
           </Typography>
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/cronjobs`, "Cron Jobs", cronJobIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/cronjobs`, 'Cron Jobs', cronJobIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, "Daemon Sets", daemonsetIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, 'Daemon Sets', daemonsetIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, "Deployments", deploymentIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, 'Deployments', deploymentIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, "Jobs", jobIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, 'Jobs', jobIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/pods`, "Pods", podIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/pods`, 'Pods', podIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/replicasets`, "Replica Sets", replicaSetIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/replicasets`, 'Replica Sets', replicaSetIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, "Replication Controllers", replicaSetIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, 'Replication Controllers', replicaSetIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, "Stateful Sets", statefulSetIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, 'Stateful Sets', statefulSetIcon) }
         </MenuList>
 
         <MenuList>
@@ -508,30 +520,29 @@ class NavigationBase extends React.Component {
                 Configuration
           </Typography>
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, "Traffic Splits", <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
-
-        </MenuList>
-        <Divider />
-        <MenuList >
-          <Typography variant="button" component="div" className={classes.sidebarHeading}>
-                Tools
-          </Typography>
-
-          { this.menuItem("/tap", "Tap", <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
-          { this.menuItem("/top", "Top", <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
-          { this.menuItem("/routes", "Routes", <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, 'Traffic Splits', <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
 
         </MenuList>
         <Divider />
         <MenuList>
-          { this.menuItem("/community", "Community",
+          <Typography variant="button" component="div" className={classes.sidebarHeading}>
+                Tools
+          </Typography>
+
+          { this.menuItem('/tap', 'Tap', <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
+          { this.menuItem('/top', 'Top', <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
+          { this.menuItem('/routes', 'Routes', <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />) }
+
+        </MenuList>
+        <Divider />
+        <MenuList>
+          { this.menuItem('/community', 'Community',
             <Badge
               classes={{ badge: classes.badge }}
-              invisible={this.state.hideUpdateBadge}
+              invisible={hideUpdateBadge}
               badgeContent="1">
               <FontAwesomeIcon icon={faSmile} className={classes.shrinkIcon} />
-            </Badge>, this.handleCommunityClick
-              ) }
+            </Badge>, this.handleCommunityClick) }
 
           <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
@@ -558,11 +569,11 @@ class NavigationBase extends React.Component {
           </MenuItem>
 
           <Version
-            isLatest={this.state.isLatest}
-            latestVersion={this.state.latestVersion}
-            releaseVersion={this.props.releaseVersion}
-            error={this.state.error}
-            uuid={this.props.uuid} />
+            isLatest={isLatest}
+            latestVersion={latestVersion}
+            releaseVersion={releaseVersion}
+            error={error}
+            uuid={uuid} />
 
         </MenuList>
 
@@ -579,10 +590,10 @@ class NavigationBase extends React.Component {
             variant="permanent">
             {drawer}
           </Drawer>
-          <AppBar >
+          <AppBar>
             <Toolbar>
-              <Typography variant="h6" color="inherit"  className={classes.breadcrumbs} noWrap>
-                <BreadcrumbHeader  {...this.props} />
+              <Typography variant="h6" color="inherit" className={classes.breadcrumbs} noWrap>
+                <BreadcrumbHeader {...this.props} />
               </Typography>
             </Toolbar>
           </AppBar>
@@ -597,7 +608,7 @@ class NavigationBase extends React.Component {
               { !mobileSidebarOpen && // mobile view but no sidebar
               <React.Fragment>
                 <IconButton onClick={this.handleDrawerClick} className={classes.bars}>
-                  <FontAwesomeIcon icon={faBars}  />
+                  <FontAwesomeIcon icon={faBars} />
                 </IconButton>
               </React.Fragment>
               }
@@ -627,16 +638,19 @@ class NavigationBase extends React.Component {
 
 NavigationBase.propTypes = {
   api: PropTypes.shape({}).isRequired,
+  checkNamespaceMatch: PropTypes.func.isRequired,
   ChildComponent: PropTypes.oneOfType([
     PropTypes.func,
     PropTypes.object,
   ]).isRequired,
-  classes: PropTypes.shape({}).isRequired,
   isPageVisible: PropTypes.bool.isRequired,
+  history: ReactRouterPropTypes.history.isRequired,
   location: ReactRouterPropTypes.location.isRequired,
   pathPrefix: PropTypes.string.isRequired,
   releaseVersion: PropTypes.string.isRequired,
+  selectedNamespace: PropTypes.string.isRequired,
   theme: PropTypes.shape({}).isRequired,
+  updateNamespaceInContext: PropTypes.func.isRequired,
   uuid: PropTypes.string.isRequired,
 };
 

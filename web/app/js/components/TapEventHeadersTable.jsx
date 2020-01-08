@@ -7,12 +7,12 @@ import { withStyles } from '@material-ui/core/styles';
 
 const headersStyles = {
   headerName: {
-    fontSize: "12px",
-    marginTop: "5px",
+    fontSize: '12px',
+    marginTop: '5px',
   },
 };
 
-const HeadersContentBase = ({headers, classes}) => {
+const HeadersContentBase = ({ headers, classes }) => {
   return (
     <React.Fragment>
       {headers.map(header => {
@@ -38,7 +38,6 @@ const HeadersContentBase = ({headers, classes}) => {
 };
 
 HeadersContentBase.propTypes = {
-  classes: PropTypes.shape({}).isRequired,
   headers: PropTypes.arrayOf(PropTypes.shape({
     name: PropTypes.string.isRequired,
     valueStr: PropTypes.string.isRequired,
@@ -56,7 +55,7 @@ export const headersDisplay = (title, value) => {
     <ListItem disableGutters>
       <ListItemText
         primary={title}
-        secondary={"headers" in value ? <HeadersContentDisplay headers={value.headers} /> : "-"} />
+        secondary={'headers' in value ? <HeadersContentDisplay headers={value.headers} /> : '-'} />
     </ListItem>
   );
 };

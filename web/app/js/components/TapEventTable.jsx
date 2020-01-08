@@ -21,23 +21,23 @@ import { withStyles } from '@material-ui/core/styles';
 
 // https://godoc.org/google.golang.org/grpc/codes#Code
 const grpcStatusCodes = {
-  0: "OK",
-  1: "Canceled",
-  2: "Unknown",
-  3: "InvalidArgument",
-  4: "DeadlineExceeded",
-  5: "NotFound",
-  6: "AlreadyExists",
-  7: "PermissionDenied",
-  8: "ResourceExhausted",
-  9: "FailedPrecondition",
-  10: "Aborted",
-  11: "OutOfRange",
-  12: "Unimplemented",
-  13: "Internal",
-  14: "Unavailable",
-  15: "DataLoss",
-  16: "Unauthenticated"
+  0: 'OK',
+  1: 'Canceled',
+  2: 'Unknown',
+  3: 'InvalidArgument',
+  4: 'DeadlineExceeded',
+  5: 'NotFound',
+  6: 'AlreadyExists',
+  7: 'PermissionDenied',
+  8: 'ResourceExhausted',
+  9: 'FailedPrecondition',
+  10: 'Aborted',
+  11: 'OutOfRange',
+  12: 'Unimplemented',
+  13: 'Internal',
+  14: 'Unavailable',
+  15: 'DataLoss',
+  16: 'Unauthenticated',
 };
 
 const spinnerStyles = theme => ({
@@ -49,82 +49,82 @@ const SpinnerBase = () => <CircularProgress size={20} />;
 const Spinner = withStyles(spinnerStyles)(SpinnerBase);
 
 const httpStatusCol = {
-  title: "HTTP status",
-  key: "http-status",
+  title: 'HTTP status',
+  key: 'http-status',
   render: datum => {
-    let d = _get(datum, "responseInit.http.responseInit");
+    const d = _get(datum, 'responseInit.http.responseInit');
     return !d ? <Spinner /> : d.httpStatus;
-  }
+  },
 };
 
 const responseInitLatencyCol = {
-  title: "Latency",
-  key: "rsp-latency",
+  title: 'Latency',
+  key: 'rsp-latency',
   isNumeric: true,
   render: datum => {
-    let d = _get(datum, "responseInit.http.responseInit");
+    const d = _get(datum, 'responseInit.http.responseInit');
     return !d ? <Spinner /> : formatTapLatency(d.sinceRequestInit);
-  }
+  },
 };
 
 const grpcStatusCol = {
-  title: "GRPC status",
-  key: "grpc-status",
+  title: 'GRPC status',
+  key: 'grpc-status',
   render: datum => {
-    let d = _get(datum, "responseEnd.http.responseEnd");
+    const d = _get(datum, 'responseEnd.http.responseEnd');
     return !d ? <Spinner /> :
-      _isNull(d.eos) ? "---" : grpcStatusCodes[_get(d, "eos.grpcStatusCode")];
-  }
+      _isNull(d.eos) ? '---' : grpcStatusCodes[_get(d, 'eos.grpcStatusCode')];
+  },
 };
 
 const pathCol = {
-  title: "Path",
-  key: "path",
+  title: 'Path',
+  key: 'path',
   render: datum => {
-    let d = _get(datum, "requestInit.http.requestInit");
+    const d = _get(datum, 'requestInit.http.requestInit');
     return !d ? <Spinner /> : d.path;
-  }
+  },
 };
 
 const methodCol = {
-  title: "Method",
-  key: "method",
+  title: 'Method',
+  key: 'method',
   render: datum => {
-    let d = _get(datum, "requestInit.http.requestInit");
-    return !d ? <Spinner /> : _get(d, "method.registered");
-  }
+    const d = _get(datum, 'requestInit.http.requestInit');
+    return !d ? <Spinner /> : _get(d, 'method.registered');
+  },
 };
 
 const topLevelColumns = (resourceType, ResourceLink) => [
   {
-    title: "Direction",
-    key: "direction",
-    render: d => directionColumn(d.base.proxyDirection)
+    title: 'Direction',
+    key: 'direction',
+    render: d => directionColumn(d.base.proxyDirection),
   },
   {
-    title: "Name",
-    key: "src-dst",
+    title: 'Name',
+    key: 'src-dst',
     render: d => {
-      let datum = {
-        direction: _get(d, "base.proxyDirection"),
-        source: _get(d, "base.source"),
-        destination: _get(d, "base.destination"),
-        sourceLabels: _get(d, "base.sourceMeta.labels", {}),
-        destinationLabels: _get(d, "base.destinationMeta.labels", {})
+      const datum = {
+        direction: _get(d, 'base.proxyDirection'),
+        source: _get(d, 'base.source'),
+        destination: _get(d, 'base.destination'),
+        sourceLabels: _get(d, 'base.sourceMeta.labels', {}),
+        destinationLabels: _get(d, 'base.destinationMeta.labels', {}),
       };
       return srcDstColumn(datum, resourceType, ResourceLink);
-    }
-  }
+    },
+  },
 ];
 
 const tapColumns = (resourceType, ResourceLink) => {
   return topLevelColumns(resourceType, ResourceLink).concat(
-    [ methodCol, pathCol, responseInitLatencyCol, httpStatusCol, grpcStatusCol ]
+    [methodCol, pathCol, responseInitLatencyCol, httpStatusCol, grpcStatusCol],
   );
 };
 
 const formatTapLatency = str => {
-  return formatLatencySec(str.replace("s", ""));
+  return formatLatencySec(str.replace('s', ''));
 };
 
 const itemDisplay = (title, value) => {
@@ -140,11 +140,11 @@ const requestInitSection = d => (
     <Typography variant="subtitle2">Request Init</Typography>
     <br />
     <List dense>
-      {itemDisplay("Authority", _get(d, "requestInit.http.requestInit.authority"))}
-      {itemDisplay("Path", _get(d, "requestInit.http.requestInit.path"))}
-      {itemDisplay("Scheme", _get(d, "requestInit.http.requestInit.scheme.registered"))}
-      {itemDisplay("Method", _get(d, "requestInit.http.requestInit.method.registered"))}
-      {headersDisplay("Headers", _get(d, "requestInit.http.requestInit.headers"))}
+      {itemDisplay('Authority', _get(d, 'requestInit.http.requestInit.authority'))}
+      {itemDisplay('Path', _get(d, 'requestInit.http.requestInit.path'))}
+      {itemDisplay('Scheme', _get(d, 'requestInit.http.requestInit.scheme.registered'))}
+      {itemDisplay('Method', _get(d, 'requestInit.http.requestInit.method.registered'))}
+      {headersDisplay('Headers', _get(d, 'requestInit.http.requestInit.headers'))}
     </List>
   </React.Fragment>
 );
@@ -154,9 +154,9 @@ const responseInitSection = d => _isEmpty(d.responseInit) ? null : (
     <Typography variant="subtitle2">Response Init</Typography>
     <br />
     <List dense>
-      {itemDisplay("HTTP Status", _get(d, "responseInit.http.responseInit.httpStatus"))}
-      {itemDisplay("Latency", formatTapLatency(_get(d, "responseInit.http.responseInit.sinceRequestInit")))}
-      {headersDisplay("Headers", _get(d, "responseInit.http.responseInit.headers"))}
+      {itemDisplay('HTTP Status', _get(d, 'responseInit.http.responseInit.httpStatus'))}
+      {itemDisplay('Latency', formatTapLatency(_get(d, 'responseInit.http.responseInit.sinceRequestInit')))}
+      {headersDisplay('Headers', _get(d, 'responseInit.http.responseInit.headers'))}
     </List>
   </React.Fragment>
 );
@@ -167,9 +167,9 @@ const responseEndSection = d => _isEmpty(d.responseEnd) ? null : (
     <br />
 
     <List dense>
-      {itemDisplay("GRPC Status", _isNull(_get(d, "responseEnd.http.responseEnd.eos")) ? "N/A" : grpcStatusCodes[_get(d, "responseEnd.http.responseEnd.eos.grpcStatusCode")])}
-      {itemDisplay("Latency", formatTapLatency(_get(d, "responseEnd.http.responseEnd.sinceResponseInit")))}
-      {itemDisplay("Response Length (B)", formatWithComma(_get(d, "responseEnd.http.responseEnd.responseBytes")))}
+      {itemDisplay('GRPC Status', _isNull(_get(d, 'responseEnd.http.responseEnd.eos')) ? 'N/A' : grpcStatusCodes[_get(d, 'responseEnd.http.responseEnd.eos.grpcStatusCode')])}
+      {itemDisplay('Latency', formatTapLatency(_get(d, 'responseEnd.http.responseEnd.sinceResponseInit')))}
+      {itemDisplay('Response Length (B)', formatWithComma(_get(d, 'responseEnd.http.responseEnd.responseBytes')))}
     </List>
   </React.Fragment>
 );
@@ -198,33 +198,30 @@ const expandedRowRender = (d, expandedWrapStyle) => {
   );
 };
 
-class TapEventTable extends React.Component {
-  static propTypes = {
-    api: PropTypes.shape({
-      ResourceLink: PropTypes.func.isRequired,
-    }).isRequired,
-    resource: PropTypes.string,
-    tableRows: PropTypes.arrayOf(PropTypes.shape({})),
-  }
+const TapEventTable = ({ tableRows, resource, api }) => {
+  const resourceType = resource.split('/')[0];
+  const columns = tapColumns(resourceType, api.ResourceLink);
 
-  static defaultProps = {
-    resource: "",
-    tableRows: []
-  }
+  return (
+    <ExpandableTable
+      tableRows={tableRows}
+      tableColumns={columns}
+      expandedRowRender={expandedRowRender}
+      tableClassName="metric-table" />
+  );
+};
 
-  render() {
-    const { tableRows, resource, api } = this.props;
-    let resourceType = resource.split("/")[0];
-    let columns = tapColumns(resourceType, api.ResourceLink);
+TapEventTable.propTypes = {
+  api: PropTypes.shape({
+    ResourceLink: PropTypes.func.isRequired,
+  }).isRequired,
+  resource: PropTypes.string,
+  tableRows: PropTypes.arrayOf(PropTypes.shape({})),
+};
 
-    return (
-      <ExpandableTable
-        tableRows={tableRows}
-        tableColumns={columns}
-        expandedRowRender={expandedRowRender}
-        tableClassName="metric-table" />
-    );
-  }
-}
+TapEventTable.defaultProps = {
+  resource: '',
+  tableRows: [],
+};
 
 export default withContext(TapEventTable);

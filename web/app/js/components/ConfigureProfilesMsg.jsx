@@ -53,12 +53,12 @@ class ConfigureProfilesMsg extends React.Component {
       open: false,
       error: {
         service: false,
-        namespace: false
+        namespace: false,
       },
       query: {
         service: '',
-        namespace: ''
-      }
+        namespace: '',
+      },
     };
   }
 
@@ -71,17 +71,17 @@ class ConfigureProfilesMsg extends React.Component {
       open: false,
       error: {
         service: false,
-        namespace: false
+        namespace: false,
       },
       query: {
         service: '',
-        namespace: ''
-      }
+        namespace: '',
+      },
     });
   };
 
   handleChange = name => {
-    let state = this.state;
+    const state = this.state;
 
     return e => {
       state.query[name] = e.target.value;
@@ -91,12 +91,12 @@ class ConfigureProfilesMsg extends React.Component {
   };
 
   validateFields = (type, name) => {
-    let error = this.state.error;
+    const { error } = this.state;
 
     if (_isEmpty(name)) {
       error[type] = false;
     } else {
-      let match = type === 'service' ?
+      const match = type === 'service' ?
         serviceNameRegexp.test(name) :
         namespaceNameRegexp.test(name);
 
@@ -108,9 +108,9 @@ class ConfigureProfilesMsg extends React.Component {
 
   renderDownloadProfileForm = () => {
     const { api, classes, showAsIcon } = this.props;
-    let { query, error } = this.state;
+    const { query, error, open, service, name } = this.state;
 
-    let downloadUrl = api.prefixedUrl(`/profiles/new?service=${query.service}&namespace=${query.namespace}`);
+    const downloadUrl = api.prefixedUrl(`/profiles/new?service=${query.service}&namespace=${query.namespace}`);
     let button;
 
     if (showAsIcon) {
@@ -137,9 +137,9 @@ class ConfigureProfilesMsg extends React.Component {
     }
 
 
-    let disableDownloadButton = _isEmpty(query.service) || _isEmpty(query.namespace) ||
+    const disableDownloadButton = _isEmpty(query.service) || _isEmpty(query.namespace) ||
       error.service || error.namespace;
-    let downloadButton = (
+    const downloadButton = (
       <Button
         disabled={disableDownloadButton}
         onClick={() => this.handleClose(downloadUrl)}
@@ -152,7 +152,7 @@ class ConfigureProfilesMsg extends React.Component {
       <React.Fragment>
         {button}
         <Dialog
-          open={this.state.open}
+          open={open}
           onClose={this.handleClose}
           aria-labelledby="form-dialog-title">
           <DialogTitle id="form-dialog-title">New service profile</DialogTitle>
@@ -168,7 +168,7 @@ class ConfigureProfilesMsg extends React.Component {
               <InputLabel htmlFor="component-error">Service</InputLabel>
               <Input
                 id="component-error"
-                value={this.state.service}
+                value={service}
                 onChange={this.handleChange('service')}
                 aria-describedby="component-error-text" />
               {error.service && (
@@ -185,7 +185,7 @@ class ConfigureProfilesMsg extends React.Component {
               <InputLabel htmlFor="component-error">Namespace</InputLabel>
               <Input
                 id="component-error"
-                value={this.state.name}
+                value={name}
                 onChange={this.handleChange('namespace')}
                 aria-describedby="component-error-text" />
               {error.namespace && (
@@ -203,7 +203,7 @@ class ConfigureProfilesMsg extends React.Component {
             {disableDownloadButton ?
               downloadButton :
               <a
-                href={disableDownloadButton ? '' : downloadUrl}
+                href={downloadUrl}
                 style={{ textDecoration: 'none' }}>{downloadButton}
               </a>
             }
@@ -236,12 +236,11 @@ ConfigureProfilesMsg.propTypes = {
   api: PropTypes.shape({
     prefixedUrl: PropTypes.func.isRequired,
   }).isRequired,
-  classes: PropTypes.shape({}).isRequired,
   showAsIcon: PropTypes.bool,
 };
 
 ConfigureProfilesMsg.defaultProps = {
-  showAsIcon: false
+  showAsIcon: false,
 };
 
 export default withContext(withStyles(styles, { withTheme: true })(ConfigureProfilesMsg));
