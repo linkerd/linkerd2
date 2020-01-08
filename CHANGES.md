@@ -29,7 +29,6 @@ might be stability issues.
     and labels
   * Fixed certificate issuance lifetime not being set when installing through
     Helm
-* Internal
   * More improvements to Helm best practices (thanks to @Pothulapati!)
 
 ## edge-19.12.3
