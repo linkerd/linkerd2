@@ -53,36 +53,41 @@
     "space-before-function-paren": [2, "never"],
     "strict": [2, "safe"],
 
-    // disable airbnb defaults that don't work for our project
-    // TODO: fix the code and remove these overrides
+    // The rest of this file disables airbnb defaults that don't work for our project
+
+    // These rules are stylistic in nature, and don't work with the existing project style
     "arrow-body-style": 0,
-    "func-names": 0,
     "import/extensions": 0,
     "import/prefer-default-export": 0,
-    "jsx-a11y/click-events-have-key-events": 0,
     "max-len": 0,
-    "no-bitwise": 0,
     "no-confusing-arrow": 0,
     "no-else-return": 0,
     "no-nested-ternary": 0,
-    "no-param-reassign": 0,
-    "no-tabs": 0,
-    "no-throw-literal": 0,
-    "no-underscore-dangle": 0,
-    "no-use-before-define": 0,
     "object-curly-newline": 0,
     "operator-linebreak": 0,
     "prefer-destructuring": 0,
-    "prefer-promise-reject-errors": 0,
-    "promise/always-return": 0,
-    "promise/avoid-new": 0,
     "react/display-name": 0,
     "react/jsx-curly-newline": 0,
     "react/jsx-filename-extension": 0,
     "react/jsx-fragments": 0,
     "react/jsx-one-expression-per-line": 0,
+
+    // These rules are disabled to support specific features/conventions that we use
+    "no-bitwise": 0,
+    "no-tabs": 0,
+    "no-throw-literal": 0,
+    "no-underscore-dangle": 0,
+    "prefer-promise-reject-errors": 0,
+    "promise/always-return": 0,
     "react/jsx-props-no-spreading": 0,
+
+    // These rules represent best practices that we're not adhering to, and should be enabled
+    "jsx-a11y/click-events-have-key-events": 0,
+    "no-param-reassign": 0,
     "react/no-did-update-set-state": 0,
-    "react/sort-comp": 0,
+
+    // These rules require reordering and should be enabled in a follow-up branch
+    "no-use-before-define": 0,
+    "react/sort-comp": 0
   }
 }

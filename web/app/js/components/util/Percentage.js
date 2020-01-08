@@ -5,11 +5,11 @@ export default function Percentage(numerator, denominator) {
   }
 }
 
-Percentage.prototype.get = function() {
+Percentage.prototype.get = function() { // eslint-disable-line func-names
   return this.decimal;
 };
 
-Percentage.prototype.prettyRate = function() {
+Percentage.prototype.prettyRate = function() { // eslint-disable-line func-names
   if (this.decimal < 0) {
     return 'N/A';
   } else {
