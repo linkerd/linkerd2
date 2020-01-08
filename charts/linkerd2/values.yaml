@@ -8,7 +8,7 @@ global:
   imagePullPolicy: &image_pull_policy IfNotPresent
 
   # control plane version. See Proxy section for proxy version
-  linkerdVersion: &linkerd_version edge-19.12.3
+  linkerdVersion: &linkerd_version edge-20.1.8
 
   namespace: linkerd
 
