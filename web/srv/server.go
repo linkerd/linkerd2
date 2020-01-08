@@ -252,7 +252,7 @@ func mkStaticHandler(staticDir string) httprouter.Handle {
 		filepath := p.ByName("filepath")
 		if filepath == "/index_bundle.js" {
 			// don't cache the bundle because it references a hashed js file
-			w.Header().Set("Cache-Control", "no-cache, private, max-age=0")
+			w.Header().Set("Cache-Control", "no-store, must-revalidate")
 		}
 
 		req.URL.Path = filepath
