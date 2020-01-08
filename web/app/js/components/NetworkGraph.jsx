@@ -43,7 +43,7 @@ export class NetworkGraphBase extends React.Component {
     super(props);
 
     // https://github.com/d3/d3-zoom/issues/32
-    d3.getEvent = (() => require("d3-selection").event); // eslint-disable-line
+    d3.getEvent = (() => require('d3-selection').event); // eslint-disable-line global-require
   }
 
   componentDidMount() {
@@ -93,7 +93,7 @@ export class NetworkGraphBase extends React.Component {
     const graphData = this.getGraphData();
 
     // check if graph is present to prevent drawing of multiple graphs
-    if (this.svg.select("circle")._groups[0][0]) { // eslint-disable-line
+    if (this.svg.select('circle')._groups[0][0]) {
       return;
     }
     this.drawGraphComponents(graphData.links, graphData.nodes);
@@ -155,11 +155,7 @@ export class NetworkGraphBase extends React.Component {
 
     simulation.nodes(nodes).on('tick', () => {
       path
-        .attr('d', node => `M${
-          node.source.x} ${
-          node.source.y} L ${
-          node.target.x} ${
-          node.target.y}`);
+        .attr('d', node => `M${node.source.x} ${node.source.y} L ${node.target.x} ${node.target.y}`);
 
       nodeElements
         .attr('cx', node => node.x)

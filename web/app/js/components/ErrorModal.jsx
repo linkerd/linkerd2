@@ -107,7 +107,7 @@ class ErrorModal extends React.Component {
         <div>
           {
             _map(errors, (er, i) => {
-              if (er.message.length === 0) {
+              if (_isEmpty(er.message)) {
                 return null;
               }
 
