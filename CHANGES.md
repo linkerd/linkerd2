@@ -30,6 +30,7 @@ might be stability issues.
   * Fixed certificate issuance lifetime not being set when installing through
     Helm
   * More improvements to Helm best practices (thanks to @Pothulapati!)
+
 ## edge-19.12.3
 
 This edge release adds support for pod IP and service cluster IP lookups, 
