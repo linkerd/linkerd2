@@ -30,25 +30,26 @@ might be stability issues.
   * Fixed certificate issuance lifetime not being set when installing through
     Helm
   * More improvements to Helm best practices (thanks to @Pothulapati!)
+
 ## edge-19.12.3
 
-This edge release adds support for pod IP and service cluster IP lookups, 
-improves performance of the dashboard, and makes `linkerd check --pre` perform 
+This edge release adds support for pod IP and service cluster IP lookups,
+improves performance of the dashboard, and makes `linkerd check --pre` perform
 more comprehensive checks.
 
 The `--wait-before-exit-seconds` flag has been added to allow Linkerd users to
  opt in
-to `preStop hooks`. The details of this change are in 
+to `preStop hooks`. The details of this change are in
 [#3798](https://github.com/linkerd/linkerd2/pull/3798).
 
 Also, the proxy has been updated to `v2.82.0` which improves gRPC error
-classification and 
-[ensures that resolutions](https://github.com/linkerd/linkerd2/pull/3848) are 
+classification and
+[ensures that resolutions](https://github.com/linkerd/linkerd2/pull/3848) are
 released when the associated balancer becomes idle.
 
 Finally, an update to follow best practices in the Helm charts has caused a
 *breaking change*. Users who have installed Linkerd using Helm must be
-certain to read the details of 
+certain to read the details of
 [#3822](https://github.com/linkerd/linkerd2/issues/3822)
 
 * CLI
@@ -56,15 +57,15 @@ certain to read the details of
   * Added TLS certificate validation to `check` and `upgrade` commands
 * Controller
   * Increased minimum kubernetes version to 1.13.0
-  * Added support for pod ip and service cluster ip lookups in the destination 
+  * Added support for pod ip and service cluster ip lookups in the destination
     service
   * Added recommended kubernetes labels to control-plane
-  * Added the `--wait-before-exit-seconds` flag to linkerd inject for the proxy 
-    sidecar to delay the start of its shutdown process (a huge commit from 
+  * Added the `--wait-before-exit-seconds` flag to linkerd inject for the proxy
+    sidecar to delay the start of its shutdown process (a huge commit from
     @KIVagant, thanks!)
   * Added a pre-sign check to the identity service
 * Web UI
-  * Increased the speed of the dashboard by pausing network activity when the 
+  * Increased the speed of the dashboard by pausing network activity when the
     dashboard is not visible to the user
 * Proxy
   * Added a timeout to release resolutions to idle balancers
@@ -72,7 +73,7 @@ certain to read the details of
 * Internal
   * **Breaking Change** Updated Helm charts to follow best practices using
     proper casing (thanks @Pothulapati!)
-  
+
 ## edge-19.12.2
 
 * CLI
@@ -112,11 +113,11 @@ certain to read the details of
   * Added a check that ensures using `--namespace` and `--all-namespaces`
     results in an error as they are mutually exclusive
 * Internal
-  * Fixed an issue causing `tap`, `injector` and `sp-validator` to use 
+  * Fixed an issue causing `tap`, `injector` and `sp-validator` to use
     old certificates after `helm upgrade` due to not being restarted
   * Fixed incomplete Swagger definition of the tap api, causing benign
     error logging in the kube-apiserver
-    
+
 ## edge-19.11.2
 
 * CLI
@@ -297,7 +298,7 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-6-0).
 
 ## edge-19.10.2
 
-This edge release is a release candidate for `stable-2.6`.
+This edge release is a release candidate for `stable-2.6`.
 
 * Controller
   * Added the destination container back to the controller; it had previously
@@ -307,7 +308,7 @@ This edge release is a release candidate for `stable-2.6`.
 
 ## edge-19.10.1
 
-This edge release is a release candidate for `stable-2.6`.
+This edge release is a release candidate for `stable-2.6`.
 
 * Proxy
   * Improved error logging when the proxy fails to emit trace spans
@@ -318,7 +319,7 @@ This edge release is a release candidate for `stable-2.6`.
 
 ## edge-19.9.5
 
-This edge release is a release candidate for `stable-2.6`.
+This edge release is a release candidate for `stable-2.6`.
 
 * Helm
   * Added node selector constraints, so users can control which nodes the
