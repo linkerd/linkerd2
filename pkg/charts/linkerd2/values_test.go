@@ -23,11 +23,9 @@ func TestNewValues(t *testing.T) {
 		ControllerReplicas:          1,
 		ControllerLogLevel:          "info",
 		PrometheusLogLevel:          "info",
-		ProxyContainerName:          "linkerd-proxy",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		EnablePodAntiAffinity:       false,
-		NoInitContainer:             false,
 		WebhookFailurePolicy:        "Ignore",
 		OmitWebhookSideEffects:      false,
 		RestrictDashboardPrivileges: false,
@@ -45,6 +43,9 @@ func TestNewValues(t *testing.T) {
 			ProxyInjectAnnotation:    "linkerd.io/inject",
 			ProxyInjectDisabled:      "disabled",
 			LinkerdNamespaceLabel:    "linkerd.io/is-control-plane",
+			ProxyContainerName:       "linkerd-proxy",
+			NoInitContainer:          false,
+			ControlPlaneTracing:      false,
 			HighAvailability:         false,
 			IdentityTrustDomain:      "cluster.local",
 			Proxy: &Proxy{
@@ -116,8 +117,6 @@ func TestNewValues(t *testing.T) {
 		ProxyInjector:    &ProxyInjector{TLS: &TLS{}},
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
 		Tap:              &Tap{TLS: &TLS{}},
-
-		ControlPlaneTracing: false,
 	}
 
 	// pin the versions to ensure consistent test result.

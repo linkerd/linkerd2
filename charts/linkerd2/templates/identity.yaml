@@ -114,7 +114,7 @@ spec:
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ if not .Values.noInitContainer -}}
+      {{ if not .Values.global.noInitContainer -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
