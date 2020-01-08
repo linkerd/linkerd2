@@ -886,7 +886,7 @@ data:
       "identityContext":{
         "trustDomain": "test.trust.domain",
         "trustAnchorsPem": "test-trust-anchor",
-        "issuanceLifeTime": "",
+        "issuanceLifetime": "86400s",
         "clockSkewAllowance": "20s",
         "scheme": "linkerd.io/tls"
       },

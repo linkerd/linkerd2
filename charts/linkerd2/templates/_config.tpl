@@ -6,7 +6,7 @@
   "identityContext":{
     "trustDomain": "{{.Values.global.identityTrustDomain}}",
     "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Values.global.identityTrustAnchorsPEM | trim | replace "\n" "\\n"}}",
-    "issuanceLifeTime": "{{.Values.identity.issuer.issuanceLifeTime}}",
+    "issuanceLifetime": "{{.Values.identity.issuer.issuanceLifetime}}",
     "clockSkewAllowance": "{{.Values.identity.issuer.clockSkewAllowance}}",
     "scheme": "{{.Values.identity.issuer.scheme}}"
   },
