@@ -27,8 +27,6 @@ might be stability issues.
 * Helm
   * Fixed the `linkerd-cni` Helm chart not setting proper namespace annotations
     and labels
-  * Fixed Helm install enabling init containers with the `--set
-    noInitContainers=true` flag
   * Fixed certificate issuance lifetime not being set when installing through
     Helm
 * Internal
