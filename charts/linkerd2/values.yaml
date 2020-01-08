@@ -4,74 +4,73 @@
 
 # Values that are passed along to sub-charts
 global:
-  clusterDomain: &cluster_domain cluster.local
-  imagePullPolicy: &image_pull_policy IfNotPresent
+    clusterDomain: &cluster_domain cluster.local
+    imagePullPolicy: &image_pull_policy IfNotPresent
 
-  # control plane version. See Proxy section for proxy version
-  linkerdVersion: &linkerd_version edge-19.12.3
+    # control plane version. See Proxy section for proxy version
+    linkerdVersion: &linkerd_version edge-20.1.8
 
-  namespace: linkerd
+    namespace: linkerd
 
-  identityTrustAnchorsPEM: |
+    identityTrustAnchorsPEM: |
 
-  identityTrustDomain: *cluster_domain
+    identityTrustDomain: *cluster_domain
 
-  # proxy configuration
-  proxy:
-    enableExternalProfiles: false
-    image:
-      name: gcr.io/linkerd-io/proxy
-      pullPolicy: *image_pull_policy
-      version: *linkerd_version
-    logLevel: warn,linkerd2_proxy=info
-    ports:
-      admin: 4191
-      control: 4190
-      inbound: 4143
-      outbound: 4140
-    resources:
-      cpu:
-        limit: ""
-        request: ""
-      memory:
-        limit: ""
-        request: ""
-    trace:
-      collectorSvcAddr: ""
-      collectorSvcAccount: default
-    uid: 2102
-    # If set, the proxy's pre-stop hook will postpone the Kubernetes's SIGTERM signal
-    # and wait for this duration before letting the proxy process the SIGTERM signal.
-    # See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
-    # for more info on container lifecycle hooks.
-    waitBeforeExitSeconds: 0
+    # proxy configuration
+    proxy:
+        enableExternalProfiles: false
+        image:
+            name: gcr.io/linkerd-io/proxy
+            pullPolicy: *image_pull_policy
+            version: *linkerd_version
+        logLevel: warn,linkerd2_proxy=info
+        ports:
+            admin: 4191
+            control: 4190
+            inbound: 4143
+            outbound: 4140
+        resources:
+            cpu:
+                limit: ""
+                request: ""
+            memory:
+                limit: ""
+                request: ""
+        trace:
+            collectorSvcAddr: ""
+            collectorSvcAccount: default
+        uid: 2102
+        # If set, the proxy's pre-stop hook will postpone the Kubernetes's SIGTERM signal
+        # and wait for this duration before letting the proxy process the SIGTERM signal.
+        # See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
+        # for more info on container lifecycle hooks.
+        waitBeforeExitSeconds: 0
 
-  # proxy-init configuration
-  proxyInit:
-    ignoreInboundPorts: ""
-    ignoreOutboundPorts: ""
-    image:
-      name: gcr.io/linkerd-io/proxy-init
-      pullPolicy: *image_pull_policy
-      version: v1.1.0
-    resources:
-      cpu:
-        limit: 100m
-        request: 10m
-      memory:
-        limit: 50Mi
-        request: 10Mi
+    # proxy-init configuration
+    proxyInit:
+        ignoreInboundPorts: ""
+        ignoreOutboundPorts: ""
+        image:
+            name: gcr.io/linkerd-io/proxy-init
+            pullPolicy: *image_pull_policy
+            version: v1.1.0
+        resources:
+            cpu:
+                limit: 100m
+                request: 10m
+            memory:
+                limit: 50Mi
+                request: 10Mi
 
-  # control plane annotations - do not edit
-  createdByAnnotation: linkerd.io/created-by
-  proxyInjectAnnotation: linkerd.io/inject
-  proxyInjectDisabled: disabled
+    # control plane annotations - do not edit
+    createdByAnnotation: linkerd.io/created-by
+    proxyInjectAnnotation: linkerd.io/inject
+    proxyInjectDisabled: disabled
 
-  # control plane labels - do not edit
-  controllerComponentLabel: linkerd.io/control-plane-component
-  controllerNamespaceLabel: linkerd.io/control-plane-ns
-  linkerdNamespaceLabel: linkerd.io/is-control-plane
-
+    # control plane labels - do not edit
+    controllerComponentLabel: linkerd.io/control-plane-component
+    controllerNamespaceLabel: linkerd.io/control-plane-ns
+    linkerdNamespaceLabel: linkerd.io/is-control-plane
 
 enableH2Upgrade: true
 
@@ -86,29 +85,29 @@ controllerUID: 2103
 
 # web dashboard configuration
 dashboard:
-  replicas: 1
+    replicas: 1
 
 # identity configuration
 identity:
-  issuer:
-    scheme: linkerd.io/tls
+    issuer:
+        scheme: linkerd.io/tls
 
-    clockSkewAllowance: 20s
+        clockSkewAllowance: 20s
 
-    # must match the expiry date in crtPEM
-    crtExpiry:
+        # must match the expiry date in crtPEM
+        crtExpiry:
 
-    # control plane annotation - do not edit
-    crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
+        # control plane annotation - do not edit
+        crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
 
-    issuanceLifetime: 86400s
+        issuanceLifetime: 86400s
 
-    tls:
-      # PEM-encoded certificate
-      crtPEM: |
+        tls:
+            # PEM-encoded certificate
+            crtPEM: |
 
-      # PEM-encoded ECDSA private key
-      keyPEM: |
+            # PEM-encoded ECDSA private key
+            keyPEM: |
 
 # grafana configuration
 grafanaImage: gcr.io/linkerd-io/grafana
@@ -126,24 +125,24 @@ controlPlaneTracing: false
 
 # proxy injector configuration
 proxyInjector:
-  # if empty, Helm will auto-generate these fields
-  crtPEM: |
+    # if empty, Helm will auto-generate these fields
+    crtPEM: |
 
-  keyPEM: |
+    keyPEM: |
 
 # service profile validator configuration
 profileValidator:
-  # if empty, Helm will auto-generate these fields
-  crtPEM: |
+    # if empty, Helm will auto-generate these fields
+    crtPEM: |
 
-  keyPEM: |
+    keyPEM: |
 
 # tap configuration
 tap:
-  # if empty, Helm will auto-generate these fields
-  crtPEM: |
+    # if empty, Helm will auto-generate these fields
+    crtPEM: |
 
-  keyPEM: |
+    keyPEM: |
 
 # web configuration
 webImage: gcr.io/linkerd-io/web
@@ -158,4 +157,4 @@ installNamespace: true
 # Node selection constraints for control-plane components
 # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector.
 nodeSelector:
-  beta.kubernetes.io/os: linux
+    beta.kubernetes.io/os: linux
