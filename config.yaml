@@ -1,0 +1,25 @@
+global:
+  namespace: linkerd-new
+  webhookFailurePolicy: Fail
+  clusterDomain: cluster.nee
+identity:
+  issuer:
+    tls:
+      crtPEM: |
+        -----BEGIN CERTIFICATE-----
+        MIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0
+        eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwMTA5MDcxNTQ4WhcNMjEwMTA4
+        MDcxNjA4WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j
+        YWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQuAzOBQ8mLdf+CyRUITe+oaXvG
+        Nax8voy9V+JZZG8npwR0rnoOtarunbrowhatareyoudoinz5oTU5ar0d87DAo0Iw
+        QDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC
+        MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAMJQnMpG6gXlpC+q
+        2+bkWEiq0e743ABHl3XS1vpHXLKsAiAdnxiS60VZ4CFjNvPba43G5Ueb8fYFzj8W
+        vmb2/1utpA==
+
+# controller configuration
+controllerImage: gcr.io/linkerd-io/controller
+controllerLogLevel: debug
+controllerReplicas: 2
+
+

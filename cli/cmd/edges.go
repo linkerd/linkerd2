@@ -117,7 +117,7 @@ func newCmdEdges() *cobra.Command {
 	return cmd
 }
 
-// validateEdgesRequestInputs ensures that the resource type and output format are both supported
+//validateEdgesRequestInputs ensures that the resource type and output format are both supported
 // by the edges command, since the edges command does not support all k8s resource types.
 func validateEdgesRequestInputs(targets []pb.Resource, options *edgesOptions) error {
 	for _, target := range targets {

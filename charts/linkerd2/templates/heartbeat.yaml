@@ -38,8 +38,9 @@ spec:
             imagePullPolicy: {{.Values.global.imagePullPolicy}}
             args:
             - "heartbeat"
+            {{ if .Values.prometheus.enabled -}}
             - "-prometheus-url=http://linkerd-prometheus.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090"
-            - "-controller-namespace={{.Values.global.namespace}}"
+            {{ end -}}            - "-controller-namespace={{.Values.global.namespace}}"
             - "-log-level={{.Values.controllerLogLevel}}"
             {{- if .Values.heartbeatResources -}}
             {{- include "partials.resources" .Values.heartbeatResources | nindent 12 }}

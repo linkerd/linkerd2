@@ -2,5 +2,11 @@ dependencies:
 - name: partials
   repository: file://../partials
   version: 0.1.0
-digest: sha256:3a86b96a2966f03ba04518723838b49719a3277dfb9bea0b3f067e83d370e0b3
-generated: 2019-07-24T19:51:15.04322926-07:00
+- name: grafana
+  repository: file://../linkerd2/add-ons/grafana
+  version: 0.1.0
+- name: prometheus
+  repository: file://../linkerd2/add-ons/prometheus
+  version: 0.1.0
+digest: sha256:92e328557dbf69c48fa71be1f68d98c2a5702c64e01553048b6062a15df66ebe
+generated: "2020-01-06T22:34:19.253434901+05:30"

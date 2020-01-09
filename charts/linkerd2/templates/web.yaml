@@ -62,7 +62,9 @@ spec:
       containers:
       - args:
         - -api-addr=linkerd-controller-api.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8085
+        {{ if .Values.grafana.enabled -}}
         - -grafana-addr=linkerd-grafana.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:3000
+        {{ end -}}
         - -controller-namespace={{.Values.global.namespace}}
         - -log-level={{.Values.controllerLogLevel}}
         {{- $hostFull := replace "." "\\." (printf "linkerd-web.%s.svc.%s" .Values.global.namespace .Values.global.clusterDomain) }}

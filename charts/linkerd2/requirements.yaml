@@ -2,3 +2,11 @@ dependencies:
 - name: partials
   version: 0.1.0
   repository: file://../partials
+- name: grafana
+  version: 0.1.0
+  repository: file://../linkerd2/add-ons/grafana
+  condition: grafana.enabled
+- name: prometheus
+  version: 0.1.0
+  repository: file://../linkerd2/add-ons/prometheus
+  condition: prometheus.enabled

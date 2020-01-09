@@ -110,9 +110,6 @@ identity:
       # PEM-encoded ECDSA private key
       keyPEM: |
 
-# grafana configuration
-grafanaImage: gcr.io/linkerd-io/grafana
-
 # heartbeat configuration
 disableHeartBeat: false
 heartbeatSchedule: "0 0 * * *"
@@ -159,3 +156,17 @@ installNamespace: true
 # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector.
 nodeSelector:
   beta.kubernetes.io/os: linux
+
+# Config for add-ons
+grafana:
+  enabled: true
+  image: gcr.io/linkerd-io/grafana
+
+prometheus:
+  enabled: true
+  name:
+  logLevel: debug
+  image: prom/prometheus:v2.11.1
+
+tracing:
+    enabled: false

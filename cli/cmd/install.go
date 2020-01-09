@@ -119,12 +119,11 @@ var (
 		"templates/web-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
-		"templates/prometheus-rbac.yaml",
-		"templates/grafana-rbac.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
 		"templates/tap-rbac.yaml",
 		"templates/psp.yaml",
+		"templates/linkerd-values.yaml",
 	}
 
 	templatesControlPlaneStage = []string{
@@ -139,8 +138,6 @@ var (
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
 		"templates/web.yaml",
-		"templates/prometheus.yaml",
-		"templates/grafana.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
@@ -714,6 +711,18 @@ func toPromLogLevel(level string) string {
 	}
 }
 
+func checkAddons(values *l5dcharts.Values) []l5dcharts.AddOn {
+	var addons []l5dcharts.AddOn
+	if values.Grafana.Enabled {
+		addons = append(addons, values.Grafana)
+	}
+
+	if values.Prometheus.Enabled {
+		addons = append(addons, values.Prometheus)
+	}
+	return addons
+}
+
 func render(w io.Writer, values *l5dcharts.Values) error {
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
@@ -753,6 +762,35 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		return err
 	}
 
+	addons := checkAddons(values)
+
+	// Render for each add-on separately and attach
+	// Pass only global values to add-ons
+	if err != nil {
+		return err
+	}
+
+	for _, addon := range addons {
+
+		addonValues, err := yaml.Marshal(addon.GetValues())
+		if err != nil {
+			return err
+		}
+
+		subchart := &charts.Chart{
+			Name:      addon.GetChartName(),
+			Dir:       l5dcharts.AddonChartsPath + addon.GetChartName(),
+			Namespace: controlPlaneNamespace,
+			RawValues: append(rawValues, addonValues...),
+			Files:     addon.GetFiles(),
+		}
+		addonBuf, err := subchart.Render()
+		if err != nil {
+			return err
+		}
+
+		buf.Write(addonBuf.Bytes())
+	}
 	_, err = w.Write(buf.Bytes())
 	return err
 }

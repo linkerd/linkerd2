@@ -8,6 +8,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/imdario/mergo"
+	"sigs.k8s.io/yaml"
+
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 
@@ -208,6 +211,16 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	return nil
 }
 
+// GetReplicaSets returns all replicasets in a given namespace
+func GetConfigMap(kubeAPI kubernetes.Interface, name string, namespace string) (map[string]string, error) {
+	cm, err := kubeAPI.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return cm.Data, nil
+}
+
 func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Interface, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
@@ -297,6 +310,24 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
+
+	// Get values from the linkerd-values ConfigMap
+	cmRawValues, _ := GetConfigMap(k, "linkerd-values", controlPlaneNamespace)
+	if cmRawValues != nil {
+		//Cm is present now get the data
+		cmData := cmRawValues["values"]
+		var cmValues charts.Values
+		err := yaml.Unmarshal([]byte(cmData), &cmValues)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// over-write vmValues with values (generated from linkerd-config)
+		if err := mergo.Merge(values, cmValues, mergo.WithOverride); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	values.Identity = identity.Identity
 	values.Global.IdentityTrustAnchorsPEM = identity.TrustAnchorsPEM
 	values.Global.IdentityTrustDomain = identity.TrustDomain

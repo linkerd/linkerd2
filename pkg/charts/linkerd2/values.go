@@ -60,6 +60,10 @@ type (
 		SPValidatorResources   *Resources `json:"spValidatorResources"`
 		TapResources           *Resources `json:"tapResources"`
 		WebResources           *Resources `json:"webResources"`
+
+		// Add-Ons for Linkerd
+		Grafana    *Grafana    `json:"grafana"`
+		Prometheus *Prometheus `json:"prometheus"`
 	}
 
 	// Global values common across all charts

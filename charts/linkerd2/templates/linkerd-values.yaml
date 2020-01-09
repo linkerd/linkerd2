@@ -1,0 +1,35 @@
+---
+###
+### linkerd values
+###
+---
+{{- $dupValues := .Values -}}
+{{- $dupValues := omit $dupValues "partials" -}}
+{{- range $key, $value := $dupValues -}}
+  {{- if kindIs "map" $value -}}
+    {{- if hasKey $value "global" -}}
+      {{- if ne $key "configs" -}}
+        {{- $dupValues := set $dupValues $key (unset $value "global") -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if hasKey $value "partials" -}}
+      {{- $dupValues := set $dupValues $key (unset $value "partials") -}}
+    {{- end -}}
+    {{- if hasKey $value "keyPEM" -}}
+      {{- $dupValues := set $dupValues $key (unset $value "keyPEM") -}}
+    {{- end -}}
+  {{- end -}}
+{{- end }}
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-values
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: controller
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+data:
+  values: |-
+  {{- toYaml $dupValues | trim | nindent 4}}

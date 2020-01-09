@@ -83,6 +83,12 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 	return chart.render(l5dPartials)
 }
 
+// Render returns a bytes buffer with the result of rendering a Helm chart
+func (chart *Chart) RenderWithoutPartials() (bytes.Buffer, error) {
+	l5dPartials := []*chartutil.BufferedFile{}
+	return chart.render(l5dPartials)
+}
+
 // RenderCNI returns a bytes buffer with the result of rendering a Helm chart
 func (chart *Chart) RenderCNI() (bytes.Buffer, error) {
 	return chart.render([]*chartutil.BufferedFile{})
