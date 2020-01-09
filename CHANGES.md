@@ -17,7 +17,7 @@ might be stability issues.
     `--skip-inbound-ports` and `--skip-outbound-ports` (thanks to @javaducky!)
 * Controller
   * Fixed a race condition in the `linkerd-web` service
-  * Updated Prometheus to 2.15.5 (thanks @Pothulapati)
+  * Updated Prometheus to 2.15.2 (thanks @Pothulapati)
 * Web UI
   * Fixed an error when refreshing an already open dashboard when the Linkerd
     version has changed
