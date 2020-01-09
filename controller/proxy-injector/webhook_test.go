@@ -39,7 +39,7 @@ var (
 			OutboundPort:            &config.Port{Port: 4140},
 			Resource:                &config.ResourceRequirements{RequestCpu: "", RequestMemory: "", LimitCpu: "", LimitMemory: ""},
 			ProxyUid:                2102,
-			LogLevel:                &config.LogLevel{Level: "warn,linkerd2_proxy=info"},
+			LogLevel:                &config.LogLevel{Level: "warn,linkerd=info"},
 			DisableExternalProfiles: false,
 		},
 	}

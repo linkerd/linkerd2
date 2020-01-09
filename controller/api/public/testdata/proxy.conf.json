@@ -33,7 +33,7 @@
   },
   "proxyUid": "2102",
   "logLevel": {
-    "level": "warn,linkerd2_proxy=info"
+    "level": "warn,linkerd=info"
   },
   "disableExternalProfiles": false
 }

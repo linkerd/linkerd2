@@ -89,7 +89,7 @@ func TestRender(t *testing.T) {
 					PullPolicy: "ImagePullPolicy",
 					Version:    "ProxyVersion",
 				},
-				LogLevel: "warn,linkerd2_proxy=info",
+				LogLevel: "warn,linkerd=info",
 				Ports: &charts.Ports{
 					Admin:    4191,
 					Control:  4190,
@@ -340,8 +340,8 @@ func TestValidate(t *testing.T) {
 			{"linkerd2%proxy=debug", false},
 			{"linkerd2_proxy=foobar", false},
 			{"linker2d_proxy,std::option", true},
-			{"warn,linkerd2_proxy=info", true},
-			{"warn,linkerd2_proxy=foobar", false},
+			{"warn,linkerd=info", true},
+			{"warn,linkerd=foobar", false},
 		}
 
 		options, err := testInstallOptions()

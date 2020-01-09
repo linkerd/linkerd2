@@ -76,7 +76,7 @@
         "env": [
           {
             "name": "LINKERD2_PROXY_LOG",
-            "value": "warn,linkerd2_proxy=info"
+            "value": "warn,linkerd=info"
           },
           {
             "name": "LINKERD2_PROXY_DESTINATION_SVC_ADDR",
