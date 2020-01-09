@@ -12,7 +12,7 @@ metadata:
 spec:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
-  {{- if empty .Values.noInitContainer }}
+  {{- if empty .Values.global.noInitContainer }}
   allowedCapabilities:
   - NET_ADMIN
   - NET_RAW
@@ -25,7 +25,7 @@ spec:
   seLinux:
     rule: RunAsAny
   runAsUser:
-    {{- if .Values.noInitContainer }}
+    {{- if .Values.global.noInitContainer }}
     rule: MustRunAsNonRoot
     {{- else }}
     rule: RunAsAny
@@ -33,7 +33,7 @@ spec:
   supplementalGroups:
     rule: MustRunAs
     ranges:
-    {{- if .Values.noInitContainer }}
+    {{- if .Values.global.noInitContainer }}
     - min: 10001
       max: 65535
     {{- else }}
@@ -43,7 +43,7 @@ spec:
   fsGroup:
     rule: MustRunAs
     ranges:
-    {{- if .Values.noInitContainer }}
+    {{- if .Values.global.noInitContainer }}
     - min: 10001
       max: 65535
     {{- else }}

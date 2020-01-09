@@ -29,18 +29,15 @@ type (
 		ControllerReplicas          uint              `json:"controllerReplicas"`
 		ControllerLogLevel          string            `json:"controllerLogLevel"`
 		PrometheusLogLevel          string            `json:"prometheusLogLevel"`
-		ProxyContainerName          string            `json:"proxyContainerName"`
 		ControllerUID               int64             `json:"controllerUID"`
 		EnableH2Upgrade             bool              `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity       bool              `json:"enablePodAntiAffinity"`
-		NoInitContainer             bool              `json:"noInitContainer"`
 		WebhookFailurePolicy        string            `json:"webhookFailurePolicy"`
 		OmitWebhookSideEffects      bool              `json:"omitWebhookSideEffects"`
 		RestrictDashboardPrivileges bool              `json:"restrictDashboardPrivileges"`
 		DisableHeartBeat            bool              `json:"disableHeartBeat"`
 		HeartbeatSchedule           string            `json:"heartbeatSchedule"`
 		InstallNamespace            bool              `json:"installNamespace"`
-		ControlPlaneTracing         bool              `json:"controlPlaneTracing"`
 		Configs                     ConfigJSONs       `json:"configs"`
 		Global                      *Global           `json:"global"`
 		Identity                    *Identity         `json:"identity"`
@@ -74,7 +71,10 @@ type (
 		ProxyInjectAnnotation    string `json:"proxyInjectAnnotation"`
 		ProxyInjectDisabled      string `json:"proxyInjectDisabled"`
 		LinkerdNamespaceLabel    string `json:"linkerdNamespaceLabel"`
+		ProxyContainerName       string `json:"proxyContainerName"`
 		HighAvailability         bool   `json:"highAvailability"`
+		NoInitContainer          bool   `json:"noInitContainer"`
+		ControlPlaneTracing      bool   `json:"controlPlaneTracing"`
 		IdentityTrustAnchorsPEM  string `json:"identityTrustAnchorsPEM"`
 		IdentityTrustDomain      string `json:"identityTrustDomain"`
 
@@ -223,7 +223,7 @@ func NewValues(ha bool) (*Values, error) {
 	v.Global.CliVersion = k8s.CreatedByAnnotationValue()
 	v.ProfileValidator = &ProfileValidator{TLS: &TLS{}}
 	v.ProxyInjector = &ProxyInjector{TLS: &TLS{}}
-	v.ProxyContainerName = k8s.ProxyContainerName
+	v.Global.ProxyContainerName = k8s.ProxyContainerName
 	v.Tap = &Tap{TLS: &TLS{}}
 
 	return v, nil

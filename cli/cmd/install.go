@@ -179,10 +179,10 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		controllerUID:               defaults.ControllerUID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
 		disableHeartbeat:            defaults.DisableHeartBeat,
-		noInitContainer:             defaults.NoInitContainer,
+		noInitContainer:             defaults.Global.NoInitContainer,
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
-		controlPlaneTracing:         defaults.ControlPlaneTracing,
+		controlPlaneTracing:         defaults.Global.ControlPlaneTracing,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -654,14 +654,14 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.ControllerLogLevel = options.controllerLogLevel
 	installValues.ControllerReplicas = options.controllerReplicas
 	installValues.ControllerUID = options.controllerUID
-	installValues.ControlPlaneTracing = options.controlPlaneTracing
+	installValues.Global.ControlPlaneTracing = options.controlPlaneTracing
 	installValues.EnableH2Upgrade = !options.disableH2Upgrade
 	installValues.EnablePodAntiAffinity = options.highAvailability
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	installValues.Global.Namespace = controlPlaneNamespace
-	installValues.NoInitContainer = options.noInitContainer
+	installValues.Global.NoInitContainer = options.noInitContainer
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
 	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()

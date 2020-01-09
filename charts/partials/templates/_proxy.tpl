@@ -68,7 +68,7 @@ env:
 - name: LINKERD2_PROXY_TAP_SVC_NAME
   value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
 {{ end -}}
-{{ if .Values.controlPlaneTracing -}}
+{{ if .Values.global.controlPlaneTracing -}}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
   value: linkerd-collector.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:55678
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
