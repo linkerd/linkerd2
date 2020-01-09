@@ -49,12 +49,10 @@ func (hc *HealthChecker) addCheckAsCategory(
 	testCategoryID CategoryID,
 	categoryID CategoryID,
 	desc string,
-	shouldRun func() bool,
 ) {
 	testCategory := category{
-		id:        testCategoryID,
-		checkers:  []checker{},
-		shouldRun: shouldRun,
+		id:       testCategoryID,
+		checkers: []checker{},
 	}
 
 	for _, cat := range hc.categories {
@@ -174,6 +172,32 @@ func TestHealthChecker(t *testing.T) {
 				fatal:       true,
 				check: func(context.Context) error {
 					return fmt.Errorf("fatal")
+				},
+				retryDeadline: time.Time{},
+			},
+		},
+	}
+
+	skippingCheck := category{
+		id: "cat7",
+		checkers: []checker{
+			{
+				description: "skip",
+				check: func(context.Context) error {
+					return &SkipError{Reason: "needs skipping"}
+				},
+				retryDeadline: time.Time{},
+			},
+		},
+	}
+
+	skippingRPCCheck := category{
+		id: "cat8",
+		checkers: []checker{
+			{
+				description: "skipRpc",
+				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
+					return nil, &SkipError{Reason: "needs skipping"}
 				},
 				retryDeadline: time.Time{},
 			},
@@ -326,6 +350,27 @@ func TestHealthChecker(t *testing.T) {
 
 		if !reflect.DeepEqual(observedResults, expectedResults) {
 			t.Fatalf("Expected results %v, but got %v", expectedResults, observedResults)
+		}
+	})
+
+	t.Run("Does not notify observer of skipped checks", func(t *testing.T) {
+		hc := NewHealthChecker(
+			[]CategoryID{},
+			&Options{},
+		)
+		hc.addCategory(passingCheck1)
+		hc.addCategory(skippingCheck)
+		hc.addCategory(skippingRPCCheck)
+
+		expectedResults := []string{
+			"cat1 desc1",
+		}
+
+		obs := newObserver()
+		hc.RunChecks(obs.resultFn)
+
+		if !reflect.DeepEqual(obs.results, expectedResults) {
+			t.Fatalf("Expected results %v, but got %v", expectedResults, obs.results)
 		}
 	})
 }
@@ -1670,7 +1715,7 @@ metadata:
 
 			// validate that this check relies on the k8s api, not on hc.controlPlanePods
 			hc.addCheckAsCategory("cat1", LinkerdControlPlaneExistenceChecks,
-				testCase.checkDescription, nil)
+				testCase.checkDescription)
 
 			obs := newObserver()
 			hc.RunChecks(obs.resultFn)
@@ -1925,7 +1970,7 @@ func TestValidateDataPlaneNamespace(t *testing.T) {
 			}
 
 			// create a synethic category that only includes the "data plane namespace exists" check
-			hc.addCheckAsCategory("data-plane-ns-test-cat", LinkerdDataPlaneChecks, "data plane namespace exists", nil)
+			hc.addCheckAsCategory("data-plane-ns-test-cat", LinkerdDataPlaneChecks, "data plane namespace exists")
 
 			expectedResults := []string{
 				tc.result,
@@ -2195,7 +2240,7 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 				t.Fatalf("Unexpected error: %q", err)
 			}
 
-			hc.addCheckAsCategory("l5d-injection-disabled", LinkerdHAChecks, "pod injection disabled on kube-system", hc.isHA)
+			hc.addCheckAsCategory("l5d-injection-disabled", LinkerdHAChecks, "pod injection disabled on kube-system")
 
 			obs := newObserver()
 			hc.RunChecks(obs.resultFn)

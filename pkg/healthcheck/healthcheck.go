@@ -220,6 +220,16 @@ func IsCategoryError(err error, categoryID CategoryID) bool {
 	return false
 }
 
+// SkipError is returned by a check in case this check needs to be ignored.
+type SkipError struct {
+	Reason string
+}
+
+// Error satisfies the error interface for SkipError.
+func (e *SkipError) Error() string {
+	return e.Reason
+}
+
 type checker struct {
 	// description is the short description that's printed to the command line
 	// when the check is executed
@@ -273,10 +283,9 @@ type CheckResult struct {
 type CheckObserver func(*CheckResult)
 
 type category struct {
-	id        CategoryID
-	checkers  []checker
-	enabled   bool
-	shouldRun func() bool
+	id       CategoryID
+	checkers []checker
+	enabled  bool
 }
 
 // Options specifies configuration for a HealthChecker.
@@ -982,11 +991,13 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-injection-disabled",
 					warning:     true,
 					check: func(context.Context) error {
-						return hc.checkHAMetadataPresentOnKubeSystemNamespace()
+						if hc.isHA() {
+							return hc.checkHAMetadataPresentOnKubeSystemNamespace()
+						}
+						return &SkipError{Reason: "not run for non HA installs"}
 					},
 				},
 			},
-			shouldRun: hc.isHA,
 		},
 	}
 }
@@ -1029,32 +1040,29 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 
 	for _, c := range hc.categories {
 		if c.enabled {
-			if c.shouldRun == nil || c.shouldRun() {
-				for _, checker := range c.checkers {
-					checker := checker // pin
-					if checker.check != nil {
-						if !hc.runCheck(c.id, &checker, observer) {
-							if !checker.warning {
-								success = false
-							}
-							if checker.fatal {
-								return success
-							}
+			for _, checker := range c.checkers {
+				checker := checker // pin
+				if checker.check != nil {
+					if !hc.runCheck(c.id, &checker, observer) {
+						if !checker.warning {
+							success = false
 						}
-					}
-
-					if checker.checkRPC != nil {
-						if !hc.runCheckRPC(c.id, &checker, observer) {
-							if !checker.warning {
-								success = false
-							}
-							if checker.fatal {
-								return success
-							}
+						if checker.fatal {
+							return success
 						}
 					}
 				}
 
+				if checker.checkRPC != nil {
+					if !hc.runCheckRPC(c.id, &checker, observer) {
+						if !checker.warning {
+							success = false
+						}
+						if checker.fatal {
+							return success
+						}
+					}
+				}
 			}
 		}
 	}
@@ -1067,6 +1075,10 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer Ch
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		err := c.check(ctx)
+		if se, ok := err.(*SkipError); ok {
+			log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
+			return true
+		}
 		if err != nil {
 			err = &CategoryError{categoryID, err}
 		}
@@ -1099,6 +1111,10 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	checkRsp, err := c.checkRPC(ctx)
+	if se, ok := err.(*SkipError); ok {
+		log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
+		return true
+	}
 	if err != nil {
 		err = &CategoryError{categoryID, err}
 	}
