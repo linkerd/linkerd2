@@ -257,7 +257,7 @@ func validateExpected(events []*tapEvent, expectedEvent tapEvent) error {
 	}
 	for _, event := range events {
 		if *event != expectedEvent {
-			return fmt.Errorf("Unexpected tap event [%+v]", *event)
+			return fmt.Errorf("Unexpected tap event [%+v]; expected=[%+v]", *event, expectedEvent)
 		}
 	}
 	return nil
