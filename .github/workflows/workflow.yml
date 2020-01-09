@@ -190,7 +190,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
+        integration_test: [external_issuer]
     name: Cluster setup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
@@ -229,7 +229,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
+        integration_test: [external_issuer]
     needs: [docker_pull, docker_build, kind_setup]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -302,48 +302,6 @@ jobs:
           ${{ matrix.integration_test }}_integration_tests
         )
 
-  kind_cleanup:
-    if: always()
-    strategy:
-      fail-fast: false # always attempt to cleanup all clusters
-      matrix:
-        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
-    needs: [kind_integration]
-    name: Cluster cleanup (${{ matrix.integration_test }})
-    runs-on: ubuntu-18.04
-    steps:
-    - name: Checkout code
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      uses: actions/checkout@v2
-    # for debugging
-    - name: Dump env
-      run: |
-        env | sort
-    - name: Dump GitHub context
-      env:
-        GITHUB_CONTEXT: ${{ toJson(github) }}
-      run: echo "$GITHUB_CONTEXT"
-    - name: Dump job context
-      env:
-        JOB_CONTEXT: ${{ toJson(job) }}
-      run: echo "$JOB_CONTEXT"
-    - name: Docker SSH setup
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      run: |
-        mkdir -p ~/.ssh/
-        touch ~/.ssh/id && chmod 600 ~/.ssh/id
-        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
-        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
-        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        ssh linkerd-docker docker version
-    - name: Kind cluster cleanup
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      env:
-        DOCKER_HOST: ssh://linkerd-docker
-      run: |
-        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
-        export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        bin/kind delete cluster --name=$KIND_CLUSTER
 
   #
   # Docker deploy and cloud integration tests run for:

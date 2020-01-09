@@ -15,14 +15,14 @@ init_test_run "$@"
 printf '==================RUNNING ALL TESTS==================\n'
 printf 'Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\n' "$linkerd_version" "$linkerd_namespace" "$k8s_context"
 
-upgrade_integration_tests
-helm_integration_tests
-deep_integration_tests
+#upgrade_integration_tests
+#helm_integration_tests
+#deep_integration_tests
 external_issuer_integration_tests
 
 if [ $exit_code -eq 0 ]; then
     printf '\n=== PASS: all tests passed\n'
-    cleanup
+    #cleanup
 else
     # `cleanup` is not called so that there is a chance to debug the problem
     printf '\n=== FAIL: at least one test failed\n'
