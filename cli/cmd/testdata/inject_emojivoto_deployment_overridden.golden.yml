@@ -41,7 +41,7 @@ spec:
         resources: {}
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd2_proxy=info
+          value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR

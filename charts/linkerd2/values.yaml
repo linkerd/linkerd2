@@ -23,7 +23,7 @@ global:
       name: gcr.io/linkerd-io/proxy
       pullPolicy: *image_pull_policy
       version: *linkerd_version
-    logLevel: warn,linkerd2_proxy=info
+    logLevel: warn,linkerd=info
     ports:
       admin: 4191
       control: 4190

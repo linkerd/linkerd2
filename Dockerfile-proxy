@@ -26,5 +26,5 @@ COPY --from=golang /out/proxy-identity /usr/lib/linkerd/linkerd2-proxy-identity
 COPY proxy-identity/run-proxy.sh /usr/bin/linkerd2-proxy-run
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
-ENV LINKERD2_PROXY_LOG=warn,linkerd2_proxy=info
+ENV LINKERD2_PROXY_LOG=warn,linkerd=info
 ENTRYPOINT ["/usr/bin/linkerd2-proxy-run"]

@@ -55,7 +55,7 @@ func TestNewValues(t *testing.T) {
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
-				LogLevel: "warn,linkerd2_proxy=info",
+				LogLevel: "warn,linkerd=info",
 				Ports: &Ports{
 					Admin:    4191,
 					Control:  4190,
