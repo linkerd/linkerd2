@@ -1,3 +1,36 @@
+## edge-20.1.1
+
+This edge release includes experimental improvements to the Linkerd proxy's
+request buffering and backpressure infrastructure.
+
+Additionally, we've fixed several bugs when installing Linkerd with Helm,
+updated the CLI to allow using both port numbers _and_ port ranges with the
+`--skip-inbound-ports` and `--skip-outbound-ports`  flags, and fixed a dashboard
+error that can occur if the dashboard is open in a browser while updating Linkerd.
+
+**Note**: The `linkerd-proxy` version included with this release is more
+experimental than usual. We'd love your help testing, but be aware that there
+might be stability issues.
+
+* CLI
+  * Added the ability to pass both port numbers and port ranges to
+    `--skip-inbound-ports` and `--skip-outbound-ports` (thanks to @javaducky!)
+* Controller
+  * Fixed a race condition in the `linkerd-web` service
+  * Updated Prometheus to 2.15.2 (thanks @Pothulapati)
+* Web UI
+  * Fixed an error when refreshing an already open dashboard when the Linkerd
+    version has changed
+* Proxy
+  * Internal changes to the proxy's request buffering and backpressure
+    infrastructure
+* Helm
+  * Fixed the `linkerd-cni` Helm chart not setting proper namespace annotations
+    and labels
+  * Fixed certificate issuance lifetime not being set when installing through
+    Helm
+  * More improvements to Helm best practices (thanks to @Pothulapati!)
+
 ## edge-19.12.3
 
 This edge release adds support for pod IP and service cluster IP lookups, 
