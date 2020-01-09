@@ -78,7 +78,7 @@ var (
 //////////////////////
 
 func TestCliTap(t *testing.T) {
-	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
+	out, stderr, err := TestHelper.LinkerdRun("inject", "--proxy-log-level=warn,linkerd=trace", "--manual", "testdata/tap_application.yaml")
 	if err != nil {
 		t.Fatalf("linkerd inject command failed\n%s\n%s", out, stderr)
 	}
@@ -257,7 +257,7 @@ func validateExpected(events []*tapEvent, expectedEvent tapEvent) error {
 	}
 	for _, event := range events {
 		if *event != expectedEvent {
-			return fmt.Errorf("Unexpected tap event [%+v]", *event)
+			return fmt.Errorf("Unexpected tap event [%+v]; expected=[%+v]", *event, expectedEvent)
 		}
 	}
 	return nil
