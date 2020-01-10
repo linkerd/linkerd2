@@ -2193,7 +2193,6 @@ metadata:
   creationTimestamp: null
   labels:
     %s
-    linkerd.io/is-control-plane: "true"
   name: kube-system`, nsLabel),
 	}
 }
@@ -2217,12 +2216,12 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 		{
 			"fails when HA and admission hooks are enabled",
 			getConfigAndKubeSystemNamespace(true, "config.linkerd.io/admission-webhooks: enabled"),
-			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have config.linkerd.io/admission-webhooks: disabled if HA mode is enabled",
+			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have the label config.linkerd.io/admission-webhooks: disabled if HA mode is enabled",
 		},
 		{
 			"fails when HA is enabled and metadata is missing",
 			getConfigAndKubeSystemNamespace(true, ""),
-			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have config.linkerd.io/admission-webhooks: disabled if HA mode is enabled",
+			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have the label config.linkerd.io/admission-webhooks: disabled if HA mode is enabled",
 		},
 	}
 
