@@ -656,8 +656,8 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 				dockerRegistry: "my.custom.registry/linkerd-io",
 			},
 			expectedOverrides: map[string]string{
-				k8s.ProxyImageAnnotation:     "my.custom.registry/linkerd-io/proxy",
-				k8s.ProxyInitImageAnnotation: "my.custom.registry/linkerd-io/proxyInit",
+				k8s.ProxyImageAnnotation:     "gcr.io/linkerd-io/proxy",
+				k8s.ProxyInitImageAnnotation: "gcr.io/linkerd-io/proxyInit",
 				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
 			},
 		},
@@ -667,7 +667,9 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 				dockerRegistry: "my.custom.registry/linkerd-io",
 			},
 			expectedOverrides: map[string]string{
-				k8s.DebugImageAnnotation: "my.custom.registry/linkerd-io/debug",
+				k8s.ProxyImageAnnotation:     "my.custom.registry/linkerd-io/proxy",
+				k8s.ProxyInitImageAnnotation: "my.custom.registry/linkerd-io/proxyInit",
+				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
 			},
 		},
 		{
