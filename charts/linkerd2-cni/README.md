@@ -22,7 +22,7 @@ The following table lists the configurable parameters of the Linkerd2-cni chart 
 |`ignoreOutboundPorts`                 | Outbound ports the proxy should ignore                                ||
 |`createdByAnnotation`                 | Annotation label for the proxy create. Do not edit.                   |`linkerd.io/created-by`|
 |`cniPluginImage`                      | Docker image for the cni plugin                                       |`gcr.io/linkerd-io/cni-plugin`|
-|`cniPluginVersion`                    | Tag for the cni container Docker image                                |`stable-2.6.0`|
+|`cniPluginVersion`                    | Tag for the cni container Docker image                                |latest stable version|
 |`logLevel`                            | Log level for the cni plugin                                          |`info`|
 |`portsToRedirect`                     | Ports to redirect to proxy                                            ||
 |`proxyUID`                            | User id under which the proxy shall be ran                            |`2102`|
