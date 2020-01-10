@@ -128,6 +128,10 @@ const (
 	// from LinkerdVersionChecks, so those checks must be added first.
 	LinkerdDataPlaneChecks CategoryID = "linkerd-data-plane"
 
+	// LinkerdHAChecks adds checks to validate that the HA configuration
+	// is correct. These checks are no ops if linkerd is not in HA mode
+	LinkerdHAChecks CategoryID = "linkerd-ha-checks"
+
 	// linkerdCniResourceLabel is the label key that is used to identify
 	// whether a Kubernetes resource is related to the install-cni command
 	// The value is expected to be "true", "false" or "", where "false" and
@@ -214,6 +218,16 @@ func IsCategoryError(err error, categoryID CategoryID) bool {
 		return ce.Category == categoryID
 	}
 	return false
+}
+
+// SkipError is returned by a check in case this check needs to be ignored.
+type SkipError struct {
+	Reason string
+}
+
+// Error satisfies the error interface for SkipError.
+func (e *SkipError) Error() string {
+	return e.Reason
 }
 
 type checker struct {
@@ -969,6 +983,22 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 			},
 		},
+		{
+			id: LinkerdHAChecks,
+			checkers: []checker{
+				{
+					description: "pod injection disabled on kube-system",
+					hintAnchor:  "l5d-injection-disabled",
+					warning:     true,
+					check: func(context.Context) error {
+						if hc.isHA() {
+							return hc.checkHAMetadataPresentOnKubeSystemNamespace()
+						}
+						return &SkipError{Reason: "not run for non HA installs"}
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -1045,6 +1075,10 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer Ch
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
 		err := c.check(ctx)
+		if se, ok := err.(*SkipError); ok {
+			log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
+			return true
+		}
 		if err != nil {
 			err = &CategoryError{categoryID, err}
 		}
@@ -1077,6 +1111,10 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	checkRsp, err := c.checkRPC(ctx)
+	if se, ok := err.(*SkipError); ok {
+		log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
+		return true
+	}
 	if err != nil {
 		err = &CategoryError{categoryID, err}
 	}
@@ -1263,6 +1301,15 @@ func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool) error {
 	}
 
 	return checkResources("ClusterRoleBindings", objects, hc.expectedRBACNames(), shouldExist)
+}
+
+func (hc *HealthChecker) isHA() bool {
+	for _, flag := range hc.linkerdConfig.GetInstall().GetFlags() {
+		if flag.GetName() == "ha" && flag.GetValue() == "true" {
+			return true
+		}
+	}
+	return false
 }
 
 func (hc *HealthChecker) isHeartbeatDisabled() bool {
@@ -1524,6 +1571,20 @@ func (hc *HealthChecker) checkCanPerformAction(verb, namespace, group, version, 
 		resource,
 		"",
 	)
+}
+
+func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace() error {
+	ns, err := hc.kubeAPI.CoreV1().Namespaces().Get("kube-system", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	val, ok := ns.Labels[k8s.AdmissionWebhookLabel]
+	if !ok || val != "disabled" {
+		return fmt.Errorf("kube-system namespace needs to have the label %s: disabled if HA mode is enabled", k8s.AdmissionWebhookLabel)
+	}
+
+	return nil
 }
 
 func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
