@@ -2279,11 +2279,9 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version", "proxy_init_image_version":"v1.3.0"}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.0","debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
-    {"cliVersion":"dev-undefined","flags":[]}
-  debug: |
-    {"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}`,
+    {"cliVersion":"dev-undefined","flags":[]}`,
 			},
 			&configPb.All{
 				Global: &configPb.Global{
@@ -2328,14 +2326,13 @@ data:
 					DisableExternalProfiles: true,
 					ProxyVersion:            "install-proxy-version",
 					ProxyInitImageVersion:   "v1.3.0",
-				}, Install: &configPb.Install{
-					CliVersion: "dev-undefined",
-				}, Debug: &configPb.Debug{
 					DebugImage: &configPb.Image{
 						ImageName:  "gcr.io/linkerd-io/debug",
 						PullPolicy: "IfNotPresent",
 					},
 					DebugImageVersion: "install-debug-version",
+				}, Install: &configPb.Install{
+					CliVersion: "dev-undefined",
 				}},
 			nil,
 		},
@@ -2350,10 +2347,9 @@ data:
   global: |
     {"linkerdNamespace":"ns","identityContext":null}
   proxy: "{}"
-  install: "{}"
-  debug: "{}"`,
+  install: "{}"`,
 			},
-			&configPb.All{Global: &configPb.Global{LinkerdNamespace: "ns", IdentityContext: nil}, Proxy: &configPb.Proxy{}, Install: &configPb.Install{}, Debug: &configPb.Debug{}},
+			&configPb.All{Global: &configPb.Global{LinkerdNamespace: "ns", IdentityContext: nil}, Proxy: &configPb.Proxy{}, Install: &configPb.Install{}},
 			nil,
 		},
 		{
@@ -2366,10 +2362,9 @@ metadata:
 data:
   global: "{}"
   proxy: "{}"
-  install: "{}"
-  debug: "{}"`,
+  install: "{}"`,
 			},
-			&configPb.All{Global: &configPb.Global{}, Proxy: &configPb.Proxy{}, Install: &configPb.Install{}, Debug: &configPb.Debug{}},
+			&configPb.All{Global: &configPb.Global{}, Proxy: &configPb.Proxy{}, Install: &configPb.Install{}},
 			nil,
 		},
 		{

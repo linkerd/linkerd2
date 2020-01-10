@@ -641,7 +641,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 		options.identityOptions.replicas = options.controllerReplicas
 	}
 
-	globalJSON, proxyJSON, installJSON, debugJSON, err := config.ToJSON(configs)
+	globalJSON, proxyJSON, installJSON, err := config.ToJSON(configs)
 	if err != nil {
 		return nil, err
 	}
@@ -651,7 +651,6 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Configs.Global = globalJSON
 	installValues.Configs.Proxy = proxyJSON
 	installValues.Configs.Install = installJSON
-	installValues.Configs.Debug = debugJSON
 	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
 	installValues.ControllerImageVersion = configs.GetGlobal().GetVersion()
 	installValues.ControllerLogLevel = options.controllerLogLevel
@@ -769,7 +768,6 @@ func (options *installOptions) configs(identity *pb.IdentityContext) *pb.All {
 		Global:  options.globalConfig(identity),
 		Proxy:   options.proxyConfig(),
 		Install: options.installConfig(),
-		Debug:   options.debugConfig(),
 	}
 }
 
@@ -838,11 +836,6 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 		DisableExternalProfiles: !options.enableExternalProfiles,
 		ProxyVersion:            options.proxyVersion,
 		ProxyInitImageVersion:   options.initImageVersion,
-	}
-}
-
-func (options *installOptions) debugConfig() *pb.Debug {
-	return &pb.Debug{
 		DebugImage: &pb.Image{
 			ImageName:  registryOverride(options.debugImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,

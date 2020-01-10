@@ -908,14 +908,14 @@ func (conf *ResourceConfig) debugSidecarImage() string {
 	if override := conf.getOverride(k8s.DebugImageAnnotation); override != "" {
 		return override
 	}
-	return conf.configs.GetDebug().GetDebugImage().GetImageName()
+	return conf.configs.GetProxy().GetDebugImage().GetImageName()
 }
 
 func (conf *ResourceConfig) debugSidecarImageVersion() string {
 	if override := conf.getOverride(k8s.DebugImageVersionAnnotation); override != "" {
 		return override
 	}
-	if debugVersion := conf.configs.GetDebug().GetDebugImageVersion(); debugVersion != "" {
+	if debugVersion := conf.configs.GetProxy().GetDebugImageVersion(); debugVersion != "" {
 		return debugVersion
 	}
 	if controlPlaneVersion := conf.configs.GetGlobal().GetVersion(); controlPlaneVersion != "" {
@@ -928,7 +928,7 @@ func (conf *ResourceConfig) debugSidecarImagePullPolicy() string {
 	if override := conf.getOverride(k8s.DebugImagePullPolicyAnnotation); override != "" {
 		return override
 	}
-	return conf.configs.GetDebug().GetDebugImage().GetPullPolicy()
+	return conf.configs.GetProxy().GetDebugImage().GetPullPolicy()
 }
 
 // GetOverriddenConfiguration returns a map of the overridden proxy annotations

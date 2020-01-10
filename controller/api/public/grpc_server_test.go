@@ -539,7 +539,6 @@ func TestConfig(t *testing.T) {
 		fakeGrpcServer.mountPathGlobalConfig = "testdata/global.conf.json"
 		fakeGrpcServer.mountPathProxyConfig = "testdata/proxy.conf.json"
 		fakeGrpcServer.mountPathInstallConfig = "testdata/install.conf.json"
-		fakeGrpcServer.mountPathDebugConfig = "testdata/debug.conf.json"
 
 		k8sAPI.Sync()
 
@@ -561,15 +560,15 @@ func TestConfig(t *testing.T) {
 		if p := portRanges[0].GetPortRange(); p != expectedPort {
 			t.Fatalf("Unexpected proxy config response: %s != %s", expectedPort, p)
 		}
+		expectedVersion = "test-debug-version"
+		if v := rsp.GetProxy().GetDebugImageVersion(); v != expectedVersion {
+			t.Fatalf("Unexpected proxy debug config response: \"%s\" != \"%s\"", expectedVersion, v)
+		}
 
 		expectedVersion = "test-install-version"
 		if v := rsp.GetInstall().GetCliVersion(); v != expectedVersion {
 			t.Fatalf("Unexpected install config response: \"%s\" != \"%s\"", expectedVersion, v)
 		}
 
-		expectedVersion = "test-debug-version"
-		if v := rsp.GetDebug().GetDebugImageVersion(); v != expectedVersion {
-			t.Fatalf("Unexpected debug config response: \"%s\" != \"%s\"", expectedVersion, v)
-		}
 	})
 }

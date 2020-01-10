@@ -287,9 +287,6 @@ const (
 	// MountPathInstallConfig is the path at which the install config file is mounted.
 	MountPathInstallConfig = MountPathBase + "/config/install"
 
-	// MountPathDebugConfig is the path at which the debug config file is mounted.
-	MountPathDebugConfig = MountPathBase + "/config/debug"
-
 	// MountPathEndEntity is the path at which a tmpfs directory is mounted to
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"

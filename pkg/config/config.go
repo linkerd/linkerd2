@@ -32,13 +32,6 @@ func Install(filepath string) (*pb.Install, error) {
 	return config, err
 }
 
-// Debug returns the Debug protobuf config from the linkerd-config ConfigMap
-func Debug(filepath string) (*pb.Debug, error) {
-	config := &pb.Debug{}
-	err := unmarshalFile(filepath, config)
-	return config, err
-}
-
 func unmarshalFile(filepath string, msg proto.Message) error {
 	configJSON, err := ioutil.ReadFile(filepath)
 	if err != nil {
@@ -69,7 +62,7 @@ func unmarshal(json string, msg proto.Message) error {
 // FromConfigMap builds a configuration by reading a map with the keys "global"
 // and "proxy", each containing JSON values.
 func FromConfigMap(configMap map[string]string) (*pb.All, error) {
-	c := &pb.All{Global: &pb.Global{}, Proxy: &pb.Proxy{}, Install: &pb.Install{}, Debug: &pb.Debug{}}
+	c := &pb.All{Global: &pb.Global{}, Proxy: &pb.Proxy{}, Install: &pb.Install{}}
 
 	if err := unmarshal(configMap["global"], c.Global); err != nil {
 		return nil, fmt.Errorf("invalid global config: %s", err)
@@ -83,15 +76,11 @@ func FromConfigMap(configMap map[string]string) (*pb.All, error) {
 		return nil, fmt.Errorf("invalid install config: %s", err)
 	}
 
-	if err := unmarshal(configMap["debug"], c.Debug); err != nil {
-		return nil, fmt.Errorf("invalid debug config: %s", err)
-	}
-
 	return c, nil
 }
 
 // ToJSON encode the configuration to JSON, i.e. to be stored in a ConfigMap.
-func ToJSON(configs *pb.All) (global, proxy, install, debug string, err error) {
+func ToJSON(configs *pb.All) (global, proxy, install string, err error) {
 	m := jsonpb.Marshaler{EmitDefaults: true}
 
 	global, err = m.MarshalToString(configs.GetGlobal())
@@ -105,10 +94,5 @@ func ToJSON(configs *pb.All) (global, proxy, install, debug string, err error) {
 	}
 
 	install, err = m.MarshalToString(configs.GetInstall())
-	if err != nil {
-		return
-	}
-
-	debug, err = m.MarshalToString(configs.GetDebug())
 	return
 }

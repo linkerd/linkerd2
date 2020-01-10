@@ -930,20 +930,17 @@ data:
       },
       "disableExternalProfiles": true,
       "proxyVersion": "test-proxy-version",
-      "proxyInitImageVersion": "test-proxy-init-version"
-    }
-  install: |
-    {
-      "cliVersion":"linkerd-version",
-      "flags":[]
-    }
-  debug: |
-    {
+      "proxyInitImageVersion": "test-proxy-init-version",
       "debugImage":{
         "imageName":"gcr.io/linkerd-io/debug",
         "pullPolicy":"IfNotPresent"
       },
       "debugImageVersion": "test-debug-version"
+    }
+  install: |
+    {
+      "cliVersion":"linkerd-version",
+      "flags":[]
     }
 ---
 # Source: linkerd2/templates/identity.yaml

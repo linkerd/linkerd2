@@ -41,10 +41,8 @@ var (
 			ProxyUid:                2102,
 			LogLevel:                &config.LogLevel{Level: "warn,linkerd=info"},
 			DisableExternalProfiles: false,
-		},
-		Debug: &config.Debug{
-			DebugImage:        &config.Image{ImageName: "gcr.io/linkerd-io/debug", PullPolicy: "IfNotPresent"},
-			DebugImageVersion: "debug-image-version",
+			DebugImage:              &config.Image{ImageName: "gcr.io/linkerd-io/debug", PullPolicy: "IfNotPresent"},
+			DebugImageVersion:       "debug-image-version",
 		},
 	}
 )

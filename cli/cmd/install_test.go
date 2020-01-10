@@ -120,7 +120,6 @@ func TestRender(t *testing.T) {
 			Global:  "GlobalConfig",
 			Proxy:   "ProxyConfig",
 			Install: "InstallConfig",
-			Debug:   "DebugConfig",
 		},
 		ControllerReplicas: 1,
 		ProxyInjector:      defaultValues.ProxyInjector,
@@ -330,7 +329,6 @@ func TestValidate(t *testing.T) {
 		testValues.Global = new(pb.Global)
 		testValues.Proxy = new(pb.Proxy)
 		testValues.Install = new(pb.Install)
-		testValues.Debug = new(pb.Debug)
 
 		actual, err := underTest.buildValuesWithoutIdentity(testValues)
 

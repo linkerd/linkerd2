@@ -305,7 +305,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		// override the anchors in config
 		configs.Global.IdentityContext.TrustAnchorsPem = values.Global.IdentityTrustAnchorsPEM
 		// rebuild the json config map
-		globalJSON, _, _, _, _ := config.ToJSON(configs)
+		globalJSON, _, _, _ := config.ToJSON(configs)
 		values.Configs.Global = globalJSON
 	}
 
@@ -360,12 +360,12 @@ func repairConfigs(configs *pb.All) {
 	// ALWAYS update the CLI version to the most recent.
 	configs.Install.CliVersion = version.Version
 
-	// Repair the "debug" section
-	if configs.Debug == nil {
-		configs.Debug = &pb.Debug{}
+	// Repair the "proxy" section
+	if configs.Proxy == nil {
+		configs.Proxy = &pb.Proxy{}
 	}
-	if configs.Debug.DebugImage == nil {
-		configs.Debug.DebugImage = &pb.Image{}
+	if configs.Proxy.DebugImage == nil {
+		configs.Proxy.DebugImage = &pb.Image{}
 	}
 }
 

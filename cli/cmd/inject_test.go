@@ -77,7 +77,7 @@ func TestUninjectAndInject(t *testing.T) {
 	defaultConfig := testInstallConfig()
 	defaultConfig.Global.Version = "test-inject-control-plane-version"
 	defaultConfig.Proxy.ProxyVersion = "test-inject-proxy-version"
-	defaultConfig.Debug.DebugImageVersion = "test-inject-debug-version"
+	defaultConfig.Proxy.DebugImageVersion = "test-inject-debug-version"
 
 	emptyVersionConfig := testInstallConfig()
 	emptyVersionConfig.Global.Version = ""

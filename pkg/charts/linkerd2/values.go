@@ -88,7 +88,6 @@ type (
 		Global  string `json:"global"`
 		Proxy   string `json:"proxy"`
 		Install string `json:"install"`
-		Debug   string `json:"debug"`
 	}
 
 	// Proxy contains the fields to set the proxy sidecar container

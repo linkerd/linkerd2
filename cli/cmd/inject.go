@@ -392,12 +392,12 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	if options.imagePullPolicy != "" {
 		configs.Proxy.ProxyImage.PullPolicy = options.imagePullPolicy
 		configs.Proxy.ProxyInitImage.PullPolicy = options.imagePullPolicy
-		configs.Debug.DebugImage.PullPolicy = options.imagePullPolicy
+		configs.Proxy.DebugImage.PullPolicy = options.imagePullPolicy
 		overrideAnnotations[k8s.ProxyImagePullPolicyAnnotation] = options.imagePullPolicy
 	}
 
 	if options.dockerRegistry != "" {
-		currentDebugImage := configs.Debug.DebugImage.ImageName
+		currentDebugImage := configs.Proxy.DebugImage.ImageName
 		currentRegistry := getFlagValue(configs.GetInstall().GetFlags(), "registry")
 		if currentRegistry == "" {
 			currentRegistry = defaultDockerRegistry
