@@ -367,10 +367,18 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	}
 
 	if options.dockerRegistry != "" {
-		configs.Proxy.ProxyImage.ImageName = registryOverride(configs.Proxy.ProxyImage.ImageName, options.dockerRegistry)
-		configs.Proxy.ProxyInitImage.ImageName = registryOverride(configs.Proxy.ProxyInitImage.ImageName, options.dockerRegistry)
-		overrideAnnotations[k8s.ProxyImageAnnotation] = configs.Proxy.ProxyImage.ImageName
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = configs.Proxy.ProxyInitImage.ImageName
+		currentProxyImage := configs.Proxy.ProxyImage.ImageName
+		currentProxyInitImage := configs.Proxy.ProxyInitImage.ImageName
+		currentDebugImage := configs.Proxy.DebugImage.ImageName
+
+		currentRegistry := getFlagValue(configs.GetInstall().GetFlags(), "registry")
+		if currentRegistry == "" {
+			currentRegistry = defaultDockerRegistry
+		}
+
+		overrideAnnotations[k8s.ProxyImageAnnotation] = strings.Replace(currentProxyImage, currentRegistry, options.dockerRegistry, 1)
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = strings.Replace(currentProxyInitImage, currentRegistry, options.dockerRegistry, 1)
+		overrideAnnotations[k8s.DebugImageAnnotation] = strings.Replace(currentDebugImage, currentRegistry, options.dockerRegistry, 1)
 	}
 
 	if options.proxyImage != "" {
@@ -394,16 +402,6 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 		configs.Proxy.ProxyInitImage.PullPolicy = options.imagePullPolicy
 		configs.Proxy.DebugImage.PullPolicy = options.imagePullPolicy
 		overrideAnnotations[k8s.ProxyImagePullPolicyAnnotation] = options.imagePullPolicy
-	}
-
-	if options.dockerRegistry != "" {
-		currentDebugImage := configs.Proxy.DebugImage.ImageName
-		currentRegistry := getFlagValue(configs.GetInstall().GetFlags(), "registry")
-		if currentRegistry == "" {
-			currentRegistry = defaultDockerRegistry
-		}
-		override := strings.Replace(currentDebugImage, currentRegistry, options.dockerRegistry, 1)
-		overrideAnnotations[k8s.DebugImageAnnotation] = override
 	}
 
 	if options.proxyUID != 0 {

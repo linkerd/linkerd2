@@ -638,12 +638,12 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 		{
 			description: "proxy-init image overrides",
 			configOptions: proxyConfigOptions{
-				initImage:        "gcr.io/linkerd-io/proxyInit",
+				initImage:        "gcr.io/linkerd-io/proxy-init",
 				initImageVersion: "test-proxy-init-version",
 				imagePullPolicy:  "IfNotPresent",
 			},
 			expectedOverrides: map[string]string{
-				k8s.ProxyInitImageAnnotation:        "gcr.io/linkerd-io/proxyInit",
+				k8s.ProxyInitImageAnnotation:        "gcr.io/linkerd-io/proxy-init",
 				k8s.ProxyInitImageVersionAnnotation: "test-proxy-init-version",
 				k8s.ProxyImagePullPolicyAnnotation:  "IfNotPresent",
 			},
@@ -652,12 +652,12 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 			description: "custom docker registry with proxy and proxy-init",
 			configOptions: proxyConfigOptions{
 				proxyImage:     "gcr.io/linkerd-io/proxy",
-				initImage:      "gcr.io/linkerd-io/proxyInit",
+				initImage:      "gcr.io/linkerd-io/proxy-init",
 				dockerRegistry: "my.custom.registry/linkerd-io",
 			},
 			expectedOverrides: map[string]string{
 				k8s.ProxyImageAnnotation:     "gcr.io/linkerd-io/proxy",
-				k8s.ProxyInitImageAnnotation: "gcr.io/linkerd-io/proxyInit",
+				k8s.ProxyInitImageAnnotation: "gcr.io/linkerd-io/proxy-init",
 				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
 			},
 		},
@@ -668,7 +668,7 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 			},
 			expectedOverrides: map[string]string{
 				k8s.ProxyImageAnnotation:     "my.custom.registry/linkerd-io/proxy",
-				k8s.ProxyInitImageAnnotation: "my.custom.registry/linkerd-io/proxyInit",
+				k8s.ProxyInitImageAnnotation: "my.custom.registry/linkerd-io/proxy-init",
 				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
 			},
 		},
@@ -679,10 +679,107 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 		},
 	}
 
-	defaultConfig := testInstallConfig()
 	for _, tt := range tests {
 		tt := tt // pin
 		t.Run(tt.description, func(t *testing.T) {
+			defaultConfig := testInstallConfig()
+			actualOverrides := map[string]string{}
+			tt.configOptions.overrideConfigs(defaultConfig, actualOverrides)
+			if len(tt.expectedOverrides) != len(actualOverrides) {
+				t.Fatalf("expected %d annotation(s), but received %d", len(tt.expectedOverrides), len(actualOverrides))
+			}
+			for key, expected := range tt.expectedOverrides {
+				actual := actualOverrides[key]
+				if actual != expected {
+					t.Fatalf("expected annotation %q with %q, but got %q", key, expected, actual)
+				}
+			}
+		})
+	}
+}
+
+func TestOverrideConfigsWithCustomRegistryInstall(t *testing.T) {
+
+	tests := []struct {
+		description       string
+		configOptions     proxyConfigOptions
+		expectedOverrides map[string]string
+	}{
+		{
+			description: "proxy image overrides",
+			configOptions: proxyConfigOptions{
+				proxyImage:      "gcr.io/linkerd-io/proxy",
+				proxyVersion:    "test-proxy-version",
+				imagePullPolicy: "IfNotPresent",
+			},
+			expectedOverrides: map[string]string{
+				k8s.ProxyImageAnnotation:           "gcr.io/linkerd-io/proxy",
+				k8s.ProxyVersionOverrideAnnotation: "test-proxy-version",
+				k8s.ProxyImagePullPolicyAnnotation: "IfNotPresent",
+			},
+		},
+		{
+			description: "proxy-init image overrides",
+			configOptions: proxyConfigOptions{
+				initImage:        "gcr.io/linkerd-io/proxy-init",
+				initImageVersion: "test-proxy-init-version",
+				imagePullPolicy:  "IfNotPresent",
+			},
+			expectedOverrides: map[string]string{
+				k8s.ProxyInitImageAnnotation:        "gcr.io/linkerd-io/proxy-init",
+				k8s.ProxyInitImageVersionAnnotation: "test-proxy-init-version",
+				k8s.ProxyImagePullPolicyAnnotation:  "IfNotPresent",
+			},
+		},
+		{
+			description: "custom docker registry with proxy and proxy-init",
+			configOptions: proxyConfigOptions{
+				proxyImage:     "gcr.io/linkerd-io/proxy",
+				initImage:      "gcr.io/linkerd-io/proxy-init",
+				dockerRegistry: "my.custom.registry/linkerd-io",
+			},
+			expectedOverrides: map[string]string{
+				k8s.ProxyImageAnnotation:     "gcr.io/linkerd-io/proxy",
+				k8s.ProxyInitImageAnnotation: "gcr.io/linkerd-io/proxy-init",
+				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
+			},
+		},
+		{
+			description: "custom docker registry",
+			configOptions: proxyConfigOptions{
+				dockerRegistry: "my.custom.registry/linkerd-io",
+			},
+			expectedOverrides: map[string]string{
+				k8s.ProxyImageAnnotation:     "my.custom.registry/linkerd-io/proxy",
+				k8s.ProxyInitImageAnnotation: "my.custom.registry/linkerd-io/proxy-init",
+				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
+			},
+		},
+		{
+			description:       "no overrides",
+			configOptions:     proxyConfigOptions{},
+			expectedOverrides: map[string]string{},
+		},
+	}
+
+	// Setup the registry used when "installing" linkerd
+	customRegistryAtInstall := "custom.install.registry/linkerd-io"
+	installFlags := make([]*pb.Install_Flag, 0)
+	installFlags = append(installFlags, &pb.Install_Flag{
+		Name:  "registry",
+		Value: customRegistryAtInstall,
+	})
+
+	for _, tt := range tests {
+		tt := tt // pin
+		t.Run(tt.description, func(t *testing.T) {
+
+			defaultConfig := testInstallConfig()
+			defaultConfig.Install.Flags = installFlags
+			defaultConfig.Proxy.ProxyImage.ImageName = customRegistryAtInstall + "/proxy"
+			defaultConfig.Proxy.ProxyInitImage.ImageName = customRegistryAtInstall + "/proxy-init"
+			defaultConfig.Proxy.DebugImage.ImageName = customRegistryAtInstall + "/debug"
+
 			actualOverrides := map[string]string{}
 			tt.configOptions.overrideConfigs(defaultConfig, actualOverrides)
 			if len(tt.expectedOverrides) != len(actualOverrides) {
