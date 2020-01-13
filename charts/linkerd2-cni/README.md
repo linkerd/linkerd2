@@ -13,20 +13,20 @@ The following table lists the configurable parameters of the Linkerd2-cni chart 
 
 | Parameter                            | Description                                                           | Default                       |
 |--------------------------------------|-----------------------------------------------------------------------|-------------------------------|
-|`namespace`                           | Control plane namespace                                               | `linkerd`|
-|`controllerNamespaceLabel`            | Control plane label. Do not edit                                      |`linkerd.io/control-plane-ns`|
+`cniPluginImage`                      | Docker image for the cni plugin                                       |`gcr.io/linkerd-io/cni-plugin`|
+|`cniPluginVersion`                    | Tag for the cni container Docker image                                |latest version|
 |`cniResourceAnnotation`               | CNI resource annotation. Do not edit                                  |`linkerd.io/cni-resource`
-|`inboundProxyPort`                    | Inbound port for the proxy container                                  |`4143`|
-|`outboundProxyPort`                   | Outbound port for the proxy container                                 |`4140`|
+|`controllerNamespaceLabel`            | Control plane label. Do not edit                                      |`linkerd.io/control-plane-ns`|
+|`createdByAnnotation`                 | Annotation label for the proxy create. Do not edit.                   |`linkerd.io/created-by`|
+|`destCNIBinDir`                       | Directory on the host where the CNI plugin binaries reside            |`/opt/cni/bin`|
+|`destCNINetDir`                       | Directory on the host where the CNI configuration will be placed      |`/etc/cni/net.d`|
 |`ignoreInboundPorts`                  | Inbound ports the proxy should ignore                                 ||
 |`ignoreOutboundPorts`                 | Outbound ports the proxy should ignore                                ||
-|`createdByAnnotation`                 | Annotation label for the proxy create. Do not edit.                   |`linkerd.io/created-by`|
-|`cniPluginImage`                      | Docker image for the cni plugin                                       |`gcr.io/linkerd-io/cni-plugin`|
-|`cniPluginVersion`                    | Tag for the cni container Docker image                                |latest version|
+|`inboundProxyPort`                    | Inbound port for the proxy container                                  |`4143`|
 |`logLevel`                            | Log level for the cni plugin                                          |`info`|
+|`namespace`                           | Control plane namespace                                               | `linkerd`|
+|`outboundProxyPort`                   | Outbound port for the proxy container                                 |`4140`|
 |`portsToRedirect`                     | Ports to redirect to proxy                                            ||
 |`proxyUID`                            | User id under which the proxy shall be ran                            |`2102`|
-|`destCNINetDir`                       | Directory on the host where the CNI configuration will be placed      |`/etc/cni/net.d`|
-|`destCNIBinDir`                       | Directory on the host where the CNI plugin binaries reside            |`/opt/cni/bin`|
 |`useWaitFlag`                         | Configures the CNI plugin to use the -w flag for the iptables command |`false`|
 
