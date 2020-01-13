@@ -1,14 +1,15 @@
 package linkerd2
 
 import (
+	"github.com/linkerd/linkerd2/pkg/merge"
 	"k8s.io/helm/pkg/chartutil"
 )
 
 type (
 	Grafana struct {
-		Enabled   bool       `json:"enabled"`
-		Image     string     `json:"image"`
-		Resources *Resources `json:"resources"`
+		Enabled   merge.BoolInSetting `json:"enabled"`
+		Image     string              `json:"image"`
+		Resources *Resources          `json:"resources"`
 	}
 )
 
@@ -52,5 +53,5 @@ func (g *Grafana) GetValues() interface{} {
 }
 
 func (g *Grafana) IsEnabled() bool {
-	return g.Enabled
+	return g.Enabled.Value
 }

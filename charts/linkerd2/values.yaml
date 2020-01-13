@@ -160,13 +160,11 @@ nodeSelector:
 # Config for add-ons
 grafana:
   enabled: true
+  new: true
   image: gcr.io/linkerd-io/grafana
 
 prometheus:
   enabled: true
-  name:
+  new: true
   logLevel: debug
   image: prom/prometheus:v2.11.1
-
-tracing:
-    enabled: false

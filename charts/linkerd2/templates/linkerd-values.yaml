@@ -3,23 +3,6 @@
 ### linkerd values
 ###
 ---
-{{- $dupValues := .Values -}}
-{{- $dupValues := omit $dupValues "partials" -}}
-{{- range $key, $value := $dupValues -}}
-  {{- if kindIs "map" $value -}}
-    {{- if hasKey $value "global" -}}
-      {{- if ne $key "configs" -}}
-        {{- $dupValues := set $dupValues $key (unset $value "global") -}}
-      {{- end -}}
-    {{- end -}}
-    {{- if hasKey $value "partials" -}}
-      {{- $dupValues := set $dupValues $key (unset $value "partials") -}}
-    {{- end -}}
-    {{- if hasKey $value "keyPEM" -}}
-      {{- $dupValues := set $dupValues $key (unset $value "keyPEM") -}}
-    {{- end -}}
-  {{- end -}}
-{{- end }}
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -32,4 +15,10 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   values: |-
-  {{- toYaml $dupValues | trim | nindent 4}}
+    global:
+      {{- toYaml .Values.global | trim | nindent 6}}
+    grafana:
+      {{- toYaml .Values.grafana | trim | nindent 6}}
+    prometheus:
+      {{- toYaml .Values.prometheus | trim | nindent 6}}
+
