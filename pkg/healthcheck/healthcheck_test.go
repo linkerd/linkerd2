@@ -2606,3 +2606,379 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 		})
 	}
 }
+
+type fakeCniResourcesOpts struct {
+	hasConfigMap          bool
+	hasPodSecurityPolicy  bool
+	hasClusterRole        bool
+	hasClusterRoleBinding bool
+	hasRole               bool
+	hasRoleBinding        bool
+	hasServiceAccount     bool
+	hasDaemonSet          bool
+	scheduled             int
+	ready                 int
+}
+
+func getFakeCniResources(opts fakeCniResourcesOpts) []string {
+	var resources []string
+
+	if opts.hasConfigMap {
+		resources = append(resources, `
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-cni-config
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/cni-resource: "true"
+data:
+  dest_cni_net_dir: "/etc/cni/net.d"
+---
+`)
+	}
+
+	if opts.hasPodSecurityPolicy {
+		resources = append(resources, `
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: linkerd-linkerd-cni
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/cni-resource: "true"
+spec:
+  allowPrivilegeEscalation: false
+  fsGroup:
+    rule: RunAsAny
+  hostNetwork: true
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+  - hostPath
+  - secret
+---
+`)
+	}
+
+	if opts.hasClusterRole {
+		resources = append(resources, `
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-cni
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/cni-resource: "true"
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes", "namespaces"]
+  verbs: ["list", "get", "watch"]
+---
+`)
+	}
+
+	if opts.hasClusterRoleBinding {
+		resources = append(resources, `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: linkerd-cni
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/cni-resource: "true"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-cni
+subjects:
+- kind: ServiceAccount
+  name: linkerd-cni
+  namespace: linkerd
+---
+`)
+	}
+
+	if opts.hasRole {
+		resources = append(resources, `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: linkerd-cni
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/cni-resource: "true"
+rules:
+- apiGroups: ['extensions', 'policy']
+  resources: ['podsecuritypolicies']
+  resourceNames:
+  - linkerd-linkerd-cni
+  verbs: ['use']
+---
+`)
+	}
+
+	if opts.hasRoleBinding {
+		resources = append(resources, `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-cni
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/cni-resource: "true"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-cni
+subjects:
+- kind: ServiceAccount
+  name: linkerd-cni
+  namespace: linkerd
+---
+`)
+	}
+
+	if opts.hasServiceAccount {
+		resources = append(resources, `
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: linkerd-cni
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/cni-resource: "true"
+---
+`)
+	}
+
+	if opts.hasDaemonSet {
+		resources = append(resources, fmt.Sprintf(`
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: linkerd-cni
+  namespace: linkerd
+  labels:
+    k8s-app: linkerd-cni
+    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/cni-resource: "true"
+  annotations:
+    linkerd.io/created-by: linkerd/cli git-b4266c93
+spec:
+  selector:
+    matchLabels:
+      k8s-app: linkerd-cni
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: linkerd-cni
+      annotations:
+        linkerd.io/created-by: linkerd/cli git-b4266c93
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      hostNetwork: true
+      serviceAccountName: linkerd-cni
+      containers:
+      - name: install-cni
+        image: gcr.io/linkerd-io/cni-plugin:git-b4266c93
+        env:
+        - name: DEST_CNI_NET_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: dest_cni_net_dir
+        - name: DEST_CNI_BIN_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: dest_cni_bin_dir
+        - name: CNI_NETWORK_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              name: linkerd-cni-config
+              key: cni_network_config
+        - name: SLEEP
+          value: "true"
+        lifecycle:
+          preStop:
+            exec:
+              command: ["kill","-15","1"]
+        volumeMounts:
+        - mountPath: /host/opt/cni/bin
+          name: cni-bin-dir
+        - mountPath: /host/etc/cni/net.d
+          name: cni-net-dir
+      volumes:
+      - name: cni-bin-dir
+        hostPath:
+          path: /opt/cni/bin
+      - name: cni-net-dir
+        hostPath:
+          path: /etc/cni/net.d
+status:
+  desiredNumberScheduled: %d
+  numberReady: %d
+---
+`, opts.scheduled, opts.ready))
+	}
+
+	return resources
+
+}
+
+func TestCniChecks(t *testing.T) {
+	testCases := []struct {
+		description  string
+		testCaseOpts fakeCniResourcesOpts
+		results      []string
+	}{
+		{
+			"fails when there is no config map",
+			fakeCniResourcesOpts{},
+			[]string{"linkerd-cni-plugin cni plugin ConfigMap exists: configmaps \"linkerd-cni-config\" not found"},
+		},
+		{
+			"fails when there is no pod security policy",
+			fakeCniResourcesOpts{hasConfigMap: true},
+			[]string{
+				"linkerd-cni-plugin cni plugin ConfigMap exists",
+				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists: missing PodSecurityPolicies: linkerd-linkerd-cni"},
+		},
+		{
+			"fails then there is no ClusterRole",
+			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true},
+			[]string{
+				"linkerd-cni-plugin cni plugin ConfigMap exists",
+				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
+				"linkerd-cni-plugin cni plugin ClusterRole exists: missing ClusterRoles: linkerd-cni"},
+		},
+		{
+			"fails then there is no ClusterRoleBinding",
+			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true},
+			[]string{
+				"linkerd-cni-plugin cni plugin ConfigMap exists",
+				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
+				"linkerd-cni-plugin cni plugin ClusterRole exists",
+				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists: missing ClusterRoleBindings: linkerd-cni"},
+		},
+		{
+			"fails then there is no Role",
+			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true},
+			[]string{
+				"linkerd-cni-plugin cni plugin ConfigMap exists",
+				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
+				"linkerd-cni-plugin cni plugin ClusterRole exists",
+				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
+				"linkerd-cni-plugin cni plugin Role exists: missing Roles: linkerd-cni"},
+		},
+		{
+			"fails then there is no RoleBinding",
+			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true, hasRole: true},
+			[]string{
+				"linkerd-cni-plugin cni plugin ConfigMap exists",
+				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
+				"linkerd-cni-plugin cni plugin ClusterRole exists",
+				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
+				"linkerd-cni-plugin cni plugin Role exists",
+				"linkerd-cni-plugin cni plugin RoleBinding exists: missing RoleBindings: linkerd-cni"},
+		},
+		{
+			"fails then there is no ServiceAccount",
+			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true, hasRole: true, hasRoleBinding: true},
+			[]string{
+				"linkerd-cni-plugin cni plugin ConfigMap exists",
+				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
+				"linkerd-cni-plugin cni plugin ClusterRole exists",
+				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
+				"linkerd-cni-plugin cni plugin Role exists",
+				"linkerd-cni-plugin cni plugin RoleBinding exists",
+				"linkerd-cni-plugin cni plugin ServiceAccount exists: missing ServiceAccounts: linkerd-cni",
+			},
+		},
+		{
+			"fails then there is no DaemonSet",
+			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true, hasRole: true, hasRoleBinding: true, hasServiceAccount: true},
+			[]string{
+				"linkerd-cni-plugin cni plugin ConfigMap exists",
+				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
+				"linkerd-cni-plugin cni plugin ClusterRole exists",
+				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
+				"linkerd-cni-plugin cni plugin Role exists",
+				"linkerd-cni-plugin cni plugin RoleBinding exists",
+				"linkerd-cni-plugin cni plugin ServiceAccount exists",
+				"linkerd-cni-plugin cni plugin DaemonSet exists: daemonsets.apps \"linkerd-cni\" not found",
+			},
+		},
+		{
+			"fails then there is nodes are not ready",
+			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true, hasRole: true, hasRoleBinding: true, hasServiceAccount: true, hasDaemonSet: true, scheduled: 5, ready: 4},
+			[]string{
+				"linkerd-cni-plugin cni plugin ConfigMap exists",
+				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
+				"linkerd-cni-plugin cni plugin ClusterRole exists",
+				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
+				"linkerd-cni-plugin cni plugin Role exists",
+				"linkerd-cni-plugin cni plugin RoleBinding exists",
+				"linkerd-cni-plugin cni plugin ServiceAccount exists",
+				"linkerd-cni-plugin cni plugin DaemonSet exists",
+				"linkerd-cni-plugin cni plugin pod is running on all nodes: number ready: 4, number scheduled: 5",
+			},
+		},
+		{
+			"fails then there is nodes are not ready",
+			fakeCniResourcesOpts{hasConfigMap: true, hasPodSecurityPolicy: true, hasClusterRole: true, hasClusterRoleBinding: true, hasRole: true, hasRoleBinding: true, hasServiceAccount: true, hasDaemonSet: true, scheduled: 5, ready: 5},
+			[]string{
+				"linkerd-cni-plugin cni plugin ConfigMap exists",
+				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
+				"linkerd-cni-plugin cni plugin ClusterRole exists",
+				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
+				"linkerd-cni-plugin cni plugin Role exists",
+				"linkerd-cni-plugin cni plugin RoleBinding exists",
+				"linkerd-cni-plugin cni plugin ServiceAccount exists",
+				"linkerd-cni-plugin cni plugin DaemonSet exists",
+				"linkerd-cni-plugin cni plugin pod is running on all nodes",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(tc.description, func(t *testing.T) {
+			hc := NewHealthChecker(
+				[]CategoryID{LinkerdCniPluginChecks},
+				&Options{
+					ControlPlaneNamespace: "linkerd",
+				},
+			)
+
+			k8sConfigs := getFakeCniResources(tc.testCaseOpts)
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(k8sConfigs...)
+			hc.NoInitContainer = true
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			obs := newObserver()
+			hc.RunChecks(obs.resultFn)
+			if !reflect.DeepEqual(obs.results, tc.results) {
+				t.Fatalf("Expected results\n%s,\nbut got:\n%s", strings.Join(tc.results, "\n"), strings.Join(obs.results, "\n"))
+			}
+		})
+	}
+
+}

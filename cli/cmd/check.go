@@ -149,6 +149,8 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
 		if !options.cniEnabled {
 			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
+		} else {
+			checks = append(checks, healthcheck.LinkerdCniPluginChecks)
 		}
 		installManifest, err = renderInstallManifest()
 		if err != nil {
@@ -168,7 +170,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 			} else {
 				checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
 			}
-
+			checks = append(checks, healthcheck.LinkerdCniPluginChecks)
 			checks = append(checks, healthcheck.LinkerdHAChecks)
 		}
 	}
