@@ -1,7 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   name: web
   namespace: emojivoto
 spec:
@@ -9,13 +8,11 @@ spec:
   selector:
     matchLabels:
       app: web-svc
-  strategy: {}
   template:
     metadata:
       annotations:
         config.linkerd.io/admin-port: "1234"
         linkerd.io/inject: enabled
-      creationTimestamp: null
       labels:
         app: web-svc
     spec:
@@ -34,6 +31,4 @@ spec:
         ports:
         - containerPort: 80
           name: http
-        resources: {}
-status: {}
 ---

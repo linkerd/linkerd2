@@ -1,7 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   name: controller
   namespace: emojivoto
 spec:
@@ -9,10 +8,8 @@ spec:
   selector:
     matchLabels:
       app: web-svc
-  strategy: {}
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: web-svc
     spec:
@@ -31,13 +28,10 @@ spec:
         ports:
         - containerPort: 80
           name: http
-        resources: {}
-status: {}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   name: not-controller
   namespace: linkerd
 spec:
@@ -45,10 +39,8 @@ spec:
   selector:
     matchLabels:
       app: web-svc
-  strategy: {}
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: web-svc
     spec:
@@ -67,6 +59,4 @@ spec:
         ports:
         - containerPort: 80
           name: http
-        resources: {}
-status: {}
 ---
