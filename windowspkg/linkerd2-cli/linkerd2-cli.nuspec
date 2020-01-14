@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>linkerd2-cli</id>
+    <version>2.6.1</version>
+    
+    <title>linkerd2-cli (Install)</title>
+    <authors>__REPLACE_AUTHORS_OF_SOFTWARE_COMMA_SEPARATED__</authors>
+    <tags>linkerd2-cli SPACE_SEPARATED</tags>
+    <summary>__REPLACE__</summary>
+    <description>__REPLACE__MarkDown_Okay </description>
+    <dependencies>
+      <dependency id="chocolatey-core.extension" version="1.1.0" />
+    </dependencies>
+  </metadata>
+
+  <files>
+    <file src="tools\**" target="tools" />
+    </files>
+</package>
