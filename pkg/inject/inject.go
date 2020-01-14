@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	jsonfilter "github.com/clarketm/json"
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
@@ -177,7 +178,11 @@ func (conf *ResourceConfig) AppendPodAnnotation(k, v string) {
 
 // YamlMarshalObj returns the yaml for the workload in conf
 func (conf *ResourceConfig) YamlMarshalObj() ([]byte, error) {
-	return yaml.Marshal(conf.workload.obj)
+	j, err := getFilteredJSON(conf.workload.obj)
+	if err != nil {
+		return nil, err
+	}
+	return yaml.JSONToYAML(j)
 }
 
 // ParseMetaAndYAML extracts the workload metadata and pod specs from the given
@@ -285,7 +290,12 @@ func (conf *ResourceConfig) JSONToYAML(bytes []byte) ([]byte, error) {
 	if err := json.Unmarshal(bytes, obj); err != nil {
 		return nil, err
 	}
-	return yaml.Marshal(obj)
+
+	j, err := getFilteredJSON(obj)
+	if err != nil {
+		return nil, err
+	}
+	return yaml.JSONToYAML(j)
 }
 
 // parse parses the bytes payload, filling the gaps in ResourceConfig
@@ -939,5 +949,18 @@ func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]by
 			ns.Annotations[annotation] = value
 		}
 	}
-	return yaml.Marshal(ns)
+
+	j, err := getFilteredJSON(ns)
+	if err != nil {
+		return nil, err
+	}
+	return yaml.JSONToYAML(j)
+}
+
+//getFilteredJSON method performs JSON marshaling such that zero values of
+//empty structs are respected by `omitempty` tags. We make use of a drop-in
+//replacement of the standard json/encoding library, without which empty struct values
+//present in workload objects would make it into the marshaled JSON.
+func getFilteredJSON(conf runtime.Object) ([]byte, error) {
+	return jsonfilter.Marshal(&conf)
 }

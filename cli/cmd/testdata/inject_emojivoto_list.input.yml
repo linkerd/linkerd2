@@ -3,7 +3,6 @@ items:
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
-    creationTimestamp: null
     name: web
     namespace: emojivoto
   spec:
@@ -11,10 +10,8 @@ items:
     selector:
       matchLabels:
         app: web-svc
-    strategy: {}
     template:
       metadata:
-        creationTimestamp: null
         labels:
           app: web-svc
       spec:
@@ -33,12 +30,9 @@ items:
           ports:
           - containerPort: 80
             name: http
-          resources: {}
-  status: {}
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
-    creationTimestamp: null
     name: emoji
     namespace: emojivoto
   spec:
@@ -46,10 +40,8 @@ items:
     selector:
       matchLabels:
         app: emoji-svc
-    strategy: {}
     template:
       metadata:
-        creationTimestamp: null
         labels:
           app: emoji-svc
       spec:
@@ -63,8 +55,6 @@ items:
           - containerPort: 8080
             name: grpc
             protocol: TCP
-          resources: {}
-  status: {}
 kind: List
 metadata: {}
 ---

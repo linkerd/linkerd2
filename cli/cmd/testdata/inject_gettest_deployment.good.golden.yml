@@ -1,18 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   name: get-test-deploy-injected-1
 spec:
   selector: null
-  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: testinjectversion
-      creationTimestamp: null
       labels:
         app: get-test
         linkerd.io/control-plane-ns: linkerd
@@ -29,7 +26,6 @@ spec:
         name: http-to-grpc-two-replicas-c1
         ports:
         - containerPort: 9090
-        resources: {}
       - args:
         - terminus
         - --grpc-server-port
@@ -40,7 +36,6 @@ spec:
         name: http-to-grpc-two-replicas-c2
         ports:
         - containerPort: 9090
-        resources: {}
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -120,7 +115,6 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
-        resources: {}
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -164,23 +158,19 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-status: {}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   name: get-test-deploy-injected-2
 spec:
   selector: null
-  strategy: {}
   template:
     metadata:
       annotations:
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: testinjectversion
-      creationTimestamp: null
       labels:
         app: get-test
         linkerd.io/control-plane-ns: linkerd
@@ -197,7 +187,6 @@ spec:
         name: http-to-grpc-one-replica-c1
         ports:
         - containerPort: 9090
-        resources: {}
       - args:
         - terminus
         - --grpc-server-port
@@ -208,7 +197,6 @@ spec:
         name: http-to-grpc-one-replica-c2
         ports:
         - containerPort: 9090
-        resources: {}
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -288,7 +276,6 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
-        resources: {}
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -332,5 +319,4 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-status: {}
 ---

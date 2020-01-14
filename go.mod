@@ -9,6 +9,7 @@ require (
 	github.com/Masterminds/sprig v2.17.1+incompatible // indirect
 	github.com/aokoli/goutils v1.1.0 // indirect
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
+	github.com/clarketm/json v1.13.4
 	github.com/containernetworking/cni v0.6.0
 	github.com/cyphar/filepath-securejoin v0.2.2 // indirect
 	github.com/deislabs/smi-sdk-go v0.0.0-20190610232231-f281e2121a16

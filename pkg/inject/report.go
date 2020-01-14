@@ -10,23 +10,27 @@ import (
 )
 
 const (
-	hostNetworkEnabled             = "host_network_enabled"
-	sidecarExists                  = "sidecar_already_exists"
-	unsupportedResource            = "unsupported_resource"
-	injectEnableAnnotationAbsent   = "injection_enable_annotation_absent"
-	injectDisableAnnotationPresent = "injection_disable_annotation_present"
-	annotationAtNamespace          = "namespace"
-	annotationAtWorkload           = "workload"
+	hostNetworkEnabled               = "host_network_enabled"
+	sidecarExists                    = "sidecar_already_exists"
+	unsupportedResource              = "unsupported_resource"
+	injectEnableAnnotationAbsent     = "injection_enable_annotation_absent"
+	injectDisableAnnotationPresent   = "injection_disable_annotation_present"
+	annotationAtNamespace            = "namespace"
+	annotationAtWorkload             = "workload"
+	invalidInjectAnnotationWorkload  = "invalid_inject_annotation_at_workload"
+	invalidInjectAnnotationNamespace = "invalid_inject_annotation_at_ns"
 )
 
 var (
 	// Reasons is a map of inject skip reasons with human readable sentences
 	Reasons = map[string]string{
-		hostNetworkEnabled:             "hostNetwork is enabled",
-		sidecarExists:                  "pod has a sidecar injected already",
-		unsupportedResource:            "this resource kind is unsupported",
-		injectEnableAnnotationAbsent:   fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled),
-		injectDisableAnnotationPresent: fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
+		hostNetworkEnabled:               "hostNetwork is enabled",
+		sidecarExists:                    "pod has a sidecar injected already",
+		unsupportedResource:              "this resource kind is unsupported",
+		injectEnableAnnotationAbsent:     fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled),
+		injectDisableAnnotationPresent:   fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
+		invalidInjectAnnotationWorkload:  fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
+		invalidInjectAnnotationNamespace: fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
 	}
 )
 
@@ -154,6 +158,14 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string
 		return podAnnotation == k8s.ProxyInjectDisabled, "", ""
 	}
 
+	if !isInjectAnnotationValid(conf.nsAnnotations) {
+		return true, invalidInjectAnnotationNamespace, ""
+	}
+
+	if !isInjectAnnotationValid(conf.pod.meta.Annotations) {
+		return true, invalidInjectAnnotationWorkload, ""
+	}
+
 	if nsAnnotation == k8s.ProxyInjectEnabled {
 		if podAnnotation == k8s.ProxyInjectDisabled {
 			return true, injectDisableAnnotationPresent, annotationAtWorkload
@@ -166,4 +178,13 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string
 	}
 
 	return false, "", annotationAtWorkload
+}
+
+func isInjectAnnotationValid(annotations map[string]string) bool {
+	for k, v := range annotations {
+		if k == k8s.ProxyInjectAnnotation && !(v == k8s.ProxyInjectEnabled || v == k8s.ProxyInjectDisabled) {
+			return false
+		}
+	}
+	return true
 }
