@@ -367,9 +367,12 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	}
 
 	if options.dockerRegistry != "" {
-		currentProxyImage := configs.Proxy.ProxyImage.ImageName
-		currentProxyInitImage := configs.Proxy.ProxyInitImage.ImageName
-		currentDebugImage := configs.Proxy.DebugImage.ImageName
+		currentProxyImage := configs.GetProxy().GetProxyImage().GetImageName()
+		currentProxyInitImage := configs.GetProxy().GetProxyInitImage().GetImageName()
+		currentDebugImage := configs.GetProxy().GetDebugImage().GetImageName()
+		if currentDebugImage == "" {
+			currentDebugImage = k8s.DebugSidecarImage
+		}
 
 		currentRegistry := getFlagValue(configs.GetInstall().GetFlags(), "registry")
 		if currentRegistry == "" {

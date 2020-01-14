@@ -218,6 +218,9 @@ const (
 	// DebugSidecarName is the name of the default linkerd debug container
 	DebugSidecarName = "linkerd-debug"
 
+	// DebugSidecarImage is the image name of the default linkerd debug container
+	DebugSidecarImage = "gcr.io/linkerd-io/debug"
+
 	// InitContainerName is the name assigned to the injected init container.
 	InitContainerName = "linkerd-init"
 
