@@ -1,13 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   name: inject-test-terminus
 spec:
   selector:
     matchLabels:
       app: inject-test-terminus
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -33,7 +31,6 @@ spec:
         linkerd.io/created-by: fake # this gets removed during testing
         linkerd.io/identity-mode: disabled
         linkerd.io/proxy-version: fake # this gets removed during testing
-      creationTimestamp: null
       labels:
         app: inject-test-terminus
         linkerd.io/control-plane-ns: fake-ns
@@ -50,7 +47,6 @@ spec:
         name: bb-terminus
         ports:
         - containerPort: 9090
-        resources: {}
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn
@@ -145,5 +141,4 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-status: {}
 ---
