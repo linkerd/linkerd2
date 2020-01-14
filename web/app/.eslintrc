@@ -71,6 +71,7 @@
     "react/jsx-filename-extension": 0,
     "react/jsx-fragments": 0,
     "react/jsx-one-expression-per-line": 0,
+    "react/sort-comp": 0,
 
     // These rules are disabled to support specific features/conventions that we use
     "no-bitwise": 0,
@@ -84,10 +85,6 @@
     // These rules represent best practices that we're not adhering to, and should be enabled
     "jsx-a11y/click-events-have-key-events": 0,
     "no-param-reassign": 0,
-    "react/no-did-update-set-state": 0,
-
-    // These rules require reordering and should be enabled in a follow-up branch
-    "no-use-before-define": 0,
-    "react/sort-comp": 0
+    "react/no-did-update-set-state": 0
   }
 }

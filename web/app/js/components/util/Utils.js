@@ -25,14 +25,6 @@ export const formatWithComma = m => {
   }
 };
 
-export const formatLatencyMs = m => {
-  if (_isNil(m)) {
-    return '---';
-  } else {
-    return `${formatLatencySec(m / 1000)}`;
-  }
-};
-
 const niceLatency = l => commaFormatter(Math.round(l));
 
 export const formatLatencySec = latency => {
@@ -50,13 +42,12 @@ export const formatLatencySec = latency => {
   }
 };
 
-export const metricToFormatter = {
-  REQUEST_RATE: m => _isNil(m) ? '---' : styleNum(m, ' RPS', true),
-  SUCCESS_RATE: m => _isNil(m) ? '---' : successRateFormatter(m),
-  LATENCY: formatLatencyMs,
-  UNTRUNCATED: m => styleNum(m, '', false),
-  BYTES: m => _isNil(m) ? '---' : styleNum(m, 'B/s', true),
-  NO_UNIT: m => _isNil(m) ? '---' : styleNum(m, '', true),
+export const formatLatencyMs = m => {
+  if (_isNil(m)) {
+    return '---';
+  } else {
+    return `${formatLatencySec(m / 1000)}`;
+  }
 };
 
 /*
@@ -107,6 +98,15 @@ export const styleNum = (number, unit = '', truncate = true) => {
   }
 };
 
+export const metricToFormatter = {
+  REQUEST_RATE: m => _isNil(m) ? '---' : styleNum(m, ' RPS', true),
+  SUCCESS_RATE: m => _isNil(m) ? '---' : successRateFormatter(m),
+  LATENCY: formatLatencyMs,
+  UNTRUNCATED: m => styleNum(m, '', false),
+  BYTES: m => _isNil(m) ? '---' : styleNum(m, 'B/s', true),
+  NO_UNIT: m => _isNil(m) ? '---' : styleNum(m, '', true),
+};
+
 /*
 * Convert a string to a valid css class name
 */
@@ -123,6 +123,15 @@ export const regexFilterString = input => {
   input = input.replace(/[^A-Z0-9/.\-_*]/gi, '').toLowerCase();
   // replace "*" in input with wildcard
   return new RegExp(input.replace(/[*]/g, '.+'));
+};
+
+/*
+  Get a singular resource name from a plural resource
+*/
+export const singularResource = resource => {
+  if (resource === 'authorities') {
+    return 'authority';
+  } else { return resource.replace(/s$/, ''); }
 };
 
 /*
@@ -152,15 +161,6 @@ export const friendlyTitle = singularOrPluralResource => {
     titles.plural = `${titles.singular}s`;
   }
   return titles;
-};
-
-/*
-  Get a singular resource name from a plural resource
-*/
-export const singularResource = resource => {
-  if (resource === 'authorities') {
-    return 'authority';
-  } else { return resource.replace(/s$/, ''); }
 };
 
 /*
