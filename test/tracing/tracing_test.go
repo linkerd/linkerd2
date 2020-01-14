@@ -131,6 +131,9 @@ func TestTracing(t *testing.T) {
 		}
 		err = TestHelper.RetryFor(120*time.Second, func() error {
 			tracesJSON, err := TestHelper.HTTPGetURL(url + "/api/traces?lookback=1h&service=nginx")
+			if err != nil {
+				return err
+			}
 			traces := traces{}
 
 			err = json.Unmarshal([]byte(tracesJSON), &traces)
