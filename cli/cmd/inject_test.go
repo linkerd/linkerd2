@@ -833,6 +833,7 @@ func TestOverwriteRegistry(t *testing.T) {
 		},
 	}
 	for i, tc := range testCases {
+		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			actual := overwriteRegistry(tc.image, tc.registry)
 			if actual != tc.expected {
