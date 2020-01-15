@@ -8,6 +8,16 @@ kubernetes-version
 √ is running the minimum Kubernetes API version
 √ is running the minimum kubectl version
 
+linkerd-existence
+-----------------
+√ 'linkerd-config' config map exists
+√ heartbeat ServiceAccount exist
+√ control plane replica sets are ready
+√ no unschedulable pods
+√ controller pod is running
+√ can initialize the client
+√ can query the control plane API
+
 linkerd-config
 --------------
 √ control plane Namespace exists
@@ -18,16 +28,6 @@ linkerd-config
 √ control plane MutatingWebhookConfigurations exist
 √ control plane ValidatingWebhookConfigurations exist
 √ control plane PodSecurityPolicies exist
-
-linkerd-existence
------------------
-√ 'linkerd-config' config map exists
-√ heartbeat ServiceAccount exist
-√ control plane replica sets are ready
-√ no unschedulable pods
-√ controller pod is running
-√ can initialize the client
-√ can query the control plane API
 
 linkerd-identity
 ----------------

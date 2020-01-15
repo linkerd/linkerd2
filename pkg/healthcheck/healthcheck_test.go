@@ -2153,6 +2153,7 @@ metadata:
 
 		var err error
 		hc.kubeAPI, err = k8s.NewFakeAPI(resources...)
+		hc.ControlPlaneNamespace = "test-ns"
 		if err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
@@ -2856,7 +2857,7 @@ func TestCniChecks(t *testing.T) {
 			fakeCniResourcesOpts{hasConfigMap: true},
 			[]string{
 				"linkerd-cni-plugin cni plugin ConfigMap exists",
-				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists: missing PodSecurityPolicies: linkerd-linkerd-cni"},
+				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists: missing PodSecurityPolicy: linkerd-linkerd-cni"},
 		},
 		{
 			"fails then there is no ClusterRole",
@@ -2864,7 +2865,7 @@ func TestCniChecks(t *testing.T) {
 			[]string{
 				"linkerd-cni-plugin cni plugin ConfigMap exists",
 				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
-				"linkerd-cni-plugin cni plugin ClusterRole exists: missing ClusterRoles: linkerd-cni"},
+				"linkerd-cni-plugin cni plugin ClusterRole exists: missing ClusterRole: linkerd-cni"},
 		},
 		{
 			"fails then there is no ClusterRoleBinding",
@@ -2873,7 +2874,7 @@ func TestCniChecks(t *testing.T) {
 				"linkerd-cni-plugin cni plugin ConfigMap exists",
 				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
 				"linkerd-cni-plugin cni plugin ClusterRole exists",
-				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists: missing ClusterRoleBindings: linkerd-cni"},
+				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists: missing ClusterRoleBinding: linkerd-cni"},
 		},
 		{
 			"fails then there is no Role",
@@ -2883,7 +2884,7 @@ func TestCniChecks(t *testing.T) {
 				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists",
 				"linkerd-cni-plugin cni plugin ClusterRole exists",
 				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
-				"linkerd-cni-plugin cni plugin Role exists: missing Roles: linkerd-cni"},
+				"linkerd-cni-plugin cni plugin Role exists: missing Role: linkerd-cni"},
 		},
 		{
 			"fails then there is no RoleBinding",
@@ -2894,7 +2895,7 @@ func TestCniChecks(t *testing.T) {
 				"linkerd-cni-plugin cni plugin ClusterRole exists",
 				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
 				"linkerd-cni-plugin cni plugin Role exists",
-				"linkerd-cni-plugin cni plugin RoleBinding exists: missing RoleBindings: linkerd-cni"},
+				"linkerd-cni-plugin cni plugin RoleBinding exists: missing RoleBinding: linkerd-cni"},
 		},
 		{
 			"fails then there is no ServiceAccount",
@@ -2906,7 +2907,7 @@ func TestCniChecks(t *testing.T) {
 				"linkerd-cni-plugin cni plugin ClusterRoleBinding exists",
 				"linkerd-cni-plugin cni plugin Role exists",
 				"linkerd-cni-plugin cni plugin RoleBinding exists",
-				"linkerd-cni-plugin cni plugin ServiceAccount exists: missing ServiceAccounts: linkerd-cni",
+				"linkerd-cni-plugin cni plugin ServiceAccount exists: missing ServiceAccount: linkerd-cni",
 			},
 		},
 		{
@@ -2920,7 +2921,7 @@ func TestCniChecks(t *testing.T) {
 				"linkerd-cni-plugin cni plugin Role exists",
 				"linkerd-cni-plugin cni plugin RoleBinding exists",
 				"linkerd-cni-plugin cni plugin ServiceAccount exists",
-				"linkerd-cni-plugin cni plugin DaemonSet exists: daemonsets.apps \"linkerd-cni\" not found",
+				"linkerd-cni-plugin cni plugin DaemonSet exists: missing DaemonSet: linkerd-cni",
 			},
 		},
 		{
@@ -2959,7 +2960,7 @@ func TestCniChecks(t *testing.T) {
 		tc := tc // pin
 		t.Run(tc.description, func(t *testing.T) {
 			hc := NewHealthChecker(
-				[]CategoryID{LinkerdCniPluginChecks},
+				[]CategoryID{LinkerdCNIPluginChecks},
 				&Options{
 					ControlPlaneNamespace: "linkerd",
 				},

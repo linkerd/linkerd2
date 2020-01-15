@@ -65,6 +65,9 @@ func (options *checkOptions) validate() error {
 	if options.preInstallOnly && options.dataPlaneOnly {
 		return errors.New("--pre and --proxy flags are mutually exclusive")
 	}
+	if !options.preInstallOnly && options.cniEnabled {
+		return errors.New("--linkerd-cni-enabled can only be used with --pre")
+	}
 	if options.output != tableOutput && options.output != jsonOutput {
 		return fmt.Errorf("Invalid output type '%s'. Supported output types are: %s, %s", options.output, jsonOutput, tableOutput)
 	}
@@ -150,7 +153,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		if !options.cniEnabled {
 			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		} else {
-			checks = append(checks, healthcheck.LinkerdCniPluginChecks)
+			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 		}
 		installManifest, err = renderInstallManifest()
 		if err != nil {
@@ -170,7 +173,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 			} else {
 				checks = append(checks, healthcheck.LinkerdControlPlaneVersionChecks)
 			}
-			checks = append(checks, healthcheck.LinkerdCniPluginChecks)
+			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 			checks = append(checks, healthcheck.LinkerdHAChecks)
 		}
 	}
