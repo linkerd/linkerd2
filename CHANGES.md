@@ -7,7 +7,7 @@ might be stability issues.
 * CLI
   * Added HA specific checks to `linkerd check` to ensure that the `kube-system`
     namespace has the `config.linkerd.io/admission-webhooks:disabled`
-    annotation set
+    label set
   * Fixed a problem causing the presence of unnecessary fields in
     generated resource definitions (thanks @mayankshah1607)
 * Internal
