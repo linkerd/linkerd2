@@ -367,21 +367,13 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	}
 
 	if options.dockerRegistry != "" {
-		currentProxyImage := configs.GetProxy().GetProxyImage().GetImageName()
-		currentProxyInitImage := configs.GetProxy().GetProxyInitImage().GetImageName()
-		currentDebugImage := configs.GetProxy().GetDebugImage().GetImageName()
-		if currentDebugImage == "" {
-			currentDebugImage = k8s.DebugSidecarImage
+		debugImage := configs.GetProxy().GetDebugImage().GetImageName()
+		if debugImage == "" {
+			debugImage = k8s.DebugSidecarImage
 		}
-
-		currentRegistry := getFlagValue(configs.GetInstall().GetFlags(), "registry")
-		if currentRegistry == "" {
-			currentRegistry = defaultDockerRegistry
-		}
-
-		overrideAnnotations[k8s.ProxyImageAnnotation] = strings.Replace(currentProxyImage, currentRegistry, options.dockerRegistry, 1)
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = strings.Replace(currentProxyInitImage, currentRegistry, options.dockerRegistry, 1)
-		overrideAnnotations[k8s.DebugImageAnnotation] = strings.Replace(currentDebugImage, currentRegistry, options.dockerRegistry, 1)
+		overrideAnnotations[k8s.ProxyImageAnnotation] = overwriteRegistry(configs.GetProxy().GetProxyImage().GetImageName(), options.dockerRegistry)
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = overwriteRegistry(configs.GetProxy().GetProxyInitImage().GetImageName(), options.dockerRegistry)
+		overrideAnnotations[k8s.DebugImageAnnotation] = overwriteRegistry(debugImage, options.dockerRegistry)
 	}
 
 	if options.proxyImage != "" {
@@ -492,11 +484,18 @@ func parsePortRanges(portRanges []*cfg.PortRange) string {
 	return strings.TrimSuffix(str, ",")
 }
 
-func getFlagValue(flags []*cfg.Install_Flag, name string) string {
-	for _, flag := range flags {
-		if flag.Name == name {
-			return flag.Value
-		}
+// overwriteRegistry replaces the registry-portion of the provided image with the provided registry.
+func overwriteRegistry(image, registry string) string {
+	if image == "" || registry == "" {
+		return image
 	}
-	return ""
+	updated := registry
+	if !strings.HasSuffix(updated, "/") {
+		updated += "/"
+	}
+	i := len(image) - 1
+	for i >= 0 && image[i] != '/' {
+		i--
+	}
+	return updated + image[i+1:]
 }

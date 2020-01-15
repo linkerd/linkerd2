@@ -794,3 +794,50 @@ func TestOverrideConfigsWithCustomRegistryInstall(t *testing.T) {
 		})
 	}
 }
+
+func TestOverwriteRegistry(t *testing.T) {
+	testCases := []struct {
+		image    string
+		registry string
+		expected string
+	}{
+		{
+			image:    "gcr.io/linkerd-io/image",
+			registry: "my.custom.registry",
+			expected: "my.custom.registry/image",
+		},
+		{
+			image:    "gcr.io/linkerd-io/image",
+			registry: "my.custom.registry/",
+			expected: "my.custom.registry/image",
+		},
+		{
+			image:    "my.custom.registry/image",
+			registry: "my.custom.registry",
+			expected: "my.custom.registry/image",
+		},
+		{
+			image:    "my.custom.registry/image",
+			registry: "gcr.io/linkerd-io",
+			expected: "gcr.io/linkerd-io/image",
+		},
+		{
+			image:    "",
+			registry: "my.custom.registry",
+			expected: "",
+		},
+		{
+			image:    "gcr.io/linkerd-io/image",
+			registry: "",
+			expected: "gcr.io/linkerd-io/image",
+		},
+	}
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			actual := overwriteRegistry(tc.image, tc.registry)
+			if actual != tc.expected {
+				t.Fatalf("expected %q, but got %q", tc.expected, actual)
+			}
+		})
+	}
+}
