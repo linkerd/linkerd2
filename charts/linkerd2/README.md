@@ -151,7 +151,7 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | `profileValidator.keyPEM`             | Certificate key for the service profile validator. If not provided then Helm will generate one.                                                                                                                             ||
 | `tap.crtPEM`                          | Certificate for the Tap component. If not provided then Helm will generate one.                                                                                                                                             ||
 | `tap.keyPEM`                          | Certificate key for Tap component. If not provided then Helm will generate one.                                                                                                                                             ||
-| `webhookFailurePolicy`                | Failure policy for the proxy injector                                                                                                                                                 | `Ignore`
+| `webhookFailurePolicy`                | Failure policy for the proxy injector                                                                                                                                                 | `Ignore`                             |
 | `webImage`                            | Docker image for the web container                                                                                                                                                    | `gcr.io/linkerd-io/web`              |
 
 ## Get involved

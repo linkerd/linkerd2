@@ -28,6 +28,7 @@ const (
 	injectDisabledDesc = "pods are not annotated to disable injection"
 	unsupportedDesc    = "at least one resource injected"
 	udpDesc            = "pod specs do not include UDP ports"
+	slash              = "/"
 )
 
 type resourceTransformerInject struct {
@@ -485,17 +486,17 @@ func parsePortRanges(portRanges []*cfg.PortRange) string {
 }
 
 // overwriteRegistry replaces the registry-portion of the provided image with the provided registry.
-func overwriteRegistry(image, registry string) string {
-	if image == "" || registry == "" {
+func overwriteRegistry(image, newRegistry string) string {
+	if image == "" {
 		return image
 	}
-	updated := registry
-	if !strings.HasSuffix(updated, "/") {
-		updated += "/"
+	registry := newRegistry
+	if registry != "" && !strings.HasSuffix(registry, slash) {
+		registry += slash
 	}
-	i := len(image) - 1
-	for i >= 0 && image[i] != '/' {
-		i--
+	imageName := image
+	if strings.Contains(image, slash) {
+		imageName = image[strings.LastIndex(image, slash)+1:]
 	}
-	return updated + image[i+1:]
+	return registry + imageName
 }

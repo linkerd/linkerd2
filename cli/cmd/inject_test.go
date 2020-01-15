@@ -829,6 +829,11 @@ func TestOverwriteRegistry(t *testing.T) {
 		{
 			image:    "gcr.io/linkerd-io/image",
 			registry: "",
+			expected: "image",
+		},
+		{
+			image:    "image",
+			registry: "gcr.io/linkerd-io",
 			expected: "gcr.io/linkerd-io/image",
 		},
 	}
