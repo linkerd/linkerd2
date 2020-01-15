@@ -158,11 +158,11 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string
 		return podAnnotation == k8s.ProxyInjectDisabled, "", ""
 	}
 
-	if !isInjectAnnotationValid(conf.nsAnnotations) {
+	if !isInjectAnnotationValid(nsAnnotation) {
 		return true, invalidInjectAnnotationNamespace, ""
 	}
 
-	if !isInjectAnnotationValid(conf.pod.meta.Annotations) {
+	if !isInjectAnnotationValid(podAnnotation) {
 		return true, invalidInjectAnnotationWorkload, ""
 	}
 
@@ -180,11 +180,9 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string
 	return false, "", annotationAtWorkload
 }
 
-func isInjectAnnotationValid(annotations map[string]string) bool {
-	for k, v := range annotations {
-		if k == k8s.ProxyInjectAnnotation && !(v == k8s.ProxyInjectEnabled || v == k8s.ProxyInjectDisabled) {
-			return false
-		}
+func isInjectAnnotationValid(annotation string) bool {
+	if annotation != "" && !(annotation == k8s.ProxyInjectEnabled || annotation == k8s.ProxyInjectDisabled) {
+		return false
 	}
 	return true
 }
