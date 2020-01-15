@@ -166,6 +166,15 @@ const HintBaseURL = "https://linkerd.io/checks/#"
 // TODO: Make this default value overridiable, e.g. by CLI flag
 const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
 
+var linkerdHAControlPlaneComponents = []string{
+	"linkerd-controller",
+	"linkerd-destination",
+	"linkerd-identity",
+	"linkerd-proxy-injector",
+	"linkerd-sp-validator",
+	"linkerd-tap",
+}
+
 var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
@@ -1167,9 +1176,34 @@ func (hc *HealthChecker) allCategories() []category {
 						return &SkipError{Reason: "not run for non HA installs"}
 					},
 				},
+				{
+					description: "multiple replicas of control plane pods",
+					hintAnchor:  "l5d-control-plane-replicas",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						if hc.isHA() {
+							return hc.controlPlaneComponentsAreHA()
+						}
+						return &SkipError{Reason: "not run for non HA installs"}
+					},
+				},
 			},
 		},
 	}
+}
+
+func (hc *HealthChecker) controlPlaneComponentsAreHA() error {
+	for _, component := range linkerdHAControlPlaneComponents {
+		conf, err := hc.kubeAPI.AppsV1().Deployments(hc.ControlPlaneNamespace).Get(component, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if conf.Status.AvailableReplicas <= 1 {
+			return fmt.Errorf("not enough replicas available for %s", component)
+		}
+	}
+	return nil
 }
 
 func (hc *HealthChecker) issuerIdentity() string {
