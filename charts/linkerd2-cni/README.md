@@ -13,8 +13,8 @@ The following table lists the configurable parameters of the Linkerd2-cni chart 
 
 | Parameter                            | Description                                                           | Default                       |
 |--------------------------------------|-----------------------------------------------------------------------|-------------------------------|
-`cniPluginImage`                      | Docker image for the cni plugin                                       |`gcr.io/linkerd-io/cni-plugin`|
-|`cniPluginVersion`                    | Tag for the cni container Docker image                                |latest version|
+`cniPluginImage`                      | Docker image for the CNI plugin                                       |`gcr.io/linkerd-io/cni-plugin`|
+|`cniPluginVersion`                    | Tag for the CNI container Docker image                                |latest version|
 |`cniResourceAnnotation`               | CNI resource annotation. Do not edit                                  |`linkerd.io/cni-resource`
 |`controllerNamespaceLabel`            | Control plane label. Do not edit                                      |`linkerd.io/control-plane-ns`|
 |`createdByAnnotation`                 | Annotation label for the proxy create. Do not edit.                   |`linkerd.io/created-by`|
@@ -23,7 +23,7 @@ The following table lists the configurable parameters of the Linkerd2-cni chart 
 |`ignoreInboundPorts`                  | Inbound ports the proxy should ignore                                 ||
 |`ignoreOutboundPorts`                 | Outbound ports the proxy should ignore                                ||
 |`inboundProxyPort`                    | Inbound port for the proxy container                                  |`4143`|
-|`logLevel`                            | Log level for the cni plugin                                          |`info`|
+|`logLevel`                            | Log level for the CNI plugin                                          |`info`|
 |`namespace`                           | Control plane namespace                                               | `linkerd`|
 |`outboundProxyPort`                   | Outbound port for the proxy container                                 |`4140`|
 |`portsToRedirect`                     | Ports to redirect to proxy                                            ||
