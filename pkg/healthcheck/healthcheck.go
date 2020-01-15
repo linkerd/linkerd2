@@ -300,6 +300,7 @@ type category struct {
 // Options specifies configuration for a HealthChecker.
 type Options struct {
 	ControlPlaneNamespace string
+	CNINamespace          string
 	DataPlaneNamespace    string
 	KubeConfig            string
 	KubeContext           string
@@ -728,7 +729,7 @@ func (hc *HealthChecker) allCategories() []category {
 						if !hc.NoInitContainer {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(linkerdCNIConfigMapName, metav1.GetOptions{})
+						_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.CNINamespace).Get(linkerdCNIConfigMapName, metav1.GetOptions{})
 						return err
 					},
 				},
@@ -740,7 +741,7 @@ func (hc *HealthChecker) allCategories() []category {
 						if !hc.NoInitContainer {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						pspName := fmt.Sprintf("linkerd-%s-cni", hc.ControlPlaneNamespace)
+						pspName := fmt.Sprintf("linkerd-%s-cni", hc.CNINamespace)
 						_, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().Get(pspName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing PodSecurityPolicy: %s", pspName)
@@ -786,7 +787,7 @@ func (hc *HealthChecker) allCategories() []category {
 						if !hc.NoInitContainer {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						_, err := hc.kubeAPI.RbacV1().Roles(hc.ControlPlaneNamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
+						_, err := hc.kubeAPI.RbacV1().Roles(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing Role: %s", linkerdCNIResourceName)
 						}
@@ -801,7 +802,7 @@ func (hc *HealthChecker) allCategories() []category {
 						if !hc.NoInitContainer {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						_, err := hc.kubeAPI.RbacV1().RoleBindings(hc.ControlPlaneNamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
+						_, err := hc.kubeAPI.RbacV1().RoleBindings(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing RoleBinding: %s", linkerdCNIResourceName)
 						}
@@ -816,7 +817,7 @@ func (hc *HealthChecker) allCategories() []category {
 						if !hc.NoInitContainer {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						_, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.ControlPlaneNamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
+						_, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing ServiceAccount: %s", linkerdCNIResourceName)
 						}
@@ -831,7 +832,7 @@ func (hc *HealthChecker) allCategories() []category {
 						if !hc.NoInitContainer {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						hc.cniDaemonSet, err = hc.kubeAPI.Interface.AppsV1().DaemonSets(hc.ControlPlaneNamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
+						hc.cniDaemonSet, err = hc.kubeAPI.Interface.AppsV1().DaemonSets(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing DaemonSet: %s", linkerdCNIResourceName)
 						}
@@ -1430,7 +1431,6 @@ func (hc *HealthChecker) checkClusterRoles(shouldExist bool) error {
 	objects := []runtime.Object{}
 
 	for _, item := range crList.Items {
-		println(item.Name)
 		item := item // pin
 		objects = append(objects, &item)
 	}
@@ -1773,13 +1773,6 @@ func (hc *HealthChecker) checkCanCreateNonNamespacedResources() error {
 		if obj.GetNamespace() != "" {
 			continue
 		}
-
-		if obj.GetKind() == "Namespace" && hc.NoInitContainer {
-			// if we have CNI installed assume its in the Linkerd namespace
-			// and just skip
-			continue
-		}
-
 		// Attempt to create resource using dry-run
 		resource, _ := meta.UnsafeGuessKindToResource(obj.GroupVersionKind())
 		_, err = hc.kubeAPI.DynamicClient.Resource(resource).Create(obj, dryRun)

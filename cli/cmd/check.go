@@ -180,6 +180,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
+		CNINamespace:          cniNamespace,
 		DataPlaneNamespace:    options.namespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,

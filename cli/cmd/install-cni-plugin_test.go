@@ -7,7 +7,7 @@ import (
 )
 
 func TestRenderCNIPlugin(t *testing.T) {
-	defaultControlPlaneNamespace := controlPlaneNamespace
+	defaultCniNamespace := cniNamespace
 	defaultOptions, err := newCNIInstallOptionsWithDefaults()
 	if err != nil {
 		t.Fatalf("Unexpected error from newCNIInstallOptionsWithDefaults(): %v", err)
@@ -52,7 +52,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		namespace      string
 		goldenFileName string
 	}{
-		{defaultOptions, defaultControlPlaneNamespace, "install-cni-plugin_default.golden"},
+		{defaultOptions, defaultCniNamespace, "install-cni-plugin_default.golden"},
 		{fullyConfiguredOptions, otherNamespace, "install-cni-plugin_fully_configured.golden"},
 		{fullyConfiguredOptionsEqualDsts, otherNamespace, "install-cni-plugin_fully_configured_equal_dsts.golden"},
 	}
@@ -60,8 +60,8 @@ func TestRenderCNIPlugin(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
-			defer teardown(defaultControlPlaneNamespace)
-			controlPlaneNamespace = tc.namespace
+			defer teardown(defaultCniNamespace)
+			cniNamespace = tc.namespace
 
 			var buf bytes.Buffer
 			err := renderCNIPlugin(&buf, tc.cniPluginOptions)
@@ -72,9 +72,9 @@ func TestRenderCNIPlugin(t *testing.T) {
 		})
 	}
 
-	controlPlaneNamespace = defaultControlPlaneNamespace
+	cniNamespace = defaultCniNamespace
 }
 
 func teardown(originalNamespace string) {
-	controlPlaneNamespace = originalNamespace
+	cniNamespace = originalNamespace
 }

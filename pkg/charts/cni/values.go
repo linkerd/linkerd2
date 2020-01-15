@@ -15,26 +15,25 @@ const (
 
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
-	Namespace                string `json:"namespace"`
-	ControllerNamespaceLabel string `json:"controllerNamespaceLabel"`
-	CNIResourceAnnotation    string `json:"cniResourceAnnotation"`
-	InboundProxyPort         uint   `json:"inboundProxyPort"`
-	OutboundProxyPort        uint   `json:"outboundProxyPort"`
-	IgnoreInboundPorts       string `json:"ignoreInboundPorts"`
-	IgnoreOutboundPorts      string `json:"ignoreOutboundPorts"`
-	CreatedByAnnotation      string `json:"createdByAnnotation"`
-	CliVersion               string `json:"cliVersion"`
-	CNIPluginImage           string `json:"cniPluginImage"`
-	CNIPluginVersion         string `json:"cniPluginVersion"`
-	LogLevel                 string `json:"logLevel"`
-	PortsToRedirect          string `json:"portsToRedirect"`
-	ProxyUID                 int64  `json:"proxyUID"`
-	DestCNINetDir            string `json:"destCNINetDir"`
-	DestCNIBinDir            string `json:"destCNIBinDir"`
-	UseWaitFlag              bool   `json:"useWaitFlag"`
-	ProxyInjectAnnotation    string `json:"proxyInjectAnnotation"`
-	ProxyInjectDisabled      string `json:"proxyInjectDisabled"`
-	LinkerdNamespaceLabel    string `json:"linkerdNamespaceLabel"`
+	Namespace             string `json:"namespace"`
+	CNIResourceAnnotation string `json:"cniResourceAnnotation"`
+	InboundProxyPort      uint   `json:"inboundProxyPort"`
+	OutboundProxyPort     uint   `json:"outboundProxyPort"`
+	IgnoreInboundPorts    string `json:"ignoreInboundPorts"`
+	IgnoreOutboundPorts   string `json:"ignoreOutboundPorts"`
+	CreatedByAnnotation   string `json:"createdByAnnotation"`
+	CliVersion            string `json:"cliVersion"`
+	CNIPluginImage        string `json:"cniPluginImage"`
+	CNIPluginVersion      string `json:"cniPluginVersion"`
+	LogLevel              string `json:"logLevel"`
+	PortsToRedirect       string `json:"portsToRedirect"`
+	ProxyUID              int64  `json:"proxyUID"`
+	DestCNINetDir         string `json:"destCNINetDir"`
+	DestCNIBinDir         string `json:"destCNIBinDir"`
+	UseWaitFlag           bool   `json:"useWaitFlag"`
+	ProxyInjectAnnotation string `json:"proxyInjectAnnotation"`
+	ProxyInjectDisabled   string `json:"proxyInjectDisabled"`
+	LinkerdNamespaceLabel string `json:"linkerdNamespaceLabel"`
 }
 
 // NewValues returns a new instance of the Values type.

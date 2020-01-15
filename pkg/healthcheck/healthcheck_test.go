@@ -2630,9 +2630,8 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-cni-config
-  namespace: linkerd
+  namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: linkerd
     linkerd.io/cni-resource: "true"
 data:
   dest_cni_net_dir: "/etc/cni/net.d"
@@ -2645,9 +2644,8 @@ data:
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: linkerd-linkerd-cni
+  name: linkerd-test-ns-cni
   labels:
-    linkerd.io/control-plane-ns: linkerd
     linkerd.io/cni-resource: "true"
 spec:
   allowPrivilegeEscalation: false
@@ -2674,7 +2672,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-cni
   labels:
-    linkerd.io/control-plane-ns: linkerd
     linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: [""]
@@ -2691,7 +2688,6 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
   labels:
-    linkerd.io/control-plane-ns: linkerd
     linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -2700,7 +2696,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: linkerd
+  namespace: test-ns
 ---
 `)
 	}
@@ -2711,15 +2707,14 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-cni
-  namespace: linkerd
+  namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: linkerd
     linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
   resourceNames:
-  - linkerd-linkerd-cni
+  - linkerd-test-ns-cni
   verbs: ['use']
 ---
 `)
@@ -2731,9 +2726,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-cni
-  namespace: linkerd
+  namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: linkerd
     linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -2742,7 +2736,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: linkerd
+  namespace: test-ns
 ---
 `)
 	}
@@ -2753,9 +2747,8 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: linkerd-cni
-  namespace: linkerd
+  namespace: test-ns
   labels:
-    linkerd.io/control-plane-ns: linkerd
     linkerd.io/cni-resource: "true"
 ---
 `)
@@ -2767,10 +2760,9 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: linkerd-cni
-  namespace: linkerd
+  namespace: test-ns
   labels:
     k8s-app: linkerd-cni
-    linkerd.io/control-plane-ns: linkerd
     linkerd.io/cni-resource: "true"
   annotations:
     linkerd.io/created-by: linkerd/cli git-b4266c93
@@ -2857,7 +2849,7 @@ func TestCniChecks(t *testing.T) {
 			fakeCniResourcesOpts{hasConfigMap: true},
 			[]string{
 				"linkerd-cni-plugin cni plugin ConfigMap exists",
-				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists: missing PodSecurityPolicy: linkerd-linkerd-cni"},
+				"linkerd-cni-plugin cni plugin PodSecurityPolicy exists: missing PodSecurityPolicy: linkerd-test-ns-cni"},
 		},
 		{
 			"fails then there is no ClusterRole",
@@ -2962,7 +2954,7 @@ func TestCniChecks(t *testing.T) {
 			hc := NewHealthChecker(
 				[]CategoryID{LinkerdCNIPluginChecks},
 				&Options{
-					ControlPlaneNamespace: "linkerd",
+					CNINamespace: "test-ns",
 				},
 			)
 
