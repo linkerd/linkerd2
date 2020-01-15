@@ -1,3 +1,20 @@
+## edge-20.1.2
+
+**Note**: The `linkerd-proxy` version included with this release is more
+experimental than usual. We'd love your help testing, but be aware that there
+might be stability issues.
+
+* CLI
+  * Added HA specific checks to `linkerd check` to ensure that the `kube-system`
+    namespace has the `config.linkerd.io/admission-webhooks:disabled`
+    annotation set
+  * Fixed a problem causing the presence of unnecessary fields in
+    generated resource definitions (thanks @mayankshah1607)
+* Internal
+  * Added validation to incoming sidecar injection requests that ensures
+    the value of `linkerd.io/inject` is either `enabled` or `disabled`
+    (thanks @mayankshah1607)
+    
 ## edge-20.1.1
 
 This edge release includes experimental improvements to the Linkerd proxy's

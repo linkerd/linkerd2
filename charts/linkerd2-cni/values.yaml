@@ -7,7 +7,7 @@ ignoreInboundPorts: ""
 ignoreOutboundPorts: ""
 createdByAnnotation: linkerd.io/created-by
 cniPluginImage:   "gcr.io/linkerd-io/cni-plugin"
-cniPluginVersion: edge-20.1.1
+cniPluginVersion: edge-20.1.2
 logLevel:         info
 portsToRedirect:  ""
 proxyUID:         2102
