@@ -150,10 +150,10 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 	var installManifest string
 	if options.preInstallOnly {
 		checks = append(checks, healthcheck.LinkerdPreInstallChecks)
-		if !options.cniEnabled {
-			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
-		} else {
+		if options.cniEnabled {
 			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
+		} else {
+			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		}
 		installManifest, err = renderInstallManifest()
 		if err != nil {

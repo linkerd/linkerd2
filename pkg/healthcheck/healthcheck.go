@@ -143,7 +143,6 @@ const (
 	LinkerdCNIResourceLabel = "linkerd.io/cni-resource"
 
 	linkerdCNIDisabledSkipReason = "skipping check because CNI is not enabled"
-	linkerdCNIEnabledSkipReason  = "skipping check because CNI is enabled"
 	linkerdCNIResourceName       = "linkerd-cni"
 	linkerdCNIConfigMapName      = "linkerd-cni-config"
 )
@@ -415,9 +414,6 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
 					check: func(context.Context) error {
-						if hc.NoInitContainer {
-							return &SkipError{Reason: linkerdCNIEnabledSkipReason}
-						}
 						return hc.checkNamespace(hc.ControlPlaneNamespace, false)
 					},
 				},
@@ -1311,7 +1307,7 @@ func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer
 }
 
 func (hc *HealthChecker) controlPlaneComponentsSelector() string {
-	return fmt.Sprintf("%s in (%s),%s notin (true)", k8s.ControllerNSLabel, hc.ControlPlaneNamespace, LinkerdCNIResourceLabel)
+	return fmt.Sprintf("%s,!%s", k8s.ControllerNSLabel, LinkerdCNIResourceLabel)
 }
 
 // PublicAPIClient returns a fully configured public API client. This client is
