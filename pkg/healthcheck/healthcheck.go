@@ -1815,23 +1815,26 @@ func (hc *HealthChecker) checkAPIService(serviceName string) error {
 	}
 
 	apiStatus, err := apiServiceClient.APIServices().Get(serviceName, metav1.GetOptions{})
-	if err != nil && len(apiStatus.Status.Conditions) == 0 {
+	if err != nil {
 		return err
 	}
 
 	available := false
 	var errorMessage string
 	for _, condition := range apiStatus.Status.Conditions {
-		if condition.Status == "True" {
+		if condition.Type == "Available" {
 			available = true
-			break
+			if condition.Status == "True" {
+				return nil
+			}
+			errorMessage = fmt.Sprintf("%s: %s", condition.Reason, condition.Message)
 		}
-		errorMessage = fmt.Sprintf("%s: %s", condition.Reason, condition.Message)
 	}
-	if !available {
-		return fmt.Errorf(errorMessage)
+	if available {
+		return errors.New(errorMessage)
 	}
-	return nil
+
+	return fmt.Errorf("%s service not available", linkerdTapAPIServiceName)
 }
 
 func (hc *HealthChecker) checkCapability(cap string) error {
