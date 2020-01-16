@@ -1,3 +1,18 @@
+## edge-20.1.2
+
+* CLI
+  * Added HA specific checks to `linkerd check` to ensure that the `kube-system`
+    namespace has the `config.linkerd.io/admission-webhooks:disabled`
+    label set
+  * Fixed a problem causing the presence of unnecessary empty fields in
+    generated resource definitions (thanks @mayankshah1607)
+* Proxy
+  * Fixed an issue that could cause the OpenCensus exporter to stall
+* Internal
+  * Added validation to incoming sidecar injection requests that ensures
+    the value of `linkerd.io/inject` is either `enabled` or `disabled`
+    (thanks @mayankshah1607)
+    
 ## edge-20.1.1
 
 This edge release includes experimental improvements to the Linkerd proxy's
