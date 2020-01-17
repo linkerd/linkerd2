@@ -119,6 +119,15 @@ const (
 	// ProxyInitImageVersionAnnotation can be used to overrided the proxy-init image version
 	ProxyInitImageVersionAnnotation = ProxyConfigAnnotationsPrefix + "/init-image-version"
 
+	// DebugImageAnnotation can be used to override the debugImage config.
+	DebugImageAnnotation = ProxyConfigAnnotationsPrefix + "/debug-image"
+
+	// DebugImageVersionAnnotation can be used to override the debugImageVersion config.
+	DebugImageVersionAnnotation = ProxyConfigAnnotationsPrefix + "/debug-image-version"
+
+	// DebugImagePullPolicyAnnotation can be used to override the debugImagePullPolicy config.
+	DebugImagePullPolicyAnnotation = ProxyConfigAnnotationsPrefix + "/debug-image-pull-policy"
+
 	// ProxyControlPortAnnotation can be used to override the controlPort config.
 	ProxyControlPortAnnotation = ProxyConfigAnnotationsPrefix + "/control-port"
 

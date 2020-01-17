@@ -35,5 +35,10 @@
   "logLevel": {
     "level": "warn,linkerd=info"
   },
-  "disableExternalProfiles": false
+  "disableExternalProfiles": false,
+  "debugImage": {
+    "imageName": "gcr.io/linkerd-io/debug",
+    "pullPolicy": "IfNotPresent"
+  },
+  "debugImageVersion": "test-debug-version"
 }

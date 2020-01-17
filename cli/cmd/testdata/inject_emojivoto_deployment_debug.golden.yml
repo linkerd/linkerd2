@@ -35,7 +35,7 @@ spec:
         ports:
         - containerPort: 80
           name: http
-      - image: gcr.io/linkerd-io/debug:test-inject-control-plane-version
+      - image: gcr.io/linkerd-io/debug:test-inject-debug-version
         imagePullPolicy: IfNotPresent
         name: linkerd-debug
         terminationMessagePolicy: FallbackToLogsOnError

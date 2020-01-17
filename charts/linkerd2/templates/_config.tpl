@@ -68,7 +68,12 @@
   },
   "disableExternalProfiles": {{not .Values.global.proxy.enableExternalProfiles}},
   "proxyVersion": "{{.Values.global.proxy.image.version}}",
-  "proxyInitImageVersion": "{{.Values.global.proxyInit.image.version}}"
+  "proxyInitImageVersion": "{{.Values.global.proxyInit.image.version}}",
+  "debugImage":{
+    "imageName":"{{.Values.debugContainer.image.name}}",
+    "pullPolicy":"{{.Values.debugContainer.image.pullPolicy}}"
+  },
+  "debugImageVersion": "{{.Values.debugContainer.image.version}}"
 }
 {{- end -}}
 

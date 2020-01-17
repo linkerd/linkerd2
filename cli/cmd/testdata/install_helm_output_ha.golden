@@ -930,7 +930,12 @@ data:
       },
       "disableExternalProfiles": true,
       "proxyVersion": "test-proxy-version",
-      "proxyInitImageVersion": "test-proxy-init-version"
+      "proxyInitImageVersion": "test-proxy-init-version",
+      "debugImage":{
+        "imageName":"gcr.io/linkerd-io/debug",
+        "pullPolicy":"IfNotPresent"
+      },
+      "debugImageVersion": "test-debug-version"
     }
   install: |
     {

@@ -50,6 +50,9 @@ message Proxy {
   string proxy_version = 13;
 
   string proxy_init_image_version = 14;
+
+  Image debug_image = 15;
+  string debug_image_version = 16;
 }
 
 message Image {

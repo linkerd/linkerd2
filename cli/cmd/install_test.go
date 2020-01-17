@@ -201,6 +201,18 @@ func TestRender(t *testing.T) {
 	withControlPlaneTracingValues, _, _ := withControlPlaneTracing.validateAndBuild("", nil)
 	addFakeTLSSecrets(withControlPlaneTracingValues)
 
+	customRegistryOverride := "my.custom.registry/linkerd-io"
+	withCustomRegistryOptions, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withCustomRegistryOptions.dockerRegistry = customRegistryOverride
+	withCustomRegistryOptions.recordedFlags = []*config.Install_Flag{
+		{Name: "registry", Value: customRegistryOverride},
+	}
+	withCustomRegistryValues, _, _ := withCustomRegistryOptions.validateAndBuild("", nil)
+	addFakeTLSSecrets(withCustomRegistryValues)
+
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
@@ -216,6 +228,7 @@ func TestRender(t *testing.T) {
 		{withHeartBeatDisabledValues, "install_heartbeat_disabled_output.golden"},
 		{withRestrictedDashboardPriviligesValues, "install_restricted_dashboard.golden"},
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
+		{withCustomRegistryValues, "install_custom_registry.golden"},
 	}
 
 	for i, tc := range testCases {
@@ -264,6 +277,7 @@ func testInstallOptions() (*installOptions, error) {
 
 	o.ignoreCluster = true
 	o.proxyVersion = "install-proxy-version"
+	o.debugImageVersion = "install-debug-version"
 	o.controlPlaneVersion = "install-control-plane-version"
 	o.heartbeatSchedule = fakeHeartbeatSchedule
 	o.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
@@ -319,7 +333,7 @@ func TestValidate(t *testing.T) {
 		actual, err := underTest.buildValuesWithoutIdentity(testValues)
 
 		if err != nil {
-			t.Fatalf("Unexpected error ocured %s", err)
+			t.Fatalf("Unexpected error occurred %s", err)
 		}
 
 		if actual.PrometheusLogLevel != expected {

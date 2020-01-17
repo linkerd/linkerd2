@@ -189,6 +189,8 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			proxyImage:             defaults.Global.Proxy.Image.Name,
 			initImage:              defaults.Global.ProxyInit.Image.Name,
 			initImageVersion:       version.ProxyInitVersion,
+			debugImage:             defaults.DebugContainer.Image.Name,
+			debugImageVersion:      version.Version,
 			dockerRegistry:         defaultDockerRegistry,
 			imagePullPolicy:        defaults.Global.ImagePullPolicy,
 			ignoreInboundPorts:     nil,
@@ -702,6 +704,10 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.ProxyInit.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
 	installValues.Global.ProxyInit.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
 
+	installValues.DebugContainer.Image.Name = registryOverride(options.debugImage, options.dockerRegistry)
+	installValues.DebugContainer.Image.PullPolicy = options.imagePullPolicy
+	installValues.DebugContainer.Image.Version = options.debugImageVersion
+
 	return installValues, nil
 }
 
@@ -830,6 +836,11 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 		DisableExternalProfiles: !options.enableExternalProfiles,
 		ProxyVersion:            options.proxyVersion,
 		ProxyInitImageVersion:   options.initImageVersion,
+		DebugImage: &pb.Image{
+			ImageName:  registryOverride(options.debugImage, options.dockerRegistry),
+			PullPolicy: options.imagePullPolicy,
+		},
+		DebugImageVersion: options.debugImageVersion,
 	}
 }
 

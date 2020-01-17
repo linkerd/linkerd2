@@ -28,6 +28,7 @@ const (
 	injectDisabledDesc = "pods are not annotated to disable injection"
 	unsupportedDesc    = "at least one resource injected"
 	udpDesc            = "pod specs do not include UDP ports"
+	slash              = "/"
 )
 
 type resourceTransformerInject struct {
@@ -367,10 +368,13 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	}
 
 	if options.dockerRegistry != "" {
-		configs.Proxy.ProxyImage.ImageName = registryOverride(configs.Proxy.ProxyImage.ImageName, options.dockerRegistry)
-		configs.Proxy.ProxyInitImage.ImageName = registryOverride(configs.Proxy.ProxyInitImage.ImageName, options.dockerRegistry)
-		overrideAnnotations[k8s.ProxyImageAnnotation] = configs.Proxy.ProxyImage.ImageName
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = configs.Proxy.ProxyInitImage.ImageName
+		debugImage := configs.GetProxy().GetDebugImage().GetImageName()
+		if debugImage == "" {
+			debugImage = k8s.DebugSidecarImage
+		}
+		overrideAnnotations[k8s.ProxyImageAnnotation] = overwriteRegistry(configs.GetProxy().GetProxyImage().GetImageName(), options.dockerRegistry)
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = overwriteRegistry(configs.GetProxy().GetProxyInitImage().GetImageName(), options.dockerRegistry)
+		overrideAnnotations[k8s.DebugImageAnnotation] = overwriteRegistry(debugImage, options.dockerRegistry)
 	}
 
 	if options.proxyImage != "" {
@@ -392,6 +396,7 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	if options.imagePullPolicy != "" {
 		configs.Proxy.ProxyImage.PullPolicy = options.imagePullPolicy
 		configs.Proxy.ProxyInitImage.PullPolicy = options.imagePullPolicy
+		configs.Proxy.DebugImage.PullPolicy = options.imagePullPolicy
 		overrideAnnotations[k8s.ProxyImagePullPolicyAnnotation] = options.imagePullPolicy
 	}
 
@@ -478,4 +483,20 @@ func parsePortRanges(portRanges []*cfg.PortRange) string {
 	}
 
 	return strings.TrimSuffix(str, ",")
+}
+
+// overwriteRegistry replaces the registry-portion of the provided image with the provided registry.
+func overwriteRegistry(image, newRegistry string) string {
+	if image == "" {
+		return image
+	}
+	registry := newRegistry
+	if registry != "" && !strings.HasSuffix(registry, slash) {
+		registry += slash
+	}
+	imageName := image
+	if strings.Contains(image, slash) {
+		imageName = image[strings.LastIndex(image, slash)+1:]
+	}
+	return registry + imageName
 }
