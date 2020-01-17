@@ -414,7 +414,53 @@ status:
     status: "True"
     type: Ready`,
 			},
-			fmt.Errorf("clock skew detected for node(s): test-node"),
+			fmt.Errorf("large clock skew detected between your host and node(s): test-node"),
+		},
+		{
+			// Near identical times between nodes
+			[]string{fmt.Sprintf(`apiVersion: v1
+kind: Node
+metadata:
+  name: test-node
+status:
+  conditions:
+  - lastHeartbeatTime: "%s"
+    status: "True"
+    type: Ready`, time.Now().Format(time.RFC3339)),
+				fmt.Sprintf(`apiVersion: v1
+kind: Node
+metadata:
+  name: test-node2
+status:
+  conditions:
+  - lastHeartbeatTime: "%s"
+    status: "True"
+    type: Ready`, time.Now().Add(1*time.Second).Format(time.RFC3339)),
+			},
+			nil,
+		},
+		{
+			// Add large skew between nodes
+			[]string{fmt.Sprintf(`apiVersion: v1
+kind: Node
+metadata:
+  name: test-node
+status:
+  conditions:
+  - lastHeartbeatTime: "%s"
+    status: "True"
+    type: Ready`, time.Now().Format(time.RFC3339)),
+				fmt.Sprintf(`apiVersion: v1
+kind: Node
+metadata:
+  name: test-node2
+status:
+  conditions:
+  - lastHeartbeatTime: "%s"
+    status: "True"
+    type: Ready`, time.Now().Add(2*time.Minute).Format(time.RFC3339)),
+			},
+			fmt.Errorf("clock skew detected between node(s): test-node, test-node2"),
 		},
 	}
 

@@ -144,13 +144,23 @@ const (
 // page.
 const HintBaseURL = "https://linkerd.io/checks/#"
 
-// AllowedClockSkew sets the allowed skew in clock synchronization
+// AllowedNodeClockSkew sets the allowed skew in clock synchronization
 // between the system running inject command and the node(s), being
 // based on assumed node's heartbeat interval (<= 60 seconds) plus default TLS
 // clock skew allowance.
 //
 // TODO: Make this default value overridiable, e.g. by CLI flag
-const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
+const AllowedNodeClockSkew = time.Minute + tls.DefaultClockSkewAllowance
+
+// AllowedTotalClockSkew sets the allowed skew in clock synchronization
+// between the system running inject command and the node(s), being
+// based on assumed node's heartbeat interval (<= 60 seconds) plus default TLS
+// clock skew allowance _plus_ keeping in account the delayed by design values retrieved
+// from the API.
+// https://github.com/kubernetes/enhancements/blob/master/keps/sig-node/0009-node-heartbeat.md
+//
+// TODO: Make this default value overridiable, e.g. by CLI flag
+const AllowedTotalClockSkew = (5 * time.Minute) + tls.DefaultClockSkewAllowance
 
 var (
 	retryWindow    = 5 * time.Second
@@ -1691,27 +1701,51 @@ func (hc *HealthChecker) checkClockSkew() error {
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
 	}
 
-	var clockSkewNodes []string
-
 	nodeList, err := hc.kubeAPI.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 
+	// Map all the nodes we want to check
+	type _node struct {
+		Name      string
+		Timestamp time.Time
+	}
+	_nodes := make([]_node, 0)
+
 	for _, node := range nodeList.Items {
 		for _, condition := range node.Status.Conditions {
-			// we want to check only KubeletReady condition and only execute if the node is ready
 			if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
-				since := time.Since(condition.LastHeartbeatTime.Time)
-				if (since > AllowedClockSkew) || (since < -AllowedClockSkew) {
-					clockSkewNodes = append(clockSkewNodes, node.Name)
-				}
+				_nodes = append(_nodes, _node{Name: node.Name, Timestamp: condition.LastHeartbeatTime.Time})
 			}
 		}
 	}
+	// Dont continue if there's nothing to do
+	if len(_nodes) == 0 {
+		return nil
+	}
 
-	if len(clockSkewNodes) > 0 {
-		return fmt.Errorf("clock skew detected for node(s): %s", strings.Join(clockSkewNodes, ", "))
+	// Get node names
+	nodeNames := make([]string, len(_nodes))
+	for i, n := range _nodes {
+		nodeNames[i] = n.Name
+	}
+
+	// Sort by date
+	sort.Slice(_nodes, func(i, j int) bool { return _nodes[i].Timestamp.Before(_nodes[j].Timestamp) })
+
+	// Determine the skew range
+	maximumSkew := _nodes[0].Timestamp.Sub(_nodes[len(_nodes)-1].Timestamp)
+
+	// Throw error if more than AllowedClockSkew between individual nodes
+	if (maximumSkew > AllowedNodeClockSkew) || (maximumSkew < -AllowedNodeClockSkew) {
+		return fmt.Errorf("clock skew detected between node(s): %s", strings.Join(nodeNames, ", "))
+	}
+
+	// or large skew between Linkerd deployment host and last node
+	maximumSkew = time.Since(_nodes[len(_nodes)-1].Timestamp)
+	if (maximumSkew > AllowedTotalClockSkew) || (maximumSkew < -AllowedTotalClockSkew) {
+		return fmt.Errorf("large clock skew detected between your host and node(s): %s", strings.Join(nodeNames, ", "))
 	}
 
 	return nil
