@@ -33,7 +33,6 @@ kind: PodSecurityPolicy
 metadata:
   name: linkerd-{{.Values.namespace}}-cni
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
     {{.Values.cniResourceAnnotation}}: "true"
 spec:
   allowPrivilegeEscalation: false
@@ -56,7 +55,6 @@ metadata:
   name: linkerd-cni
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
     {{.Values.cniResourceAnnotation}}: "true"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -65,7 +63,6 @@ metadata:
   name: linkerd-cni
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
     {{.Values.cniResourceAnnotation}}: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
@@ -80,7 +77,6 @@ metadata:
   name: linkerd-cni
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
     {{.Values.cniResourceAnnotation}}: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -96,7 +92,6 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-cni
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
     {{.Values.cniResourceAnnotation}}: "true"
 rules:
 - apiGroups: [""]
@@ -108,7 +103,6 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
     {{.Values.cniResourceAnnotation}}: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -125,7 +119,6 @@ metadata:
   name: linkerd-cni-config
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
     {{.Values.cniResourceAnnotation}}: "true"
 data:
   dest_cni_net_dir: "{{.Values.destCNINetDir}}"
@@ -164,7 +157,6 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
     k8s-app: linkerd-cni
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
     {{.Values.cniResourceAnnotation}}: "true"
   annotations:
     {{.Values.createdByAnnotation}}: {{.Values.cliVersion}}

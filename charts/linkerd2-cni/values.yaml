@@ -1,5 +1,4 @@
-namespace: linkerd
-controllerNamespaceLabel: linkerd.io/control-plane-ns
+namespace: linkerd-cni
 cniResourceAnnotation: linkerd.io/cni-resource
 inboundProxyPort: 4143
 outboundProxyPort: 4140

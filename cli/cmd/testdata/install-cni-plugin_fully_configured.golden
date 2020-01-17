@@ -13,7 +13,6 @@ kind: PodSecurityPolicy
 metadata:
   name: linkerd-other-cni
   labels:
-    linkerd.io/control-plane-ns: other
     linkerd.io/cni-resource: "true"
 spec:
   allowPrivilegeEscalation: false
@@ -36,7 +35,6 @@ metadata:
   name: linkerd-cni
   namespace: other
   labels:
-    linkerd.io/control-plane-ns: other
     linkerd.io/cni-resource: "true"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -45,7 +43,6 @@ metadata:
   name: linkerd-cni
   namespace: other
   labels:
-    linkerd.io/control-plane-ns: other
     linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
@@ -60,7 +57,6 @@ metadata:
   name: linkerd-cni
   namespace: other
   labels:
-    linkerd.io/control-plane-ns: other
     linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -76,7 +72,6 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-cni
   labels:
-    linkerd.io/control-plane-ns: other
     linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: [""]
@@ -88,7 +83,6 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
   labels:
-    linkerd.io/control-plane-ns: other
     linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -105,7 +99,6 @@ metadata:
   name: linkerd-cni-config
   namespace: other
   labels:
-    linkerd.io/control-plane-ns: other
     linkerd.io/cni-resource: "true"
 data:
   dest_cni_net_dir: "/etc/kubernetes/cni/net.d"
@@ -144,7 +137,6 @@ metadata:
   namespace: other
   labels:
     k8s-app: linkerd-cni
-    linkerd.io/control-plane-ns: other
     linkerd.io/cni-resource: "true"
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined

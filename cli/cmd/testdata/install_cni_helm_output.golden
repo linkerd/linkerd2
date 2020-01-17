@@ -15,7 +15,6 @@ kind: PodSecurityPolicy
 metadata:
   name: linkerd-linkerd-test-cni
   labels:
-    linkerd.io/control-plane-ns-test: linkerd-test
     linkerd.io/cni-resource-test: "true"
 spec:
   allowPrivilegeEscalation: false
@@ -38,7 +37,6 @@ metadata:
   name: linkerd-cni
   namespace: linkerd-test
   labels:
-    linkerd.io/control-plane-ns-test: linkerd-test
     linkerd.io/cni-resource-test: "true"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -47,7 +45,6 @@ metadata:
   name: linkerd-cni
   namespace: linkerd-test
   labels:
-    linkerd.io/control-plane-ns-test: linkerd-test
     linkerd.io/cni-resource-test: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
@@ -62,7 +59,6 @@ metadata:
   name: linkerd-cni
   namespace: linkerd-test
   labels:
-    linkerd.io/control-plane-ns-test: linkerd-test
     linkerd.io/cni-resource-test: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -78,7 +74,6 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-cni
   labels:
-    linkerd.io/control-plane-ns-test: linkerd-test
     linkerd.io/cni-resource-test: "true"
 rules:
 - apiGroups: [""]
@@ -90,7 +85,6 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
   labels:
-    linkerd.io/control-plane-ns-test: linkerd-test
     linkerd.io/cni-resource-test: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -107,7 +101,6 @@ metadata:
   name: linkerd-cni-config
   namespace: linkerd-test
   labels:
-    linkerd.io/control-plane-ns-test: linkerd-test
     linkerd.io/cni-resource-test: "true"
 data:
   dest_cni_net_dir: "/etc/cni/net.d-test"
@@ -146,7 +139,6 @@ metadata:
   namespace: linkerd-test
   labels:
     k8s-app: linkerd-cni
-    linkerd.io/control-plane-ns-test: linkerd-test
     linkerd.io/cni-resource-test: "true"
   annotations:
     linkerd.io/created-by-test: test-version

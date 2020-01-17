@@ -164,7 +164,7 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	installValues.DestCNINetDir = options.destCNINetDir
 	installValues.DestCNIBinDir = options.destCNIBinDir
 	installValues.UseWaitFlag = options.useWaitFlag
-	installValues.Namespace = controlPlaneNamespace
+	installValues.Namespace = cniNamespace
 	return installValues, nil
 }
 

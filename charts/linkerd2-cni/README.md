@@ -13,7 +13,7 @@ The following table lists the configurable parameters of the Linkerd2-cni chart 
 
 | Parameter                            | Description                                                           | Default                       |
 |--------------------------------------|-----------------------------------------------------------------------|-------------------------------|
-`cniPluginImage`                      | Docker image for the CNI plugin                                       |`gcr.io/linkerd-io/cni-plugin`|
+|`cniPluginImage`                      | Docker image for the CNI plugin                                       |`gcr.io/linkerd-io/cni-plugin`|
 |`cniPluginVersion`                    | Tag for the CNI container Docker image                                |latest version|
 |`cniResourceAnnotation`               | CNI resource annotation. Do not edit                                  |`linkerd.io/cni-resource`
 |`controllerNamespaceLabel`            | Control plane label. Do not edit                                      |`linkerd.io/control-plane-ns`|
@@ -24,7 +24,7 @@ The following table lists the configurable parameters of the Linkerd2-cni chart 
 |`ignoreOutboundPorts`                 | Outbound ports the proxy should ignore                                ||
 |`inboundProxyPort`                    | Inbound port for the proxy container                                  |`4143`|
 |`logLevel`                            | Log level for the CNI plugin                                          |`info`|
-|`namespace`                           | Control plane namespace                                               | `linkerd`|
+|`namespace`                           | CNI plugin plane namespace                                            |`linkerd-cni`|
 |`outboundProxyPort`                   | Outbound port for the proxy container                                 |`4140`|
 |`portsToRedirect`                     | Ports to redirect to proxy                                            ||
 |`proxyUID`                            | User id under which the proxy shall be ran                            |`2102`|
