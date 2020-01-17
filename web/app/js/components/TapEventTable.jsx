@@ -48,6 +48,10 @@ const spinnerStyles = theme => ({
 const SpinnerBase = () => <CircularProgress size={20} />;
 const Spinner = withStyles(spinnerStyles)(SpinnerBase);
 
+const formatTapLatency = str => {
+  return formatLatencySec(str.replace('s', ''));
+};
+
 const httpStatusCol = {
   title: 'HTTP status',
   key: 'http-status',
@@ -121,10 +125,6 @@ const tapColumns = (resourceType, ResourceLink) => {
   return topLevelColumns(resourceType, ResourceLink).concat(
     [methodCol, pathCol, responseInitLatencyCol, httpStatusCol, grpcStatusCol],
   );
-};
-
-const formatTapLatency = str => {
-  return formatLatencySec(str.replace('s', ''));
 };
 
 const itemDisplay = (title, value) => {

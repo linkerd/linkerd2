@@ -146,35 +146,6 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
   return resourceAgg;
 };
 
-export const processTapEvent = jsonString => {
-  const d = JSON.parse(jsonString);
-
-  d.source.str = publicAddressToString(_get(d, 'source.ip.ipv4'));
-  d.source.pod = _get(d, 'sourceMeta.labels.pod', null);
-  d.source.owner = extractPodOwner(d.sourceMeta.labels);
-  d.source.namespace = _get(d, 'sourceMeta.labels.namespace', null);
-
-  d.destination.str = publicAddressToString(_get(d, 'destination.ip.ipv4'));
-  d.destination.pod = _get(d, 'destinationMeta.labels.pod', null);
-  d.destination.owner = extractPodOwner(d.destinationMeta.labels);
-  d.destination.namespace = _get(d, 'destinationMeta.labels.namespace', null);
-
-  if (_isNil(d.http)) {
-    this.setState({ error: 'Undefined request type' });
-  } else {
-    if (!_isNil(d.http.requestInit)) {
-      d.eventType = 'requestInit';
-    } else if (!_isNil(d.http.responseInit)) {
-      d.eventType = 'responseInit';
-    } else if (!_isNil(d.http.responseEnd)) {
-      d.eventType = 'responseEnd';
-    }
-    d.id = tapEventKey(d, d.eventType);
-  }
-
-  return d;
-};
-
 /*
   Use this key to associate the corresponding response with the request
   so that we can have one single event with reqInit, rspInit and rspEnd
@@ -214,6 +185,45 @@ const resourceShortLink = (resourceType, labels, ResourceLink) => (
     resource={{ type: resourceType, name: labels[resourceType], namespace: labels.namespace }}
     linkText={`${toShortResourceName(resourceType)}/${labels[resourceType]}`} />
 );
+
+export const extractPodOwner = labels => {
+  let podOwner = '';
+  _each(labels, (labelVal, labelName) => {
+    if (_has(podOwnerLookup, labelName)) {
+      podOwner = `${labelName}/${labelVal}`;
+    }
+  });
+  return podOwner;
+};
+
+export const processTapEvent = jsonString => {
+  const d = JSON.parse(jsonString);
+
+  d.source.str = publicAddressToString(_get(d, 'source.ip.ipv4'));
+  d.source.pod = _get(d, 'sourceMeta.labels.pod', null);
+  d.source.owner = extractPodOwner(d.sourceMeta.labels);
+  d.source.namespace = _get(d, 'sourceMeta.labels.namespace', null);
+
+  d.destination.str = publicAddressToString(_get(d, 'destination.ip.ipv4'));
+  d.destination.pod = _get(d, 'destinationMeta.labels.pod', null);
+  d.destination.owner = extractPodOwner(d.destinationMeta.labels);
+  d.destination.namespace = _get(d, 'destinationMeta.labels.namespace', null);
+
+  if (_isNil(d.http)) {
+    this.setState({ error: 'Undefined request type' });
+  } else {
+    if (!_isNil(d.http.requestInit)) {
+      d.eventType = 'requestInit';
+    } else if (!_isNil(d.http.responseInit)) {
+      d.eventType = 'responseInit';
+    } else if (!_isNil(d.http.responseEnd)) {
+      d.eventType = 'responseEnd';
+    }
+    d.id = tapEventKey(d, d.eventType);
+  }
+
+  return d;
+};
 
 const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
 const popoverSrcDstColumns = [
@@ -296,16 +306,6 @@ const popoverResourceTable = (d, ResourceLink) => { // eslint-disable-line no-un
       tableRows={tableData}
       tableClassName="metric-table" />
   );
-};
-
-export const extractPodOwner = labels => {
-  let podOwner = '';
-  _each(labels, (labelVal, labelName) => {
-    if (_has(podOwnerLookup, labelName)) {
-      podOwner = `${labelName}/${labelVal}`;
-    }
-  });
-  return podOwner;
 };
 
 export const directionColumn = d => (

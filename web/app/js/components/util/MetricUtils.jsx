@@ -11,6 +11,13 @@ import _reduce from 'lodash/reduce';
 import _size from 'lodash/size';
 import _values from 'lodash/values';
 
+const srArcClassLabels = {
+  good: 'good',
+  warning: 'warning',
+  poor: 'poor',
+  default: 'default',
+};
+
 export const getSuccessRateClassification = (rate, successRateLabels = srArcClassLabels) => {
   if (_isNull(rate)) {
     return successRateLabels.default;
@@ -23,13 +30,6 @@ export const getSuccessRateClassification = (rate, successRateLabels = srArcClas
   } else {
     return successRateLabels.good;
   }
-};
-
-const srArcClassLabels = {
-  good: 'good',
-  warning: 'warning',
-  poor: 'poor',
-  default: 'default',
 };
 
 const getTotalRequests = row => {
@@ -154,17 +154,6 @@ export const processTopRoutesResults = rows => {
   ));
 };
 
-export const processSingleResourceRollup = (rawMetrics, resourceType) => {
-  const result = processMultiResourceRollup(rawMetrics, resourceType);
-  if (_size(result) > 1) {
-    console.error('Multi metric returned; expected single metric.');
-  }
-  if (_isEmpty(result)) {
-    return [];
-  }
-  return _values(result)[0];
-};
-
 export const processMultiResourceRollup = (rawMetrics, resourceType) => {
   if (_isEmpty(rawMetrics.ok) || _isEmpty(rawMetrics.ok.statTables)) {
     return {};
@@ -194,6 +183,17 @@ export const processMultiResourceRollup = (rawMetrics, resourceType) => {
     metricsByResource[resource] = processStatTable(table);
   });
   return metricsByResource;
+};
+
+export const processSingleResourceRollup = (rawMetrics, resourceType) => {
+  const result = processMultiResourceRollup(rawMetrics, resourceType);
+  if (_size(result) > 1) {
+    console.error('Multi metric returned; expected single metric.');
+  }
+  if (_isEmpty(result)) {
+    return [];
+  }
+  return _values(result)[0];
 };
 
 export const groupResourcesByNs = apiRsp => {

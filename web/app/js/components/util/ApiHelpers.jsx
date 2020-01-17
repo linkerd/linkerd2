@@ -95,6 +95,14 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     return path;
   };
 
+  const getMetricsWindow = () => metricsWindow;
+  const getMetricsWindowDisplayText = () => validMetricsWindows[metricsWindow];
+
+  const setMetricsWindow = window => {
+    if (!validMetricsWindows[window]) { return; }
+    metricsWindow = window;
+  };
+
   const fetchMetrics = path => {
     if (path.indexOf('window') === -1) {
       if (path.indexOf('?') === -1) {
@@ -130,14 +138,6 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
 
   const fetchResourceDefinition = (namespace, resourceType, resourceName) => {
     return apiFetchYAML(`/api/resource-definition?namespace=${namespace}&resource_type=${resourceType}&resource_name=${resourceName}`);
-  };
-
-  const getMetricsWindow = () => metricsWindow;
-  const getMetricsWindowDisplayText = () => validMetricsWindows[metricsWindow];
-
-  const setMetricsWindow = window => {
-    if (!validMetricsWindows[window]) { return; }
-    metricsWindow = window;
   };
 
   const urlsForResource = (type, namespace, includeTcp) => {
@@ -184,6 +184,8 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
     });
   };
 
+  const prefixLink = to => `${pathPrefix}${to}`;
+
   // prefix all links in the app with `pathPrefix`
   const PrefixedLink = ({ to, targetBlank, children }) => {
     const url = prefixLink(to);
@@ -206,8 +208,6 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   PrefixedLink.defaultProps = {
     targetBlank: false,
   };
-
-  const prefixLink = to => `${pathPrefix}${to}`;
 
   const generateResourceURL = r => {
     if (r.type === 'namespace') {
