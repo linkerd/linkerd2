@@ -1,16 +1,15 @@
 package linkerd2
 
 import (
-	"github.com/linkerd/linkerd2/pkg/merge"
 	"k8s.io/helm/pkg/chartutil"
 )
 
 type (
 	Prometheus struct {
-		Enabled   merge.BoolInSetting `json:"enabled"`
-		LogLevel  string              `json:"logLevel"`
-		Image     string              `json:"image"`
-		Resources *Resources          `json:"resources"`
+		Enabled   bool       `json:"enabled"`
+		LogLevel  string     `json:"logLevel"`
+		Image     string     `json:"image"`
+		Resources *Resources `json:"resources"`
 	}
 )
 
@@ -54,5 +53,5 @@ func (g *Prometheus) GetValues() interface{} {
 }
 
 func (g *Prometheus) IsEnabled() bool {
-	return g.Enabled.Value
+	return g.Enabled
 }

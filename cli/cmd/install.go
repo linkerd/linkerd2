@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/merge"
-
 	"github.com/imdario/mergo"
 
 	"github.com/golang/protobuf/ptypes"
@@ -747,11 +745,11 @@ func toPromLogLevel(level string) string {
 
 func checkAddons(values *l5dcharts.Values) []l5dcharts.AddOn {
 	var addons []l5dcharts.AddOn
-	if values.Grafana.Enabled.Value {
+	if values.Grafana.Enabled {
 		addons = append(addons, values.Grafana)
 	}
 
-	if values.Prometheus.Enabled.Value {
+	if values.Prometheus.Enabled {
 		addons = append(addons, values.Prometheus)
 	}
 	return addons
@@ -1167,10 +1165,10 @@ func toIdentityContext(idvals *identityWithAnchorsAndTrustDomain) *pb.IdentityCo
 
 func mergeAddonValues(values, addonValues *l5dcharts.Values) error {
 
-	if err := mergo.Merge(addonValues.Grafana, values.Grafana, mergo.WithTransformers(merge.BoolInSettingTransformer{})); err != nil {
+	if err := mergo.Merge(addonValues.Grafana, values.Grafana); err != nil {
 		return err
 	}
-	if err := mergo.Merge(addonValues.Prometheus, values.Prometheus, mergo.WithTransformers(merge.BoolInSettingTransformer{})); err != nil {
+	if err := mergo.Merge(addonValues.Prometheus, values.Prometheus); err != nil {
 		return err
 	}
 
