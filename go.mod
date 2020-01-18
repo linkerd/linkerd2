@@ -20,7 +20,7 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-openapi/spec v0.17.2
+	github.com/go-openapi/spec v0.19.2
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.0 // indirect
@@ -53,8 +53,9 @@ require (
 	k8s.io/apiextensions-apiserver v0.0.0-20181213153335-0fe22c71c476
 	k8s.io/apimachinery v0.0.0-20190612205821-1799e75a0719
 	k8s.io/client-go v0.0.0-20190620085101-78d2af792bab
+	k8s.io/code-generator v0.0.0-20190612205613-18da4a14b22b
 	k8s.io/helm v2.12.2+incompatible
-	k8s.io/klog v0.3.2
+	k8s.io/klog v0.4.0
 	k8s.io/kube-aggregator v0.0.0-20190620085325-f29e2b4a4f84
 	sigs.k8s.io/yaml v1.1.0
 )
@@ -63,6 +64,6 @@ replace github.com/wercker/stern => github.com/linkerd/stern v0.0.0-201909070201
 
 replace k8s.io/apimachinery v0.0.0-20181127105237-2b1284ed4c93 => k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93
 
-replace k8s.io/code-generator v0.0.0-20181116203124-c2090bec4d9b => k8s.io/code-generator v0.0.0-20181117043124-c2090bec4d9b
+replace k8s.io/code-generator => k8s.io/code-generator v0.16.5-beta.1
 
 replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.2.0+incompatible
