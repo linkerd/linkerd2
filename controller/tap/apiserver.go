@@ -95,8 +95,9 @@ func (a *apiServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		for _, cn := range a.allowedNames {
 			for _, clientCert := range req.TLS.PeerCertificates {
 				clientNames = append(clientNames, clientCert.Subject.CommonName)
-				if cn == clientCert.Subject.CommonName {
-					validCN = clientCert.Subject.CommonName
+				// Check Common Name and Subject Alternate Name(s)
+				if cn == clientCert.Subject.CommonName || isSubjectAlternateName(clientCert, cn) {
+					validCN = cn
 					break
 				}
 			}
@@ -169,4 +170,30 @@ func deserializeStrings(in string) ([]string, error) {
 		return nil, err
 	}
 	return ret, nil
+}
+
+// isSubjectAlternateName checks all applicable fields within the certificate for a match to the provided name.
+// See https://tools.ietf.org/html/rfc5280#section-4.2.1.6 for information about Subject Alternate Name.
+func isSubjectAlternateName(cert *x509.Certificate, name string) bool {
+	for _, dnsName := range cert.DNSNames {
+		if dnsName == name {
+			return true
+		}
+	}
+	for _, emailAddress := range cert.EmailAddresses {
+		if emailAddress == name {
+			return true
+		}
+	}
+	for _, ip := range cert.IPAddresses {
+		if ip.String() == name {
+			return true
+		}
+	}
+	for _, url := range cert.URIs {
+		if url.String() == name {
+			return true
+		}
+	}
+	return false
 }

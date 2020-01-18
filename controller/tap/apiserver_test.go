@@ -2,8 +2,12 @@ package tap
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"reflect"
 	"testing"
 
@@ -120,4 +124,67 @@ data:
 			}
 		})
 	}
+}
+
+func TestIsSubjectAlternateName(t *testing.T) {
+	testCases := []struct {
+		name     string
+		expected bool
+	}{
+		{
+			name:     "linkerd.io",
+			expected: true,
+		},
+		{
+			name:     "root@localhost",
+			expected: true,
+		},
+		{
+			name:     "192.168.1.1",
+			expected: true,
+		},
+		{
+			name:     "http://localhost/api/test",
+			expected: true,
+		},
+		{
+			name:     "mystique",
+			expected: false,
+		},
+	}
+
+	cert := testCertificate()
+	for _, tc := range testCases {
+		tc := tc // pin
+		t.Run(tc.name, func(t *testing.T) {
+			actual := isSubjectAlternateName(&cert, tc.name)
+			if actual != tc.expected {
+				t.Fatalf("expected %t, but got %t", tc.expected, actual)
+			}
+		})
+	}
+}
+
+func testCertificate() x509.Certificate {
+	uri, _ := url.Parse("http://localhost/api/test")
+	cert := x509.Certificate{
+		Subject: pkix.Name{
+			CommonName: "linkerd-test",
+		},
+		DNSNames: []string{
+			"localhost",
+			"linkerd.io",
+		},
+		EmailAddresses: []string{
+			"root@localhost",
+		},
+		IPAddresses: []net.IP{
+			net.IPv4(127, 0, 0, 1),
+			net.IPv4(192, 168, 1, 1),
+		},
+		URIs: []*url.URL{
+			uri,
+		},
+	}
+	return cert
 }
