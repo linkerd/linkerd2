@@ -1283,7 +1283,7 @@ spec:
   selector:
     app: leaf-2`,
 					`
-apiVersion: split.smi-spec.io/v1alpha1
+apiVersion: split.smi-spec.io/v1alpha2
 kind: TrafficSplit
 metadata:
   name: banana-split
@@ -1292,9 +1292,9 @@ spec:
   service: apex
   backends:
   - service: leaf-1
-    weight: 500m
+    weight: 50
   - service: leaf-2
-    weight: 500m`,
+    weight: 50`,
 				},
 			},
 		}

@@ -682,7 +682,7 @@ spec:
   - name: service
     port: 7009
 `, `
-apiVersion: split.smi-spec.io/v1alpha1
+apiVersion: split.smi-spec.io/v1alpha2
 kind: TrafficSplit
 metadata:
   name: authors-split
@@ -691,9 +691,9 @@ spec:
   service: apex_name
   backends:
   - service: service-1
-    weight: 900m
+    weight: 90
   - service: service-2
-    weight: 100m
+    weight: 10
 `,
 					},
 					mockPromResponse: model.Vector{

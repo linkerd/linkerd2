@@ -115,7 +115,7 @@ spec:
     port: 9999
     targetPort: 9999
 ---
-apiVersion: split.smi-spec.io/v1alpha1
+apiVersion: split.smi-spec.io/v1alpha2
 kind: TrafficSplit
 metadata:
     name: backend-traffic-split
@@ -123,7 +123,7 @@ spec:
     service: backend-svc
     backends:
         - service: backend-svc
-          weight: 500m
+          weight: 50
         - service: failing-svc
-          weight: 0m
+          weight: 0
 

@@ -1,7 +1,6 @@
 package v1alpha2
 
 import (
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -82,8 +81,8 @@ type RetryBudget struct {
 
 // WeightedDst is a weighted alternate destination.
 type WeightedDst struct {
-	Authority string            `json:"authority"`
-	Weight    resource.Quantity `json:"weight"`
+	Authority string `json:"authority"`
+	Weight    int    `json:"weight"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

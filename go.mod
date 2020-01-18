@@ -1,10 +1,10 @@
 module github.com/linkerd/linkerd2
 
-go 1.13.4
+go 1.13.5
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.6.0
-	github.com/Azure/go-autorest v11.3.2+incompatible // indirect
+	github.com/Azure/go-autorest/autorest v0.9.4 // indirect
 	github.com/Masterminds/semver v1.4.2 // indirect
 	github.com/Masterminds/sprig v2.17.1+incompatible // indirect
 	github.com/aokoli/goutils v1.1.0 // indirect
@@ -12,8 +12,7 @@ require (
 	github.com/clarketm/json v1.13.4
 	github.com/containernetworking/cni v0.6.0
 	github.com/cyphar/filepath-securejoin v0.2.2 // indirect
-	github.com/deislabs/smi-sdk-go v0.0.0-20190610232231-f281e2121a16
-	github.com/dgrijalva/jwt-go v3.1.0+incompatible // indirect
+	github.com/deislabs/smi-sdk-go v0.2.0
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/emicklei/proto v1.6.8
@@ -23,7 +22,6 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.17.2
 	github.com/gobwas/glob v0.2.3 // indirect
-	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.0 // indirect
 	github.com/gorilla/websocket v1.2.0
@@ -66,3 +64,5 @@ replace github.com/wercker/stern => github.com/linkerd/stern v0.0.0-201909070201
 replace k8s.io/apimachinery v0.0.0-20181127105237-2b1284ed4c93 => k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93
 
 replace k8s.io/code-generator v0.0.0-20181116203124-c2090bec4d9b => k8s.io/code-generator v0.0.0-20181117043124-c2090bec4d9b
+
+replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v12.2.0+incompatible

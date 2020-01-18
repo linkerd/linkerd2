@@ -330,8 +330,8 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 // object in response to a request for trafficsplit stats.
 func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool, tsStats bool) pb.StatSummaryResponse {
 	leaves := map[string]string{
-		"service-1": "900m",
-		"service-2": "100m",
+		"service-1": "90",
+		"service-2": "10",
 	}
 	apex := "apex_name"
 

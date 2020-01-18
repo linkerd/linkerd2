@@ -3,10 +3,9 @@ package watcher
 import (
 	"testing"
 
-	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
+	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type bufferingTrafficSplitListener struct {
@@ -33,7 +32,7 @@ func TestTrafficSplitWatcher(t *testing.T) {
 		{
 			name: "traffic split",
 			k8sConfigs: []string{`
-apiVersion: split.smi-spec.io/v1alpha1
+apiVersion: split.smi-spec.io/v1alpha2
 kind: TrafficSplit
 metadata:
   name: split
@@ -42,9 +41,9 @@ spec:
   service: foo
   backends:
   - service: foo-v1
-    weight: 500m
+    weight: 50
   - service: foo-v2
-    weight: 500m`,
+    weight: 50`,
 			},
 			service: ServiceID{
 				Name:      "foo",
@@ -56,11 +55,11 @@ spec:
 					Backends: []ts.TrafficSplitBackend{
 						{
 							Service: "foo-v1",
-							Weight:  resource.MustParse("500m"),
+							Weight:  50,
 						},
 						{
 							Service: "foo-v2",
-							Weight:  resource.MustParse("500m"),
+							Weight:  50,
 						},
 					},
 				},

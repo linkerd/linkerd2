@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
+	"github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha2"
 	proto "github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -258,18 +258,18 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 	return resourceResult{res: &rsp, err: nil}
 }
 
-func (s *grpcServer) getTrafficSplits(res *pb.Resource) ([]*v1alpha1.TrafficSplit, error) {
+func (s *grpcServer) getTrafficSplits(res *pb.Resource) ([]*v1alpha2.TrafficSplit, error) {
 	var err error
-	var trafficSplits []*v1alpha1.TrafficSplit
+	var trafficSplits []*v1alpha2.TrafficSplit
 
 	if res.GetNamespace() == "" {
 		trafficSplits, err = s.k8sAPI.TS().Lister().List(labels.Everything())
 	} else if res.GetName() == "" {
 		trafficSplits, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).List(labels.Everything())
 	} else {
-		var ts *v1alpha1.TrafficSplit
+		var ts *v1alpha2.TrafficSplit
 		ts, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).Get(res.GetName())
-		trafficSplits = []*v1alpha1.TrafficSplit{ts}
+		trafficSplits = []*v1alpha2.TrafficSplit{ts}
 	}
 
 	return trafficSplits, err
@@ -303,7 +303,7 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 
 		for _, backend := range backends {
 			name := backend.Service
-			weight := backend.Weight.String()
+			weight := string(backend.Weight)
 
 			currentLeaf := tsKey{
 				Namespace: tsStats.namespace,

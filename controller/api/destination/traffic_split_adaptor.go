@@ -3,7 +3,7 @@ package destination
 import (
 	"fmt"
 
-	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
+	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 )

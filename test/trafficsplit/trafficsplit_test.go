@@ -184,7 +184,7 @@ func TestTrafficSplitCli(t *testing.T) {
 				name:    "backend-traffic-split",
 				apex:    "backend-svc",
 				leaf:    "backend-svc",
-				weight:  "500m",
+				weight:  "50",
 				success: "100.00%",
 				rps:     "0.5rps",
 			}
@@ -236,7 +236,7 @@ func TestTrafficSplitCli(t *testing.T) {
 				name:    "backend-traffic-split",
 				apex:    "backend-svc",
 				leaf:    "backend-svc",
-				weight:  "500m",
+				weight:  "50",
 				success: "100.00%",
 				rps:     "0.5rps",
 			}
@@ -244,7 +244,7 @@ func TestTrafficSplitCli(t *testing.T) {
 				name:    "backend-traffic-split",
 				apex:    "backend-svc",
 				leaf:    "backend-svc",
-				weight:  "500m",
+				weight:  "50",
 				success: "0.00%",
 				rps:     "0.5rps",
 			}

@@ -12,8 +12,6 @@ import (
 	logging "github.com/sirupsen/logrus"
 )
 
-const millisPerDecimilli = 10
-
 var (
 	defaultRetryBudget = pb.RetryBudget{
 		MinRetriesPerSecond: 10,
@@ -98,8 +96,7 @@ func toDstOverrides(dsts []*sp.WeightedDst) []*pb.WeightedDst {
 	for _, dst := range dsts {
 		pbDst := &pb.WeightedDst{
 			Authority: dst.Authority,
-			// Weights are expressed in decimillis: 10_000 represents 100%
-			Weight: uint32(dst.Weight.MilliValue() * millisPerDecimilli),
+			Weight:    uint32(dst.Weight),
 		}
 		pbDsts = append(pbDsts, pbDst)
 	}

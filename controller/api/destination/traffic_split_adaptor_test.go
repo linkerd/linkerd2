@@ -5,10 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
+	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func TestTrafficSplitAdaptor(t *testing.T) {
@@ -23,7 +22,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 			DstOverrides: []*sp.WeightedDst{
 				{
 					Authority: "foo",
-					Weight:    resource.MustParse("500m"),
+					Weight:    50,
 				},
 			},
 		},
@@ -34,7 +33,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 			Backends: []ts.TrafficSplitBackend{
 				{
 					Service: "bar",
-					Weight:  resource.MustParse("1000m"),
+					Weight:  100,
 				},
 			},
 		},
@@ -67,7 +66,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 				DstOverrides: []*sp.WeightedDst{
 					{
 						Authority: "bar.ns.svc.cluster.local.:80",
-						Weight:    resource.MustParse("1000m"),
+						Weight:    100,
 					},
 				},
 			},
@@ -97,7 +96,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 				DstOverrides: []*sp.WeightedDst{
 					{
 						Authority: "bar.ns.svc.cluster.local.:80",
-						Weight:    resource.MustParse("1000m"),
+						Weight:    100,
 					},
 				},
 			},
