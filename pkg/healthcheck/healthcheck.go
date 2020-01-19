@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/api/admissionregistration/v1beta1"
+
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 
 	"github.com/linkerd/linkerd2/controller/api/public"
@@ -1187,6 +1189,17 @@ func (hc *HealthChecker) allCategories() []category {
 						return &SkipError{Reason: "not run for non HA installs"}
 					},
 				},
+				{
+					description: "webhook FailurePolicy set to Fail",
+					hintAnchor:  "l5d-webhook-failure-policy",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						if hc.isHA() {
+							return hc.checkWebhookFailurePolicy()
+						}
+						return &SkipError{Reason: "not run for non HA installs"}
+					},
+				},
 			},
 		},
 	}
@@ -1201,6 +1214,31 @@ func (hc *HealthChecker) controlPlaneComponentsAreHA() error {
 
 		if conf.Status.AvailableReplicas <= 1 {
 			return fmt.Errorf("not enough replicas available for %s", component)
+		}
+	}
+	return nil
+}
+
+func (hc *HealthChecker) checkWebhookFailurePolicy() error {
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, w := range mwc.Webhooks {
+		if *(w.FailurePolicy) != v1beta1.Fail {
+			return fmt.Errorf("MutatingWebhookConfiguration failure policy is \"%s\" ; expected \"%s\"", *(w.FailurePolicy), v1beta1.Fail)
+		}
+	}
+
+	for _, w := range vwc.Webhooks {
+		if *(w.FailurePolicy) != v1beta1.Fail {
+			return fmt.Errorf("ValidatingWebhookConfiguration failure policy is \"%s\" ; expected \"%s\"", *(w.FailurePolicy), v1beta1.Fail)
 		}
 	}
 	return nil
