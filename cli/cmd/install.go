@@ -128,11 +128,8 @@ var (
 	}
 
 	templatesControlPlaneStage = []string{
-		"templates/_validate.tpl",
-		"templates/_affinity.tpl",
 		"templates/_config.tpl",
 		"templates/_helpers.tpl",
-		"templates/_nodeselector.tpl",
 		"templates/config.yaml",
 		"templates/identity.yaml",
 		"templates/controller.yaml",
