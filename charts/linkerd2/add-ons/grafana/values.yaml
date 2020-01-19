@@ -1,0 +1,3 @@
+# Config for grafana add-on
+enabled: true
+image: gcr.io/linkerd-io/grafana

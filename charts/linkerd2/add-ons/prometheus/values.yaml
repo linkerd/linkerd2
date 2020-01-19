@@ -1,0 +1,4 @@
+# Config for add-ons
+enabled: true
+image: prometheus/prom:v1.15.0
+logLevel: info

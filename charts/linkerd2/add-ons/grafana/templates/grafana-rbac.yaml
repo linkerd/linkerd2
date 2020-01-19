@@ -1,0 +1,13 @@
+---
+###
+### Grafana RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: grafana
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
