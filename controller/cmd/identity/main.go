@@ -127,7 +127,7 @@ func Main(args []string) {
 	//
 	// Create k8s API
 	//
-	k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", 0)
+	k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", []string{}, 0)
 	if err != nil {
 		log.Fatalf("Failed to load kubeconfig: %s: %s", *kubeConfigPath, err)
 	}

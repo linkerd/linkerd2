@@ -304,6 +304,7 @@ type Options struct {
 	KubeConfig            string
 	KubeContext           string
 	Impersonate           string
+	ImpersonateGroup      []string
 	APIAddr               string
 	VersionOverride       string
 	RetryDeadline         time.Time
@@ -373,7 +374,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, requestTimeout)
+						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, requestTimeout)
 						return
 					},
 				},

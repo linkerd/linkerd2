@@ -56,7 +56,7 @@ func main() {
 		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
 	}
 
-	k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", 0)
+	k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", []string{}, 0)
 	if err != nil {
 		log.Fatalf("failed to construct Kubernetes API client: [%s]", err)
 	}
