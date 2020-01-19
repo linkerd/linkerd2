@@ -197,7 +197,7 @@ func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
 		RawValues: rawValues,
 		Files:     files,
 	}
-	buf, err := chart.RenderCNI()
+	buf, err := chart.RenderWithoutPartials()
 	if err != nil {
 		return err
 	}

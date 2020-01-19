@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/imdario/mergo"
-
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -22,6 +20,7 @@ import (
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
+	"github.com/pothulapati/mergo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -436,12 +435,6 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 			return nil, nil, err
 		}
 	}
-
-	valuess, err := yaml.Marshal(values)
-	if err != nil {
-		return nil, nil, err
-	}
-	fmt.Println(string(valuess))
 
 	return values, configs, nil
 }

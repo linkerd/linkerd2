@@ -1,8 +1,8 @@
 grafana:
-  enabled: false
+  enabled: true
   image: override-grafan
 
 prometheus:
-  enabled: false
+  enabled: true
   image: override-broo
   logLevel: debug
