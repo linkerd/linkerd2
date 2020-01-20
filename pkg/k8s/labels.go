@@ -215,7 +215,7 @@ const (
 	// ConfigConfigMapName is the name of the ConfigMap containing the linkerd controller configuration.
 	ConfigConfigMapName = "linkerd-config"
 
-	// ConfigConfigMapName is the name of the ConfigMap containing the linkerd values configuration.
+	// ValuesConfigMapName is the name of the ConfigMap containing the linkerd values configuration.
 	ValuesConfigMapName = "linkerd-values"
 
 	// DebugSidecarName is the name of the default linkerd debug container

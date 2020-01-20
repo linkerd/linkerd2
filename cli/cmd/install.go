@@ -809,7 +809,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 
 		subchart := &charts.Chart{
 			Name:      addon.GetChartName(),
-			Dir:       l5dcharts.AddonChartsPath + addon.GetChartName(),
+			Dir:       l5dcharts.AddOnChartsPath + addon.GetChartName(),
 			Namespace: controlPlaneNamespace,
 			RawValues: append(rawValues, addonValues...),
 			Files:     addon.GetFiles(),
