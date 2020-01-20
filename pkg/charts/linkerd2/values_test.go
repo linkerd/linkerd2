@@ -44,7 +44,7 @@ func TestNewValues(t *testing.T) {
 			ProxyInjectDisabled:      "disabled",
 			LinkerdNamespaceLabel:    "linkerd.io/is-control-plane",
 			ProxyContainerName:       "linkerd-proxy",
-			NoInitContainer:          false,
+			CNIEnabled:               false,
 			ControlPlaneTracing:      false,
 			HighAvailability:         false,
 			IdentityTrustDomain:      "cluster.local",

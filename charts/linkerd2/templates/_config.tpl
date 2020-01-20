@@ -1,7 +1,7 @@
 {{- define "linkerd.configs.global" -}}
 {
   "linkerdNamespace": "{{.Values.global.namespace}}",
-  "cniEnabled": {{ default false .Values.noInitContainer }},
+  "cniEnabled": {{ default false .Values.cniEnabled }},
   "version": "{{.Values.global.linkerdVersion}}",
   "identityContext":{
     "trustDomain": "{{.Values.global.identityTrustDomain}}",
