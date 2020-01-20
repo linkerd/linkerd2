@@ -1173,8 +1173,10 @@ func toIdentityContext(idvals *identityWithAnchorsAndTrustDomain) *pb.IdentityCo
 func checkAddons(values *l5dcharts.Values) []l5dcharts.AddOn {
 	var addons []l5dcharts.AddOn
 
-	if values.Tracing.Enabled {
-		addons = append(addons, values.Tracing)
+	if values.Tracing != nil {
+		if values.Tracing.Enabled {
+			addons = append(addons, values.Tracing)
+		}
 	}
 
 	return addons
@@ -1182,11 +1184,11 @@ func checkAddons(values *l5dcharts.Values) []l5dcharts.AddOn {
 
 func mergeAddonValues(values, addonValues *l5dcharts.Values) error {
 
-	if err := mergo.Merge(addonValues.Tracing, values.Tracing); err != nil {
-		return err
+	if addonValues.Tracing != nil {
+		if err := mergo.Merge(addonValues.Tracing, values.Tracing); err != nil {
+			return err
+		}
+		values.Tracing = addonValues.Tracing
 	}
-
-	values.Tracing = addonValues.Tracing
-
 	return nil
 }

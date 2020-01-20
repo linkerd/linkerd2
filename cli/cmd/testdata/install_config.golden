@@ -836,4 +836,3 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-web
   namespace: linkerd
-

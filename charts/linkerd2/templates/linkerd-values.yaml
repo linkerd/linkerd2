@@ -30,4 +30,4 @@ data:
   values: |-
     tracing:
   {{- toYaml $dupValues.tracing | trim | nindent 6}}
-{{- end }}
+{{ end }}
