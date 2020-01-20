@@ -80,7 +80,7 @@ func TestRender(t *testing.T) {
 			ProxyInjectDisabled:      "ProxyInjectDisabled",
 			LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
 			ProxyContainerName:       "ProxyContainerName",
-			NoInitContainer:          false,
+			CNIEnabled:               false,
 			IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
 			IdentityTrustAnchorsPEM:  defaultValues.Global.IdentityTrustAnchorsPEM,
 			Proxy: &charts.Proxy{
@@ -158,15 +158,15 @@ func TestRender(t *testing.T) {
 	haWithOverridesValues, _, _ := haWithOverridesOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(haWithOverridesValues)
 
-	noInitContainerOptions, err := testInstallOptions()
+	cniEnabledOptions, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	noInitContainerOptions.recordedFlags = []*config.Install_Flag{{Name: "linkerd-cni-enabled", Value: "true"}}
-	noInitContainerOptions.noInitContainer = true
-	noInitContainerValues, _, _ := noInitContainerOptions.validateAndBuild("", nil)
-	addFakeTLSSecrets(noInitContainerValues)
+	cniEnabledOptions.recordedFlags = []*config.Install_Flag{{Name: "linkerd-cni-enabled", Value: "true"}}
+	cniEnabledOptions.cniEnabled = true
+	cniEnabledValues, _, _ := cniEnabledOptions.validateAndBuild("", nil)
+	addFakeTLSSecrets(cniEnabledValues)
 
 	withProxyIgnoresOptions, err := testInstallOptions()
 	if err != nil {
@@ -223,7 +223,7 @@ func TestRender(t *testing.T) {
 		{metaValues, "install_output.golden"},
 		{haValues, "install_ha_output.golden"},
 		{haWithOverridesValues, "install_ha_with_overrides_output.golden"},
-		{noInitContainerValues, "install_no_init_container.golden"},
+		{cniEnabledValues, "install_no_init_container.golden"},
 		{withProxyIgnoresValues, "install_proxy_ignores.golden"},
 		{withHeartBeatDisabledValues, "install_heartbeat_disabled_output.golden"},
 		{withRestrictedDashboardPriviligesValues, "install_restricted_dashboard.golden"},

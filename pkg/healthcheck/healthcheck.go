@@ -307,7 +307,7 @@ type Options struct {
 	APIAddr               string
 	VersionOverride       string
 	RetryDeadline         time.Time
-	NoInitContainer       bool
+	CNIEnabled            bool
 	InstallManifest       string
 }
 
@@ -560,7 +560,7 @@ func (hc *HealthChecker) allCategories() []category {
 					check: func(context.Context) (err error) {
 						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
 						if hc.linkerdConfig != nil {
-							hc.NoInitContainer = hc.linkerdConfig.Global.CniEnabled
+							hc.CNIEnabled = hc.linkerdConfig.Global.CniEnabled
 						}
 						return
 					},
@@ -722,7 +722,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "cni-plugin-cm-exists",
 					fatal:       true,
 					check: func(context.Context) error {
-						if !hc.NoInitContainer {
+						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.CNINamespace).Get(linkerdCNIConfigMapName, metav1.GetOptions{})
@@ -734,7 +734,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "cni-plugin-psp-exists",
 					fatal:       true,
 					check: func(context.Context) error {
-						if !hc.NoInitContainer {
+						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						pspName := fmt.Sprintf("linkerd-%s-cni", hc.CNINamespace)
@@ -750,7 +750,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "cni-plugin-cr-exists",
 					fatal:       true,
 					check: func(context.Context) error {
-						if !hc.NoInitContainer {
+						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						_, err := hc.kubeAPI.RbacV1().ClusterRoles().Get(linkerdCNIResourceName, metav1.GetOptions{})
@@ -765,7 +765,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "cni-plugin-crb-exists",
 					fatal:       true,
 					check: func(context.Context) error {
-						if !hc.NoInitContainer {
+						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						_, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().Get(linkerdCNIResourceName, metav1.GetOptions{})
@@ -780,7 +780,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "cni-plugin-r-exists",
 					fatal:       true,
 					check: func(context.Context) error {
-						if !hc.NoInitContainer {
+						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						_, err := hc.kubeAPI.RbacV1().Roles(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
@@ -795,7 +795,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "cni-plugin-rb-exists",
 					fatal:       true,
 					check: func(context.Context) error {
-						if !hc.NoInitContainer {
+						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						_, err := hc.kubeAPI.RbacV1().RoleBindings(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
@@ -810,7 +810,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "cni-plugin-sa-exists",
 					fatal:       true,
 					check: func(context.Context) error {
-						if !hc.NoInitContainer {
+						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						_, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
@@ -825,7 +825,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "cni-plugin-ds-exists",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						if !hc.NoInitContainer {
+						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						hc.cniDaemonSet, err = hc.kubeAPI.Interface.AppsV1().DaemonSets(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
@@ -842,7 +842,7 @@ func (hc *HealthChecker) allCategories() []category {
 					surfaceErrorOnRetry: true,
 					fatal:               true,
 					check: func(ctx context.Context) error {
-						if !hc.NoInitContainer {
+						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						scheduled := hc.cniDaemonSet.Status.DesiredNumberScheduled
