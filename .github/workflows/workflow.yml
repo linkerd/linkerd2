@@ -161,6 +161,10 @@ jobs:
       run: |
         bin/docker pull gcr.io/linkerd-io/proxy-init:v1.3.0
         bin/docker pull prom/prometheus:v2.11.1
+        bin/docker pull calico/cni:v3.8.6
+        bin/docker pull calico/pod2daemon-flexvol:v3.8.6
+        bin/docker pull calico/node:v3.8.6
+        bin/docker pull calico/kube-controllers:v3.8.6
 
   docker_build:
     name: Docker build
@@ -190,7 +194,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
+        integration_test: [cni_plugin]
     name: Cluster setup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
@@ -213,13 +217,30 @@ jobs:
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        export KUBECONFIG=/tmp/kind-config-$KIND_CLUSTER 
+        export KUBECONFIG=/tmp/kind-config-$KIND_CLUSTER
         export CUSTOM_DOMAIN_CONFIG="test/testdata/custom_cluster_domain_config.yaml"
+        export CNI_NET_CONFIG="test/testdata/calico-networking-config.yaml"
+        export CALICO_RESOURCES=/tmp/cni.yaml
+        export CONTEXT=kind-$KIND_CLUSTER
         # retry cluster creation once in case of port conflict or kubeadm failure
         if [ "${{ matrix.integration_test }}" == "custom_domain" ]
         then
           bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3 --config=$CUSTOM_DOMAIN_CONFIG ||
             bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3 --config=$CUSTOM_DOMAIN_CONFIG
+        elif [ "${{ matrix.integration_test }}" == "cni_plugin" ]
+        then
+          bin/kind create cluster --name=$KIND_CLUSTER --verbosity 3 --config=$CNI_NET_CONFIG ||
+            bin/kind create cluster --name=$KIND_CLUSTER --verbosity 3 --config=$CNI_NET_CONFIG
+          curl https://docs.projectcalico.org/v3.8/manifests/calico.yaml > $CALICO_RESOURCES
+          bin/kind export kubeconfig --name=$KIND_CLUSTER --kubeconfig $KUBECONFIG
+          # Start ssh tunnel to allow kubectl to connect via localhost.
+          export KIND_PORT=$(bin/kubectl config view -o jsonpath="{.clusters[?(@.name=='kind-$KIND_CLUSTER')].cluster.server}" | cut -d':' -f3)
+          echo "KIND_PORT: $KIND_PORT"
+          ssh -4 -N -L $KIND_PORT:localhost:$KIND_PORT linkerd-docker &
+          sleep 2 # Wait for ssh tunnel to come up.
+          bin/kubectl version --short # Test connection to kind cluster.
+          bin/kubectl apply -f $CALICO_RESOURCES
+          bin/kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
         else
           bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3 ||
             bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3
@@ -229,7 +250,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
+        integration_test: [cni_plugin]
     needs: [docker_pull, docker_build, kind_setup]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -257,6 +278,10 @@ jobs:
           # we can replace it with v0.6.1. In the meantime we explicitly use 'kind-0.6.1'
           kind-0.6.1 load docker-image gcr.io/linkerd-io/proxy-init:v1.3.0 --name=$KIND_CLUSTER
           kind-0.6.1 load docker-image prom/prometheus:v2.11.1 --name=$KIND_CLUSTER
+          kind-0.6.1 load docker-image calico/cni:v3.8.6 --name=$KIND_CLUSTER
+          kind-0.6.1 load docker-image calico/pod2daemon-flexvol:v3.8.6 --name=$KIND_CLUSTER
+          kind-0.6.1 load docker-image calico/node:v3.8.6 --name=$KIND_CLUSTER
+          kind-0.6.1 load docker-image calico/kube-controllers:v3.8.6 --name=$KIND_CLUSTER
           for IMG in controller grafana proxy web ; do
             kind-0.6.1 load docker-image gcr.io/linkerd-io/\$IMG:$TAG --name=$KIND_CLUSTER
           done
@@ -307,7 +332,7 @@ jobs:
     strategy:
       fail-fast: false # always attempt to cleanup all clusters
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
+        integration_test: [cni_plugin]
     needs: [kind_integration]
     name: Cluster cleanup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04

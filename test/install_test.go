@@ -136,6 +136,24 @@ func TestVersionPreInstall(t *testing.T) {
 	}
 }
 
+func TestInstallCNIPlugin(t *testing.T) {
+	if !TestHelper.CNIEnabled() {
+		t.Skip("Skipping cni plugin installation")
+	}
+
+	cmd := []string{"install-cni"}
+
+	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	if err != nil {
+		t.Fatalf("linkerd install-cni command failed\n%s\n%s", out, stderr)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
+		t.Fatalf("kubectl apply command failed\n%s", out)
+	}
+}
+
 func TestCheckPreInstall(t *testing.T) {
 	if TestHelper.ExternalIssuer() {
 		t.Skip("Skipping pre-install check for external issuer test")
@@ -147,6 +165,12 @@ func TestCheckPreInstall(t *testing.T) {
 
 	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.pre.golden"
+
+	if TestHelper.CNIEnabled() {
+		cmd = append(cmd, "--linkerd-cni-enabled")
+		golden = "check.pre.cni.golden"
+	}
+
 	out, stderr, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		t.Fatalf("Check command failed\n%s\n%s", out, stderr)
@@ -220,6 +244,10 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	if TestHelper.GetClusterDomain() != "cluster.local" {
 		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())
+	}
+
+	if TestHelper.CNIEnabled() {
+		args = append(args, "--linkerd-cni-enabled")
 	}
 
 	if TestHelper.ExternalIssuer() {
@@ -432,6 +460,7 @@ func TestCheckPostInstall(t *testing.T) {
 
 	err := TestHelper.RetryFor(time.Minute, func() error {
 		out, stderr, err := TestHelper.LinkerdRun(cmd...)
+		println(out)
 
 		if err != nil {
 			return fmt.Errorf("Check command failed\n%s\n%s", stderr, out)

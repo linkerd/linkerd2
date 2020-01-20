@@ -26,6 +26,7 @@ type TestHelper struct {
 	namespace          string
 	upgradeFromVersion string
 	clusterDomain      string
+	cniEnabled         bool
 	externalIssuer     bool
 	httpClient         http.Client
 	KubernetesHelper
@@ -57,6 +58,7 @@ func NewTestHelper() *TestHelper {
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
 	clusterDomain := flag.String("cluster-domain", "cluster.local", "when specified, the install test uses a custom cluster domain")
 	externalIssuer := flag.Bool("external-issuer", false, "when specified, the install test uses it to install linkerd with --identity-external-issuer=true")
+	cniEnabled := flag.Bool("cni-enabled", false, "when specified, the install test uses it to install linkerd with --linkerd-cni-enabled=true")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	flag.Parse()
@@ -96,6 +98,7 @@ func NewTestHelper() *TestHelper {
 		},
 		clusterDomain:  *clusterDomain,
 		externalIssuer: *externalIssuer,
+		cniEnabled:     *cniEnabled,
 	}
 
 	version, stderr, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -144,6 +147,11 @@ func (h *TestHelper) GetHelmReleaseName() string {
 // ExternalIssuer determines whether linkerd should be installed with --identity-external-issuer
 func (h *TestHelper) ExternalIssuer() bool {
 	return h.externalIssuer
+}
+
+// CNIEnabled determines whether linkerd should be installed with --linkerd-cni-enabled
+func (h *TestHelper) CNIEnabled() bool {
+	return h.cniEnabled
 }
 
 // UpgradeFromVersion returns the base version of the upgrade test.
