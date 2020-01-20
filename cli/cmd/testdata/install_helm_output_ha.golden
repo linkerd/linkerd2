@@ -865,6 +865,9 @@ subjects:
   name: linkerd-web
   namespace: linkerd
 ---
+# Source: linkerd2/templates/linkerd-values.yaml
+
+---
 # Source: linkerd2/templates/config.yaml
 ---
 kind: ConfigMap

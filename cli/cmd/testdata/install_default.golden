@@ -836,6 +836,7 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-web
   namespace: linkerd
+
 ---
 kind: ConfigMap
 apiVersion: v1

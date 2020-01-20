@@ -134,6 +134,9 @@ func TestNewValues(t *testing.T) {
 	actual.Global.ProxyInit.Image.Version = testVersion
 	actual.DebugContainer.Image.Version = testVersion
 
+	// Make Add-On Values nil to not have to check for their defaults
+	actual.Tracing = nil
+
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected, actual)
 	}
@@ -217,6 +220,9 @@ func TestNewValues(t *testing.T) {
 		actual.Global.Proxy.Image.Version = testVersion
 		actual.Global.ProxyInit.Image.Version = testVersion
 		actual.DebugContainer.Image.Version = testVersion
+
+		// Make Add-On Values nil to not have to check for their defaults
+		actual.Tracing = nil
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)
