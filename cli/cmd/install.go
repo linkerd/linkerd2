@@ -756,6 +756,32 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		return err
 	}
 
+	addons := checkAddons(values)
+
+	// Render for each add-on separately and attach
+	// Pass only global values to add-ons
+	for _, addon := range addons {
+
+		addonValues, err := yaml.Marshal(addon.GetValues())
+		if err != nil {
+			return err
+		}
+
+		subchart := &charts.Chart{
+			Name:      addon.GetChartName(),
+			Dir:       l5dcharts.AddonChartsPath + addon.GetChartName(),
+			Namespace: controlPlaneNamespace,
+			RawValues: append(rawValues, addonValues...),
+			Files:     addon.GetFiles(),
+		}
+		addonBuf, err := subchart.Render()
+		if err != nil {
+			return err
+		}
+
+		buf.Write(addonBuf.Bytes())
+	}
+
 	_, err = w.Write(buf.Bytes())
 	return err
 }
@@ -1103,4 +1129,13 @@ func toIdentityContext(idvals *identityWithAnchorsAndTrustDomain) *pb.IdentityCo
 		ClockSkewAllowance: ptypes.DurationProto(csa),
 		Scheme:             idvals.Identity.Issuer.Scheme,
 	}
+}
+func checkAddons(values *l5dcharts.Values) []l5dcharts.AddOn {
+	var addons []l5dcharts.AddOn
+
+	if values.Tracing.Enabled {
+		addons = append(addons, values.Tracing)
+	}
+
+	return addons
 }

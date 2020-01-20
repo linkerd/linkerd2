@@ -58,6 +58,9 @@ type (
 		SPValidatorResources   *Resources `json:"spValidatorResources"`
 		TapResources           *Resources `json:"tapResources"`
 		WebResources           *Resources `json:"webResources"`
+
+		// Addon Structures
+		Tracing *Tracing `json:"tracing"`
 	}
 
 	// Global values common across all charts
