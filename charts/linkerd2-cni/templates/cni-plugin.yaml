@@ -143,8 +143,24 @@ data:
         "outgoing-proxy-port": {{.Values.outboundProxyPort}},
         "proxy-uid": {{.Values.proxyUID}},
         "ports-to-redirect": [{{.Values.portsToRedirect}}],
-        "inbound-ports-to-ignore": [{{.Values.ignoreInboundPorts}}],
-        "outbound-ports-to-ignore": [{{.Values.ignoreOutboundPorts}}],
+        "inbound-ports-to-ignore": [
+          {{- $ports := splitList "," .Values.ignoreInboundPorts -}}
+          {{- if gt (len $ports) 1}}
+          {{- $last := sub (len $ports) 1 -}}
+          {{- range $i,$port := $ports -}}
+          "{{$port}}"{{ternary "," "" (ne $i $last)}}
+          {{- end -}}
+          {{- end -}}
+        ],
+        "outbound-ports-to-ignore": [
+          {{- $ports := splitList "," .Values.ignoreOutboundPorts -}}
+          {{- if gt (len $ports) 1}}
+          {{- $last := sub (len $ports) 1 -}}
+          {{- range $i,$port := $ports -}}
+          "{{$port}}"{{ternary "," "" (ne $i $last)}}
+          {{- end -}}
+          {{- end -}}
+        ],
         "simulate": false,
         "use-wait-flag": {{.Values.useWaitFlag}}
       }
