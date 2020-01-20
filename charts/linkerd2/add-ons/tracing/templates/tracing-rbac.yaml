@@ -1,0 +1,26 @@
+---
+###
+### linkerd-collector RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-collector
+  namespace: linkerd
+  labels:
+    {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+---
+###
+### linkerd-jaeger RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-jaeger
+  namespace: linkerd
+  labels:
+    {{.Values.global.controllerComponentLabel}}: {{.Values.jaeger.name}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}

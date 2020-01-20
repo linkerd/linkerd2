@@ -2,5 +2,8 @@ dependencies:
 - name: partials
   repository: file://../partials
   version: 0.1.0
-digest: sha256:3a86b96a2966f03ba04518723838b49719a3277dfb9bea0b3f067e83d370e0b3
-generated: 2019-07-24T19:51:15.04322926-07:00
+- name: tracing
+  repository: file://add-ons/tracing
+  version: 0.1.0
+digest: sha256:01278c1b1d9f03e895f8701ec35444fadaa8c3b655f7d43c0a44ff2ca7e59cbf
+generated: "2020-01-20T11:12:56.141361729+05:30"

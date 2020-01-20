@@ -7,6 +7,9 @@ global:
   clusterDomain: &cluster_domain cluster.local
   imagePullPolicy: &image_pull_policy IfNotPresent
 
+  # Control Plane Trace Configuration
+  controlPlaneTracing: false
+
   # control plane version. See Proxy section for proxy version
   linkerdVersion: &linkerd_version edge-20.1.2
 
@@ -128,9 +131,6 @@ heartbeatSchedule: "0 0 * * *"
 prometheusImage: prom/prometheus:v2.15.2
 prometheusLogLevel: *controller_log_level
 
-# Control Plane Trace Configuration
-controlPlaneTracing: false
-
 # proxy injector configuration
 proxyInjector:
   # if empty, Helm will auto-generate these fields
@@ -166,3 +166,23 @@ installNamespace: true
 # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector.
 nodeSelector:
   beta.kubernetes.io/os: linux
+
+
+# Configuration for Add-ons
+tracing:
+  enabled: false
+  collector:
+    name: linkerd-collector
+    image: omnition/opencensus-collector:0.1.10
+    resources:
+      cpu:
+        limit: 1
+        request: 200m
+      memory:
+        limit: 2Gi
+        request: 400Mi
+  jaeger:
+    name: linkerd-jaeger
+    image: jaegertracing/all-in-one:1.8
+    resources:
+
