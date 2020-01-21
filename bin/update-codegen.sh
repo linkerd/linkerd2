@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 set -eu
 
@@ -9,7 +9,7 @@ CUSTOM_RESOURCE_NAME=serviceprofile
 # CUSTOM_RESOURCE_VERSION :: the version of the resource
 CUSTOM_RESOURCE_VERSION=v1alpha2
 
-SCRIPT_ROOT=$(realpath $(dirname ${BASH_SOURCE})/..)
+SCRIPT_ROOT=$(git rev-parse --show-toplevel)
 
 # Grab code-generator version from go.sum.
 CODEGEN_VERSION=$(grep 'k8s.io/code-generator' go.sum | awk '{print $2}' | head -1)

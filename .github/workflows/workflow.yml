@@ -80,6 +80,13 @@ jobs:
         echo "$GITCOOKIE_SH" | bash
         # TODO: validate bin/protoc-go.sh does not dirty the repo
         go test -cover -race -v -mod=readonly ./...
+    - name: Verify codegen
+      env:
+        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
+      run: |
+        echo "$GITCOOKIE_SH" | bash
+        go mod download
+        bin/verify-codegen.sh
 
   go_lint:
     name: Go lint
@@ -213,7 +220,7 @@ jobs:
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        export KUBECONFIG=/tmp/kind-config-$KIND_CLUSTER 
+        export KUBECONFIG=/tmp/kind-config-$KIND_CLUSTER
         export CUSTOM_DOMAIN_CONFIG="test/testdata/custom_cluster_domain_config.yaml"
         # retry cluster creation once in case of port conflict or kubeadm failure
         if [ "${{ matrix.integration_test }}" == "custom_domain" ]
