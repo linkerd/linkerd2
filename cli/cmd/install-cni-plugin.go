@@ -146,13 +146,7 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 		fmt.Sprintf("%d", options.proxyAdminPort),
 	}
 
-	for _, p := range options.ignoreInboundPorts {
-		ignoreInboundPorts = append(ignoreInboundPorts, "%s", p)
-	}
-	ignoreOutboundPorts := []string{}
-	for _, p := range options.ignoreOutboundPorts {
-		ignoreOutboundPorts = append(ignoreOutboundPorts, "%s", p)
-	}
+	ignoreInboundPorts = append(ignoreInboundPorts, options.ignoreInboundPorts...)
 
 	portsToRedirect := []string{}
 	for _, p := range options.portsToRedirect {
@@ -165,7 +159,7 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	installValues.InboundProxyPort = options.inboundPort
 	installValues.OutboundProxyPort = options.outboundPort
 	installValues.IgnoreInboundPorts = strings.Join(ignoreInboundPorts, ",")
-	installValues.IgnoreOutboundPorts = strings.Join(ignoreOutboundPorts, ",")
+	installValues.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
 	installValues.PortsToRedirect = strings.Join(portsToRedirect, ",")
 	installValues.ProxyUID = options.proxyUID
 	installValues.DestCNINetDir = options.destCNINetDir

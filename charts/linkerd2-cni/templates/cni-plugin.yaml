@@ -145,7 +145,7 @@ data:
         "ports-to-redirect": [{{.Values.portsToRedirect}}],
         "inbound-ports-to-ignore": [
           {{- $ports := splitList "," .Values.ignoreInboundPorts -}}
-          {{- if gt (len $ports) 1}}
+          {{- if (and (gt (len $ports) 0) (ne (first $ports) "")) }}
           {{- $last := sub (len $ports) 1 -}}
           {{- range $i,$port := $ports -}}
           "{{$port}}"{{ternary "," "" (ne $i $last)}}
@@ -154,7 +154,7 @@ data:
         ],
         "outbound-ports-to-ignore": [
           {{- $ports := splitList "," .Values.ignoreOutboundPorts -}}
-          {{- if gt (len $ports) 1}}
+          {{- if (and (gt (len $ports) 0) (ne (first $ports) "")) }}
           {{- $last := sub (len $ports) 1 -}}
           {{- range $i,$port := $ports -}}
           "{{$port}}"{{ternary "," "" (ne $i $last)}}
