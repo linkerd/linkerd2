@@ -87,33 +87,35 @@ func NewAPIServer(
 // ServeHTTP handles all routes for the APIServer.
 func (a *apiServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	a.log.Debugf("ServeHTTP(): %+v", req)
+	err := a.validate(req)
+	if err != nil {
+		a.log.Debug(err)
+		renderJSONError(w, err, http.StatusBadRequest)
+	} else {
+		a.router.ServeHTTP(w, req)
+	}
+}
 
+// validate ensures that the request should be honored returning an error otherwise.
+func (a *apiServer) validate(req *http.Request) error {
 	// if `requestheader-allowed-names` was empty, allow any CN
 	if len(a.allowedNames) > 0 {
-		validCN := ""
-		clientNames := []string{}
 		for _, cn := range a.allowedNames {
 			for _, clientCert := range req.TLS.PeerCertificates {
-				clientNames = append(clientNames, clientCert.Subject.CommonName)
 				// Check Common Name and Subject Alternate Name(s)
 				if cn == clientCert.Subject.CommonName || isSubjectAlternateName(clientCert, cn) {
-					validCN = cn
-					break
+					return nil
 				}
 			}
-			if validCN != "" {
-				break
-			}
 		}
-		if validCN == "" {
-			err := fmt.Errorf("no valid CN found. allowed names: %s, client names: %s", a.allowedNames, clientNames)
-			a.log.Debug(err)
-			renderJSONError(w, err, http.StatusBadRequest)
-			return
+		// Build the set of certificate names for the error message
+		clientNames := []string{}
+		for _, clientCert := range req.TLS.PeerCertificates {
+			clientNames = append(clientNames, clientCert.Subject.CommonName)
 		}
+		return fmt.Errorf("no valid CN found. allowed names: %s, client names: %s", a.allowedNames, clientNames)
 	}
-
-	a.router.ServeHTTP(w, req)
+	return nil
 }
 
 // apiServerAuth parses the relevant data out of a ConfigMap to enable client

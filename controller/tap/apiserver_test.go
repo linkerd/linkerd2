@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
@@ -123,6 +124,48 @@ data:
 				t.Errorf("apiServerAuth returned unexpected groupHeader: %s, expected: %s", groupHeader, exp.groupHeader)
 			}
 		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	cert := testCertificate()
+	cert.Subject.CommonName = "name-untrusted"
+
+	tls := tls.ConnectionState{PeerCertificates: []*x509.Certificate{&cert}}
+
+	req := http.Request{TLS: &tls}
+
+	server := apiServer{}
+	if err := server.validate(&req); err != nil {
+		t.Fatalf("No error expected for %q but encountered %q", cert.Subject.CommonName, err.Error())
+	}
+}
+
+func TestValidate_ClientAllowed(t *testing.T) {
+	cert := testCertificate()
+	cert.Subject.CommonName = "name-trusted"
+
+	tls := tls.ConnectionState{PeerCertificates: []*x509.Certificate{&cert}}
+
+	req := http.Request{TLS: &tls}
+
+	server := apiServer{allowedNames: []string{"name-trusted"}}
+	if err := server.validate(&req); err != nil {
+		t.Fatalf("No error expected for %q but encountered %q", cert.Subject.CommonName, err.Error())
+	}
+}
+
+func TestValidate_ClientNotAllowed(t *testing.T) {
+	cert := testCertificate()
+	cert.Subject.CommonName = "name-untrusted"
+
+	tls := tls.ConnectionState{PeerCertificates: []*x509.Certificate{&cert}}
+
+	req := http.Request{TLS: &tls}
+
+	server := apiServer{allowedNames: []string{"name1", "name2"}}
+	if err := server.validate(&req); err == nil {
+		t.Fatalf("Expected request to be rejected for %q", cert.Subject.CommonName)
 	}
 }
 
