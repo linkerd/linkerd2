@@ -87,8 +87,7 @@ func NewAPIServer(
 // ServeHTTP handles all routes for the APIServer.
 func (a *apiServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	a.log.Debugf("ServeHTTP(): %+v", req)
-	err := a.validate(req)
-	if err != nil {
+	if err := a.validate(req); err != nil {
 		a.log.Debug(err)
 		renderJSONError(w, err, http.StatusBadRequest)
 	} else {
