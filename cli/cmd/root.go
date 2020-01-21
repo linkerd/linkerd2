@@ -97,6 +97,7 @@ func init() {
 	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 
 	RootCmd.AddCommand(newCmdCheck())
+	RootCmd.AddCommand(newCmdCluster())
 	RootCmd.AddCommand(newCmdCompletion())
 	RootCmd.AddCommand(newCmdDashboard())
 	RootCmd.AddCommand(newCmdDoc())
