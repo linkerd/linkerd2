@@ -129,7 +129,7 @@ data:
 
 func TestValidate(t *testing.T) {
 	cert := testCertificate()
-	cert.Subject.CommonName = "name-untrusted"
+	cert.Subject.CommonName = "name-any"
 
 	tls := tls.ConnectionState{PeerCertificates: []*x509.Certificate{&cert}}
 
@@ -155,6 +155,20 @@ func TestValidate_ClientAllowed(t *testing.T) {
 	}
 }
 
+func TestValidate_ClientAllowedViaSAN(t *testing.T) {
+	cert := testCertificate()
+	cert.Subject.CommonName = "name-any"
+
+	tls := tls.ConnectionState{PeerCertificates: []*x509.Certificate{&cert}}
+
+	req := http.Request{TLS: &tls}
+
+	server := apiServer{allowedNames: []string{"linkerd.io"}}
+	if err := server.validate(&req); err != nil {
+		t.Fatalf("No error expected for %q but encountered %q", cert.Subject.CommonName, err.Error())
+	}
+}
+
 func TestValidate_ClientNotAllowed(t *testing.T) {
 	cert := testCertificate()
 	cert.Subject.CommonName = "name-untrusted"
@@ -163,7 +177,7 @@ func TestValidate_ClientNotAllowed(t *testing.T) {
 
 	req := http.Request{TLS: &tls}
 
-	server := apiServer{allowedNames: []string{"name1", "name2"}}
+	server := apiServer{allowedNames: []string{"name-trusted"}}
 	if err := server.validate(&req); err == nil {
 		t.Fatalf("Expected request to be rejected for %q", cert.Subject.CommonName)
 	}
