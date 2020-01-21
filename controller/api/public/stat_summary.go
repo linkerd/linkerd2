@@ -303,7 +303,7 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 
 		for _, backend := range backends {
 			name := backend.Service
-			weight := string(backend.Weight)
+			weight := fmt.Sprintf("%d", backend.Weight)
 
 			currentLeaf := tsKey{
 				Namespace: tsStats.namespace,
