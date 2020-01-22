@@ -185,6 +185,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
 		Impersonate:           impersonate,
+		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		VersionOverride:       options.versionOverride,
 		RetryDeadline:         time.Now().Add(options.wait),

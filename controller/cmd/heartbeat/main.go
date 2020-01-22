@@ -38,7 +38,7 @@ func Main(args []string) {
 	v.Set("version", version.Version)
 	v.Set("source", "heartbeat")
 
-	kubeAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", 0)
+	kubeAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", []string{}, 0)
 	if err != nil {
 		log.Errorf("Failed to initialize k8s API: %s", err)
 	} else {
