@@ -144,10 +144,10 @@ data:
         "proxy-uid": {{.Values.proxyUID}},
         "ports-to-redirect": [{{.Values.portsToRedirect}}],
         "inbound-ports-to-ignore": [
-          {{- include "util.splitStringList" .Values.ignoreInboundPorts -}}
+          {{- include "partials.splitStringList" .Values.ignoreInboundPorts -}}
         ],
         "outbound-ports-to-ignore": [
-          {{- include "util.splitStringList" .Values.ignoreOutboundPorts -}}
+          {{- include "partials.splitStringList" .Values.ignoreOutboundPorts -}}
         ],
         "simulate": false,
         "use-wait-flag": {{.Values.useWaitFlag}}
