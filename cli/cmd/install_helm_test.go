@@ -136,7 +136,6 @@ func chartControlPlane(t *testing.T, ha bool) *pb.Chart {
 		"templates/_debug.tpl",
 		"templates/_trace.tpl",
 		"templates/_capabilities.tpl",
-		"templates/_util.tpl",
 	}
 
 	chartPartials := chartPartials(t, partialPaths)

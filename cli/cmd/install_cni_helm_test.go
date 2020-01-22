@@ -86,7 +86,7 @@ func chartCniPlugin(t *testing.T) *pb.Chart {
 		t.Fatal("Unexpected error", err)
 	}
 
-	chartPartials := chartPartials(t, []string{"templates/_util.tpl"})
+	chartPartials := chartPartials(t, []string{"templates/_helpers.tpl"})
 
 	chart := &pb.Chart{
 		Metadata: &pb.Metadata{

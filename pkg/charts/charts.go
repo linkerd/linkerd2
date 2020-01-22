@@ -79,7 +79,6 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 		{Name: "charts/partials/templates/_debug.tpl"},
 		{Name: "charts/partials/templates/_capabilities.tpl"},
 		{Name: "charts/partials/templates/_trace.tpl"},
-		{Name: "charts/partials/templates/_util.tpl"},
 	}
 	return chart.render(l5dPartials)
 }
@@ -88,7 +87,7 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 func (chart *Chart) RenderCNI() (bytes.Buffer, error) {
 	cniPartials := []*chartutil.BufferedFile{
 		{Name: "charts/partials/" + chartutil.ChartfileName},
-		{Name: "charts/partials/templates/_util.tpl"},
+		{Name: "charts/partials/templates/_helpers.tpl"},
 	}
 	return chart.render(cniPartials)
 }
