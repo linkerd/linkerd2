@@ -144,22 +144,10 @@ data:
         "proxy-uid": {{.Values.proxyUID}},
         "ports-to-redirect": [{{.Values.portsToRedirect}}],
         "inbound-ports-to-ignore": [
-          {{- $ports := splitList "," .Values.ignoreInboundPorts -}}
-          {{- if (and (gt (len $ports) 0) (ne (first $ports) "")) }}
-          {{- $last := sub (len $ports) 1 -}}
-          {{- range $i,$port := $ports -}}
-          "{{$port}}"{{ternary "," "" (ne $i $last)}}
-          {{- end -}}
-          {{- end -}}
+          {{- include "util.splitStringList" .Values.ignoreInboundPorts -}}
         ],
         "outbound-ports-to-ignore": [
-          {{- $ports := splitList "," .Values.ignoreOutboundPorts -}}
-          {{- if (and (gt (len $ports) 0) (ne (first $ports) "")) }}
-          {{- $last := sub (len $ports) 1 -}}
-          {{- range $i,$port := $ports -}}
-          "{{$port}}"{{ternary "," "" (ne $i $last)}}
-          {{- end -}}
-          {{- end -}}
+          {{- include "util.splitStringList" .Values.ignoreOutboundPorts -}}
         ],
         "simulate": false,
         "use-wait-flag": {{.Values.useWaitFlag}}
