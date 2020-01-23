@@ -215,6 +215,8 @@ github.com/linkerd/linkerd2-proxy-init v1.3.0 h1:kyrMpaNKGPfd7FA8O/6VGxsYXx++Txx
 github.com/linkerd/linkerd2-proxy-init v1.3.0/go.mod h1:lK/sORPZDP6aFhPZps+AHMKphX5v9bKVDNESllz18C0=
 github.com/linkerd/linkerd2-proxy-init v1.3.1-0.20200117170322-a7441ab79b25 h1:RVz/okrTQugk9GKUDY9mJbl8mKUh90jfxTu97IvBvjg=
 github.com/linkerd/linkerd2-proxy-init v1.3.1-0.20200117170322-a7441ab79b25/go.mod h1:lK/sORPZDP6aFhPZps+AHMKphX5v9bKVDNESllz18C0=
+github.com/linkerd/linkerd2-proxy-init v1.3.1 h1:KTvUvPlSKUkpzZM0L/EIk+EJaKk7dwygu0CP95fOyGI=
+github.com/linkerd/linkerd2-proxy-init v1.3.1/go.mod h1:lK/sORPZDP6aFhPZps+AHMKphX5v9bKVDNESllz18C0=
 github.com/linkerd/stern v0.0.0-20190907020106-201e8ccdff9c h1:v8RmXOGO65HHLqcDpVNGGe3krA8FptfxcYS3wSS8bJU=
 github.com/linkerd/stern v0.0.0-20190907020106-201e8ccdff9c/go.mod h1:aaP5eLMmFcyJUsZB6FwAO+0eILWeBKvupuHeeEuY0qQ=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
