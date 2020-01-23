@@ -27,144 +27,142 @@
   {
     "op": "add",
     "path": "/spec/initContainers/-",
-    "value":
-      {
-        "args": [
-          "--incoming-proxy-port",
-          "4143",
-          "--outgoing-proxy-port",
-          "4140",
-          "--proxy-uid",
-          "2102",
-          "--inbound-ports-to-ignore",
-          "4190,4191"
-        ],
-        "image": "gcr.io/linkerd-io/proxy-init:v1.3.0",
-        "imagePullPolicy": "IfNotPresent",
-        "name": "linkerd-init",
-        "resources": {
-          "limits": {
-            "cpu":"100m",
-            "memory":"50Mi"
-          },
-          "requests": {
-            "cpu":"10m",
-            "memory":"10Mi"
-          }
+    "value": {
+      "args": [
+        "--incoming-proxy-port",
+        "4143",
+        "--outgoing-proxy-port",
+        "4140",
+        "--proxy-uid",
+        "2102",
+        "--inbound-ports-to-ignore",
+        "4190,4191"
+      ],
+      "image": "gcr.io/linkerd-io/proxy-init:v1.3.1",
+      "imagePullPolicy": "IfNotPresent",
+      "name": "linkerd-init",
+      "resources": {
+        "limits": {
+          "cpu": "100m",
+          "memory": "50Mi"
         },
-        "securityContext": {
-          "allowPrivilegeEscalation": false,
-          "capabilities": {
-            "add": [
-              "NET_ADMIN",
-              "NET_RAW"
-            ]
-          },
-          "privileged": false,
-          "readOnlyRootFilesystem": true,
-          "runAsNonRoot": false,
-          "runAsUser": 0
+        "requests": {
+          "cpu": "10m",
+          "memory": "10Mi"
+        }
+      },
+      "securityContext": {
+        "allowPrivilegeEscalation": false,
+        "capabilities": {
+          "add": [
+            "NET_ADMIN",
+            "NET_RAW"
+          ]
         },
-        "terminationMessagePolicy": "FallbackToLogsOnError"
-      }
+        "privileged": false,
+        "readOnlyRootFilesystem": true,
+        "runAsNonRoot": false,
+        "runAsUser": 0
+      },
+      "terminationMessagePolicy": "FallbackToLogsOnError"
+    }
   },
   {
     "op": "add",
     "path": "/spec/containers/-",
-    "value":
-      {
-        "env": [
-          {
-            "name": "LINKERD2_PROXY_LOG",
-            "value": "warn,linkerd=info"
-          },
-          {
-            "name": "LINKERD2_PROXY_DESTINATION_SVC_ADDR",
-            "value": "linkerd-dst.linkerd.svc.cluster.local:8086"
-          },
-          {
-            "name": "LINKERD2_PROXY_CONTROL_LISTEN_ADDR",
-            "value": "0.0.0.0:4190"
-          },
-          {
-            "name": "LINKERD2_PROXY_ADMIN_LISTEN_ADDR",
-            "value": "0.0.0.0:4191"
-          },
-          {
-            "name": "LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR",
-            "value": "127.0.0.1:4140"
-          },
-          {
-            "name": "LINKERD2_PROXY_INBOUND_LISTEN_ADDR",
-            "value": "0.0.0.0:4143"
-          },
-          {
-            "name": "LINKERD2_PROXY_DESTINATION_GET_SUFFIXES",
-            "value": "."
-          },
-          {
-            "name": "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES",
-            "value": "."
-          },
-          {
-            "name": "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE",
-            "value": "10000ms"
-          },
-          {
-            "name": "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE",
-            "value": "10000ms"
-          },
-          {
-            "name": "_pod_ns",
-            "valueFrom": {
-              "fieldRef": {
-                "fieldPath": "metadata.namespace"
-              }
+    "value": {
+      "env": [
+        {
+          "name": "LINKERD2_PROXY_LOG",
+          "value": "warn,linkerd=info"
+        },
+        {
+          "name": "LINKERD2_PROXY_DESTINATION_SVC_ADDR",
+          "value": "linkerd-dst.linkerd.svc.cluster.local:8086"
+        },
+        {
+          "name": "LINKERD2_PROXY_CONTROL_LISTEN_ADDR",
+          "value": "0.0.0.0:4190"
+        },
+        {
+          "name": "LINKERD2_PROXY_ADMIN_LISTEN_ADDR",
+          "value": "0.0.0.0:4191"
+        },
+        {
+          "name": "LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR",
+          "value": "127.0.0.1:4140"
+        },
+        {
+          "name": "LINKERD2_PROXY_INBOUND_LISTEN_ADDR",
+          "value": "0.0.0.0:4143"
+        },
+        {
+          "name": "LINKERD2_PROXY_DESTINATION_GET_SUFFIXES",
+          "value": "."
+        },
+        {
+          "name": "LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES",
+          "value": "."
+        },
+        {
+          "name": "LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE",
+          "value": "10000ms"
+        },
+        {
+          "name": "LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE",
+          "value": "10000ms"
+        },
+        {
+          "name": "_pod_ns",
+          "valueFrom": {
+            "fieldRef": {
+              "fieldPath": "metadata.namespace"
             }
-          },
-          {
-            "name": "LINKERD2_PROXY_DESTINATION_CONTEXT",
-            "value": "ns:$(_pod_ns)"
-          },
-          {
-            "name": "LINKERD2_PROXY_IDENTITY_DISABLED",
-            "value": "disabled"
           }
-        ],
-        "image": "gcr.io/linkerd-io/proxy:dev-undefined",
-        "imagePullPolicy": "IfNotPresent",
-        "livenessProbe": {
-          "httpGet": {
-            "path": "/metrics",
-            "port": 4191
-          },
-          "initialDelaySeconds": 10
         },
-        "name": "linkerd-proxy",
-        "ports": [
-          {
-            "containerPort": 4143,
-            "name": "linkerd-proxy"
-          },
-          {
-            "containerPort": 4191,
-            "name": "linkerd-admin"
-          }
-        ],
-        "readinessProbe": {
-          "httpGet": {
-            "path": "/ready",
-            "port": 4191
-          },
-          "initialDelaySeconds": 2
+        {
+          "name": "LINKERD2_PROXY_DESTINATION_CONTEXT",
+          "value": "ns:$(_pod_ns)"
         },
-        "resources": null,
-        "securityContext": {
-          "allowPrivilegeEscalation": false,
-          "readOnlyRootFilesystem": true,
-          "runAsUser": 2102
+        {
+          "name": "LINKERD2_PROXY_IDENTITY_DISABLED",
+          "value": "disabled"
+        }
+      ],
+      "image": "gcr.io/linkerd-io/proxy:dev-undefined",
+      "imagePullPolicy": "IfNotPresent",
+      "livenessProbe": {
+        "httpGet": {
+          "path": "/metrics",
+          "port": 4191
         },
-        "terminationMessagePolicy": "FallbackToLogsOnError"
-      }
+        "initialDelaySeconds": 10
+      },
+      "name": "linkerd-proxy",
+      "ports": [
+        {
+          "containerPort": 4143,
+          "name": "linkerd-proxy"
+        },
+        {
+          "containerPort": 4191,
+          "name": "linkerd-admin"
+        }
+      ],
+      "readinessProbe": {
+        "httpGet": {
+          "path": "/ready",
+          "port": 4191
+        },
+        "initialDelaySeconds": 2
+      },
+      "resources": null,
+      "securityContext": {
+        "allowPrivilegeEscalation": false,
+        "readOnlyRootFilesystem": true,
+        "runAsUser": 2102
+      },
+      "terminationMessagePolicy": "FallbackToLogsOnError"
+    }
   }
 ]
