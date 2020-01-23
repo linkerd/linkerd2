@@ -453,15 +453,13 @@ func buildRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labe
 }
 
 func buildTrafficSplitRequestLabels(req *pb.StatSummaryRequest) (labels model.LabelSet, labelNames model.LabelNames) {
-	// trafficsplit labels are always direction="outbound" with an optional namespace="value" if the -A flag is not used.
-	// if the --from or --to flags were used, we merge an additional ToResource or FromResource label.
-	// trafficsplit metrics results are always grouped by dst_service.
+	// Trafficsplit labels are always direction="outbound". If the --from or --to flags were used,
+	// we merge an additional ToResource or FromResource label. Trafficsplit metrics results are
+	// always grouped by dst_service.
+	// N.b. requests to a traffic split may come from any namespace so we do not do any filtering
+	// by namespace.
 	labels = model.LabelSet{
 		"direction": model.LabelValue("outbound"),
-	}
-
-	if req.Selector.Resource.Namespace != "" {
-		labels["namespace"] = model.LabelValue(req.Selector.Resource.Namespace)
 	}
 
 	switch out := req.Outbound.(type) {
