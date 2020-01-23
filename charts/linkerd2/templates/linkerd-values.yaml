@@ -1,9 +1,9 @@
-{{ if .Values.installValuesConfig -}}
+{{ if or (.Values.tracing.enabled) -}}
 {{- $dupValues := .Values -}}
 {{- $dupValues := omit $dupValues "partials" -}}
 {{- range $key, $value := $dupValues -}}
   {{- if kindIs "map" $value -}}
-    {{- if hasKey $value "global" -}}
+    {{- if and (hasKey $value "global") (ne $key "configs" ) -}}
       {{- $dupValues := set $dupValues $key (unset $value "global") -}}
     {{- end -}}
     {{- if hasKey $value "partials" -}}

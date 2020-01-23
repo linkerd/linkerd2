@@ -38,7 +38,6 @@ type (
 		DisableHeartBeat            bool              `json:"disableHeartBeat"`
 		HeartbeatSchedule           string            `json:"heartbeatSchedule"`
 		InstallNamespace            bool              `json:"installNamespace"`
-		InstallValuesConfig         bool              `json:"installValuesConfig"`
 		Configs                     ConfigJSONs       `json:"configs"`
 		Global                      *Global           `json:"global"`
 		Identity                    *Identity         `json:"identity"`

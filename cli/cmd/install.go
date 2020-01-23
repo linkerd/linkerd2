@@ -755,6 +755,12 @@ func toPromLogLevel(level string) string {
 
 func render(w io.Writer, values *l5dcharts.Values) error {
 
+	// Render raw values and create chart config
+	rawValues, err := yaml.Marshal(values)
+	if err != nil {
+		return err
+	}
+
 	files := []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
@@ -776,15 +782,6 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 	}
 
 	addons := checkAddons(values)
-	if len(addons) > 0 {
-		values.InstallValuesConfig = true
-	}
-
-	// Render raw values and create chart config
-	rawValues, err := yaml.Marshal(values)
-	if err != nil {
-		return err
-	}
 
 	chart := &charts.Chart{
 		Name:      helmDefaultChartName,
