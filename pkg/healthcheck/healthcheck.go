@@ -1200,6 +1200,17 @@ func (hc *HealthChecker) allCategories() []category {
 						return &SkipError{Reason: "not run for non HA installs"}
 					},
 				},
+				{
+					description: "control plane components are assigned CPU and memory requirements",
+					hintAnchor:  "l5d-control-plane-resource-requirements",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						if hc.isHA() {
+							return hc.checkControlPlaneComponentsResourceRequirements()
+						}
+						return &SkipError{Reason: "not run for non HA installs"}
+					},
+				},
 			},
 		},
 	}
@@ -1240,6 +1251,21 @@ func (hc *HealthChecker) checkWebhookFailurePolicy() error {
 		if *(w.FailurePolicy) != v1beta1.Fail {
 			return fmt.Errorf("ValidatingWebhookConfiguration failure policy is \"%s\" ; expected \"%s\"", *(w.FailurePolicy), v1beta1.Fail)
 		}
+	}
+	return nil
+}
+
+func (hc *HealthChecker) checkControlPlaneComponentsResourceRequirements() error {
+	for _, component := range linkerdHAControlPlaneComponents {
+		conf, err := hc.kubeAPI.AppsV1().Deployments(hc.ControlPlaneNamespace).Get(component, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if ok, containers := hasResourceRequirements(conf); !ok {
+			return fmt.Errorf("resource requirements not configured for containers %v in deployment \"%s\"", containers, conf.Name)
+		}
+
 	}
 	return nil
 }
@@ -2136,4 +2162,19 @@ func checkControlPlaneReplicaSets(rst []appsv1.ReplicaSet) error {
 	}
 
 	return nil
+}
+
+func hasResourceRequirements(conf *appsv1.Deployment) (bool, []string) {
+	faulty := []string{}
+
+	for _, container := range conf.Spec.Template.Spec.Containers {
+		if container.Resources.Limits.Memory().IsZero() || container.Resources.Limits.Cpu().IsZero() {
+			faulty = append(faulty, container.Name)
+		}
+	}
+
+	if len(faulty) > 0 {
+		return false, faulty
+	}
+	return true, faulty
 }
