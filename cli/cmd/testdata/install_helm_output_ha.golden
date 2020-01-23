@@ -377,26 +377,51 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 spec:
   group: split.smi-spec.io
-  version: v1alpha2
-  versions:
-      - name: v1alpha2
-        served: true
-        storage: true
-      - name: v1alpha1
-        served: true
-        storage: false
   scope: Namespaced
   names:
     kind: TrafficSplit
+    listKind: TrafficSplitList
     shortNames:
       - ts
     plural: trafficsplits
     singular: trafficsplit
+  version: v1alpha2
+  versions:
+    - name: v1alpha2
+      served: true
+      storage: true
+    - name: v1alpha1
+      served: false
+      storage: false
   additionalPrinterColumns:
-  - name: Service
-    type: string
-    description: The apex service of this split.
-    JSONPath: .spec.service
+    - name: Service
+      type: string
+      description: The apex service of this split.
+      JSONPath: .spec.service
+  validation:
+    openAPIV3Schema:
+      properties:
+        spec:
+          required:
+            - service
+            - backends
+          properties:
+            service:
+              description: The apex service of this split.
+              type: string
+            backends:
+              description: The backend services of this split.
+              type: array
+              items:
+                type: object
+                required: ['service', 'weight']
+                properties:
+                  service:
+                    description: Name of the Kubernetes service.
+                    type: string
+                  weight:
+                    description: Traffic weight value of this backend.
+                    type: number
 ---
 # Source: linkerd2/templates/prometheus-rbac.yaml
 ---
