@@ -1811,19 +1811,13 @@ func (hc *HealthChecker) checkAPIService(serviceName string) error {
 		return err
 	}
 
-	available := false
-	var errorMessage string
 	for _, condition := range apiStatus.Status.Conditions {
 		if condition.Type == "Available" {
-			available = true
 			if condition.Status == "True" {
 				return nil
 			}
-			errorMessage = fmt.Sprintf("%s: %s", condition.Reason, condition.Message)
+			return fmt.Errorf("%s: %s", condition.Reason, condition.Message)
 		}
-	}
-	if available {
-		return errors.New(errorMessage)
 	}
 
 	return fmt.Errorf("%s service not available", linkerdTapAPIServiceName)
