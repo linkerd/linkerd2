@@ -143,8 +143,12 @@ data:
         "outgoing-proxy-port": {{.Values.outboundProxyPort}},
         "proxy-uid": {{.Values.proxyUID}},
         "ports-to-redirect": [{{.Values.portsToRedirect}}],
-        "inbound-ports-to-ignore": [{{.Values.ignoreInboundPorts}}],
-        "outbound-ports-to-ignore": [{{.Values.ignoreOutboundPorts}}],
+        "inbound-ports-to-ignore": [
+          {{- include "partials.splitStringList" .Values.ignoreInboundPorts -}}
+        ],
+        "outbound-ports-to-ignore": [
+          {{- include "partials.splitStringList" .Values.ignoreOutboundPorts -}}
+        ],
         "simulate": false,
         "use-wait-flag": {{.Values.useWaitFlag}}
       }

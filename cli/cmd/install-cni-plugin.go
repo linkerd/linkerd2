@@ -29,8 +29,8 @@ type cniPluginOptions struct {
 	proxyAdminPort      uint
 	inboundPort         uint
 	outboundPort        uint
-	ignoreInboundPorts  []uint
-	ignoreOutboundPorts []uint
+	ignoreInboundPorts  []string
+	ignoreOutboundPorts []string
 	portsToRedirect     []uint
 	proxyUID            int64
 	cniPluginImage      string
@@ -53,6 +53,13 @@ func (options *cniPluginOptions) validate() error {
 		return fmt.Errorf("--cni-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
+	if err := validateRangeSlice(options.ignoreInboundPorts); err != nil {
+		return err
+	}
+
+	if err := validateRangeSlice(options.ignoreOutboundPorts); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -89,8 +96,8 @@ assumes that the 'linkerd install' command will be executed with the
 	cmd.PersistentFlags().UintVar(&options.outboundPort, "outbound-port", options.outboundPort, "Proxy port to use for outbound traffic")
 	cmd.PersistentFlags().UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
 	cmd.PersistentFlags().UintVar(&options.proxyAdminPort, "admin-port", options.proxyAdminPort, "Proxy port to serve metrics on")
-	cmd.PersistentFlags().UintSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports that should skip the proxy and send directly to the application")
-	cmd.PersistentFlags().UintSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports that should skip the proxy")
+	cmd.PersistentFlags().StringSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports and/or port ranges (inclusive) that should skip the proxy and send directly to the application")
+	cmd.PersistentFlags().StringSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports and/or port ranges (inclusive) that should skip the proxy")
 	cmd.PersistentFlags().UintSliceVar(&options.portsToRedirect, "redirect-ports", options.portsToRedirect, "Ports to redirect to proxy, if no port is specified then ALL ports are redirected")
 	cmd.PersistentFlags().StringVar(&options.cniPluginImage, "cni-image", options.cniPluginImage, "Image for the cni-plugin")
 	cmd.PersistentFlags().StringVar(&options.logLevel, "cni-log-level", options.logLevel, "Log level for the cni-plugin")
@@ -139,13 +146,7 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 		fmt.Sprintf("%d", options.proxyAdminPort),
 	}
 
-	for _, p := range options.ignoreInboundPorts {
-		ignoreInboundPorts = append(ignoreInboundPorts, fmt.Sprintf("%d", p))
-	}
-	ignoreOutboundPorts := []string{}
-	for _, p := range options.ignoreOutboundPorts {
-		ignoreOutboundPorts = append(ignoreOutboundPorts, fmt.Sprintf("%d", p))
-	}
+	ignoreInboundPorts = append(ignoreInboundPorts, options.ignoreInboundPorts...)
 
 	portsToRedirect := []string{}
 	for _, p := range options.portsToRedirect {
@@ -158,7 +159,7 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	installValues.InboundProxyPort = options.inboundPort
 	installValues.OutboundProxyPort = options.outboundPort
 	installValues.IgnoreInboundPorts = strings.Join(ignoreInboundPorts, ",")
-	installValues.IgnoreOutboundPorts = strings.Join(ignoreOutboundPorts, ",")
+	installValues.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
 	installValues.PortsToRedirect = strings.Join(portsToRedirect, ",")
 	installValues.ProxyUID = options.proxyUID
 	installValues.DestCNINetDir = options.destCNINetDir

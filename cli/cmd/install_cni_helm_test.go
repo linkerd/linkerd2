@@ -86,12 +86,17 @@ func chartCniPlugin(t *testing.T) *pb.Chart {
 		t.Fatal("Unexpected error", err)
 	}
 
+	chartPartials := chartPartials(t, []string{"templates/_helpers.tpl"})
+
 	chart := &pb.Chart{
 		Metadata: &pb.Metadata{
 			Name: helmCNIDefaultChartName,
 			Sources: []string{
 				filepath.Join("..", "..", "..", "charts", "linkerd2-cni"),
 			},
+		},
+		Dependencies: []*pb.Chart{
+			chartPartials,
 		},
 		Values: &pb.Config{
 			Raw: string(values),
