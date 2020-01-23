@@ -1,10 +1,11 @@
 ## edge-20.1.3
 
 * CLI
-  * Introduced `linkerd check --cni` to ensure the CNI plugins can properly be
-    installed on the cluster
+  * Introduced `linkerd check --pre --linkerd-cni-enabled`, used when the CNI
+    plugin is used, to check it has been properly installed before proceeding
+    with the control plane installation
   * Added support for the `--as-group` flag so that users can impersonate
-    groups for Kubernetes operations
+    groups for Kubernetes operations (thanks @mayankshah160!)
 * Controller
   * Fixed an issue where an override of the Docker registry was not being
     applied to debug containers (thanks @javaducky!)
