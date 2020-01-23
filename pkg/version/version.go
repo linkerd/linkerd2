@@ -16,7 +16,7 @@ var Version = undefinedVersion
 // https://github.com/linkerd/linkerd2-proxy-init
 // This has to be kept in sync with the constraint version for
 // github.com/linkerd/linkerd2-proxy-init in /go.mod
-var ProxyInitVersion = "v1.3.0"
+var ProxyInitVersion = "v1.3.1"
 
 const (
 	// undefinedVersion should take the form `channel-version` to conform to
