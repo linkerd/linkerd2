@@ -1,3 +1,20 @@
+## edge-20.1.3
+
+* CLI
+  * Introduced `linkerd check --cni` to ensure the CNI plugins can properly be
+    installed on the cluster
+  * Added support for the `--as-group` flag so that users can impersonate
+    groups for Kubernetes operations
+* Controlller
+  * Fixed an issue where an override of the Docker registry was not being
+    applied to debug containers (thanks @javaducky!)
+  * Added check for the Subject Alternate Name attributes to the API server
+    when access restrictions have been enabled (thanks @javaducky!)
+  * Added support for arbitrary pod labels so that users can leverage the
+    Linkerd provided Prometheus instance to scrape for their own labels as
+    well (thanks @daxmc99!)
+  * Fixed an issue with CNI config parsing
+
 ## edge-20.1.2
 
 * CLI
