@@ -9,6 +9,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 
 "$bindir"/helm lint "$rootdir"/charts/partials
+"$bindir"/helm dep up "$rootdir"/charts/linkerd2-cni
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
 "$bindir"/helm init --client-only
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2

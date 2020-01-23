@@ -88,7 +88,11 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 
 // RenderCNI returns a bytes buffer with the result of rendering a Helm chart
 func (chart *Chart) RenderCNI() (bytes.Buffer, error) {
-	return chart.render([]*chartutil.BufferedFile{})
+	cniPartials := []*chartutil.BufferedFile{
+		{Name: "charts/partials/" + chartutil.ChartfileName},
+		{Name: "charts/partials/templates/_helpers.tpl"},
+	}
+	return chart.render(cniPartials)
 }
 
 // ReadFile updates the buffered file with the data read from disk

@@ -913,6 +913,7 @@ func errAfterRunningChecks(options *installOptions) error {
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		Impersonate:           impersonate,
+		ImpersonateGroup:      impersonateGroup,
 		KubeContext:           kubeContext,
 		APIAddr:               apiAddr,
 		NoInitContainer:       options.noInitContainer,
@@ -954,7 +955,7 @@ func errAfterRunningChecks(options *installOptions) error {
 }
 
 func errIfLinkerdConfigConfigMapExists() error {
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return err
 	}
@@ -1082,7 +1083,7 @@ func (idopts *installIdentityOptions) genValues() (*identityWithAnchorsAndTrustD
 
 func (idopts *installIdentityOptions) readExternallyManaged() (*identityWithAnchorsAndTrustDomain, error) {
 
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, 0)
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching external issuer config: %s", err)
 	}

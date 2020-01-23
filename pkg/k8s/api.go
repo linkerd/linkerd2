@@ -38,7 +38,7 @@ type KubernetesAPI struct {
 
 // NewAPI validates a Kubernetes config and returns a client for accessing the
 // configured cluster.
-func NewAPI(configPath, kubeContext string, impersonate string, timeout time.Duration) (*KubernetesAPI, error) {
+func NewAPI(configPath, kubeContext string, impersonate string, impersonateGroup []string, timeout time.Duration) (*KubernetesAPI, error) {
 	config, err := GetConfig(configPath, kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
@@ -54,6 +54,7 @@ func NewAPI(configPath, kubeContext string, impersonate string, timeout time.Dur
 	if impersonate != "" {
 		config.Impersonate = rest.ImpersonationConfig{
 			UserName: impersonate,
+			Groups:   impersonateGroup,
 		}
 	}
 
