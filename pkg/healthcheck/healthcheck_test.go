@@ -2966,7 +2966,7 @@ func TestCniChecks(t *testing.T) {
 			k8sConfigs := getFakeCniResources(tc.testCaseOpts)
 			var err error
 			hc.kubeAPI, err = k8s.NewFakeAPI(k8sConfigs...)
-			hc.NoInitContainer = true
+			hc.CNIEnabled = true
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
