@@ -72,7 +72,7 @@ spec:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewProfileWatcher(k8sAPI, logging.WithField("test", t.Name))
+			watcher := NewProfileWatcher(k8sAPI, logging.WithField("test", t.Name()))
 
 			k8sAPI.Sync()
 
