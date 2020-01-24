@@ -159,7 +159,7 @@ jobs:
       env:
         DOCKER_HOST: ssh://linkerd-docker
       run: |
-        bin/docker pull gcr.io/linkerd-io/proxy-init:v1.3.0
+        bin/docker pull gcr.io/linkerd-io/proxy-init:v1.3.1
         bin/docker pull prom/prometheus:v2.11.1
 
   docker_build:
@@ -255,7 +255,7 @@ jobs:
           # TODO: This is using the kind binary on the remote host.
           # TODO: 'kind' still points to v0.5.1. When there are no more old CI branches depending on that
           # we can replace it with v0.6.1. In the meantime we explicitly use 'kind-0.6.1'
-          kind-0.6.1 load docker-image gcr.io/linkerd-io/proxy-init:v1.3.0 --name=$KIND_CLUSTER
+          kind-0.6.1 load docker-image gcr.io/linkerd-io/proxy-init:v1.3.1 --name=$KIND_CLUSTER
           kind-0.6.1 load docker-image prom/prometheus:v2.11.1 --name=$KIND_CLUSTER
           for IMG in controller grafana proxy web ; do
             kind-0.6.1 load docker-image gcr.io/linkerd-io/\$IMG:$TAG --name=$KIND_CLUSTER
