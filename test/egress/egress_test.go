@@ -13,6 +13,7 @@ import (
 
 var TestHelper *testutil.TestHelper
 
+/*
 var egressHTTPDeployments = []string{
 	"egress-test-https-post",
 	"egress-test-http-post",
@@ -20,6 +21,7 @@ var egressHTTPDeployments = []string{
 	"egress-test-http-get",
 	"egress-test-not-www-get",
 }
+*/
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
