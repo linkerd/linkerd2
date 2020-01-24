@@ -44,9 +44,9 @@ linkerd-api
 -----------
 √ control plane pods are ready
 √ control plane self-check
-√ tap api service is running
 √ [kubernetes] control plane can talk to Kubernetes
 √ [prometheus] control plane can talk to Prometheus
+√ tap api service is running
 
 linkerd-version
 ---------------
