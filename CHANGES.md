@@ -1,5 +1,9 @@
 ## edge-20.1.3
 
+An update to the Helm charts has caused a **breaking change** for users who
+have installed Linkerd using Helm. In order to make the purpose of the
+`NoInitContainer` parameter more explicit, it has been renamed to `CniEnabled`.
+
 * CLI
   * Introduced `linkerd check --pre --linkerd-cni-enabled`, used when the CNI
     plugin is used, to check it has been properly installed before proceeding
@@ -15,6 +19,10 @@
     Linkerd provided Prometheus instance to scrape for their own labels
     (thanks @daxmc99!)
   * Fixed an issue with CNI config parsing
+* Helm
+  * **Breaking change**: Renamed `NoInitContainer` parameter to `CniEnabled`
+  * Fixed an issue with `helm install` where the lists of ignored inbound and
+    outbound ports would not be reflected
 
 ## edge-20.1.2
 
