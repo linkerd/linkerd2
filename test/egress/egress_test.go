@@ -1,10 +1,7 @@
 package egress
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/linkerd/linkerd2/testutil"
@@ -33,6 +30,15 @@ func TestMain(m *testing.M) {
 /// TEST EXECUTION ///
 //////////////////////
 
+// issue: https://github.com/linkerd/linkerd2/issues/2316
+//
+// The response from `http://httpbin.org/get` is non-deterministic--returning
+// either `http://..` or `https://..` for GET requests. As #2316 mentions,
+// this test should not have an external dependency on this endpoint. As a
+// workaround for edge-20.1.3, temporarily disable this test and renable with
+// one that has reliable behavior.
+
+/*
 func TestEgressHttp(t *testing.T) {
 	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/proxy.yaml")
 	if err != nil {
@@ -101,3 +107,4 @@ func TestEgressHttp(t *testing.T) {
 	// Test egress for a domain with fewer than 3 segments.
 	testCase("egress-test-not-www-get", "httpbin.org", "https", "GET")
 }
+*/
