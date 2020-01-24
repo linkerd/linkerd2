@@ -92,8 +92,8 @@ func TestEgressHttp(t *testing.T) {
 			expectedResponseURL1 := fmt.Sprintf("http://%s/%s", dnsName, strings.ToLower(methodToUse))
 			expectedResponseURL2 := fmt.Sprintf("https://%s/%s", dnsName, strings.ToLower(methodToUse))
 			actualURL := messagePayload["url"]
-			if actualURL != expectedResponseURL1 || actualURL != expectedResponseURL2 {
-				t.Fatalf("Expecting response to say egress sent [%s] request to either URL [%s] or URL [%s], but got [%s]. Response:\n%s\n", methodToUse, expectedResponseURL1, expectedResponseURL2, actualURL, output)
+			if actualURL != expectedResponseURL1 && actualURL != expectedResponseURL2 {
+				t.Fatalf("Expecting response to say egress sent [%s] request to be either URL [%s] or URL [%s], but got [%s]. Response:\n%s\n", methodToUse, expectedResponseURL1, expectedResponseURL2, actualURL, output)
 			}
 		})
 	}
