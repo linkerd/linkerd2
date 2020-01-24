@@ -33,6 +33,14 @@ func TestMain(m *testing.M) {
 /// TEST EXECUTION ///
 //////////////////////
 
+// issue: https://github.com/linkerd/linkerd2/issues/2316
+//
+// The response from `http://httpbin.org/get` is non-deterministic--returning
+// either `http://..` or `https://..` for GET requests. As #2316 mentions,
+// this test should not have an external dependency on this endpoint. As a
+// workaround for edge-20.1.3, temporarily expect either `http` or `https` so
+// that the test is not completely disabled.
+
 func TestEgressHttp(t *testing.T) {
 	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/proxy.yaml")
 	if err != nil {
@@ -81,10 +89,11 @@ func TestEgressHttp(t *testing.T) {
 			var messagePayload map[string]interface{}
 			json.Unmarshal([]byte(payloadText.(string)), &messagePayload)
 
-			expectedResponseURL := fmt.Sprintf("%s://%s/%s", protocolToUse, dnsName, strings.ToLower(methodToUse))
+			expectedResponseURL1 := fmt.Sprintf("http://%s/%s", dnsName, strings.ToLower(methodToUse))
+			expectedResponseURL2 := fmt.Sprintf("https://%s/%s", dnsName, strings.ToLower(methodToUse))
 			actualURL := messagePayload["url"]
-			if actualURL != expectedResponseURL {
-				t.Fatalf("Expecting response to say egress sent [%s] request to URL [%s] but got [%s]. Response:\n%s\n", methodToUse, expectedResponseURL, actualURL, output)
+			if actualURL != expectedResponseURL1 && actualURL != expectedResponseURL2 {
+				t.Fatalf("Expecting response to say egress sent [%s] request to be either URL [%s] or URL [%s], but got [%s]. Response:\n%s\n", methodToUse, expectedResponseURL1, expectedResponseURL2, actualURL, output)
 			}
 		})
 	}
