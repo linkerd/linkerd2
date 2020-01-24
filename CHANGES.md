@@ -1,5 +1,7 @@
 ## edge-20.1.3
 
+This edge release is a release candidate for `stable-2.7`.
+
 An update to the Helm charts has caused a **breaking change** for users who
 have installed Linkerd using Helm. In order to make the purpose of the
 `NoInitContainer` parameter more explicit, it has been renamed to `CniEnabled`.
