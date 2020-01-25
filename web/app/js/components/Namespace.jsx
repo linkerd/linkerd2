@@ -48,7 +48,9 @@ class Namespaces extends React.Component {
     if (!_isEqual(prevProps.match.params.namespace, params.namespace)) {
       // React won't unmount this component when switching resource pages so we need to clear state
       this.api.cancelCurrentRequests();
-      this.setState(this.getInitialState(params));
+      this.onUpdate(function callback() {
+        this.setState(this.getInitialState(params));
+      });
     }
 
     handlePageVisibility({
