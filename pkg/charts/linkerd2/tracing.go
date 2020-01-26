@@ -46,23 +46,7 @@ func (*Tracing) GetChartName() string {
 
 // GetFiles returns the templates files that are part of the add-on sub-chart
 func (*Tracing) GetFiles() []*chartutil.BufferedFile {
-	files := []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName},
-	}
-
-	for _, template := range tracingConfigStage {
-		files = append(files, &chartutil.BufferedFile{
-			Name: template,
-		})
-	}
-
-	for _, template := range tracingControlPlaneStage {
-		files = append(files, &chartutil.BufferedFile{
-			Name: template,
-		})
-	}
-
-	return files
+	return defaultGetFiles(tracingConfigStage, tracingControlPlaneStage)
 }
 
 // GetValues returns the values struct which will be used to render the add-on sub-chart.
