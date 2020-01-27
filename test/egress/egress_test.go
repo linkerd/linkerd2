@@ -1,7 +1,6 @@
 package egress
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -67,33 +66,18 @@ func TestEgressHttp(t *testing.T) {
 	testCase := func(deployName, dnsName, protocolToUse, methodToUse string) {
 		testName := fmt.Sprintf("Can use egress to send %s request to %s (%s)", methodToUse, protocolToUse, deployName)
 		t.Run(testName, func(t *testing.T) {
-			expectedURL := fmt.Sprintf("%s://%s/%s", protocolToUse, dnsName, strings.ToLower(methodToUse))
-
 			url, err := TestHelper.URLFor(prefixedNs, deployName, 8080)
 			if err != nil {
 				t.Fatalf("Failed to get proxy URL: %s", err)
 			}
 
-			output, err := TestHelper.HTTPGetURL(url)
+			rsp, err := TestHelper.HTTPGetRsp(url)
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			var jsonResponse map[string]interface{}
-			json.Unmarshal([]byte(output), &jsonResponse)
 
-			payloadText := jsonResponse["payload"]
-			if payloadText == nil {
-				t.Fatalf("Expected [%s] request to [%s] to return a payload, got nil. Response:\n%s\n", methodToUse, expectedURL, output)
-			}
-
-			var messagePayload map[string]interface{}
-			json.Unmarshal([]byte(payloadText.(string)), &messagePayload)
-
-			expectedResponseURL1 := fmt.Sprintf("http://%s/%s", dnsName, strings.ToLower(methodToUse))
-			expectedResponseURL2 := fmt.Sprintf("https://%s/%s", dnsName, strings.ToLower(methodToUse))
-			actualURL := messagePayload["url"]
-			if actualURL != expectedResponseURL1 && actualURL != expectedResponseURL2 {
-				t.Fatalf("Expecting response to say egress sent [%s] request to be either URL [%s] or URL [%s], but got [%s]. Response:\n%s\n", methodToUse, expectedResponseURL1, expectedResponseURL2, actualURL, output)
+			if rsp.StatusCode < 100 || rsp.StatusCode >= 500 {
+				t.Fatalf("Got HTTP error code: %d\n", rsp.StatusCode)
 			}
 		})
 	}

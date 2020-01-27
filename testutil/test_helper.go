@@ -281,6 +281,21 @@ func (h *TestHelper) RetryFor(timeout time.Duration, fn func() error) error {
 	}
 }
 
+// HTTPGetRsp sends a GET request to the given URL and returns the response.
+// It retries requests for up to 30 seconds, giving pods time to start.
+func (h *TestHelper) HTTPGetRsp(url string) (*http.Response, error) {
+	var resp *http.Response
+	err := h.RetryFor(time.Minute, func() error {
+		var err error
+		resp, err = h.httpClient.Get(url)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 // HTTPGetURL sends a GET request to the given URL. It returns the response body
 // in the event of a successful 200 response. In the event of a non-200
 // response, it returns an error. It retries requests for up to 30 seconds,
