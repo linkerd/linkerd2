@@ -13,3 +13,4 @@ web/app/yarn-error.log
 **/*.gogen*
 **/*.swp
 charts/*/charts/
+charts/*/add-ons/*/charts
