@@ -1211,6 +1211,17 @@ func (hc *HealthChecker) allCategories() []category {
 						return &SkipError{Reason: "not run for non HA installs"}
 					},
 				},
+				{
+					description: "replicated control plane pods are scheduled on different hosts",
+					hintAnchor:  "l5d-control-plane-pod-hosts",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						if hc.isHA() {
+							return hc.checkReplicatedPodsHosts()
+						}
+						return &SkipError{Reason: "not run for non HA installs"}
+					},
+				},
 			},
 		},
 	}
@@ -1266,6 +1277,20 @@ func (hc *HealthChecker) checkControlPlaneComponentsResourceRequirements() error
 			return fmt.Errorf("resource requirements not configured for containers %v in deployment \"%s\"", containers, conf.Name)
 		}
 
+	}
+	return nil
+}
+
+func (hc *HealthChecker) checkReplicatedPodsHosts() error {
+	for _, component := range linkerdHAControlPlaneComponents {
+		podList, err := hc.kubeAPI.CoreV1().Pods(hc.ControlPlaneNamespace).List(metav1.ListOptions{LabelSelector: getProxyDeploymentLabel(component)})
+		if err != nil {
+			return err
+		}
+
+		if ok, podName := scheduledOnDifferentHosts(podList); !ok {
+			return fmt.Errorf("pod %s may have been scheduled on the wrong host", podName)
+		}
 	}
 	return nil
 }
@@ -2177,4 +2202,28 @@ func hasResourceRequirements(conf *appsv1.Deployment) (bool, []string) {
 		return false, faulty
 	}
 	return true, faulty
+}
+
+func getProxyDeploymentLabel(deployment string) string {
+	return fmt.Sprintf("%s=%s", k8s.ProxyDeploymentLabel, deployment)
+}
+
+func scheduledOnDifferentHosts(podList *corev1.PodList) (bool, string) {
+	hosts := []string{}
+	for _, pod := range podList.Items {
+		if indexOf(hosts, pod.Status.HostIP) > -1 {
+			return false, pod.Name
+		}
+		hosts = append(hosts, pod.Status.HostIP)
+	}
+	return true, ""
+}
+
+func indexOf(slice []string, item string) int {
+	for i := range slice {
+		if slice[i] == item {
+			return i
+		}
+	}
+	return -1
 }
