@@ -110,7 +110,7 @@ const trafficSplitDetailColumns = [
   },
 ];
 
-const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable) => {
+const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, grafana) => {
   const isAuthorityTable = resource === 'authority';
   const isTrafficSplitTable = resource === 'trafficsplit';
   const isMultiResourceTable = resource === 'multi_resource';
@@ -200,7 +200,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     columns.splice(1, 0, meshedColumn);
   }
 
-  if (!isTrafficSplitTable) {
+  if (!isTrafficSplitTable && grafana !== '') {
     columns = columns.concat(grafanaColumn);
   }
 
@@ -224,12 +224,12 @@ const preprocessMetrics = metrics => {
   return tableData;
 };
 
-const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace }) => {
+const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace, grafana }) => {
   const showNsColumn = resource === 'namespace' || selectedNamespace !== '_all' ? false : showNamespaceColumn;
   const showNameColumn = resource !== 'trafficsplit' ? true : showName;
   let orderBy = 'name';
   if (resource === 'trafficsplit' && !showNameColumn) { orderBy = 'leaf'; }
-  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable);
+  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, grafana);
   const rows = preprocessMetrics(metrics);
   return (
     <BaseTable
@@ -251,6 +251,7 @@ MetricsTable.propTypes = {
   metrics: PropTypes.arrayOf(processedMetricsPropType),
   resource: PropTypes.string.isRequired,
   selectedNamespace: PropTypes.string.isRequired,
+  grafana: PropTypes.string.isRequired,
   showName: PropTypes.bool,
   showNamespaceColumn: PropTypes.bool,
   title: PropTypes.string,

@@ -27,6 +27,7 @@ type (
 		uuid                string
 		controllerNamespace string
 		clusterDomain       string
+		grafana             string
 		grafanaProxy        *grafanaProxy
 		hc                  healthChecker
 		statCache           *cache.Cache
@@ -44,6 +45,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 		UUID:                h.uuid,
 		ControllerNamespace: h.controllerNamespace,
 		PathPrefix:          pathPfx,
+		Grafana:             h.grafana,
 	}
 
 	version, err := h.apiClient.Version(req.Context(), &pb.Empty{}) // TODO: remove and call /api/version from web app
