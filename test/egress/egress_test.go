@@ -32,14 +32,6 @@ func TestMain(m *testing.M) {
 /// TEST EXECUTION ///
 //////////////////////
 
-// issue: https://github.com/linkerd/linkerd2/issues/2316
-//
-// The response from `http://httpbin.org/get` is non-deterministic--returning
-// either `http://..` or `https://..` for GET requests. As #2316 mentions,
-// this test should not have an external dependency on this endpoint. As a
-// workaround for edge-20.1.3, temporarily expect either `http` or `https` so
-// that the test is not completely disabled.
-
 func TestEgressHttp(t *testing.T) {
 	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/proxy.yaml")
 	if err != nil {
@@ -63,8 +55,8 @@ func TestEgressHttp(t *testing.T) {
 		}
 	}
 
-	testCase := func(deployName, dnsName, protocolToUse, methodToUse string) {
-		testName := fmt.Sprintf("Can use egress to send %s request to %s (%s)", methodToUse, protocolToUse, deployName)
+	testCase := func(deployName, methodToUse string) {
+		testName := fmt.Sprintf("Can use egress to send %s request to (%s)", methodToUse, deployName)
 		t.Run(testName, func(t *testing.T) {
 			url, err := TestHelper.URLFor(prefixedNs, deployName, 8080)
 			if err != nil {
@@ -87,10 +79,10 @@ func TestEgressHttp(t *testing.T) {
 	for _, protocolToUse := range supportedProtocols {
 		for _, methodToUse := range methods {
 			serviceName := fmt.Sprintf("egress-test-%s-%s", protocolToUse, strings.ToLower(methodToUse))
-			testCase(serviceName, "www.httpbin.org", protocolToUse, methodToUse)
+			testCase(serviceName, methodToUse)
 		}
 	}
 
 	// Test egress for a domain with fewer than 3 segments.
-	testCase("egress-test-not-www-get", "httpbin.org", "https", "GET")
+	testCase("egress-test-not-www-get", "GET")
 }
