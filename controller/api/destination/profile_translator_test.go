@@ -433,7 +433,7 @@ func TestProfileTranslator(t *testing.T) {
 
 		translator := &profileTranslator{
 			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name),
+			log:    logging.WithField("test", t.Name()),
 		}
 
 		translator.Update(profile)
@@ -453,7 +453,7 @@ func TestProfileTranslator(t *testing.T) {
 
 		translator := &profileTranslator{
 			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name),
+			log:    logging.WithField("test", t.Name()),
 		}
 
 		translator.Update(multipleRequestMatches)
@@ -473,7 +473,7 @@ func TestProfileTranslator(t *testing.T) {
 
 		translator := &profileTranslator{
 			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name),
+			log:    logging.WithField("test", t.Name()),
 		}
 
 		translator.Update(notEnoughRequestMatches)
@@ -489,7 +489,7 @@ func TestProfileTranslator(t *testing.T) {
 
 		translator := &profileTranslator{
 			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name),
+			log:    logging.WithField("test", t.Name()),
 		}
 
 		translator.Update(multipleResponseMatches)
@@ -509,7 +509,7 @@ func TestProfileTranslator(t *testing.T) {
 
 		translator := &profileTranslator{
 			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name),
+			log:    logging.WithField("test", t.Name()),
 		}
 
 		translator.Update(notEnoughResponseMatches)
@@ -525,7 +525,7 @@ func TestProfileTranslator(t *testing.T) {
 
 		translator := &profileTranslator{
 			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name),
+			log:    logging.WithField("test", t.Name()),
 		}
 
 		translator.Update(invalidStatusRange)
@@ -541,7 +541,7 @@ func TestProfileTranslator(t *testing.T) {
 
 		translator := &profileTranslator{
 			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name),
+			log:    logging.WithField("test", t.Name()),
 		}
 
 		translator.Update(oneSidedStatusRange)
@@ -557,7 +557,7 @@ func TestProfileTranslator(t *testing.T) {
 
 		translator := &profileTranslator{
 			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name),
+			log:    logging.WithField("test", t.Name()),
 		}
 
 		translator.Update(nil)
@@ -577,7 +577,7 @@ func TestProfileTranslator(t *testing.T) {
 
 		translator := &profileTranslator{
 			stream: mockGetProfileServer,
-			log:    logging.WithField("test", t.Name),
+			log:    logging.WithField("test", t.Name()),
 		}
 
 		translator.Update(profileWithTimeout)

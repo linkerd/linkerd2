@@ -54,7 +54,7 @@ func TestHandleTap(t *testing.T) {
 
 			h := &handler{
 				k8sAPI: k8sAPI,
-				log:    logrus.WithField("test", t.Name),
+				log:    logrus.WithField("test", t.Name()),
 			}
 			recorder := httptest.NewRecorder()
 			h.handleTap(recorder, exp.req, exp.params)
