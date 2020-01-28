@@ -2395,7 +2395,7 @@ data:
 	}
 }
 
-func getFakeConfig(secretScheme string, schemeInConfig string, issuerCerts *issuercerts.IssuerCertData) []string {
+func getFakeConfig(secretScheme string, schemeInConfig string, issuerCerts *issuercerts.IssuerCertData, configAnchorsModifier func(string) string) []string {
 
 	var resources []string
 	base64.StdEncoding.EncodeToString([]byte(issuerCerts.IssuerCrt))
@@ -2427,8 +2427,11 @@ data:
 ---
 `, base64.StdEncoding.EncodeToString([]byte(issuerCerts.TrustAnchors)), base64.StdEncoding.EncodeToString([]byte(issuerCerts.IssuerCrt)), base64.StdEncoding.EncodeToString([]byte(issuerCerts.IssuerKey))))
 	}
-
-	anchors, _ := json.Marshal(issuerCerts.TrustAnchors)
+	anchorsToEncode := issuerCerts.TrustAnchors
+	if configAnchorsModifier != nil {
+		anchorsToEncode = configAnchorsModifier(anchorsToEncode)
+	}
+	anchors, _ := json.Marshal(anchorsToEncode)
 
 	resources = append(resources, fmt.Sprintf(`
 kind: ConfigMap
@@ -2468,13 +2471,14 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 		ends   time.Time
 	}
 	var testCases = []struct {
-		checkDescription   string
-		certificateDNSName string
-		lifespan           *lifeSpan
-		tlsSecretScheme    string
-		schemeInConfig     string
-		expectedOutput     []string
-		checkerToTest      string
+		checkDescription      string
+		certificateDNSName    string
+		lifespan              *lifeSpan
+		tlsSecretScheme       string
+		schemeInConfig        string
+		expectedOutput        []string
+		checkerToTest         string
+		configAnchorsModifier func(string) string
 	}{
 		{
 			checkerToTest:    "certificate config is valid",
@@ -2483,7 +2487,6 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 			schemeInConfig:   k8s.IdentityIssuerSchemeLinkerd,
 			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid"},
 		},
-
 		{
 			checkerToTest:    "certificate config is valid",
 			checkDescription: "works with valid cert and kubernetes.io/tls secret",
@@ -2518,6 +2521,26 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 			tlsSecretScheme:  k8s.IdentityIssuerSchemeLinkerd,
 			schemeInConfig:   string(corev1.SecretTypeTLS),
 			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid: key ca.crt containing the trust anchors needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=true"},
+		},
+		{
+			checkerToTest:    "certificate config is valid",
+			checkDescription: "does not get influenced by newline differences between trust anchors",
+			tlsSecretScheme:  string(corev1.SecretTypeTLS),
+			schemeInConfig:   string(corev1.SecretTypeTLS),
+			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid"},
+			configAnchorsModifier: func(anchors string) string {
+				return strings.TrimSpace(anchors)
+			},
+		},
+		{
+			checkerToTest:    "certificate config is valid",
+			checkDescription: "fails when roots in config and secret do not match",
+			tlsSecretScheme:  string(corev1.SecretTypeTLS),
+			schemeInConfig:   string(corev1.SecretTypeTLS),
+			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid: IdentityContext.TrustAnchorsPem does not match ca.crt in linkerd-identity-issuer"},
+			configAnchorsModifier: func(anchors string) string {
+				return "nonsense"
+			},
 		},
 		{
 			checkerToTest:      "issuer cert is issued by the trust root",
@@ -2592,7 +2615,7 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 			var err error
 			hc.ControlPlaneNamespace = "linkerd"
 			issuerData := createIssuerData(testCase.certificateDNSName, testCase.lifespan.starts, testCase.lifespan.ends)
-			config := getFakeConfig(testCase.tlsSecretScheme, testCase.schemeInConfig, issuerData)
+			config := getFakeConfig(testCase.tlsSecretScheme, testCase.schemeInConfig, issuerData, testCase.configAnchorsModifier)
 			hc.kubeAPI, err = k8s.NewFakeAPI(config...)
 			_, hc.linkerdConfig, _ = hc.checkLinkerdConfigConfigMap()
 
