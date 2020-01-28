@@ -181,7 +181,6 @@ var (
 
 	expectedServiceAccountNames = []string{
 		"linkerd-controller",
-		"linkerd-grafana",
 		"linkerd-identity",
 		"linkerd-prometheus",
 		"linkerd-proxy-injector",
@@ -1992,7 +1991,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web", "tap"}
+	names := []string{"controller", "identity", "prometheus", "sp-validator", "web", "tap"}
 	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")
