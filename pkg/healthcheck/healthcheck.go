@@ -1024,6 +1024,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "can determine the latest version",
 					hintAnchor:  "l5d-version-latest",
+					warning:     true,
 					check: func(ctx context.Context) (err error) {
 						if hc.VersionOverride != "" {
 							hc.latestVersions, err = version.NewChannels(hc.VersionOverride)
