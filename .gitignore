@@ -12,5 +12,4 @@ web/app/yarn-error.log
 .gorun
 **/*.gogen*
 **/*.swp
-charts/*/charts/
-charts/*/add-ons/*/charts
+charts/**/add-ons/*/charts
