@@ -56,10 +56,12 @@ const withREST = (WrappedComponent, componentPromises, options = {}) => {
 
       // React won't unmount this component when switching resource pages so we need to clear state
       this.stopServerPolling();
-      this.onUpdate(function callback() {
-        this.setState(this.getInitialState());
-      });
+      this.resetState();
       this.startServerPolling(this.props);
+    }
+
+    resetState() {
+      this.setState(this.getInitialState());
     }
 
     componentWillUnmount() {

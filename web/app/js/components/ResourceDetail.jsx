@@ -93,9 +93,7 @@ export class ResourceDetailBase extends React.Component {
       // React won't unmount this component when switching resource pages so we need to clear state
       this.api.cancelCurrentRequests();
       this.unmeshedSources = {};
-      this.onUpdate(function callback() {
-        this.setState(this.getInitialState(match, pathPrefix));
-      });
+      this.resetState(match, pathPrefix);
     }
 
     handlePageVisibility({
@@ -104,6 +102,10 @@ export class ResourceDetailBase extends React.Component {
       onVisible: () => this.startServerPolling(),
       onHidden: () => this.stopServerPolling(),
     });
+  }
+
+  resetState(match, pathPrefix) {
+    this.setState(this.getInitialState(match, pathPrefix));
   }
 
   componentWillUnmount() {
