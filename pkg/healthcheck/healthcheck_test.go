@@ -2524,7 +2524,7 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 		},
 		{
 			checkerToTest:    "certificate config is valid",
-			checkDescription: "does not get influenced by newline differences between trust anchors",
+			checkDescription: "does not get influenced by newline differences between trust anchors (missing newline)",
 			tlsSecretScheme:  string(corev1.SecretTypeTLS),
 			schemeInConfig:   string(corev1.SecretTypeTLS),
 			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid"},
@@ -2534,12 +2534,12 @@ func TestLinkerdIdentityCheck(t *testing.T) {
 		},
 		{
 			checkerToTest:    "certificate config is valid",
-			checkDescription: "fails when roots in config and secret do not match",
+			checkDescription: "does not get influenced by newline differences between trust anchors (extra newline)",
 			tlsSecretScheme:  string(corev1.SecretTypeTLS),
 			schemeInConfig:   string(corev1.SecretTypeTLS),
-			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid: IdentityContext.TrustAnchorsPem does not match ca.crt in linkerd-identity-issuer"},
+			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid"},
 			configAnchorsModifier: func(anchors string) string {
-				return "nonsense"
+				return anchors + "\n"
 			},
 		},
 		{
