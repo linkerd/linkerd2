@@ -3,7 +3,6 @@ package egress
 import (
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/linkerd/linkerd2/testutil"
@@ -14,14 +13,6 @@ import (
 //////////////////////
 
 var TestHelper *testutil.TestHelper
-
-var egressHTTPDeployments = []string{
-	"egress-test-https-post",
-	"egress-test-http-post",
-	"egress-test-https-get",
-	"egress-test-http-get",
-	"egress-test-not-www-get",
-}
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
@@ -48,28 +39,31 @@ func TestEgressHttp(t *testing.T) {
 		t.Fatalf("Unexpected error: %v output:\n%s", err, out)
 	}
 
-	for _, deploy := range egressHTTPDeployments {
-		err = TestHelper.CheckPods(prefixedNs, deploy, 1)
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
+	err = TestHelper.CheckPods(prefixedNs, "egress-test", 1)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	testCase := func(deployName, methodToUse string) {
-		testName := fmt.Sprintf("Can use egress to send %s request to (%s)", methodToUse, deployName)
+	testCase := func(url, methodToUse string) {
+		testName := fmt.Sprintf("Can use egress to send %s request to (%s)", methodToUse, url)
 		t.Run(testName, func(t *testing.T) {
-			url, err := TestHelper.URLFor(prefixedNs, deployName, 8080)
+			cmd := []string{
+				"-n", prefixedNs, "exec", "deploy/egress-test", "-c", "http-egress",
+				"--", "curl", "-sko", "/dev/null", "-w", "%{http_code}", "-X", methodToUse, url,
+			}
+			out, err := TestHelper.Kubectl("", cmd...)
 			if err != nil {
-				t.Fatalf("Failed to get proxy URL: %s", err)
+				t.Fatalf("Failed to exec %s: %s (%s)", cmd, err, out)
 			}
 
-			rsp, err := TestHelper.HTTPGetRsp(url)
+			var status int
+			_, err = fmt.Sscanf(out, "%d", &status)
 			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
+				t.Fatalf("Failed to parse status code (%s): %s", out, err)
 			}
 
-			if rsp.StatusCode < 100 || rsp.StatusCode >= 500 {
-				t.Fatalf("Got HTTP error code: %d\n", rsp.StatusCode)
+			if status < 100 || status >= 500 {
+				t.Fatalf("Got HTTP error code: %d\n", status)
 			}
 		})
 	}
@@ -78,11 +72,11 @@ func TestEgressHttp(t *testing.T) {
 	methods := []string{"GET", "POST"}
 	for _, protocolToUse := range supportedProtocols {
 		for _, methodToUse := range methods {
-			serviceName := fmt.Sprintf("egress-test-%s-%s", protocolToUse, strings.ToLower(methodToUse))
+			serviceName := fmt.Sprintf("%s://www.linkerd.io", protocolToUse)
 			testCase(serviceName, methodToUse)
 		}
 	}
 
 	// Test egress for a domain with fewer than 3 segments.
-	testCase("egress-test-not-www-get", "GET")
+	testCase("http://linkerd.io", "GET")
 }
