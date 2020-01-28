@@ -1,3 +1,19 @@
+## edge-20.1.4
+
+This edge release is a release candidate for `stable-2.7`.
+
+The `linkerd check` command has been updated to improve the control plane
+debugging experience.
+
+* CLI
+  * Updated the mTLS trust anchor checks to eliminate false positives caused by
+    extra trailing spaces
+  * Reduced the severity level of the Linkerd version checks, so that they
+    don't fail when the external version endpoint is unreachable
+    (thanks @mayankshah1607!)
+  * Added a new `tap` APIService check to aid with uncovering Kubernetes API
+    aggregatation layer issues (thanks @droidnoob!)
+
 ## edge-20.1.3
 
 This edge release is a release candidate for `stable-2.7`.
