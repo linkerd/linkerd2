@@ -1,4 +1,7 @@
 {{ if or (.Values.tracing.enabled) -}}
+{{- /*
+  The Below code is used to remove globals and partials fields which are automatically added by helm.
+*/ -}}
 {{- $dupValues := .Values -}}
 {{- range $key, $value := $dupValues -}}
   {{- if kindIs "map" $value -}}
