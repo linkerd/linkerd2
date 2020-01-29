@@ -29,6 +29,7 @@ const (
 	EnvTrustAnchors  = "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS"
 	eventTypeSkipped = "IssuerUpdateSkipped"
 	eventTypeUpdated = "IssuerUpdated"
+	eventTypeFailed  = "IssuerValidationFailed"
 )
 
 type (
@@ -113,7 +114,7 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 		return nil, fmt.Errorf("failed to read CA from disk: %s", err)
 	}
 
-	if err := creds.Crt.Verify(svc.trustAnchors, svc.expectedName); err != nil {
+	if err := creds.Crt.Verify(svc.trustAnchors, svc.expectedName, time.Time{}); err != nil {
 		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
 	}
 
@@ -148,7 +149,7 @@ func (svc *Service) ensureIssuerStillValid() error {
 	issuer := *svc.issuer
 	switch is := issuer.(type) {
 	case *tls.CA:
-		return is.Cred.Verify(svc.trustAnchors, svc.expectedName)
+		return is.Cred.Verify(svc.trustAnchors, svc.expectedName, time.Time{})
 	default:
 		return fmt.Errorf("unsupported issuer type. Expected *tls.CA, got %v", is)
 	}
@@ -171,7 +172,9 @@ func (svc *Service) Certify(ctx context.Context, req *pb.CertifyRequest) (*pb.Ce
 	}
 
 	if err := svc.ensureIssuerStillValid(); err != nil {
-		log.Errorf("could not process CSR because of CA cert validation failure: %s", err)
+		log.Errorf("could not process CSR because of CA cert validation failure: %s - CSR Identity : %s", err, reqIdentity)
+		message := fmt.Sprintf("%s - CSR Identity : %s", err.Error(), reqIdentity)
+		svc.recordEvent(v1.EventTypeWarning, eventTypeFailed, message)
 		return nil, err
 	}
 

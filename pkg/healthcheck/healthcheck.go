@@ -972,7 +972,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "issuer cert is issued by the trust root",
 					hintAnchor:  "l5d-identity-issuer-cert-issued-by-trust-root",
 					check: func(ctx context.Context) error {
-						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.roots), hc.issuerIdentity())
+						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.roots), hc.issuerIdentity(), time.Time{})
 					},
 				},
 			},

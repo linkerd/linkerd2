@@ -2,6 +2,7 @@ package tls
 
 import (
 	"testing"
+	"time"
 )
 
 func newRoot(t *testing.T) CA {
@@ -26,7 +27,7 @@ func TestCrtRoundtrip(t *testing.T) {
 		t.Fatalf("Failed to decode PEM Crt: %s", err)
 	}
 
-	if err := crt.Verify(rootTrust, "endentity.test"); err != nil {
+	if err := crt.Verify(rootTrust, "endentity.test", time.Time{}); err != nil {
 		t.Fatal("Failed to verify round-tripped certificate")
 	}
 }

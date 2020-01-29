@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"time"
 )
 
 type (
@@ -83,13 +84,21 @@ func (crt *Crt) CertPool() *x509.CertPool {
 }
 
 // Verify the validity of the provided certificate
-func (crt *Crt) Verify(roots *x509.CertPool, name string) error {
+func (crt *Crt) Verify(roots *x509.CertPool, name string, currentTime time.Time) error {
 	i := x509.NewCertPool()
 	for _, c := range crt.TrustChain {
 		i.AddCert(c)
 	}
-	vo := x509.VerifyOptions{Roots: roots, Intermediates: i, DNSName: name}
+	vo := x509.VerifyOptions{Roots: roots, Intermediates: i, DNSName: name, CurrentTime: currentTime}
 	_, err := crt.Certificate.Verify(vo)
+
+	if currentTime.IsZero() {
+		currentTime = time.Now()
+	}
+
+	if crtExpiryError(err) {
+		return fmt.Errorf("%s - Current Time : %s - Invalid before %s - Invalid After %s", err, currentTime, crt.Certificate.NotBefore, crt.Certificate.NotAfter)
+	}
 	return err
 }
 
@@ -220,4 +229,13 @@ func DecodePEMCrt(txt string) (*Crt, error) {
 	}
 
 	return &crt, nil
+}
+
+func crtExpiryError(err error) bool {
+	switch v := err.(type) {
+	case x509.CertificateInvalidError:
+		return v.Reason == x509.Expired
+	default:
+		return false
+	}
 }
