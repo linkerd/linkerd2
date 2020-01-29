@@ -97,7 +97,7 @@ spec:
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
-	log := logging.WithField("test", t.Name)
+	log := logging.WithField("test", t.Name())
 
 	k8sAPI.Sync()
 
