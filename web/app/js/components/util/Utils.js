@@ -54,8 +54,9 @@ export const formatLatencyMs = m => {
 * Add commas to a number (converting it to a string in the process)
 */
 export function addCommas(nStr) {
-  nStr += '';
-  const x = nStr.split('.');
+  let nStr_ = nStr;
+  nStr_ += '';
+  const x = nStr_.split('.');
   let x1 = x[0];
   const x2 = x.length > 1 ? `.${x[1]}` : '';
   const rgx = /(\d+)(\d{3})/;
@@ -76,25 +77,26 @@ export const roundNumber = (num, dec) => {
 * Shorten and style number
 */
 export const styleNum = (number, unit = '', truncate = true) => {
-  if (Number.isNaN(number)) {
+  let number_ = number;
+  if (Number.isNaN(number_)) {
     return 'N/A';
   }
 
-  if (truncate && number > 999999999) {
-    number = roundNumber(number / 1000000000.0, 3);
-    return `${addCommas(number)}G${unit}`;
-  } else if (truncate && number > 999999) {
-    number = roundNumber(number / 1000000.0, 3);
-    return `${addCommas(number)}M${unit}`;
-  } else if (truncate && number > 999) {
-    number = roundNumber(number / 1000.0, 3);
-    return `${addCommas(number)}k${unit}`;
-  } else if (number > 999) {
-    number = roundNumber(number, 0);
-    return addCommas(number) + unit;
+  if (truncate && number_ > 999999999) {
+    number_ = roundNumber(number_ / 1000000000.0, 3);
+    return `${addCommas(number_)}G${unit}`;
+  } else if (truncate && number_ > 999999) {
+    number_ = roundNumber(number_ / 1000000.0, 3);
+    return `${addCommas(number_)}M${unit}`;
+  } else if (truncate && number_ > 999) {
+    number_ = roundNumber(number_ / 1000.0, 3);
+    return `${addCommas(number_)}k${unit}`;
+  } else if (number_ > 999) {
+    number_ = roundNumber(number_, 0);
+    return addCommas(number_) + unit;
   } else {
-    number = roundNumber(number, 2);
-    return addCommas(number) + unit;
+    number_ = roundNumber(number_, 2);
+    return addCommas(number_) + unit;
   }
 };
 
@@ -119,10 +121,11 @@ export const toClassName = name => {
  Create regex string from user input for a filter
 */
 export const regexFilterString = input => {
+  let input_ = input;
   // make input lower case and strip out unwanted characters
-  input = input.replace(/[^A-Z0-9/.\-_*]/gi, '').toLowerCase();
+  input_ = input_.replace(/[^A-Z0-9/.\-_*]/gi, '').toLowerCase();
   // replace "*" in input with wildcard
-  return new RegExp(input.replace(/[*]/g, '.+'));
+  return new RegExp(input_.replace(/[*]/g, '.+'));
 };
 
 /*
@@ -218,12 +221,12 @@ export const isResource = name => {
   produce octets given an ip address
 */
 const decodeIPToOctets = ip => {
-  ip = parseInt(ip, 10);
+  const ip_ = parseInt(ip, 10);
   return [
-    (ip >> 24) & 255,
-    (ip >> 16) & 255,
-    (ip >> 8) & 255,
-    ip & 255,
+    (ip_ >> 24) & 255,
+    (ip_ >> 16) & 255,
+    (ip_ >> 8) & 255,
+    ip_ & 255,
   ];
 };
 

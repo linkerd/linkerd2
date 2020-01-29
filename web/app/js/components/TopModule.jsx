@@ -203,37 +203,38 @@ class TopModule extends React.Component {
   }
 
   indexTopResult = (d, topResults) => {
+    const topResults_ = topResults;
     const { query, maxRowsToStore } = this.props;
 
     // only index if have the full request (i.e. init and end)
     if (!d.requestInit) {
-      return topResults;
+      return topResults_;
     }
 
     const eventKey = this.topEventKey(d.requestInit);
     this.addSuccessCount(d);
 
-    if (!topResults[eventKey]) {
-      topResults[eventKey] = this.initialTopResult(d, eventKey);
+    if (!topResults_[eventKey]) {
+      topResults_[eventKey] = this.initialTopResult(d, eventKey);
     } else {
-      this.incrementTopResult(d, topResults[eventKey]);
+      this.incrementTopResult(d, topResults_[eventKey]);
     }
 
-    if (_size(topResults) > maxRowsToStore) {
-      this.deleteOldestIndexedResult(topResults);
+    if (_size(topResults_) > maxRowsToStore) {
+      this.deleteOldestIndexedResult(topResults_);
     }
 
     if (d.base.proxyDirection === 'INBOUND') {
       this.updateNeighborsFromTapData(d.requestInit.source, _get(d, 'requestInit.sourceMeta.labels'));
       const isPod = query.resource.split('/')[0] === 'pod';
       if (isPod) {
-        topResults[eventKey].meshed = !_has(this.unmeshedSources, `pod/${d.base.source.pod}`);
+        topResults_[eventKey].meshed = !_has(this.unmeshedSources, `pod/${d.base.source.pod}`);
       } else {
-        topResults[eventKey].meshed = !_isEmpty(d.base.source.owner) && !_has(this.unmeshedSources, d.base.source.owner);
+        topResults_[eventKey].meshed = !_isEmpty(d.base.source.owner) && !_has(this.unmeshedSources, d.base.source.owner);
       }
     }
 
-    return topResults;
+    return topResults_;
   }
 
   updateTapEventIndexState = () => {
@@ -288,6 +289,7 @@ class TopModule extends React.Component {
   }
 
   addSuccessCount = d => {
+    const d_ = d;
     // cope with the fact that gRPC failures are returned with HTTP status 200
     // and correctly classify gRPC failures as failures
     let success = parseInt(_get(d, 'responseInit.http.responseInit.httpStatus'), 10) < 500;
@@ -300,10 +302,11 @@ class TopModule extends React.Component {
       }
     }
 
-    d.success = success;
+    d_.success = success;
   }
 
   deleteOldestIndexedResult = resultIndex => {
+    const resultIndex_ = resultIndex;
     let oldest = Date.now();
     let oldestId = '';
 
@@ -314,7 +317,7 @@ class TopModule extends React.Component {
       }
     });
 
-    delete resultIndex[oldestId];
+    delete resultIndex_[oldestId];
   }
 
   clearTopTable() {

@@ -23,10 +23,11 @@ export const httpMethods = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', '
 
 export const defaultMaxRps = '100.0';
 export const setMaxRps = query => {
-  if (!_isEmpty(query.maxRps)) {
-    query.maxRps = parseFloat(query.maxRps);
+  const query_ = query;
+  if (!_isEmpty(query_.maxRps)) {
+    query_.maxRps = parseFloat(query_.maxRps);
   } else {
-    query.maxRps = 0; // golang unset value for maxRps
+    query_.maxRps = 0; // golang unset value for maxRps
   }
 };
 
@@ -98,8 +99,9 @@ export const WS_POLICY_VIOLATION = 1008;
   Use tap data to figure out a resource's unmeshed upstreams/downstreams
 */
 export const processNeighborData = (source, labels, resourceAgg, resourceType) => {
+  const resourceAgg_ = resourceAgg;
   if (_isEmpty(labels)) {
-    return resourceAgg;
+    return resourceAgg_;
   }
 
   let neighb = {};
@@ -135,15 +137,15 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
 
   const key = `${neighb.type}/${neighb.name}`;
   if (_has(labels, 'control_plane_ns')) {
-    delete resourceAgg[key];
+    delete resourceAgg_[key];
   } else {
-    if (_has(resourceAgg, key)) {
-      _merge(neighb.pods, resourceAgg[key].pods);
+    if (_has(resourceAgg_, key)) {
+      _merge(neighb.pods, resourceAgg_[key].pods);
     }
-    resourceAgg[key] = neighb;
+    resourceAgg_[key] = neighb;
   }
 
-  return resourceAgg;
+  return resourceAgg_;
 };
 
 /*
@@ -159,12 +161,13 @@ const tapEventKey = (d, eventType) => {
   produce octets given an ip address
 */
 const decodeIPToOctets = ip => {
-  ip = parseInt(ip, 10);
+  const ip_ = parseInt(ip, 10);
+
   return [
-    (ip >> 24) & 255,
-    (ip >> 16) & 255,
-    (ip >> 8) & 255,
-    ip & 255,
+    (ip_ >> 24) & 255,
+    (ip_ >> 16) & 255,
+    (ip_ >> 8) & 255,
+    ip_ & 255,
   ];
 };
 

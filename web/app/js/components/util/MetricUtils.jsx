@@ -200,6 +200,7 @@ export const groupResourcesByNs = apiRsp => {
   const statTables = _get(apiRsp, ['ok', 'statTables']);
   const authoritiesByNs = {};
   const resourcesByNs = _reduce(statTables, (mem, table) => {
+    const mem_ = mem;
     _each(table.podGroup.rows, row => {
       // filter out resources that aren't meshed. note that authorities don't
       // have pod counts and therefore can't be filtered out here
@@ -207,8 +208,8 @@ export const groupResourcesByNs = apiRsp => {
         return;
       }
 
-      if (!mem[row.resource.namespace]) {
-        mem[row.resource.namespace] = [];
+      if (!mem_[row.resource.namespace]) {
+        mem_[row.resource.namespace] = [];
         authoritiesByNs[row.resource.namespace] = [];
       }
 
@@ -219,10 +220,10 @@ export const groupResourcesByNs = apiRsp => {
           authoritiesByNs[row.resource.namespace].push(row.resource.name);
           break;
         default:
-          mem[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
+          mem_[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
       }
     });
-    return mem;
+    return mem_;
   }, {});
   return {
     authoritiesByNs,
@@ -231,10 +232,11 @@ export const groupResourcesByNs = apiRsp => {
 };
 
 export const excludeResourcesFromRollup = (rollupMetrics, resourcesToExclude) => {
+  const rollupMetrics_ = rollupMetrics;
   _each(resourcesToExclude, resource => {
-    delete rollupMetrics[resource];
+    delete rollupMetrics_[resource];
   });
-  return rollupMetrics;
+  return rollupMetrics_;
 };
 
 export const emptyMetric = {
