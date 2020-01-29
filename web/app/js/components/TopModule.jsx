@@ -173,32 +173,33 @@ class TopModule extends React.Component {
   }
 
   incrementTopResult = (d, result) => {
-    result.count += 1;
+    const result_ = result;
+    result_.count += 1;
     if (!d.success) {
-      result.failure += 1;
+      result_.failure += 1;
     } else {
-      result.success += 1;
+      result_.success += 1;
     }
-    result.successRate = new Percentage(result.success, result.success + result.failure);
+    result_.successRate = new Percentage(result_.success, result_.success + result_.failure);
 
-    result.last = d.responseEnd.latency;
-    if (d.responseEnd.latency < result.best) {
-      result.best = d.responseEnd.latency;
+    result_.last = d.responseEnd.latency;
+    if (d.responseEnd.latency < result_.best) {
+      result_.best = d.responseEnd.latency;
     }
-    if (d.responseEnd.latency > result.worst) {
-      result.worst = d.responseEnd.latency;
+    if (d.responseEnd.latency > result_.worst) {
+      result_.worst = d.responseEnd.latency;
     }
 
-    result.sourceDisplay.ips[d.base.source.str] = true;
+    result_.sourceDisplay.ips[d.base.source.str] = true;
     if (!_isNil(d.requestInit.sourceMeta.labels.pod)) {
-      result.sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
+      result_.sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
     }
-    result.destinationDisplay.ips[d.base.destination.str] = true;
+    result_.destinationDisplay.ips[d.base.destination.str] = true;
     if (!_isNil(d.requestInit.destinationMeta.labels.pod)) {
-      result.destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
+      result_.destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
     }
 
-    result.lastUpdated = Date.now();
+    result_.lastUpdated = Date.now();
   }
 
   indexTopResult = (d, topResults) => {

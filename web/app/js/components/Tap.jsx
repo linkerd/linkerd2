@@ -174,6 +174,8 @@ class Tap extends React.Component {
   }
 
   deleteOldestTapResult = resultIndex => {
+    const resultIndex_ = resultIndex;
+
     let oldest = Date.now();
     let oldestId = '';
 
@@ -184,7 +186,7 @@ class Tap extends React.Component {
       }
     });
 
-    delete resultIndex[oldestId];
+    delete resultIndex_[oldestId];
   }
 
   startServerPolling() {

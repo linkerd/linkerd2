@@ -50,13 +50,14 @@ class Top extends React.Component {
     const statTables = _get(rsp, [0, 'ok', 'statTables']);
     const authoritiesByNs = {};
     const resourcesByNs = _reduce(statTables, (mem, table) => {
+      const mem_ = mem;
       _each(table.podGroup.rows, row => {
         if (row.meshedPodCount === '0') {
           return;
         }
 
-        if (!mem[row.resource.namespace]) {
-          mem[row.resource.namespace] = [];
+        if (!mem_[row.resource.namespace]) {
+          mem_[row.resource.namespace] = [];
           authoritiesByNs[row.resource.namespace] = [];
         }
 
@@ -67,10 +68,10 @@ class Top extends React.Component {
             authoritiesByNs[row.resource.namespace].push(row.resource.name);
             break;
           default:
-            mem[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
+            mem_[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
         }
       });
-      return mem;
+      return mem_;
     }, {});
     return {
       authoritiesByNs,

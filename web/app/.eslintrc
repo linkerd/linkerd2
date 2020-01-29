@@ -84,6 +84,7 @@
 
     // These rules represent best practices that we're not adhering to, and should be enabled
     "jsx-a11y/click-events-have-key-events": 0,
-    "no-param-reassign": 0
+    "no-param-reassign": 1,
+    "react/no-did-update-set-state": 0
   }
 }
