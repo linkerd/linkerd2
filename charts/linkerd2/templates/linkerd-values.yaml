@@ -1,6 +1,5 @@
 {{ if or (.Values.tracing.enabled) -}}
 {{- $dupValues := .Values -}}
-{{- $dupValues := omit $dupValues "partials" -}}
 {{- range $key, $value := $dupValues -}}
   {{- if kindIs "map" $value -}}
     {{- if and (hasKey $value "global") (ne $key "configs" ) -}}
