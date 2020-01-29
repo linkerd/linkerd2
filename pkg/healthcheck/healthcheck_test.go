@@ -1902,7 +1902,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 	t.Run("Returns an error if not all pods are running", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
-			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodFailed, false),
 			pod("linkerd-tap-6c878df6c8-2hmtd", corev1.PodRunning, true),
@@ -1922,19 +1921,18 @@ func TestValidateControlPlanePods(t *testing.T) {
 	t.Run("Returns an error if not all containers are ready", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
-			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, false),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
 			pod("linkerd-tap-6c878df6c8-2hmtd", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
-			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
+			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, false),
 		}
 
 		err := validateControlPlanePods(pods)
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "pod/linkerd-grafana-5b7d796646-hh46d container grafana is not ready" {
+		if err.Error() != "pod/linkerd-web-98c9ddbcd-7b5lh container web is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -1942,7 +1940,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 	t.Run("Returns nil if all pods are running and all containers are ready", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
-			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
@@ -1961,7 +1958,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-controller-6f78cbd47-bc558", corev1.PodRunning, false),
 			pod("linkerd-controller-6f78cbd47-bc559", corev1.PodFailed, false),
-			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27983", corev1.PodRunning, false),
 			pod("linkerd-identity-6849948664-27984", corev1.PodFailed, false),
@@ -1980,7 +1976,6 @@ func TestValidateControlPlanePods(t *testing.T) {
 	t.Run("Returns nil if all linkerd pods are running and pod list includes non-linkerd pod", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
-			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
