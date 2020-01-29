@@ -4,5 +4,5 @@ dependencies:
   repository: file://../partials
 - name: tracing
   version: 0.1.0
-  repository: file://add-ons/tracing
+  repository: file://../add-ons/tracing
   condition: tracing.enabled
