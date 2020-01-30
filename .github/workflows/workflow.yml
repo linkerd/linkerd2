@@ -361,28 +361,11 @@ jobs:
       uses: actions/checkout@v2
     - name: Configure gcloud
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
-      env:
-        CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
-        CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
-        GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
-        GCP_ZONE: ${{ secrets.GCP_ZONE }}
-        GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
-      run: |
-        # Install gcloud and kubectl.
-        echo "$CLOUD_SDK_SERVICE_ACCOUNT_KEY" > .gcp.json
-        dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
-        (
-          . bin/_gcp.sh ;
-          install_gcloud "$dir"
-          gcloud components install kubectl
-          # Configure gcloud with a service account.
-          set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
-          # Get a kubernetes context.
-          get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
-        )
-        . "$dir/path.bash.inc"
-        gcloud auth configure-docker
-        bin/kubectl version --short
+      uses: ./.github/actions/gcloud
+      with:
+        cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
+        gcp_project: ${{ secrets.GCP_PROJECT }}
+        gcp_zone: ${{ secrets.GCP_ZONE }}
     - name: Docker SSH setup
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       run: |
@@ -412,30 +395,6 @@ jobs:
     - name: Checkout code
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       uses: actions/checkout@v2
-    - name: Configure gcloud
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
-      env:
-        CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
-        CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
-        GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
-        GCP_ZONE: ${{ secrets.GCP_ZONE }}
-        GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
-      run: |
-        # Install gcloud and kubectl.
-        echo "$CLOUD_SDK_SERVICE_ACCOUNT_KEY" > .gcp.json
-        dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
-        (
-          . bin/_gcp.sh ;
-          install_gcloud "$dir"
-          gcloud components install kubectl
-          # Configure gcloud with a service account.
-          set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
-          # Get a kubernetes context.
-          get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
-        )
-        . "$dir/path.bash.inc"
-        gcloud auth configure-docker
-        bin/kubectl version --short
     - name: Install linkerd CLI
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       run: |
@@ -447,6 +406,14 @@ jobs:
         # validate CLI version matches the repo
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
         echo "Installed Linkerd CLI version: $TAG"
+    - name: Create GKE cluster
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      uses: ./.github/actions/gcloud
+      with:
+        cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
+        gcp_project: ${{ secrets.GCP_PROJECT }}
+        gcp_zone: ${{ secrets.GCP_ZONE }}
+        create: true
     - name: Run integration tests
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
@@ -471,34 +438,25 @@ jobs:
     - name: Checkout code
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       uses: actions/checkout@v2
-    - name: Configure gcloud
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
-      env:
-        CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
-        CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
-        GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
-        GCP_ZONE: ${{ secrets.GCP_ZONE }}
-        GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
-      run: |
-        # Install gcloud and kubectl.
-        echo "$CLOUD_SDK_SERVICE_ACCOUNT_KEY" > .gcp.json
-        dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
-        (. bin/_gcp.sh ;
-          install_gcloud "$dir"
-          gcloud components install kubectl
-          # Configure gcloud with a service account.
-          set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
-          # Get a kubernetes context.
-          get_k8s_ctx "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
-        )
-        . "$dir/path.bash.inc"
-        gcloud auth configure-docker
-        bin/kubectl version --short
-    - name: Cleanup
+    - name: Install linkerd CLI
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       run: |
-        export PATH="`pwd`/bin:$PATH"
-        bin/test-cleanup
+        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
+        image="gcr.io/linkerd-io/cli-bin:$TAG"
+        id=$(bin/docker create $image)
+        bin/docker cp "$id:/out/linkerd-linux" "$HOME/.linkerd"
+        $HOME/.linkerd version --client
+        # validate CLI version matches the repo
+        [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
+        echo "Installed Linkerd CLI version: $TAG"
+    - name: Destroy GKE cluster
+      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+      uses: ./.github/actions/gcloud
+      with:
+        cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
+        gcp_project: ${{ secrets.GCP_PROJECT }}
+        gcp_zone: ${{ secrets.GCP_ZONE }}
+        destroy: true
 
   #
   # Helm chart artifact deploy run for:
@@ -515,34 +473,22 @@ jobs:
       uses: actions/checkout@v2
     - name: Configure gsutils
       if: startsWith(github.ref, 'refs/tags')
-      env:
-        CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
-        CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.LINKERD_SITE_TOKEN }}
-        GCP_PROJECT: ${{ secrets.LINKERD_SITE_PROJECT }}
-        GCP_ZONE: ${{ secrets.LINKERD_SITE_ZONE }}
-        GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
-      run: |
-        # Install gcloud and gsutil.
-        echo "$CLOUD_SDK_SERVICE_ACCOUNT_KEY" > .gcp.json
-        dir="${CLOUDSDK_INSTALL_DIR:-${HOME}}/google-cloud-sdk"
-        (
-          . bin/_gcp.sh ;
-          install_gcloud "$dir"
-          gcloud components install gsutil
-          # Configure gcloud with a service account.
-          set_gcloud_config "$GCP_PROJECT" "$GCP_ZONE" "$GKE_CLUSTER"
-        )
-        . "$dir/path.bash.inc"
-        mkdir -p target/helm
+      uses: ./.github/actions/gcloud
+      with:
+        cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
+        gcp_project: ${{ secrets.GCP_PROJECT }}
+        gcp_zone: ${{ secrets.GCP_ZONE }}
     - name: Edge Helm chart creation and upload
       if: startsWith(github.ref, 'refs/tags/edge')
       run: |
+        mkdir -p target/helm
         gsutil cp gs://helm.linkerd.io/edge/index.yaml target/helm/index-pre.yaml
         bin/helm-build package
         gsutil rsync target/helm gs://helm.linkerd.io/edge
     - name: Stable Helm chart creation and upload
       if: startsWith(github.ref, 'refs/tags/stable')
       run: |
+        mkdir -p target/helm
         gsutil cp gs://helm.linkerd.io/stable/index.yaml target/helm/index-pre.yaml
         bin/helm-build package
         gsutil rsync target/helm gs://helm.linkerd.io/stable

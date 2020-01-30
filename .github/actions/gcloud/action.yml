@@ -1,0 +1,21 @@
+name: gcloud
+description: Configure gcloud
+inputs:
+  cloud_sdk_service_account_key:
+    required: true
+  gcp_project:
+    required: true
+  gcp_zone:
+    required: true
+  create:
+    required: false
+    description: Set to true to create a new cluster. The linkerd CLI should have been installed in the runner beforehand.
+  destroy:
+    required: false
+    description: Set to false to create a new cluster. The linkerd CLI should have been installed in the runner beforehand.
+  run-id:
+    required: false
+    default: ${{ github.run_id }}
+runs:
+  using: node12
+  main: dist/index.js
