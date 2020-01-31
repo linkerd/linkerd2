@@ -3,6 +3,11 @@
 # This file is a collection of helper functions for running integration tests.
 # It is used primarily by `bin/test-run` and ci.
 
+# Returns the latest stable verson
+latest_stable() {
+  curl -s https://versioncheck.linkerd.io/version.json | grep -o "stable-[0-9]*.[0-9]*.[0-9]*"
+}
+
 # init_test_run parses input params, initializes global vars, and checks for
 # linkerd and kubectl. Call this prior to calling any of the
 # *_integration_tests() functions.
@@ -172,7 +177,7 @@ install_stable() {
 # $1 - namespace to use for the stable release
 run_upgrade_test() {
     local stable_namespace=$1
-    local stable_version=$(curl -s https://versioncheck.linkerd.io/version.json | grep -o "stable-[0-9]*.[0-9]*.[0-9]*")
+    local stable_version=$(latest_stable)
 
     install_stable $stable_namespace
     run_test "$test_directory/install_test.go" --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace
@@ -194,7 +199,7 @@ setup_helm() {
 
 run_helm_upgrade_test() {
     setup_helm
-    local stable_version=$(curl -s https://versioncheck.linkerd.io/version.json | grep -o "stable-[0-9]*.[0-9]*.[0-9]*")
+    local stable_version=$(latest_stable)
     run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace-helm \
         --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-stable-chart="linkerd/linkerd2" --helm-release=$helm_release_name --tiller-ns=$tiller_namespace --upgrade-helm-from-version="$stable_version"
 }

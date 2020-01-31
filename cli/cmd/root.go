@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/version"
-
 	"github.com/spf13/pflag"
 
 	"github.com/fatih/color"
@@ -40,7 +38,6 @@ var (
 	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
 
 	controlPlaneNamespace string
-	cliVersionOverride    string
 	cniNamespace          string
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	kubeconfigPath        string
@@ -74,11 +71,6 @@ var RootCmd = &cobra.Command{
 	Short: "linkerd manages the Linkerd service mesh",
 	Long:  `linkerd manages the Linkerd service mesh.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-
-		if cliVersionOverride != "" {
-			version.Version = cliVersionOverride
-		}
-
 		// enable / disable logging
 		if verbose {
 			log.SetLevel(log.DebugLevel)
@@ -108,8 +100,6 @@ func init() {
 	RootCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
 	RootCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	RootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
-	RootCmd.PersistentFlags().StringVar(&cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
-
 	RootCmd.AddCommand(newCmdCheck())
 	RootCmd.AddCommand(newCmdCompletion())
 	RootCmd.AddCommand(newCmdDashboard())
