@@ -166,7 +166,7 @@ jobs:
     name: Docker build
     runs-on: ubuntu-18.04
     env:
-      IMAGE_ARCHIVES_DIR: $HOME/archives
+      IMAGE_ARCHIVES_DIR: /home/runner/archives
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -179,6 +179,14 @@ jobs:
         echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
         ssh linkerd-docker docker version
+    - name: Try to load cached Go modules
+      if: github.event.pull_request.head.repo.fork
+      uses: actions/cache@v1
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - name: Build docker images (host)
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
@@ -186,17 +194,13 @@ jobs:
       run: DOCKER_TRACE=1 bin/docker-build
     - name: Build docker images (GitHub)
       if: github.event.pull_request.head.repo.fork
-      run: DOCKER_TRACE=1:LINKERD_LOCAL_BUILD_CLI=1 bin/docker-build
+      run: DOCKER_TRACE=1 LINKERD_LOCAL_BUILD_CLI=1 bin/docker-build
     - name: Create image archives directory
       if: github.event.pull_request.head.repo.fork
       run: mkdir -p $IMAGE_ARCHIVES_DIR
     - name: Copy out linkerd CLI
       if: github.event.pull_request.head.repo.fork
-      run: |
-        TAG="$(bin/root-tag)"
-        CLI_IMAGE="gcr.io/linkerd-io/cli-bin:$TAG"
-        CLI_CONTAINER_ID=$(bin/docker create $CLI_IMAGE)
-        bin/docker cp "$CLI_CONTAINER_ID:/out/linkerd-linux" $IMAGE_ARCHIVES_DIR/linkerd
+      run: cp target/cli/linux/linkerd $IMAGE_ARCHIVES_DIR/
     - name: Save docker images
       if: github.event.pull_request.head.repo.fork
       run: |
@@ -204,15 +208,16 @@ jobs:
         for img in controller grafana proxy web ; do
           docker save "gcr.io/linkerd-io/$img:$TAG" > $IMAGE_ARCHIVES_DIR/$img.tar
         done
-    - name: Move image archives directory for upload action
-      if: github.event.pull_request.head.repo.fork
-      run: mv $IMAGE_ARCHIVES_DIR .
+    # `with.path` values do not support environment variables yet, so an
+    # absolute path is used here.
+    #
+    # https://github.com/actions/upload-artifact/issues/8
     - name: Upload image archives
       if: github.event.pull_request.head.repo.fork
       uses: actions/upload-artifact@v1
       with:
         name: image-archives
-        path: archives
+        path: /home/runner/archives
 
   kind_setup:
     strategy:
@@ -254,9 +259,9 @@ jobs:
         fi
 
   #
-  # Integration tests run on the docker host are limited by the fact that
+  # Integration tests that run on the docker host are limited by the fact that
   # while they all run in separate KinD clusters, they are on the same
-  # machine. The `strategy` contetxt cannot be conditionally set, so there are
+  # machine. The `strategy` context cannot be conditionally set, so there are
   # separate `kind_integration_*` jobs. This allows the `kind_integration_gh`
   # job to run it's entire matrix in parallel.
   #
@@ -267,7 +272,7 @@ jobs:
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_pull, docker_build, kind_setup]
-    name: Integration tests (${{ matrix.integration_test }})
+    name: Host integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
@@ -351,7 +356,7 @@ jobs:
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_pull, docker_build, kind_setup]
-    name: Integration tests (${{ matrix.integration_test }})
+    name: GitHub integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
@@ -404,7 +409,7 @@ jobs:
       fail-fast: false # always attempt to cleanup all clusters
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
-    needs: [kind_integration_host, kind_integration_gh]
+    needs: [kind_integration_host]
     name: Cluster cleanup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
@@ -413,13 +418,16 @@ jobs:
       uses: actions/checkout@v2
     # for debugging
     - name: Dump env
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
         env | sort
     - name: Dump GitHub context
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         GITHUB_CONTEXT: ${{ toJson(github) }}
       run: echo "$GITHUB_CONTEXT"
     - name: Dump job context
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         JOB_CONTEXT: ${{ toJson(job) }}
       run: echo "$JOB_CONTEXT"
