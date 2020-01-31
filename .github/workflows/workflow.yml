@@ -179,6 +179,7 @@ jobs:
         echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
         ssh linkerd-docker docker version
+        echo ::set-env name=DOCKER_HOST::ssh://linkerd-docker
     - name: Try to load cached Go modules
       if: github.event.pull_request.head.repo.fork
       uses: actions/cache@v1
@@ -187,14 +188,8 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    - name: Build docker images (host)
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-      env:
-        DOCKER_HOST: ssh://linkerd-docker
+    - name: Build docker images
       run: DOCKER_TRACE=1 bin/docker-build
-    - name: Build docker images (GitHub)
-      if: github.event.pull_request.head.repo.fork
-      run: DOCKER_TRACE=1 LINKERD_LOCAL_BUILD_CLI=1 bin/docker-build
     - name: Create image archives directory
       if: github.event.pull_request.head.repo.fork
       run: mkdir -p $IMAGE_ARCHIVES_DIR
@@ -355,7 +350,7 @@ jobs:
     strategy:
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
-    needs: [docker_pull, docker_build, kind_setup]
+    needs: [docker_build]
     name: GitHub integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
