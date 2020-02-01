@@ -140,13 +140,12 @@ jobs:
 
   docker_pull:
     name: Docker pull
+    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v2
     - name: Docker SSH setup
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
         mkdir -p ~/.ssh/
         touch ~/.ssh/id && chmod 600 ~/.ssh/id
@@ -155,7 +154,6 @@ jobs:
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
         ssh linkerd-docker docker version
     - name: Docker pull
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_HOST: ssh://linkerd-docker
       run: |
@@ -181,7 +179,7 @@ jobs:
         ssh linkerd-docker docker version
         echo ::set-env name=DOCKER_HOST::ssh://linkerd-docker
     - name: Try to load cached Go modules
-      if: github.event.pull_request.head.repo.fork
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       uses: actions/cache@v1
       with:
         path: ~/go/pkg/mod
@@ -191,13 +189,13 @@ jobs:
     - name: Build docker images
       run: DOCKER_TRACE=1 bin/docker-build
     - name: Create image archives directory
-      if: github.event.pull_request.head.repo.fork
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: mkdir -p $IMAGE_ARCHIVES_DIR
     - name: Copy out linkerd CLI
-      if: github.event.pull_request.head.repo.fork
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: cp target/cli/linux/linkerd $IMAGE_ARCHIVES_DIR/
     - name: Save docker images
-      if: github.event.pull_request.head.repo.fork
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: |
         TAG="$(bin/root-tag)"
         for img in controller grafana proxy web ; do
@@ -208,7 +206,7 @@ jobs:
     #
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload image archives
-      if: github.event.pull_request.head.repo.fork
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       uses: actions/upload-artifact@v1
       with:
         name: image-archives
@@ -220,13 +218,12 @@ jobs:
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     name: Cluster setup (${{ matrix.integration_test }})
+    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v2
     - name: Docker SSH setup
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
         mkdir -p ~/.ssh/
         touch ~/.ssh/id && chmod 600 ~/.ssh/id
@@ -235,7 +232,6 @@ jobs:
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
         ssh linkerd-docker docker version
     - name: Kind cluster setup
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_HOST: ssh://linkerd-docker
       run: |
@@ -257,24 +253,23 @@ jobs:
   # Integration tests that run on the docker host are limited by the fact that
   # while they all run in separate KinD clusters, they are on the same
   # machine. The `strategy` context cannot be conditionally set, so there are
-  # separate `kind_integration_*` jobs. This allows the `kind_integration_gh`
+  # separate `kind_integration_*` jobs. This allows the `kind_integration_github`
   # job to run it's entire matrix in parallel.
   #
 
-  kind_integration_host:
+  kind_integration_packet:
     strategy:
       max-parallel: 3
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_pull, docker_build, kind_setup]
-    name: Host integration tests (${{ matrix.integration_test }})
+    name: Int. tests (Packet - ${{ matrix.integration_test }})
+    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v2
     - name: Docker SSH setup
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
         mkdir -p ~/.ssh/
         touch ~/.ssh/id && chmod 600 ~/.ssh/id
@@ -283,7 +278,6 @@ jobs:
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
         ssh linkerd-docker docker version
     - name: Try to load cached Go modules
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/cache@v1
       with:
         path: ~/go/pkg/mod
@@ -291,7 +285,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Kind load docker images
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
@@ -306,7 +299,6 @@ jobs:
           done
         EOF
     - name: Install linkerd CLI
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_HOST: ssh://linkerd-docker
       run: |
@@ -319,7 +311,6 @@ jobs:
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
         echo "Installed Linkerd CLI version: $TAG"
     - name: Run integration tests
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_HOST: ssh://linkerd-docker
         GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
@@ -346,24 +337,22 @@ jobs:
           ${{ matrix.integration_test }}_integration_tests
         )
   
-  kind_integration_gh:
+  kind_integration_github:
     strategy:
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_build]
-    name: GitHub integration tests (${{ matrix.integration_test }})
+    name: Int. tests (GitHub - ${{ matrix.integration_test }})
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
-      if: github.event.pull_request.head.repo.fork
       uses: actions/checkout@v2
     - name: Download image archives
-      if: github.event.pull_request.head.repo.fork
       uses: actions/download-artifact@v1
       with:
         name: image-archives
     - name: Try to load cached Go modules
-      if: github.event.pull_request.head.repo.fork
       uses: actions/cache@v1
       with:
         path: ~/go/pkg/mod
@@ -371,29 +360,26 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Setup KinD (default)
-      if: github.event.pull_request.head.repo.fork && matrix.integration_test != 'custom_domain'
+      if: matrix.integration_test != 'custom_domain'
       uses: engineerd/setup-kind@v0.3.0
       with:
         version: "v0.6.1"
     - name: Setup KinD (custom_domain)
-      if: github.event.pull_request.head.repo.fork && matrix.integration_test == 'custom_domain'
+      if: matrix.integration_test == 'custom_domain'
       uses: engineerd/setup-kind@v0.3.0
       with:
         config: test/testdata/custom_cluster_domain_config.yaml
         version: "v0.6.1"
     - name: Load image archives into KinD
-      if: github.event.pull_request.head.repo.fork
       run: |
         for img in controller grafana proxy web; do
           kind load image-archive image-archives/$img.tar
         done
     - name: Copy out linkerd CLI
-      if: github.event.pull_request.head.repo.fork
       run: |
         cp image-archives/linkerd $HOME/.linkerd
         chmod +x $HOME/.linkerd
     - name: Run integration tests
-      if: github.event.pull_request.head.repo.fork
       run: |
         . bin/_test-run.sh
         init_test_run $HOME/.linkerd
@@ -404,7 +390,7 @@ jobs:
       fail-fast: false # always attempt to cleanup all clusters
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
-    needs: [kind_integration_host]
+    needs: [kind_integration_packet]
     name: Cluster cleanup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
@@ -413,16 +399,13 @@ jobs:
       uses: actions/checkout@v2
     # for debugging
     - name: Dump env
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
         env | sort
     - name: Dump GitHub context
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         GITHUB_CONTEXT: ${{ toJson(github) }}
       run: echo "$GITHUB_CONTEXT"
     - name: Dump job context
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         JOB_CONTEXT: ${{ toJson(job) }}
       run: echo "$JOB_CONTEXT"
@@ -453,7 +436,7 @@ jobs:
   docker_deploy:
     name: Docker deploy
     runs-on: ubuntu-18.04
-    needs: [validate_go_deps, go_unit_tests, go_lint, js_unit_tests, kind_integration_host, kind_cleanup]
+    needs: [validate_go_deps, go_unit_tests, go_lint, js_unit_tests, kind_integration_packet, kind_cleanup]
     steps:
     - name: Checkout code
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
