@@ -257,13 +257,13 @@ jobs:
   # job to run it's entire matrix in parallel.
   #
 
-  kind_integration_packet:
+  kind_integration_host:
     strategy:
       max-parallel: 3
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_pull, docker_build, kind_setup]
-    name: ${{ matrix.integration_test }} int. test (Packet)
+    name: Int. tests (${{ matrix.integration_test }})
     if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
     steps:
@@ -342,7 +342,7 @@ jobs:
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_build]
-    name: ${{ matrix.integration_test }} int. test (GitHub)
+    name: Int. tests (${{ matrix.integration_test }})
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
     steps:
@@ -375,7 +375,7 @@ jobs:
         for img in controller grafana proxy web; do
           kind load image-archive image-archives/$img.tar
         done
-    - name: Copy out linkerd CLI
+    - name: Install linkerd CLI
       run: |
         cp image-archives/linkerd $HOME/.linkerd
         chmod +x $HOME/.linkerd
@@ -390,7 +390,7 @@ jobs:
       fail-fast: false # always attempt to cleanup all clusters
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
-    needs: [kind_integration_packet]
+    needs: [kind_integration_host]
     name: Cluster cleanup (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
@@ -435,14 +435,13 @@ jobs:
 
   docker_deploy:
     name: Docker deploy
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
     runs-on: ubuntu-18.04
-    needs: [validate_go_deps, go_unit_tests, go_lint, js_unit_tests, kind_integration_packet, kind_cleanup]
+    needs: [validate_go_deps, go_unit_tests, go_lint, js_unit_tests, kind_integration_host, kind_cleanup]
     steps:
     - name: Checkout code
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       uses: actions/checkout@v2
     - name: Configure gcloud
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
         CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
         CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
@@ -466,7 +465,6 @@ jobs:
         gcloud auth configure-docker
         bin/kubectl version --short
     - name: Docker SSH setup
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       run: |
         mkdir -p ~/.ssh/
         touch ~/.ssh/id && chmod 600 ~/.ssh/id
@@ -475,7 +473,6 @@ jobs:
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
         ssh linkerd-docker docker version
     - name: Docker push
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
         DOCKER_HOST: ssh://linkerd-docker
       run: |
@@ -488,14 +485,13 @@ jobs:
 
   cloud_integration:
     name: Cloud integration tests
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
     runs-on: ubuntu-18.04
     needs: [docker_deploy]
     steps:
     - name: Checkout code
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       uses: actions/checkout@v2
     - name: Configure gcloud
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
         CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
         CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
@@ -519,7 +515,6 @@ jobs:
         gcloud auth configure-docker
         bin/kubectl version --short
     - name: Install linkerd CLI
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         image="gcr.io/linkerd-io/cli-bin:$TAG"
@@ -530,7 +525,6 @@ jobs:
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
         echo "Installed Linkerd CLI version: $TAG"
     - name: Run integration tests
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
         GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
       run: |
@@ -539,14 +533,13 @@ jobs:
         version="$($HOME/.linkerd version --client --short | tr -cd '[:alnum:]-')"
         bin/test-run $HOME/.linkerd linkerd-$version
     - name: CNI tests
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       run: |
         export TAG="$($HOME/.linkerd version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
 
   cloud_cleanup:
-    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
     name: Cloud cleanup
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
     runs-on: ubuntu-18.04
     needs: [cloud_integration]
     steps:
@@ -586,14 +579,13 @@ jobs:
 
   chart_deploy:
     name: Helm chart deploy
+    if: startsWith(github.ref, 'refs/tags')
     runs-on: ubuntu-18.04
     needs: [cloud_integration]
     steps:
     - name: Checkout code
-      if: startsWith(github.ref, 'refs/tags')
       uses: actions/checkout@v2
     - name: Configure gsutils
-      if: startsWith(github.ref, 'refs/tags')
       env:
         CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
         CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.LINKERD_SITE_TOKEN }}
