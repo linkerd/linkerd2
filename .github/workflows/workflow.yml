@@ -263,7 +263,7 @@ jobs:
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_pull, docker_build, kind_setup]
-    name: Int. tests (Packet - ${{ matrix.integration_test }})
+    name: ${{ matrix.integration_test }} int. test (Packet)
     if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
     steps:
@@ -342,7 +342,7 @@ jobs:
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_build]
-    name: Int. tests (GitHub - ${{ matrix.integration_test }})
+    name: ${{ matrix.integration_test }} int. test (GitHub)
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
     steps:
@@ -545,16 +545,14 @@ jobs:
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
 
   cloud_cleanup:
-    if: always()
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
     name: Cloud cleanup
     runs-on: ubuntu-18.04
     needs: [cloud_integration]
     steps:
     - name: Checkout code
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       uses: actions/checkout@v2
     - name: Configure gcloud
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
         CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
         CLOUD_SDK_SERVICE_ACCOUNT_KEY: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
@@ -577,7 +575,6 @@ jobs:
         gcloud auth configure-docker
         bin/kubectl version --short
     - name: Cleanup
-      if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       run: |
         export PATH="`pwd`/bin:$PATH"
         bin/test-cleanup
