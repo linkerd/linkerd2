@@ -263,7 +263,7 @@ jobs:
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_pull, docker_build, kind_setup]
-    name: Int. tests (${{ matrix.integration_test }})
+    name: Host int. tests (${{ matrix.integration_test }})
     if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
     steps:
@@ -342,7 +342,7 @@ jobs:
       matrix:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [docker_build]
-    name: Int. tests (${{ matrix.integration_test }})
+    name: GitHub int. tests (${{ matrix.integration_test }})
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
     steps:
