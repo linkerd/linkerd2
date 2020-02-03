@@ -1536,41 +1536,9 @@ function validate() {
   if (core.getInput('release_channel') && core.getInput('cluster_version')) {
     throw 'At most one of --release-channel | --cluster-version may be specified';
   }
-}
-
-async function getClusterName() {
-  let tag, clientVersion;
-  await exec.exec('bin/root-tag', [], {
-      env: {
-          CI_FORCE_CLEAN: 1
-      },
-      listeners: {
-          stdout: (data) => {
-              tag = data.toString().trim()
-          }
-      }
-  });
-
-  await exec.exec(`${process.env.HOME}/.linkerd version --client --short`, [], {
-      listeners: {
-          stdout: (data) => {
-              clientVersion = data.toString().trim()
-          }
-      }
-  });
-
-  // validate CLI version matches the repo
-  if (tag !== clientVersion) {
-      throw `tag ${tag} differs from client version ${clientVersion}`
+  if (core.getInput('create') && !core.getInput('name')) {
+    throw 'If \'create\' is true, then \'name\' must be provided';
   }
-  console.log('Linkerd CLI version:', tag)
-
-  // Last part is to distinguish runs on the same sha (run_id is unique per CI run).
-  // run_id has to be provided as an input because it turns out it's not available
-  // through github.context.run_id
-  const name = `testing-${tag}-${core.getInput('run_id')}`;
-  console.log('Cluster name:', name);
-  return name;
 }
 
 async function configure() {
@@ -1585,8 +1553,9 @@ async function configure() {
   }
 }
 
-async function create(name) {
+async function create() {
   try {
+    const name = core.getInput('name');
     const args = [
       name,
       '--machine-type', core.getInput('machine_type'),
@@ -1635,8 +1604,9 @@ async function create(name) {
   }
 }
 
-async function destroy(name) {
+async function destroy() {
   try {
+    const name = core.getInput('name');
     await exec.exec('gcloud container clusters delete --quiet', [name]);
   } catch (e) {
     core.setFailed(e.message)
@@ -1647,12 +1617,11 @@ async function run() {
   try {
     await configure();
     if (core.getInput('create')) {
-      const name = await getClusterName();
       if (!core.getState(isPost)) {
         core.saveState(isPost, 'true');
-        await create(name);
+        await create();
       } else {
-        await destroy(name);
+        await destroy();
       }
     }
   } catch (e) {
@@ -1661,11 +1630,11 @@ async function run() {
 }
 
 try {
-    fs.writeFileSync(process.env.HOME + '/.gcp.json', core.getInput('cloud_sdk_service_account_key'));
-    validate();
-    run();
+  fs.writeFileSync(process.env.HOME + '/.gcp.json', core.getInput('cloud_sdk_service_account_key'));
+  validate();
+  run();
 } catch (e) {
-    core.setFailed(e.message);
+  core.setFailed(e.message);
 }
 
 

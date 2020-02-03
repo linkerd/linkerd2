@@ -10,6 +10,9 @@ inputs:
   create:
     required: false
     description: Set to true to create a new cluster which will be destroy after the job finishes. Leave empty to just configure the gcloud tooling.
+  name:
+    required: false
+    description: Cluster name; required only if 'create' is true.
   machine_type:
     required: false
     default: n1-standard-2
@@ -37,9 +40,6 @@ inputs:
   enable_legacy_auth:
     required: false
     default: false
-  run_id:
-    required: false
-    default: ${{ github.run_id }}
 runs:
   using: node12
   main: dist/index.js

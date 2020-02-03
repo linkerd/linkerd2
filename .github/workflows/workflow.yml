@@ -396,6 +396,7 @@ jobs:
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       uses: actions/checkout@v2
     - name: Install linkerd CLI
+      id: install_cli
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
@@ -406,6 +407,7 @@ jobs:
         # validate CLI version matches the repo
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
         echo "Installed Linkerd CLI version: $TAG"
+        echo "::set-output name=tag::$TAG"
     - name: Create GKE cluster
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       uses: ./.github/actions/gcloud
@@ -414,6 +416,7 @@ jobs:
         gcp_project: ${{ secrets.GCP_PROJECT }}
         gcp_zone: ${{ secrets.GCP_ZONE }}
         create: true
+        name: testing-${{ steps.install_cli.outputs.tag }}-${{ github.run_id }}
     - name: Run integration tests
       if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
       env:
