@@ -7,13 +7,37 @@ inputs:
     required: true
   gcp_zone:
     required: true
-  create:
+  action:
     required: false
-    description: Set to true to create a new cluster. The linkerd CLI should have been installed in the runner beforehand.
-  destroy:
+    description: Set to "create" to create a new cluster, or "destroy" to destroy it. Leave empty to just configure the gcloud tooling.
+  machine_type:
     required: false
-    description: Set to false to create a new cluster. The linkerd CLI should have been installed in the runner beforehand.
-  run-id:
+    default: n1-standard-2
+  num_nodes:
+    required: false
+    default: 1
+  release_channel:
+    required: false
+    default: rapid
+  cluster_version:
+    required: false
+    default: ''
+  preemptible:
+    required: false
+    default: true
+  enable_network_policy:
+    required: false
+    default: true
+  enable_stackdriver:
+    required: false
+    default: false
+  enable_basic_auth:
+    required: false
+    default: false
+  enable_legacy_auth:
+    required: false
+    default: false
+  run_id:
     required: false
     default: ${{ github.run_id }}
 runs:

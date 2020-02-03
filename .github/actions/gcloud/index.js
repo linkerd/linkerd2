@@ -2,6 +2,23 @@ const core = require('@actions/core');
 const exec = require('@actions/exec');
 const fs = require('fs');
 
+function validate() {
+  switch (core.getInput('action')) {
+    case 'create':
+      break;
+    case 'destroy':
+      break;
+    case '':
+      break;
+    default:
+      throw 'Invalid value for "action"';
+  }
+
+  if (core.getInput('release_channel') && core.getInput('cluster_version')) {
+    throw 'At most one of --release-channel | --cluster-version may be specified';
+  }
+}
+
 async function getClusterName() {
   let tag, clientVersion;
   await exec.exec('bin/root-tag', [], {
@@ -24,15 +41,15 @@ async function getClusterName() {
   });
 
   // validate CLI version matches the repo
-  if (tag != clientVersion) {
-      throw `tag ${tag} differs from clientversion ${clientVersion}`
+  if (tag !== clientVersion) {
+      throw `tag ${tag} differs from client version ${clientVersion}`
   }
   console.log('Linkerd CLI version:', tag)
 
-  // Last part is to distinguish runs on the same sha (run-id is unique per CI run).
-  // run-id has to be provided as an input because it turns out it's not available
+  // Last part is to distinguish runs on the same sha (run_id is unique per CI run).
+  // run_id has to be provided as an input because it turns out it's not available
   // through github.context.run_id
-  const name = `testing-${tag}-${core.getInput('run-id')}`;
+  const name = `testing-${tag}-${core.getInput('run_id')}`;
   console.log('Cluster name:', name);
   return name;
 }
@@ -48,9 +65,36 @@ async function configure() {
     if (core.getInput('create') || core.getInput('destroy')) {
       const name = await getClusterName();
       if (core.getInput('create')) {
-        await exec.exec('gcloud container clusters create',
-          [name, '--cluster-version', '1.15.7-gke.23', '--num-nodes', 1, '--machine-type',
-          'n1-standard-2', '--enable-network-policy']);
+        const args = [
+          name,
+          '--machine-type', core.getInput('machine_type'),
+          '--num-nodes', core.getInput('num_nodes')
+        ];
+        if (core.getInput('release_channel')) {
+          args.push('--release-channel', core.getInput('release_channel'));
+        }
+        if (core.getInput('cluster_version')) {
+          args.push('--cluster-version', core.getInput('cluster_version'));
+        }
+        if (core.getInput('preemptible')) {
+          args.push('--preemptible');
+        }
+        if (core.getInput('enable_network_policy')) {
+          args.push('--enable-network-policy')
+        }
+        if (!core.getInput('enable_stackdriver')) {
+          args.push('--no-enable-stackdriver-kubernetes')
+        }
+        if (!core.getInput('enable_basic_auth')) {
+          args.push('--no-enable-basic-auth')
+        }
+        if (!core.getInput('enable_legacy_auth')) {
+          args.push('--no-enable-legacy-authorization')
+        }
+
+        // Needs beta in order to use --release-channel
+        await exec.exec('gcloud beta container clusters create', args);
+
         await exec.exec('gcloud config set container/cluster',  [name]);
         await exec.exec('gcloud container clusters get-credentials', [name]);
 
@@ -75,7 +119,8 @@ async function configure() {
 
 try {
     fs.writeFileSync(process.env.HOME + '/.gcp.json', core.getInput('cloud_sdk_service_account_key'));
-    configure()
+    validate();
+    configure();
 } catch (e) {
     core.setFailed(e.message);
 }
