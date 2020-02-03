@@ -7,9 +7,9 @@ inputs:
     required: true
   gcp_zone:
     required: true
-  action:
+  create:
     required: false
-    description: Set to "create" to create a new cluster, or "destroy" to destroy it. Leave empty to just configure the gcloud tooling.
+    description: Set to true to create a new cluster which will be destroy after the job finishes. Leave empty to just configure the gcloud tooling.
   machine_type:
     required: false
     default: n1-standard-2
@@ -43,3 +43,5 @@ inputs:
 runs:
   using: node12
   main: dist/index.js
+  post: dist/index.js
+  post-if: always()
