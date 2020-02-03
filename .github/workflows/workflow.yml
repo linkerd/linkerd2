@@ -392,10 +392,10 @@ jobs:
         integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
     needs: [kind_integration_host]
     name: Cluster cleanup (${{ matrix.integration_test }})
+    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       uses: actions/checkout@v2
     # for debugging
     - name: Dump env
@@ -410,7 +410,6 @@ jobs:
         JOB_CONTEXT: ${{ toJson(job) }}
       run: echo "$JOB_CONTEXT"
     - name: Docker SSH setup
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
         mkdir -p ~/.ssh/
         touch ~/.ssh/id && chmod 600 ~/.ssh/id
@@ -419,7 +418,6 @@ jobs:
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
         ssh linkerd-docker docker version
     - name: Kind cluster cleanup
-      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         DOCKER_HOST: ssh://linkerd-docker
       run: |
