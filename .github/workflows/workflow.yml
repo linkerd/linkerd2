@@ -17,13 +17,18 @@ on:
 # go_lint
 # js_unit_tests
 
-# Docker build and integration tests for every master/tag push and linkerd org PR
+# master/tag push and linkerd org PR: Docker build and integration tests
 #
 # docker_pull
 # docker_build
 # kind_setup
-#   -> kind_integration
+#   -> kind_integration_host
 #     -> kind_cleanup
+
+# Forked repository PR: Docker build and integration tests
+#
+# docker_build
+#   -> kind_integration_github
 
 # Docker deploy and cloud integration tests for every master/tag push
 #
@@ -135,7 +140,7 @@ jobs:
   # Docker build and kind integration tests run for:
   # - every master push
   # - every tag push
-  # - every PR from a linkerd org member
+  # - every PR
   #
 
   docker_pull:
