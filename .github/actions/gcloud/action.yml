@@ -9,7 +9,7 @@ inputs:
     required: true
   create:
     required: false
-    description: Set to true to create a new cluster which will be destroy after the job finishes. Leave empty to just configure the gcloud tooling.
+    description: Set to true to create a new cluster which will be destroyed after the job finishes. Leave empty to just configure the gcloud tooling.
   name:
     required: false
     description: Cluster name; required only if 'create' is true.
@@ -42,6 +42,6 @@ inputs:
     default: false
 runs:
   using: node12
-  main: dist/index.js
-  post: dist/index.js
+  main: dist/setup.js
+  post: dist/destroy.js
   post-if: always()

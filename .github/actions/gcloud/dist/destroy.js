@@ -34,8 +34,10 @@ module.exports =
 /******/ 	// the startup function
 /******/ 	function startup() {
 /******/ 		// Load entry module and return exports
-/******/ 		return __webpack_require__(942);
+/******/ 		return __webpack_require__(612);
 /******/ 	};
+/******/ 	// initialize runtime
+/******/ 	runtime(__webpack_require__);
 /******/
 /******/ 	// run startup
 /******/ 	return startup();
@@ -50,6 +52,33 @@ module.exports = require("os");
 
 /***/ }),
 
+/***/ 126:
+/***/ (function(__unusedmodule, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "gcloud", function() { return gcloud; });
+const core = __webpack_require__(907);
+const exec = __webpack_require__(649);
+const fs = __webpack_require__(747);
+
+async function gcloud() {
+  try {
+    fs.writeFileSync(process.env.HOME + '/.gcp.json', core.getInput('cloud_sdk_service_account_key'));
+    await exec.exec('gcloud auth activate-service-account',
+      ['--key-file',  `${process.env.HOME}/.gcp.json`]);
+    await exec.exec('gcloud config set core/project', [core.getInput('gcp_project')]);
+    await exec.exec('gcloud config set compute/zone', [core.getInput('gcp_zone')]);
+    await exec.exec('gcloud auth configure-docker --quiet');
+  } catch (e) {
+    core.setFailed(e.message)
+  }
+}
+
+
+
+/***/ }),
+
 /***/ 129:
 /***/ (function(module) {
 
@@ -61,6 +90,43 @@ module.exports = require("child_process");
 /***/ (function(module) {
 
 module.exports = require("assert");
+
+/***/ }),
+
+/***/ 612:
+/***/ (function(__unusedmodule, __unusedexports, __webpack_require__) {
+
+const configure = __webpack_require__(126);
+const core = __webpack_require__(907);
+const exec = __webpack_require__(649);
+
+async function destroy() {
+  try {
+    const name = core.getInput('name');
+    await exec.exec('gcloud container clusters delete --quiet', [name]);
+  } catch (e) {
+    core.setFailed(e.message)
+  }
+}
+
+async function run() {
+  try {
+    if (core.getInput('create')) {
+      await configure.gcloud();
+      await destroy();
+    }
+  } catch (e) {
+    core.setFailed(e.message)
+  }
+}
+
+try {
+  run();
+} catch (e) {
+  core.setFailed(e.message);
+}
+
+
 
 /***/ }),
 
@@ -1521,123 +1587,33 @@ function getState(name) {
 exports.getState = getState;
 //# sourceMappingURL=core.js.map
 
-/***/ }),
-
-/***/ 942:
-/***/ (function(__unusedmodule, __unusedexports, __webpack_require__) {
-
-const core = __webpack_require__(907);
-const exec = __webpack_require__(649);
-const fs = __webpack_require__(747);
-
-const isPost = 'STATE_isPost';
-
-function validate() {
-  if (core.getInput('release_channel') && core.getInput('cluster_version')) {
-    throw 'At most one of --release-channel | --cluster-version may be specified';
-  }
-  if (core.getInput('create') && !core.getInput('name')) {
-    throw 'If \'create\' is true, then \'name\' must be provided';
-  }
-}
-
-async function configure() {
-  try {
-    await exec.exec('gcloud auth activate-service-account',
-      ['--key-file',  `${process.env.HOME}/.gcp.json`]);
-    await exec.exec('gcloud config set core/project', [core.getInput('gcp_project')]);
-    await exec.exec('gcloud config set compute/zone', [core.getInput('gcp_zone')]);
-    await exec.exec('gcloud auth configure-docker --quiet');
-  } catch (e) {
-    core.setFailed(e.message)
-  }
-}
-
-async function create() {
-  try {
-    const name = core.getInput('name');
-    const args = [
-      name,
-      '--machine-type', core.getInput('machine_type'),
-      '--num-nodes', core.getInput('num_nodes')
-    ];
-    if (core.getInput('release_channel')) {
-      args.push('--release-channel', core.getInput('release_channel'));
-    }
-    if (core.getInput('cluster_version')) {
-      args.push('--cluster-version', core.getInput('cluster_version'));
-    }
-    if (core.getInput('preemptible')) {
-      args.push('--preemptible');
-    }
-    if (core.getInput('enable_network_policy')) {
-      args.push('--enable-network-policy')
-    }
-    if (!core.getInput('enable_stackdriver')) {
-      args.push('--no-enable-stackdriver-kubernetes')
-    }
-    if (!core.getInput('enable_basic_auth')) {
-      args.push('--no-enable-basic-auth')
-    }
-    if (!core.getInput('enable_legacy_auth')) {
-      args.push('--no-enable-legacy-authorization')
-    }
-
-    // Needs beta in order to use --release-channel
-    await exec.exec('gcloud beta container clusters create', args);
-
-    await exec.exec('gcloud config set container/cluster',  [name]);
-    await exec.exec('gcloud container clusters get-credentials', [name]);
-
-    let sa;
-    await exec.exec('gcloud config get-value account', [], {
-      listeners: {
-        stdout: (data) => {
-          sa = data.toString()
-        }
-      }
-    });
-    await exec.exec('kubectl create clusterrolebinding ci-cluster-admin --clusterrole=cluster-admin',
-      ['--user', sa]);
-  } catch (e) {
-    core.setFailed(e.message)
-  }
-}
-
-async function destroy() {
-  try {
-    const name = core.getInput('name');
-    await exec.exec('gcloud container clusters delete --quiet', [name]);
-  } catch (e) {
-    core.setFailed(e.message)
-  }
-}
-
-async function run() {
-  try {
-    await configure();
-    if (core.getInput('create')) {
-      if (!core.getState(isPost)) {
-        core.saveState(isPost, 'true');
-        await create();
-      } else {
-        await destroy();
-      }
-    }
-  } catch (e) {
-    core.setFailed(e.message)
-  }
-}
-
-try {
-  fs.writeFileSync(process.env.HOME + '/.gcp.json', core.getInput('cloud_sdk_service_account_key'));
-  validate();
-  run();
-} catch (e) {
-  core.setFailed(e.message);
-}
-
-
 /***/ })
 
-/******/ });
+/******/ },
+/******/ function(__webpack_require__) { // webpackRuntimeModules
+/******/ 	"use strict";
+/******/ 
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	!function() {
+/******/ 		// define __esModule on exports
+/******/ 		__webpack_require__.r = function(exports) {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/define property getter */
+/******/ 	!function() {
+/******/ 		// define getter function for harmony exports
+/******/ 		var hasOwnProperty = Object.prototype.hasOwnProperty;
+/******/ 		__webpack_require__.d = function(exports, name, getter) {
+/******/ 			if(!hasOwnProperty.call(exports, name)) {
+/******/ 				Object.defineProperty(exports, name, { enumerable: true, get: getter });
+/******/ 			}
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/******/ }
+);

@@ -1,8 +1,6 @@
+const configure = require('./configure.js');
 const core = require('@actions/core');
 const exec = require('@actions/exec');
-const fs = require('fs');
-
-const isPost = 'STATE_isPost';
 
 function validate() {
   if (core.getInput('release_channel') && core.getInput('cluster_version')) {
@@ -10,18 +8,6 @@ function validate() {
   }
   if (core.getInput('create') && !core.getInput('name')) {
     throw 'If \'create\' is true, then \'name\' must be provided';
-  }
-}
-
-async function configure() {
-  try {
-    await exec.exec('gcloud auth activate-service-account',
-      ['--key-file',  `${process.env.HOME}/.gcp.json`]);
-    await exec.exec('gcloud config set core/project', [core.getInput('gcp_project')]);
-    await exec.exec('gcloud config set compute/zone', [core.getInput('gcp_zone')]);
-    await exec.exec('gcloud auth configure-docker --quiet');
-  } catch (e) {
-    core.setFailed(e.message)
   }
 }
 
@@ -76,25 +62,11 @@ async function create() {
   }
 }
 
-async function destroy() {
-  try {
-    const name = core.getInput('name');
-    await exec.exec('gcloud container clusters delete --quiet', [name]);
-  } catch (e) {
-    core.setFailed(e.message)
-  }
-}
-
 async function run() {
   try {
-    await configure();
+    await configure.gcloud();
     if (core.getInput('create')) {
-      if (!core.getState(isPost)) {
-        core.saveState(isPost, 'true');
-        await create();
-      } else {
-        await destroy();
-      }
+      await create();
     }
   } catch (e) {
     core.setFailed(e.message)
@@ -102,7 +74,6 @@ async function run() {
 }
 
 try {
-  fs.writeFileSync(process.env.HOME + '/.gcp.json', core.getInput('cloud_sdk_service_account_key'));
   validate();
   run();
 } catch (e) {
