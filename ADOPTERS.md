@@ -15,6 +15,7 @@
 - [Kurio](https://kurio.id)
 - [LeadIQ](https://leadiq.com)
 - [Mulligan Funding](https://www.mulliganfunding.com/)
+- [National Information Solutions Cooperative (NISC)](https://nisc.coop/)
 - [Nordstrom](https://nordstrom.com/)
 - [Paybase](https://paybase.io/)
 - [PlayStudios Asia](https://www.playstudios.asia)
