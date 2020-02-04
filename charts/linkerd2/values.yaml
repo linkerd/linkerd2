@@ -131,9 +131,6 @@ heartbeatSchedule: "0 0 * * *"
 prometheusImage: prom/prometheus:v2.15.2
 prometheusLogLevel: *controller_log_level
 
-# Control Plane Trace Configuration
-controlPlaneTracing: false
-
 # proxy injector configuration
 proxyInjector:
   # if empty, Helm will auto-generate these fields
