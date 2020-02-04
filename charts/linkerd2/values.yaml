@@ -11,7 +11,7 @@ global:
   controlPlaneTracing: false
 
   # control plane version. See Proxy section for proxy version
-  linkerdVersion: &linkerd_version edge-20.1.4
+  linkerdVersion: &linkerd_version edge-20.2.1
 
   namespace: linkerd
 

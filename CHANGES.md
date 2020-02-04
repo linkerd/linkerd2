@@ -1,3 +1,17 @@
+## edge-20.2.1
+
+This edge release is a release candidate for `stable-2.7` and fixes an issue
+where the proxy could consume inappropriate amounts of memory.
+
+* Proxy
+  * Fixed a bug in the proxy's logging subsystem that could cause the proxy to
+    consume memory until the process is OOM killed, especially when the proxy was
+    configured to log diagnostic information
+  * Fixed properly emitting `grpc-status` headers when signaling proxy errors to
+    gRPC clients
+  * Updated certain proxy dependencies to address RUSTSEC-2019-0033,
+    RUSTSEC-2019-0034, and RUSTSEC-2020-02
+
 ## edge-20.1.4
 
 This edge release is a release candidate for `stable-2.7`.
