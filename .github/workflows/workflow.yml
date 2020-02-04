@@ -211,7 +211,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
+        integration_test: [deep, upgrade, helm, helm_upgrade, custom_domain, external_issuer]
     name: Cluster setup (${{ matrix.integration_test }})
     if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
     runs-on: ubuntu-18.04
@@ -232,7 +232,7 @@ jobs:
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        export KUBECONFIG=/tmp/kind-config-$KIND_CLUSTER 
+        export KUBECONFIG=/tmp/kind-config-$KIND_CLUSTER
         export CUSTOM_DOMAIN_CONFIG="test/testdata/custom_cluster_domain_config.yaml"
         # retry cluster creation once in case of port conflict or kubeadm failure
         if [ "${{ matrix.integration_test }}" == "custom_domain" ]
@@ -256,7 +256,7 @@ jobs:
     strategy:
       max-parallel: 3
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
+        integration_test: [deep, upgrade, helm, helm_upgrade, custom_domain, external_issuer]
     needs: [docker_pull, docker_build, kind_setup]
     name: Host int. tests (${{ matrix.integration_test }})
     if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
@@ -335,7 +335,7 @@ jobs:
   kind_integration_github:
     strategy:
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
+        integration_test: [deep, upgrade, helm, helm_upgrade, custom_domain, external_issuer]
     needs: [docker_build]
     name: GitHub int. tests (${{ matrix.integration_test }})
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
@@ -384,7 +384,7 @@ jobs:
     strategy:
       fail-fast: false # always attempt to cleanup all clusters
       matrix:
-        integration_test: [deep, upgrade, helm, custom_domain, external_issuer]
+        integration_test: [deep, upgrade, helm, helm_upgrade, custom_domain, external_issuer]
     needs: [kind_integration_host]
     name: Cluster cleanup (${{ matrix.integration_test }})
     if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
