@@ -407,8 +407,10 @@ func getTrafficByResourceFromAPI(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourc
 	//       processEvents() && renderTable()
 	closing := make(chan struct{}, 1)
 	done := make(chan struct{})
+	scrollLeft := make(chan int)
+	scrollRight := make(chan int)
 
-	go pollInput(closing)
+	go pollInput(done, scrollLeft, scrollRight)
 	go recvEvents(reader, eventCh, closing)
 	go processEvents(eventCh, requestCh, done)
 
@@ -417,7 +419,7 @@ func getTrafficByResourceFromAPI(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourc
 		close(done)
 	}()
 
-	renderTable(table, requestCh, done)
+	renderTable(table, requestCh, done, scrollLeft, scrollRight)
 
 	return nil
 }
@@ -483,21 +485,30 @@ func processEvents(eventCh <-chan pb.TapEvent, requestCh chan<- topRequest, done
 	}
 }
 
-func pollInput(closing chan<- struct{}) {
+func pollInput(done chan<- struct{}, scrollLeft chan<- int, scrollRight chan<- int)  {
 	for {
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
 			if ev.Ch == 'q' || ev.Key == termbox.KeyCtrlC {
-				closing <- struct{}{}
+				close(done)
 				return
+			}
+			if ev.Ch == 'a' || ev.Key==termbox.KeyArrowRight {
+				scrollLeft <- 1
+			}
+			if ev.Ch == 'd' || ev.Key==termbox.KeyArrowLeft  {
+				scrollRight <- 1
 			}
 		}
 	}
 }
 
-func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struct{}) {
-	ticker := time.NewTicker(100 * time.Millisecond)
-
+func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struct{}, scrollLeft <-chan int, scrollRight <-chan int) {
+	ticker := time.NewTicker(50 * time.Millisecond)
+	tablewidth :=table.adjustColumnWidths()
+	scrollXpos := 0
+	width, height := termbox.Size()
+	tablewidth =table.adjustColumnWidths()
 	for {
 		select {
 		case <-done:
@@ -505,11 +516,36 @@ func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struc
 		case req := <-requestCh:
 			table.insert(req)
 		case <-ticker.C:
-			termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-			table.adjustColumnWidths()
-			table.renderHeaders()
-			table.renderBody()
-			termbox.Flush()
+			select {
+			case <-scrollLeft:
+				if scrollXpos<=0 {
+					scrollXpos = scrollXpos + 5
+					termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+					width, height = termbox.Size()
+					tablewidth =table.adjustColumnWidths()
+					table.renderHeaders(scrollXpos)
+					table.renderBody(scrollXpos)
+					termbox.Flush()
+				}
+			case <-scrollRight:
+				height = height +0
+				if(scrollXpos >=  width-tablewidth){
+					scrollXpos = scrollXpos - 5
+					termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+					width, height = termbox.Size()
+					tablewidth =table.adjustColumnWidths()
+					table.renderHeaders(scrollXpos)
+					table.renderBody(scrollXpos)
+					termbox.Flush()
+				}
+			default:
+				termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+				width, height = termbox.Size()
+				tablewidth =table.adjustColumnWidths()
+				table.renderHeaders(scrollXpos)
+				table.renderBody(scrollXpos)
+				termbox.Flush()
+			}
 		}
 	}
 }
@@ -614,9 +650,10 @@ func stripPort(address string) string {
 	return strings.Split(address, ":")[0]
 }
 
-func (t *topTable) renderHeaders() {
+func (t *topTable) renderHeaders(scrollXpos int) {
 	tbprint(0, 0, "(press q to quit)")
-	x := 0
+	tbprint(0, 1, "(press a/LeftArrowKey to scroll left, d/RightArrowKey to scroll right)")
+	x := scrollXpos
 	for _, col := range t.columns {
 		if !col.display {
 			continue
@@ -630,7 +667,8 @@ func (t *topTable) renderHeaders() {
 	}
 }
 
-func (t *topTable) adjustColumnWidths() {
+func (t *topTable) adjustColumnWidths() int {
+	tablewidth :=0
 	for i, col := range t.columns {
 		if !col.flexible {
 			continue
@@ -642,16 +680,18 @@ func (t *topTable) adjustColumnWidths() {
 				t.columns[i].width = cellWidth
 			}
 		}
+		tablewidth = tablewidth +  t.columns[i].width + 10
 	}
+	return tablewidth + 15
 }
 
-func (t *topTable) renderBody() {
+func (t *topTable) renderBody(scrollXpos int) {
 	sort.SliceStable(t.rows, func(i, j int) bool {
 		return t.rows[i].count > t.rows[j].count
 	})
 
 	for i, row := range t.rows {
-		x := 0
+		x := scrollXpos
 
 		for _, col := range t.columns {
 			if !col.display {
