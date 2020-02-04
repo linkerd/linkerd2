@@ -3,6 +3,11 @@
 # This file is a collection of helper functions for running integration tests.
 # It is used primarily by `bin/test-run` and ci.
 
+# Returns the latest stable verson
+latest_stable() {
+  curl -s https://versioncheck.linkerd.io/version.json | grep -o "stable-[0-9]*.[0-9]*.[0-9]*"
+}
+
 # init_test_run parses input params, initializes global vars, and checks for
 # linkerd and kubectl. Call this prior to calling any of the
 # *_integration_tests() functions.
@@ -39,6 +44,20 @@ upgrade_integration_tests() {
     # there is a chance to debug the problem
     run_upgrade_test "$linkerd_namespace"-upgrade
     exit_on_err "can't upgrade to version $linkerd_version"
+    cleanup
+}
+
+helm_upgrade_integration_tests() {
+    helm_path=$bindir/helm
+    helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2
+    helm_release_name=$linkerd_namespace-test
+    tiller_namespace=$linkerd_namespace-tiller
+
+    run_helm_upgrade_test
+    exit_on_err 'error testing Helm upgrade'
+    helm_cleanup
+    exit_on_err 'error cleaning up Helm upgrade'
+    # clean the data plane test resources
     cleanup
 }
 
@@ -158,14 +177,14 @@ install_stable() {
 # $1 - namespace to use for the stable release
 run_upgrade_test() {
     local stable_namespace=$1
-    local stable_version=$(curl -s https://versioncheck.linkerd.io/version.json | grep -o "stable-[0-9]*.[0-9]*.[0-9]*")
+    local stable_version=$(latest_stable)
 
     install_stable $stable_namespace
     run_test "$test_directory/install_test.go" --upgrade-from-version=$stable_version --linkerd-namespace=$stable_namespace
 }
 
-run_helm_test() {
-    (
+setup_helm() {
+      (
         set -e
         kubectl --context=$k8s_context create ns $tiller_namespace
         kubectl --context=$k8s_context label ns $tiller_namespace linkerd.io/is-test-helm=true
@@ -173,8 +192,20 @@ run_helm_test() {
         kubectl --context=$k8s_context label clusterrolebinding ${tiller_namespace}:tiller-cluster-admin linkerd.io/is-test-helm=true
         "$helm_path" --kube-context=$k8s_context --tiller-namespace=$tiller_namespace init --wait
         "$helm_path" --kube-context=$k8s_context --tiller-namespace=$tiller_namespace dependency update "$helm_chart"
+        "$helm_path" --kube-context=$k8s_context --tiller-namespace=$tiller_namespace repo add linkerd https://helm.linkerd.io/stable
     )
     exit_on_err 'error setting up Helm'
+}
+
+run_helm_upgrade_test() {
+    setup_helm
+    local stable_version=$(latest_stable)
+    run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace-helm \
+        --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-stable-chart="linkerd/linkerd2" --helm-release=$helm_release_name --tiller-ns=$tiller_namespace --upgrade-helm-from-version="$stable_version"
+}
+
+run_helm_test() {
+    setup_helm
     run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace-helm \
         --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-release=$helm_release_name --tiller-ns=$tiller_namespace
 }
