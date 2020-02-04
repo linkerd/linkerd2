@@ -2411,7 +2411,6 @@ data:
 }
 
 func getFakeSecret(scheme string, issuerCerts *issuercerts.IssuerCertData) string {
-	base64.StdEncoding.EncodeToString([]byte(issuerCerts.IssuerCrt))
 	if scheme == k8s.IdentityIssuerSchemeLinkerd {
 		return fmt.Sprintf(`
 kind: Secret
