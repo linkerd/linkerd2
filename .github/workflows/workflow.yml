@@ -178,26 +178,16 @@ jobs:
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
         ssh linkerd-docker docker version
         echo ::set-env name=DOCKER_HOST::ssh://linkerd-docker
-    - name: Try to load cached Go modules
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
-      uses: actions/cache@v1
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
     - name: Build docker images
-      run: DOCKER_TRACE=1 bin/docker-build
-    - name: Create image archives directory
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
-      run: mkdir -p $IMAGE_ARCHIVES_DIR
-    - name: Copy out linkerd CLI
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
-      run: cp target/cli/linux/linkerd $IMAGE_ARCHIVES_DIR/
-    - name: Save docker images
+      run: |
+        export PATH="`pwd`/bin:$PATH"
+        DOCKER_TRACE=1 bin/docker-build
+    - name: Create artifact with CLI and image archives
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: |
-        TAG="$(bin/root-tag)"
+        mkdir -p $IMAGE_ARCHIVES_DIR
+        cp target/cli/linux/linkerd $IMAGE_ARCHIVES_DIR/
+        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         for img in controller grafana proxy web ; do
           docker save "gcr.io/linkerd-io/$img:$TAG" > $IMAGE_ARCHIVES_DIR/$img.tar
         done
@@ -205,7 +195,7 @@ jobs:
     # absolute path is used here.
     #
     # https://github.com/actions/upload-artifact/issues/8
-    - name: Upload image archives
+    - name: Upload artifact
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       uses: actions/upload-artifact@v1
       with:
@@ -537,7 +527,7 @@ jobs:
 
   cloud_cleanup:
     name: Cloud cleanup
-    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
+    if: always() && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags'))
     runs-on: ubuntu-18.04
     needs: [cloud_integration]
     steps:
