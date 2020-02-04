@@ -6,6 +6,9 @@
 global:
   clusterDomain: &cluster_domain cluster.local
   imagePullPolicy: &image_pull_policy IfNotPresent
+  
+  # Control Plane Trace Configuration
+  controlPlaneTracing: false
 
   # control plane version. See Proxy section for proxy version
   linkerdVersion: &linkerd_version edge-20.1.4
@@ -127,9 +130,6 @@ heartbeatSchedule: "0 0 * * *"
 # prometheus configuration
 prometheusImage: prom/prometheus:v2.15.2
 prometheusLogLevel: *controller_log_level
-
-# Control Plane Trace Configuration
-controlPlaneTracing: false
 
 # proxy injector configuration
 proxyInjector:
