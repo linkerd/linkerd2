@@ -1,28 +1,20 @@
 ## stable-2.7.0
 
-This release ...
+This massive release adds support for integrating Linkerd's PKI with an external
+certificate issuer such as [`cert-manager`] as well as streamlining the
+certificate rotation process in general. For more details about cert-manager
+and certificate rotation, see the [docs](). This release also includes
+performance improvements to the dashboard, reduced memory usage of the proxy,
+various improvements to the Helm chart, and much much more.
 
 To install this release, run: `curl https://run.linkerd.io/install | sh`
 
-**Upgrade notes**: Please see the [upgrade
-instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-7-0).
+**Upgrade notes**: This release includes breaking changes to our Helm charts.
+Please see the [upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-7-0).
 
-**Special thanks to**: @alenkacz, @arminbuerkle, @bmcstdio, @bourquep,
-@brianstorti, @kevtaylor, @KIVagant, @pierDipi, and @Pothulapati!
-
-@alenkacz
-@bmcstdio
-@daxmc99
-@droidnoob
-@ereslibre
-@javaducky
-@joakimr-axis
-@JohannesEH
-@KIVagant
-@mayankshah1607
-@Pothulapati
-@StupidScience
-
+**Special thanks to**: @alenkacz, @bmcstdio, @daxmc99, @droidnoob, @ereslibre,
+@javaducky, @joakimr-axis, @JohannesEH, @KIVagant, @mayankshah1607,
+@Pothulapati, and @StupidScience!
 
 **Full release notes**:
 
@@ -128,6 +120,13 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-7-0).
   * Fixed a bug where the proxy could stop receiving service discovery updates,
     resulting in 503 errors
   * Improved debug/error logging to include detailed contextual information
+  * Fixed a bug in the proxy's logging subsystem that could cause the proxy to
+    consume memory until the process is OOM killed, especially when the proxy was
+    configured to log diagnostic information
+  * Fixed properly emitting `grpc-status` headers when signaling proxy errors to
+    gRPC clients
+  * Updated certain proxy dependencies to address RUSTSEC-2019-0033,
+    RUSTSEC-2019-0034, and RUSTSEC-2020-02
 * Web UI
   * Fixed an error when refreshing an already open dashboard when the Linkerd
     version has changed
@@ -174,10 +173,20 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-7-0).
     distributed tracing in the control plane (thanks @Pothulapati!)
   * Added distributed tracing support to the control plane (thanks
     @Pothulapati!)
-    
 
+## edge-20.2.1
 
+This edge release is a release candidate for `stable-2.7` and fixes an issue
+where the proxy could consume inappropriate amounts of memory.
 
+* Proxy
+  * Fixed a bug in the proxy's logging subsystem that could cause the proxy to
+    consume memory until the process is OOM killed, especially when the proxy was
+    configured to log diagnostic information
+  * Fixed properly emitting `grpc-status` headers when signaling proxy errors to
+    gRPC clients
+  * Updated certain proxy dependencies to address RUSTSEC-2019-0033,
+    RUSTSEC-2019-0034, and RUSTSEC-2020-02
 
 ## edge-20.1.4
 
