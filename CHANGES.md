@@ -3,9 +3,10 @@
 This massive release adds support for integrating Linkerd's PKI with an external
 certificate issuer such as [`cert-manager`] as well as streamlining the
 certificate rotation process in general. For more details about cert-manager
-and certificate rotation, see the [docs](). This release also includes
-performance improvements to the dashboard, reduced memory usage of the proxy,
-various improvements to the Helm chart, and much much more.
+and certificate rotation, see the
+[docs](https://linkerd.io/2/tasks/use_external_certs/). This release also
+includes performance improvements to the dashboard, reduced memory usage of the
+proxy, various improvements to the Helm chart, and much much more.
 
 To install this release, run: `curl https://run.linkerd.io/install | sh`
 
