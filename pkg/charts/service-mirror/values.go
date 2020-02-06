@@ -11,9 +11,13 @@ const (
 	helmDefaultServiceMirrorChartDir = "linkerd2-service-mirror"
 )
 
+// Values contains the top-level elements in the Helm charts
 type Values struct {
 	Namespace            string `json:"namespace"`
 	ServiceMirrorVersion string `json:"serviceMirrorVersion"`
+	ServiceMirrorImage   string `json:"serviceMirrorImage"`
+	ServiceMirrorUID     int64  `json:"serviceMirrorUID"`
+	LogLevel             string `json:"logLevel"`
 }
 
 // NewValues returns a new instance of the Values type.

@@ -1,1 +1,5 @@
 namespace: linkerd-service-mirror
+serviceMirrorVersion: edge-20.1.4
+serviceMirrorImage: gcr.io/linkerd-io/controller
+serviceMirrorUID: 2103
+logLevel: info

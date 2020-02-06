@@ -81,9 +81,8 @@ type (
 	// Then this component crashes, leaving the mirrors around. In the meantime services
 	// B and C are deleted. When the controller starts up again and registers to listen for
 	// these services, we need to delete them as deletion events will not be received.
-	OprhanedServicesGcTriggered struct {}
+	OprhanedServicesGcTriggered struct{}
 )
-
 
 // When the gateway is resolved we need to produce a set of endpoint addresses that that
 // contains the external IPs that this gateway exposes. Therefore we return the IP addresses
@@ -100,7 +99,7 @@ func (gw *RemoteClusterServiceWatcher) resolveGateway(namespace string, gatewayN
 	var gatewayEndpoints []corev1.EndpointAddress
 	for _, ingress := range gateway.Status.LoadBalancer.Ingress {
 		gatewayEndpoints = append(gatewayEndpoints, corev1.EndpointAddress{
-			IP: ingress.IP,
+			IP:       ingress.IP,
 			Hostname: ingress.Hostname,
 		})
 	}

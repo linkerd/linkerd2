@@ -50,9 +50,9 @@ spec:
   selector:
     ControllerComponentLabel: service-mirror
   ports:
-  - name: grpc
-    port: 8086
-    targetPort: 8086
+  - name: service-mirror
+    port: 443
+    targetPort: service-mirror
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -76,13 +76,9 @@ spec:
       containers:
       - args:
         - service-mirror
-        image: gcr.io/linkerd-io/controller:{{.Values.serviceMirrorVersion}}
+        - -log-level={{.Values.logLevel}}
+        image: {{.Values.serviceMirrorImage}}:{{.Values.serviceMirrorVersion}}
         name: service-mirror
-        ports:
-        - containerPort: 8086
-          name: grpc
-        - containerPort: 9996
-          name: admin-http
         securityContext:
-          runAsUser: 2103
+          runAsUser: {{.Values.serviceMirrorUID}}
       serviceAccountName: linkerd-service-mirror

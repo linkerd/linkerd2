@@ -23,7 +23,7 @@ func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API) *RemoteClusterConfigWatcher 
 		mutex:           &sync.Mutex{},
 		clusterWatchers: map[string]*RemoteClusterServiceWatcher{},
 	}
-	k8sAPI.Secret().Informer().AddEventHandler (
+	k8sAPI.Secret().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				if err := rcw.registerRemoteCluster(obj); err != nil {
