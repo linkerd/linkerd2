@@ -13,22 +13,16 @@ import (
 )
 
 const (
-	Prefix                 = "svcmirror.io"
-	MirrorSecretType       = Prefix + "/remote-kubeconfig"
-	GatewayNameAnnotation  = Prefix + "/gateway-name"
-	RemoteGatewayNameAnnotation  = Prefix + "/remote-gateway-name"
-
-	GatewayNsAnnottion     = Prefix + "/gateway-ns"
-	RemoteGatewayNsAnnottion     = Prefix + "/remote-gateway-ns"
-	MirroredResourceLabel  = Prefix + "/mirrored-service"
-	RemoteClusterNameLabel = Prefix + "/cluster-name"
-
-
-	RemoteResourceVersionLabel = Prefix + "/remote-resource-version"
-
-
-
-	ConfigKeyName          = "kubeconfig"
+	Prefix                      = "svcmirror.io"
+	MirrorSecretType            = Prefix + "/remote-kubeconfig"
+	GatewayNameAnnotation       = Prefix + "/gateway-name"
+	RemoteGatewayNameAnnotation = Prefix + "/remote-gateway-name"
+	GatewayNsAnnottion          = Prefix + "/gateway-ns"
+	RemoteGatewayNsAnnottion    = Prefix + "/remote-gateway-ns"
+	MirroredResourceLabel       = Prefix + "/mirrored-service"
+	RemoteClusterNameLabel      = Prefix + "/cluster-name"
+	RemoteResourceVersionLabel  = Prefix + "/remote-resource-version"
+	ConfigKeyName               = "kubeconfig"
 )
 
 func Main(args []string) {
