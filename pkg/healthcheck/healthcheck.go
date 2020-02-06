@@ -1194,6 +1194,8 @@ func (hc *HealthChecker) allCategories() []category {
 }
 
 func (hc *HealthChecker) checkMinReplicasAvailable() error {
+	faulty := []string{}
+
 	for _, component := range linkerdHAControlPlaneComponents {
 		conf, err := hc.kubeAPI.AppsV1().Deployments(hc.ControlPlaneNamespace).Get(component, metav1.GetOptions{})
 		if err != nil {
@@ -1201,8 +1203,12 @@ func (hc *HealthChecker) checkMinReplicasAvailable() error {
 		}
 
 		if conf.Status.AvailableReplicas <= 1 {
-			return fmt.Errorf("not enough replicas available for %s", component)
+			faulty = append(faulty, component)
 		}
+	}
+
+	if len(faulty) > 0 {
+		return fmt.Errorf("not enough replicas available for %v", faulty)
 	}
 	return nil
 }
