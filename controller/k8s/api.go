@@ -90,31 +90,32 @@ type API struct {
 	tsSharedInformers ts.SharedInformerFactory
 }
 
+// InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
 func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
 	config, err := k8s.GetConfig(kubeConfig, "")
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}
 
-	k8sClient, err := k8s.NewApiForConfig(config, "", []string{}, 0)
+	k8sClient, err := k8s.NewAPIForConfig(config, "", []string{}, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	return initApi(k8sClient, config, resources...)
+	return initAPI(k8sClient, config, resources...)
 }
 
-// InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
+// InitializeAPIForConfig creates Kubernetes clients and returns an initialized API wrapper.
 func InitializeAPIForConfig(kubeConfig *rest.Config, resources ...APIResource) (*API, error) {
-	k8sClient, err := k8s.NewApiForConfig(kubeConfig, "", []string{}, 0)
+	k8sClient, err := k8s.NewAPIForConfig(kubeConfig, "", []string{}, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	return initApi(k8sClient, kubeConfig, resources...)
+	return initAPI(k8sClient, kubeConfig, resources...)
 }
 
-func initApi(k8sClient *k8s.KubernetesAPI, kubeConfig *rest.Config, resources ...APIResource) (*API, error) {
+func initAPI(k8sClient *k8s.KubernetesAPI, kubeConfig *rest.Config, resources ...APIResource) (*API, error) {
 	/*	// check for cluster-wide access
 		err  := k8s.ClusterAccess(k8sClient)
 		if err != nil {
@@ -245,7 +246,7 @@ func (api *API) Sync() {
 	api.SyncWithStopCh(nil)
 }
 
-// Sync waits for all informers to be synced.
+// SyncWithStopCh waits for all informers to be synced.
 func (api *API) SyncWithStopCh(stopCh chan struct{}) {
 	api.sharedInformers.Start(stopCh)
 	api.spSharedInformers.Start(stopCh)

@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/linkerd/linkerd2/pkg/charts"
-	service_mirror "github.com/linkerd/linkerd2/pkg/charts/service-mirror"
+	"github.com/linkerd/linkerd2/pkg/charts/servicemirror"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -49,7 +49,7 @@ func newCmdInstallServiceMirror() *cobra.Command {
 }
 
 func newInstallServiceMirrorOptionsWithDefaults() (*installServiceMirrorOptions, error) {
-	defaults, err := service_mirror.NewValues()
+	defaults, err := servicemirror.NewValues()
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +62,8 @@ func newInstallServiceMirrorOptionsWithDefaults() (*installServiceMirrorOptions,
 	}, nil
 }
 
-func (options *installServiceMirrorOptions) buildValues() (*service_mirror.Values, error) {
-	installValues, err := service_mirror.NewValues()
+func (options *installServiceMirrorOptions) buildValues() (*servicemirror.Values, error) {
+	installValues, err := servicemirror.NewValues()
 	if err != nil {
 		return nil, err
 	}

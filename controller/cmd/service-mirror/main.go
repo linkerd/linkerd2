@@ -11,18 +11,45 @@ import (
 )
 
 const (
-	Prefix                      = "svcmirror.io"
-	MirrorSecretType            = Prefix + "/remote-kubeconfig"
-	GatewayNameAnnotation       = Prefix + "/gateway-name"
-	RemoteGatewayNameAnnotation = Prefix + "/remote-gateway-name"
-	GatewayNsAnnottion          = Prefix + "/gateway-ns"
-	RemoteGatewayNsAnnottion    = Prefix + "/remote-gateway-ns"
-	MirroredResourceLabel       = Prefix + "/mirrored-service"
-	RemoteClusterNameLabel      = Prefix + "/cluster-name"
-	RemoteResourceVersionLabel  = Prefix + "/remote-resource-version"
-	ConfigKeyName               = "kubeconfig"
+	prefix                      = "svcmirror.io"
+	// MirrorSecretType is the type of secret that is supposed to contain
+	// the access information for remote clusters.
+	MirrorSecretType            = prefix + "/remote-kubeconfig"
+
+	// GatewayNameAnnotation is the annotation that is present on the remote
+	// service, indicating which gateway is supposed to route traffic to it
+	GatewayNameAnnotation       = prefix + "/gateway-name"
+
+	// RemoteGatewayNameLabel is same as GatewayNameAnnotation but on the local,
+	// mirrored service. It's used for quick querying when we want to figure out
+	// the services that are being associated with a certain gateway
+	RemoteGatewayNameLabel     = prefix + "/remote-gateway-name"
+
+	// GatewayNsAnnotation is present on the remote service, indicated the ns
+	// in which we can find the gateway
+	GatewayNsAnnotation        = prefix + "/gateway-ns"
+
+	// RemoteGatewayNsLabel follows the same kind of logic as RemoteGatewayNameLabel
+	RemoteGatewayNsLabel       = prefix + "/remote-gateway-ns"
+
+	// MirroredResourceLabel indicates that this resource is the result
+	// of a mirroring operation (can be a namespace or a service)
+	MirroredResourceLabel      = prefix + "/mirrored-service"
+
+	// RemoteClusterNameLabel put on a local mirrored service, it
+	// allows us to associated a service with a remote cluster
+	RemoteClusterNameLabel     = prefix + "/cluster-name"
+
+	// RemoteResourceVersionLabel is the last observed remote resource
+	// version of a mirrored resource. Useful when doing updates
+	RemoteResourceVersionLabel = prefix + "/remote-resource-version"
+
+	// ConfigKeyName is the key in the secret that stores the kubeconfig needed to connect
+	// to a remote cluster
+	ConfigKeyName              = "kubeconfig"
 )
 
+// Main executes the tap service-mirror
 func Main(args []string) {
 	cmd := flag.NewFlagSet("service-mirror", flag.ExitOnError)
 

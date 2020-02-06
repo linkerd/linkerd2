@@ -148,10 +148,10 @@ func (sw *RemoteClusterServiceWatcher) getMirroredServiceLabels(service *corev1.
 	for k, v := range service.Labels {
 		// rewrite the mirroring ones
 		if k == GatewayNameAnnotation {
-			k = RemoteGatewayNameAnnotation
+			k = RemoteGatewayNameLabel
 		}
-		if k == GatewayNsAnnottion {
-			k = RemoteGatewayNsAnnottion
+		if k == GatewayNsAnnotation {
+			k = RemoteGatewayNsLabel
 		}
 		newLabels[k] = v
 	}
@@ -353,7 +353,7 @@ func (sw *RemoteClusterServiceWatcher) onUpdate(old, new interface{}) {
 	newService := new.(*corev1.Service)
 
 	remoteGatewayName, hasGtwName := newService.Annotations[GatewayNameAnnotation]
-	remoteGatewayNs, hasGtwNs := newService.Annotations[GatewayNsAnnottion]
+	remoteGatewayNs, hasGtwNs := newService.Annotations[GatewayNsAnnotation]
 
 	if oldService.ResourceVersion != newService.ResourceVersion {
 		if hasGtwName && hasGtwNs {
@@ -381,7 +381,7 @@ func (sw *RemoteClusterServiceWatcher) onUpdate(old, new interface{}) {
 func (sw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 	service := svc.(*corev1.Service)
 	remoteGatewayName, hasGtwName := service.Annotations[GatewayNameAnnotation]
-	remoteGatewayNs, hasGtwNs := service.Annotations[GatewayNsAnnottion]
+	remoteGatewayNs, hasGtwNs := service.Annotations[GatewayNsAnnotation]
 	localName := sw.mirroredResourceName(service.Name)
 
 	if hasGtwName && hasGtwNs {
@@ -431,7 +431,7 @@ func (sw *RemoteClusterServiceWatcher) onDelete(svc interface{}) {
 	}
 
 	_, hasGtwName := service.Annotations[GatewayNameAnnotation]
-	_, hasGtwNs := service.Annotations[GatewayNsAnnottion]
+	_, hasGtwNs := service.Annotations[GatewayNsAnnotation]
 	if hasGtwName && hasGtwNs {
 		sw.eventsQueue.AddRateLimited(&RemoteServiceDeleted{
 			Name:      service.Name,

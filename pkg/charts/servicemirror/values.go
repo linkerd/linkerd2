@@ -1,4 +1,4 @@
-package service_mirror
+package servicemirror
 
 import (
 	"fmt"
