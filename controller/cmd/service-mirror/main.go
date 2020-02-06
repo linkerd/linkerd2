@@ -2,14 +2,12 @@ package servicemirror
 
 import (
 	"flag"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	log "github.com/sirupsen/logrus"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 const (
@@ -31,7 +29,7 @@ func Main(args []string) {
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 
 	flags.ConfigureAndParse(cmd, args)
-	log.SetLevel(log.DebugLevel)
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
@@ -48,6 +46,11 @@ func Main(args []string) {
 	}
 
 	k8sAPI.Sync()
-	_ = NewRemoteClusterConfigWatcher(k8sAPI)
-	time.Sleep(100 * time.Hour) // wait forever... for now :)
+	watcher := NewRemoteClusterConfigWatcher(k8sAPI)
+	log.Info("Started cluster config watcher")
+
+	<-stop
+
+	log.Info("Stopping cluster config watcher")
+	watcher.Stop()
 }
