@@ -3003,3 +3003,125 @@ func TestCniChecks(t *testing.T) {
 	}
 
 }
+
+func TestMinReplicaCheck(t *testing.T) {
+	hc := NewHealthChecker(
+		[]CategoryID{LinkerdHAChecks},
+		&Options{
+			ControlPlaneNamespace: "linkerd",
+		},
+	)
+
+	var err error
+
+	testCases := []struct {
+		controlPlaneResourceDefs []string
+		expected                 error
+	}{
+		{
+			controlPlaneResourceDefs: generateAllControlPlaneDef(&controlPlaneReplicaOptions{
+				controller:    1,
+				destination:   3,
+				identity:      3,
+				proxyInjector: 3,
+				spValidator:   1,
+				tap:           3,
+			}, t),
+			expected: fmt.Errorf("not enough replicas available for [linkerd-controller linkerd-sp-validator]"),
+		},
+		{
+			controlPlaneResourceDefs: generateAllControlPlaneDef(&controlPlaneReplicaOptions{
+				controller:    3,
+				destination:   2,
+				identity:      1,
+				proxyInjector: 1,
+				spValidator:   0,
+				tap:           3,
+			}, t),
+			expected: fmt.Errorf("not enough replicas available for [linkerd-identity linkerd-proxy-injector linkerd-sp-validator]"),
+		},
+		{
+			controlPlaneResourceDefs: generateAllControlPlaneDef(&controlPlaneReplicaOptions{
+				controller:    3,
+				destination:   2,
+				identity:      2,
+				proxyInjector: 3,
+				spValidator:   2,
+				tap:           3,
+			}, t),
+			expected: nil,
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc //pin
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			hc.kubeAPI, err = k8s.NewFakeAPI(tc.controlPlaneResourceDefs...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = hc.checkMinReplicasAvailable()
+			if err == nil && tc.expected != nil {
+				t.Log("Expected error: nil")
+				t.Logf("Received error: %s\n", err)
+				t.Fatal("test case failed")
+			}
+			if err != nil {
+				if err.Error() != tc.expected.Error() {
+					t.Logf("Expected error: %s\n", tc.expected)
+					t.Logf("Received error: %s\n", err)
+					t.Fatal("test case failed")
+				}
+			}
+		})
+	}
+}
+
+type controlPlaneReplicaOptions struct {
+	controller    int
+	destination   int
+	identity      int
+	proxyInjector int
+	spValidator   int
+	tap           int
+}
+
+func getSingleControlPlaneDef(component string, availableReplicas int) string {
+	return fmt.Sprintf(`
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: %s
+  namespace: linkerd
+spec:
+  template:
+    spec:
+      containers:
+        - image: "hello-world"
+          name: test
+status:
+  availableReplicas: %d`, component, availableReplicas)
+}
+
+func generateAllControlPlaneDef(replicaOptions *controlPlaneReplicaOptions, t *testing.T) []string {
+	resourceDefs := []string{}
+	for _, component := range linkerdHAControlPlaneComponents {
+		switch component {
+		case "linkerd-controller":
+			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.controller))
+		case "linkerd-destination":
+			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.destination))
+		case "linkerd-identity":
+			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.identity))
+		case "linkerd-sp-validator":
+			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.spValidator))
+		case "linkerd-proxy-injector":
+			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.proxyInjector))
+		case "linkerd-tap":
+			resourceDefs = append(resourceDefs, getSingleControlPlaneDef(component, replicaOptions.tap))
+		default:
+			t.Fatal("Could not find the resource")
+		}
+	}
+	return resourceDefs
+}
