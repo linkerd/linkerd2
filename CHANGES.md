@@ -1,3 +1,168 @@
+## stable-2.7.0
+
+This release adds support for integrating Linkerd's PKI with an external
+certificate issuer such as [`cert-manager`] as well as streamlining the
+certificate rotation process in general. For more details about cert-manager
+and certificate rotation, see the
+[docs](https://linkerd.io/2/tasks/use_external_certs/). This release also
+includes performance improvements to the dashboard, reduced memory usage of the
+proxy, various improvements to the Helm chart, and much much more.
+
+To install this release, run: `curl https://run.linkerd.io/install | sh`
+
+**Upgrade notes**: This release includes breaking changes to our Helm charts.
+Please see the [upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-270).
+
+**Special thanks to**: @alenkacz, @bmcstdio, @daxmc99, @droidnoob, @ereslibre,
+@javaducky, @joakimr-axis, @JohannesEH, @KIVagant, @mayankshah1607,
+@Pothulapati, and @StupidScience!
+
+**Full release notes**:
+
+* CLI
+  * Updated the mTLS trust anchor checks to eliminate false positives caused by
+    extra trailing spaces
+  * Reduced the severity level of the Linkerd version checks, so that they
+    don't fail when the external version endpoint is unreachable
+    (thanks @mayankshah1607!)
+  * Added a new `tap` APIService check to aid with uncovering Kubernetes API
+    aggregatation layer issues (thanks @droidnoob!)
+  * Introduced CNI checks to confirm the CNI plugin is installed and ready;
+    this is done through `linkerd check --pre --linkerd-cni-enabled` before
+    installation and `linkerd check` after installation if the CNI plugin is
+    present
+  * Added support for the `--as-group` flag so that users can impersonate
+    groups for Kubernetes operations (thanks @mayankshah1607!)
+  * Added HA specific checks to `linkerd check` to ensure that the `kube-system`
+    namespace has the `config.linkerd.io/admission-webhooks:disabled`
+    label set
+  * Fixed a problem causing the presence of unnecessary empty fields in
+    generated resource definitions (thanks @mayankshah1607)
+  * Added the ability to pass both port numbers and port ranges to
+    `--skip-inbound-ports` and `--skip-outbound-ports` (thanks to @javaducky!)
+  * Increased the comprehensiveness of `linkerd check --pre`
+  * Added TLS certificate validation to `check` and `upgrade` commands
+  * Added support for injecting CronJobs and ReplicaSets, as well as the ability
+    to use them as targets in the CLI subcommands
+  * Introduced the new flags `--identity-issuer-certificate-file`,
+    `--identity-issuer-key-file` and `identity-trust-anchors-file` to `linkerd
+    upgrade` to support trust anchor and issuer certificate rotation
+  * Added a check that ensures using `--namespace` and `--all-namespaces`
+    results in an error as they are mutually exclusive
+  * Added a `Dashboard.Replicas` parameter to the Linkerd Helm chart to allow
+    configuring the number of dashboard replicas (thanks @KIVagant!)
+  * Removed redundant service profile check (thanks @alenkacz!)
+  * Updated `uninject` command to work with namespace resources
+    (thanks @mayankshah1607!)
+  * Added a new `--identity-external-issuer` flag to `linkerd install` that
+    configures Linkerd to use certificates issued by an external certificate
+    issuer (such as `cert-manager`)
+  * Added support for injecting a namespace to `linkerd inject` (thanks
+    @mayankshah1607!)
+  * Added checks to `linkerd check --preinstall` ensuring Kubernetes Secrets
+    can be created and accessed
+  * Fixed `linkerd tap` sometimes displaying incorrect pod names for unmeshed
+    IPs that match multiple running pods
+  * Made `linkerd install --ignore-cluster` and `--skip-checks` faster
+  * Fixed a bug causing `linkerd upgrade` to fail when used with
+  `--from-manifest`
+  * Made `--cluster-domain` an install-only flag (thanks @bmcstdio!)
+  * Updated `check` to ensure that proxy trust anchors match configuration
+       (thanks @ereslibre!)
+  * Added condition to the `linkerd stat` command that requires a window size
+    of at least 15 seconds to work properly with Prometheus
+* Controller
+  * Fixed an issue where an override of the Docker registry was not being
+    applied to debug containers (thanks @javaducky!)
+  * Added check for the Subject Alternate Name attributes to the API server
+    when access restrictions have been enabled (thanks @javaducky!)
+  * Added support for arbitrary pod labels so that users can leverage the
+    Linkerd provided Prometheus instance to scrape for their own labels
+    (thanks @daxmc99!)
+  * Fixed an issue with CNI config parsing
+  * Fixed a race condition in the `linkerd-web` service
+  * Updated Prometheus to 2.15.2 (thanks @Pothulapati)
+  * Increased minimum kubernetes version to 1.13.0
+  * Added support for pod ip and service cluster ip lookups in the destination 
+    service
+  * Added recommended kubernetes labels to control-plane
+  * Added the `--wait-before-exit-seconds` flag to linkerd inject for the proxy 
+    sidecar to delay the start of its shutdown process (a huge commit from 
+    @KIVagant, thanks!)
+  * Added a pre-sign check to the identity service 
+  * Fixed inject failures for pods with security context capabilities
+  * Added `conntrack` to the `debug` container to help with connection tracking
+    debugging
+  * Fixed a bug in `tap` where mismatch cluster domain and trust domain caused
+    `tap` to hang
+  * Fixed an issue in the `identity` RBAC resource which caused start up errors
+    in k8s 1.6 (thanks @Pothulapati!)
+  * Added support for using trust anchors from an external certificate issuer
+    (such as `cert-mananger`) to the `linkerd-identity` service
+  * Added support for headless services (thanks @JohannesEH!)
+* Helm
+  * **Breaking change**: Renamed `noInitContainer` parameter to `cniEnabled`
+  * **Breaking Change** Updated Helm charts to follow best practices (thanks
+    @Pothulapati and @javaducky!)
+  * Fixed an issue with `helm install` where the lists of ignored inbound and
+    outbound ports would not be reflected
+  * Fixed the `linkerd-cni` Helm chart not setting proper namespace annotations
+    and labels
+  * Fixed certificate issuance lifetime not being set when installing through
+    Helm
+  * Updated the helm build to retain previous releases
+  * Moved CNI template into its own Helm chart
+* Proxy
+  * Fixed an issue that could cause the OpenCensus exporter to stall
+  * Improved error classification and error responses for gRPC services
+  * Fixed a bug where the proxy could stop receiving service discovery updates,
+    resulting in 503 errors
+  * Improved debug/error logging to include detailed contextual information
+  * Fixed a bug in the proxy's logging subsystem that could cause the proxy to
+    consume memory until the process is OOM killed, especially when the proxy was
+    configured to log diagnostic information
+  * Updated proxy dependencies to address RUSTSEC-2019-0033, RUSTSEC-2019-0034,
+    and RUSTSEC-2020-02
+* Web UI
+  * Fixed an error when refreshing an already open dashboard when the Linkerd
+    version has changed
+  * Increased the speed of the dashboard by pausing network activity when the 
+    dashboard is not visible to the user
+  * Added support for CronJobs and ReplicaSets, including new Grafana dashboards
+    for them
+  * Added `linkerd check` to the dashboard in the `/controlplane` view
+  * Added request and response headers to the `tap` expanded view in the
+    dashboard
+  * Added filter to namespace select button
+  * Improved how empty tables are displayed
+  * Added `Host:` header validation to the `linkerd-web` service, to protect
+    against DNS rebinding attacks
+  * Made the dashboard sidebar component responsive
+  * Changed the navigation bar color to the one used on the [Linkerd](https://linkerd.io/) website
+* Internal
+  * Added validation to incoming sidecar injection requests that ensures
+    the value of `linkerd.io/inject` is either `enabled` or `disabled`
+    (thanks @mayankshah1607)
+  * Upgraded the Prometheus Go client library to v1.2.1 (thanks @daxmc99!)
+  * Fixed an issue causing `tap`, `injector` and `sp-validator` to use 
+    old certificates after `helm upgrade` due to not being restarted
+  * Fixed incomplete Swagger definition of the tap api, causing benign
+    error logging in the kube-apiserver
+  * Removed the destination container from the linkerd-controller deployment as
+    it now runs in the linkerd-destination deployment
+  * Allowed the control plane to be injected with the `debug` container
+  * Updated proxy image build script to support HTTP proxy options
+    (thanks @joakimr-axis!)
+  * Updated the CLI `doc` command to auto-generate documentation for the proxy
+    configuration annotations (thanks @StupidScience!)
+  * Added new `--trace-collector` and `--trace-collector-svc-account` flags to
+    `linkerd inject` that configures the OpenCensus trace collector used by
+    proxies in the injected workload (thanks @Pothulapati!)
+  * Added a new `--control-plane-tracing` flag to `linkerd install` that enables
+    distributed tracing in the control plane (thanks @Pothulapati!)
+  * Added distributed tracing support to the control plane (thanks
+    @Pothulapati!)
+
 ## edge-20.2.1
 
 This edge release is a release candidate for `stable-2.7` and fixes an issue
