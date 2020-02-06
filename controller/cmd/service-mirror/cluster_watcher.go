@@ -81,10 +81,13 @@ type (
 	// Then this component crashes, leaving the mirrors around. In the meantime services
 	// B and C are deleted. When the controller starts up again and registers to listen for
 	// these services, we need to delete them as deletion events will not be received.
-	//TODO: Maybe do that as a general step in the beginning instead of per cluster...
-	OprhanedServicesGcTriggered struct{}
+	OprhanedServicesGcTriggered struct {}
 )
 
+
+// When the gateway is resolved we need to produce a set of endpoint addresses that that
+// contains the external IPs that this gateway exposes. Therefore we return the IP addresses
+// as well as a single port on which the gateway is accessible.
 func (gw *RemoteClusterServiceWatcher) resolveGateway(namespace string, gatewayName string) ([]corev1.EndpointAddress, int32, error) {
 	gateway, err := gw.remoteApiClient.Svc().Lister().Services(namespace).Get(gatewayName)
 	if err != nil {
@@ -96,12 +99,24 @@ func (gw *RemoteClusterServiceWatcher) resolveGateway(namespace string, gatewayN
 
 	var gatewayEndpoints []corev1.EndpointAddress
 	for _, ingress := range gateway.Status.LoadBalancer.Ingress {
-		gatewayEndpoints = append(gatewayEndpoints, corev1.EndpointAddress{IP: ingress.IP, Hostname: ingress.Hostname})
+		gatewayEndpoints = append(gatewayEndpoints, corev1.EndpointAddress{
+			IP: ingress.IP,
+			Hostname: ingress.Hostname,
+		})
 	}
 
+	//TODO: We take the first defined port here. We need to think about that...
+	// The problem stems from the fact that if we have more than two ports,
+	// there is no real way to create a service that can route to the correct one.
+	// For example, say we have ServiceA on the remote cluster exposing port 8080
+	// port 8081 and port 8082 and associated with GatewayB that exposes ports 80 and port 443.
+	// When we create a mirrored service locally for every port that it exposes we need to
+	// associate one target port for the remote gateway. So [8080, 8081, 8082] -> 80 or
+	// [8080, 8081, 8082] -> 443. Cannot do both ports I think...
 	return gatewayEndpoints, gateway.Spec.Ports[0].Port, nil
 }
 
+// NewRemoteClusterServiceWatcher constructs a new cluster watcher
 func NewRemoteClusterServiceWatcher(localApi *k8s.API, cfg *rest.Config, clusterName string) (*RemoteClusterServiceWatcher, error) {
 	remoteApi, err := k8s.InitializeAPIForConfig(cfg, k8s.Svc)
 	if err != nil {
@@ -129,9 +144,10 @@ func (sw *RemoteClusterServiceWatcher) getMirroredServiceLabels(service *corev1.
 	newLabels := map[string]string{
 		MirroredResourceLabel:      "true",
 		RemoteClusterNameLabel:     sw.clusterName,
-		RemoteResourceVersionLabel: service.ResourceVersion,
+		RemoteResourceVersionLabel: service.ResourceVersion, // needed to detect real changes
 	}
 	for k, v := range service.Labels {
+		// rewrite the mirroring ones
 		if k == GatewayNameAnnotation {
 			k = RemoteGatewayNameAnnotation
 		}
@@ -144,6 +160,9 @@ func (sw *RemoteClusterServiceWatcher) getMirroredServiceLabels(service *corev1.
 }
 
 func (sw *RemoteClusterServiceWatcher) mirrorNamespaceIfNecessary(namespace string) error {
+	// if the namespace is already present we do not need to change it.
+	// if we are creating it we want to put a label indicating this is a
+	// mirrored resource so we delete it when the times comes...
 	if _, err := sw.localApiClient.NS().Lister().Get(namespace); err != nil {
 		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -162,6 +181,10 @@ func (sw *RemoteClusterServiceWatcher) mirrorNamespaceIfNecessary(namespace stri
 	return nil
 }
 
+// This method takes care of port remapping. What it does essentially is get the one gateway port
+// that we should send traffic to and created endpoint ports that bind to the mirrored service ports
+// (same name, etc) but send traffic to the gateway port. This way we do not need to do any remapping
+// on the service side of things. It all happens in the endpoints
 func (sw *RemoteClusterServiceWatcher) getEndpointsPorts(service *corev1.Service, gatewayPort int32) []corev1.EndpointPort {
 	var endpointsPorts []corev1.EndpointPort
 	for _, remotePort := range service.Spec.Ports {
@@ -175,10 +198,14 @@ func (sw *RemoteClusterServiceWatcher) getEndpointsPorts(service *corev1.Service
 }
 
 func (sw *RemoteClusterServiceWatcher) cleanupOrhpanesServices() error {
+	//TODO: Implement this
 	sw.log.Debug("GC-ing orphaned services")
 	return nil
 }
 
+// Whenever we stop watching a cluster, we need to cleanup everything that we have
+// created. This piece of code is responsible for doing just that. It takes care of
+// services, endpoints and namespaces (if needed)
 func (sw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 	matchLabels := map[string]string{
 		MirroredResourceLabel:  "true",
@@ -224,10 +251,10 @@ func (sw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 
 		}
 	}
-
 	return nil
 }
 
+// Deletes a locally mirrored service as it is not present on the remote cluster anymore
 func (sw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteServiceDeleted) error {
 	localServiceName := sw.mirroredResourceName(ev.Name)
 	sw.log.Debugf("Deleting mirrored service %s/%s and its corresponding Endpoints", ev.Namespace, localServiceName)
@@ -238,12 +265,16 @@ func (sw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteServ
 	return nil
 }
 
+// Updates a locally mirrored service. There might have been some pretty fundamental changes such as
+// new gateway being assigned or additional ports exposed. This method takes care of that.
 func (sw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteServiceUpdated) error {
+	//TODO: We have all the data to figure out whether ports or gateways gave been updated.
+	// If we cando that we can short circuit here and avoid calling the k8s api just to try and
+	// update things that have not changed.
 	gatewayEndpoints, gatewayPort, err := sw.resolveGateway(ev.gatewayNs, ev.gatewayName)
 	if err != nil {
 		return err
 	}
-
 	ev.localEndpoints.Subsets = []corev1.EndpointSubset{
 		{
 			Addresses: gatewayEndpoints,
@@ -355,9 +386,10 @@ func (sw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 	localName := sw.mirroredResourceName(service.Name)
 
 	if hasGtwName && hasGtwNs {
-		// a service that is a candiadte for being mirrored as it has the needed annotations
+		// a service that is a candidate for being mirrored as it has the needed annotations
 		localService, err := sw.localApiClient.Svc().Lister().Services(service.Namespace).Get(localName)
 		if err != nil {
+			// in this case we need to create a new service as we do not have one present
 			sw.eventsQueue.AddRateLimited(&RemoteServiceCreated{
 				service:            service,
 				gatewayNs:          remoteGatewayNs,
@@ -367,6 +399,13 @@ func (sw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 		} else {
 			lastMirroredRemoteVersion, ok := localService.Labels[RemoteResourceVersionLabel]
 			if ok && lastMirroredRemoteVersion != service.ResourceVersion {
+				// Why might we see an ADD for a service we already have? Well, if our
+				// controller has been restarted it will get ADDs for all services that
+				// are the current snapshot of the remote cluster. In this case we need to
+				// see whether anything has changed while we were doing and if it has,
+				// translate that as an UPDATE. If nothing has changed, we can just skip
+				// that event. This is the reason why we keep the last observed resource
+				// version of the remote object locally.
 				endpoints, err := sw.localApiClient.Endpoint().Lister().Endpoints(service.Namespace).Get(localName)
 				if err == nil {
 					sw.eventsQueue.AddRateLimited(&RemoteServiceUpdated{
@@ -404,8 +443,11 @@ func (sw *RemoteClusterServiceWatcher) onDelete(svc interface{}) {
 	}
 }
 
+// the main processing loop in which we handle more domain specific events
+// and deal with retries
 func (sw *RemoteClusterServiceWatcher) processEvents() {
-	maxRetries := 3 // magic...
+	maxRetries := 3 // extract magic
+
 	for {
 		event, done := sw.eventsQueue.Get()
 		var err error
@@ -430,7 +472,10 @@ func (sw *RemoteClusterServiceWatcher) processEvents() {
 			}
 		}
 
-		// handle errors
+		// the logic here is that there might have been an API
+		// connectivity glitch or something. So its not a bad idea to requeue
+		// the event and try again up to a number of limits, just to ensure
+		// that we are not diverging in states due to bad luck...
 		if err == nil {
 			sw.eventsQueue.Forget(event)
 		} else if (sw.eventsQueue.NumRequeues(event) < maxRetries) && !done {
@@ -446,6 +491,8 @@ func (sw *RemoteClusterServiceWatcher) processEvents() {
 		}
 	}
 }
+
+// Start starts watching the remote cluster
 func (sw *RemoteClusterServiceWatcher) Start() {
 	sw.remoteApiClient.SyncWithStopCh(sw.stopper)
 	sw.remoteApiClient.Svc().Informer().AddEventHandler(
@@ -458,6 +505,7 @@ func (sw *RemoteClusterServiceWatcher) Start() {
 	go sw.processEvents()
 }
 
+// Stop stops watching the cluster and cleans up all mirrored resources
 func (sw *RemoteClusterServiceWatcher) Stop() {
 	close(sw.stopper)
 	sw.eventsQueue.AddRateLimited(&ClusterUnregistered{})
