@@ -1,6 +1,6 @@
 ## stable-2.7.0
 
-This massive release adds support for integrating Linkerd's PKI with an external
+This release adds support for integrating Linkerd's PKI with an external
 certificate issuer such as [`cert-manager`] as well as streamlining the
 certificate rotation process in general. For more details about cert-manager
 and certificate rotation, see the
@@ -11,7 +11,7 @@ proxy, various improvements to the Helm chart, and much much more.
 To install this release, run: `curl https://run.linkerd.io/install | sh`
 
 **Upgrade notes**: This release includes breaking changes to our Helm charts.
-Please see the [upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-2-7-0).
+Please see the [upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-270).
 
 **Special thanks to**: @alenkacz, @bmcstdio, @daxmc99, @droidnoob, @ereslibre,
 @javaducky, @joakimr-axis, @JohannesEH, @KIVagant, @mayankshah1607,
@@ -69,6 +69,8 @@ Please see the [upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrad
   * Made `--cluster-domain` an install-only flag (thanks @bmcstdio!)
   * Updated `check` to ensure that proxy trust anchors match configuration
        (thanks @ereslibre!)
+  * Added condition to the `linkerd stat` command that requires a window size
+    of at least 15 seconds to work properly with Prometheus
 * Controller
   * Fixed an issue where an override of the Docker registry was not being
     applied to debug containers (thanks @javaducky!)
@@ -89,8 +91,6 @@ Please see the [upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrad
     @KIVagant, thanks!)
   * Added a pre-sign check to the identity service 
   * Fixed inject failures for pods with security context capabilities
-  * Added condition to the `linkerd stat` command that requires a window size
-    of at least 15 seconds to work properly with Prometheus
   * Added `conntrack` to the `debug` container to help with connection tracking
     debugging
   * Fixed a bug in `tap` where mismatch cluster domain and trust domain caused
@@ -102,32 +102,27 @@ Please see the [upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrad
   * Added support for headless services (thanks @JohannesEH!)
 * Helm
   * **Breaking change**: Renamed `noInitContainer` parameter to `cniEnabled`
-  * **Breaking Change** Updated Helm charts to follow best practices using
-    proper casing (thanks @Pothulapati!)
+  * **Breaking Change** Updated Helm charts to follow best practices (thanks
+    @Pothulapati and @javaducky!)
   * Fixed an issue with `helm install` where the lists of ignored inbound and
     outbound ports would not be reflected
   * Fixed the `linkerd-cni` Helm chart not setting proper namespace annotations
     and labels
   * Fixed certificate issuance lifetime not being set when installing through
     Helm
-  * More improvements to Helm best practices (thanks to @Pothulapati!)
-  * Updated Helm templates to use fully-qualified variable references based
-    upon Helm best practices (thanks @javaducky!)
   * Updated the helm build to retain previous releases
+  * Moved CNI template into its own Helm chart
 * Proxy
   * Fixed an issue that could cause the OpenCensus exporter to stall
-  * Added a timeout to release resolutions to idle balancers
-  * Improved error classification for gRPC services
+  * Improved error classification and error responses for gRPC services
   * Fixed a bug where the proxy could stop receiving service discovery updates,
     resulting in 503 errors
   * Improved debug/error logging to include detailed contextual information
   * Fixed a bug in the proxy's logging subsystem that could cause the proxy to
     consume memory until the process is OOM killed, especially when the proxy was
     configured to log diagnostic information
-  * Fixed properly emitting `grpc-status` headers when signaling proxy errors to
-    gRPC clients
-  * Updated certain proxy dependencies to address RUSTSEC-2019-0033,
-    RUSTSEC-2019-0034, and RUSTSEC-2020-02
+  * Updated proxy dependencies to address RUSTSEC-2019-0033, RUSTSEC-2019-0034,
+    and RUSTSEC-2020-02
 * Web UI
   * Fixed an error when refreshing an already open dashboard when the Linkerd
     version has changed
@@ -148,20 +143,13 @@ Please see the [upgrade instructions](https://linkerd.io/2/tasks/upgrade/#upgrad
   * Added validation to incoming sidecar injection requests that ensures
     the value of `linkerd.io/inject` is either `enabled` or `disabled`
     (thanks @mayankshah1607)
-  * Moved CNI template into a Helm chart to prepare for future publication
   * Upgraded the Prometheus Go client library to v1.2.1 (thanks @daxmc99!)
-  * Reenabled certificates rotation integration tests
-  * Fixed whitespace path handling in non-docker build scripts (thanks
-    @joakimr-axis!)
-  * Removed Calico logutils dependency that was incompatible with Go 1.13
   * Fixed an issue causing `tap`, `injector` and `sp-validator` to use 
     old certificates after `helm upgrade` due to not being restarted
   * Fixed incomplete Swagger definition of the tap api, causing benign
     error logging in the kube-apiserver
   * Removed the destination container from the linkerd-controller deployment as
     it now runs in the linkerd-destination deployment
-  * Upgraded Go to version 1.13.4
-  * Added integration test for custom cluster domain
   * Allowed the control plane to be injected with the `debug` container
   * Updated proxy image build script to support HTTP proxy options
     (thanks @joakimr-axis!)
