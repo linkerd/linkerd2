@@ -11,12 +11,15 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// RemoteClusterConfigWatcher watches for secrets of type MirrorSecretType
+// and upon the detection of such secret created starts a RemoteClusterServiceWatcher
 type RemoteClusterConfigWatcher struct {
 	k8sAPI          *k8s.API
 	clusterWatchers map[string]*RemoteClusterServiceWatcher
 	mutex           *sync.Mutex
 }
 
+// NewRemoteClusterConfigWatcher Creates a new config watcher
 func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API) *RemoteClusterConfigWatcher {
 	rcw := &RemoteClusterConfigWatcher{
 		k8sAPI:          k8sAPI,
@@ -36,12 +39,14 @@ func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API) *RemoteClusterConfigWatcher 
 				}
 			},
 			UpdateFunc: func(_, obj interface{}) {
+				//TODO: Handle update (it might be that the credentials have changed...)
 			},
 		},
 	)
 	return rcw
 }
 
+// Stop Shuts down all created config and cluster watchers
 func (rcw *RemoteClusterConfigWatcher) Stop() {
 	rcw.mutex.Lock()
 	defer rcw.mutex.Unlock()
@@ -51,7 +56,7 @@ func (rcw *RemoteClusterConfigWatcher) Stop() {
 }
 
 func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(obj interface{}) error {
-	if secret := asConfigSecret(obj); secret != nil {
+	if secret := asRemoteClusterConfigSecret(obj); secret != nil {
 		config, name, err := parseRemoteClusterSecret(secret)
 		if err != nil {
 			return err
@@ -73,13 +78,12 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(obj interface{}) er
 		rcw.clusterWatchers[name] = watcher
 		watcher.Start()
 		return nil
-
 	}
 	return nil
 }
 
 func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(obj interface{}) error {
-	if secret := asConfigSecret(obj); secret != nil {
+	if secret := asRemoteClusterConfigSecret(obj); secret != nil {
 		_, name, err := parseRemoteClusterSecret(secret)
 		if err != nil {
 			return err
@@ -97,7 +101,7 @@ func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(obj interface{}) 
 	return nil
 }
 
-func asConfigSecret(obj interface{}) *corev1.Secret {
+func asRemoteClusterConfigSecret(obj interface{}) *corev1.Secret {
 	switch secret := obj.(type) {
 	case *corev1.Secret:
 		{
