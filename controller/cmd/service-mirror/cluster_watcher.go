@@ -2,6 +2,8 @@ package servicemirror
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -10,7 +12,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"strings"
 )
 
 type (
@@ -46,7 +47,7 @@ type (
 		localService   *corev1.Service
 		localEndpoints *corev1.Endpoints
 		remoteUpdate   *corev1.Service
-		gatewayData        *gatewayMetadata
+		gatewayData    *gatewayMetadata
 	}
 
 	// RemoteServiceDeleted when a remote service is going away
@@ -81,10 +82,10 @@ type (
 	// these services, we need to delete them as deletion events will not be received.
 	OprhanedServicesGcTriggered struct{}
 
-gatewayMetadata struct {
-Name string
-Namespace string
-}
+	gatewayMetadata struct {
+		Name      string
+		Namespace string
+	}
 )
 
 // When the gateway is resolved we need to produce a set of endpoint addresses that that
@@ -211,7 +212,7 @@ func (sw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 
 	servicesOnLocalCluster, err := sw.localApiClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
-		return fmt.Errorf("failed obtaining local services while GC-ing: %s",err)
+		return fmt.Errorf("failed obtaining local services while GC-ing: %s", err)
 	}
 
 	for _, srv := range servicesOnLocalCluster {
@@ -221,7 +222,7 @@ func (sw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 			if err := sw.localApiClient.Client.CoreV1().Services(srv.Namespace).Delete(srv.Name, &metav1.DeleteOptions{}); err != nil {
 				sw.log.Errorf("Failed to GC local service %", srv.Name)
 			} else {
-				sw.log.Debug("Deleted service s/%s as part of GC process", srv.Namespace,srv.Name)
+				sw.log.Debug("Deleted service s/%s as part of GC process", srv.Namespace, srv.Name)
 			}
 		}
 	}
@@ -383,13 +384,12 @@ func getGatewayMetadata(annotations map[string]string) *gatewayMetadata {
 	remoteGatewayNs, hasGtwNs := annotations[GatewayNsAnnotation]
 	if hasGtwName && hasGtwNs {
 		return &gatewayMetadata{
-			Name: remoteGatewayName,
+			Name:      remoteGatewayName,
 			Namespace: remoteGatewayNs,
 		}
 	}
 	return nil
 }
-
 
 func (sw *RemoteClusterServiceWatcher) onUpdate(old, new interface{}) {
 	oldService := old.(*corev1.Service)
@@ -408,7 +408,7 @@ func (sw *RemoteClusterServiceWatcher) onUpdate(old, new interface{}) {
 							localService:   localService,
 							localEndpoints: endpoints,
 							remoteUpdate:   newService,
-							gatewayData: gtwData,
+							gatewayData:    gtwData,
 						})
 					}
 				}
@@ -428,7 +428,7 @@ func (sw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 			// in this case we need to create a new service as we do not have one present
 			sw.eventsQueue.AddRateLimited(&RemoteServiceCreated{
 				service:            service,
-				gatewayData: gtwMeta,
+				gatewayData:        gtwMeta,
 				newResourceVersion: service.ResourceVersion,
 			})
 		} else {
@@ -447,7 +447,7 @@ func (sw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 						localService:   localService,
 						localEndpoints: endpoints,
 						remoteUpdate:   service,
-						gatewayData: gtwMeta,
+						gatewayData:    gtwMeta,
 					})
 				}
 			}
@@ -528,6 +528,7 @@ func (sw *RemoteClusterServiceWatcher) processEvents() {
 // Start starts watching the remote cluster
 func (sw *RemoteClusterServiceWatcher) Start() {
 	sw.remoteApiClient.SyncWithStopCh(sw.stopper)
+	sw.eventsQueue.AddRateLimited(&OprhanedServicesGcTriggered{})
 	sw.remoteApiClient.Svc().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    sw.onAdd,

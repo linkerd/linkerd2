@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	servicemirror "github.com/linkerd/linkerd2/controller/cmd/service-mirror"
 	"strings"
+
+	servicemirror "github.com/linkerd/linkerd2/controller/cmd/service-mirror"
 
 	v1 "k8s.io/api/rbac/v1"
 

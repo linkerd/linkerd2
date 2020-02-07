@@ -3,9 +3,10 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"k8s.io/client-go/rest"
 	"strings"
 	"time"
+
+	"k8s.io/client-go/rest"
 
 	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	ts "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions"
@@ -247,6 +248,7 @@ func (api *API) Sync() {
 }
 
 // SyncWithStopCh waits for all informers to be synced.
+//TODO Added temporary to avoid making the diff too irrelevant
 func (api *API) SyncWithStopCh(stopCh chan struct{}) {
 	api.sharedInformers.Start(stopCh)
 	api.spSharedInformers.Start(stopCh)

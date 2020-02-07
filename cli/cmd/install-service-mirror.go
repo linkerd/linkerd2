@@ -2,14 +2,15 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/servicemirror"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io"
 	"k8s.io/helm/pkg/chartutil"
-	"os"
 	"sigs.k8s.io/yaml"
 )
 

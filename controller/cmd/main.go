@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	servicemirror "github.com/linkerd/linkerd2/controller/cmd/service-mirror"
 	"os"
+
+	servicemirror "github.com/linkerd/linkerd2/controller/cmd/service-mirror"
 
 	"github.com/linkerd/linkerd2/controller/cmd/destination"
 	"github.com/linkerd/linkerd2/controller/cmd/heartbeat"
