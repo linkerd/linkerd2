@@ -15,11 +15,12 @@ import (
 )
 
 type installServiceMirrorOptions struct {
-	namespace string
-	logLevel  string
-	image     string
-	version   string
-	uid       int64
+	namespace    string
+	logLevel     string
+	image        string
+	version      string
+	uid          int64
+	requeueLimit int32
 }
 
 const helmServiceMirrorDefaultChartName = "linkerd2-service-mirror"
@@ -45,6 +46,7 @@ func newCmdInstallServiceMirror() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(&options.version, "image", "", options.version, "The image of the Service Mirror component")
 	cmd.PersistentFlags().StringVarP(&options.logLevel, "log-level", "", options.logLevel, "Log level for the Service Mirror Component")
 	cmd.PersistentFlags().Int64Var(&options.uid, "uid", options.uid, "Run the Service Mirror component under this user ID")
+	cmd.PersistentFlags().Int32Var(&options.requeueLimit, "event-requeue-limit", options.requeueLimit, "The number of times an failed update from the remote cluster is allowed to be requeued (retried)")
 
 	return cmd
 }
@@ -55,11 +57,12 @@ func newInstallServiceMirrorOptionsWithDefaults() (*installServiceMirrorOptions,
 		return nil, err
 	}
 	return &installServiceMirrorOptions{
-		version:   version.Version,
-		logLevel:  defaults.LogLevel,
-		namespace: defaults.Namespace,
-		image:     defaults.ServiceMirrorImage,
-		uid:       defaults.ServiceMirrorUID,
+		version:      version.Version,
+		logLevel:     defaults.LogLevel,
+		namespace:    defaults.Namespace,
+		image:        defaults.ServiceMirrorImage,
+		uid:          defaults.ServiceMirrorUID,
+		requeueLimit: defaults.EventRequeueLimit,
 	}, nil
 }
 
@@ -73,6 +76,8 @@ func (options *installServiceMirrorOptions) buildValues() (*servicemirror.Values
 	installValues.ServiceMirrorImage = options.image
 	installValues.ServiceMirrorVersion = options.version
 	installValues.ServiceMirrorUID = options.uid
+	installValues.EventRequeueLimit = options.requeueLimit
+
 	return installValues, nil
 }
 

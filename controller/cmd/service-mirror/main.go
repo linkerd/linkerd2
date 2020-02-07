@@ -61,6 +61,7 @@ func Main(args []string) {
 	cmd := flag.NewFlagSet("service-mirror", flag.ExitOnError)
 
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
+	requeueLimit := cmd.Int("event-requeue-limit", 3, "requeue limit for events")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -80,7 +81,7 @@ func Main(args []string) {
 	}
 
 	k8sAPI.Sync()
-	watcher := NewRemoteClusterConfigWatcher(k8sAPI)
+	watcher := NewRemoteClusterConfigWatcher(k8sAPI, *requeueLimit)
 	log.Info("Started cluster config watcher")
 
 	<-stop

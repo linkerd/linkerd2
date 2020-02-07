@@ -29,6 +29,7 @@ type (
 		stopper         chan struct{}
 		log             *logging.Entry
 		eventsQueue     workqueue.RateLimitingInterface
+		requeueLimit    int
 	}
 
 	// RemoteServiceCreated is generated whenever a remote service is created Observing
@@ -129,7 +130,7 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadat
 }
 
 // NewRemoteClusterServiceWatcher constructs a new cluster watcher
-func NewRemoteClusterServiceWatcher(localAPI *k8s.API, cfg *rest.Config, clusterName string) (*RemoteClusterServiceWatcher, error) {
+func NewRemoteClusterServiceWatcher(localAPI *k8s.API, cfg *rest.Config, clusterName string, requeueLimit int) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(cfg, k8s.Svc)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize remote api for cluster %s: %s", clusterName, err)
@@ -144,7 +145,8 @@ func NewRemoteClusterServiceWatcher(localAPI *k8s.API, cfg *rest.Config, cluster
 			"cluster":    clusterName,
 			"apiAddress": cfg.Host,
 		}),
-		eventsQueue: workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		eventsQueue:  workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		requeueLimit: requeueLimit,
 	}, nil
 }
 
@@ -399,7 +401,7 @@ func getGatewayMetadata(annotations map[string]string) *gatewayMetadata {
 func (rcsw *RemoteClusterServiceWatcher) considerDispatchingGatewayUpdate(newService *corev1.Service) {
 	affectedServices, err := rcsw.affectedMirroredServicesForGatewayUpdate(newService.Namespace, newService.Name, newService.ResourceVersion)
 	if err == nil && len(affectedServices) > 0 {
-		rcsw.eventsQueue.AddRateLimited(&RemoteGatewayUpdated{
+		rcsw.eventsQueue.Add(&RemoteGatewayUpdated{
 			new:              newService,
 			affectedServices: affectedServices,
 		})
@@ -420,7 +422,7 @@ func (rcsw *RemoteClusterServiceWatcher) onUpdate(old, new interface{}) {
 				if ok && lastMirroredRemoteVersion != newService.ResourceVersion {
 					endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(newService.Namespace).Get(localName)
 					if err == nil {
-						rcsw.eventsQueue.AddRateLimited(&RemoteServiceUpdated{
+						rcsw.eventsQueue.Add(&RemoteServiceUpdated{
 							localService:   localService,
 							localEndpoints: endpoints,
 							remoteUpdate:   newService,
@@ -444,7 +446,7 @@ func (rcsw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 		localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(localName)
 		if err != nil {
 			// in this case we need to create a new service as we do not have one present
-			rcsw.eventsQueue.AddRateLimited(&RemoteServiceCreated{
+			rcsw.eventsQueue.Add(&RemoteServiceCreated{
 				service:            service,
 				gatewayData:        gtwMeta,
 				newResourceVersion: service.ResourceVersion,
@@ -461,7 +463,7 @@ func (rcsw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 				// version of the remote object locally.
 				endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(service.Namespace).Get(localName)
 				if err == nil {
-					rcsw.eventsQueue.AddRateLimited(&RemoteServiceUpdated{
+					rcsw.eventsQueue.Add(&RemoteServiceUpdated{
 						localService:   localService,
 						localEndpoints: endpoints,
 						remoteUpdate:   service,
@@ -515,7 +517,7 @@ func (rcsw *RemoteClusterServiceWatcher) onDelete(svc interface{}) {
 		service = svc.(*corev1.Service)
 	}
 	if gtwData := getGatewayMetadata(service.Annotations); gtwData != nil {
-		rcsw.eventsQueue.AddRateLimited(&RemoteServiceDeleted{
+		rcsw.eventsQueue.Add(&RemoteServiceDeleted{
 			Name:      service.Name,
 			Namespace: service.Namespace,
 		})
@@ -525,7 +527,7 @@ func (rcsw *RemoteClusterServiceWatcher) onDelete(svc interface{}) {
 			rcsw.log.Errorf("Could not determine whether deleted service is a gateway: %s", err)
 		} else {
 			if len(affectedServices) > 0 {
-				rcsw.eventsQueue.AddRateLimited(&RemoteGatewayDeleted{
+				rcsw.eventsQueue.Add(&RemoteGatewayDeleted{
 					gatewayData: &gatewayMetadata{
 						Name:      service.Name,
 						Namespace: service.Namespace,
@@ -540,7 +542,6 @@ func (rcsw *RemoteClusterServiceWatcher) onDelete(svc interface{}) {
 // the main processing loop in which we handle more domain specific events
 // and deal with retries
 func (rcsw *RemoteClusterServiceWatcher) processEvents() {
-	maxRetries := 3 // extract magic
 	for {
 		event, done := rcsw.eventsQueue.Get()
 		var err error
@@ -573,9 +574,9 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 		// that we are not diverging in states due to bad luck...
 		if err == nil {
 			rcsw.eventsQueue.Forget(event)
-		} else if (rcsw.eventsQueue.NumRequeues(event) < maxRetries) && !done {
+		} else if (rcsw.eventsQueue.NumRequeues(event) < rcsw.requeueLimit) && !done {
 			rcsw.log.Errorf("Error processing %s (will retry): %v", event, err)
-			rcsw.eventsQueue.AddRateLimited(event)
+			rcsw.eventsQueue.Add(event)
 		} else {
 			rcsw.log.Errorf("Error processing %s (giving up): %v", event, err)
 			rcsw.eventsQueue.Forget(event)
@@ -590,7 +591,7 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 // Start starts watching the remote cluster
 func (rcsw *RemoteClusterServiceWatcher) Start() {
 	rcsw.remoteAPIClient.SyncWithStopCh(rcsw.stopper)
-	rcsw.eventsQueue.AddRateLimited(&OprhanedServicesGcTriggered{})
+	rcsw.eventsQueue.Add(&OprhanedServicesGcTriggered{})
 	rcsw.remoteAPIClient.Svc().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    rcsw.onAdd,
@@ -603,6 +604,6 @@ func (rcsw *RemoteClusterServiceWatcher) Start() {
 // Stop stops watching the cluster and cleans up all mirrored resources
 func (rcsw *RemoteClusterServiceWatcher) Stop() {
 	close(rcsw.stopper)
-	rcsw.eventsQueue.AddRateLimited(&ClusterUnregistered{})
+	rcsw.eventsQueue.Add(&ClusterUnregistered{})
 	rcsw.eventsQueue.ShutDown()
 }

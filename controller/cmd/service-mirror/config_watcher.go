@@ -17,14 +17,16 @@ type RemoteClusterConfigWatcher struct {
 	k8sAPI          *k8s.API
 	clusterWatchers map[string]*RemoteClusterServiceWatcher
 	mutex           *sync.Mutex
+	requeueLimit    int
 }
 
 // NewRemoteClusterConfigWatcher Creates a new config watcher
-func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API) *RemoteClusterConfigWatcher {
+func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int) *RemoteClusterConfigWatcher {
 	rcw := &RemoteClusterConfigWatcher{
 		k8sAPI:          k8sAPI,
 		mutex:           &sync.Mutex{},
 		clusterWatchers: map[string]*RemoteClusterServiceWatcher{},
+		requeueLimit:    requeueLimit,
 	}
 	k8sAPI.Secret().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -67,7 +69,7 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(obj interface{}) er
 			return fmt.Errorf("unable to parse kube config: %s", err)
 		}
 
-		watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, name)
+		watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, name, rcw.requeueLimit)
 		if err != nil {
 			return err
 		}
