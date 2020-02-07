@@ -334,15 +334,14 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 // These need to be updated (if there are changes) once a new stable is released
 func helmOverridesStable(root *tls.CA) []string {
 	return []string{
-		"--set", "Namespace=" + TestHelper.GetLinkerdNamespace(),
-		"--set", "ControllerLogLevel=debug",
-		"--set", "LinkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
-		"--set", "Proxy.Image.Version=" + TestHelper.UpgradeHelmFromVersion(),
-		"--set", "Identity.TrustDomain=cluster.local",
-		"--set", "Identity.TrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
-		"--set", "Identity.Issuer.TLS.CrtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
-		"--set", "Identity.Issuer.TLS.KeyPEM=" + root.Cred.EncodePrivateKeyPEM(),
-		"--set", "Identity.Issuer.CrtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
+		"--set", "controllerLogLevel=debug",
+		"--set", "global.linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
+		"--set", "global.proxy.image.version=" + TestHelper.UpgradeHelmFromVersion(),
+		"--set", "global.identityTrustDomain=cluster.local",
+		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
+		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
 }
 
