@@ -1,5 +1,5 @@
 
-# Linkerd2-cni Helm Chart
+# Linkerd2-service-mirror Helm Chart
 
 Linkerd is a *service mesh*, designed to give platform-wide observability,
 reliability, and security without requiring configuration or code changes.
@@ -17,8 +17,9 @@ serviceMirrorUID: 2103
 
 | Parameter                            | Description                                                           | Default                       |
 |--------------------------------------|-----------------------------------------------------------------------|-------------------------------|
-|`serviceMirrorImage`                  | Docker image for the Service mirror component                         |`gcr.io/linkerd-io/controller`|
-|`serviceMirrorVersion`                | Tag for the Service Mirror container Docker image                     |latest version|
-|`namespace`                           | Service Mirror component namespace                                    |`linkerd-service-mirror`|
-|`serviceMirrorUID`                    | User id under which the Service Mirror shall be ran                   |`2103`|
-|`logLevel`                            | Log level for the Service Mirror component                            |`info`|
+|`serviceMirrorImage`                  | Docker image for the Service mirror component                                     |`gcr.io/linkerd-io/controller`|
+|`serviceMirrorVersion`                | Tag for the Service Mirror container Docker image                                 |latest version|
+|`namespace`                           | Service Mirror component namespace                                                |`linkerd-service-mirror`|
+|`serviceMirrorUID`                    | User id under which the Service Mirror shall be ran                               |`2103`|
+|`logLevel`                            | Log level for the Service Mirror component                                        |`info`|
+|`eventRequeueLimit`                   | Number of times update from the remote cluster is allowed to be requeued (retried)|`3`|
