@@ -49,10 +49,9 @@ const formatLeaves = resourceRsp => {
   const leaves = processSingleResourceRollup(resourceRsp, 'trafficsplit');
 
   _each(leaves, leaf => {
-    const leaf_ = leaf;
-    leaf_.name = leaf_.tsStats.leaf_;
-    leaf_.type = 'service';
-    leaf_.isLeaf_Service = true;
+    leaf.name = leaf.tsStats.leaf;
+    leaf.type = 'service';
+    leaf.isLeafService = true;
   });
   return leaves;
 };

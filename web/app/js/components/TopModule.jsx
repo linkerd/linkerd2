@@ -173,33 +173,32 @@ class TopModule extends React.Component {
   }
 
   incrementTopResult = (d, result) => {
-    const result_ = result;
-    result_.count += 1;
+    result.count += 1;
     if (!d.success) {
-      result_.failure += 1;
+      result.failure += 1;
     } else {
-      result_.success += 1;
+      result.success += 1;
     }
-    result_.successRate = new Percentage(result_.success, result_.success + result_.failure);
+    result.successRate = new Percentage(result.success, result.success + result.failure);
 
-    result_.last = d.responseEnd.latency;
-    if (d.responseEnd.latency < result_.best) {
-      result_.best = d.responseEnd.latency;
+    result.last = d.responseEnd.latency;
+    if (d.responseEnd.latency < result.best) {
+      result.best = d.responseEnd.latency;
     }
-    if (d.responseEnd.latency > result_.worst) {
-      result_.worst = d.responseEnd.latency;
+    if (d.responseEnd.latency > result.worst) {
+      result.worst = d.responseEnd.latency;
     }
 
-    result_.sourceDisplay.ips[d.base.source.str] = true;
+    result.sourceDisplay.ips[d.base.source.str] = true;
     if (!_isNil(d.requestInit.sourceMeta.labels.pod)) {
-      result_.sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
+      result.sourceDisplay.pods[d.requestInit.sourceMeta.labels.pod] = d.requestInit.sourceMeta.labels.namespace;
     }
-    result_.destinationDisplay.ips[d.base.destination.str] = true;
+    result.destinationDisplay.ips[d.base.destination.str] = true;
     if (!_isNil(d.requestInit.destinationMeta.labels.pod)) {
-      result_.destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
+      result.destinationDisplay.pods[d.requestInit.destinationMeta.labels.pod] = d.requestInit.destinationMeta.labels.namespace;
     }
 
-    result_.lastUpdated = Date.now();
+    result.lastUpdated = Date.now();
   }
 
   indexTopResult = (d, topResults) => {
@@ -289,7 +288,6 @@ class TopModule extends React.Component {
   }
 
   addSuccessCount = d => {
-    const d_ = d;
     // cope with the fact that gRPC failures are returned with HTTP status 200
     // and correctly classify gRPC failures as failures
     let success = parseInt(_get(d, 'responseInit.http.responseInit.httpStatus'), 10) < 500;
@@ -302,7 +300,7 @@ class TopModule extends React.Component {
       }
     }
 
-    d_.success = success;
+    d.success = success;
   }
 
   deleteOldestIndexedResult = resultIndex => {

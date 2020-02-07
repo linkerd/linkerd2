@@ -23,11 +23,10 @@ export const httpMethods = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', '
 
 export const defaultMaxRps = '100.0';
 export const setMaxRps = query => {
-  const query_ = query;
-  if (!_isEmpty(query_.maxRps)) {
-    query_.maxRps = parseFloat(query_.maxRps);
+  if (!_isEmpty(query.maxRps)) {
+    query.maxRps = parseFloat(query.maxRps);
   } else {
-    query_.maxRps = 0; // golang unset value for maxRps
+    query.maxRps = 0; // golang unset value for maxRps
   }
 };
 

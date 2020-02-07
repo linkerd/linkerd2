@@ -8,27 +8,26 @@ export const processEdges = (rawEdges, resourceName) => {
     return edges;
   }
   _each(rawEdges.ok.edges, edge => {
-    const edge_ = edge;
-    if (_isEmpty(edge_)) {
+    if (_isEmpty(edge)) {
       return;
     }
-    // check if any of the returned edge_s match the current resourceName
-    if (edge_.src.name === resourceName) {
+    // check if any of the returned edges match the current resourceName
+    if (edge.src.name === resourceName) {
       // current resource is SRC
-      edge_.direction = 'OUTBOUND';
-      edge_.identity = edge_.serverId;
-      edge_.name = edge_.dst.name;
-      edge_.namespace = edge_.dst.namespace;
-      edge_.key = edge_.src.name + edge_.dst.name;
-      edges.push(edge_);
-    } else if (edge_.dst.name === resourceName) {
+      edge.direction = 'OUTBOUND';
+      edge.identity = edge.serverId;
+      edge.name = edge.dst.name;
+      edge.namespace = edge.dst.namespace;
+      edge.key = edge.src.name + edge.dst.name;
+      edges.push(edge);
+    } else if (edge.dst.name === resourceName) {
       // current resource is DST
-      edge_.direction = 'INBOUND';
-      edge_.identity = edge_.clientId;
-      edge_.name = edge_.src.name;
-      edge_.namespace = edge_.src.namespace;
-      edge_.key = edge_.src.name + edge_.dst.name;
-      edges.push(edge_);
+      edge.direction = 'INBOUND';
+      edge.identity = edge.clientId;
+      edge.name = edge.src.name;
+      edge.namespace = edge.src.namespace;
+      edge.key = edge.src.name + edge.dst.name;
+      edges.push(edge);
     }
   });
   return edges;

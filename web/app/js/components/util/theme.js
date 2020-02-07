@@ -40,21 +40,20 @@ export const dashboardTheme = {
 
 
 export const statusClassNames = theme => {
-  const theme_ = theme;
-  theme_.status = theme_.status || status; // tests don't inject custom variables
+  theme.status = theme.status || status; // tests don't inject custom variables
 
   return {
     poor: {
-      backgroundColor: theme_.status.dark.danger,
+      backgroundColor: theme.status.dark.danger,
     },
     warning: {
-      backgroundColor: theme_.status.dark.warning,
+      backgroundColor: theme.status.dark.warning,
     },
     good: {
-      backgroundColor: theme_.status.dark.good,
+      backgroundColor: theme.status.dark.good,
     },
     default: {
-      backgroundColor: theme_.status.dark.default,
+      backgroundColor: theme.status.dark.default,
     },
   };
 };

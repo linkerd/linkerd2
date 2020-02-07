@@ -174,24 +174,21 @@ export class NetworkGraphBase extends React.Component {
     if (!d3.getEvent().active) {
       simulation.alphaTarget(0.3).restart();
     }
-    const d_ = d;
-    d_.fx = d_.x;
-    d_.fy = d_.y;
+    d.fx = d.x;
+    d.fy = d.y;
   }
 
   dragged = d => {
-    const d_ = d;
-    d_.fx = d3.getEvent().x;
-    d_.fy = d3.getEvent().y;
+    d.fx = d3.getEvent().x;
+    d.fy = d3.getEvent().y;
   }
 
   dragended = d => {
-    const d_ = d;
     if (!d3.getEvent().active) {
       simulation.alphaTarget(0);
     }
-    d_.fx = null;
-    d_.fy = null;
+    d.fx = null;
+    d.fy = null;
   }
 
   render() {
