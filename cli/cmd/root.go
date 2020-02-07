@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/pflag"
 
 	"github.com/fatih/color"
@@ -41,6 +42,7 @@ var (
 	cniNamespace          string
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	kubeconfigPath        string
+	kubeToken             string
 	kubeContext           string
 	impersonate           string
 	impersonateGroup      []string
@@ -95,6 +97,7 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "l", defaultNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
 	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
+	RootCmd.PersistentFlags().StringVar(&kubeToken, "token", "", "Bearer token for authentication to the Kubernetes API server")
 	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
 	RootCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")
 	RootCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
@@ -121,6 +124,17 @@ func init() {
 	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
+}
+
+func newK8SAPI() (*k8s.KubernetesAPI, error) {
+	return k8s.NewAPIForConfig(k8s.Config{
+		KubeConfig:       kubeconfigPath,
+		Context:          kubeContext,
+		Token:            kubeToken,
+		Impersonate:      impersonate,
+		ImpersonateGroup: impersonateGroup,
+		Timeout:          0,
+	})
 }
 
 type statOptionsBase struct {

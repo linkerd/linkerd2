@@ -309,6 +309,7 @@ type Options struct {
 	DataPlaneNamespace    string
 	KubeConfig            string
 	KubeContext           string
+	KubeToken             string
 	Impersonate           string
 	ImpersonateGroup      []string
 	APIAddr               string
@@ -380,7 +381,14 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, requestTimeout)
+						hc.kubeAPI, err = k8s.NewAPIForConfig(k8s.Config{
+							KubeConfig:       hc.KubeConfig,
+							Context:          hc.KubeContext,
+							Token:            hc.KubeToken,
+							Impersonate:      hc.Impersonate,
+							ImpersonateGroup: hc.ImpersonateGroup,
+							Timeout:          requestTimeout,
+						})
 						return
 					},
 				},

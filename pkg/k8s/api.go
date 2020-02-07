@@ -23,6 +23,16 @@ import (
 
 var minAPIVersion = [3]int{1, 13, 0}
 
+// Config specifies configuration for a K8SAPI.
+type Config struct {
+	KubeConfig       string
+	Context          string
+	Token            string
+	Impersonate      string
+	ImpersonateGroup []string
+	Timeout          time.Duration
+}
+
 // KubernetesAPI provides a client for accessing a Kubernetes cluster.
 // TODO: support ServiceProfile ClientSet. A prerequisite is moving the
 // ServiceProfile client code from `./controller` to `./pkg` (#2751). This will
@@ -36,27 +46,27 @@ type KubernetesAPI struct {
 	DynamicClient dynamic.Interface
 }
 
-// NewAPI validates a Kubernetes config and returns a client for accessing the
+// NewAPIForConfig validates a Kubernetes config and returns a client for accessing the
 // configured cluster.
-func NewAPI(configPath, kubeContext string, impersonate string, impersonateGroup []string, timeout time.Duration) (*KubernetesAPI, error) {
-	config, err := GetConfig(configPath, kubeContext)
+func NewAPIForConfig(kc Config) (*KubernetesAPI, error) {
+	config, err := GetConfig(kc.KubeConfig, kc.Context)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
 	}
+	if kc.Impersonate != "" {
+		config.Impersonate = rest.ImpersonationConfig{
+			UserName: kc.Impersonate,
+			Groups:   kc.ImpersonateGroup,
+		}
+	}
+	config.BearerToken = kc.Token
 
 	// k8s' client-go doesn't support injecting context
 	// https://github.com/kubernetes/kubernetes/issues/46503
 	// but we can set the timeout manually
-	config.Timeout = timeout
+	config.Timeout = kc.Timeout
 	wt := config.WrapTransport
 	config.WrapTransport = prometheus.ClientWithTelemetry("k8s", wt)
-
-	if impersonate != "" {
-		config.Impersonate = rest.ImpersonationConfig{
-			UserName: impersonate,
-			Groups:   impersonateGroup,
-		}
-	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -82,6 +92,20 @@ func NewAPI(configPath, kubeContext string, impersonate string, impersonateGroup
 		TsClient:      tsClient,
 		DynamicClient: dynamicClient,
 	}, nil
+
+}
+
+// NewAPI validates a Kubernetes config and returns a client for accessing the
+// configured cluster.
+func NewAPI(configPath, kubeContext string, impersonate string, impersonateGroup []string, timeout time.Duration) (*KubernetesAPI, error) {
+	return NewAPIForConfig(Config{
+		KubeConfig:       configPath,
+		Context:          kubeContext,
+		Token:            "",
+		Impersonate:      impersonate,
+		ImpersonateGroup: impersonateGroup,
+		Timeout:          timeout,
+	})
 }
 
 // NewClient returns an http.Client configured with a Transport to connect to

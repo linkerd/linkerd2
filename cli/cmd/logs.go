@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	"github.com/wercker/stern/stern"
 	corev1 "k8s.io/api/core/v1"
@@ -144,8 +143,8 @@ func getControlPlaneComponentsAndContainers(pods *corev1.PodList) ([]string, []s
 	return controlPlaneComponents, containers
 }
 
-func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext, impersonate string, impersonateGroup []string) (*logCmdConfig, error) {
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+func newLogCmdConfig(options *logsOptions) (*logCmdConfig, error) {
+	kubeAPI, err := newK8SAPI()
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +189,7 @@ func newCmdLogs() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			color.NoColor = options.noColor
 
-			opts, err := newLogCmdConfig(options, kubeconfigPath, kubeContext, impersonate, impersonateGroup)
+			opts, err := newLogCmdConfig(options)
 
 			if err != nil {
 				return err

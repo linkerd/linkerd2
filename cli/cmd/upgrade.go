@@ -175,7 +175,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 			upgradeErrorf("Failed to parse Kubernetes objects from manifest %s: %s", options.manifests, err)
 		}
 	} else {
-		k, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+		k, err = newK8SAPI()
 		if err != nil {
 			upgradeErrorf("Failed to create a kubernetes client: %s", err)
 		}

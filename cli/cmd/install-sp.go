@@ -8,7 +8,6 @@ import (
 
 	"github.com/linkerd/linkerd2/cli/installsp"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +21,7 @@ This command installs Service Profiles into the Linkerd control plane. A
 cluster-wide Linkerd control-plane is a prerequisite. To confirm Service Profile
 support, verify "kubectl api-versions" outputs "linkerd.io/v1alpha2".`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			k8sAPI, err := newK8SAPI()
 			if err != nil {
 				return err
 			}

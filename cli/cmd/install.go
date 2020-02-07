@@ -855,6 +855,7 @@ func errAfterRunningChecks(options *installOptions) error {
 		Impersonate:           impersonate,
 		ImpersonateGroup:      impersonateGroup,
 		KubeContext:           kubeContext,
+		KubeToken:             kubeToken,
 		APIAddr:               apiAddr,
 		CNIEnabled:            options.cniEnabled,
 	})
@@ -895,7 +896,7 @@ func errAfterRunningChecks(options *installOptions) error {
 }
 
 func errIfLinkerdConfigConfigMapExists() error {
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	kubeAPI, err := newK8SAPI()
 	if err != nil {
 		return err
 	}
@@ -1023,7 +1024,7 @@ func (idopts *installIdentityOptions) genValues() (*identityWithAnchorsAndTrustD
 
 func (idopts *installIdentityOptions) readExternallyManaged() (*identityWithAnchorsAndTrustDomain, error) {
 
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	kubeAPI, err := newK8SAPI()
 	if err != nil {
 		return nil, fmt.Errorf("error fetching external issuer config: %s", err)
 	}

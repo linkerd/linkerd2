@@ -194,6 +194,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		DataPlaneNamespace:    options.namespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
+		KubeToken:             kubeToken,
 		Impersonate:           impersonate,
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,

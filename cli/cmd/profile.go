@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -100,7 +99,7 @@ func newCmdProfile() *cobra.Command {
 				return err
 			}
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			k8sAPI, err := newK8SAPI()
 			if err != nil {
 				return err
 			}

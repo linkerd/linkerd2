@@ -346,7 +346,7 @@ func newCmdTop() *cobra.Command {
 				return err
 			}
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			k8sAPI, err := newK8SAPI()
 			if err != nil {
 				return err
 			}

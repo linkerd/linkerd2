@@ -12,7 +12,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 // rawPublicAPIClient creates a raw public API client with no validation.
@@ -21,7 +20,7 @@ func rawPublicAPIClient() (pb.ApiClient, error) {
 		return public.NewInternalClient(controlPlaneNamespace, apiAddr)
 	}
 
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	kubeAPI, err := newK8SAPI()
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +60,7 @@ func newHealthChecker(checks []healthcheck.CategoryID, retryDeadline time.Time) 
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
 		KubeContext:           kubeContext,
+		KubeToken:             kubeToken,
 		Impersonate:           impersonate,
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
