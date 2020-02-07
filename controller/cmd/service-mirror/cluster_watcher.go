@@ -2,15 +2,15 @@ package servicemirror
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/util/workqueue"
-
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
+	"strings"
 )
 
 type (
@@ -34,8 +34,7 @@ type (
 	// that the service in question is not mirrored
 	RemoteServiceCreated struct {
 		service            *corev1.Service
-		gatewayNs          string
-		gatewayName        string
+		gatewayData        *gatewayMetadata
 		newResourceVersion string
 	}
 
@@ -47,8 +46,7 @@ type (
 		localService   *corev1.Service
 		localEndpoints *corev1.Endpoints
 		remoteUpdate   *corev1.Service
-		gatewayNs      string
-		gatewayName    string
+		gatewayData        *gatewayMetadata
 	}
 
 	// RemoteServiceDeleted when a remote service is going away
@@ -82,13 +80,18 @@ type (
 	// B and C are deleted. When the controller starts up again and registers to listen for
 	// these services, we need to delete them as deletion events will not be received.
 	OprhanedServicesGcTriggered struct{}
+
+gatewayMetadata struct {
+Name string
+Namespace string
+}
 )
 
 // When the gateway is resolved we need to produce a set of endpoint addresses that that
 // contains the external IPs that this gateway exposes. Therefore we return the IP addresses
 // as well as a single port on which the gateway is accessible.
-func (gw *RemoteClusterServiceWatcher) resolveGateway(namespace string, gatewayName string) ([]corev1.EndpointAddress, int32, error) {
-	gateway, err := gw.remoteApiClient.Svc().Lister().Services(namespace).Get(gatewayName)
+func (gw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadata) ([]corev1.EndpointAddress, int32, error) {
+	gateway, err := gw.remoteApiClient.Svc().Lister().Services(metadata.Namespace).Get(metadata.Name)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -139,6 +142,10 @@ func (sw *RemoteClusterServiceWatcher) mirroredResourceName(remoteName string) s
 	return fmt.Sprintf("%s-%s", remoteName, sw.clusterName)
 }
 
+func (sw *RemoteClusterServiceWatcher) originalResourceName(mirroredName string) string {
+	return strings.TrimSuffix(mirroredName, fmt.Sprintf("-%s", sw.clusterName))
+}
+
 func (sw *RemoteClusterServiceWatcher) getMirroredServiceLabels(service *corev1.Service) map[string]string {
 	newLabels := map[string]string{
 		MirroredResourceLabel:      "true",
@@ -181,9 +188,9 @@ func (sw *RemoteClusterServiceWatcher) mirrorNamespaceIfNecessary(namespace stri
 }
 
 // This method takes care of port remapping. What it does essentially is get the one gateway port
-// that we should send traffic to and created endpoint ports that bind to the mirrored service ports
+// that we should send traffic to and create endpoint ports that bind to the mirrored service ports
 // (same name, etc) but send traffic to the gateway port. This way we do not need to do any remapping
-// on the service side of things. It all happens in the endpoints
+// on the service side of things. It all happens in the endpoints.
 func (sw *RemoteClusterServiceWatcher) getEndpointsPorts(service *corev1.Service, gatewayPort int32) []corev1.EndpointPort {
 	var endpointsPorts []corev1.EndpointPort
 	for _, remotePort := range service.Spec.Ports {
@@ -196,9 +203,28 @@ func (sw *RemoteClusterServiceWatcher) getEndpointsPorts(service *corev1.Service
 	return endpointsPorts
 }
 
-func (sw *RemoteClusterServiceWatcher) cleanupOrhpanesServices() error {
-	//TODO: Implement this
-	sw.log.Debug("GC-ing orphaned services")
+func (sw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
+	matchLabels := map[string]string{
+		MirroredResourceLabel:  "true",
+		RemoteClusterNameLabel: sw.clusterName,
+	}
+
+	servicesOnLocalCluster, err := sw.localApiClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
+	if err != nil {
+		return fmt.Errorf("failed obtaining local services while GC-ing: %s",err)
+	}
+
+	for _, srv := range servicesOnLocalCluster {
+		_, err := sw.remoteApiClient.Svc().Lister().Services(srv.Namespace).Get(sw.originalResourceName(srv.Name))
+		if err != nil {
+			// service does not exist anymore. Need to delete
+			if err := sw.localApiClient.Client.CoreV1().Services(srv.Namespace).Delete(srv.Name, &metav1.DeleteOptions{}); err != nil {
+				sw.log.Errorf("Failed to GC local service %", srv.Name)
+			} else {
+				sw.log.Debug("Deleted service s/%s as part of GC process", srv.Namespace,srv.Name)
+			}
+		}
+	}
 	return nil
 }
 
@@ -268,9 +294,9 @@ func (sw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteServ
 // new gateway being assigned or additional ports exposed. This method takes care of that.
 func (sw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteServiceUpdated) error {
 	//TODO: We have all the data to figure out whether ports or gateways gave been updated.
-	// If we cando that we can short circuit here and avoid calling the k8s api just to try and
+	// If we can do that we can short circuit here and avoid calling the k8s api just to try and
 	// update things that have not changed.
-	gatewayEndpoints, gatewayPort, err := sw.resolveGateway(ev.gatewayNs, ev.gatewayName)
+	gatewayEndpoints, gatewayPort, err := sw.resolveGateway(ev.gatewayData)
 	if err != nil {
 		return err
 	}
@@ -299,7 +325,7 @@ func (sw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteServ
 	sw.log.Debugf("Creating new service mirror for: %s", serviceInfo)
 	localServiceName := sw.mirroredResourceName(ev.service.Name)
 
-	gatewayEndpoints, gatewayPort, err := sw.resolveGateway(ev.gatewayNs, ev.gatewayName)
+	gatewayEndpoints, gatewayPort, err := sw.resolveGateway(ev.gatewayData)
 	if err != nil {
 		return err
 	}
@@ -342,21 +368,35 @@ func (sw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteServ
 	}
 	sw.log.Debugf("Creating a new Endpoints for %s", serviceInfo)
 	if _, err := sw.localApiClient.Client.CoreV1().Endpoints(ev.service.Namespace).Create(endpoints); err != nil {
+		// we clean up after ourselves
 		sw.localApiClient.Client.CoreV1().Services(ev.service.Namespace).Delete(localServiceName, &metav1.DeleteOptions{})
 		return err
 	}
 	return nil
 }
 
+// Retrieves the annotations that indicate this service can be mirrored.
+// The values of these annotations help us resolve the gateway to which
+// traffic should be sent.
+func getGatewayMetadata(annotations map[string]string) *gatewayMetadata {
+	remoteGatewayName, hasGtwName := annotations[GatewayNameAnnotation]
+	remoteGatewayNs, hasGtwNs := annotations[GatewayNsAnnotation]
+	if hasGtwName && hasGtwNs {
+		return &gatewayMetadata{
+			Name: remoteGatewayName,
+			Namespace: remoteGatewayNs,
+		}
+	}
+	return nil
+}
+
+
 func (sw *RemoteClusterServiceWatcher) onUpdate(old, new interface{}) {
 	oldService := old.(*corev1.Service)
 	newService := new.(*corev1.Service)
 
-	remoteGatewayName, hasGtwName := newService.Annotations[GatewayNameAnnotation]
-	remoteGatewayNs, hasGtwNs := newService.Annotations[GatewayNsAnnotation]
-
 	if oldService.ResourceVersion != newService.ResourceVersion {
-		if hasGtwName && hasGtwNs {
+		if gtwData := getGatewayMetadata(newService.Annotations); gtwData != nil {
 			localName := sw.mirroredResourceName(newService.Name)
 			localService, err := sw.localApiClient.Svc().Lister().Services(newService.Namespace).Get(localName)
 			if err == nil && localService != nil {
@@ -368,8 +408,7 @@ func (sw *RemoteClusterServiceWatcher) onUpdate(old, new interface{}) {
 							localService:   localService,
 							localEndpoints: endpoints,
 							remoteUpdate:   newService,
-							gatewayNs:      remoteGatewayNs,
-							gatewayName:    remoteGatewayName,
+							gatewayData: gtwData,
 						})
 					}
 				}
@@ -380,19 +419,16 @@ func (sw *RemoteClusterServiceWatcher) onUpdate(old, new interface{}) {
 
 func (sw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 	service := svc.(*corev1.Service)
-	remoteGatewayName, hasGtwName := service.Annotations[GatewayNameAnnotation]
-	remoteGatewayNs, hasGtwNs := service.Annotations[GatewayNsAnnotation]
-	localName := sw.mirroredResourceName(service.Name)
 
-	if hasGtwName && hasGtwNs {
+	localName := sw.mirroredResourceName(service.Name)
+	if gtwMeta := getGatewayMetadata(service.Annotations); gtwMeta != nil {
 		// a service that is a candidate for being mirrored as it has the needed annotations
 		localService, err := sw.localApiClient.Svc().Lister().Services(service.Namespace).Get(localName)
 		if err != nil {
 			// in this case we need to create a new service as we do not have one present
 			sw.eventsQueue.AddRateLimited(&RemoteServiceCreated{
 				service:            service,
-				gatewayNs:          remoteGatewayNs,
-				gatewayName:        remoteGatewayName,
+				gatewayData: gtwMeta,
 				newResourceVersion: service.ResourceVersion,
 			})
 		} else {
@@ -411,8 +447,7 @@ func (sw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 						localService:   localService,
 						localEndpoints: endpoints,
 						remoteUpdate:   service,
-						gatewayNs:      remoteGatewayNs,
-						gatewayName:    remoteGatewayName,
+						gatewayData: gtwMeta,
 					})
 				}
 			}
@@ -446,7 +481,6 @@ func (sw *RemoteClusterServiceWatcher) onDelete(svc interface{}) {
 // and deal with retries
 func (sw *RemoteClusterServiceWatcher) processEvents() {
 	maxRetries := 3 // extract magic
-
 	for {
 		event, done := sw.eventsQueue.Get()
 		var err error
@@ -464,7 +498,7 @@ func (sw *RemoteClusterServiceWatcher) processEvents() {
 		case *ClusterUnregistered:
 			err = sw.cleanupMirroredResources()
 		case *OprhanedServicesGcTriggered:
-			err = sw.cleanupOrhpanesServices()
+			err = sw.cleanupOrphanedServices()
 		default:
 			if ev != nil || !done { // we get a nil in case we are shutting down...
 				sw.log.Warnf("Received unknown event: %v", ev)
@@ -500,7 +534,6 @@ func (sw *RemoteClusterServiceWatcher) Start() {
 			DeleteFunc: sw.onDelete,
 			UpdateFunc: sw.onUpdate,
 		})
-
 	go sw.processEvents()
 }
 
