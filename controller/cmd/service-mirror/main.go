@@ -45,6 +45,10 @@ const (
 	// version of a mirrored resource. Useful when doing updates
 	RemoteResourceVersionLabel = prefix + "/remote-resource-version"
 
+	// RemoteGatewayResourceVersionLabel is the last observed remote resource
+	// version if the gateway for a particular mirrored service
+	RemoteGatewayResourceVersionLabel = prefix + "/remote-gateway-resource-version"
+
 	// ConfigKeyName is the key in the secret that stores the kubeconfig needed to connect
 	// to a remote cluster
 	ConfigKeyName = "kubeconfig"
