@@ -13,6 +13,7 @@ import (
 
 const (
 	prefix = "svcmirror.io"
+
 	// MirrorSecretType is the type of secret that is supposed to contain
 	// the access information for remote clusters.
 	MirrorSecretType = prefix + "/remote-kubeconfig"
@@ -26,7 +27,7 @@ const (
 	// the services that are being associated with a certain gateway
 	RemoteGatewayNameLabel = prefix + "/remote-gateway-name"
 
-	// GatewayNsAnnotation is present on the remote service, indicated the ns
+	// GatewayNsAnnotation is present on the remote service, indicating the ns
 	// in which we can find the gateway
 	GatewayNsAnnotation = prefix + "/gateway-ns"
 
@@ -38,7 +39,7 @@ const (
 	MirroredResourceLabel = prefix + "/mirrored-service"
 
 	// RemoteClusterNameLabel put on a local mirrored service, it
-	// allows us to associated a service with a remote cluster
+	// allows us to associate a mirrored service with a remote cluster
 	RemoteClusterNameLabel = prefix + "/cluster-name"
 
 	// RemoteResourceVersionLabel is the last observed remote resource
@@ -46,7 +47,8 @@ const (
 	RemoteResourceVersionLabel = prefix + "/remote-resource-version"
 
 	// RemoteGatewayResourceVersionLabel is the last observed remote resource
-	// version if the gateway for a particular mirrored service
+	// version of the gateway for a particular mirrored service. It is used
+	// in cases we detect a change in a remote gateway
 	RemoteGatewayResourceVersionLabel = prefix + "/remote-gateway-resource-version"
 
 	// ConfigKeyName is the key in the secret that stores the kubeconfig needed to connect
