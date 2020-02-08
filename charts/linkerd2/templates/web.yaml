@@ -67,7 +67,8 @@ spec:
         - -log-level={{.Values.controllerLogLevel}}
         {{- $hostFull := replace "." "\\." (printf "linkerd-web.%s.svc.%s" .Values.global.namespace .Values.global.clusterDomain) }}
         {{- $hostAbbrev := replace "." "\\." (printf "linkerd-web.%s.svc" .Values.global.namespace) }}
-        - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
+        {{- $default_host :=^(localhost|127.0.0.1| $hostFull | $hostAbbrev |[::1])(:\d+)?$ }}
+        - -enforced-host={{ .Values.global.enforcedHostRegexp | default $default_host }}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.webImage}}:{{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}

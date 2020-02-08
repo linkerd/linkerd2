@@ -9,6 +9,8 @@ global:
 
   # control plane version. See Proxy section for proxy version
   linkerdVersion: &linkerd_version edge-20.1.4
+  # Add custom host here
+  enforcedHostRegexp: ""
 
   namespace: linkerd
 
