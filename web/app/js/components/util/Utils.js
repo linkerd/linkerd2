@@ -121,10 +121,11 @@ export const toClassName = name => {
  Create regex string from user input for a filter
 */
 export const regexFilterString = input => {
+  let input_ = input;
   // make input lower case and strip out unwanted characters
-  input = input.replace(/[^A-Z0-9/.\-_*]/gi, '').toLowerCase();
+  input_ = input_.replace(/[^A-Z0-9/.\-_*]/gi, '').toLowerCase();
   // replace "*" in input with wildcard
-  return new RegExp(input.replace(/[*]/g, '.+'));
+  return new RegExp(input_.replace(/[*]/g, '.+'));
 };
 
 /*
