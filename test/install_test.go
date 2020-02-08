@@ -34,6 +34,8 @@ func TestMain(m *testing.M) {
 var (
 	configMapUID string
 
+	helmTLSCerts *tls.CA
+
 	linkerdSvcs = []string{
 		"linkerd-controller-api",
 		"linkerd-dst",
@@ -329,18 +331,23 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 }
 
-func TestInstallHelm(t *testing.T) {
-	if TestHelper.GetHelmReleaseName() == "" {
-		return
+// These need to be updated (if there are changes) once a new stable is released
+func helmOverridesStable(root *tls.CA) []string {
+	return []string{
+		"--set", "controllerLogLevel=debug",
+		"--set", "global.linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
+		"--set", "global.proxy.image.version=" + TestHelper.UpgradeHelmFromVersion(),
+		"--set", "global.identityTrustDomain=cluster.local",
+		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
+		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
+		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
+}
 
-	cn := fmt.Sprintf("identity.%s.cluster.local", TestHelper.GetLinkerdNamespace())
-	root, err := tls.GenerateRootCAWithDefaults(cn)
-	if err != nil {
-		t.Fatalf("failed to generate root certificate for identity: %s", err)
-	}
-
-	args := []string{
+// These need to correspond to the flags in the current edge
+func helmOverridesEdge(root *tls.CA) []string {
+	return []string{
 		"--set", "controllerLogLevel=debug",
 		"--set", "global.linkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "global.proxy.image.version=" + TestHelper.GetVersion(),
@@ -350,7 +357,32 @@ func TestInstallHelm(t *testing.T) {
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
 	}
-	if stdout, stderr, err := TestHelper.HelmRun("install", args...); err != nil {
+}
+
+func TestInstallHelm(t *testing.T) {
+	if TestHelper.GetHelmReleaseName() == "" {
+		return
+	}
+
+	cn := fmt.Sprintf("identity.%s.cluster.local", TestHelper.GetLinkerdNamespace())
+	var err error
+	helmTLSCerts, err = tls.GenerateRootCAWithDefaults(cn)
+	if err != nil {
+		t.Fatalf("failed to generate root certificate for identity: %s", err)
+	}
+
+	var chartToInstall string
+	args := []string{"--name", TestHelper.GetHelmReleaseName()}
+
+	if TestHelper.UpgradeHelmFromVersion() != "" {
+		chartToInstall = TestHelper.GetHelmStableChart()
+		args = append(args, helmOverridesStable(helmTLSCerts)...)
+	} else {
+		chartToInstall = TestHelper.GetHelmChart()
+		args = append(args, helmOverridesEdge(helmTLSCerts)...)
+	}
+
+	if stdout, stderr, err := TestHelper.HelmInstall(chartToInstall, args...); err != nil {
 		t.Fatalf("helm install command failed\n%s\n%s", stdout, stderr)
 	}
 }
@@ -380,6 +412,29 @@ func TestResourcesPostInstall(t *testing.T) {
 	}
 }
 
+func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
+	if TestHelper.UpgradeHelmFromVersion() == "" {
+		t.Skip("Skipping as this is not a helm upgrade test")
+	}
+	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
+}
+
+func TestUpgradeHelm(t *testing.T) {
+	if TestHelper.UpgradeHelmFromVersion() == "" {
+		t.Skip("Skipping as this is not a helm upgrade test")
+	}
+
+	args := []string{
+		"--reset-values",
+		"--atomic",
+		"--wait",
+	}
+	args = append(args, helmOverridesEdge(helmTLSCerts)...)
+	if stdout, stderr, err := TestHelper.HelmUpgrade(TestHelper.GetHelmChart(), args...); err != nil {
+		t.Fatalf("helm upgrade command failed\n%s\n%s", stdout, stderr)
+	}
+}
+
 func TestRetrieveUidPostUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
 		newConfigMapUID, err := TestHelper.KubernetesHelper.GetConfigUID(TestHelper.GetLinkerdNamespace())
@@ -402,12 +457,25 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-// TODO: run this after a `linkerd install config`
-func TestCheckConfigPostInstall(t *testing.T) {
-	cmd := []string{"check", "config", "--expected-version", TestHelper.GetVersion(), "--wait=0"}
-	golden := "check.config.golden"
+func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string) {
+	var cmd []string
+	var golden string
+	if stage == "proxy" {
+		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=0"}
+		golden = "check.proxy.golden"
+	} else if stage == "config" {
+		cmd = []string{"check", "config", "--expected-version", expectedVersion, "--wait=0"}
+		golden = "check.config.golden"
+	} else {
+		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=0"}
+		golden = "check.golden"
+	}
 
 	err := TestHelper.RetryFor(time.Minute, func() error {
+		if cliVersionOverride != "" {
+			cliVOverride := []string{"--cli-version-override", cliVersionOverride}
+			cmd = append(cmd, cliVOverride...)
+		}
 		out, stderr, err := TestHelper.LinkerdRun(cmd...)
 
 		if err != nil {
@@ -424,30 +492,17 @@ func TestCheckConfigPostInstall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
+}
+
+// TODO: run this after a `linkerd install config`
+func TestCheckConfigPostInstall(t *testing.T) {
+	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "")
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	cmd := []string{"check", "--expected-version", TestHelper.GetVersion(), "--wait=0"}
-	golden := "check.golden"
-
-	err := TestHelper.RetryFor(time.Minute, func() error {
-		out, stderr, err := TestHelper.LinkerdRun(cmd...)
-
-		if err != nil {
-			return fmt.Errorf("Check command failed\n%s\n%s", stderr, out)
-		}
-
-		err = TestHelper.ValidateOutput(out, golden)
-		if err != nil {
-			return fmt.Errorf("Received unexpected output\n%s", err.Error())
-		}
-
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	testCheckCommand(t, "", TestHelper.GetVersion(), "", "")
 }
+
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
 		testAppNamespace := TestHelper.GetTestNamespace("upgrade-test")
@@ -603,25 +658,7 @@ func TestCheckProxy(t *testing.T) {
 		tc := tc // pin
 		t.Run(tc.ns, func(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
-			cmd := []string{"check", "--proxy", "--expected-version", TestHelper.GetVersion(), "--namespace", prefixedNs, "--wait=0"}
-			golden := "check.proxy.golden"
-
-			err := TestHelper.RetryFor(time.Minute, func() error {
-				out, stderr, err := TestHelper.LinkerdRun(cmd...)
-				if err != nil {
-					return fmt.Errorf("Check command failed\n%s\n%s", out, stderr)
-				}
-
-				err = TestHelper.ValidateOutput(out, golden)
-				if err != nil {
-					return fmt.Errorf("Received unexpected output\n%s", err.Error())
-				}
-
-				return nil
-			})
-			if err != nil {
-				t.Fatal(err.Error())
-			}
+			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "")
 		})
 	}
 }

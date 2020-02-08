@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/version"
+
 	"github.com/briandowns/spinner"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/mattn/go-isatty"
@@ -17,24 +19,26 @@ import (
 )
 
 type checkOptions struct {
-	versionOverride string
-	preInstallOnly  bool
-	dataPlaneOnly   bool
-	wait            time.Duration
-	namespace       string
-	cniEnabled      bool
-	output          string
+	versionOverride    string
+	preInstallOnly     bool
+	dataPlaneOnly      bool
+	wait               time.Duration
+	namespace          string
+	cniEnabled         bool
+	output             string
+	cliVersionOverride string
 }
 
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
-		versionOverride: "",
-		preInstallOnly:  false,
-		dataPlaneOnly:   false,
-		wait:            300 * time.Second,
-		namespace:       "",
-		cniEnabled:      false,
-		output:          tableOutput,
+		versionOverride:    "",
+		preInstallOnly:     false,
+		dataPlaneOnly:      false,
+		wait:               300 * time.Second,
+		namespace:          "",
+		cniEnabled:         false,
+		output:             tableOutput,
+		cliVersionOverride: "",
 	}
 }
 
@@ -55,6 +59,7 @@ func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("check", pflag.ExitOnError)
 
 	flags.StringVar(&options.versionOverride, "expected-version", options.versionOverride, "Overrides the version used when checking if Linkerd is running the latest version (mostly for testing)")
+	flags.StringVar(&options.cliVersionOverride, "cli-version-override", "", "Used to override the version of the cli (mostly for testing)")
 	flags.StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
 	flags.DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 
@@ -141,6 +146,11 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
 	}
+
+	if options.cliVersionOverride != "" {
+		version.Version = options.cliVersionOverride
+	}
+
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.KubernetesVersionChecks,
@@ -189,7 +199,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		APIAddr:               apiAddr,
 		VersionOverride:       options.versionOverride,
 		RetryDeadline:         time.Now().Add(options.wait),
-		NoInitContainer:       options.cniEnabled,
+		CNIEnabled:            options.cniEnabled,
 		InstallManifest:       installManifest,
 	})
 

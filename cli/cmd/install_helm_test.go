@@ -23,13 +23,13 @@ func TestRenderHelm(t *testing.T) {
 
 	t.Run("Non-HA mode", func(t *testing.T) {
 		ha := false
-		chartControlPlane := chartControlPlane(t, ha)
+		chartControlPlane := chartControlPlane(t, ha, "111", "222")
 		testRenderHelm(t, chartControlPlane, "install_helm_output.golden")
 	})
 
 	t.Run("HA mode", func(t *testing.T) {
 		ha := true
-		chartControlPlane := chartControlPlane(t, ha)
+		chartControlPlane := chartControlPlane(t, ha, "111", "222")
 		testRenderHelm(t, chartControlPlane, "install_helm_output_ha.golden")
 	})
 }
@@ -120,8 +120,8 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 	diffTestdata(t, goldenFileName, buf.String())
 }
 
-func chartControlPlane(t *testing.T, ha bool) *pb.Chart {
-	values, err := readTestValues(t, ha)
+func chartControlPlane(t *testing.T, ha bool, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
+	values, err := readTestValues(t, ha, ignoreOutboundPorts, ignoreInboundPorts)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
@@ -197,11 +197,13 @@ func chartPartials(t *testing.T, paths []string) *pb.Chart {
 	return chart
 }
 
-func readTestValues(t *testing.T, ha bool) ([]byte, error) {
+func readTestValues(t *testing.T, ha bool, ignoreOutboundPorts string, ignoreInboundPorts string) ([]byte, error) {
 	values, err := l5dcharts.NewValues(ha)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
+	values.Global.ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
+	values.Global.ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
 
 	return yaml.Marshal(values)
 }

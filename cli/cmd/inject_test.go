@@ -99,9 +99,9 @@ func TestUninjectAndInject(t *testing.T) {
 		LimitMemory:   "150Mi",
 	}
 
-	noInitContainerConfig := testInstallConfig()
-	noInitContainerConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
-	noInitContainerConfig.Global.CniEnabled = true
+	cniEnabledConfig := testInstallConfig()
+	cniEnabledConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
+	cniEnabledConfig.Global.CniEnabled = true
 
 	proxyIgnorePortsOptions, err := testInstallOptions()
 	if err != nil {
@@ -266,7 +266,7 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_deployment_no_init_container.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
-			testInjectConfig: noInitContainerConfig,
+			testInjectConfig: cniEnabledConfig,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_config_overrides.input.yml",

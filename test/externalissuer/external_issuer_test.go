@@ -52,13 +52,12 @@ func verifyInstallApp(t *testing.T) {
 		t.Fatalf("kubectl apply command failed\n%s", out)
 	}
 
-	// wait for deployment to start
 	if err := TestHelper.CheckPods(prefixedNs, TestAppBackendDeploymentName, 1); err != nil {
 		t.Error(err)
 	}
 
-	if err := TestHelper.CheckDeployment(prefixedNs, TestAppBackendDeploymentName, 1); err != nil {
-		t.Error(fmt.Errorf("Error validating deployment [%s]:\n%s", TestAppBackendDeploymentName, err))
+	if err := TestHelper.CheckPods(prefixedNs, "slow-cooker", 1); err != nil {
+		t.Error(err)
 	}
 }
 

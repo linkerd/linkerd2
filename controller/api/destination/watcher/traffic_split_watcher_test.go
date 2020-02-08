@@ -85,7 +85,7 @@ spec:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewTrafficSplitWatcher(k8sAPI, logging.WithField("test", t.Name))
+			watcher := NewTrafficSplitWatcher(k8sAPI, logging.WithField("test", t.Name()))
 
 			k8sAPI.Sync()
 

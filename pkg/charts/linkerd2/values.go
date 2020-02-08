@@ -77,7 +77,7 @@ type (
 		LinkerdNamespaceLabel    string `json:"linkerdNamespaceLabel"`
 		ProxyContainerName       string `json:"proxyContainerName"`
 		HighAvailability         bool   `json:"highAvailability"`
-		NoInitContainer          bool   `json:"noInitContainer"`
+		CNIEnabled               bool   `json:"cniEnabled"`
 		ControlPlaneTracing      bool   `json:"controlPlaneTracing"`
 		IdentityTrustAnchorsPEM  string `json:"identityTrustAnchorsPEM"`
 		IdentityTrustDomain      string `json:"identityTrustDomain"`

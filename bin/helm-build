@@ -8,10 +8,10 @@ trap 'printf "Error on exit:\n  Exit code: $?\n  Failed command: \"$BASH_COMMAND
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 
+"$bindir"/helm init --client-only
 "$bindir"/helm lint "$rootdir"/charts/partials
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2-cni
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-cni
-"$bindir"/helm init --client-only
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2
 "$bindir"/helm dep up "$rootdir"/charts/patch
 "$bindir"/helm lint --set global.identityTrustAnchorsPEM="fake-trust" --set identity.issuer.tls.crtPEM="fake-cert" --set identity.issuer.tls.keyPEM="fake-key" --set identity.issuer.crtExpiry="fake-expiry-date" "$rootdir"/charts/linkerd2

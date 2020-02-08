@@ -427,8 +427,8 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name))
-			watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name))
+			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
 
 			k8sAPI.Sync()
 

@@ -48,7 +48,7 @@ type (
 		controllerUID               int64
 		disableH2Upgrade            bool
 		disableHeartbeat            bool
-		noInitContainer             bool
+		cniEnabled                  bool
 		skipChecks                  bool
 		omitWebhookSideEffects      bool
 		restrictDashboardPrivileges bool
@@ -180,7 +180,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		controllerUID:               defaults.ControllerUID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
 		disableHeartbeat:            defaults.DisableHeartBeat,
-		noInitContainer:             defaults.Global.NoInitContainer,
+		cniEnabled:                  defaults.Global.CNIEnabled,
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
 		controlPlaneTracing:         defaults.Global.ControlPlaneTracing,
@@ -509,7 +509,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("all-stage", pflag.ExitOnError)
 
-	flags.BoolVar(&options.noInitContainer, "linkerd-cni-enabled", options.noInitContainer,
+	flags.BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled,
 		"Experimental: Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
 	)
 
@@ -696,7 +696,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	installValues.Global.Namespace = controlPlaneNamespace
-	installValues.Global.NoInitContainer = options.noInitContainer
+	installValues.Global.CNIEnabled = options.cniEnabled
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
 	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
@@ -834,7 +834,7 @@ func (options *installOptions) configs(identity *pb.IdentityContext) *pb.All {
 func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Global {
 	return &pb.Global{
 		LinkerdNamespace:       controlPlaneNamespace,
-		CniEnabled:             options.noInitContainer,
+		CniEnabled:             options.cniEnabled,
 		Version:                options.controlPlaneVersion,
 		IdentityContext:        identity,
 		OmitWebhookSideEffects: options.omitWebhookSideEffects,
@@ -916,7 +916,7 @@ func errAfterRunningChecks(options *installOptions) error {
 		ImpersonateGroup:      impersonateGroup,
 		KubeContext:           kubeContext,
 		APIAddr:               apiAddr,
-		NoInitContainer:       options.noInitContainer,
+		CNIEnabled:            options.cniEnabled,
 	})
 
 	var k8sAPIError error

@@ -102,7 +102,7 @@ func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointT
 		false,
 		"service-name.service-ns",
 		mockGetServer,
-		logging.WithField("test", t.Name),
+		logging.WithField("test", t.Name()),
 	)
 	return mockGetServer, translator
 }
