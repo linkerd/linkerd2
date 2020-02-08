@@ -75,7 +75,8 @@ global:
   controllerNamespaceLabel: linkerd.io/control-plane-ns
   linkerdNamespaceLabel: linkerd.io/is-control-plane
 
-
+# Add custom host here
+enforcedHostRegexp: ""
 enableH2Upgrade: true
 
 omitWebhookSideEffects: false
