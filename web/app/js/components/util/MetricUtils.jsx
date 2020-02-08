@@ -200,7 +200,6 @@ export const groupResourcesByNs = apiRsp => {
   const statTables = _get(apiRsp, ['ok', 'statTables']);
   const authoritiesByNs = {};
   const resourcesByNs = _reduce(statTables, (mem, table) => {
-    const mem_ = mem;
     _each(table.podGroup.rows, row => {
       // filter out resources that aren't meshed. note that authorities don't
       // have pod counts and therefore can't be filtered out here
@@ -208,8 +207,8 @@ export const groupResourcesByNs = apiRsp => {
         return;
       }
 
-      if (!mem_[row.resource.namespace]) {
-        mem_[row.resource.namespace] = [];
+      if (!mem[row.resource.namespace]) {
+        mem[row.resource.namespace] = [];
         authoritiesByNs[row.resource.namespace] = [];
       }
 
@@ -220,10 +219,10 @@ export const groupResourcesByNs = apiRsp => {
           authoritiesByNs[row.resource.namespace].push(row.resource.name);
           break;
         default:
-          mem_[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
+          mem[row.resource.namespace].push(`${row.resource.type}/${row.resource.name}`);
       }
     });
-    return mem_;
+    return mem;
   }, {});
   return {
     authoritiesByNs,

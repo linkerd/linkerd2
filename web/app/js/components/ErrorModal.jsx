@@ -52,11 +52,10 @@ class ErrorModal extends React.Component {
 
     const byPodAndContainer = _map(errorsByPod, (podErrors, pod) => {
       const byContainer = _reduce(podErrors.errors, (errors, err) => {
-        const errors_ = errors;
         if (!_isEmpty(err.container)) {
           const c = err.container;
-          if (_isEmpty(errors_[c.container])) {
-            errors_[c.container] = [];
+          if (_isEmpty(errors[c.container])) {
+            errors[c.container] = [];
           }
 
           const errMsg = c.message;
@@ -64,9 +63,9 @@ class ErrorModal extends React.Component {
             shouldTruncate = true;
             c.truncatedMessage = `${_take(errMsg, maxErrorLength).join('')}...`;
           }
-          errors_[c.container].push(c);
+          errors[c.container].push(c);
         }
-        return errors_;
+        return errors;
       }, {});
 
       return {

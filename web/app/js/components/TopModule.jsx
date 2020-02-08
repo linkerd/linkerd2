@@ -202,38 +202,37 @@ class TopModule extends React.Component {
   }
 
   indexTopResult = (d, topResults) => {
-    const topResults_ = topResults;
     const { query, maxRowsToStore } = this.props;
 
     // only index if have the full request (i.e. init and end)
     if (!d.requestInit) {
-      return topResults_;
+      return topResults;
     }
 
     const eventKey = this.topEventKey(d.requestInit);
     this.addSuccessCount(d);
 
-    if (!topResults_[eventKey]) {
-      topResults_[eventKey] = this.initialTopResult(d, eventKey);
+    if (!topResults[eventKey]) {
+      topResults[eventKey] = this.initialTopResult(d, eventKey);
     } else {
-      this.incrementTopResult(d, topResults_[eventKey]);
+      this.incrementTopResult(d, topResults[eventKey]);
     }
 
-    if (_size(topResults_) > maxRowsToStore) {
-      this.deleteOldestIndexedResult(topResults_);
+    if (_size(topResults) > maxRowsToStore) {
+      this.deleteOldestIndexedResult(topResults);
     }
 
     if (d.base.proxyDirection === 'INBOUND') {
       this.updateNeighborsFromTapData(d.requestInit.source, _get(d, 'requestInit.sourceMeta.labels'));
       const isPod = query.resource.split('/')[0] === 'pod';
       if (isPod) {
-        topResults_[eventKey].meshed = !_has(this.unmeshedSources, `pod/${d.base.source.pod}`);
+        topResults[eventKey].meshed = !_has(this.unmeshedSources, `pod/${d.base.source.pod}`);
       } else {
-        topResults_[eventKey].meshed = !_isEmpty(d.base.source.owner) && !_has(this.unmeshedSources, d.base.source.owner);
+        topResults[eventKey].meshed = !_isEmpty(d.base.source.owner) && !_has(this.unmeshedSources, d.base.source.owner);
       }
     }
 
-    return topResults_;
+    return topResults;
   }
 
   updateTapEventIndexState = () => {
@@ -304,7 +303,6 @@ class TopModule extends React.Component {
   }
 
   deleteOldestIndexedResult = resultIndex => {
-    const resultIndex_ = resultIndex;
     let oldest = Date.now();
     let oldestId = '';
 
@@ -315,7 +313,7 @@ class TopModule extends React.Component {
       }
     });
 
-    delete resultIndex_[oldestId];
+    delete resultIndex[oldestId];
   }
 
   clearTopTable() {

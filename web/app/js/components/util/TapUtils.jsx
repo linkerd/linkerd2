@@ -98,9 +98,8 @@ export const WS_POLICY_VIOLATION = 1008;
   Use tap data to figure out a resource's unmeshed upstreams/downstreams
 */
 export const processNeighborData = (source, labels, resourceAgg, resourceType) => {
-  const resourceAgg_ = resourceAgg;
   if (_isEmpty(labels)) {
-    return resourceAgg_;
+    return resourceAgg;
   }
 
   let neighb = {};
@@ -136,15 +135,15 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
 
   const key = `${neighb.type}/${neighb.name}`;
   if (_has(labels, 'control_plane_ns')) {
-    delete resourceAgg_[key];
+    delete resourceAgg[key];
   } else {
-    if (_has(resourceAgg_, key)) {
-      _merge(neighb.pods, resourceAgg_[key].pods);
+    if (_has(resourceAgg, key)) {
+      _merge(neighb.pods, resourceAgg[key].pods);
     }
-    resourceAgg_[key] = neighb;
+    resourceAgg[key] = neighb;
   }
 
-  return resourceAgg_;
+  return resourceAgg;
 };
 
 /*

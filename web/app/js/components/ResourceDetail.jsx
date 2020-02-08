@@ -224,13 +224,12 @@ export class ResourceDetailBase extends React.Component {
           podMetricsForResource = resourceMetrics;
         } else {
           const podBelongsToResource = _reduce(podListRsp.pods, (mem, pod) => {
-            const mem_ = mem;
             if (_get(pod, resourceTypeToCamelCase(resourceType)) === resourceKey) {
               // pod.name in podListRsp is of the form `namespace/pod-name`
-              mem_[pod.name] = true;
+              mem[pod.name] = true;
             }
 
-            return mem_;
+            return mem;
           }, {});
 
           // get all pods whose owner is this resource

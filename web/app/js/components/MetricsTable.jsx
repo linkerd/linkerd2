@@ -217,8 +217,7 @@ const preprocessMetrics = metrics => {
 
   _each(tableData, datum => {
     _each(datum.latency, (value, quantile) => {
-      const datum_ = datum;
-      datum_[quantile] = value;
+      datum[quantile] = value;
     });
   });
 

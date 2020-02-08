@@ -47,7 +47,6 @@ const generateApexMetrics = resourceMetrics => {
 // the octopus graph.
 const formatLeaves = resourceRsp => {
   const leaves = processSingleResourceRollup(resourceRsp, 'trafficsplit');
-
   _each(leaves, leaf => {
     leaf.name = leaf.tsStats.leaf;
     leaf.type = 'service';
