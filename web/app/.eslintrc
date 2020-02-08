@@ -83,7 +83,6 @@
     "react/jsx-props-no-spreading": 0,
 
     // These rules represent best practices that we're not adhering to, and should be enabled
-    "jsx-a11y/click-events-have-key-events": 0,
     "no-param-reassign": ["error", { "props": false }]
   }
 }
