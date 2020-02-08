@@ -231,11 +231,10 @@ export const groupResourcesByNs = apiRsp => {
 };
 
 export const excludeResourcesFromRollup = (rollupMetrics, resourcesToExclude) => {
-  const rollupMetrics_ = rollupMetrics;
   _each(resourcesToExclude, resource => {
-    delete rollupMetrics_[resource];
+    delete rollupMetrics[resource];
   });
-  return rollupMetrics_;
+  return rollupMetrics;
 };
 
 export const emptyMetric = {
