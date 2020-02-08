@@ -351,7 +351,7 @@ func newCmdInstall() *cobra.Command {
 		Short: "Output Kubernetes configs to install Linkerd",
 		Long: `Output Kubernetes configs to install Linkerd.
 
-This command provides all Kubernetes configs necessary to install the Linkerd
+This commandeeeerrr provides all Kubernetes configs necessary to install the Linkerd
 control plane.`,
 		Example: `  # Default install.
   linkerd install | kubectl apply -f -
