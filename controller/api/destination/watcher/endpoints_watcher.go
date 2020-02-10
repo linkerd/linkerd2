@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -194,18 +195,22 @@ func (ew *EndpointsWatcher) addService(obj interface{}) {
 }
 
 func (ew *EndpointsWatcher) deleteService(obj interface{}) {
-	service := obj.(*corev1.Service)
-	if service.Namespace == kubeSystem {
-		return
-	}
-	id := ServiceID{
-		Namespace: service.Namespace,
-		Name:      service.Name,
-	}
+	if serviceObj, err := extractDeletedObject(obj, reflect.TypeOf(&corev1.Service{})); err == nil {
+		service := serviceObj.(*corev1.Service)
+		if service.Namespace == kubeSystem {
+			return
+		}
+		id := ServiceID{
+			Namespace: service.Namespace,
+			Name:      service.Name,
+		}
 
-	sp, ok := ew.getServicePublisher(id)
-	if ok {
-		sp.deleteEndpoints()
+		sp, ok := ew.getServicePublisher(id)
+		if ok {
+			sp.deleteEndpoints()
+		}
+	} else {
+		ew.log.Error(err)
 	}
 }
 
@@ -225,18 +230,22 @@ func (ew *EndpointsWatcher) addEndpoints(obj interface{}) {
 }
 
 func (ew *EndpointsWatcher) deleteEndpoints(obj interface{}) {
-	endpoints := obj.(*corev1.Endpoints)
-	if endpoints.Namespace == kubeSystem {
-		return
-	}
-	id := ServiceID{
-		Namespace: endpoints.Namespace,
-		Name:      endpoints.Name,
-	}
+	if endpointsObj, err := extractDeletedObject(obj, reflect.TypeOf(&corev1.Endpoints{})); err == nil {
+		endpoints := endpointsObj.(*corev1.Endpoints)
+		if endpoints.Namespace == kubeSystem {
+			return
+		}
+		id := ServiceID{
+			Namespace: endpoints.Namespace,
+			Name:      endpoints.Name,
+		}
 
-	sp, ok := ew.getServicePublisher(id)
-	if ok {
-		sp.deleteEndpoints()
+		sp, ok := ew.getServicePublisher(id)
+		if ok {
+			sp.deleteEndpoints()
+		}
+	} else {
+		ew.log.Error(err)
 	}
 }
 

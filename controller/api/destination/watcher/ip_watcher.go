@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -116,14 +117,18 @@ func (iw *IPWatcher) addService(obj interface{}) {
 }
 
 func (iw *IPWatcher) deleteService(obj interface{}) {
-	service := obj.(*corev1.Service)
-	if service.Namespace == kubeSystem {
-		return
-	}
+	if serviceObj, err := extractDeletedObject(obj, reflect.TypeOf(&corev1.Service{})); err == nil {
+		service := serviceObj.(*corev1.Service)
+		if service.Namespace == kubeSystem {
+			return
+		}
 
-	ss, ok := iw.getServiceSubscriptions(service.Spec.ClusterIP)
-	if ok {
-		ss.deleteService()
+		ss, ok := iw.getServiceSubscriptions(service.Spec.ClusterIP)
+		if ok {
+			ss.deleteService()
+		}
+	} else {
+		iw.log.Error(err)
 	}
 }
 
@@ -141,14 +146,18 @@ func (iw *IPWatcher) addPod(obj interface{}) {
 }
 
 func (iw *IPWatcher) deletePod(obj interface{}) {
-	pod := obj.(*corev1.Pod)
-	if pod.Namespace == kubeSystem {
-		return
-	}
+	if podObj, err := extractDeletedObject(obj, reflect.TypeOf(&corev1.Pod{})); err == nil {
+		pod := podObj.(*corev1.Pod)
+		if pod.Namespace == kubeSystem {
+			return
+		}
 
-	ss, ok := iw.getServiceSubscriptions(pod.Status.PodIP)
-	if ok {
-		ss.deletePod()
+		ss, ok := iw.getServiceSubscriptions(pod.Status.PodIP)
+		if ok {
+			ss.deletePod()
+		}
+	} else {
+		iw.log.Error(err)
 	}
 }
 

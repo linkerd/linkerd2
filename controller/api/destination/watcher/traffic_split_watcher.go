@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
@@ -108,15 +109,19 @@ func (tsw *TrafficSplitWatcher) updateTrafficSplit(old interface{}, new interfac
 }
 
 func (tsw *TrafficSplitWatcher) deleteTrafficSplit(obj interface{}) {
-	split := obj.(*ts.TrafficSplit)
-	id := ServiceID{
-		Name:      split.Spec.Service,
-		Namespace: split.Namespace,
-	}
+	if tsObject, err := extractDeletedObject(obj, reflect.TypeOf(&ts.TrafficSplit{})); err == nil {
+		split := tsObject.(*ts.TrafficSplit)
+		id := ServiceID{
+			Name:      split.Spec.Service,
+			Namespace: split.Namespace,
+		}
 
-	publisher, ok := tsw.getTrafficSplitPublisher(id)
-	if ok {
-		publisher.update(nil)
+		publisher, ok := tsw.getTrafficSplitPublisher(id)
+		if ok {
+			publisher.update(nil)
+		}
+	} else {
+		tsw.log.Error(err)
 	}
 }
 
