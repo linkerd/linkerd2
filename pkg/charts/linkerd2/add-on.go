@@ -11,22 +11,15 @@ var (
 type AddOn interface {
 	GetChartName() string
 	GetValues() interface{}
-	GetFiles() []*chartutil.BufferedFile
+	GetConfigFiles() []*chartutil.BufferedFile
+	GetControlPlaneFiles() []*chartutil.BufferedFile
 }
 
 // defaultGetFiles returns the templates files that are part of the add-on sub-chart
-func defaultGetFiles(configStage, controlPlaneStage []string) []*chartutil.BufferedFile {
-	files := []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName},
-	}
+func defaultGetFiles(stageFiles []string) []*chartutil.BufferedFile {
+	var files []*chartutil.BufferedFile
 
-	for _, template := range configStage {
-		files = append(files, &chartutil.BufferedFile{
-			Name: template,
-		})
-	}
-
-	for _, template := range controlPlaneStage {
+	for _, template := range stageFiles {
 		files = append(files, &chartutil.BufferedFile{
 			Name: template,
 		})

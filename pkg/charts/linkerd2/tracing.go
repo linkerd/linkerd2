@@ -44,9 +44,14 @@ func (*Tracing) GetChartName() string {
 	return tracingChartName
 }
 
-// GetFiles returns the templates files that are part of the add-on sub-chart
-func (*Tracing) GetFiles() []*chartutil.BufferedFile {
-	return defaultGetFiles(tracingConfigStage, tracingControlPlaneStage)
+// GetConfigFiles returns the config state templates files that are part of the add-on sub-chart
+func (*Tracing) GetConfigFiles() []*chartutil.BufferedFile {
+	return defaultGetFiles(tracingConfigStage)
+}
+
+// GetControlPLaneFiles returns the control-plane stage templates files that are part of the add-on sub-chart
+func (*Tracing) GetControlPlaneFiles() []*chartutil.BufferedFile {
+	return defaultGetFiles(tracingControlPlaneStage)
 }
 
 // GetValues returns the values struct which will be used to render the add-on sub-chart.

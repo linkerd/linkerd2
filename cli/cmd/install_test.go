@@ -216,6 +216,15 @@ func TestRender(t *testing.T) {
 	withCustomRegistryValues, _, _ := withCustomRegistryOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(withCustomRegistryValues)
 
+	withTracingAddon, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+
+	withTracingAddonValues, _, _ := withTracingAddon.validateAndBuild("", nil)
+	withTracingAddonValues.Tracing.Enabled = true
+	addFakeTLSSecrets(withTracingAddonValues)
+
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
@@ -232,6 +241,7 @@ func TestRender(t *testing.T) {
 		{withRestrictedDashboardPriviligesValues, "install_restricted_dashboard.golden"},
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
 		{withCustomRegistryValues, "install_custom_registry.golden"},
+		{withTracingAddonValues, "install_tracing.golden"},
 	}
 
 	for i, tc := range testCases {
