@@ -9,10 +9,14 @@ global:
   
   # Control Plane Trace Configuration
   controlPlaneTracing: false
+  
   # Add custom host here
   enforcedHostRegexp: ""
 
+  # control plane version. See Proxy section for proxy version
   linkerdVersion: &linkerd_version stable-2.7.0
+  # Add custom host here
+  enforcedHostRegexp: ""
 
   namespace: linkerd
 
