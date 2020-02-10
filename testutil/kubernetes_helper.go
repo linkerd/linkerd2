@@ -107,7 +107,7 @@ func (h *KubernetesHelper) KubectlApply(stdin string, namespace string) (string,
 
 // Kubectl executes an arbitrary Kubectl command
 func (h *KubernetesHelper) Kubectl(stdin string, arg ...string) (string, error) {
-	withContext := append(arg, "--context="+h.k8sContext)
+	withContext := append([]string{"--context=" + h.k8sContext}, arg...)
 	cmd := exec.Command("kubectl", withContext...)
 	cmd.Stdin = strings.NewReader(stdin)
 	out, err := cmd.CombinedOutput()

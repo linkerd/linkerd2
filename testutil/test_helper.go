@@ -33,10 +33,12 @@ type TestHelper struct {
 }
 
 type helm struct {
-	path        string
-	chart       string
-	releaseName string
-	tillerNs    string
+	path               string
+	chart              string
+	stableChart        string
+	releaseName        string
+	tillerNs           string
+	upgradeFromVersion string
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -52,6 +54,7 @@ func NewTestHelper() *TestHelper {
 	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
+	helmStableChart := flag.String("helm-stable-chart", "linkerd/linkerd2", "path to linkerd2's stable Helm chart")
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
 	tillerNs := flag.String("tiller-ns", "kube-system", "namespace under which Tiller will be installed")
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
@@ -59,6 +62,7 @@ func NewTestHelper() *TestHelper {
 	externalIssuer := flag.Bool("external-issuer", false, "when specified, the install test uses it to install linkerd with --identity-external-issuer=true")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
+	upgradeHelmFromVersion := flag.String("upgrade-helm-from-version", "", "Indicate a version of the Linkerd helm chart from which the helm installation is being upgraded")
 	flag.Parse()
 
 	if !*runTests {
@@ -89,10 +93,12 @@ func NewTestHelper() *TestHelper {
 		namespace:          *namespace,
 		upgradeFromVersion: *upgradeFromVersion,
 		helm: helm{
-			path:        *helmPath,
-			chart:       *helmChart,
-			releaseName: *helmReleaseName,
-			tillerNs:    *tillerNs,
+			path:               *helmPath,
+			chart:              *helmChart,
+			stableChart:        *helmStableChart,
+			releaseName:        *helmReleaseName,
+			tillerNs:           *tillerNs,
+			upgradeFromVersion: *upgradeHelmFromVersion,
 		},
 		clusterDomain:  *clusterDomain,
 		externalIssuer: *externalIssuer,
@@ -139,6 +145,21 @@ func (h *TestHelper) GetTestNamespace(testName string) string {
 // GetHelmReleaseName returns the name of the Linkerd installation Helm release
 func (h *TestHelper) GetHelmReleaseName() string {
 	return h.helm.releaseName
+}
+
+// GetHelmChart returns the path to the Linkerd Helm chart
+func (h *TestHelper) GetHelmChart() string {
+	return h.helm.chart
+}
+
+// GetHelmStableChart returns the path to the Linkerd Helm stable chart
+func (h *TestHelper) GetHelmStableChart() string {
+	return h.helm.stableChart
+}
+
+// UpgradeHelmFromVersion returns the version from which Linkerd should be upgraded with Helm
+func (h *TestHelper) UpgradeHelmFromVersion() string {
+	return h.helm.upgradeFromVersion
 }
 
 // ExternalIssuer determines whether linkerd should be installed with --identity-external-issuer
@@ -212,15 +233,28 @@ func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
 	return &Stream{cmd: cmd, out: cmdReader}, nil
 }
 
-// HelmRun runs the provided Helm subcommand, with the provided arguments
-func (h *TestHelper) HelmRun(cmd string, arg ...string) (string, string, error) {
+// HelmUpgrade runs the helm upgrade subcommand, with the provided arguments
+func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, error) {
 	withParams := append([]string{
-		cmd,
+		"upgrade",
+		h.helm.releaseName,
+		"--kube-context", h.k8sContext,
+		"--tiller-namespace", h.helm.tillerNs,
+		"--set", "global.namespace=" + h.namespace,
+		chart,
+	}, arg...)
+	return combinedOutput("", h.helm.path, withParams...)
+}
+
+// HelmInstall runs the helm install subcommand, with the provided arguments
+func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, error) {
+	withParams := append([]string{
+		"install",
 		"--kube-context", h.k8sContext,
 		"--tiller-namespace", h.helm.tillerNs,
 		"--name", h.helm.releaseName,
 		"--set", "global.namespace=" + h.namespace,
-		h.helm.chart,
+		chart,
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
 }
