@@ -49,7 +49,7 @@ func (*Tracing) GetConfigFiles() []*chartutil.BufferedFile {
 	return defaultGetFiles(tracingConfigStage)
 }
 
-// GetControlPLaneFiles returns the control-plane stage templates files that are part of the add-on sub-chart
+// GetControlPlaneFiles returns the control-plane stage templates files that are part of the add-on sub-chart
 func (*Tracing) GetControlPlaneFiles() []*chartutil.BufferedFile {
 	return defaultGetFiles(tracingControlPlaneStage)
 }
