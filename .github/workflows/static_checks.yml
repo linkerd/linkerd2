@@ -1,0 +1,59 @@
+name: Static checks
+on:
+  pull_request: {}
+  push:
+    branches:
+    - master
+    tags:
+    - "*"
+jobs:
+  go_dependencies:
+    name: Go dependencies
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Dump env
+      run: env | sort
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT"
+    - name: Dump job context
+      env:
+        JOB_CONTEXT: ${{ toJson(job) }}
+      run: echo "$JOB_CONTEXT"
+    - name: Validate go deps
+      run: |
+        . bin/_tag.sh
+        for f in $( grep -lR --include=Dockerfile\* go-deps: . ) ; do
+          validate_go_deps_tag $f
+        done
+  go_lint:
+    name: Go lint
+    runs-on: ubuntu-18.04
+    container:
+      image: golang:1.13.4
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Go lint
+      env:
+        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
+      run: |
+        echo "$GITCOOKIE_SH" | bash
+        bin/lint --verbose
+  go_format:
+    name: Go format
+    runs-on: ubuntu-18.04
+    container:
+      image: golang:1.13.4
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Format
+      env:
+        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
+      run: |
+        echo "$GITCOOKIE_SH" | bash
+        bin/fmt
