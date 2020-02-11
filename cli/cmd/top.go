@@ -251,8 +251,10 @@ func newTopTable() *topTable {
 }
 
 const (
-	headerHeight  = 3
+	headerHeight  = 4
 	columnSpacing = 2
+	xOffset = 5
+	columnGap = 10
 )
 
 func newTopOptions() *topOptions {
@@ -407,17 +409,17 @@ func getTrafficByResourceFromAPI(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourc
 	//       processEvents() && renderTable()
 	closing := make(chan struct{}, 1)
 	done := make(chan struct{})
+	horizontalScroll := make(chan int)
 
-	go pollInput(closing)
+	go pollInput(done, horizontalScroll)
 	go recvEvents(reader, eventCh, closing)
 	go processEvents(eventCh, requestCh, done)
 
 	go func() {
 		<-closing
-		close(done)
 	}()
 
-	renderTable(table, requestCh, done)
+	renderTable(table, requestCh, done, horizontalScroll)
 
 	return nil
 }
@@ -483,20 +485,30 @@ func processEvents(eventCh <-chan pb.TapEvent, requestCh chan<- topRequest, done
 	}
 }
 
-func pollInput(closing chan<- struct{}) {
+func pollInput(done chan<- struct{}, horizontalScroll chan int) {
 	for {
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
 			if ev.Ch == 'q' || ev.Key == termbox.KeyCtrlC {
-				closing <- struct{}{}
+				close(done)
 				return
+			}
+			if ev.Ch == 'a' || ev.Key==termbox.KeyArrowRight {
+				horizontalScroll <- 1
+
+			}
+			if ev.Ch == 'd' || ev.Key==termbox.KeyArrowLeft  {
+				horizontalScroll <- 2
 			}
 		}
 	}
 }
 
-func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struct{}) {
+func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struct{},  horizontalScroll chan int) {
+	scrollpos:=0
 	ticker := time.NewTicker(100 * time.Millisecond)
+	width, _ := termbox.Size()
+	tablewidth :=table.adjustColumnWidths()
 
 	for {
 		select {
@@ -506,10 +518,24 @@ func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struc
 			table.insert(req)
 		case <-ticker.C:
 			termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-			table.adjustColumnWidths()
-			table.renderHeaders()
-			table.renderBody()
+			width, _ = termbox.Size()
+			tablewidth =table.adjustColumnWidths()
+			table.renderHeaders(scrollpos)
+			table.renderBody(scrollpos)
 			termbox.Flush()
+		case direction:= <-horizontalScroll:
+			if (direction ==2 &&  scrollpos<0){
+					scrollpos = scrollpos + xOffset
+			}
+			if (direction ==1 && scrollpos >  width-tablewidth){
+				scrollpos = scrollpos - xOffset
+			}
+				termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+				width, _= termbox.Size()
+				tablewidth =table.adjustColumnWidths()
+				table.renderHeaders(scrollpos)
+				table.renderBody(scrollpos)
+				termbox.Flush()
 		}
 	}
 }
@@ -614,9 +640,10 @@ func stripPort(address string) string {
 	return strings.Split(address, ":")[0]
 }
 
-func (t *topTable) renderHeaders() {
+func (t *topTable) renderHeaders(scrollpos int){
 	tbprint(0, 0, "(press q to quit)")
-	x := 0
+	tbprint(0, 1, "(press a/LeftArrowKey to scroll left, d/RightArrowKey to scroll right)")
+	x := scrollpos
 	for _, col := range t.columns {
 		if !col.display {
 			continue
@@ -630,7 +657,8 @@ func (t *topTable) renderHeaders() {
 	}
 }
 
-func (t *topTable) adjustColumnWidths() {
+func (t *topTable) adjustColumnWidths() int {
+	tablewidth :=0
 	for i, col := range t.columns {
 		if !col.flexible {
 			continue
@@ -642,16 +670,18 @@ func (t *topTable) adjustColumnWidths() {
 				t.columns[i].width = cellWidth
 			}
 		}
+		tablewidth = tablewidth +  t.columns[i].width + columnGap
 	}
+	return tablewidth + columnGap + xOffset
 }
 
-func (t *topTable) renderBody() {
+func (t *topTable) renderBody(scrollpos int) {
 	sort.SliceStable(t.rows, func(i, j int) bool {
 		return t.rows[i].count > t.rows[j].count
 	})
 
 	for i, row := range t.rows {
-		x := 0
+		x := scrollpos
 
 		for _, col := range t.columns {
 			if !col.display {
