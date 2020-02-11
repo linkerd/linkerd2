@@ -70,29 +70,32 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
 
   // for getting json api results
   const apiFetch = path => {
+    let path_ = path;
     if (!_isEmpty(pathPrefix)) {
-      path = `${pathPrefix}${path}`;
+      path_ = `${pathPrefix}${path_}`;
     }
 
-    return makeCancelable(fetch(path), r => r.json());
+    return makeCancelable(fetch(path_), r => r.json());
   };
 
   // for getting yaml api results
   const apiFetchYAML = path => {
+    let path_ = path;
     if (!_isEmpty(pathPrefix)) {
-      path = `${pathPrefix}${path}`;
+      path_ = `${pathPrefix}${path_}`;
     }
 
-    return makeCancelable(fetch(path), r => r.text());
+    return makeCancelable(fetch(path_), r => r.text());
   };
 
   // for getting non-json results
   const prefixedUrl = path => {
+    let path_ = path;
     if (!_isEmpty(pathPrefix)) {
-      path = `${pathPrefix}${path}`;
+      path_ = `${pathPrefix}${path_}`;
     }
 
-    return path;
+    return path_;
   };
 
   const getMetricsWindow = () => metricsWindow;
@@ -104,14 +107,15 @@ const ApiHelpers = (pathPrefix, defaultMetricsWindow = '1m') => {
   };
 
   const fetchMetrics = path => {
-    if (path.indexOf('window') === -1) {
-      if (path.indexOf('?') === -1) {
-        path = `${path}?window=${getMetricsWindow()}`;
+    let path_ = path;
+    if (path_.indexOf('window') === -1) {
+      if (path_.indexOf('?') === -1) {
+        path_ = `${path_}?window=${getMetricsWindow()}`;
       } else {
-        path = `${path}&window=${getMetricsWindow()}`;
+        path_ = `${path_}&window=${getMetricsWindow()}`;
       }
     }
-    return apiFetch(path);
+    return apiFetch(path_);
   };
 
   const fetchPods = namespace => {

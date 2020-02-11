@@ -159,12 +159,13 @@ const tapEventKey = (d, eventType) => {
   produce octets given an ip address
 */
 const decodeIPToOctets = ip => {
-  ip = parseInt(ip, 10);
+  const ip_ = parseInt(ip, 10);
+
   return [
-    (ip >> 24) & 255,
-    (ip >> 16) & 255,
-    (ip >> 8) & 255,
-    ip & 255,
+    (ip_ >> 24) & 255,
+    (ip_ >> 16) & 255,
+    (ip_ >> 8) & 255,
+    ip_ & 255,
   ];
 };
 
