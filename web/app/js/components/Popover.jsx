@@ -21,6 +21,13 @@ class ClickablePopover extends React.Component {
     this.setState({ anchorEl: event.currentTarget });
   };
 
+  handleKeyPress = event => {
+    if (event.key === 'Enter') {
+      this.setState({ anchorEl: event.currentTarget });
+    }
+  }
+
+
   handleClose = () => {
     this.setState({ anchorEl: null });
   };
@@ -36,6 +43,7 @@ class ClickablePopover extends React.Component {
           aria-owns={open ? 'clickable-popover' : null}
           aria-haspopup="true"
           onClick={this.handleClick}
+          onKeyPress={this.handleKeyPress}
           role="button"
           tabIndex={0}>
           {baseContent}
