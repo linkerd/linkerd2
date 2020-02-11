@@ -92,7 +92,7 @@ var (
 		`(Liveness|Readiness) probe failed: Get http://.*: dial tcp .*: connect: connection refused`,
 		`(Liveness|Readiness) probe failed: Get http://.*: read tcp .*: read: connection reset by peer`,
 		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled .*\(Client\.Timeout exceeded while awaiting headers\)`,
-		`Failed to update endpoint .*-upgrade/linkerd-.*: Operation cannot be fulfilled on endpoints "linkerd-.*": the object has been modified; please apply your changes to the latest version and try again`,
+		`Failed to update endpoint .*/linkerd-.*: Operation cannot be fulfilled on endpoints "linkerd-.*": the object has been modified; please apply your changes to the latest version and try again`,
 		`error killing pod: failed to "KillPodSandbox" for ".*" with KillPodSandboxError: "rpc error: code = Unknown desc = failed to destroy network for sandbox \\".*\\": could not teardown (ipv4|ipv6) dnat: running \[/usr/sbin/(iptables|ip6tables) -t nat -X CNI-DN-.* --wait\]: exit status 1: (iptables|ip6tables): No chain/target/match by that name\.\\n"`,
 	}, "|"))
 
@@ -754,9 +754,7 @@ func TestEvents(t *testing.T) {
 		}
 
 		evtStr := fmt.Sprintf("Reason: [%s] Object: [%s] Message: [%s]", e.Reason, e.InvolvedObject.Name, e.Message)
-		if knownEventWarningsRegex.MatchString(e.Message) {
-			t.Logf("Found known warning event: %s", evtStr)
-		} else {
+		if !knownEventWarningsRegex.MatchString(e.Message) {
 			unknownEvents = append(unknownEvents, evtStr)
 		}
 	}
