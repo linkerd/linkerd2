@@ -166,12 +166,18 @@ jobs:
         mkdir -p $ARCHIVES
 
         for image in proxy controller web cni-plugin debug cli-bin grafana; do
-          docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar || tee save_fail &
+          docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar || echo "failed 'docker save'" && tee save_fail &
         done
+
+        ls
 
         # Wait for `docker save` background processes to complete. Exit early
         # if any job failed.
         wait < <(jobs -p)
+
+        echo "finished waiting.."
+        ls
+
         test -f save_fail && exit 1
     # `with.path` values do not support environment variables yet, so an
     # absolute path is used here.
@@ -264,7 +270,6 @@ jobs:
         # used to load the output into the KinD cluster. Set `DOCKER_HOST` for
         # a single command, and `docker save` the container from the Packet
         # host.
-        i=0
         for image in proxy controller web cni-plugin debug grafana; do
           kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save "$DOCKER_REGISTRY/$image:$TAG") || tee load_fail &
         done
