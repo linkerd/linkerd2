@@ -113,6 +113,8 @@ identity:
 
     issuanceLifetime: 86400s
 
+    existingTlsSecret: ""
+
     tls:
       # PEM-encoded certificate
       crtPEM: |
