@@ -166,15 +166,13 @@ jobs:
         mkdir -p $ARCHIVES
 
         for image in proxy controller web cni-plugin debug cli-bin grafana; do
-          docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar &
-          pids[${i}]=$!
-          i=$((i+1))
+          docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar || tee save_fail &
         done
 
-        # Wait for `docker save` background processes to complete.
-        for pid in ${pids[*]}; do
-          wait $pid
-        done
+        # Wait for `docker save` background processes to complete. Exit early
+        # if any job failed.
+        wait < <(jobs -p)
+        test -f save_fail && exit 1
     # `with.path` values do not support environment variables yet, so an
     # absolute path is used here.
     #
@@ -268,15 +266,13 @@ jobs:
         # host.
         i=0
         for image in proxy controller web cni-plugin debug grafana; do
-          kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save "$DOCKER_REGISTRY/$image:$TAG") &
-          pids[${i}]=$!
-          i=$((i+1))
+          kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save "$DOCKER_REGISTRY/$image:$TAG") || tee load_fail &
         done
 
-        # Wait for `kind load` background processes to complete.
-        for pid in ${pids[*]}; do
-          wait $pid
-        done
+        # Wait for `kind load` background processes to complete. Exit early if
+        # any job failed.
+        wait < <(jobs -p)
+        test -f load_fail && exit 1
 
         # Load proxy-init and prometheus images into KinD while it is
         # available.
@@ -286,15 +282,13 @@ jobs:
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: |
         for image in proxy controller web cni-plugin debug grafana; do
-          kind load image-archive image-archives/$image.tar &
-          pids[${i}]=$!
-          i=$((i+1))
+          kind load image-archive image-archives/$image.tar || tee load_fail &
         done
 
-        # Wait for `kind load` background processes to complete.
-        for pid in ${pids[*]}; do
-          wait $pid
-        done
+        # Wait for `kind load` background processes to complete. Exit early if
+        # any job failed.
+        wait < <(jobs -p)
+        test -f load_fail && exit 1
     - name: Run integration tests
       run: |
         # Export `init_test_run` and `*_integration_tests` into the
