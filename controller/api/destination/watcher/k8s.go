@@ -50,7 +50,10 @@ func (i ID) String() string {
 func extractDeletedObject(obj interface{}, expectedType reflect.Type) (interface{}, error) {
 	switch object := obj.(type) {
 	case cache.DeletedFinalStateUnknown:
-		return object.Obj, nil
+		if reflect.TypeOf(object.Obj) == expectedType {
+			return object.Obj, nil
+		}
+		return nil, fmt.Errorf("was expecting DeletedFinalStateUnknown to contain %v, but got %v", expectedType, reflect.TypeOf(object.Obj))
 	default:
 		if reflect.TypeOf(object) == expectedType {
 			return object, nil

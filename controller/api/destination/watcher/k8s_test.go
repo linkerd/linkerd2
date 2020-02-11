@@ -50,6 +50,16 @@ func TestDeletedObjectExtractor(t *testing.T) {
 			expectedType:       reflect.TypeOf(&corev1.Endpoints{}),
 			expectedError:      "was expecting type *v1.Endpoints but got *v1.Service",
 		},
+		{
+			description: "Will fail when getting a different type than expected wrapped in DeletedFinalStateUnknown",
+			incomingObject: cache.DeletedFinalStateUnknown{
+				Key: "some-key",
+				Obj: serviceToExtract,
+			},
+			expectedExtraction: serviceToExtract,
+			expectedType:       reflect.TypeOf(&corev1.Endpoints{}),
+			expectedError:      "was expecting DeletedFinalStateUnknown to contain *v1.Endpoints, but got *v1.Service",
+		},
 	}
 
 	for i, tc := range testCases {
