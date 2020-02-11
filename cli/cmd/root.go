@@ -189,7 +189,7 @@ type proxyConfigOptions struct {
 	debugImage               string
 	debugImageVersion        string
 	dockerRegistry           string
-	prometheusRegistry		 string
+	prometheusRegistry       string
 	imagePullPolicy          string
 	ignoreInboundPorts       []string
 	ignoreOutboundPorts      []string
@@ -300,7 +300,7 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	flags.StringVar(&options.initImage, "init-image", options.initImage, "Linkerd init container image name")
 	flags.StringVar(&options.initImageVersion, "init-image-version", options.initImageVersion, "Linkerd init container image version")
 	flags.StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
-	flags.StringVar(&options.prometheusRegistry, "prom-registry", options.prometheusRegistry, "Custom Registry to pull Prometheus images from")
+	// flags.StringVar(&options.prometheusRegistry, "prom-registry", options.prometheusRegistry, "Custom Registry to pull Prometheus images from")
 	flags.StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
 	flags.UintVar(&options.proxyInboundPort, "inbound-port", options.proxyInboundPort, "Proxy port to use for inbound traffic")
 	flags.UintVar(&options.proxyOutboundPort, "outbound-port", options.proxyOutboundPort, "Proxy port to use for outbound traffic")

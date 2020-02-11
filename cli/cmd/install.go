@@ -192,6 +192,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			debugImage:             defaults.DebugContainer.Image.Name,
 			debugImageVersion:      version.Version,
 			dockerRegistry:         defaultDockerRegistry,
+			prometheusRegistry:     defaultDockerRegistry,
 			imagePullPolicy:        defaults.Global.ImagePullPolicy,
 			ignoreInboundPorts:     nil,
 			ignoreOutboundPorts:    nil,
@@ -351,7 +352,7 @@ func newCmdInstall() *cobra.Command {
 		Short: "Output Kubernetes configs to install Linkerd",
 		Long: `Output Kubernetes configs to install Linkerd.
 
-This commandeeeerrr provides all Kubernetes configs necessary to install the Linkerd
+This command provides all Kubernetes configs necessary to install the Linkerd
 control plane.`,
 		Example: `  # Default install.
   linkerd install | kubectl apply -f -
@@ -662,6 +663,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+	installValues.PrometheusImage = fmt.Sprintf("%s/prometheus", options.prometheusRegistry)
 	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.Global.CNIEnabled = options.cniEnabled
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
