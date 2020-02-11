@@ -7,7 +7,7 @@ metadata:
   annotations:
     linkerd.io/inject: disabled
   labels:
-    linkerd.io/is-control-plane: "true"
+    linkerd.io/cni-resource-test: "true"
     config.linkerd.io/admission-webhooks: disabled
 ---
 apiVersion: policy/v1beta1
