@@ -367,31 +367,32 @@ func (api *API) CJ() batchv1beta1informers.CronJobInformer {
 	return api.cj
 }
 
-// GetObjects returns a list of Kubernetes objects, given a namespace, type, and name.
+// GetObjects returns a list of Kubernetes objects, given a namespace, type, name and label selector.
 // If namespace is an empty string, match objects in all namespaces.
 // If name is an empty string, match all objects of the given type.
-func (api *API) GetObjects(namespace, restype, name string) ([]runtime.Object, error) {
+// If label selector is an empty string, match all labels.
+func (api *API) GetObjects(namespace, restype, name string, label labels.Selector) ([]runtime.Object, error) {
 	switch restype {
 	case k8s.Namespace:
-		return api.getNamespaces(name)
+		return api.getNamespaces(name, label)
 	case k8s.CronJob:
-		return api.getCronjobs(namespace, name)
+		return api.getCronjobs(namespace, name, label)
 	case k8s.DaemonSet:
-		return api.getDaemonsets(namespace, name)
+		return api.getDaemonsets(namespace, name, label)
 	case k8s.Deployment:
-		return api.getDeployments(namespace, name)
+		return api.getDeployments(namespace, name, label)
 	case k8s.Job:
-		return api.getJobs(namespace, name)
+		return api.getJobs(namespace, name, label)
 	case k8s.Pod:
-		return api.getPods(namespace, name)
+		return api.getPods(namespace, name, label)
 	case k8s.ReplicationController:
-		return api.getRCs(namespace, name)
+		return api.getRCs(namespace, name, label)
 	case k8s.ReplicaSet:
-		return api.getReplicasets(namespace, name)
+		return api.getReplicasets(namespace, name, label)
 	case k8s.Service:
 		return api.getServices(namespace, name)
 	case k8s.StatefulSet:
-		return api.getStatefulsets(namespace, name)
+		return api.getStatefulsets(namespace, name, label)
 	default:
 		return nil, status.Errorf(codes.Unimplemented, "unimplemented resource type: %s", restype)
 	}
@@ -632,12 +633,12 @@ func GetNamespaceOf(obj runtime.Object) (string, error) {
 
 // getNamespaces returns the namespace matching the specified name. If no name
 // is given, it returns all namespaces.
-func (api *API) getNamespaces(name string) ([]runtime.Object, error) {
+func (api *API) getNamespaces(name string, labelSelector labels.Selector) ([]runtime.Object, error) {
 	var namespaces []*corev1.Namespace
 
 	if name == "" {
 		var err error
-		namespaces, err = api.NS().Lister().List(labels.Everything())
+		namespaces, err = api.NS().Lister().List(labelSelector)
 		if err != nil {
 			return nil, err
 		}
@@ -657,14 +658,14 @@ func (api *API) getNamespaces(name string) ([]runtime.Object, error) {
 	return objects, nil
 }
 
-func (api *API) getDeployments(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getDeployments(namespace, name string, labelSelector labels.Selector) ([]runtime.Object, error) {
 	var err error
 	var deploys []*appsv1.Deployment
 
 	if namespace == "" {
-		deploys, err = api.Deploy().Lister().List(labels.Everything())
+		deploys, err = api.Deploy().Lister().List(labelSelector)
 	} else if name == "" {
-		deploys, err = api.Deploy().Lister().Deployments(namespace).List(labels.Everything())
+		deploys, err = api.Deploy().Lister().Deployments(namespace).List(labelSelector)
 	} else {
 		var deploy *appsv1.Deployment
 		deploy, err = api.Deploy().Lister().Deployments(namespace).Get(name)
@@ -683,14 +684,14 @@ func (api *API) getDeployments(namespace, name string) ([]runtime.Object, error)
 	return objects, nil
 }
 
-func (api *API) getPods(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getPods(namespace, name string, labelSelector labels.Selector) ([]runtime.Object, error) {
 	var err error
 	var pods []*corev1.Pod
 
 	if namespace == "" {
-		pods, err = api.Pod().Lister().List(labels.Everything())
+		pods, err = api.Pod().Lister().List(labelSelector)
 	} else if name == "" {
-		pods, err = api.Pod().Lister().Pods(namespace).List(labels.Everything())
+		pods, err = api.Pod().Lister().Pods(namespace).List(labelSelector)
 	} else {
 		var pod *corev1.Pod
 		pod, err = api.Pod().Lister().Pods(namespace).Get(name)
@@ -712,14 +713,14 @@ func (api *API) getPods(namespace, name string) ([]runtime.Object, error) {
 	return objects, nil
 }
 
-func (api *API) getRCs(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getRCs(namespace, name string, labelSelector labels.Selector) ([]runtime.Object, error) {
 	var err error
 	var rcs []*corev1.ReplicationController
 
 	if namespace == "" {
-		rcs, err = api.RC().Lister().List(labels.Everything())
+		rcs, err = api.RC().Lister().List(labelSelector)
 	} else if name == "" {
-		rcs, err = api.RC().Lister().ReplicationControllers(namespace).List(labels.Everything())
+		rcs, err = api.RC().Lister().ReplicationControllers(namespace).List(labelSelector)
 	} else {
 		var rc *corev1.ReplicationController
 		rc, err = api.RC().Lister().ReplicationControllers(namespace).Get(name)
@@ -738,14 +739,14 @@ func (api *API) getRCs(namespace, name string) ([]runtime.Object, error) {
 	return objects, nil
 }
 
-func (api *API) getDaemonsets(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getDaemonsets(namespace, name string, labelSelector labels.Selector) ([]runtime.Object, error) {
 	var err error
 	var daemonsets []*appsv1.DaemonSet
 
 	if namespace == "" {
-		daemonsets, err = api.DS().Lister().List(labels.Everything())
+		daemonsets, err = api.DS().Lister().List(labelSelector)
 	} else if name == "" {
-		daemonsets, err = api.DS().Lister().DaemonSets(namespace).List(labels.Everything())
+		daemonsets, err = api.DS().Lister().DaemonSets(namespace).List(labelSelector)
 	} else {
 		var ds *appsv1.DaemonSet
 		ds, err = api.DS().Lister().DaemonSets(namespace).Get(name)
@@ -764,14 +765,14 @@ func (api *API) getDaemonsets(namespace, name string) ([]runtime.Object, error) 
 	return objects, nil
 }
 
-func (api *API) getStatefulsets(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getStatefulsets(namespace, name string, labelSelector labels.Selector) ([]runtime.Object, error) {
 	var err error
 	var statefulsets []*appsv1.StatefulSet
 
 	if namespace == "" {
-		statefulsets, err = api.SS().Lister().List(labels.Everything())
+		statefulsets, err = api.SS().Lister().List(labelSelector)
 	} else if name == "" {
-		statefulsets, err = api.SS().Lister().StatefulSets(namespace).List(labels.Everything())
+		statefulsets, err = api.SS().Lister().StatefulSets(namespace).List(labelSelector)
 	} else {
 		var ss *appsv1.StatefulSet
 		ss, err = api.SS().Lister().StatefulSets(namespace).Get(name)
@@ -790,14 +791,14 @@ func (api *API) getStatefulsets(namespace, name string) ([]runtime.Object, error
 	return objects, nil
 }
 
-func (api *API) getJobs(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getJobs(namespace, name string, labelSelector labels.Selector) ([]runtime.Object, error) {
 	var err error
 	var jobs []*batchv1.Job
 
 	if namespace == "" {
-		jobs, err = api.Job().Lister().List(labels.Everything())
+		jobs, err = api.Job().Lister().List(labelSelector)
 	} else if name == "" {
-		jobs, err = api.Job().Lister().Jobs(namespace).List(labels.Everything())
+		jobs, err = api.Job().Lister().Jobs(namespace).List(labelSelector)
 	} else {
 		var job *batchv1.Job
 		job, err = api.Job().Lister().Jobs(namespace).Get(name)
@@ -831,14 +832,14 @@ func (api *API) getServices(namespace, name string) ([]runtime.Object, error) {
 	return objects, nil
 }
 
-func (api *API) getCronjobs(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getCronjobs(namespace, name string, labelSelector labels.Selector) ([]runtime.Object, error) {
 	var err error
 	var cronjobs []*batchv1beta1.CronJob
 
 	if namespace == "" {
-		cronjobs, err = api.CJ().Lister().List(labels.Everything())
+		cronjobs, err = api.CJ().Lister().List(labelSelector)
 	} else if name == "" {
-		cronjobs, err = api.CJ().Lister().CronJobs(namespace).List(labels.Everything())
+		cronjobs, err = api.CJ().Lister().CronJobs(namespace).List(labelSelector)
 	} else {
 		var cronjob *batchv1beta1.CronJob
 		cronjob, err = api.CJ().Lister().CronJobs(namespace).Get(name)
@@ -856,14 +857,14 @@ func (api *API) getCronjobs(namespace, name string) ([]runtime.Object, error) {
 	return objects, nil
 }
 
-func (api *API) getReplicasets(namespace, name string) ([]runtime.Object, error) {
+func (api *API) getReplicasets(namespace, name string, labelSelector labels.Selector) ([]runtime.Object, error) {
 	var err error
 	var replicasets []*appsv1.ReplicaSet
 
 	if namespace == "" {
-		replicasets, err = api.RS().Lister().List(labels.Everything())
+		replicasets, err = api.RS().Lister().List(labelSelector)
 	} else if name == "" {
-		replicasets, err = api.RS().Lister().ReplicaSets(namespace).List(labels.Everything())
+		replicasets, err = api.RS().Lister().ReplicaSets(namespace).List(labelSelector)
 	} else {
 		var replicaset *appsv1.ReplicaSet
 		replicaset, err = api.RS().Lister().ReplicaSets(namespace).Get(name)
