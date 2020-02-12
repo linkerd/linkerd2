@@ -499,7 +499,7 @@ func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("all-stage", pflag.ExitOnError)
 
 	flags.BoolVar(&options.cniEnabled, "linkerd-cni-enabled", options.cniEnabled,
-		"Experimental: Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
+		"Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
 	)
 
 	flags.BoolVar(

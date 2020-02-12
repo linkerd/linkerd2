@@ -226,9 +226,12 @@ func TestGetProfiles(t *testing.T) {
 		// gets the server profile first, it will send an update with that
 		// profile to the stream and then a second update when it gets the
 		// client profile.
-		if len(stream.updates) != 1 && len(stream.updates) != 2 {
-			// https://github.com/linkerd/linkerd2/issues/3332
-			t.Skipf("Expected 1 or 2 updates but got %d: %v", len(stream.updates), stream.updates)
+		// Additionally, under normal conditions the creation of resources by
+		// the fake API will generate notifications that are discarded after the
+		// stream.Cancel() call, but very rarely those notifications might come
+		// after, in which case we'll get a third update.
+		if len(stream.updates) == 0 || len(stream.updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
 		}
 		lastUpdate := stream.updates[len(stream.updates)-1]
 		routes := lastUpdate.GetRoutes()

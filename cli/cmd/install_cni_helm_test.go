@@ -34,8 +34,7 @@ func testRenderCniHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 	overrideJSON :=
 		`{
 			"namespace": "linkerd-test",
-  			"controllerNamespaceLabel": "linkerd.io/control-plane-ns-test",
-  			"cniResourceAnnotation": "linkerd.io/cni-resource-test",
+  			"cniResourceLabel": "linkerd.io/cni-resource-test",
   			"inboundProxyPort": 1234,
   			"outboundProxyPort": 5678,
 			"createdByAnnotation": "linkerd.io/created-by-test",
