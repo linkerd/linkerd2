@@ -78,6 +78,7 @@ global:
 
 # Add custom host here
 enforcedHostRegexp: ""
+
 enableH2Upgrade: true
 
 omitWebhookSideEffects: false
