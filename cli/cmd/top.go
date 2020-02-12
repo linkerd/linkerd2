@@ -254,7 +254,6 @@ const (
 	headerHeight  = 4
 	columnSpacing = 2
 	xOffset       = 5
-	columnGap     = 10
 )
 
 func newTopOptions() *topOptions {
