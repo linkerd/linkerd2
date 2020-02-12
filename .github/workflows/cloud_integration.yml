@@ -24,9 +24,9 @@ jobs:
         echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
         ssh linkerd-docker docker version
-        echo ::set-env name=DOCKER_HOST::ssh://linkerd-docker
     - name: Build docker images
       env:
+        DOCKER_HOST: ssh://linkerd-docker
         DOCKER_TRACE: 1
       run: |
         export PATH="`pwd`/bin:$PATH"

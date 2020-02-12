@@ -7,6 +7,31 @@ on:
     tags:
     - "*"
 jobs:
+  docker_pull:
+    name: Docker pull
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Checkout code
+      if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
+      uses: actions/checkout@v2
+    - name: Setup SSH config for Packet
+      if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
+      run: |
+        mkdir -p ~/.ssh/
+        touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
+        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
+        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+        ssh linkerd-docker docker version
+    - name: Ensure Packet has the correct proxy-init and prometheus versions
+      if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
+      env:
+        DOCKER_HOST: ssh://linkerd-docker
+        PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
+        PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.15.2
+      run: |
+        bin/docker pull $PROXY_INIT_IMAGE_NAME
+        bin/docker pull $PROMETHEUS_IMAGE_NAME
   docker_build:
     name: Docker build
     runs-on: ubuntu-18.04
@@ -65,7 +90,7 @@ jobs:
     strategy:
       matrix:
         integration_test: [deep, upgrade, helm, helm_upgrade, custom_domain, external_issuer]
-    needs: [docker_build]
+    needs: [docker_build, docker_pull]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
@@ -133,7 +158,7 @@ jobs:
       if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
       env:
         PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
-        PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.11.1
+        PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.15.2
       run: |
         # For each container, load the image archive into the KinD cluster.
         #
