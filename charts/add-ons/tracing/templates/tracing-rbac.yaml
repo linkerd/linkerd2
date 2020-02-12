@@ -6,8 +6,8 @@
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-collector
-  namespace: linkerd
+  name: {{.Values.collector.name}}
+  namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
@@ -19,8 +19,8 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-jaeger
-  namespace: linkerd
+  name: {{.Values.jaeger.name}}
+  namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: {{.Values.jaeger.name}}
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
