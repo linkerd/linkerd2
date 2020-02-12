@@ -2475,7 +2475,7 @@ func runIdentityCheckTestCase(t *testing.T, testID int, testDescription string, 
 		_, hc.linkerdConfig, _ = hc.checkLinkerdConfigConfigMap()
 
 		if testDescription != "certificate config is valid" {
-			hc.issuerCert, hc.roots, _ = hc.checkCertificatesConfig()
+			hc.issuerCert, hc.trustAnchors, _ = hc.checkCertificatesConfig()
 		}
 
 		if err != nil {
@@ -2607,22 +2607,22 @@ func TestLinkerdIdentityCheckCertValidity(t *testing.T) {
 		expectedOutput   []string
 	}{
 		{
-			checkerToTest:    "trust roots are within their validity period",
-			checkDescription: "fails when the only root cert is not valid yet",
+			checkerToTest:    "trust anchors are within their validity period",
+			checkDescription: "fails when the only anchor is not valid yet",
 			lifespan: &lifeSpan{
 				starts: time.Date(2100, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(2101, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedOutput: []string{"linkerd-identity-test-cat trust roots are within their validity period: Invalid roots:\n\t* 1 identity.linkerd.cluster.local not valid before: 2100-01-01T01:00:51Z"},
+			expectedOutput: []string{"linkerd-identity-test-cat trust anchors are within their validity period: Invalid anchors:\n\t* 1 identity.linkerd.cluster.local not valid before: 2100-01-01T01:00:51Z"},
 		},
 		{
-			checkerToTest:    "trust roots are within their validity period",
-			checkDescription: "fails when the only root cert is expired",
+			checkerToTest:    "trust anchors are within their validity period",
+			checkDescription: "fails when the only trust anchor is expired",
 			lifespan: &lifeSpan{
 				starts: time.Date(1989, 1, 1, 1, 1, 1, 1, time.UTC),
 				ends:   time.Date(1990, 1, 1, 1, 1, 1, 1, time.UTC),
 			},
-			expectedOutput: []string{"linkerd-identity-test-cat trust roots are within their validity period: Invalid roots:\n\t* 1 identity.linkerd.cluster.local not valid anymore. Expired on 1990-01-01T01:01:11Z"},
+			expectedOutput: []string{"linkerd-identity-test-cat trust anchors are within their validity period: Invalid anchors:\n\t* 1 identity.linkerd.cluster.local not valid anymore. Expired on 1990-01-01T01:01:11Z"},
 		},
 		{
 			checkerToTest:    "issuer cert is within its validity period",
@@ -2654,11 +2654,11 @@ func TestLinkerdIdentityCheckCertValidity(t *testing.T) {
 }
 
 func TestLinkerdIdentityCheckWrongDns(t *testing.T) {
-	expectedOutput := []string{"linkerd-identity-test-cat issuer cert is issued by the trust root: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"}
+	expectedOutput := []string{"linkerd-identity-test-cat issuer cert is issued by the trust anchor: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"}
 	issuerData := createIssuerData("wrong.linkerd.cluster.local", time.Now().AddDate(-1, 0, 0), time.Now().AddDate(1, 0, 0))
 	fakeConfigMap := getFakeConfigMap(k8s.IdentityIssuerSchemeLinkerd, issuerData)
 	fakeSecret := getFakeSecret(k8s.IdentityIssuerSchemeLinkerd, issuerData)
-	runIdentityCheckTestCase(t, 0, "fails when cert dns is wrong", "issuer cert is issued by the trust root", fakeConfigMap, fakeSecret, expectedOutput)
+	runIdentityCheckTestCase(t, 0, "fails when cert dns is wrong", "issuer cert is issued by the trust anchor", fakeConfigMap, fakeSecret, expectedOutput)
 
 }
 

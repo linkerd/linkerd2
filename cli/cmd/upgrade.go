@@ -27,11 +27,11 @@ import (
 )
 
 const (
-	okMessage              = "You're on your way to upgrading Linkerd!"
-	controlPlaneMessage    = "Don't forget to run `linkerd upgrade control-plane`!"
-	visitMessage           = "Visit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps"
-	failMessage            = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
-	trustRootChangeMessage = "Rotating the trust anchors will affect existing proxies\nSee https://linkerd.io/2/tasks/rotating_identity_certificates/ for more information"
+	okMessage                = "You're on your way to upgrading Linkerd!"
+	controlPlaneMessage      = "Don't forget to run `linkerd upgrade control-plane`!"
+	visitMessage             = "Visit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps"
+	failMessage              = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
+	trustAnchorChangeMessage = "Rotating the trust anchors will affect existing proxies\nSee https://linkerd.io/2/tasks/rotating_identity_certificates/ for more information"
 )
 
 type upgradeOptions struct {
@@ -67,7 +67,7 @@ func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
 	)
 	flags.BoolVar(
 		&options.force, "force", options.force,
-		"Force upgrade operation even when issuer certificate does not work with the roots of all proxies",
+		"Force upgrade operation even when issuer certificate does not work with the trust anchors of all proxies",
 	)
 
 	return flags
@@ -197,7 +197,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	buf.WriteTo(os.Stdout)
 
 	if options.identityOptions.trustPEMFile != "" {
-		fmt.Fprintf(os.Stderr, "\n%s %s\n", warnStatus, trustRootChangeMessage)
+		fmt.Fprintf(os.Stderr, "\n%s %s\n", warnStatus, trustAnchorChangeMessage)
 	}
 
 	fmt.Fprintf(os.Stderr, "\n%s %s\n", okStatus, okMessage)
@@ -397,10 +397,10 @@ func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred)
 		return err
 	}
 	for _, pod := range meshedPods {
-		roots, err := tls.DecodePEMCertPool(pod.Anchors)
+		anchors, err := tls.DecodePEMCertPool(pod.Anchors)
 
-		if roots != nil {
-			err = cred.Verify(roots, "", time.Time{})
+		if anchors != nil {
+			err = cred.Verify(anchors, "", time.Time{})
 		}
 
 		if err != nil {
@@ -409,7 +409,7 @@ func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred)
 	}
 
 	if len(problematicPods) > 0 {
-		errorMessageHeader := "You are attempting to use an issuer certificate which does not validate against the trust roots of the following pods:"
+		errorMessageHeader := "You are attempting to use an issuer certificate which does not validate against the trust anchors of the following pods:"
 		errorMessageFooter := "These pods do not have the current trust bundle and must be restarted.  Use the --force flag to proceed anyway (this will likely prevent those pods from sending or receiving traffic)."
 		return fmt.Errorf("%s\n\t%s\n%s", errorMessageHeader, strings.Join(problematicPods, "\n\t"), errorMessageFooter)
 	}
@@ -460,7 +460,7 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 
 	cred, err := issuerData.VerifyAndBuildCreds("")
 	if err != nil {
-		return nil, fmt.Errorf("issuer certificate does not work with the provided roots: %s\nFor more information: https://linkerd.io/2/tasks/rotating_identity_certificates/", err)
+		return nil, fmt.Errorf("issuer certificate does not work with the provided anchors: %s\nFor more information: https://linkerd.io/2/tasks/rotating_identity_certificates/", err)
 	}
 	issuerData.Expiry = &cred.Crt.Certificate.NotAfter
 
@@ -546,8 +546,8 @@ func verifyWebhookTLS(value *charts.TLS, webhook string) error {
 	if err != nil {
 		return err
 	}
-	roots := crt.CertPool()
-	if err := crt.Verify(roots, webhookCommonName(webhook), time.Time{}); err != nil {
+	anchors := crt.CertPool()
+	if err := crt.Verify(anchors, webhookCommonName(webhook), time.Time{}); err != nil {
 		return err
 	}
 
