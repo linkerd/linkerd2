@@ -1,6 +1,7 @@
 package servicemirror
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -106,8 +107,8 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadat
 	if err != nil {
 		return nil, 0, err
 	}
-	if len(gateway.Status.LoadBalancer.Ingress) < 1 {
-		return nil, 0, fmt.Errorf("expected gateway to have at lest 1 external Ip address but it has %d", len(gateway.Spec.ExternalIPs))
+	if len(gateway.Status.LoadBalancer.Ingress) == 0 {
+		return nil, 0, errors.New("expected gateway to have at lest 1 external Ip address but it has none")
 	}
 
 	var gatewayEndpoints []corev1.EndpointAddress
