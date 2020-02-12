@@ -12,28 +12,20 @@ on:
 
 # Unit tests for every master/tag push and PR
 #
-# validate_go_deps
+# go_dependencies
 # go_unit_tests
 # go_lint
 # js_unit_tests
 
-# master/tag push and linkerd org PR: Docker build and integration tests
-#
-# docker_pull
-# docker_build
-# kind_setup
-#   -> kind_integration_host
-#     -> kind_cleanup
-
-# Forked repository PR: Docker build and integration tests
+# All master/tag pushes and PRs
 #
 # docker_build
-#   -> kind_integration_github
+# -> kind_integration_tests
 
-# Docker deploy and cloud integration tests for every master/tag push
+# Docker push and cloud integration tests for every master/tag push
 #
-#       -> docker_deploy
-#         -> cloud_integration
+#     -> docker_push
+#        -> cloud_integration_tests
 
 jobs:
 
@@ -44,16 +36,14 @@ jobs:
   # - every PR
   #
 
-  validate_go_deps:
-    name: Validate go deps
+  go_dependencies:
+    name: Go dependencies
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-    # for debugging
     - name: Dump env
-      run: |
-        env | sort
+      run: env | sort
     - name: Dump GitHub context
       env:
         GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -96,14 +86,12 @@ jobs:
     - name: Go lint
       env:
         GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
-        # prevent OOM
-        GOGC: 20
       run: |
         echo "$GITCOOKIE_SH" | bash
         bin/lint --verbose
 
-  go_fmt:
-    name: Go Format
+  go_format:
+    name: Go format
     runs-on: ubuntu-18.04
     container:
       image: golang:1.13.4
@@ -126,8 +114,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Yarn setup
-      run: |
-        curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
+      run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
     - name: JS unit tests
       run: |
         export PATH="$HOME/.yarn/bin:$PATH"
@@ -142,37 +129,20 @@ jobs:
   # - every PR
   #
 
-  docker_pull:
-    name: Docker pull
-    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-    runs-on: ubuntu-18.04
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Docker SSH setup
-      run: |
-        mkdir -p ~/.ssh/
-        touch ~/.ssh/id && chmod 600 ~/.ssh/id
-        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
-        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
-        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        ssh linkerd-docker docker version
-    - name: Docker pull
-      env:
-        DOCKER_HOST: ssh://linkerd-docker
-      run: |
-        bin/docker pull gcr.io/linkerd-io/proxy-init:v1.3.1
-        bin/docker pull prom/prometheus:v2.11.1
-
   docker_build:
     name: Docker build
     runs-on: ubuntu-18.04
-    env:
-      IMAGE_ARCHIVES_DIR: /home/runner/archives
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Docker SSH setup
+    - name: Set environment variables from scripts
+      run: |
+        . bin/_tag.sh
+        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+
+        . bin/_docker.sh
+        echo ::set-env name=DOCKER_REGISTRY::$DOCKER_REGISTRY
+    - name: Setup SSH config for Packet
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       run: |
         mkdir -p ~/.ssh/
@@ -183,169 +153,48 @@ jobs:
         ssh linkerd-docker docker version
         echo ::set-env name=DOCKER_HOST::ssh://linkerd-docker
     - name: Build docker images
+      env:
+        DOCKER_TRACE: 1
       run: |
         export PATH="`pwd`/bin:$PATH"
-        DOCKER_TRACE=1 bin/docker-build
-    - name: Create artifact with CLI and image archives
+        bin/docker-build
+    - name: Create artifact with CLI and image archives (Forked repositories)
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+      env:
+        ARCHIVES: /home/runner/archives
       run: |
-        mkdir -p $IMAGE_ARCHIVES_DIR
-        cp target/cli/linux/linkerd $IMAGE_ARCHIVES_DIR/
-        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
-        for img in controller grafana proxy web ; do
-          docker save "gcr.io/linkerd-io/$img:$TAG" > $IMAGE_ARCHIVES_DIR/$img.tar
+        mkdir -p $ARCHIVES
+
+        for image in proxy controller web cni-plugin debug cli-bin grafana; do
+          docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar || tee save_fail &
         done
+
+        # Wait for `docker save` background processes to complete. Exit early
+        # if any job failed.
+        wait < <(jobs -p)
+
+        test -f save_fail && exit 1 || true
     # `with.path` values do not support environment variables yet, so an
     # absolute path is used here.
     #
     # https://github.com/actions/upload-artifact/issues/8
-    - name: Upload artifact
+    - name: Upload artifact (Forked repositories)
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       uses: actions/upload-artifact@v1
       with:
         name: image-archives
         path: /home/runner/archives
 
-  kind_setup:
-    strategy:
-      max-parallel: 3
-      matrix:
-        integration_test: [deep, upgrade, helm, helm_upgrade, custom_domain, external_issuer]
-    name: Cluster setup (${{ matrix.integration_test }})
-    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-    runs-on: ubuntu-18.04
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Docker SSH setup
-      run: |
-        mkdir -p ~/.ssh/
-        touch ~/.ssh/id && chmod 600 ~/.ssh/id
-        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
-        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
-        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        ssh linkerd-docker docker version
-    - name: Kind cluster setup
-      env:
-        DOCKER_HOST: ssh://linkerd-docker
-      run: |
-        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
-        export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        export KUBECONFIG=/tmp/kind-config-$KIND_CLUSTER
-        export CUSTOM_DOMAIN_CONFIG="test/testdata/custom_cluster_domain_config.yaml"
-        # retry cluster creation once in case of port conflict or kubeadm failure
-        if [ "${{ matrix.integration_test }}" == "custom_domain" ]
-        then
-          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3 --config=$CUSTOM_DOMAIN_CONFIG ||
-            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3 --config=$CUSTOM_DOMAIN_CONFIG
-        else
-          bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3 ||
-            bin/kind create cluster --name=$KIND_CLUSTER --wait=2m --verbosity 3
-        fi
-
-  #
-  # Integration tests that run on the docker host are limited by the fact that
-  # while they all run in separate KinD clusters, they are on the same
-  # machine. The `strategy` context cannot be conditionally set, so there are
-  # separate `kind_integration_*` jobs. This allows the `kind_integration_github`
-  # job to run it's entire matrix in parallel.
-  #
-
-  kind_integration_host:
-    strategy:
-      max-parallel: 3
-      matrix:
-        integration_test: [deep, upgrade, helm, helm_upgrade, custom_domain, external_issuer]
-    needs: [docker_pull, docker_build, kind_setup]
-    name: Host int. tests (${{ matrix.integration_test }})
-    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-    runs-on: ubuntu-18.04
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Docker SSH setup
-      run: |
-        mkdir -p ~/.ssh/
-        touch ~/.ssh/id && chmod 600 ~/.ssh/id
-        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
-        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
-        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        ssh linkerd-docker docker version
-    - name: Try to load cached Go modules
-      uses: actions/cache@v1
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Kind load docker images
-      run: |
-        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
-        export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        ssh -T linkerd-docker > /dev/null << EOF
-          # TODO: This is using the kind binary on the remote host.
-          # TODO: 'kind' still points to v0.5.1. When there are no more old CI branches depending on that
-          # we can replace it with v0.6.1. In the meantime we explicitly use 'kind-0.6.1'
-          kind-0.6.1 load docker-image gcr.io/linkerd-io/proxy-init:v1.3.1 --name=$KIND_CLUSTER
-          kind-0.6.1 load docker-image prom/prometheus:v2.11.1 --name=$KIND_CLUSTER
-          for IMG in controller grafana proxy web ; do
-            kind-0.6.1 load docker-image gcr.io/linkerd-io/\$IMG:$TAG --name=$KIND_CLUSTER
-          done
-        EOF
-    - name: Install linkerd CLI
-      env:
-        DOCKER_HOST: ssh://linkerd-docker
-      run: |
-        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
-        image="gcr.io/linkerd-io/cli-bin:$TAG"
-        id=$(bin/docker create $image)
-        bin/docker cp "$id:/out/linkerd-linux" "$HOME/.linkerd"
-        $HOME/.linkerd version --client
-        # validate CLI version matches the repo
-        [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
-        echo "Installed Linkerd CLI version: $TAG"
-    - name: Run integration tests
-      env:
-        DOCKER_HOST: ssh://linkerd-docker
-        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
-      run: |
-        export PATH="`pwd`/bin:$PATH"
-        echo "$GITCOOKIE_SH" | bash
-        # TODO: pin Go version
-        go version
-        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
-        export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        # Restore kubeconfig from remote docker host.
-        mkdir -p $HOME/.kube
-        export KUBECONFIG=$HOME/.kube/kind-config-$KIND_CLUSTER
-        bin/kind export kubeconfig --name=$KIND_CLUSTER --kubeconfig $KUBECONFIG
-        # Start ssh tunnel to allow kubectl to connect via localhost.
-        export KIND_PORT=$(bin/kubectl config view -o jsonpath="{.clusters[?(@.name=='kind-$KIND_CLUSTER')].cluster.server}" | cut -d':' -f3)
-        echo "KIND_PORT: $KIND_PORT"
-        ssh -4 -N -L $KIND_PORT:localhost:$KIND_PORT linkerd-docker &
-        sleep 2 # Wait for ssh tunnel to come up.
-        bin/kubectl version --short # Test connection to kind cluster.
-        (
-          . bin/_test-run.sh
-          init_test_run $HOME/.linkerd
-          ${{ matrix.integration_test }}_integration_tests
-        )
-
-  kind_integration_github:
+  kind_integration_tests:
     strategy:
       matrix:
         integration_test: [deep, upgrade, helm, helm_upgrade, custom_domain, external_issuer]
     needs: [docker_build]
-    name: GitHub int. tests (${{ matrix.integration_test }})
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+    name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Download image archives
-      uses: actions/download-artifact@v1
-      with:
-        name: image-archives
     - name: Try to load cached Go modules
       uses: actions/cache@v1
       with:
@@ -353,86 +202,121 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    - name: Setup KinD (default)
+    - name: Set environment variables from scripts
+      run: |
+        . bin/_tag.sh
+        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+
+        . bin/_docker.sh
+        echo ::set-env name=DOCKER_REGISTRY::$DOCKER_REGISTRY
+    - name: Setup SSH config for Packet
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      run: |
+        mkdir -p ~/.ssh/
+        touch ~/.ssh/id && chmod 600 ~/.ssh/id
+        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
+        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
+        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+    - name: Download image archives (Forked repositories)
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+      uses: actions/download-artifact@v1
+      with:
+        name: image-archives
+    - name: Load cli-bin image into local docker images
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      run: |
+        # `docker load` only accepts input from STDIN, so pipe the image
+        # archive into the command.
+        #
+        # In order to pipe the image archive, set `DOCKER_HOST` for a single
+        # command and `docker save` the CLI image from the Packet host.
+        DOCKER_HOST=ssh://linkerd-docker docker save "$DOCKER_REGISTRY/cli-bin:$TAG" | docker load
+    - name: Load cli-bin image into local docker images (Forked repositories)
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+      run: docker load < image-archives/cli-bin.tar
+    - name: Install CLI
+      run: |
+        # Copy the CLI out of the local cli-bin container.
+        container_id=$(docker create "$DOCKER_REGISTRY/cli-bin:$TAG")
+        docker cp $container_id:/out/linkerd-linux $HOME/.linkerd
+
+        # Validate the CLI version matches the current build tag.
+        [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
+    - name: Setup default KinD cluster
       if: matrix.integration_test != 'custom_domain'
       uses: engineerd/setup-kind@v0.3.0
       with:
         version: "v0.6.1"
-    - name: Setup KinD (custom_domain)
+    - name: Setup custom_domain KinD cluster
       if: matrix.integration_test == 'custom_domain'
       uses: engineerd/setup-kind@v0.3.0
       with:
         config: test/testdata/custom_cluster_domain_config.yaml
         version: "v0.6.1"
-    - name: Load image archives into KinD
+    - name: Load image archives into the local KinD cluster
+      if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+      env:
+        PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
+        PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.15.2
       run: |
-        for img in controller grafana proxy web; do
-          kind load image-archive image-archives/$img.tar
+        # For each container, load the image archive into the KinD cluster.
+        #
+        # `kind load` cannot take input from STDIN, so `<(command)` syntax is
+        # used to load the output into the KinD cluster. Set `DOCKER_HOST` for
+        # a single command, and `docker save` the container from the Packet
+        # host.
+        for image in proxy controller web cni-plugin debug grafana; do
+          kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save "$DOCKER_REGISTRY/$image:$TAG") || tee load_fail &
         done
-    - name: Install linkerd CLI
+
+        # Wait for `kind load` background processes to complete. Exit early if
+        # any job failed.
+        wait < <(jobs -p)
+        test -f load_fail && exit 1 || true
+
+        # Load proxy-init and prometheus images into KinD while it is
+        # available. Allow these commands to fail since they will be cached
+        # for the next run.
+        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROXY_INIT_IMAGE_NAME) 2>&1 || true
+        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROMETHEUS_IMAGE_NAME) 2>&1 || true
+    - name: Load image archives into the local KinD cluster (Forked repositories)
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: |
-        cp image-archives/linkerd $HOME/.linkerd
-        chmod +x $HOME/.linkerd
+        for image in proxy controller web cni-plugin debug grafana; do
+          kind load image-archive image-archives/$image.tar || tee load_fail &
+        done
+
+        # Wait for `kind load` background processes to complete. Exit early if
+        # any job failed.
+        wait < <(jobs -p)
+        test -f load_fail && exit 1 || true
     - name: Run integration tests
       run: |
+        # Export `init_test_run` and `*_integration_tests` into the
+        # environment.
         . bin/_test-run.sh
+
         init_test_run $HOME/.linkerd
         ${{ matrix.integration_test }}_integration_tests
 
-  kind_cleanup:
-    strategy:
-      fail-fast: false # always attempt to cleanup all clusters
-      matrix:
-        integration_test: [deep, upgrade, helm, helm_upgrade, custom_domain, external_issuer]
-    needs: [kind_integration_host]
-    name: Cluster cleanup (${{ matrix.integration_test }})
-    if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
-    runs-on: ubuntu-18.04
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    # for debugging
-    - name: Dump env
-      run: |
-        env | sort
-    - name: Dump GitHub context
-      env:
-        GITHUB_CONTEXT: ${{ toJson(github) }}
-      run: echo "$GITHUB_CONTEXT"
-    - name: Dump job context
-      env:
-        JOB_CONTEXT: ${{ toJson(job) }}
-      run: echo "$JOB_CONTEXT"
-    - name: Docker SSH setup
-      run: |
-        mkdir -p ~/.ssh/
-        touch ~/.ssh/id && chmod 600 ~/.ssh/id
-        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
-        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
-        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        ssh linkerd-docker docker version
-    - name: Kind cluster cleanup
-      env:
-        DOCKER_HOST: ssh://linkerd-docker
-      run: |
-        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
-        export KIND_CLUSTER=github-$TAG-${{ matrix.integration_test }}
-        bin/kind delete cluster --name=$KIND_CLUSTER
-
   #
-  # Docker deploy and cloud integration tests run for:
+  # Docker push and cloud integration tests run for:
   # - every master push
   # - every tag push
   #
 
-  docker_deploy:
-    name: Docker deploy
+  docker_push:
+    name: Docker push
     if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
     runs-on: ubuntu-18.04
-    needs: [validate_go_deps, go_unit_tests, go_lint, js_unit_tests, kind_integration_host, kind_cleanup]
+    needs: [go_dependencies, go_unit_tests, go_lint, js_unit_tests, kind_integration_tests]
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
+    - name: Set environment variables from scripts
+      run: |
+        . bin/_tag.sh
+        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
     - name: Configure gcloud
       uses: linkerd/linkerd2-action-gcloud@v1.0.0
       with:
@@ -447,22 +331,21 @@ jobs:
         echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
         ssh linkerd-docker docker version
-    - name: Docker push
+    - name: Push docker images to registry
       env:
         DOCKER_HOST: ssh://linkerd-docker
       run: |
         export PATH="`pwd`/bin:$PATH"
-        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         bin/docker-push-deps
         bin/docker-push $TAG
         bin/docker-retag-all $TAG master
         bin/docker-push master
 
-  cloud_integration:
+  cloud_integration_tests:
     name: Cloud integration tests
     if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags')
     runs-on: ubuntu-18.04
-    needs: [docker_deploy]
+    needs: [docker_push]
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -499,6 +382,7 @@ jobs:
         export TAG="$($HOME/.linkerd version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
 
+  #
   # Helm chart artifact deploy run for:
   # - every tag push
   #
@@ -507,7 +391,7 @@ jobs:
     name: Helm chart deploy
     if: startsWith(github.ref, 'refs/tags')
     runs-on: ubuntu-18.04
-    needs: [cloud_integration]
+    needs: [cloud_integration_tests]
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
