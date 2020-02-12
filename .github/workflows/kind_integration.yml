@@ -6,6 +6,7 @@ on:
     - master
     tags:
     - "*"
+jobs:
   docker_build:
     name: Docker build
     runs-on: ubuntu-18.04
