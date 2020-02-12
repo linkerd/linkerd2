@@ -76,8 +76,8 @@ func newCmdInstallCNIPlugin() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install-cni [flags]",
-		Short: "Output Kubernetes configs to install Linkerd CNI (experimental)",
-		Long: `Output Kubernetes configs to install Linkerd CNI (experimental).
+		Short: "Output Kubernetes configs to install Linkerd CNI",
+		Long: `Output Kubernetes configs to install Linkerd CNI.
 
 This command installs a DaemonSet into the Linkerd control plane. The DaemonSet
 copies the necessary linkerd-cni plugin binaries and configs onto the host. It
