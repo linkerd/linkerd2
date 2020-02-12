@@ -9,7 +9,6 @@ global:
   
   # Control Plane Trace Configuration
   controlPlaneTracing: false
-
   # control plane version. See Proxy section for proxy version
   linkerdVersion: &linkerd_version stable-2.7.0
 
@@ -64,6 +63,8 @@ global:
       memory:
         limit: 50Mi
         request: 10Mi
+
+
 
   # control plane annotations - do not edit
   createdByAnnotation: linkerd.io/created-by

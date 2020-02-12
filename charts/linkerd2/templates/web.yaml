@@ -65,10 +65,13 @@ spec:
         - -grafana-addr=linkerd-grafana.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:3000
         - -controller-namespace={{.Values.global.namespace}}
         - -log-level={{.Values.controllerLogLevel}}
+        {{- if .Values.enforcedHostRegexp }}
+        - -enforced-host={{.Values.enforcedHostRegexp}}
+        {{- else -}}
         {{- $hostFull := replace "." "\\." (printf "linkerd-web.%s.svc.%s" .Values.global.namespace .Values.global.clusterDomain) }}
         {{- $hostAbbrev := replace "." "\\." (printf "linkerd-web.%s.svc" .Values.global.namespace) }}
-        {{- $default_host :=^(localhost|127.0.0.1| $hostFull | $hostAbbrev |[::1])(:\d+)?$ }}
-        - -enforced-host={{ .Values.global.enforcedHostRegexp | default $default_host }}
+        - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
+        {{- end}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.webImage}}:{{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
