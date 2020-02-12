@@ -19,7 +19,6 @@ on:
 
 # All master/tag pushes and PRs
 #
-# docker_pull
 # docker_build
 # -> kind_integration_tests
 
@@ -124,37 +123,6 @@ jobs:
         bin/web test --reporters=jest-dot-reporter
 
   #
-  # Docker pull run for:
-  # - every master push
-  # - every tag push
-  # - internal PRs
-  #
-
-  docker_pull:
-    name: Docker pull
-    if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-    runs-on: ubuntu-18.04
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Setup SSH config for Packet
-      run: |
-        mkdir -p ~/.ssh/
-        touch ~/.ssh/id && chmod 600 ~/.ssh/id
-        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
-        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
-        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        ssh linkerd-docker docker version
-    - name: Ensure Packet has the correct proxy-init and prometheus versions
-      env:
-        DOCKER_HOST: ssh://linkerd-docker
-        PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
-        PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.15.2
-      run: |
-        bin/docker pull $PROXY_INIT_IMAGE_NAME
-        bin/docker pull $PROMETHEUS_IMAGE_NAME
-
-  #
   # Docker build and kind integration tests run for:
   # - every master push
   # - every tag push
@@ -221,7 +189,7 @@ jobs:
     strategy:
       matrix:
         integration_test: [deep, upgrade, helm, helm_upgrade, custom_domain, external_issuer]
-    needs: [docker_build, docker_pull]
+    needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
     steps:
@@ -307,9 +275,10 @@ jobs:
         test -f load_fail && exit 1 || true
 
         # Load proxy-init and prometheus images into KinD while it is
-        # available.
-        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROXY_INIT_IMAGE_NAME)
-        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROMETHEUS_IMAGE_NAME)
+        # available. Allow these commands to fail since they will be cached
+        # for the next run.
+        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROXY_INIT_IMAGE_NAME) 2>&1 || true
+        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROMETHEUS_IMAGE_NAME) 2>&1 || true
     - name: Load image archives into the local KinD cluster (Forked repositories)
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: |
