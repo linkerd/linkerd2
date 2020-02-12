@@ -9,7 +9,6 @@ global:
   
   # Control Plane Trace Configuration
   controlPlaneTracing: false
-
   # control plane version. See Proxy section for proxy version
   linkerdVersion: &linkerd_version stable-2.7.0
 
@@ -65,6 +64,8 @@ global:
         limit: 50Mi
         request: 10Mi
 
+
+
   # control plane annotations - do not edit
   createdByAnnotation: linkerd.io/created-by
   proxyInjectAnnotation: linkerd.io/inject
@@ -75,6 +76,9 @@ global:
   controllerNamespaceLabel: linkerd.io/control-plane-ns
   linkerdNamespaceLabel: linkerd.io/is-control-plane
 
+
+# Add custom host here
+enforcedHostRegexp: ""
 
 enableH2Upgrade: true
 
