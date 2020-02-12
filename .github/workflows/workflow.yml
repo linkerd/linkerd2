@@ -4,9 +4,9 @@ on:
   pull_request: {}
   push:
     branches:
-      - master
+    - master
     tags:
-      - "*"
+    - "*"
 
 # Jobs by event type and dependencies:
 
@@ -257,7 +257,7 @@ jobs:
       if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
       env:
         PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
-        PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.11.1
+        PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.15.2
       run: |
         # For each container, load the image archive into the KinD cluster.
         #
