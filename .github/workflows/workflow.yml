@@ -151,8 +151,8 @@ jobs:
         PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
         PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.15.2
       run: |
-        bin/docker pull "gcr.io/linkerd-io/proxy-init:$PROXY_INIT_IMAGE_NAME"
-        bin/docker pull "prom/prometheus:$PROMETHEUS_IMAGE_NAME"
+        bin/docker pull $PROXY_INIT_IMAGE_NAME
+        bin/docker pull $PROMETHEUS_IMAGE_NAME
 
   #
   # Docker build and kind integration tests run for:
