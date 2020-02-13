@@ -169,7 +169,7 @@ func (ic *IssuerCertData) VerifyAndBuildCreds(dnsName string) (*tls.Cred, error)
 		return nil, err
 	}
 
-	if err := creds.Verify(roots, dnsName); err != nil {
+	if err := creds.Verify(roots, dnsName, time.Time{}); err != nil {
 		return nil, err
 	}
 

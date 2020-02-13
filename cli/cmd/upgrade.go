@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
@@ -399,7 +400,7 @@ func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred)
 		roots, err := tls.DecodePEMCertPool(pod.Anchors)
 
 		if roots != nil {
-			err = cred.Verify(roots, "")
+			err = cred.Verify(roots, "", time.Time{})
 		}
 
 		if err != nil {
@@ -546,7 +547,7 @@ func verifyWebhookTLS(value *charts.TLS, webhook string) error {
 		return err
 	}
 	roots := crt.CertPool()
-	if err := crt.Verify(roots, webhookCommonName(webhook)); err != nil {
+	if err := crt.Verify(roots, webhookCommonName(webhook), time.Time{}); err != nil {
 		return err
 	}
 
