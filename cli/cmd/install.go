@@ -176,6 +176,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		controlPlaneVersion:         version.Version,
 		controllerReplicas:          defaults.ControllerReplicas,
 		controllerLogLevel:          defaults.ControllerLogLevel,
+		prometheusImage:             defaults.PrometheusImage,
 		highAvailability:            defaults.Global.HighAvailability,
 		controllerUID:               defaults.ControllerUID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
