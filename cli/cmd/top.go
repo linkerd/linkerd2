@@ -656,21 +656,10 @@ func (t *topTable) renderHeaders(scrollpos int) {
 
 func (t *topTable) tableWidthCalc() int {
 	tablewidth := 0
-	for i, col := range t.columns {
-		t.columns[i].width = runewidth.StringWidth(col.header)
-		for _, row := range t.rows {
-			cellWidth := runewidth.StringWidth(col.value(row))
-			if cellWidth > t.columns[i].width {
-				t.columns[i].width = cellWidth
-			}
-		}
-		if col.flexible {
-			tablewidth = tablewidth + columnSpacing
-		}
-		tablewidth = tablewidth + t.columns[i].width
+	for i := range t.columns {
+		tablewidth = tablewidth + t.columns[i].width + columnSpacing
 	}
-	return tablewidth
-
+	return tablewidth - columnSpacing
 }
 
 func (t *topTable) adjustColumnWidths() {
