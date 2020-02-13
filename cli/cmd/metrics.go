@@ -3,8 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
-	"sort"
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
@@ -19,23 +17,6 @@ import (
 type metricsOptions struct {
 	namespace string
 	pod       string
-}
-
-type metricsResult struct {
-	pod     string
-	metrics []byte
-	err     error
-}
-type byResult []metricsResult
-
-func (s byResult) Len() int {
-	return len(s)
-}
-func (s byResult) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-func (s byResult) Less(i, j int) bool {
-	return s[i].pod < s[j].pod
 }
 
 func newMetricsOptions() *metricsOptions {
@@ -101,37 +82,11 @@ func newCmdMetrics() *cobra.Command {
 				return err
 			}
 
-			resultChan := make(chan metricsResult)
-			for i := range pods {
-				go func(pod corev1.Pod) {
-					bytes, err := getMetrics(k8sAPI, pod, verbose)
-
-					resultChan <- metricsResult{
-						pod:     pod.GetName(),
-						metrics: bytes,
-						err:     err,
-					}
-
-				}(pods[i])
+			results, err := getMetrics(k8sAPI, pods, k8s.ProxyAdminPortName, 30*time.Second, verbose)
+			if err != nil {
+				return err
 			}
 
-			results := []metricsResult{}
-			timer := time.NewTimer(30 * time.Second)
-			timedOut := false
-
-			for {
-				select {
-				case result := <-resultChan:
-					results = append(results, result)
-				case <-timer.C:
-					timedOut = true
-				}
-				if len(results) == len(pods) || timedOut {
-					break
-				}
-			}
-
-			sort.Sort(byResult(results))
 			for i, result := range results {
 				fmt.Printf("#\n# POD %s (%d of %d)\n#\n", result.pod, i+1, len(results))
 				if result.err == nil {
@@ -148,31 +103,6 @@ func newCmdMetrics() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of resource")
 
 	return cmd
-}
-
-func getMetrics(
-	k8sAPI *k8s.KubernetesAPI,
-	pod corev1.Pod,
-	emitLogs bool,
-) ([]byte, error) {
-	portforward, err := k8s.NewProxyMetricsForward(k8sAPI, pod, emitLogs)
-	if err != nil {
-		return nil, err
-	}
-
-	defer portforward.Stop()
-	if err = portforward.Init(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
-		return nil, err
-	}
-
-	metricsURL := portforward.URLFor("/metrics")
-	bytes, err := GetResponse(metricsURL)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes, nil
 }
 
 // getPodsFor takes a resource string, queries the Kubernetes API, and returns a
