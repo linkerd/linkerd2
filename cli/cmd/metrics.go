@@ -82,10 +82,7 @@ func newCmdMetrics() *cobra.Command {
 				return err
 			}
 
-			results, err := getMetrics(k8sAPI, pods, k8s.ProxyAdminPortName, 30*time.Second, verbose)
-			if err != nil {
-				return err
-			}
+			results := getMetrics(k8sAPI, pods, k8s.ProxyAdminPortName, 30*time.Second, verbose)
 
 			for i, result := range results {
 				fmt.Printf("#\n# POD %s (%d of %d)\n#\n", result.pod, i+1, len(results))

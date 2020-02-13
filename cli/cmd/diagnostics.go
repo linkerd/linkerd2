@@ -56,10 +56,7 @@ func newCmdDiagnostics() *cobra.Command {
 				pods = append(pods, p...)
 			}
 
-			results, err := getMetrics(k8sAPI, pods, adminHTTPPortName, options.wait, verbose)
-			if err != nil {
-				return err
-			}
+			results := getMetrics(k8sAPI, pods, adminHTTPPortName, options.wait, verbose)
 
 			for i, result := range results {
 				fmt.Printf("#\n# POD %s (%d of %d)\n# CONTAINER %s (%d of %d)\n#\n", result.pod, i+1, len(results), result.container, i+1, len(results))

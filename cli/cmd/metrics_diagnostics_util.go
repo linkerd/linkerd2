@@ -103,7 +103,7 @@ func getMetrics(
 	portName string,
 	waitingTime time.Duration,
 	emitLogs bool,
-) ([]metricsResult, error) {
+) []metricsResult {
 	var results []metricsResult
 
 	var wg sync.WaitGroup
@@ -158,5 +158,5 @@ func getMetrics(
 
 	sort.Sort(byResult(results))
 
-	return results, nil
+	return results
 }
