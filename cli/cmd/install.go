@@ -589,7 +589,7 @@ func (options *installOptions) validate() error {
 	}
 
 	if options.prometheusImage != "" && !alphaNumDashDotSlashColon.MatchString(options.prometheusImage) {
-		return fmt.Errorf("%s is not a valid prometheus image.", options.prometheusImage)
+		return fmt.Errorf("%s is not a valid prometheus image", options.prometheusImage)
 	}
 
 	if err := options.proxyConfigOptions.validate(); err != nil {
