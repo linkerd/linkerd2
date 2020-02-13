@@ -2,9 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"sort"
-	"sync"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -16,27 +13,6 @@ import (
 const (
 	adminHTTPPortName string = "admin-http"
 )
-
-type diagnosticsResult struct {
-	pod       string
-	container string
-	metrics   []byte
-	err       error
-}
-type diagResult []diagnosticsResult
-
-func (s diagResult) Len() int {
-	return len(s)
-}
-func (s diagResult) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-func (s diagResult) Less(i, j int) bool {
-	if s[i].pod != s[j].pod {
-		return s[i].pod < s[j].pod
-	}
-	return s[i].container < s[j].container
-}
 
 type diagnosticsOptions struct {
 	wait time.Duration
@@ -70,64 +46,21 @@ func newCmdDiagnostics() *cobra.Command {
 			// ensure we can connect to the public API before fetching the diagnostics.
 			checkPublicAPIClientOrRetryOrExit(time.Now().Add(options.wait), true)
 
-			var wg sync.WaitGroup
-			resultChan := make(chan diagnosticsResult)
+			var pods []corev1.Pod
 			for _, d := range deployments.Items {
-				pods, err := getPodsFor(k8sAPI, controlPlaneNamespace, "deploy/"+d.Name)
+				p, err := getPodsFor(k8sAPI, controlPlaneNamespace, "deploy/"+d.Name)
 				if err != nil {
-					fmt.Println(err)
 					continue
 				}
 
-				for _, pod := range pods {
-					containers, err := getNonProxyContainersForPod(pod)
-					if err != nil {
-						fmt.Println(err)
-						continue
-					}
-
-					for i := range containers {
-						wg.Add(1)
-						go func(container corev1.Container, wg *sync.WaitGroup) {
-							bytes, err := getDiagnostics(k8sAPI, pod, container, verbose)
-
-							resultChan <- diagnosticsResult{
-								pod:       pod.GetName(),
-								container: container.Name,
-								metrics:   bytes,
-								err:       err,
-							}
-
-							defer wg.Done()
-						}(containers[i], &wg)
-					}
-				}
+				pods = append(pods, p...)
 			}
 
-			var results []diagnosticsResult
-
-			c := make(chan struct{})
-			go func() {
-				defer close(c)
-				wg.Wait()
-			}()
-
-			done := false
-			for {
-				select {
-				case result := <-resultChan:
-					results = append(results, result)
-				case <-c:
-					done = true // completed normally
-				case <-time.After(options.wait):
-					done = true // timed out
-				}
-				if done {
-					break
-				}
+			results, err := getMetrics(k8sAPI, pods, adminHTTPPortName, options.wait, verbose)
+			if err != nil {
+				return err
 			}
 
-			sort.Sort(diagResult(results))
 			for i, result := range results {
 				fmt.Printf("#\n# POD %s (%d of %d)\n# CONTAINER %s (%d of %d)\n#\n", result.pod, i+1, len(results), result.container, i+1, len(results))
 				if result.err == nil {
@@ -144,67 +77,4 @@ func newCmdDiagnostics() *cobra.Command {
 	cmd.Flags().DurationVarP(&options.wait, "wait", "w", options.wait, "Time allowed to fetch diagnostics")
 
 	return cmd
-}
-
-func getDiagnostics(
-	k8sAPI *k8s.KubernetesAPI,
-	pod corev1.Pod,
-	container corev1.Container,
-	emitLogs bool,
-) ([]byte, error) {
-	var port corev1.ContainerPort
-	for _, p := range container.Ports {
-		if p.Name == adminHTTPPortName {
-			port = p
-			break
-		}
-	}
-	if port.Name != adminHTTPPortName {
-		return nil, fmt.Errorf("no %s port found for container %s", adminHTTPPortName, container.Name)
-	}
-
-	portforward, err := k8s.NewPortForward(
-		k8sAPI,
-		pod.GetNamespace(),
-		pod.GetName(),
-		"localhost",
-		0,
-		int(port.ContainerPort),
-		emitLogs,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	defer portforward.Stop()
-	if err = portforward.Init(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
-	}
-
-	metricsURL := portforward.URLFor("/metrics")
-	bytes, err := GetResponse(metricsURL)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes, nil
-}
-
-// getNonProxyContainersForPod returns all the containers of a pod except the proxy.
-func getNonProxyContainersForPod(
-	pod corev1.Pod,
-) ([]corev1.Container, error) {
-	var containers []corev1.Container
-
-	if pod.Status.Phase != corev1.PodRunning {
-		return nil, fmt.Errorf("pod not running: %s", pod.GetName())
-	}
-
-	for _, c := range pod.Spec.Containers {
-		if c.Name != k8s.ProxyContainerName {
-			containers = append(containers, c)
-		}
-	}
-
-	return containers, nil
 }

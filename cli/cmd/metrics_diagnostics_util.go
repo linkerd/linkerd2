@@ -95,6 +95,8 @@ func getAllContainersWithPort(
 	return containers, nil
 }
 
+// getMetrics returns the metrics exposed by all the containers of the passed in list of pods
+// which exposes their metrics at portName
 func getMetrics(
 	k8sAPI *k8s.KubernetesAPI,
 	pods []corev1.Pod,
