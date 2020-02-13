@@ -41,6 +41,7 @@ type (
 		controlPlaneVersion         string
 		controllerReplicas          uint
 		controllerLogLevel          string
+		prometheusImage             string
 		highAvailability            bool
 		controllerUID               int64
 		disableH2Upgrade            bool
@@ -441,6 +442,12 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel,
 		"Log level for the controller and web components",
 	)
+
+	flags.StringVar(
+		&options.prometheusImage, "prometheus-image", options.prometheusImage,
+		"Custom Prometheus image name",
+	)
+
 	flags.BoolVar(
 		&options.highAvailability, "ha", options.highAvailability,
 		"Enable HA deployment config for the control plane (default false)",
@@ -578,6 +585,10 @@ func (options *installOptions) validate() error {
 
 	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
+	}
+
+	if options.prometheusImage != "" && !alphaNumDashDotSlashColon.MatchString(options.prometheusImage) {
+		return fmt.Errorf("%s is not a valid Prometheus Image.", options.prometheusImage)
 	}
 
 	if err := options.proxyConfigOptions.validate(); err != nil {

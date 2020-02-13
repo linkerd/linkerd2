@@ -51,7 +51,6 @@ var (
 	alphaNumDash              = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 	alphaNumDashDot           = regexp.MustCompile(`^[\.a-zA-Z0-9-]+$`)
 	alphaNumDashDotSlashColon = regexp.MustCompile(`^[\./a-zA-Z0-9-:]+$`)
-	prometheusImageValidate   = regexp.MustCompile(`^[a-zA-Z]+\/[a-zA-Z]+\:v[0-9]+\.[0-9]+\.[0-9]+$`)
 
 	// Full Rust log level syntax at
 	// https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging
@@ -188,7 +187,6 @@ type proxyConfigOptions struct {
 	initImage                string
 	initImageVersion         string
 	debugImage               string
-	prometheusImage          string
 	debugImageVersion        string
 	dockerRegistry           string
 	imagePullPolicy          string
@@ -224,10 +222,6 @@ func (options *proxyConfigOptions) validate() error {
 
 	if options.dockerRegistry != "" && !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
 		return fmt.Errorf("%s is not a valid Docker registry. The url can contain only letters, numbers, dash, dot, slash and colon", options.dockerRegistry)
-	}
-
-	if options.prometheusImage != "" && !prometheusImageValidate.MatchString(options.prometheusImage) {
-		return fmt.Errorf("%s is not a valid Prometheus Image.", options.prometheusImage)
 	}
 
 	if options.imagePullPolicy != "" && options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
@@ -301,7 +295,6 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	flags.StringVar(&options.initImage, "init-image", options.initImage, "Linkerd init container image name")
 	flags.StringVar(&options.initImageVersion, "init-image-version", options.initImageVersion, "Linkerd init container image version")
 	flags.StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
-	flags.StringVar(&options.prometheusImage, "prometheus-image", options.prometheusImage, "Custom Prometheus image name")
 	flags.StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
 	flags.UintVar(&options.proxyInboundPort, "inbound-port", options.proxyInboundPort, "Proxy port to use for inbound traffic")
 	flags.UintVar(&options.proxyOutboundPort, "outbound-port", options.proxyOutboundPort, "Proxy port to use for outbound traffic")
