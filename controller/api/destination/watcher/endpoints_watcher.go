@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -195,22 +194,31 @@ func (ew *EndpointsWatcher) addService(obj interface{}) {
 }
 
 func (ew *EndpointsWatcher) deleteService(obj interface{}) {
-	if serviceObj, err := extractDeletedObject(obj, reflect.TypeOf(&corev1.Service{})); err == nil {
-		service := serviceObj.(*corev1.Service)
-		if service.Namespace == kubeSystem {
+	service, ok := obj.(*corev1.Service)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			ew.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
 			return
 		}
-		id := ServiceID{
-			Namespace: service.Namespace,
-			Name:      service.Name,
+		service, ok = tombstone.Obj.(*corev1.Service)
+		if !ok {
+			ew.log.Errorf("DeletedFinalStateUnknown contained object that is not a Service %#v", obj)
+			return
 		}
+	}
 
-		sp, ok := ew.getServicePublisher(id)
-		if ok {
-			sp.deleteEndpoints()
-		}
-	} else {
-		ew.log.Error(err)
+	if service.Namespace == kubeSystem {
+		return
+	}
+	id := ServiceID{
+		Namespace: service.Namespace,
+		Name:      service.Name,
+	}
+
+	sp, ok := ew.getServicePublisher(id)
+	if ok {
+		sp.deleteEndpoints()
 	}
 }
 
@@ -230,22 +238,31 @@ func (ew *EndpointsWatcher) addEndpoints(obj interface{}) {
 }
 
 func (ew *EndpointsWatcher) deleteEndpoints(obj interface{}) {
-	if endpointsObj, err := extractDeletedObject(obj, reflect.TypeOf(&corev1.Endpoints{})); err == nil {
-		endpoints := endpointsObj.(*corev1.Endpoints)
-		if endpoints.Namespace == kubeSystem {
+	endpoints, ok := obj.(*corev1.Endpoints)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			ew.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
 			return
 		}
-		id := ServiceID{
-			Namespace: endpoints.Namespace,
-			Name:      endpoints.Name,
+		endpoints, ok = tombstone.Obj.(*corev1.Endpoints)
+		if !ok {
+			ew.log.Errorf("DeletedFinalStateUnknown contained object that is not an Endpoints %#v", obj)
+			return
 		}
+	}
 
-		sp, ok := ew.getServicePublisher(id)
-		if ok {
-			sp.deleteEndpoints()
-		}
-	} else {
-		ew.log.Error(err)
+	if endpoints.Namespace == kubeSystem {
+		return
+	}
+	id := ServiceID{
+		Namespace: endpoints.Namespace,
+		Name:      endpoints.Name,
+	}
+
+	sp, ok := ew.getServicePublisher(id)
+	if ok {
+		sp.deleteEndpoints()
 	}
 }
 

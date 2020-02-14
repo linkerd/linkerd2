@@ -4,9 +4,13 @@ import (
 	"sort"
 	"testing"
 
+	"k8s.io/client-go/tools/cache"
+
 	"github.com/linkerd/linkerd2/controller/k8s"
 
 	logging "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestIPWatcher(t *testing.T) {
@@ -456,6 +460,135 @@ status:
 			if listener.noEndpointsExists != tt.expectedNoEndpointsServiceExists {
 				t.Fatalf("Expected noEndpointsExists to be [%t], got [%t]",
 					tt.expectedNoEndpointsServiceExists, listener.noEndpointsExists)
+			}
+		})
+	}
+}
+
+func TestIPWatcherDeletion(t *testing.T) {
+
+	podK8sConfig := []string{
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.12`,
+	}
+
+	serviceK8sConfig := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  clusterIP: 192.168.210.92
+  ports:
+  - port: 8989`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: ns
+`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.12`,
+	}
+
+	for _, tt := range []struct {
+		description    string
+		k8sConfigs     []string
+		host           string
+		port           Port
+		objectToDelete interface{}
+		deletingPod    bool
+	}{
+		{
+			description:    "can delete pods",
+			k8sConfigs:     podK8sConfig,
+			host:           "172.17.0.12",
+			port:           8989,
+			objectToDelete: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "name1-1", Namespace: "ns"}, Status: corev1.PodStatus{PodIP: "172.17.0.12"}},
+			deletingPod:    true,
+		},
+		{
+			description:    "can delete pods wrapped in a DeletedFinalStateUnknown",
+			k8sConfigs:     podK8sConfig,
+			host:           "172.17.0.12",
+			port:           8989,
+			objectToDelete: cache.DeletedFinalStateUnknown{Obj: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "name1-1", Namespace: "ns"}, Status: corev1.PodStatus{PodIP: "172.17.0.12"}}},
+			deletingPod:    true,
+		},
+		{
+			description:    "can delete services",
+			k8sConfigs:     serviceK8sConfig,
+			host:           "192.168.210.92",
+			port:           8989,
+			objectToDelete: &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}, Spec: corev1.ServiceSpec{ClusterIP: "192.168.210.92"}},
+		},
+		{
+			description:    "can delete services wrapped in a DeletedFinalStateUnknown",
+			k8sConfigs:     serviceK8sConfig,
+			host:           "192.168.210.92",
+			port:           8989,
+			objectToDelete: cache.DeletedFinalStateUnknown{Obj: &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}, Spec: corev1.ServiceSpec{ClusterIP: "192.168.210.92"}}},
+		},
+	} {
+
+		tt := tt // pin
+		t.Run("subscribes listener to "+tt.description, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
+
+			k8sAPI.Sync()
+
+			listener := newBufferingEndpointListener()
+
+			err = watcher.Subscribe(tt.host, tt.port, listener)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if tt.deletingPod {
+				watcher.deletePod(tt.objectToDelete)
+			} else {
+				watcher.deleteService(tt.objectToDelete)
+			}
+
+			if !listener.noEndpointsCalled {
+				t.Fatal("Expected NoEndpoints to be Called")
 			}
 		})
 	}

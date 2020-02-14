@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"fmt"
-	"reflect"
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -117,18 +116,27 @@ func (iw *IPWatcher) addService(obj interface{}) {
 }
 
 func (iw *IPWatcher) deleteService(obj interface{}) {
-	if serviceObj, err := extractDeletedObject(obj, reflect.TypeOf(&corev1.Service{})); err == nil {
-		service := serviceObj.(*corev1.Service)
-		if service.Namespace == kubeSystem {
+	service, ok := obj.(*corev1.Service)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			iw.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
 			return
 		}
-
-		ss, ok := iw.getServiceSubscriptions(service.Spec.ClusterIP)
-		if ok {
-			ss.deleteService()
+		service, ok = tombstone.Obj.(*corev1.Service)
+		if !ok {
+			iw.log.Errorf("DeletedFinalStateUnknown contained object that is not a Service %#v", obj)
+			return
 		}
-	} else {
-		iw.log.Error(err)
+	}
+
+	if service.Namespace == kubeSystem {
+		return
+	}
+
+	ss, ok := iw.getServiceSubscriptions(service.Spec.ClusterIP)
+	if ok {
+		ss.deleteService()
 	}
 }
 
@@ -146,18 +154,27 @@ func (iw *IPWatcher) addPod(obj interface{}) {
 }
 
 func (iw *IPWatcher) deletePod(obj interface{}) {
-	if podObj, err := extractDeletedObject(obj, reflect.TypeOf(&corev1.Pod{})); err == nil {
-		pod := podObj.(*corev1.Pod)
-		if pod.Namespace == kubeSystem {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			iw.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
 			return
 		}
-
-		ss, ok := iw.getServiceSubscriptions(pod.Status.PodIP)
-		if ok {
-			ss.deletePod()
+		pod, ok = tombstone.Obj.(*corev1.Pod)
+		if !ok {
+			iw.log.Errorf("DeletedFinalStateUnknown contained object that is not a Pod %#v", obj)
+			return
 		}
-	} else {
-		iw.log.Error(err)
+	}
+
+	if pod.Namespace == kubeSystem {
+		return
+	}
+
+	ss, ok := iw.getServiceSubscriptions(pod.Status.PodIP)
+	if ok {
+		ss.deletePod()
 	}
 }
 
@@ -309,7 +326,6 @@ func (ss *serviceSubscriptions) updatePod(podSet PodSet) {
 func (ss *serviceSubscriptions) deletePod() {
 	ss.Lock()
 	defer ss.Unlock()
-
 	for listener, port := range ss.listeners {
 		listener.NoEndpoints(true) // Clear out previous endpoints.
 		listener.Add(singletonAddress(ss.clusterIP, port))

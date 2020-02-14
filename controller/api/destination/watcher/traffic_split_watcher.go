@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"fmt"
-	"reflect"
 	"sync"
 
 	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
@@ -109,19 +108,28 @@ func (tsw *TrafficSplitWatcher) updateTrafficSplit(old interface{}, new interfac
 }
 
 func (tsw *TrafficSplitWatcher) deleteTrafficSplit(obj interface{}) {
-	if tsObject, err := extractDeletedObject(obj, reflect.TypeOf(&ts.TrafficSplit{})); err == nil {
-		split := tsObject.(*ts.TrafficSplit)
-		id := ServiceID{
-			Name:      split.Spec.Service,
-			Namespace: split.Namespace,
+	split, ok := obj.(*ts.TrafficSplit)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			tsw.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
 		}
+		split, ok = tombstone.Obj.(*ts.TrafficSplit)
+		if !ok {
+			tsw.log.Errorf("DeletedFinalStateUnknown contained object that is not a TrafficSplit %#v", obj)
+			return
+		}
+	}
 
-		publisher, ok := tsw.getTrafficSplitPublisher(id)
-		if ok {
-			publisher.update(nil)
-		}
-	} else {
-		tsw.log.Error(err)
+	id := ServiceID{
+		Name:      split.Spec.Service,
+		Namespace: split.Namespace,
+	}
+
+	publisher, ok := tsw.getTrafficSplitPublisher(id)
+	if ok {
+		publisher.update(nil)
 	}
 }
 

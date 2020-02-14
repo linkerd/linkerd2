@@ -8,6 +8,27 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 )
 
+// DeletingProfileListener implements ProfileUpdateListener and registers
+// deletions. Useful for unit testing
+type DeletingProfileListener struct {
+	NumDeletes int
+}
+
+// NewDeletingProfileListener creates a new NewDeletingProfileListener.
+func NewDeletingProfileListener() *DeletingProfileListener {
+	return &DeletingProfileListener{
+		NumDeletes: 0,
+	}
+}
+
+// Update registers a deletion
+func (dpl *DeletingProfileListener) Update(profile *sp.ServiceProfile) {
+	if profile == nil {
+		dpl.NumDeletes = dpl.NumDeletes + 1
+
+	}
+}
+
 // BufferingProfileListener implements ProfileUpdateListener and stores updates
 // in a slice.  Useful for unit tests.
 type BufferingProfileListener struct {

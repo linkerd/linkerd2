@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"fmt"
-	"reflect"
 	"sync"
 
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -109,19 +108,28 @@ func (pw *ProfileWatcher) updateProfile(old interface{}, new interface{}) {
 }
 
 func (pw *ProfileWatcher) deleteProfile(obj interface{}) {
-	if spObject, err := extractDeletedObject(obj, reflect.TypeOf(&sp.ServiceProfile{})); err == nil {
-		profile := spObject.(*sp.ServiceProfile)
-		id := ProfileID{
-			Namespace: profile.Namespace,
-			Name:      profile.Name,
+	profile, ok := obj.(*sp.ServiceProfile)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			pw.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
 		}
+		profile, ok = tombstone.Obj.(*sp.ServiceProfile)
+		if !ok {
+			pw.log.Errorf("DeletedFinalStateUnknown contained object that is not a ServiceProfile %#v", obj)
+			return
+		}
+	}
 
-		publisher, ok := pw.getProfilePublisher(id)
-		if ok {
-			publisher.update(nil)
-		}
-	} else {
-		pw.log.Error(err)
+	id := ProfileID{
+		Namespace: profile.Namespace,
+		Name:      profile.Name,
+	}
+
+	publisher, ok := pw.getProfilePublisher(id)
+	if ok {
+		publisher.update(nil)
 	}
 }
 
