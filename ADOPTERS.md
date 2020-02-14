@@ -8,7 +8,7 @@
 - [Candide](https://candidegardening.com)
 - [Expedia](https://www.expedia.com)
 - [Facelift](https://www.facelift-bbt.com/en)
-- [figo](https://www.figo.io/)
+- [finleap connect](https://connect.finleap.com/)
 - [In Loco](https://inloco.com.br/en/)
 - [Just Football](https://justfootball.io)
 - [Kairos](https://kairos.com)
