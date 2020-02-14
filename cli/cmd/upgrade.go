@@ -26,9 +26,7 @@ import (
 )
 
 const (
-	okMessage              = "You're on your way to upgrading Linkerd!"
 	controlPlaneMessage    = "Don't forget to run `linkerd upgrade control-plane`!"
-	visitMessage           = "Visit this URL for further instructions: https://linkerd.io/upgrade/#nextsteps"
 	failMessage            = "For troubleshooting help, visit: https://linkerd.io/upgrade/#troubleshooting\n"
 	trustRootChangeMessage = "Rotating the trust anchors will affect existing proxies\nSee https://linkerd.io/2/tasks/rotating_identity_certificates/ for more information"
 )
@@ -199,11 +197,9 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 		fmt.Fprintf(os.Stderr, "\n%s %s\n", warnStatus, trustRootChangeMessage)
 	}
 
-	fmt.Fprintf(os.Stderr, "\n%s %s\n", okStatus, okMessage)
 	if stage == configStage {
 		fmt.Fprintf(os.Stderr, "%s\n", controlPlaneMessage)
 	}
-	fmt.Fprintf(os.Stderr, "%s\n\n", visitMessage)
 
 	return nil
 }
