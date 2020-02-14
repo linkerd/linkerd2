@@ -117,18 +117,18 @@ func getMetrics(
 
 		for i := range containers {
 			atomic.AddInt32(&activeRoutines, 1)
-			go func(c corev1.Container) {
-				bytes, err := getContainerMetrics(k8sAPI, pod, c, emitLogs, portName)
+			go func(p corev1.Pod, c corev1.Container) {
+				bytes, err := getContainerMetrics(k8sAPI, p, c, emitLogs, portName)
 
 				resultChan <- metricsResult{
-					pod:       pod.GetName(),
+					pod:       p.GetName(),
 					container: c.Name,
 					metrics:   bytes,
 					err:       err,
 				}
 
 				atomic.AddInt32(&activeRoutines, -1)
-			}(containers[i])
+			}(pod, containers[i])
 		}
 	}
 
