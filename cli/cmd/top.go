@@ -492,10 +492,10 @@ func pollInput(done chan<- struct{}, horizontalScroll chan int) {
 				close(done)
 				return
 			}
-			if ev.Ch == 'a' || ev.Key == termbox.KeyArrowRight {
+			if ev.Ch == 'a' || ev.Key == termbox.KeyArrowLeft {
 				horizontalScroll <- xOffset
 			}
-			if ev.Ch == 'd' || ev.Key == termbox.KeyArrowLeft {
+			if ev.Ch == 'd' || ev.Key == termbox.KeyArrowRight {
 				horizontalScroll <- -xOffset
 			}
 		}
@@ -526,13 +526,6 @@ func renderTable(table *topTable, requestCh <-chan topRequest, done <-chan struc
 			if (offset > 0 && scrollpos < 0) || (offset < 0 && scrollpos > (width-tablewidth)) {
 				scrollpos = scrollpos + offset
 			}
-			termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-			width, _ = termbox.Size()
-			table.adjustColumnWidths()
-			tablewidth = table.tableWidthCalc()
-			table.renderHeaders(scrollpos)
-			table.renderBody(scrollpos)
-			termbox.Flush()
 		}
 	}
 }
