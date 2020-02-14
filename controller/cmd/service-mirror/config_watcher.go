@@ -29,19 +29,36 @@ func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int) *RemoteClu
 		requeueLimit:    requeueLimit,
 	}
 	k8sAPI.Secret().Informer().AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				if err := rcw.registerRemoteCluster(obj); err != nil {
-					log.Errorf("Cannot register remote cluster: %s", err)
+		cache.FilteringResourceEventHandler{
+			FilterFunc: func(obj interface{}) bool {
+				switch object := obj.(type) {
+				case *corev1.Secret:
+					return object.Type == MirrorSecretType
+
+				case cache.DeletedFinalStateUnknown:
+					if secret, ok := object.Obj.(*corev1.Secret); ok {
+						return secret.Type == MirrorSecretType
+					}
+					return false
+				default:
+					return false
 				}
 			},
-			DeleteFunc: func(obj interface{}) {
-				if err := rcw.unregisterRemoteCluster(obj); err != nil {
-					log.Errorf("Cannot unregister remote cluster: %s", err)
-				}
-			},
-			UpdateFunc: func(_, obj interface{}) {
-				//TODO: Handle update (it might be that the credentials have changed...)
+
+			Handler: cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					if err := rcw.registerRemoteCluster(obj); err != nil {
+						log.Errorf("Cannot register remote cluster: %s", err)
+					}
+				},
+				DeleteFunc: func(obj interface{}) {
+					if err := rcw.unregisterRemoteCluster(obj); err != nil {
+						log.Errorf("Cannot unregister remote cluster: %s", err)
+					}
+				},
+				UpdateFunc: func(_, obj interface{}) {
+					//TODO: Handle update (it might be that the credentials have changed...)
+				},
 			},
 		},
 	)
@@ -58,76 +75,57 @@ func (rcw *RemoteClusterConfigWatcher) Stop() {
 }
 
 func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(obj interface{}) error {
-	if secret := asRemoteClusterConfigSecret(obj); secret != nil {
-		config, name, err := parseRemoteClusterSecret(secret)
-		if err != nil {
-			return err
-		}
-
-		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
-		if err != nil {
-			return fmt.Errorf("unable to parse kube config: %s", err)
-		}
-
-		watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, name, rcw.requeueLimit)
-		if err != nil {
-			return err
-		}
-
-		rcw.mutex.Lock()
-		defer rcw.mutex.Unlock()
-
-		rcw.clusterWatchers[name] = watcher
-		watcher.Start()
-		return nil
+	secret := obj.(*corev1.Secret)
+	config, name, err := parseRemoteClusterSecret(secret)
+	if err != nil {
+		return err
 	}
+
+	clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
+	if err != nil {
+		return fmt.Errorf("unable to parse kube config: %s", err)
+	}
+
+	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, name, rcw.requeueLimit)
+	if err != nil {
+		return err
+	}
+
+	rcw.mutex.Lock()
+	defer rcw.mutex.Unlock()
+
+	rcw.clusterWatchers[name] = watcher
+	watcher.Start()
 	return nil
+
 }
 
 func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(obj interface{}) error {
-	if secret := asRemoteClusterConfigSecret(obj); secret != nil {
-		_, name, err := parseRemoteClusterSecret(secret)
-		if err != nil {
-			return err
-		}
-		rcw.mutex.Lock()
-		defer rcw.mutex.Unlock()
-		if watcher, ok := rcw.clusterWatchers[name]; ok {
-			watcher.Stop()
-		} else {
-			return fmt.Errorf("cannot find watcher for cluser: %s", name)
-		}
-		delete(rcw.clusterWatchers, name)
-
+	secret := obj.(*corev1.Secret)
+	_, name, err := parseRemoteClusterSecret(secret)
+	if err != nil {
+		return err
 	}
+	rcw.mutex.Lock()
+	defer rcw.mutex.Unlock()
+	if watcher, ok := rcw.clusterWatchers[name]; ok {
+		watcher.Stop()
+	} else {
+		return fmt.Errorf("cannot find watcher for cluser: %s", name)
+	}
+	delete(rcw.clusterWatchers, name)
+
 	return nil
 }
 
-func asRemoteClusterConfigSecret(obj interface{}) *corev1.Secret {
-	switch secret := obj.(type) {
-	case *corev1.Secret:
-		{
-			if secret.Type == MirrorSecretType {
-				return secret
-			}
-			return nil
-		}
-	default:
-		return nil
-	}
-}
-
 func parseRemoteClusterSecret(secret *corev1.Secret) ([]byte, string, error) {
-
 	clusterName, hasClusterName := secret.Annotations[RemoteClusterNameLabel]
 	config, hasConfig := secret.Data[ConfigKeyName]
-
 	if !hasClusterName {
 		return nil, "", fmt.Errorf("secret of type %s should contain key %s", MirrorSecretType, ConfigKeyName)
 	}
 	if !hasConfig {
 		return nil, "", fmt.Errorf("secret should contain remote cluster name as annotation %s", RemoteClusterNameLabel)
 	}
-
 	return config, clusterName, nil
 }
