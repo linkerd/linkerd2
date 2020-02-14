@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -106,52 +106,40 @@ func getMetrics(
 ) []metricsResult {
 	var results []metricsResult
 
-	var wg sync.WaitGroup
 	resultChan := make(chan metricsResult)
-	for i := range pods {
-		go func(pod corev1.Pod) {
-			containers, err := getAllContainersWithPort(pod, portName)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
+	var activeRoutines int32 = 0
+	for _, pod := range pods {
+		containers, err := getAllContainersWithPort(pod, portName)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
 
-			for i := range containers {
-				wg.Add(1)
-				go func(c corev1.Container, wg *sync.WaitGroup) {
-					bytes, err := getContainerMetrics(k8sAPI, pod, c, emitLogs, portName)
+		for i := range containers {
+			atomic.AddInt32(&activeRoutines, 1)
+			go func(c corev1.Container) {
+				bytes, err := getContainerMetrics(k8sAPI, pod, c, emitLogs, portName)
 
-					resultChan <- metricsResult{
-						pod:       pod.GetName(),
-						container: c.Name,
-						metrics:   bytes,
-						err:       err,
-					}
+				resultChan <- metricsResult{
+					pod:       pod.GetName(),
+					container: c.Name,
+					metrics:   bytes,
+					err:       err,
+				}
 
-					defer wg.Done()
-				}(containers[i], &wg)
-			}
-
-		}(pods[i])
+				atomic.AddInt32(&activeRoutines, -1)
+			}(containers[i])
+		}
 	}
 
-	c := make(chan struct{})
-	go func() {
-		defer close(c)
-		wg.Wait()
-	}()
-
-	done := false
 	for {
 		select {
 		case result := <-resultChan:
 			results = append(results, result)
-		case <-c:
-			done = true // completed normally
 		case <-time.After(waitingTime):
-			done = true // timed out
+			break // timed out
 		}
-		if done {
+		if atomic.LoadInt32(&activeRoutines) == 0 {
 			break
 		}
 	}

@@ -6,7 +6,6 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,7 +19,7 @@ type diagnosticsOptions struct {
 
 func newDiagnosticsOptions() *diagnosticsOptions {
 	return &diagnosticsOptions{
-		wait: 300 * time.Second,
+		wait: 30 * time.Second,
 	}
 }
 
@@ -37,29 +36,15 @@ func newCmdDiagnostics() *cobra.Command {
 				return err
 			}
 
-			timeoutSeconds := int64(30)
-			deployments, err := k8sAPI.AppsV1().Deployments(controlPlaneNamespace).List(metav1.ListOptions{TimeoutSeconds: &timeoutSeconds})
+			pods, err := k8sAPI.CoreV1().Pods(controlPlaneNamespace).List(metav1.ListOptions{})
 			if err != nil {
 				return err
 			}
 
-			// ensure we can connect to the public API before fetching the diagnostics.
-			checkPublicAPIClientOrRetryOrExit(time.Now().Add(options.wait), true)
-
-			var pods []corev1.Pod
-			for _, d := range deployments.Items {
-				p, err := getPodsFor(k8sAPI, controlPlaneNamespace, "deploy/"+d.Name)
-				if err != nil {
-					continue
-				}
-
-				pods = append(pods, p...)
-			}
-
-			results := getMetrics(k8sAPI, pods, adminHTTPPortName, options.wait, verbose)
+			results := getMetrics(k8sAPI, pods.Items, adminHTTPPortName, options.wait, verbose)
 
 			for i, result := range results {
-				fmt.Printf("#\n# POD %s (%d of %d)\n# CONTAINER %s (%d of %d)\n#\n", result.pod, i+1, len(results), result.container, i+1, len(results))
+				fmt.Printf("#\n# POD %s (%d of %d)\n# CONTAINER %s \n#\n", result.pod, i+1, len(results), result.container)
 				if result.err == nil {
 					fmt.Printf("%s", result.metrics)
 				} else {
