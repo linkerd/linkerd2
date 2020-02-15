@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	logging "github.com/sirupsen/logrus"
 )
@@ -499,4 +501,119 @@ status:
 			}
 		})
 	}
+}
+
+func TestEndpointsWatcherDeletion(t *testing.T) {
+	k8sConfigs := []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: ns
+  ports:
+  - port: 8989`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.12`}
+
+	for _, tt := range []struct {
+		serviceType      string
+		k8sConfigs       []string
+		id               ServiceID
+		hostname         string
+		port             Port
+		objectToDelete   interface{}
+		deletingServices bool
+	}{
+		{
+			serviceType:    "can delete endpoints",
+			k8sConfigs:     k8sConfigs,
+			id:             ServiceID{Name: "name1", Namespace: "ns"},
+			port:           8989,
+			hostname:       "name1-1",
+			objectToDelete: &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
+		},
+		{
+			serviceType:    "can delete endpoints when wrapped in a DeletedFinalStateUnknown",
+			k8sConfigs:     k8sConfigs,
+			id:             ServiceID{Name: "name1", Namespace: "ns"},
+			port:           8989,
+			hostname:       "name1-1",
+			objectToDelete: &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
+		},
+		{
+			serviceType:      "can delete services",
+			k8sConfigs:       k8sConfigs,
+			id:               ServiceID{Name: "name1", Namespace: "ns"},
+			port:             8989,
+			hostname:         "name1-1",
+			objectToDelete:   &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
+			deletingServices: true,
+		},
+		{
+			serviceType:      "can delete services when wrapped in a DeletedFinalStateUnknown",
+			k8sConfigs:       k8sConfigs,
+			id:               ServiceID{Name: "name1", Namespace: "ns"},
+			port:             8989,
+			hostname:         "name1-1",
+			objectToDelete:   &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
+			deletingServices: true,
+		},
+	} {
+
+		tt := tt // pin
+		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+
+			k8sAPI.Sync()
+
+			listener := newBufferingEndpointListener()
+
+			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if tt.deletingServices {
+				watcher.deleteService(tt.objectToDelete)
+
+			} else {
+				watcher.deleteEndpoints(tt.objectToDelete)
+			}
+
+			if !listener.noEndpointsCalled {
+				t.Fatal("Expected NoEndpoints to be Called")
+			}
+		})
+
+	}
+
 }

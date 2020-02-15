@@ -108,7 +108,20 @@ func (tsw *TrafficSplitWatcher) updateTrafficSplit(old interface{}, new interfac
 }
 
 func (tsw *TrafficSplitWatcher) deleteTrafficSplit(obj interface{}) {
-	split := obj.(*ts.TrafficSplit)
+	split, ok := obj.(*ts.TrafficSplit)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			tsw.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
+		}
+		split, ok = tombstone.Obj.(*ts.TrafficSplit)
+		if !ok {
+			tsw.log.Errorf("DeletedFinalStateUnknown contained object that is not a TrafficSplit %#v", obj)
+			return
+		}
+	}
+
 	id := ServiceID{
 		Name:      split.Spec.Service,
 		Namespace: split.Namespace,
