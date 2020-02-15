@@ -179,14 +179,6 @@ func (pf *PortForward) Init() error {
 			failure <- err
 			return
 		}
-
-		select {
-		case <-pf.GetStop():
-			// stopCh was closed, do nothing
-		default:
-			// pf.run() returned for some other reason, close stopCh
-			pf.Stop()
-		}
 	}()
 
 	// The `select` statement below depends on one of two outcomes from `pf.run()`:
