@@ -15,6 +15,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+const xLinkerdRetryable = "x-linkerd-retryable"
+
 var pathParamRegex = regexp.MustCompile(`\\{[^\}]*\\}`)
 
 // RenderOpenAPI reads an OpenAPI spec file and renders the corresponding
@@ -47,10 +49,6 @@ func RenderOpenAPI(fileName, namespace, name, clusterDomain string, w io.Writer)
 	return writeProfile(profile, w)
 }
 
-func getXLinkerdRetryValue(value bool, ok bool) bool {
-	return value
-}
-
 func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomain string) sp.ServiceProfile {
 	profile := sp.ServiceProfile{
 		ObjectMeta: metav1.ObjectMeta{
@@ -75,38 +73,31 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 		path := path.Join(swagger.BasePath, relPath)
 		pathRegex := pathToRegex(path)
 		if item.Delete != nil {
-			retryable, _ := item.Delete.VendorExtensible.Extensions.GetBool("x-linkerd-retryable")
-			spec := mkRouteSpec(path, pathRegex, http.MethodGet, item.Delete.Responses, retryable)
+			spec := mkRouteSpec(path, pathRegex, http.MethodGet, item.Delete.Responses, item.Delete)
 			routes = append(routes, spec)
 		}
 		if item.Get != nil {
-			retryable, _ := item.Get.VendorExtensible.Extensions.GetBool("x-linkerd-retryable")
-			spec := mkRouteSpec(path, pathRegex, http.MethodGet, item.Get.Responses, retryable)
+			spec := mkRouteSpec(path, pathRegex, http.MethodGet, item.Get.Responses, item.Get)
 			routes = append(routes, spec)
 		}
 		if item.Head != nil {
-			retryable, _ := item.Head.VendorExtensible.Extensions.GetBool("x-linkerd-retryable")
-			spec := mkRouteSpec(path, pathRegex, http.MethodHead, item.Head.Responses, retryable)
+			spec := mkRouteSpec(path, pathRegex, http.MethodHead, item.Head.Responses, item.Head)
 			routes = append(routes, spec)
 		}
 		if item.Options != nil {
-			retryable, _ := item.Options.VendorExtensible.Extensions.GetBool("x-linkerd-retryable")
-			spec := mkRouteSpec(path, pathRegex, http.MethodOptions, item.Options.Responses, retryable)
+			spec := mkRouteSpec(path, pathRegex, http.MethodOptions, item.Options.Responses, item.Options)
 			routes = append(routes, spec)
 		}
 		if item.Patch != nil {
-			retryable, _ := item.Patch.VendorExtensible.Extensions.GetBool("x-linkerd-retryable")
-			spec := mkRouteSpec(path, pathRegex, http.MethodPatch, item.Patch.Responses, retryable)
+			spec := mkRouteSpec(path, pathRegex, http.MethodPatch, item.Patch.Responses, item.Patch)
 			routes = append(routes, spec)
 		}
 		if item.Post != nil {
-			retryable, _ := item.Post.VendorExtensible.Extensions.GetBool("x-linkerd-retryable")
-			spec := mkRouteSpec(path, pathRegex, http.MethodPost, item.Post.Responses, retryable)
+			spec := mkRouteSpec(path, pathRegex, http.MethodPost, item.Post.Responses, item.Post)
 			routes = append(routes, spec)
 		}
 		if item.Put != nil {
-			retryable, _ := item.Put.VendorExtensible.Extensions.GetBool("x-linkerd-retryable")
-			spec := mkRouteSpec(path, pathRegex, http.MethodPut, item.Put.Responses, retryable)
+			spec := mkRouteSpec(path, pathRegex, http.MethodPut, item.Put.Responses, item.Put)
 			routes = append(routes, spec)
 		}
 	}
@@ -115,12 +106,13 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 	return profile
 }
 
-func mkRouteSpec(path, pathRegex string, method string, responses *spec.Responses, xLinkerdRetry bool) *sp.RouteSpec {
+func mkRouteSpec(path, pathRegex string, method string, responses *spec.Responses, exception *spec.Operation) *sp.RouteSpec {
+	xLinkerdRetryable, _ := exception.VendorExtensible.Extensions.GetBool(xLinkerdRetryable)
 	return &sp.RouteSpec{
 		Name:            fmt.Sprintf("%s %s", method, path),
 		Condition:       toReqMatch(pathRegex, method),
 		ResponseClasses: toRspClasses(responses),
-		IsRetryable:     xLinkerdRetry,
+		IsRetryable:     xLinkerdRetryable,
 	}
 }
 

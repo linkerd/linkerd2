@@ -12,9 +12,6 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 	namespace := "myns"
 	name := "mysvc"
 	clusterDomain := "mycluster.local"
-	xLinkerdRetryable := make(spec.Extensions)
-	xLinkerdRetryable.Add("x-linkerd-retryable", true)
-
 	swagger := spec.Swagger{
 		SwaggerProps: spec.SwaggerProps{
 			Paths: &spec.Paths{
@@ -32,7 +29,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 									},
 								},
 								VendorExtensible: spec.VendorExtensible{
-									Extensions: xLinkerdRetryable,
+									Extensions: spec.Extensions{"x-linkerd-retryable": true},
 								},
 							},
 						},
