@@ -6,7 +6,6 @@
 global:
   clusterDomain: &cluster_domain cluster.local
   imagePullPolicy: &image_pull_policy IfNotPresent
-  
   # Control Plane Trace Configuration
   controlPlaneTracing: false
 
@@ -75,6 +74,8 @@ global:
   controllerNamespaceLabel: linkerd.io/control-plane-ns
   linkerdNamespaceLabel: linkerd.io/is-control-plane
 
+# Enforced Host Validation Regular Expression
+enforcedHostRegexp: ""
 
 enableH2Upgrade: true
 
