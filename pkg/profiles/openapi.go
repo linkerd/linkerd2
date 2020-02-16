@@ -73,7 +73,7 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 		path := path.Join(swagger.BasePath, relPath)
 		pathRegex := pathToRegex(path)
 		if item.Delete != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodGet, item.Delete.Responses, item.Delete)
+			spec := mkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete.Responses, item.Delete)
 			routes = append(routes, spec)
 		}
 		if item.Get != nil {

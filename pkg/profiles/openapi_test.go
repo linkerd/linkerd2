@@ -12,6 +12,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 	namespace := "myns"
 	name := "mysvc"
 	clusterDomain := "mycluster.local"
+
 	swagger := spec.Swagger{
 		SwaggerProps: spec.SwaggerProps{
 			Paths: &spec.Paths{
