@@ -490,6 +490,13 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
+					description: "extension API server authentication is properly configured",
+					hintAnchor:  "pre-k8s",
+					check: func(context.Context) error {
+						return hc.checkExtensionAPIServerAuthentication()
+					},
+				},
+				{
 					description: "no clock skew detected",
 					hintAnchor:  "pre-k8s-clock-skew",
 					check: func(context.Context) error {
@@ -1907,7 +1914,19 @@ func (hc *HealthChecker) checkCapability(cap string) error {
 
 	return fmt.Errorf("found %d PodSecurityPolicies, but none provide %s, proxy injection will fail if the PSP admission controller is running", len(pspList.Items), cap)
 }
-
+func (hc *HealthChecker) checkExtensionAPIServerAuthentication() error {
+	if hc.kubeAPI == nil {
+		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
+	}
+	m, err := hc.kubeAPI.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(k8s.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if v, exists := m.Data[k8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey]; !exists || v == "" {
+		return fmt.Errorf("--%s is not configured", k8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey)
+	}
+	return nil
+}
 func (hc *HealthChecker) checkClockSkew() error {
 	if hc.kubeAPI == nil {
 		// we should never get here
