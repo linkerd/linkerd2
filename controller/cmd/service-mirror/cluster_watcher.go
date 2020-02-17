@@ -15,6 +15,18 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
+//TODO: Make sure we distinguish between k8s errors that are NOT_FOUND and
+// ones that are actual retryable errors and handle them accordingly.
+
+//TODO: Handle temporary network partitions
+
+//TODO: Use gatewayMetadata wherever possible
+
+//TODO: Type check events so we avoid unsafe casting (espectially in deletions)
+
+//TODO: Whenever getting k8s objects from the local Lister, always make a deep copy in case
+// modifying to avoid messing with that that is in the client-go cache
+
 type (
 	// RemoteClusterServiceWatcher is a watcher instantiated for every cluster that is being watched
 	// Its main job is to listen to events coming from the remote cluster and react accordingly, keeping
