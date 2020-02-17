@@ -63,15 +63,16 @@ type (
 	// one already mirrored service is deleted
 	RemoteGatewayDeleted struct {
 		gatewayData      *gatewayMetadata
-		affectedEndpoints []*corev1.Endpoints
 	}
 
 	// RemoteGatewayUpdated happens when a service that is a gateway to at least
 	// one already mirrored service is updated. This might mean an IP change,
 	// incoming port change, etc...
 	RemoteGatewayUpdated struct {
-		new              *corev1.Service
-		affectedServices []*corev1.Service
+		newPort              int32
+		newEndpoints []corev1.EndpointAddress
+		gatewayData      *gatewayMetadata
+		newResourceVersion string
 	}
 
 	// ClusterUnregistered is issued when the secret containing the remote cluster
@@ -100,14 +101,8 @@ type (
 	}
 )
 
-// When the gateway is resolved we need to produce a set of endpoint addresses that that
-// contain the external IPs that this gateway exposes. Therefore we return the IP addresses
-// as well as a single port on which the gateway is accessible.
-func (rcsw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadata) ([]corev1.EndpointAddress, int32, error) {
-	gateway, err := rcsw.remoteAPIClient.Svc().Lister().Services(metadata.Namespace).Get(metadata.Name)
-	if err != nil {
-		return nil, 0, err
-	}
+
+func (rcsw *RemoteClusterServiceWatcher) extractGatewayInfo(gateway *corev1.Service) ([]corev1.EndpointAddress, int32, error) {
 	if len(gateway.Status.LoadBalancer.Ingress) == 0 {
 		return nil, 0, errors.New("expected gateway to have at lest 1 external Ip address but it has none")
 	}
@@ -120,6 +115,17 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadat
 		})
 	}
 	return gatewayEndpoints, gateway.Spec.Ports[0].Port, nil
+}
+
+// When the gateway is resolved we need to produce a set of endpoint addresses that that
+// contain the external IPs that this gateway exposes. Therefore we return the IP addresses
+// as well as a single port on which the gateway is accessible.
+func (rcsw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadata) ([]corev1.EndpointAddress, int32, error) {
+	gateway, err := rcsw.remoteAPIClient.Svc().Lister().Services(metadata.Namespace).Get(metadata.Name)
+	if err != nil {
+		return nil, 0, err
+	}
+	return rcsw.extractGatewayInfo(gateway)
 }
 
 // NewRemoteClusterServiceWatcher constructs a new cluster watcher
@@ -390,17 +396,61 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 }
 
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGatewayDeleted) error {
-	    rcsw.log.Debugf("Nulling %d endpoints due to remote gateway [%s/%s] deletion", len(ev.affectedEndpoints), ev.gatewayData.Namespace, ev.gatewayData.Name)
-		for _, ep := range ev.affectedEndpoints {
+
+	affectedEndpoints, err := rcsw.endpointsForGateway(ev.gatewayData.Namespace, ev.gatewayData.Name)
+	if err != nil {
+		return err
+	}
+	if len(affectedEndpoints) > 0 {
+		rcsw.log.Debugf("Nulling %d endpoints due to remote gateway [%s/%s] deletion", len(affectedEndpoints), ev.gatewayData.Namespace, ev.gatewayData.Name)
+		for _, ep := range affectedEndpoints {
 			updated := ep.DeepCopy()
 			updated.Subsets = nil
 			if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Update(updated); err != nil {
 				return err
 			}
 		}
-		return nil
+	}
+	return nil
 }
 
+func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayUpdated(ev *RemoteGatewayUpdated) error {
+	affectedServices, err := rcsw.affectedMirroredServicesForGatewayUpdate(ev.gatewayData.Namespace, ev.gatewayData.Name, ev.newResourceVersion)
+	if err != nil {
+		return err
+	}
+	rcsw.log.Debugf("Updating %d services due to remote gateway [%s/%s] update", len(affectedServices), ev.gatewayData.Namespace, ev.gatewayData.Name)
+	for _, svc := range affectedServices {
+		updatedService := svc.DeepCopy()
+		if updatedService.Labels != nil {
+			updatedService.Labels[RemoteGatewayResourceVersionLabel] = ev.newResourceVersion
+		}
+		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
+		if err != nil {
+			return err
+		}
+
+		updatedEndpoints := endpoints.DeepCopy()
+
+		updatedEndpoints.Subsets =  []corev1.EndpointSubset {
+			{
+				Addresses: ev.newEndpoints,
+				Ports:     rcsw.getEndpointsPorts(updatedService, ev.newPort),
+			},
+		}
+		 _, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(updatedService)
+		 if err != nil {
+		 	return err
+		 }
+
+		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(updatedService.Namespace).Update(updatedEndpoints)
+		if err != nil {
+			rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Delete(updatedService.Name, &metav1.DeleteOptions{})
+			return err
+		}
+	}
+	return nil
+}
 
 
 // Retrieves the annotations that indicate this service can be mirrored.
@@ -418,12 +468,21 @@ func getGatewayMetadata(annotations map[string]string) *gatewayMetadata {
 	return nil
 }
 func (rcsw *RemoteClusterServiceWatcher) considerDispatchingGatewayUpdate(newService *corev1.Service) {
-	affectedServices, err := rcsw.affectedMirroredServicesForGatewayUpdate(newService.Namespace, newService.Name, newService.ResourceVersion)
-	if err == nil && len(affectedServices) > 0 {
-		rcsw.eventsQueue.Add(&RemoteGatewayUpdated{
-			new:              newService,
-			affectedServices: affectedServices,
+	gatewayMeta :=  &gatewayMetadata{
+		Name:      newService.Name,
+		Namespace: newService.Namespace,
+	}
+	if endpoints, port, err := rcsw.extractGatewayInfo(newService); err != nil {
+		rcsw.log.Warnf("Gateway [%s/%s] is not a compliant gateway anymore, dispatching GatewayDeleted event: %s", newService.Namespace, newService.Name, err )
+		rcsw.eventsQueue.AddRateLimited(&RemoteGatewayDeleted {gatewayMeta})
+	} else {
+		rcsw.eventsQueue.Add(&RemoteGatewayUpdated {
+			newPort:              port,
+			newEndpoints: endpoints,
+			gatewayData: gatewayMeta,
+			newResourceVersion: newService.ResourceVersion,
 		})
+
 	}
 }
 
@@ -557,20 +616,11 @@ func (rcsw *RemoteClusterServiceWatcher) onDelete(svc interface{}) {
 			Namespace: service.Namespace,
 		})
 	} else {
-		affectedEndpoints, err := rcsw.endpointsForGateway(service.Namespace, service.Name)
-		if err != nil {
-			rcsw.log.Errorf("Could not determine whether deleted service is a gateway: %s", err)
-		} else {
-			if len(affectedEndpoints) > 0 {
-				rcsw.eventsQueue.Add(&RemoteGatewayDeleted{
-					gatewayData: &gatewayMetadata{
-						Name:      service.Name,
-						Namespace: service.Namespace,
-					},
-					affectedEndpoints: affectedEndpoints,
-				})
-			}
-		}
+		rcsw.eventsQueue.Add(&RemoteGatewayDeleted{
+			gatewayData: &gatewayMetadata{
+				Name:      service.Name,
+				Namespace: service.Namespace,
+			}})
 	}
 }
 
@@ -588,10 +638,9 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 		case *RemoteServiceDeleted:
 			err = rcsw.handleRemoteServiceDeleted(ev)
 		case *RemoteGatewayUpdated:
-			//TODO: Handle that
-			rcsw.log.Debug("A remote gateway service has been updated")
+			err = rcsw.handleRemoteGatewayUpdated(ev)
 		case *RemoteGatewayDeleted:
-			err := rcsw.handleRemoteGatewayDeleted(ev)
+			err = rcsw.handleRemoteGatewayDeleted(ev)
 		case *ClusterUnregistered:
 			err = rcsw.cleanupMirroredResources()
 		case *OprhanedServicesGcTriggered:
