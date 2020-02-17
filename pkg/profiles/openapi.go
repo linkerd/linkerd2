@@ -106,15 +106,15 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 	return profile
 }
 
-func mkRouteSpec(path, pathRegex string, method string, exception *spec.Operation) *sp.RouteSpec {
+func mkRouteSpec(path, pathRegex string, method string, operation *spec.Operation) *sp.RouteSpec {
 	retryable := false
-	if exception != nil {
-		retryable, _ = exception.VendorExtensible.Extensions.GetBool(xLinkerdRetryable)
+	if operation != nil {
+		retryable, _ = operation.VendorExtensible.Extensions.GetBool(xLinkerdRetryable)
 	}
 	return &sp.RouteSpec{
 		Name:            fmt.Sprintf("%s %s", method, path),
 		Condition:       toReqMatch(pathRegex, method),
-		ResponseClasses: toRspClasses(exception.Responses),
+		ResponseClasses: toRspClasses(operation.Responses),
 		IsRetryable:     retryable,
 	}
 }
