@@ -127,10 +127,13 @@ func apiServerAuth(k8sAPI *k8s.API) (string, []string, string, string, error) {
 	cm, err := k8sAPI.Client.CoreV1().
 		ConfigMaps(metav1.NamespaceSystem).
 		Get(k8sutils.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
+
 	if err != nil {
 		return "", nil, "", "", fmt.Errorf("failed to load [%s] config: %s", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, err)
 	}
+
 	clientCAPem, ok := cm.Data[k8sutils.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey]
+
 	if !ok {
 		return "", nil, "", "", fmt.Errorf("no client CA cert available for apiextension-server")
 	}
