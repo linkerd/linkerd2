@@ -3,6 +3,7 @@ package servicemirror
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -62,7 +63,7 @@ type (
 	// one already mirrored service is deleted
 	RemoteGatewayDeleted struct {
 		gatewayData      *gatewayMetadata
-		affectedServices []*corev1.Service
+		affectedEndpoints []*corev1.Endpoints
 	}
 
 	// RemoteGatewayUpdated happens when a service that is a gateway to at least
@@ -118,15 +119,6 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadat
 			Hostname: ingress.Hostname,
 		})
 	}
-
-	//TODO: We take the first defined port here. We need to think about that...
-	// The problem stems from the fact that if we have more than two ports,
-	// there is no real way to create a service that can route to the correct one.
-	// For example, say we have ServiceA on the remote cluster exposing port 8080
-	// port 8081 and port 8082 and associated with GatewayB that exposes ports 80 and port 443.
-	// When we create a mirrored service locally for every port that it exposes we need to
-	// associate one target port for the remote gateway. So [8080, 8081, 8082] -> 80 or
-	// [8080, 8081, 8082] -> 443. Cannot do both ports I think...
 	return gatewayEndpoints, gateway.Spec.Ports[0].Port, nil
 }
 
@@ -304,22 +296,23 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteSe
 // Updates a locally mirrored service. There might have been some pretty fundamental changes such as
 // new gateway being assigned or additional ports exposed. This method takes care of that.
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteServiceUpdated) error {
-	//TODO: We have all the data to figure out whether ports or gateways gave been updated.
-	// If we can do that we can short circuit here and avoid calling the k8s api just to try and
-	// update things that have not changed.
-	gatewayEndpoints, gatewayPort, err := rcsw.resolveGateway(ev.gatewayData)
-	if err != nil {
-		return err
-	}
-	ev.localEndpoints.Subsets = []corev1.EndpointSubset{
-		{
-			Addresses: gatewayEndpoints,
-			Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate, gatewayPort),
-		},
-	}
+	serviceInfo := fmt.Sprintf("%s/%s", ev.remoteUpdate.Namespace, ev.remoteUpdate.Name)
+	rcsw.log.Debugf("Updating remote mirrored service %s/%s", ev.localService.Namespace, ev.localService.Name)
 
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.localEndpoints.Namespace).Update(ev.localEndpoints); err != nil {
-		return err
+	gatewayEndpoints, gatewayPort, err := rcsw.resolveGateway(ev.gatewayData)
+	if err == nil {
+		ev.localEndpoints.Subsets = []corev1.EndpointSubset{
+			{
+				Addresses: gatewayEndpoints,
+				Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate, gatewayPort),
+			},
+		}
+		if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.localEndpoints.Namespace).Update(ev.localEndpoints); err != nil {
+			return err
+		}
+	} else {
+		rcsw.log.Warnf("Could not resolve gateway for %s: %s",serviceInfo, err)
+
 	}
 
 	ev.localService.Labels = rcsw.getMirroredServiceLabels(ev.remoteUpdate)
@@ -332,58 +325,83 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 }
 
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteServiceCreated) error {
-	serviceInfo := fmt.Sprintf("%s/%s", ev.service.Namespace, ev.service.Name)
-	localServiceName := rcsw.mirroredResourceName(ev.service.Name)
+	remoteService := ev.service.DeepCopy()
+	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
+	localServiceName := rcsw.mirroredResourceName(remoteService.Name)
 
-	gatewayEndpoints, gatewayPort, err := rcsw.resolveGateway(ev.gatewayData)
-	if err != nil {
+	if err := rcsw.mirrorNamespaceIfNecessary(remoteService.Name); err != nil {
 		return err
 	}
-	rcsw.log.Debugf("Resolved remote gateway [%v:%d] for %s", gatewayEndpoints, gatewayPort, serviceInfo)
-	if err := rcsw.mirrorNamespaceIfNecessary(ev.service.Namespace); err != nil {
-		return err
-	}
-
-	serviceToCreate := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
+	// here we always create both a service and endpoints, even if we cannot resolve the gateway
+	serviceToCreate := &corev1.Service {
+		ObjectMeta: metav1.ObjectMeta {
 			Name:        localServiceName,
-			Namespace:   ev.service.Namespace,
+			Namespace:   remoteService.Namespace,
 			Annotations: map[string]string{},
-			Labels:      rcsw.getMirroredServiceLabels(ev.service),
+			Labels:      rcsw.getMirroredServiceLabels(remoteService),
 		},
-		Spec: corev1.ServiceSpec{
-			Ports: ev.service.Spec.Ports,
+		Spec: corev1.ServiceSpec {
+			Ports: remoteService.Spec.Ports,
 		},
 	}
 
-	endpoints := &corev1.Endpoints{
+	endpointsToCreate := &corev1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      localServiceName,
 			Namespace: ev.service.Namespace,
 			Labels: map[string]string{
 				MirroredResourceLabel:  "true",
 				RemoteClusterNameLabel: rcsw.clusterName,
+				RemoteGatewayNameLabel: ev.gatewayData.Name,
+				RemoteGatewayNsLabel: ev.gatewayData.Namespace,
 			},
 		},
-		Subsets: []corev1.EndpointSubset{
+	}
+
+	// Now we try to resolve the remote gateway
+	gatewayEndpoints, gatewayPort, err := rcsw.resolveGateway(ev.gatewayData)
+	if err == nil {
+		// only if we resolve it, we are updating the endpoints addresses and ports
+		rcsw.log.Debugf("Resolved remote gateway [%v:%d] for %s", gatewayEndpoints, gatewayPort, serviceInfo)
+		endpointsToCreate.Subsets = []corev1.EndpointSubset {
 			{
 				Addresses: gatewayEndpoints,
 				Ports:     rcsw.getEndpointsPorts(ev.service, gatewayPort),
 			},
-		},
+		}
+
+	} else {
+		rcsw.log.Warnf("Could not resolve gateway for %s: %s",serviceInfo, err)
 	}
+
+
 	rcsw.log.Debugf("Creating a new service mirror for %s", serviceInfo)
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.service.Namespace).Create(serviceToCreate); err != nil {
+	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Create(serviceToCreate); err != nil {
 		return err
 	}
+
 	rcsw.log.Debugf("Creating a new Endpoints for %s", serviceInfo)
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.service.Namespace).Create(endpoints); err != nil {
+	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.service.Namespace).Create(endpointsToCreate); err != nil {
 		// we clean up after ourselves
 		rcsw.localAPIClient.Client.CoreV1().Services(ev.service.Namespace).Delete(localServiceName, &metav1.DeleteOptions{})
 		return err
 	}
 	return nil
 }
+
+func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGatewayDeleted) error {
+	    rcsw.log.Debugf("Nulling %d endpoints due to remote gateway [%s/%s] deletion", len(ev.affectedEndpoints), ev.gatewayData.Namespace, ev.gatewayData.Name)
+		for _, ep := range ev.affectedEndpoints {
+			updated := ep.DeepCopy()
+			updated.Subsets = nil
+			if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Update(updated); err != nil {
+				return err
+			}
+		}
+		return nil
+}
+
+
 
 // Retrieves the annotations that indicate this service can be mirrored.
 // The values of these annotations help us resolve the gateway to which
@@ -441,41 +459,42 @@ func (rcsw *RemoteClusterServiceWatcher) onUpdate(old, new interface{}) {
 
 func (rcsw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 	service := svc.(*corev1.Service)
-	localName := rcsw.mirroredResourceName(service.Name)
-	if gtwMeta := getGatewayMetadata(service.Annotations); gtwMeta != nil {
-		// a service that is a candidate for being mirrored as it has the needed annotations
-		localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(localName)
-		if err != nil {
-			// in this case we need to create a new service as we do not have one present
-			rcsw.eventsQueue.Add(&RemoteServiceCreated{
-				service:            service,
-				gatewayData:        gtwMeta,
-				newResourceVersion: service.ResourceVersion,
-			})
-		} else {
-			lastMirroredRemoteVersion, ok := localService.Labels[RemoteResourceVersionLabel]
-			if ok && lastMirroredRemoteVersion != service.ResourceVersion {
-				// Why might we see an ADD for a service we already have? Well, if our
-				// controller has been restarted it will get ADDs for all services that
-				// are the current snapshot of the remote cluster. In this case we need to
-				// see whether anything has changed while we were doing and if it has,
-				// translate that as an UPDATE. If nothing has changed, we can just skip
-				// that event. This is the reason why we keep the last observed resource
-				// version of the remote object locally.
-				endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(service.Namespace).Get(localName)
-				if err == nil {
-					rcsw.eventsQueue.Add(&RemoteServiceUpdated{
-						localService:   localService,
-						localEndpoints: endpoints,
-						remoteUpdate:   service,
-						gatewayData:    gtwMeta,
-					})
+	if isGatewayService(service) {
+		// if not we consider dispatching a gateway update (if this is a gateway for any mirrored service)
+		rcsw.considerDispatchingGatewayUpdate(service)
+	} else {
+		if gtwMeta := getGatewayMetadata(service.Annotations); gtwMeta != nil {
+			localName := rcsw.mirroredResourceName(service.Name)
+			localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(localName)
+			if err != nil {
+				// in this case we need to create a new service as we do not have one present
+				rcsw.eventsQueue.Add(&RemoteServiceCreated{
+					service:            service,
+					gatewayData:        gtwMeta,
+					newResourceVersion: service.ResourceVersion,
+				})
+			} else {
+				lastMirroredRemoteVersion, ok := localService.Labels[RemoteResourceVersionLabel]
+				if ok && lastMirroredRemoteVersion != service.ResourceVersion {
+					// Why might we see an ADD for a service we already have? Well, if our
+					// controller has been restarted it will get ADDs for all services that
+					// are the current snapshot of the remote cluster. In this case we need to
+					// see whether anything has changed while we were doing and if it has,
+					// translate that as an UPDATE. If nothing has changed, we can just skip
+					// that event. This is the reason why we keep the last observed resource
+					// version of the remote object locally.
+					endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(service.Namespace).Get(localName)
+					if err == nil {
+						rcsw.eventsQueue.Add(&RemoteServiceUpdated {
+							localService:   localService,
+							localEndpoints: endpoints,
+							remoteUpdate:   service,
+							gatewayData:    gtwMeta,
+						})
+					}
 				}
 			}
 		}
-	} else {
-		// if not we consider dispatching a gateway update (if this is a gateway for any mirrored service)
-		rcsw.considerDispatchingGatewayUpdate(service)
 	}
 }
 
@@ -510,6 +529,21 @@ func (rcsw *RemoteClusterServiceWatcher) mirroredServicesForGateway(namespace st
 	return services, nil
 }
 
+func (rcsw *RemoteClusterServiceWatcher) endpointsForGateway(namespace string, name string) ([]*corev1.Endpoints, error) {
+
+	matchLabels := map[string]string{
+		MirroredResourceLabel:  "true",
+		RemoteGatewayNameLabel: name,
+		RemoteGatewayNsLabel:   namespace,
+	}
+
+	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
+	if err != nil {
+		return nil, err
+	}
+	return endpoints, nil
+}
+
 func (rcsw *RemoteClusterServiceWatcher) onDelete(svc interface{}) {
 	var service *corev1.Service
 	if ev, ok := svc.(cache.DeletedFinalStateUnknown); ok {
@@ -523,17 +557,17 @@ func (rcsw *RemoteClusterServiceWatcher) onDelete(svc interface{}) {
 			Namespace: service.Namespace,
 		})
 	} else {
-		affectedServices, err := rcsw.mirroredServicesForGateway(service.Namespace, service.Name)
+		affectedEndpoints, err := rcsw.endpointsForGateway(service.Namespace, service.Name)
 		if err != nil {
 			rcsw.log.Errorf("Could not determine whether deleted service is a gateway: %s", err)
 		} else {
-			if len(affectedServices) > 0 {
+			if len(affectedEndpoints) > 0 {
 				rcsw.eventsQueue.Add(&RemoteGatewayDeleted{
 					gatewayData: &gatewayMetadata{
 						Name:      service.Name,
 						Namespace: service.Namespace,
 					},
-					affectedServices: affectedServices,
+					affectedEndpoints: affectedEndpoints,
 				})
 			}
 		}
@@ -557,8 +591,7 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 			//TODO: Handle that
 			rcsw.log.Debug("A remote gateway service has been updated")
 		case *RemoteGatewayDeleted:
-			//TODO: Handle that
-			rcsw.log.Debug("A remote gateway service has been deleted")
+			err := rcsw.handleRemoteGatewayDeleted(ev)
 		case *ClusterUnregistered:
 			err = rcsw.cleanupMirroredResources()
 		case *OprhanedServicesGcTriggered:
@@ -589,15 +622,49 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 	}
 }
 
+func unwrapServiceFromDeletedStateUnknown(svc interface{}) (*corev1.Service, error) {
+	cast, ok := svc.(*corev1.Service)
+	if !ok {
+		tombstone, ok := svc.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return nil, fmt.Errorf("couldn't get object from tombstone %#v", svc)
+		}
+		cast, ok = tombstone.Obj.(*corev1.Service)
+		if !ok {
+			return nil, fmt.Errorf("Tombstone contained unexpected object: %#v", svc)
+		}
+	}
+	return cast, nil
+}
+
+func isGatewayService(service *corev1.Service) bool {
+	if val, ok := service.Labels[GatewayServiceLabel]; ok {
+		valBool, err := strconv.ParseBool(val)
+		if err == nil && valBool {
+			return true
+		}
+	}
+	return false
+}
+
 // Start starts watching the remote cluster
 func (rcsw *RemoteClusterServiceWatcher) Start() {
 	rcsw.remoteAPIClient.SyncWithStopCh(rcsw.stopper)
 	rcsw.eventsQueue.Add(&OprhanedServicesGcTriggered{})
 	rcsw.remoteAPIClient.Svc().Informer().AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc:    rcsw.onAdd,
-			DeleteFunc: rcsw.onDelete,
-			UpdateFunc: rcsw.onUpdate,
+		cache.FilteringResourceEventHandler{
+			FilterFunc: func(obj interface{}) bool {
+				service, err := unwrapServiceFromDeletedStateUnknown(obj)
+				if  err != nil {
+					return isGatewayService(service) || getGatewayMetadata(service.Annotations) != nil
+				}
+				return false
+			},
+			Handler:    		cache.ResourceEventHandlerFuncs{
+				AddFunc:    rcsw.onAdd,
+				DeleteFunc: rcsw.onDelete,
+				UpdateFunc: rcsw.onUpdate,
+			},
 		})
 	go rcsw.processEvents()
 }
