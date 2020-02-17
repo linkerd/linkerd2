@@ -404,19 +404,29 @@ func TestCheckExtensionAPIServerAuthentication(t *testing.T) {
 			fmt.Errorf("configmaps %q not found", k8s.ExtensionAPIServerAuthenticationConfigMapName),
 		},
 		{
-			[]string{
-				k8s.ExtensionAPIServerConfigMapResource(map[string]string{
-					"foo": "bar",
-				}),
+			[]string{`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+ name: extension-apiserver-authentication
+ namespace: kube-system
+data:
+ foo : 'bar'
+ `,
 			},
 			fmt.Errorf("--%s is not configured", k8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey),
 		},
 		{
-			[]string{
-				k8s.ExtensionAPIServerConfigMapResource(map[string]string{
-					k8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey: "bar",
-				}),
-			},
+
+			[]string{fmt.Sprintf(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+ name: extension-apiserver-authentication 
+ namespace: kube-system
+data:
+  %s : 'bar'
+  `, k8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey)},
 			nil,
 		},
 	}
