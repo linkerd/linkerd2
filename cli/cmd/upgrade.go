@@ -191,8 +191,6 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 		upgradeErrorf("Could not render upgrade configuration: %s", err)
 	}
 
-	buf.WriteTo(os.Stdout)
-
 	if options.identityOptions.trustPEMFile != "" {
 		fmt.Fprintf(os.Stderr, "\n%s %s\n", warnStatus, trustRootChangeMessage)
 	}
@@ -200,6 +198,9 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	if stage == configStage {
 		fmt.Fprintf(os.Stderr, "%s\n", controlPlaneMessage)
 	}
+
+	fmt.Fprintf(os.Stderr, "\n")
+	buf.WriteTo(os.Stdout)
 
 	return nil
 }
