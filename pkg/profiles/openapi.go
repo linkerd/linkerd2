@@ -106,7 +106,7 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 	return profile
 }
 
-func mkRouteSpec(path, pathRegex string, method string,  exception *spec.Operation) *sp.RouteSpec {
+func mkRouteSpec(path, pathRegex string, method string, exception *spec.Operation) *sp.RouteSpec {
 	retryable := false
 	if exception != nil {
 		retryable, _ = exception.VendorExtensible.Extensions.GetBool(xLinkerdRetryable)

@@ -8,8 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const xLinkerdRetryable = "x-linkerd-retryable"
-
 func TestSwaggerToServiceProfile(t *testing.T) {
 	namespace := "myns"
 	name := "mysvc"

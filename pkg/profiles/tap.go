@@ -129,7 +129,6 @@ func getPathDataFromTap(event *pb.TapEvent) *sp.RouteSpec {
 			path,
 			pathToRegex(path), // for now, no path consolidation
 			ev.RequestInit.GetMethod().GetRegistered().String(),
-			nil,
 			nil)
 	default:
 		return nil
