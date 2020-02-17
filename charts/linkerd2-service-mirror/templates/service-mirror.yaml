@@ -12,7 +12,7 @@ metadata:
     ControllerNamespaceLabel: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services", "secrets", "namespaces"]
+  resources: ["endpoints", "services", "secrets", "namespaces"]
   verbs: ["list", "get", "watch", "create", "delete", "update"]
 ---
 kind: ClusterRoleBinding
@@ -39,20 +39,6 @@ metadata:
   labels:
     ControllerComponentLabel: service-mirror
     ControllerNamespaceLabel: {{.Values.namespace}}
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: linkerd-service-mirror
-  namespace: {{.Values.namespace}}
-spec:
-  type: ClusterIP
-  selector:
-    ControllerComponentLabel: service-mirror
-  ports:
-  - name: service-mirror
-    port: 443
-    targetPort: service-mirror
 ---
 apiVersion: apps/v1
 kind: Deployment

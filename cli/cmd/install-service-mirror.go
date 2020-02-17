@@ -15,7 +15,6 @@ import (
 )
 
 type installServiceMirrorOptions struct {
-	namespace    string
 	logLevel     string
 	image        string
 	version      string
@@ -28,7 +27,7 @@ const helmServiceMirrorDefaultChartName = "linkerd2-service-mirror"
 func newCmdInstallServiceMirror() *cobra.Command {
 	options, err := newInstallServiceMirrorOptionsWithDefaults()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s", err)
+		fmt.Fprint(os.Stderr, err)
 		os.Exit(1)
 	}
 
@@ -41,7 +40,6 @@ func newCmdInstallServiceMirror() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "The namespace in which the Service Mirror component shall be installed")
 	cmd.PersistentFlags().StringVarP(&options.version, "version", "", options.version, "The Version of the Service Mirror component")
 	cmd.PersistentFlags().StringVarP(&options.version, "image", "", options.version, "The image of the Service Mirror component")
 	cmd.PersistentFlags().StringVarP(&options.logLevel, "log-level", "", options.logLevel, "Log level for the Service Mirror Component")
@@ -59,7 +57,6 @@ func newInstallServiceMirrorOptionsWithDefaults() (*installServiceMirrorOptions,
 	return &installServiceMirrorOptions{
 		version:      version.Version,
 		logLevel:     defaults.LogLevel,
-		namespace:    defaults.Namespace,
 		image:        defaults.ServiceMirrorImage,
 		uid:          defaults.ServiceMirrorUID,
 		requeueLimit: defaults.EventRequeueLimit,
@@ -71,7 +68,7 @@ func (options *installServiceMirrorOptions) buildValues() (*servicemirror.Values
 	if err != nil {
 		return nil, err
 	}
-	installValues.Namespace = options.namespace
+	installValues.Namespace = controlPlaneNamespace
 	installValues.LogLevel = options.logLevel
 	installValues.ServiceMirrorImage = options.image
 	installValues.ServiceMirrorVersion = options.version

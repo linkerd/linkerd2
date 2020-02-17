@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	prefix = "svcmirror.io"
+	prefix = "mirror.linkerd.io"
 
 	// MirrorSecretType is the type of secret that is supposed to contain
 	// the access information for remote clusters.
@@ -60,7 +60,7 @@ const (
 func Main(args []string) {
 	cmd := flag.NewFlagSet("service-mirror", flag.ExitOnError)
 
-	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
+	kubeConfigPath := cmd.String("kubeconfig", "", "path to the local kube config")
 	requeueLimit := cmd.Int("event-requeue-limit", 3, "requeue limit for events")
 
 	flags.ConfigureAndParse(cmd, args)

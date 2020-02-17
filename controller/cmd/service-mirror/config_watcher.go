@@ -86,13 +86,17 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(obj interface{}) er
 		return fmt.Errorf("unable to parse kube config: %s", err)
 	}
 
+	rcw.mutex.Lock()
+	defer rcw.mutex.Unlock()
+
+	if _, ok := rcw.clusterWatchers[name]; ok {
+		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", name)
+	}
+
 	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, name, rcw.requeueLimit)
 	if err != nil {
 		return err
 	}
-
-	rcw.mutex.Lock()
-	defer rcw.mutex.Unlock()
 
 	rcw.clusterWatchers[name] = watcher
 	watcher.Start()

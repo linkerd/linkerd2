@@ -117,11 +117,6 @@ func InitializeAPIForConfig(kubeConfig *rest.Config, resources ...APIResource) (
 }
 
 func initAPI(k8sClient *k8s.KubernetesAPI, kubeConfig *rest.Config, resources ...APIResource) (*API, error) {
-	/*	// check for cluster-wide access
-		err  := k8s.ClusterAccess(k8sClient)
-		if err != nil {
-			return nil, err
-		}*/
 	var err error
 
 	// check for need and access to ServiceProfiles
