@@ -674,7 +674,9 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
-	installValues.PrometheusImage = fmt.Sprintf("%s/%s", options.dockerRegistry, installValues.PrometheusImage)
+	if options.prometheusImage != "" {
+		installValues.PrometheusImage = options.prometheusImage
+	}
 	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.Global.CNIEnabled = options.cniEnabled
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
