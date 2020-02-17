@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -67,7 +69,7 @@ func Inject(api *k8s.API,
 	var parent *runtime.Object
 	ownerKind := ""
 	if ownerRef := resourceConfig.GetOwnerRef(); ownerRef != nil {
-		objs, err := api.GetObjects(request.Namespace, ownerRef.Kind, ownerRef.Name)
+		objs, err := api.GetObjects(request.Namespace, ownerRef.Kind, ownerRef.Name, labels.Everything())
 		if err != nil {
 			log.Warnf("couldn't retrieve parent object %s-%s-%s; error: %s", request.Namespace, ownerRef.Kind, ownerRef.Name, err)
 		} else if len(objs) == 0 {

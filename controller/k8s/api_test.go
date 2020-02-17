@@ -7,6 +7,8 @@ import (
 	"sort"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -265,7 +267,7 @@ metadata:
 				t.Fatalf("newAPI error: %s", err)
 			}
 
-			pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name)
+			pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name, labels.Everything())
 			if err != nil || exp.err != nil {
 				if (err == nil && exp.err != nil) ||
 					(err != nil && exp.err == nil) ||
@@ -327,7 +329,7 @@ status:
 					t.Fatalf("newAPI error: %s", err)
 				}
 
-				pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name)
+				pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name, labels.Everything())
 				if err != nil {
 					t.Fatalf("api.GetObjects() unexpected error %s", err)
 				}
@@ -384,7 +386,7 @@ status:
 					t.Fatalf("newAPI error: %s", err)
 				}
 
-				pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name)
+				pods, err := api.GetObjects(exp.namespace, exp.resType, exp.name, labels.Everything())
 				if err != nil {
 					t.Fatalf("api.GetObjects() unexpected error %s", err)
 				}
