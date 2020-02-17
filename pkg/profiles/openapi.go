@@ -73,31 +73,31 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 		path := path.Join(swagger.BasePath, relPath)
 		pathRegex := pathToRegex(path)
 		if item.Delete != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete.Responses, item.Delete)
+			spec := mkRouteSpec(path, pathRegex, http.MethodDelete, item.Delete)
 			routes = append(routes, spec)
 		}
 		if item.Get != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodGet, item.Get.Responses, item.Get)
+			spec := mkRouteSpec(path, pathRegex, http.MethodGet, item.Get)
 			routes = append(routes, spec)
 		}
 		if item.Head != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodHead, item.Head.Responses, item.Head)
+			spec := mkRouteSpec(path, pathRegex, http.MethodHead, item.Head)
 			routes = append(routes, spec)
 		}
 		if item.Options != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodOptions, item.Options.Responses, item.Options)
+			spec := mkRouteSpec(path, pathRegex, http.MethodOptions, item.Options)
 			routes = append(routes, spec)
 		}
 		if item.Patch != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPatch, item.Patch.Responses, item.Patch)
+			spec := mkRouteSpec(path, pathRegex, http.MethodPatch, item.Patch)
 			routes = append(routes, spec)
 		}
 		if item.Post != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPost, item.Post.Responses, item.Post)
+			spec := mkRouteSpec(path, pathRegex, http.MethodPost, item.Post)
 			routes = append(routes, spec)
 		}
 		if item.Put != nil {
-			spec := mkRouteSpec(path, pathRegex, http.MethodPut, item.Put.Responses, item.Put)
+			spec := mkRouteSpec(path, pathRegex, http.MethodPut, item.Put)
 			routes = append(routes, spec)
 		}
 	}
@@ -106,7 +106,7 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 	return profile
 }
 
-func mkRouteSpec(path, pathRegex string, method string, responses *spec.Responses, exception *spec.Operation) *sp.RouteSpec {
+func mkRouteSpec(path, pathRegex string, method string,  exception *spec.Operation) *sp.RouteSpec {
 	retryable := false
 	if exception != nil {
 		retryable, _ = exception.VendorExtensible.Extensions.GetBool(xLinkerdRetryable)
@@ -114,7 +114,7 @@ func mkRouteSpec(path, pathRegex string, method string, responses *spec.Response
 	return &sp.RouteSpec{
 		Name:            fmt.Sprintf("%s %s", method, path),
 		Condition:       toReqMatch(pathRegex, method),
-		ResponseClasses: toRspClasses(responses),
+		ResponseClasses: toRspClasses(exception.Responses),
 		IsRetryable:     retryable,
 	}
 }

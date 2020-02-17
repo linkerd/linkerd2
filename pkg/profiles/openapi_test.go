@@ -8,6 +8,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const xLinkerdRetryable = "x-linkerd-retryable"
+
 func TestSwaggerToServiceProfile(t *testing.T) {
 	namespace := "myns"
 	name := "mysvc"
@@ -30,7 +32,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 									},
 								},
 								VendorExtensible: spec.VendorExtensible{
-									Extensions: spec.Extensions{"x-linkerd-retryable": true},
+									Extensions: spec.Extensions{xLinkerdRetryable: true},
 								},
 							},
 						},
