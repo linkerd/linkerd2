@@ -110,7 +110,7 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 
 func mkRouteSpec(path, pathRegex string, method string, operation *spec.Operation) *sp.RouteSpec {
 	retryable := false
-	var responses = (*spec.Responses)(nil)
+	var responses *spec.Responses
 	if operation != nil {
 		retryable, _ = operation.VendorExtensible.Extensions.GetBool(xLinkerdRetryable)
 		responses = operation.Responses
