@@ -1,11 +1,11 @@
 name: Unit tests
 on:
   pull_request:
-    paths:
-      - '!**.md'
+    paths-ignore:
+      - '**.md'
   push:
-    paths:
-      - '!**.md'
+    paths-ignore:
+      - '**.md'
     branches:
     - master
     tags:
