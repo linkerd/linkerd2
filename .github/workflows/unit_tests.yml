@@ -4,6 +4,8 @@ on:
     paths:
       - '!**.md'
   push:
+    paths:
+      - '!**.md'
     branches:
     - master
     tags:
