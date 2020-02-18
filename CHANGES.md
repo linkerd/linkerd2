@@ -1,4 +1,4 @@
-## stable-2.7.0 test12
+## stable-2.7.0 test13
 
 This release adds support for integrating Linkerd's PKI with an external
 certificate issuer such as [`cert-manager`] as well as streamlining the
