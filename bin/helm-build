@@ -2,14 +2,14 @@
 
 set -e
 
-restoreValues() {
-    sed -i "s/$1/{version}/" charts/linkerd2/values.yaml
-    sed -i "s/$1/{version}/" charts/linkerd2-cni/values.yaml
+setValues() {
+    sed -i "s/$1/$2/" charts/linkerd2/values.yaml
+    sed -i "s/$1/$2/" charts/linkerd2-cni/values.yaml
 }
 
 showErr() {
   printf "Error on exit:\n  Exit code: %d\n  Failed command: \"%s\"\n" $? "$BASH_COMMAND"
-  restoreValues
+  setValues $fullVersion "{version}"
 }
 
 # trap the last failed command
@@ -42,12 +42,13 @@ if [ "$1" = package ]; then
     version=${BASH_REMATCH[2]}
 
     # set version in Values files
-    sed -i "s/{version}/$fullVersion/" charts/linkerd2/values.yaml
-    sed -i "s/{version}/$fullVersion/" charts/linkerd2-cni/values.yaml
+    setValues "{version}" $fullVersion
 
     "$bindir"/helm --version $version --app-version $tag -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2
     "$bindir"/helm --version $version --app-version $tag -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-cni
     mv "$rootdir"/target/helm/index-pre.yaml "$rootdir"/target/helm/index-pre-$version.yaml
     "$bindir"/helm repo index --url "https://helm.linkerd.io/$repo/" --merge "$rootdir"/target/helm/index-pre-$version.yaml "$rootdir"/target/helm
-    restoreValues $fullVersion
+
+    # restore version in Values files
+    setValues $fullVersion "{version}"
 fi
