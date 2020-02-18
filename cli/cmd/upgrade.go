@@ -200,7 +200,10 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 		fmt.Fprintf(os.Stderr, "%s\n", controlPlaneMessage)
 	}
 
-	fmt.Fprintf(os.Stderr, "\n")
+	// check if buffer is not empty
+	if buf.Len() != 0 {
+		fmt.Fprintf(os.Stderr, "\n")
+	}
 	buf.WriteTo(os.Stdout)
 
 	return nil
