@@ -15,7 +15,9 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const xLinkerdRetryable = "x-linkerd-retryable"
+const (
+	xLinkerdRetryable = "x-linkerd-retryable"
+)
 
 var pathParamRegex = regexp.MustCompile(`\\{[^\}]*\\}`)
 
@@ -108,15 +110,15 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 
 func mkRouteSpec(path, pathRegex string, method string, operation *spec.Operation) *sp.RouteSpec {
 	retryable := false
-	operationResponses := nil
+	var responses = (*spec.Responses)(nil)
 	if operation != nil {
 		retryable, _ = operation.VendorExtensible.Extensions.GetBool(xLinkerdRetryable)
-		operationResponses = operation.Responses
+		responses = operation.Responses
 	}
 	return &sp.RouteSpec{
 		Name:            fmt.Sprintf("%s %s", method, path),
 		Condition:       toReqMatch(pathRegex, method),
-		ResponseClasses: toRspClasses(operationResponses),
+		ResponseClasses: toRspClasses(responses),
 		IsRetryable:     retryable,
 	}
 }
