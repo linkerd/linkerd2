@@ -1,6 +1,8 @@
 name: Unit tests
 on:
-  pull_request: {}
+  pull_request:
+    paths:
+      - '!**.md'
   push:
     branches:
     - master
@@ -10,31 +12,6 @@ jobs:
   go_unit_tests:
     name: Go unit tests
     runs-on: ubuntu-18.04
-    container:
-      image: golang:1.13.4
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Go unit tests
-      env:
-        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
-      run: |
-        echo "$GITCOOKIE_SH" | bash
-        # TODO: validate bin/protoc-go.sh does not dirty the repo
-        go test -cover -race -v -mod=readonly ./...
-  js_unit_tests:
-    name: JS unit tests
-    runs-on: ubuntu-18.04
-    container:
-      image: node:10.16.0-stretch
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Yarn setup
-      run: curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
-    - name: JS unit tests
-      run: |
-        export PATH="$HOME/.yarn/bin:$PATH"
-        export NODE_ENV=test
-        bin/web
-        bin/web test --reporters=jest-dot-reporter
