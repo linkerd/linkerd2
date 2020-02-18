@@ -394,6 +394,10 @@ chart consists of the Linkerd proxy specification, which is used by the proxy
 injector to inject the proxy container. Both charts depend on the partials
 subchart which can be found in the [`charts/partials`](charts/partials) folder.
 
+Note that the `charts/linkerd2/values.yaml` file contains a placeholder
+`{version}` that you need to replace with an appropriate string (like
+`edge-20.2.2`) before proceeding.
+
 During development, please use the [`bin/helm`](bin/helm) wrapper script to
 invoke the Helm commands. For example,
 
