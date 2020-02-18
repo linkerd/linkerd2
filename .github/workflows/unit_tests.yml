@@ -5,7 +5,7 @@ on:
     - '**/*.md'
   push:
     paths-ignore:
-    - '**/*.md'
+    - '*.md'
     branches:
     - master
     tags:
