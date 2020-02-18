@@ -39,6 +39,7 @@ type GRPCTapServer struct {
 	k8sAPI              *k8s.API
 	controllerNamespace string
 	trustDomain         string
+	whateva             string
 }
 
 var (
