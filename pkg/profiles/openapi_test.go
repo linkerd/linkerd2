@@ -29,6 +29,9 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 										},
 									},
 								},
+								VendorExtensible: spec.VendorExtensible{
+									Extensions: spec.Extensions{xLinkerdRetryable: true},
+								},
 							},
 						},
 					},
@@ -62,6 +65,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 							IsFailure: true,
 						},
 					},
+					IsRetryable: true,
 				},
 			},
 		},
