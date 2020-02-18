@@ -1,4 +1,4 @@
-name: Unit tests
+name: Cloud tests
 on:
   pull_request:
     paths-ignore:
@@ -11,11 +11,19 @@ on:
     tags:
     - "*"
 jobs:
-  go_unit_tests:
-    name: Go unit tests
+  cloud_integration_tests:
+    name: Cloud integration tests
     runs-on: ubuntu-18.04
     steps:
-    - name: Dump GitHub context
+    - name: Create GKE cluster
+      uses: linkerd/linkerd2-action-gcloud@a4ce1d5
+      with:
+        cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
+        gcp_project: ${{ secrets.GCP_PROJECT }}
+        gcp_zone: ${{ secrets.GCP_ZONE }}
+        create: true
+        name: testing-eraseme-${{ github.run_id }}
+    - name: Run integration tests
       env:
-        GITHUB_CONTEXT: ${{ toJson(github) }}
-      run: echo "$GITHUB_CONTEXT"
+        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
+      run: echo "************ NOTHING TO DO HERE ***********"
