@@ -12,6 +12,7 @@ metadata:
   labels:
     LinkerdNamespaceLabel: "true"
     config.linkerd.io/admission-webhooks: disabled
+    ControllerNamespaceLabel: Namespace
 ---
 ###
 ### Identity Controller Service RBAC
