@@ -170,7 +170,7 @@ nodeSelector:
 
 # Configuration for Add-ons
 tracing:
-  enabled: true
+  enabled: false
   collector:
     name: linkerd-collector
     image: omnition/opencensus-collector:0.1.10
