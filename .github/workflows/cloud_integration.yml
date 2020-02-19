@@ -43,7 +43,7 @@ jobs:
         . bin/_tag.sh
         echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
     - name: Configure gcloud
-      uses: linkerd/linkerd2-action-gcloud@v1.0.0
+      uses: linkerd/linkerd2-action-gcloud@v1.0.1
       with:
         cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
         gcp_project: ${{ secrets.GCP_PROJECT }}
@@ -85,7 +85,7 @@ jobs:
         echo "Installed Linkerd CLI version: $TAG"
         echo "::set-output name=tag::$TAG"
     - name: Create GKE cluster
-      uses: linkerd/linkerd2-action-gcloud@v1.0.0
+      uses: linkerd/linkerd2-action-gcloud@v1.0.1
       with:
         cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
         gcp_project: ${{ secrets.GCP_PROJECT }}
@@ -113,7 +113,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Configure gsutils
-      uses: linkerd/linkerd2-action-gcloud@v1.0.0
+      uses: linkerd/linkerd2-action-gcloud@v1.0.1
       with:
         cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
         gcp_project: ${{ secrets.GCP_PROJECT }}
