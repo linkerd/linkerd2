@@ -61,7 +61,7 @@ func (s *grpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*
 	}
 
 	// Non-authority resource
-	objects, err := s.k8sAPI.GetObjects(targetResource.Namespace, targetResource.Type, targetResource.Name)
+	objects, err := s.k8sAPI.GetObjects(targetResource.Namespace, targetResource.Type, targetResource.Name, labels.Everything())
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (s *grpcServer) topRoutesFor(ctx context.Context, req *pb.TopRoutesRequest,
 	} else {
 		// Non-authority resource.
 		// Lookup individual resource objects.
-		objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name)
+		objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name, labels.Everything())
 		if err != nil {
 			return nil, err
 		}

@@ -116,7 +116,20 @@ func (iw *IPWatcher) addService(obj interface{}) {
 }
 
 func (iw *IPWatcher) deleteService(obj interface{}) {
-	service := obj.(*corev1.Service)
+	service, ok := obj.(*corev1.Service)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			iw.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
+		}
+		service, ok = tombstone.Obj.(*corev1.Service)
+		if !ok {
+			iw.log.Errorf("DeletedFinalStateUnknown contained object that is not a Service %#v", obj)
+			return
+		}
+	}
+
 	if service.Namespace == kubeSystem {
 		return
 	}
@@ -141,7 +154,20 @@ func (iw *IPWatcher) addPod(obj interface{}) {
 }
 
 func (iw *IPWatcher) deletePod(obj interface{}) {
-	pod := obj.(*corev1.Pod)
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			iw.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
+		}
+		pod, ok = tombstone.Obj.(*corev1.Pod)
+		if !ok {
+			iw.log.Errorf("DeletedFinalStateUnknown contained object that is not a Pod %#v", obj)
+			return
+		}
+	}
+
 	if pod.Namespace == kubeSystem {
 		return
 	}
@@ -300,7 +326,6 @@ func (ss *serviceSubscriptions) updatePod(podSet PodSet) {
 func (ss *serviceSubscriptions) deletePod() {
 	ss.Lock()
 	defer ss.Unlock()
-
 	for listener, port := range ss.listeners {
 		listener.NoEndpoints(true) // Clear out previous endpoints.
 		listener.Add(singletonAddress(ss.clusterIP, port))

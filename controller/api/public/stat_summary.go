@@ -159,7 +159,13 @@ func statSummaryError(req *pb.StatSummaryRequest, message string) *pb.StatSummar
 
 func (s *grpcServer) getKubernetesObjectStats(req *pb.StatSummaryRequest) (map[rKey]k8sStat, error) {
 	requestedResource := req.GetSelector().GetResource()
-	objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name)
+
+	labelSelector, err := getLabelSelector(req)
+	if err != nil {
+		return nil, err
+	}
+
+	objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name, labelSelector)
 	if err != nil {
 		return nil, err
 	}
@@ -258,14 +264,20 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 	return resourceResult{res: &rsp, err: nil}
 }
 
-func (s *grpcServer) getTrafficSplits(res *pb.Resource) ([]*v1alpha1.TrafficSplit, error) {
+func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha1.TrafficSplit, error) {
 	var err error
 	var trafficSplits []*v1alpha1.TrafficSplit
 
+	res := req.GetSelector().GetResource()
+	labelSelector, err := getLabelSelector(req)
+	if err != nil {
+		return nil, err
+	}
+
 	if res.GetNamespace() == "" {
-		trafficSplits, err = s.k8sAPI.TS().Lister().List(labels.Everything())
+		trafficSplits, err = s.k8sAPI.TS().Lister().List(labelSelector)
 	} else if res.GetName() == "" {
-		trafficSplits, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).List(labels.Everything())
+		trafficSplits, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).List(labelSelector)
 	} else {
 		var ts *v1alpha1.TrafficSplit
 		ts, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).Get(res.GetName())
@@ -276,7 +288,7 @@ func (s *grpcServer) getTrafficSplits(res *pb.Resource) ([]*v1alpha1.TrafficSpli
 }
 
 func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.StatSummaryRequest) resourceResult {
-	tss, err := s.getTrafficSplits(req.GetSelector().GetResource())
+	tss, err := s.getTrafficSplits(req)
 
 	if err != nil {
 		return resourceResult{res: nil, err: err}
@@ -674,4 +686,16 @@ func checkContainerErrors(containerStatuses []corev1.ContainerStatus) []*pb.PodE
 		}
 	}
 	return errors
+}
+
+func getLabelSelector(req *pb.StatSummaryRequest) (labels.Selector, error) {
+	labelSelector := labels.Everything()
+	if s := req.GetSelector().GetLabelSelector(); s != "" {
+		var err error
+		labelSelector, err = labels.Parse(s)
+		if err != nil {
+			return nil, fmt.Errorf("invalid label selector \"%s\": %s", s, err)
+		}
+	}
+	return labelSelector, nil
 }

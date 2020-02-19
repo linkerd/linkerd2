@@ -3,13 +3,17 @@ package charts
 import (
 	"bytes"
 	"path"
+	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/charts/static"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"k8s.io/helm/pkg/chartutil"
 	helmChart "k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/timeconv"
 )
+
+const versionPlaceholder = "{version}"
 
 // Chart holds the necessary info to render a Helm chart
 type Chart struct {
@@ -121,4 +125,11 @@ func FilesReader(dir string, files []*chartutil.BufferedFile) error {
 		}
 	}
 	return nil
+}
+
+// InsertVersion returns the chart values file contents passed in
+// with the version placeholder replaced with the current version
+func InsertVersion(data []byte) []byte {
+	dataWithVersion := strings.Replace(string(data), versionPlaceholder, version.Version, 1)
+	return []byte(dataWithVersion)
 }
