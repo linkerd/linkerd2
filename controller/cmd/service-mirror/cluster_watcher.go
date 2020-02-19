@@ -20,9 +20,7 @@ import (
 
 //TODO: Handle temporary network partitions
 
-//TODO: Use gatewayMetadata wherever possible
-
-//TODO: Type check events so we avoid unsafe casting (espectially in deletions)
+//TODO: Type check events so we avoid unsafe casting (especially in deletions)
 
 //TODO: Whenever getting k8s objects from the local Lister, always make a deep copy in case
 // modifying to avoid messing with that that is in the client-go cache
@@ -178,13 +176,13 @@ func (rcsw *RemoteClusterServiceWatcher) originalResourceName(mirroredName strin
 	return strings.TrimSuffix(mirroredName, fmt.Sprintf("-%s", rcsw.clusterName))
 }
 
-func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels(service *corev1.Service, gatewayNs, gatewayName string) map[string]string {
+func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels(service *corev1.Service, gatewayData *gatewayMetadata) map[string]string {
 	return map[string]string{
 		MirroredResourceLabel:      "true",
 		RemoteClusterNameLabel:     rcsw.clusterName,
 		RemoteResourceVersionLabel: service.ResourceVersion, // needed to detect real changes
-		RemoteGatewayNameLabel:     gatewayName,
-		RemoteGatewayNsLabel:       gatewayNs,
+		RemoteGatewayNameLabel:     gatewayData.Name,
+		RemoteGatewayNsLabel:       gatewayData.Namespace,
 	}
 }
 
@@ -334,7 +332,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 		return err
 	}
 
-	ev.localService.Labels = rcsw.getMirroredServiceLabels(ev.remoteUpdate, ev.gatewayData.Namespace, ev.gatewayData.Name)
+	ev.localService.Labels = rcsw.getMirroredServiceLabels(ev.remoteUpdate, ev.gatewayData)
 	ev.localService.Labels[RemoteGatewayResourceVersionLabel] = resVersion
 	ev.localService.Spec.Ports = ev.remoteUpdate.Spec.Ports
 
@@ -358,7 +356,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 			Name:        localServiceName,
 			Namespace:   remoteService.Namespace,
 			Annotations: map[string]string{},
-			Labels:      rcsw.getMirroredServiceLabels(remoteService, ev.gatewayData.Namespace, ev.gatewayData.Name),
+			Labels:      rcsw.getMirroredServiceLabels(remoteService, ev.gatewayData),
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: remoteService.Spec.Ports,
@@ -412,7 +410,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGatewayDeleted) error {
 
-	affectedEndpoints, err := rcsw.endpointsForGateway(ev.gatewayData.Namespace, ev.gatewayData.Name)
+	affectedEndpoints, err := rcsw.endpointsForGateway(ev.gatewayData)
 	if err != nil {
 		return err
 	}
@@ -477,8 +475,12 @@ func getGatewayMetadata(annotations map[string]string) *gatewayMetadata {
 	return nil
 }
 func (rcsw *RemoteClusterServiceWatcher) handleConsiderGatewayUpdateDispatch(event *ConsiderGatewayUpdateDispatch) error {
+	gtwMetadata := &gatewayMetadata{
+		Name:      event.maybeGateway.Name,
+		Namespace: event.maybeGateway.Namespace,
+	}
 
-	services, err := rcsw.mirroredServicesForGateway(event.maybeGateway.Namespace, event.maybeGateway.Name)
+	services, err := rcsw.mirroredServicesForGateway(gtwMetadata)
 	if err != nil {
 		// we can fail and requeue here in case there is a problem obtaining these...
 		return err
@@ -493,14 +495,14 @@ func (rcsw *RemoteClusterServiceWatcher) handleConsiderGatewayUpdateDispatch(eve
 			rcsw.log.Warnf("Gateway [%s/%s] is not a compliant gateway anymore, dispatching GatewayDeleted event: %s", event.maybeGateway.Namespace, event.maybeGateway.Name, err)
 			// in case something changed about this gateway and it is not really a gateway anymore,
 			// simply dispatch deletion event so all endpoints are nulled
-			endpoints, err := rcsw.endpointsForGateway(gatewayMeta.Namespace, gatewayMeta.Name)
+			endpoints, err := rcsw.endpointsForGateway(gatewayMeta)
 			if err != nil {
 				return err
 			}
 			rcsw.eventsQueue.AddRateLimited(&RemoteGatewayDeleted{gatewayMeta, endpoints})
 		} else {
 
-			affectedServices, err := rcsw.affectedMirroredServicesForGatewayUpdate(gatewayMeta.Namespace, gatewayMeta.Name, event.maybeGateway.ResourceVersion)
+			affectedServices, err := rcsw.affectedMirroredServicesForGatewayUpdate(gtwMetadata, event.maybeGateway.ResourceVersion)
 			if err != nil {
 				return err
 			}
@@ -587,8 +589,8 @@ func (rcsw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 	}
 }
 
-func (rcsw *RemoteClusterServiceWatcher) affectedMirroredServicesForGatewayUpdate(namespace string, name string, latestResourceVersion string) ([]*corev1.Service, error) {
-	services, err := rcsw.mirroredServicesForGateway(namespace, name)
+func (rcsw *RemoteClusterServiceWatcher) affectedMirroredServicesForGatewayUpdate(gatewayData *gatewayMetadata, latestResourceVersion string) ([]*corev1.Service, error) {
+	services, err := rcsw.mirroredServicesForGateway(gatewayData)
 	if err != nil {
 		return nil, err
 	}
@@ -604,11 +606,11 @@ func (rcsw *RemoteClusterServiceWatcher) affectedMirroredServicesForGatewayUpdat
 	return affectedServices, nil
 }
 
-func (rcsw *RemoteClusterServiceWatcher) mirroredServicesForGateway(namespace string, name string) ([]*corev1.Service, error) {
+func (rcsw *RemoteClusterServiceWatcher) mirroredServicesForGateway(gatewayData *gatewayMetadata) ([]*corev1.Service, error) {
 	matchLabels := map[string]string{
 		MirroredResourceLabel:  "true",
-		RemoteGatewayNameLabel: name,
-		RemoteGatewayNsLabel:   namespace,
+		RemoteGatewayNameLabel: gatewayData.Name,
+		RemoteGatewayNsLabel:   gatewayData.Namespace,
 	}
 
 	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
@@ -618,11 +620,11 @@ func (rcsw *RemoteClusterServiceWatcher) mirroredServicesForGateway(namespace st
 	return services, nil
 }
 
-func (rcsw *RemoteClusterServiceWatcher) endpointsForGateway(namespace string, name string) ([]*corev1.Endpoints, error) {
+func (rcsw *RemoteClusterServiceWatcher) endpointsForGateway(gatewayData *gatewayMetadata) ([]*corev1.Endpoints, error) {
 	matchLabels := map[string]string{
 		MirroredResourceLabel:  "true",
-		RemoteGatewayNameLabel: name,
-		RemoteGatewayNsLabel:   namespace,
+		RemoteGatewayNameLabel: gatewayData.Name,
+		RemoteGatewayNsLabel:   gatewayData.Namespace,
 	}
 
 	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
