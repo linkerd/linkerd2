@@ -597,29 +597,9 @@ func mergeRaw(a, b []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	resultMap := mergeMaps(aMap, bMap)
+	chartutil.Values.MergeInto(aMap, bMap)
+	return yaml.Marshal(aMap)
 
-	return yaml.Marshal(resultMap)
-
-}
-
-func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(a))
-	for k, v := range a {
-		out[k] = v
-	}
-	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
-			if bv, ok := out[k]; ok {
-				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = mergeMaps(bv, v)
-					continue
-				}
-			}
-		}
-		out[k] = v
-	}
-	return out
 }
 
 func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
