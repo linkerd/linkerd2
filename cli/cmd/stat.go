@@ -25,6 +25,7 @@ type statOptions struct {
 	fromNamespace string
 	fromResource  string
 	allNamespaces bool
+	labelSelector string
 }
 
 type indexedResults struct {
@@ -41,6 +42,7 @@ func newStatOptions() *statOptions {
 		fromNamespace:   "",
 		fromResource:    "",
 		allNamespaces:   false,
+		labelSelector:   "",
 	}
 }
 
@@ -181,7 +183,7 @@ If no resource name is specified, displays stats about all resources of the spec
 	cmd.PersistentFlags().StringVar(&options.fromNamespace, "from-namespace", options.fromNamespace, "Sets the namespace used from lookup the \"--from\" resource; by default the current \"--namespace\" is used")
 	cmd.PersistentFlags().BoolVarP(&options.allNamespaces, "all-namespaces", "A", options.allNamespaces, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\" or \"wide\"")
-
+	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector, "Selector (label query) to filter on, supports '=', '==', and '!='")
 	return cmd
 }
 
@@ -667,6 +669,7 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 			FromType:      fromRes.Type,
 			FromNamespace: options.fromNamespace,
 			TCPStats:      true,
+			LabelSelector: options.labelSelector,
 		}
 
 		req, err := util.BuildStatSummaryRequest(requestParams)

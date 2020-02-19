@@ -3,10 +3,13 @@ package watcher
 import (
 	"testing"
 
+	"k8s.io/client-go/tools/cache"
+
 	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type bufferingTrafficSplitListener struct {
@@ -23,16 +26,25 @@ func (btsl *bufferingTrafficSplitListener) UpdateTrafficSplit(split *ts.TrafficS
 	btsl.splits = append(btsl.splits, split)
 }
 
-func TestTrafficSplitWatcher(t *testing.T) {
-	for _, tt := range []struct {
-		name           string
-		k8sConfigs     []string
-		service        ServiceID
-		expectedSplits []*ts.TrafficSplitSpec
-	}{
-		{
-			name: "traffic split",
-			k8sConfigs: []string{`
+type deletingTrafficSplitListener struct {
+	NumDeletes int
+}
+
+func newDeletingTrafficSplitListener() *deletingTrafficSplitListener {
+	return &deletingTrafficSplitListener{
+		NumDeletes: 0,
+	}
+}
+
+func (dpl *deletingTrafficSplitListener) UpdateTrafficSplit(ts *ts.TrafficSplit) {
+	if ts == nil {
+		dpl.NumDeletes = dpl.NumDeletes + 1
+
+	}
+}
+
+var (
+	testTrafficSplitResource = `
 apiVersion: split.smi-spec.io/v1alpha1
 kind: TrafficSplit
 metadata:
@@ -44,27 +56,44 @@ spec:
   - service: foo-v1
     weight: 500m
   - service: foo-v2
-    weight: 500m`,
+    weight: 500m`
+
+	testTrafficSplit = ts.TrafficSplit{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "split",
+			Namespace: "ns",
+		},
+		Spec: ts.TrafficSplitSpec{
+			Service: "foo",
+			Backends: []ts.TrafficSplitBackend{
+				{
+					Service: "foo-v1",
+					Weight:  resource.MustParse("500m"),
+				},
+				{
+					Service: "foo-v2",
+					Weight:  resource.MustParse("500m"),
+				},
 			},
+		},
+	}
+)
+
+func TestTrafficSplitWatcher(t *testing.T) {
+	for _, tt := range []struct {
+		name           string
+		k8sConfigs     []string
+		service        ServiceID
+		expectedSplits []*ts.TrafficSplitSpec
+	}{
+		{
+			name:       "traffic split",
+			k8sConfigs: []string{testTrafficSplitResource},
 			service: ServiceID{
 				Name:      "foo",
 				Namespace: "ns",
 			},
-			expectedSplits: []*ts.TrafficSplitSpec{
-				{
-					Service: "foo",
-					Backends: []ts.TrafficSplitBackend{
-						{
-							Service: "foo-v1",
-							Weight:  resource.MustParse("500m"),
-						},
-						{
-							Service: "foo-v2",
-							Weight:  resource.MustParse("500m"),
-						},
-					},
-				},
-			},
+			expectedSplits: []*ts.TrafficSplitSpec{&testTrafficSplit.Spec},
 		},
 		{
 			name:       "no traffic split",
@@ -104,6 +133,55 @@ spec:
 			}
 
 			testCompare(t, tt.expectedSplits, actual)
+		})
+	}
+}
+
+func TestTrafficSplitWatcherDelete(t *testing.T) {
+	for _, tt := range []struct {
+		name           string
+		k8sConfigs     []string
+		service        ServiceID
+		objectToDelete interface{}
+	}{
+		{
+			name:       "can delete a traffic splits",
+			k8sConfigs: []string{testTrafficSplitResource},
+			service: ServiceID{
+				Name:      "foo",
+				Namespace: "ns",
+			},
+			objectToDelete: &testTrafficSplit,
+		},
+		{
+			name:       "can delete a traffic splits wrapped in a DeletedFinalStateUnknown",
+			k8sConfigs: []string{testTrafficSplitResource},
+			service: ServiceID{
+				Name:      "foo",
+				Namespace: "ns",
+			},
+			objectToDelete: cache.DeletedFinalStateUnknown{Obj: &testTrafficSplit},
+		},
+	} {
+		tt := tt // pin
+		t.Run(tt.name, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			watcher := NewTrafficSplitWatcher(k8sAPI, logging.WithField("test", t.Name()))
+
+			k8sAPI.Sync()
+
+			listener := newDeletingTrafficSplitListener()
+
+			watcher.Subscribe(tt.service, listener)
+
+			watcher.deleteTrafficSplit(tt.objectToDelete)
+			if listener.NumDeletes != 1 {
+				t.Fatalf("Expected to get 1 deletes but got %v", listener.NumDeletes)
+			}
 		})
 	}
 }

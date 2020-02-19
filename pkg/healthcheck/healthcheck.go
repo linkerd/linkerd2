@@ -343,7 +343,7 @@ type HealthChecker struct {
 	linkerdConfig    *configPb.All
 	uuid             string
 	issuerCert       *tls.Cred
-	roots            []*x509.Certificate
+	trustAnchors     []*x509.Certificate
 	cniDaemonSet     *appsv1.DaemonSet
 }
 
@@ -879,58 +879,58 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-identity-cert-config-valid",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.issuerCert, hc.roots, err = hc.checkCertificatesConfig()
+						hc.issuerCert, hc.trustAnchors, err = hc.checkCertificatesConfig()
 						return
 					},
 				},
 				{
-					description: "trust roots are using supported crypto algorithm",
-					hintAnchor:  "l5d-identity-roots-use-supported-crypto",
+					description: "trust anchors are using supported crypto algorithm",
+					hintAnchor:  "l5d-identity-trustAnchors-use-supported-crypto",
 					fatal:       true,
 					check: func(context.Context) error {
-						var invalidRoots []string
-						for _, root := range hc.roots {
-							if err := issuercerts.CheckCertAlgoRequirements(root); err != nil {
-								invalidRoots = append(invalidRoots, fmt.Sprintf("* %v %s %s", root.SerialNumber, root.Subject.CommonName, err))
+						var invalidAnchors []string
+						for _, anchor := range hc.trustAnchors {
+							if err := issuercerts.CheckCertAlgoRequirements(anchor); err != nil {
+								invalidAnchors = append(invalidAnchors, fmt.Sprintf("* %v %s %s", anchor.SerialNumber, anchor.Subject.CommonName, err))
 							}
 						}
-						if len(invalidRoots) > 0 {
-							return fmt.Errorf("Invalid roots:\n\t%s", strings.Join(invalidRoots, "\n\t"))
+						if len(invalidAnchors) > 0 {
+							return fmt.Errorf("Invalid trustAnchors:\n\t%s", strings.Join(invalidAnchors, "\n\t"))
 						}
 						return nil
 					},
 				},
 				{
-					description: "trust roots are within their validity period",
-					hintAnchor:  "l5d-identity-roots-are-time-valid",
+					description: "trust anchors are within their validity period",
+					hintAnchor:  "l5d-identity-trustAnchors-are-time-valid",
 					fatal:       true,
 					check: func(ctx context.Context) error {
-						var expiredRoots []string
-						for _, root := range hc.roots {
-							if err := issuercerts.CheckCertValidityPeriod(root); err != nil {
-								expiredRoots = append(expiredRoots, fmt.Sprintf("* %v %s %s", root.SerialNumber, root.Subject.CommonName, err))
+						var expiredAnchors []string
+						for _, anchor := range hc.trustAnchors {
+							if err := issuercerts.CheckCertValidityPeriod(anchor); err != nil {
+								expiredAnchors = append(expiredAnchors, fmt.Sprintf("* %v %s %s", anchor.SerialNumber, anchor.Subject.CommonName, err))
 							}
 						}
-						if len(expiredRoots) > 0 {
-							return fmt.Errorf("Invalid roots:\n\t%s", strings.Join(expiredRoots, "\n\t"))
+						if len(expiredAnchors) > 0 {
+							return fmt.Errorf("Invalid anchors:\n\t%s", strings.Join(expiredAnchors, "\n\t"))
 						}
 
 						return nil
 					},
 				},
 				{
-					description: "trust roots are valid for at least 60 days",
-					hintAnchor:  "l5d-identity-roots-not-expiring-soon",
+					description: "trust anchors are valid for at least 60 days",
+					hintAnchor:  "l5d-identity-trustAnchors-not-expiring-soon",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						var expiringRoots []string
-						for _, root := range hc.roots {
-							if err := issuercerts.CheckExpiringSoon(root); err != nil {
-								expiringRoots = append(expiringRoots, fmt.Sprintf("* %v %s %s", root.SerialNumber, root.Subject.CommonName, err))
+						var expiringAnchors []string
+						for _, anchor := range hc.trustAnchors {
+							if err := issuercerts.CheckExpiringSoon(anchor); err != nil {
+								expiringAnchors = append(expiringAnchors, fmt.Sprintf("* %v %s %s", anchor.SerialNumber, anchor.Subject.CommonName, err))
 							}
 						}
-						if len(expiringRoots) > 0 {
-							return fmt.Errorf("Roots expiring soon:\n\t%s", strings.Join(expiringRoots, "\n\t"))
+						if len(expiringAnchors) > 0 {
+							return fmt.Errorf("Anchors expiring soon:\n\t%s", strings.Join(expiringAnchors, "\n\t"))
 						}
 						return nil
 					},
@@ -969,10 +969,10 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "issuer cert is issued by the trust root",
-					hintAnchor:  "l5d-identity-issuer-cert-issued-by-trust-root",
+					description: "issuer cert is issued by the trust anchor",
+					hintAnchor:  "l5d-identity-issuer-cert-issued-by-trust-anchor",
 					check: func(ctx context.Context) error {
-						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.roots), hc.issuerIdentity())
+						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.trustAnchors), hc.issuerIdentity(), time.Time{})
 					},
 				},
 			},
@@ -1400,7 +1400,7 @@ func (hc *HealthChecker) checkCertificatesConfig() (*tls.Cred, []*x509.Certifica
 		data, err = issuercerts.FetchIssuerData(hc.kubeAPI, idctx.TrustAnchorsPem, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(hc.kubeAPI, hc.ControlPlaneNamespace)
-		// ensure trust trustRoots in config matches whats in the secret
+		// ensure trust anchors in config matches whats in the secret
 		if data != nil && strings.TrimSpace(idctx.TrustAnchorsPem) != strings.TrimSpace(data.TrustAnchors) {
 			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
 			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
@@ -1416,12 +1416,12 @@ func (hc *HealthChecker) checkCertificatesConfig() (*tls.Cred, []*x509.Certifica
 		return nil, nil, err
 	}
 
-	roots, err := tls.DecodePEMCertificates(data.TrustAnchors)
+	anchors, err := tls.DecodePEMCertificates(data.TrustAnchors)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return issuerCreds, roots, nil
+	return issuerCreds, anchors, nil
 }
 
 // FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from
@@ -1617,7 +1617,7 @@ func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
 	return checkResources("PodSecurityPolicies", objects, []string{fmt.Sprintf("linkerd-%s-control-plane", hc.ControlPlaneNamespace)}, shouldExist)
 }
 
-// MeshedPodIdentityData contains meshed pod details + root anchors of the proxy
+// MeshedPodIdentityData contains meshed pod details + trust anchors of the proxy
 type MeshedPodIdentityData struct {
 	Name      string
 	Namespace string

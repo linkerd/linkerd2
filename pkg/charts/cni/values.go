@@ -16,7 +16,7 @@ const (
 // Values contains the top-level elements in the cni Helm chart
 type Values struct {
 	Namespace             string `json:"namespace"`
-	CNIResourceAnnotation string `json:"cniResourceAnnotation"`
+	CNIResourceLabel      string `json:"cniResourceLabel"`
 	InboundProxyPort      uint   `json:"inboundProxyPort"`
 	OutboundProxyPort     uint   `json:"outboundProxyPort"`
 	IgnoreInboundPorts    string `json:"ignoreInboundPorts"`
@@ -33,7 +33,6 @@ type Values struct {
 	UseWaitFlag           bool   `json:"useWaitFlag"`
 	ProxyInjectAnnotation string `json:"proxyInjectAnnotation"`
 	ProxyInjectDisabled   string `json:"proxyInjectDisabled"`
-	LinkerdNamespaceLabel string `json:"linkerdNamespaceLabel"`
 }
 
 // NewValues returns a new instance of the Values type.
@@ -58,7 +57,7 @@ func readDefaults(chartDir string) (*Values, error) {
 		return nil, err
 	}
 	values := Values{}
-	if err := yaml.Unmarshal(file.Data, &values); err != nil {
+	if err := yaml.Unmarshal(charts.InsertVersion(file.Data), &values); err != nil {
 		return nil, err
 	}
 	return &values, nil

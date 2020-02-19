@@ -1,12 +1,12 @@
 namespace: linkerd-cni
-cniResourceAnnotation: linkerd.io/cni-resource
+cniResourceLabel: linkerd.io/cni-resource
 inboundProxyPort: 4143
 outboundProxyPort: 4140
 ignoreInboundPorts: ""
 ignoreOutboundPorts: ""
 createdByAnnotation: linkerd.io/created-by
 cniPluginImage:   "gcr.io/linkerd-io/cni-plugin"
-cniPluginVersion: stable-2.7.0
+cniPluginVersion: {version}
 logLevel:         info
 portsToRedirect:  ""
 proxyUID:         2102
@@ -17,4 +17,3 @@ useWaitFlag:      false
 # namespace annotation and labels - do not edit
 proxyInjectAnnotation: linkerd.io/inject
 proxyInjectDisabled: disabled
-linkerdNamespaceLabel: linkerd.io/is-control-plane

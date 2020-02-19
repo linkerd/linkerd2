@@ -108,7 +108,20 @@ func (pw *ProfileWatcher) updateProfile(old interface{}, new interface{}) {
 }
 
 func (pw *ProfileWatcher) deleteProfile(obj interface{}) {
-	profile := obj.(*sp.ServiceProfile)
+	profile, ok := obj.(*sp.ServiceProfile)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			pw.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
+		}
+		profile, ok = tombstone.Obj.(*sp.ServiceProfile)
+		if !ok {
+			pw.log.Errorf("DeletedFinalStateUnknown contained object that is not a ServiceProfile %#v", obj)
+			return
+		}
+	}
+
 	id := ProfileID{
 		Namespace: profile.Namespace,
 		Name:      profile.Name,

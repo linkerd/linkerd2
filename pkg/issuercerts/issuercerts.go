@@ -18,7 +18,7 @@ import (
 const keyMissingError = "key %s containing the %s needs to exist in secret %s if --identity-external-issuer=%v"
 const expirationWarningThresholdInDays = 60
 
-// IssuerCertData holds the root cert data used by the CA
+// IssuerCertData holds the trust anchors cert data used by the CA
 type IssuerCertData struct {
 	TrustAnchors string
 	IssuerCrt    string
@@ -164,12 +164,12 @@ func (ic *IssuerCertData) VerifyAndBuildCreds(dnsName string) (*tls.Cred, error)
 		return nil, fmt.Errorf("issuer cert is not a CA")
 	}
 
-	roots, err := tls.DecodePEMCertPool(ic.TrustAnchors)
+	anchors, err := tls.DecodePEMCertPool(ic.TrustAnchors)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := creds.Verify(roots, dnsName); err != nil {
+	if err := creds.Verify(anchors, dnsName, time.Time{}); err != nil {
 		return nil, err
 	}
 

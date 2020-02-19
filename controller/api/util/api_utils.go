@@ -79,6 +79,7 @@ type StatsSummaryRequestParams struct {
 	FromName      string
 	SkipStats     bool
 	TCPStats      bool
+	LabelSelector string
 }
 
 // EdgesRequestParams contains parameters that are used to build
@@ -185,6 +186,7 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 				Name:      p.ResourceName,
 				Type:      resourceType,
 			},
+			LabelSelector: p.LabelSelector,
 		},
 		TimeWindow: window,
 		SkipStats:  p.SkipStats,

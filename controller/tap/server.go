@@ -7,6 +7,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	httpPb "github.com/linkerd/linkerd2-proxy-api/go/http_types"
 	proxy "github.com/linkerd/linkerd2-proxy-api/go/tap"
 	apiUtil "github.com/linkerd/linkerd2/controller/api/util"
@@ -64,7 +66,7 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 		req.MaxRps = defaultMaxRps
 	}
 
-	objects, err := s.k8sAPI.GetObjects(res.GetNamespace(), res.GetType(), res.GetName())
+	objects, err := s.k8sAPI.GetObjects(res.GetNamespace(), res.GetType(), res.GetName(), labels.Everything())
 	if err != nil {
 		return apiUtil.GRPCError(err)
 	}

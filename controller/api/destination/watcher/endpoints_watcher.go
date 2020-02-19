@@ -194,7 +194,20 @@ func (ew *EndpointsWatcher) addService(obj interface{}) {
 }
 
 func (ew *EndpointsWatcher) deleteService(obj interface{}) {
-	service := obj.(*corev1.Service)
+	service, ok := obj.(*corev1.Service)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			ew.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
+		}
+		service, ok = tombstone.Obj.(*corev1.Service)
+		if !ok {
+			ew.log.Errorf("DeletedFinalStateUnknown contained object that is not a Service %#v", obj)
+			return
+		}
+	}
+
 	if service.Namespace == kubeSystem {
 		return
 	}
@@ -225,7 +238,20 @@ func (ew *EndpointsWatcher) addEndpoints(obj interface{}) {
 }
 
 func (ew *EndpointsWatcher) deleteEndpoints(obj interface{}) {
-	endpoints := obj.(*corev1.Endpoints)
+	endpoints, ok := obj.(*corev1.Endpoints)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			ew.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+			return
+		}
+		endpoints, ok = tombstone.Obj.(*corev1.Endpoints)
+		if !ok {
+			ew.log.Errorf("DeletedFinalStateUnknown contained object that is not an Endpoints %#v", obj)
+			return
+		}
+	}
+
 	if endpoints.Namespace == kubeSystem {
 		return
 	}
