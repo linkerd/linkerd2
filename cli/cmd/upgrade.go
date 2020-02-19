@@ -193,17 +193,13 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	}
 
 	if options.identityOptions.trustPEMFile != "" {
-		fmt.Fprintf(os.Stderr, "\n%s %s\n", warnStatus, trustRootChangeMessage)
+		fmt.Fprintf(os.Stderr, "\n%s %s\n\n", warnStatus, trustRootChangeMessage)
 	}
 
 	if stage == configStage {
-		fmt.Fprintf(os.Stderr, "%s\n", controlPlaneMessage)
+		fmt.Fprintf(os.Stderr, "%s\n\n", controlPlaneMessage)
 	}
 
-	// check if buffer is not empty
-	if buf.Len() != 0 {
-		fmt.Fprintf(os.Stderr, "\n")
-	}
 	buf.WriteTo(os.Stdout)
 
 	return nil
