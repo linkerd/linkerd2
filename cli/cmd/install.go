@@ -21,7 +21,6 @@ import (
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
-	"github.com/pothulapati/mergo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -560,24 +559,69 @@ func (options *installOptions) installPersistentFlagSet() *pflag.FlagSet {
 func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Values) error {
 
 	if options.config != "" {
-		addOnConfig, err := ioutil.ReadFile(options.config)
+		addOnValues, err := ioutil.ReadFile(options.config)
 		if err != nil {
 			return err
 		}
 
-		var addOnValues *l5dcharts.Values
-		if err = yaml.Unmarshal(addOnConfig, &addOnValues); err != nil {
+		rawValues, err := yaml.Marshal(values)
+		if err != nil {
+			return err
+		}
+		// Merge Add-On Values with Values
+		finalValues, err := mergeRaw(rawValues, addOnValues)
+		if err != nil {
 			return err
 		}
 
-		// Merge Add-On Values with Values
-		if err = mergeAddonValues(values, addOnValues); err != nil {
-			return err
+		if err = yaml.Unmarshal(finalValues, values); err != nil {
+			return nil
 		}
+
 	}
 
 	return nil
 }
+
+func mergeRaw(a, b []byte) ([]byte, error) {
+	aMap := make(map[string]interface{})
+	bMap := make(map[string]interface{})
+
+	err := yaml.Unmarshal(a, &aMap)
+	if err != nil {
+		return nil, err
+	}
+
+	err = yaml.Unmarshal(b, &bMap)
+	if err != nil {
+		return nil, err
+	}
+
+	resultMap := mergeMaps(aMap, bMap)
+
+	return yaml.Marshal(resultMap)
+
+}
+
+func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(a))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		if v, ok := v.(map[string]interface{}); ok {
+			if bv, ok := out[k]; ok {
+				if bv, ok := bv.(map[string]interface{}); ok {
+					out[k] = mergeMaps(bv, v)
+					continue
+				}
+			}
+		}
+		out[k] = v
+	}
+	return out
+}
+
 func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
 	if flags == nil {
 		return
@@ -1197,15 +1241,4 @@ func checkAddon(values *l5dcharts.Values, name string) (addonvalues []byte, enab
 		}
 	}
 	return nil, false
-}
-
-func mergeAddonValues(values, addonValues *l5dcharts.Values) error {
-
-	if addonValues.Tracing != nil {
-		if err := mergo.Merge(addonValues.Tracing, values.Tracing); err != nil {
-			return err
-		}
-		values.Tracing = addonValues.Tracing
-	}
-	return nil
 }

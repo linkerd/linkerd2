@@ -346,15 +346,18 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	if cmRawValues != nil {
 		//Cm is present now get the data
 		cmData := cmRawValues["values"]
-		var cmValues charts.Values
-		err := yaml.Unmarshal([]byte(cmData), &cmValues)
+		rawValues, err := yaml.Marshal(values)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		// over-write add-on values with cmValues
 		// Merge Add-On Values with Values
-		if err = mergeAddonValues(values, &cmValues); err != nil {
+		if rawValues, err = mergeRaw(rawValues, []byte(cmData)); err != nil {
+			return nil, nil, err
+		}
+
+		if err = yaml.Unmarshal(rawValues, &values); err != nil {
 			return nil, nil, err
 		}
 	}
