@@ -30,7 +30,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 									},
 								},
 								VendorExtensible: spec.VendorExtensible{
-									Extensions: spec.Extensions{xLinkerdRetryable: true},
+									Extensions: spec.Extensions{xLinkerdRetryable: true, xLinkerdTimeout: "60s"},
 								},
 							},
 						},
@@ -66,6 +66,7 @@ func TestSwaggerToServiceProfile(t *testing.T) {
 						},
 					},
 					IsRetryable: true,
+					Timeout:     "60s",
 				},
 			},
 		},

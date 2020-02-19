@@ -17,6 +17,7 @@ import (
 
 const (
 	xLinkerdRetryable = "x-linkerd-retryable"
+	xLinkerdTimeout   = "x-linkerd-timeout"
 )
 
 var pathParamRegex = regexp.MustCompile(`\\{[^\}]*\\}`)
@@ -110,9 +111,11 @@ func swaggerToServiceProfile(swagger spec.Swagger, namespace, name, clusterDomai
 
 func mkRouteSpec(path, pathRegex string, method string, operation *spec.Operation) *sp.RouteSpec {
 	retryable := false
+	timeout := ""
 	var responses *spec.Responses
 	if operation != nil {
 		retryable, _ = operation.VendorExtensible.Extensions.GetBool(xLinkerdRetryable)
+		timeout, _ = operation.VendorExtensible.Extensions.GetString(xLinkerdTimeout)
 		responses = operation.Responses
 	}
 	return &sp.RouteSpec{
@@ -120,6 +123,7 @@ func mkRouteSpec(path, pathRegex string, method string, operation *spec.Operatio
 		Condition:       toReqMatch(pathRegex, method),
 		ResponseClasses: toRspClasses(responses),
 		IsRetryable:     retryable,
+		Timeout:         timeout,
 	}
 }
 
