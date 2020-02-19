@@ -72,7 +72,7 @@ global:
 
   # control plane labels - do not edit
   controllerComponentLabel: linkerd.io/control-plane-component
-  controllerNamespaceLabel: linkerd.io/control-plane-ns=linkerd
+  controllerNamespaceLabel: linkerd.io/control-plane-ns
   linkerdNamespaceLabel: linkerd.io/is-control-plane
 
 
