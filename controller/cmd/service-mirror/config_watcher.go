@@ -9,6 +9,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 // RemoteClusterConfigWatcher watches for secrets of type MirrorSecretType
@@ -33,11 +35,11 @@ func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int) *RemoteClu
 			FilterFunc: func(obj interface{}) bool {
 				switch object := obj.(type) {
 				case *corev1.Secret:
-					return object.Type == MirrorSecretType
+					return object.Type == consts.MirrorSecretType
 
 				case cache.DeletedFinalStateUnknown:
 					if secret, ok := object.Obj.(*corev1.Secret); ok {
-						return secret.Type == MirrorSecretType
+						return secret.Type == consts.MirrorSecretType
 					}
 					return false
 				default:
@@ -123,13 +125,13 @@ func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(obj interface{}) 
 }
 
 func parseRemoteClusterSecret(secret *corev1.Secret) ([]byte, string, error) {
-	clusterName, hasClusterName := secret.Annotations[RemoteClusterNameLabel]
-	config, hasConfig := secret.Data[ConfigKeyName]
+	clusterName, hasClusterName := secret.Annotations[consts.RemoteClusterNameLabel]
+	config, hasConfig := secret.Data[consts.ConfigKeyName]
 	if !hasClusterName {
-		return nil, "", fmt.Errorf("secret of type %s should contain key %s", MirrorSecretType, ConfigKeyName)
+		return nil, "", fmt.Errorf("secret of type %s should contain key %s", consts.MirrorSecretType, consts.ConfigKeyName)
 	}
 	if !hasConfig {
-		return nil, "", fmt.Errorf("secret should contain remote cluster name as annotation %s", RemoteClusterNameLabel)
+		return nil, "", fmt.Errorf("secret should contain remote cluster name as annotation %s", consts.RemoteClusterNameLabel)
 	}
 	return config, clusterName, nil
 }

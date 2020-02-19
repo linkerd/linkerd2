@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -178,11 +179,11 @@ func (rcsw *RemoteClusterServiceWatcher) originalResourceName(mirroredName strin
 
 func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels(service *corev1.Service, gatewayData *gatewayMetadata) map[string]string {
 	return map[string]string{
-		MirroredResourceLabel:      "true",
-		RemoteClusterNameLabel:     rcsw.clusterName,
-		RemoteResourceVersionLabel: service.ResourceVersion, // needed to detect real changes
-		RemoteGatewayNameLabel:     gatewayData.Name,
-		RemoteGatewayNsLabel:       gatewayData.Namespace,
+		consts.MirroredResourceLabel:      "true",
+		consts.RemoteClusterNameLabel:     rcsw.clusterName,
+		consts.RemoteResourceVersionLabel: service.ResourceVersion, // needed to detect real changes
+		consts.RemoteGatewayNameLabel:     gatewayData.Name,
+		consts.RemoteGatewayNsLabel:       gatewayData.Namespace,
 	}
 }
 
@@ -194,8 +195,8 @@ func (rcsw *RemoteClusterServiceWatcher) mirrorNamespaceIfNecessary(namespace st
 		ns := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					MirroredResourceLabel:  "true",
-					RemoteClusterNameLabel: rcsw.clusterName,
+					consts.MirroredResourceLabel:  "true",
+					consts.RemoteClusterNameLabel: rcsw.clusterName,
 				},
 				Name: namespace,
 			},
@@ -226,8 +227,8 @@ func (rcsw *RemoteClusterServiceWatcher) getEndpointsPorts(service *corev1.Servi
 
 func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 	matchLabels := map[string]string{
-		MirroredResourceLabel:  "true",
-		RemoteClusterNameLabel: rcsw.clusterName,
+		consts.MirroredResourceLabel:  "true",
+		consts.RemoteClusterNameLabel: rcsw.clusterName,
 	}
 
 	servicesOnLocalCluster, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
@@ -254,8 +255,8 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 // services, endpoints and namespaces (if needed)
 func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 	matchLabels := map[string]string{
-		MirroredResourceLabel:  "true",
-		RemoteClusterNameLabel: rcsw.clusterName,
+		consts.MirroredResourceLabel:  "true",
+		consts.RemoteClusterNameLabel: rcsw.clusterName,
 	}
 
 	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
@@ -333,7 +334,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 	}
 
 	ev.localService.Labels = rcsw.getMirroredServiceLabels(ev.remoteUpdate, ev.gatewayData)
-	ev.localService.Labels[RemoteGatewayResourceVersionLabel] = resVersion
+	ev.localService.Labels[consts.RemoteGatewayResourceVersionLabel] = resVersion
 	ev.localService.Spec.Ports = ev.remoteUpdate.Spec.Ports
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.localService.Namespace).Update(ev.localService); err != nil {
@@ -368,10 +369,10 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 			Name:      localServiceName,
 			Namespace: ev.service.Namespace,
 			Labels: map[string]string{
-				MirroredResourceLabel:  "true",
-				RemoteClusterNameLabel: rcsw.clusterName,
-				RemoteGatewayNameLabel: ev.gatewayData.Name,
-				RemoteGatewayNsLabel:   ev.gatewayData.Namespace,
+				consts.MirroredResourceLabel:  "true",
+				consts.RemoteClusterNameLabel: rcsw.clusterName,
+				consts.RemoteGatewayNameLabel: ev.gatewayData.Name,
+				consts.RemoteGatewayNsLabel:   ev.gatewayData.Namespace,
 			},
 		},
 	}
@@ -388,7 +389,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 			},
 		}
 
-		serviceToCreate.Labels[RemoteGatewayResourceVersionLabel] = resVersion
+		serviceToCreate.Labels[consts.RemoteGatewayResourceVersionLabel] = resVersion
 
 	} else {
 		rcsw.log.Warnf("Could not resolve gateway for %s: %s", serviceInfo, err)
@@ -432,7 +433,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayUpdated(ev *RemoteGa
 	for _, svc := range ev.affectedServices {
 		updatedService := svc.DeepCopy()
 		if updatedService.Labels != nil {
-			updatedService.Labels[RemoteGatewayResourceVersionLabel] = ev.newResourceVersion
+			updatedService.Labels[consts.RemoteGatewayResourceVersionLabel] = ev.newResourceVersion
 		}
 		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
 		if err != nil {
@@ -464,8 +465,8 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayUpdated(ev *RemoteGa
 // The values of these annotations help us resolve the gateway to which
 // traffic should be sent.
 func getGatewayMetadata(annotations map[string]string) *gatewayMetadata {
-	remoteGatewayName, hasGtwName := annotations[GatewayNameAnnotation]
-	remoteGatewayNs, hasGtwNs := annotations[GatewayNsAnnotation]
+	remoteGatewayName, hasGtwName := annotations[consts.GatewayNameAnnotation]
+	remoteGatewayNs, hasGtwNs := annotations[consts.GatewayNsAnnotation]
 	if hasGtwName && hasGtwNs {
 		return &gatewayMetadata{
 			Name:      remoteGatewayName,
@@ -531,7 +532,7 @@ func (rcsw *RemoteClusterServiceWatcher) onUpdate(old, new interface{}) {
 			localName := rcsw.mirroredResourceName(newService.Name)
 			localService, err := rcsw.localAPIClient.Svc().Lister().Services(newService.Namespace).Get(localName)
 			if err == nil && localService != nil {
-				lastMirroredRemoteVersion, ok := localService.Labels[RemoteResourceVersionLabel]
+				lastMirroredRemoteVersion, ok := localService.Labels[consts.RemoteResourceVersionLabel]
 				if ok && lastMirroredRemoteVersion != newService.ResourceVersion {
 					endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(newService.Namespace).Get(localName)
 					if err == nil {
@@ -564,7 +565,7 @@ func (rcsw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 				newResourceVersion: service.ResourceVersion,
 			})
 		} else {
-			lastMirroredRemoteVersion, ok := localService.Labels[RemoteResourceVersionLabel]
+			lastMirroredRemoteVersion, ok := localService.Labels[consts.RemoteResourceVersionLabel]
 			if ok && lastMirroredRemoteVersion != service.ResourceVersion {
 				// Why might we see an ADD for a service we already have? Well, if our
 				// controller has been restarted it will get ADDs for all services that
@@ -598,7 +599,7 @@ func (rcsw *RemoteClusterServiceWatcher) affectedMirroredServicesForGatewayUpdat
 	affectedServices := []*corev1.Service{}
 
 	for _, srv := range services {
-		ver, ok := srv.Labels[RemoteGatewayResourceVersionLabel]
+		ver, ok := srv.Labels[consts.RemoteGatewayResourceVersionLabel]
 		if ok && ver != latestResourceVersion {
 			affectedServices = append(affectedServices, srv)
 		}
@@ -608,9 +609,9 @@ func (rcsw *RemoteClusterServiceWatcher) affectedMirroredServicesForGatewayUpdat
 
 func (rcsw *RemoteClusterServiceWatcher) mirroredServicesForGateway(gatewayData *gatewayMetadata) ([]*corev1.Service, error) {
 	matchLabels := map[string]string{
-		MirroredResourceLabel:  "true",
-		RemoteGatewayNameLabel: gatewayData.Name,
-		RemoteGatewayNsLabel:   gatewayData.Namespace,
+		consts.MirroredResourceLabel:  "true",
+		consts.RemoteGatewayNameLabel: gatewayData.Name,
+		consts.RemoteGatewayNsLabel:   gatewayData.Namespace,
 	}
 
 	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
@@ -622,9 +623,9 @@ func (rcsw *RemoteClusterServiceWatcher) mirroredServicesForGateway(gatewayData 
 
 func (rcsw *RemoteClusterServiceWatcher) endpointsForGateway(gatewayData *gatewayMetadata) ([]*corev1.Endpoints, error) {
 	matchLabels := map[string]string{
-		MirroredResourceLabel:  "true",
-		RemoteGatewayNameLabel: gatewayData.Name,
-		RemoteGatewayNsLabel:   gatewayData.Namespace,
+		consts.MirroredResourceLabel:  "true",
+		consts.RemoteGatewayNameLabel: gatewayData.Name,
+		consts.RemoteGatewayNsLabel:   gatewayData.Namespace,
 	}
 
 	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
