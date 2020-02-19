@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -783,8 +784,6 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		}
 	}
 
-	addons := checkAddons(values)
-
 	chart := &charts.Chart{
 		Name:      helmDefaultChartName,
 		Dir:       helmDefaultChartDir,
@@ -797,42 +796,44 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		return err
 	}
 
-	// Render for each add-on separately and attach
-	// Pass only global values to add-ons
-	for _, addon := range addons {
-
-		addonValues, err := yaml.Marshal(addon.GetValues())
-		if err != nil {
-			return err
-		}
-
-		files := []*chartutil.BufferedFile{
-			{Name: chartutil.ChartfileName},
-		}
-
-		if values.Stage == "" || values.Stage == configStage {
-			files = append(files, addon.GetConfigFiles()...)
-		}
-
-		if values.Stage == "" || values.Stage == controlPlaneStage {
-			files = append(files, addon.GetControlPlaneFiles()...)
-		}
-
-		subchart := &charts.Chart{
-			Name:      addon.GetChartName(),
-			Dir:       l5dcharts.AddOnChartsPath + addon.GetChartName(),
-			Namespace: controlPlaneNamespace,
-			RawValues: append(rawValues, addonValues...),
-			Files:     files,
-		}
-		addonBuf, err := subchart.Render()
-		if err != nil {
-			return err
-		}
-
-		buf.Write(addonBuf.Bytes())
+	linkerd2Chart, err := chartutil.Load("charts/" + helmDefaultChartDir)
+	if err != nil {
+		return err
 	}
 
+	// Render for each add-on separately and attach
+	for _, dep := range linkerd2Chart.Dependencies {
+		if dep.GetMetadata().Name != "partials" {
+
+			addonValues, enabled := checkAddon(values, dep.GetMetadata().Name)
+
+			if enabled {
+				files := []*chartutil.BufferedFile{
+					{Name: chartutil.ChartfileName},
+				}
+
+				// Get files from dep
+				for _, file := range dep.GetTemplates() {
+					files = append(files, &chartutil.BufferedFile{Name: file.GetName()})
+				}
+
+				subchart := &charts.Chart{
+					Name:      dep.GetMetadata().Name,
+					Dir:       l5dcharts.AddOnChartsPath + dep.GetMetadata().Name,
+					Namespace: controlPlaneNamespace,
+					RawValues: append(rawValues, addonValues...),
+					Files:     files,
+				}
+				addonBuf, err := subchart.Render()
+				if err != nil {
+					return err
+				}
+
+				buf.Write(addonBuf.Bytes())
+			}
+
+		}
+	}
 	_, err = w.Write(buf.Bytes())
 	return err
 }
@@ -1182,16 +1183,20 @@ func toIdentityContext(idvals *identityWithAnchorsAndTrustDomain) *pb.IdentityCo
 		Scheme:             idvals.Identity.Issuer.Scheme,
 	}
 }
-func checkAddons(values *l5dcharts.Values) []l5dcharts.AddOn {
-	var addons []l5dcharts.AddOn
+func checkAddon(values *l5dcharts.Values, name string) (addonvalues []byte, enabled bool) {
 
-	if values.Tracing != nil {
-		if values.Tracing.Enabled {
-			addons = append(addons, values.Tracing)
+	r := reflect.ValueOf(values)
+
+	if !reflect.Indirect(r).FieldByName(strings.Title(name)).IsNil() {
+		if reflect.Indirect(reflect.Indirect(r).FieldByName(strings.Title(name))).FieldByName("Enabled").Bool() {
+			values, err := yaml.Marshal(values.Tracing)
+			if err != nil {
+				return nil, false
+			}
+			return values, true
 		}
 	}
-
-	return addons
+	return nil, false
 }
 
 func mergeAddonValues(values, addonValues *l5dcharts.Values) error {

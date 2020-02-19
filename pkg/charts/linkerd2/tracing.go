@@ -1,9 +1,5 @@
 package linkerd2
 
-import (
-	"k8s.io/helm/pkg/chartutil"
-)
-
 type (
 
 	// Tracing consists of the add-on configuration of the distributed tracing components sub-chart.
@@ -27,34 +23,3 @@ type (
 		Resources *Resources `json:"resources"`
 	}
 )
-
-var (
-	tracingChartName   = "tracing"
-	tracingConfigStage = []string{
-		"templates/tracing-rbac.yaml",
-	}
-
-	tracingControlPlaneStage = []string{
-		"templates/tracing.yaml",
-	}
-)
-
-// GetChartName returns the name of the add-on sub-chart
-func (*Tracing) GetChartName() string {
-	return tracingChartName
-}
-
-// GetConfigFiles returns the config state templates files that are part of the add-on sub-chart
-func (*Tracing) GetConfigFiles() []*chartutil.BufferedFile {
-	return defaultGetFiles(tracingConfigStage)
-}
-
-// GetControlPlaneFiles returns the control-plane stage templates files that are part of the add-on sub-chart
-func (*Tracing) GetControlPlaneFiles() []*chartutil.BufferedFile {
-	return defaultGetFiles(tracingControlPlaneStage)
-}
-
-// GetValues returns the values struct which will be used to render the add-on sub-chart.
-func (t *Tracing) GetValues() interface{} {
-	return t
-}
