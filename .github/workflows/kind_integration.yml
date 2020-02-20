@@ -2,6 +2,9 @@ name: KinD integration
 on:
   pull_request: {}
   push:
+    paths-ignore:
+    - '*.md'
+    - '**/*.md'
     branches:
     - master
     tags:
