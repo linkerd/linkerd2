@@ -177,14 +177,7 @@ func (pf *PortForward) Init() error {
 	go func() {
 		if err := pf.run(); err != nil {
 			failure <- err
-		}
-
-		select {
-		case <-pf.GetStop():
-			// stopCh was closed, do nothing
-		default:
-			// pf.run() returned for some other reason, close stopCh
-			pf.Stop()
+			return
 		}
 	}()
 
@@ -203,6 +196,7 @@ func (pf *PortForward) Init() error {
 }
 
 // Stop terminates the port-forward connection.
+// It is the caller's responsibility to call Stop even in case of errors
 func (pf *PortForward) Stop() {
 	close(pf.stopCh)
 }
