@@ -824,6 +824,9 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		Files:     files,
 	}
 	buf, err := chart.Render()
+	if err != nil {
+		return err
+	}
 
 	// load the raw chart from the filesystem to determine its dependent addons
 	// in the requirements.yaml
