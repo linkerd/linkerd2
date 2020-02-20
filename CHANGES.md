@@ -3,7 +3,10 @@
 This release includes the results from continued profiling & performance
 analysis on the Linkerd proxy. In addition to modifying internals to prevent
 unwarranted memory growth, new metrics were introduced to aid in debugging and
-diagnostics. Also, Linkerd's CNI plugin is out of experimental!
+diagnostics.
+
+Also, Linkerd's CNI plugin is out of experimental, check out the docs at
+https://linkerd.io/2/features/cni/ !
 
 * CLI
   * Added support for label selectors in the `linkerd stat` command (thanks
@@ -31,9 +34,9 @@ diagnostics. Also, Linkerd's CNI plugin is out of experimental!
     receive synthesized responses due to proxy errors
 
 * Helm
-  * Added a new `enforcedHostRegexp` value to allow configuring the linkerd-web
-    component enforced host (that was previously introduced to protect against
-    DNS rebinding attacks) (thanks @sannimichaelse!)
+  * Added a new `enforcedHostRegexp` variable to allow configuring the
+    linkerd-web component enforced host (that was previously introduced to
+    protect against DNS rebinding attacks) (thanks @sannimichaelse!)
 
 * Internal
   * Removed various es-lint warnings from the dashboard code (thanks
