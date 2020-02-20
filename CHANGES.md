@@ -1,3 +1,43 @@
+## edge-20.2.2
+
+This release includes the results from continued profiling & performance
+analysis on the Linkerd proxy. In addition to modifying internals to prevent
+unwarranted memory growth, new metrics were introduced to aid in debugging and
+diagnostics. Also, Linkerd's CNI plugin is out of experimental!
+
+* CLI
+  * Added support for label selectors in the `linkerd stat` command (thanks
+    @mayankshah1607!)
+  * Added scrolling functionality to the `linkerd top` output (thanks
+    @kohsheen1234!)
+  * Fixed bug in `linkerd metrics` that was causing a panic when port-forwarding
+    failed (thanks @mayankshah1607!)
+  * Added check to `linkerd check` verifying the number of replicas for Linkerd
+    components in HA (thanks @mayankshah1607!)
+  * Unified trust anchors terminology across the CLI commands
+
+* Controller
+  * Added support for configuring service profile retries
+    `(x-linkerd-retryable)` via OpenAPI spec (thanks @kohsheen1234!)
+  * Improved traffic split metrics so sources in all namespaces are shown, not
+    just traffic from the traffic split's own namespace
+  * Improved linkerd-identity's logs and events to help diagnosing certificate
+    validation issues (thanks @mayankshah1607!)
+
+* Proxy
+  * Added `request_errors_total` metric exposing the number of requests that
+    receive synthesized responses due to proxy errors
+
+* Helm
+  * Added a new `enforcedHostRegexp` value to allow configuring the linkerd-web
+    component enforced host (that was previously introduced to protect against
+    DNS rebinding attacks) (thanks @sannimichaelse!)
+
+* Internal
+  * Removed various es-lint warnings from the dashboard code (thanks
+    @christyjacob4 and @kohsheen1234!)
+  * Fixed go module file syntax (thanks @daxmc99!)
+
 ## stable-2.7.0
 
 This release adds support for integrating Linkerd's PKI with an external
