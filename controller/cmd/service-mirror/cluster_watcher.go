@@ -343,6 +343,21 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 	return nil
 }
 
+func remapRemoteServicePorts(ports []corev1.ServicePort) []corev1.ServicePort {
+	// We ignore the NodePort here as its not relevant
+	// to the local cluster
+	var newPorts []corev1.ServicePort
+	for _, port := range ports {
+		newPorts = append(newPorts, corev1.ServicePort{
+			Name:       port.Name,
+			Protocol:   port.Protocol,
+			Port:       port.Port,
+			TargetPort: port.TargetPort,
+		})
+	}
+	return newPorts
+}
+
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteServiceCreated) error {
 	remoteService := ev.service.DeepCopy()
 	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
@@ -360,7 +375,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 			Labels:      rcsw.getMirroredServiceLabels(remoteService, ev.gatewayData),
 		},
 		Spec: corev1.ServiceSpec{
-			Ports: remoteService.Spec.Ports,
+			Ports: remapRemoteServicePorts(remoteService.Spec.Ports),
 		},
 	}
 
