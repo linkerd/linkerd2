@@ -115,7 +115,7 @@ jobs:
     - name: Configure gsutils
       uses: linkerd/linkerd2-action-gcloud@v1.0.1
       with:
-        cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
+        cloud_sdk_service_account_key: ${{ secrets.LINKERD_SITE_TOKEN }}
         gcp_project: ${{ secrets.LINKERD_SITE_PROJECT }}
         gcp_zone: ${{ secrets.LINKERD_SITE_ZONE }}
     - name: Edge Helm chart creation and upload
