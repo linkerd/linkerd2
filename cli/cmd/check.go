@@ -29,6 +29,7 @@ type checkOptions struct {
 	cliVersionOverride string
 }
 
+// Test comment
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
 		versionOverride:    "",
