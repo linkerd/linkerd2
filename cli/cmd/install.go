@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -82,6 +83,10 @@ type (
 )
 
 const (
+
+	// addOnChartsPath is where the linkerd2 add-ons will be present
+	addOnChartsPath = "add-ons/"
+
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
 
@@ -146,6 +151,9 @@ var (
 		"templates/tap.yaml",
 		"templates/linkerd-values.yaml",
 	}
+
+	// overridden during unit test
+	rawChartRootDir = "charts"
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -816,17 +824,16 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		Files:     files,
 	}
 	buf, err := chart.Render()
-	if err != nil {
-		return err
-	}
 
-	linkerd2Chart, err := chartutil.Load("charts/" + helmDefaultChartDir)
+	// load the raw chart from the filesystem to determine its dependent addons
+	// in the requirements.yaml
+	rawChart, err := chartutil.Load(filepath.Join(rawChartRootDir, helmDefaultChartDir))
 	if err != nil {
 		return err
 	}
 
 	// Render for each add-on separately and attach
-	for _, dep := range linkerd2Chart.Dependencies {
+	for _, dep := range rawChart.Dependencies {
 		if dep.GetMetadata().Name != "partials" {
 
 			addonValues, enabled := checkAddon(values, dep.GetMetadata().Name)
@@ -838,12 +845,13 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 
 				// Get files from dep
 				for _, file := range dep.GetTemplates() {
+					fmt.Println(file.GetName())
 					files = append(files, &chartutil.BufferedFile{Name: file.GetName()})
 				}
 
 				subchart := &charts.Chart{
 					Name:      dep.GetMetadata().Name,
-					Dir:       l5dcharts.AddOnChartsPath + dep.GetMetadata().Name,
+					Dir:       addOnChartsPath + dep.GetMetadata().Name,
 					Namespace: controlPlaneNamespace,
 					RawValues: append(rawValues, addonValues...),
 					Files:     files,
