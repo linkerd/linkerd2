@@ -85,7 +85,7 @@ type (
 const (
 
 	// addOnChartsPath is where the linkerd2 add-ons will be present
-	addOnChartsPath = "add-ons/"
+	addOnChartsPath = "add-ons"
 
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
@@ -828,43 +828,54 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		return err
 	}
 
-	// load the raw chart from the filesystem to determine its dependent addons
-	// in the requirements.yaml
+	// load the raw chart from the filesystem
 	rawChart, err := chartutil.Load(filepath.Join(rawChartRootDir, helmDefaultChartDir))
 	if err != nil {
 		return err
 	}
 
-	// Render for each add-on separately and attach
-	for _, dep := range rawChart.Dependencies {
-		if dep.GetMetadata().Name != "partials" {
+	// read the dependencies from requirements.yaml as dependencies are not present
+	// in charts directory
+	rawChartReq, err := chartutil.LoadRequirements(rawChart)
+	if err != nil {
+		return err
+	}
 
-			addonValues, enabled := checkAddon(values, dep.GetMetadata().Name)
+	// Render for each add-on separately and attach
+	for _, dep := range rawChartReq.Dependencies {
+
+		if dep.Name != "partials" {
+			addOnValues, enabled := checkAddon(values, dep.Name)
 
 			if enabled {
 				files := []*chartutil.BufferedFile{
 					{Name: chartutil.ChartfileName},
 				}
 
-				// Get files from dep
-				for _, file := range dep.GetTemplates() {
-					fmt.Println(file.GetName())
-					files = append(files, &chartutil.BufferedFile{Name: file.GetName()})
+				// Get files from the addOns directory for the dep
+				dirFiles, err := ioutil.ReadDir(filepath.Join(rawChartRootDir, addOnChartsPath, dep.Name, "templates"))
+				if err != nil {
+					log.Fatal(err)
 				}
 
-				subchart := &charts.Chart{
-					Name:      dep.GetMetadata().Name,
-					Dir:       addOnChartsPath + dep.GetMetadata().Name,
+				for _, file := range dirFiles {
+					files = append(files, &chartutil.BufferedFile{Name: filepath.Join("templates", file.Name())})
+				}
+
+				subChart := &charts.Chart{
+					Name:      dep.Name,
+					Dir:       filepath.Join(addOnChartsPath, dep.Name),
 					Namespace: controlPlaneNamespace,
-					RawValues: append(rawValues, addonValues...),
+					RawValues: append(rawValues, addOnValues...),
 					Files:     files,
 				}
-				addonBuf, err := subchart.Render()
+
+				addOnBuf, err := subChart.Render()
 				if err != nil {
 					return err
 				}
 
-				buf.Write(addonBuf.Bytes())
+				buf.Write(addOnBuf.Bytes())
 			}
 
 		}
