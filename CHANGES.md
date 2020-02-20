@@ -15,6 +15,8 @@ diagnostics. Also, Linkerd's CNI plugin is out of experimental!
   * Added check to `linkerd check` verifying the number of replicas for Linkerd
     components in HA (thanks @mayankshah1607!)
   * Unified trust anchors terminology across the CLI commands
+  * Removed some messages from `linkerd upgrade`'s output that are no longer
+    relevant (thanks @supra08!)
 
 * Controller
   * Added support for configuring service profile retries
