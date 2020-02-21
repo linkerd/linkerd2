@@ -46,7 +46,10 @@ func newCmdDiagnostics() *cobra.Command {
 
 			var buf bytes.Buffer
 			for i, result := range results {
-				content := fmt.Sprintf("#\n# POD %s (%d of %d)\n# CONTAINER %s \n#\n", result.pod, i+1, len(results), result.container)
+				content := fmt.Sprintf("#\n# POD %s (%d of %d)\n", result.pod, i+1, len(results))
+				if result.container != "" {
+					content += fmt.Sprintf("# CONTAINER %s \n#\n", result.container)
+				}
 				if result.err == nil {
 					content += string(result.metrics)
 				} else {
