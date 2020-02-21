@@ -39,12 +39,7 @@ func getResponse(url string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes, nil
+	return ioutil.ReadAll(resp.Body)
 }
 
 // getContainerMetrics returns the metrics exposed by a container on the passed in portName
@@ -63,15 +58,11 @@ func getContainerMetrics(
 	defer portForward.Stop()
 	if err = portForward.Init(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
-	}
-
-	metricsURL := portForward.URLFor("/metrics")
-	bytes, err := getResponse(metricsURL)
-	if err != nil {
 		return nil, err
 	}
 
-	return bytes, nil
+	metricsURL := portForward.URLFor("/metrics")
+	return getResponse(metricsURL)
 }
 
 // getAllContainersWithPort returns all the containers within
@@ -111,13 +102,17 @@ func getMetrics(
 	for _, pod := range pods {
 		containers, err := getAllContainersWithPort(pod, portName)
 		if err != nil {
-			fmt.Println(err)
+			resultChan <- metricsResult{
+				pod: pod.GetName(),
+				err: err,
+			}
 			continue
 		}
 
 		for i := range containers {
 			atomic.AddInt32(&activeRoutines, 1)
 			go func(p corev1.Pod, c corev1.Container) {
+				defer atomic.AddInt32(&activeRoutines, -1)
 				bytes, err := getContainerMetrics(k8sAPI, p, c, emitLogs, portName)
 
 				resultChan <- metricsResult{
@@ -127,7 +122,6 @@ func getMetrics(
 					err:       err,
 				}
 
-				atomic.AddInt32(&activeRoutines, -1)
 			}(pod, containers[i])
 		}
 	}
