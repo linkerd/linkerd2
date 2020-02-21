@@ -3094,7 +3094,7 @@ data:
         name: linkerd-collector
         resources:
           cpu:
-            limit: "1"
+            limit: 1
             request: 200m
           memory:
             limit: 2Gi

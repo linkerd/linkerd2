@@ -128,8 +128,8 @@ func TestRender(t *testing.T) {
 		Dashboard: &charts.Dashboard{
 			Replicas: 1,
 		},
-		Tracing: &charts.Tracing{
-			Enabled: false,
+		Tracing: map[string]interface{}{
+			"enabled": false,
 		},
 	}
 
@@ -222,7 +222,7 @@ func TestRender(t *testing.T) {
 	}
 
 	withTracingAddonValues, _, _ := withTracingAddon.validateAndBuild("", nil)
-	withTracingAddonValues.Tracing.Enabled = true
+	withTracingAddonValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withTracingAddonValues)
 
 	testCases := []struct {
