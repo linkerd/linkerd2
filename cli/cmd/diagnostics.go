@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
@@ -43,14 +44,17 @@ func newCmdDiagnostics() *cobra.Command {
 
 			results := getMetrics(k8sAPI, pods.Items, adminHTTPPortName, options.wait, verbose)
 
+			var buf bytes.Buffer
 			for i, result := range results {
-				fmt.Printf("#\n# POD %s (%d of %d)\n# CONTAINER %s \n#\n", result.pod, i+1, len(results), result.container)
+				content := fmt.Sprintf("#\n# POD %s (%d of %d)\n# CONTAINER %s \n#\n", result.pod, i+1, len(results), result.container)
 				if result.err == nil {
-					fmt.Printf("%s", result.metrics)
+					content += string(result.metrics)
 				} else {
-					fmt.Printf("# ERROR %s\n", result.err)
+					content += fmt.Sprintf("# ERROR %s\n", result.err)
 				}
+				buf.WriteString(content)
 			}
+			fmt.Printf("%s", buf.String())
 
 			return nil
 		},
