@@ -11,13 +11,14 @@ fi
 new_linkerd_version="$1"
 
 # Verify the tag format
-tag_format="^(edge|stable)-([0-9]+)\.([0-9]+)\.([0-9]+)$"
+tag_format="^(test|edge|stable)-([0-9]+)\.([0-9]+)\.([0-9]+)$"
 if [[ $new_linkerd_version =~ $tag_format ]]; then
     # todo: Use these values to verify the tag version increment.
-    _release_channel="${BASH_REMATCH[1]}"
-    _release_major="${BASH_REMATCH[2]}"
-    _release_minor="${BASH_REMATCH[3]}"
-    _release_patch="${BASH_REMATCH[4]}"
+    # release_channel="${BASH_REMATCH[1]}"
+    # release_major="${BASH_REMATCH[2]}"
+    # release_minor="${BASH_REMATCH[3]}"
+    # release_patch="${BASH_REMATCH[4]}"
+    :
 else
     echo "tag format incorrect; expected: $tag_format"
     echo "example: edge-20.12.2, stable-2.10.1"
