@@ -154,6 +154,8 @@ var (
 
 	// overridden during unit test
 	rawChartRootDir = "charts"
+
+	subCharts = []string{"tracing"}
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -828,24 +830,11 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		return err
 	}
 
-	// load the raw chart from the filesystem
-	rawChart, err := chartutil.Load(filepath.Join(rawChartRootDir, helmDefaultChartDir))
-	if err != nil {
-		return err
-	}
-
-	// read the dependencies from requirements.yaml as dependencies are not present
-	// in charts directory
-	rawChartReq, err := chartutil.LoadRequirements(rawChart)
-	if err != nil {
-		return err
-	}
-
 	// Render for each add-on separately and attach
-	for _, dep := range rawChartReq.Dependencies {
+	for _, dep := range subCharts {
 
-		if dep.Name != "partials" {
-			addOnValues, enabled := checkAddon(values, dep.Name)
+		if dep != "partials" {
+			addOnValues, enabled := checkAddon(values, dep)
 
 			if enabled {
 				files := []*chartutil.BufferedFile{
@@ -853,7 +842,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 				}
 
 				// Get files from the addOns directory for the dep
-				dirFiles, err := ioutil.ReadDir(filepath.Join(rawChartRootDir, addOnChartsPath, dep.Name, "templates"))
+				dirFiles, err := ioutil.ReadDir(filepath.Join(rawChartRootDir, addOnChartsPath, dep, "templates"))
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -863,8 +852,8 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 				}
 
 				subChart := &charts.Chart{
-					Name:      dep.Name,
-					Dir:       filepath.Join(addOnChartsPath, dep.Name),
+					Name:      dep,
+					Dir:       filepath.Join(addOnChartsPath, dep),
 					Namespace: controlPlaneNamespace,
 					RawValues: append(rawValues, addOnValues...),
 					Files:     files,
