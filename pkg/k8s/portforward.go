@@ -177,7 +177,6 @@ func (pf *PortForward) Init() error {
 	go func() {
 		if err := pf.run(); err != nil {
 			failure <- err
-			return
 		}
 	}()
 
