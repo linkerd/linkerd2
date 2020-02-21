@@ -11,7 +11,7 @@ fi
 new_linkerd_version="$1"
 
 # Verify the tag format
-tag_format="^(test|edge|stable)-([0-9]+)\.([0-9]+)\.([0-9]+)$"
+tag_format="^(edge|stable)-([0-9]+)\.([0-9]+)\.([0-9]+)$"
 if [[ $new_linkerd_version =~ $tag_format ]]; then
     # todo: Use these values to verify the tag version increment.
     # release_channel="${BASH_REMATCH[1]}"
