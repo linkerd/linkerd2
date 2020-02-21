@@ -1223,7 +1223,7 @@ func checkAddon(values *l5dcharts.Values, name string) (addonvalues []byte, enab
 	r := reflect.ValueOf(values)
 
 	if !reflect.Indirect(r).FieldByName(strings.Title(name)).IsNil() {
-		if reflect.Indirect(r).FieldByName(strings.Title(name)).MapIndex(reflect.ValueOf("enabled")).Interface().(bool) == true {
+		if reflect.Indirect(r).FieldByName(strings.Title(name)).MapIndex(reflect.ValueOf("enabled")).Interface().(bool) {
 			values, err := yaml.Marshal(reflect.Indirect(r).FieldByName(strings.Title(name)).Interface())
 			if err != nil {
 				return nil, false
