@@ -41,7 +41,7 @@ type (
 	// install.
 	installOptions struct {
 		clusterDomain               string
-		config                      string
+		addOnConfig                 string
 		controlPlaneVersion         string
 		controllerReplicas          uint
 		controllerLogLevel          string
@@ -526,7 +526,7 @@ func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
 	)
 
 	flags.StringVar(
-		&options.config, "config", options.config,
+		&options.addOnConfig, "addon-config", options.addOnConfig,
 		"A path to a configuration file of add-ons",
 	)
 	return flags
@@ -568,8 +568,8 @@ func (options *installOptions) installPersistentFlagSet() *pflag.FlagSet {
 // UpdateValuesFromConfig takes a values struct and updates its add-on values from the config installOption
 func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Values) error {
 
-	if options.config != "" {
-		addOnValues, err := ioutil.ReadFile(options.config)
+	if options.addOnConfig != "" {
+		addOnValues, err := ioutil.ReadFile(options.addOnConfig)
 		if err != nil {
 			return err
 		}
