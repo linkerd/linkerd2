@@ -1,18 +1,9 @@
-{{ if or (.Values.tracing.enabled) -}}
 {{- /*
-  The Below code is used to remove globals and partials fields which are automatically added by helm.
+  This config-map is used to store the configuration of add-ons, which is useful during upgrades.  
+  As fields like global, etc are added by helm and we would not want them in the data, second level fields should be used 
+  instead of directly specifying the add-on field.
 */ -}}
-{{- $dupValues := .Values -}}
-{{- range $key, $value := $dupValues -}}
-  {{- if kindIs "map" $value -}}
-    {{- if and (hasKey $value "global") (ne $key "configs" ) -}}
-      {{- $dupValues := set $dupValues $key (unset $value "global") -}}
-    {{- end -}}
-    {{- if hasKey $value "partials" -}}
-      {{- $dupValues := set $dupValues $key (unset $value "partials") -}}
-    {{- end -}}
-  {{- end -}}
-{{- end -}}
+{{ if or (.Values.tracing.enabled) -}}
 ---
 ###
 ### linkerd values
@@ -24,12 +15,15 @@ metadata:
   name: linkerd-values
   namespace: {{.Values.global.namespace}}
   labels:
-    {{.Values.global.controllerComponentLabel}}: controller
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   values: |-
     tracing:
-  {{- toYaml $dupValues.tracing | trim | nindent 6}}
-{{ end }}
+      enabled: {{.Values.tracing.enabled}}
+      collector:
+  {{- toYaml .Values.tracing.collector | trim | nindent 8}}
+      jaeger:
+  {{- toYaml .Values.tracing.jaeger | trim | nindent 8}}
+{{ end -}}
