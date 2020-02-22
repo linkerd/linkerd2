@@ -151,11 +151,6 @@ var (
 		"templates/tap.yaml",
 		"templates/linkerd-values.yaml",
 	}
-
-	// overridden during unit test
-	rawChartRootDir = "charts"
-
-	subCharts = []string{"tracing"}
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -791,7 +786,6 @@ func toPromLogLevel(level string) string {
 }
 
 func render(w io.Writer, values *l5dcharts.Values) error {
-
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
 	if err != nil {
@@ -818,6 +812,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		}
 	}
 
+	// TODO refactor to use l5dcharts.LoadChart()
 	chart := &charts.Chart{
 		Name:      helmDefaultChartName,
 		Dir:       helmDefaultChartDir,
@@ -830,45 +825,48 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		return err
 	}
 
+	dependencies, err := charts.LoadDependencies(helmDefaultChartName)
+	if err != nil {
+		return err
+	}
+
 	// Render for each add-on separately and attach
-	for _, dep := range subCharts {
+	for _, dep := range dependencies {
+		chartName := dep.Metadata.Name
+		if chartName == "partials" {
+			continue
+		}
 
-		if dep != "partials" {
-			addOnValues, enabled := checkAddon(values, dep)
-
-			if enabled {
-				files := []*chartutil.BufferedFile{
-					{Name: chartutil.ChartfileName},
-				}
-
-				// Get files from the addOns directory for the dep
-				dirFiles, err := ioutil.ReadDir(filepath.Join(rawChartRootDir, addOnChartsPath, dep, "templates"))
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				for _, file := range dirFiles {
-					files = append(files, &chartutil.BufferedFile{Name: filepath.Join("templates", file.Name())})
-				}
-
-				subChart := &charts.Chart{
-					Name:      dep,
-					Dir:       filepath.Join(addOnChartsPath, dep),
-					Namespace: controlPlaneNamespace,
-					RawValues: append(rawValues, addOnValues...),
-					Files:     files,
-				}
-
-				addOnBuf, err := subChart.Render()
-				if err != nil {
-					return err
-				}
-
-				buf.Write(addOnBuf.Bytes())
+		addOnValues, enabled := checkAddon(values, chartName)
+		if enabled {
+			files := []*chartutil.BufferedFile{
+				{Name: chartutil.ChartfileName},
 			}
 
+			for _, template := range dep.Templates {
+				files = append(files, &chartutil.BufferedFile{
+					Name: template.Name,
+					Data: template.Data,
+				})
+			}
+
+			subChart := &charts.Chart{
+				Name:      chartName,
+				Dir:       filepath.Join(addOnChartsPath, chartName),
+				Namespace: controlPlaneNamespace,
+				RawValues: append(rawValues, addOnValues...),
+				Files:     files,
+			}
+
+			addOnBuf, err := subChart.Render()
+			if err != nil {
+				return err
+			}
+
+			buf.Write(addOnBuf.Bytes())
 		}
 	}
+
 	_, err = w.Write(buf.Bytes())
 	return err
 }

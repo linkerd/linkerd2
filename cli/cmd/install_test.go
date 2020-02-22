@@ -244,7 +244,6 @@ func TestRender(t *testing.T) {
 		{withTracingAddonValues, "install_tracing.golden"},
 	}
 
-	rawChartRootDir = filepath.Join("..", "..", "charts")
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
