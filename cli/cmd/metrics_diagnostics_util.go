@@ -100,19 +100,19 @@ func getMetrics(
 	resultChan := make(chan metricsResult, len(pods))
 	var activeRoutines int32
 	for _, pod := range pods {
-		containers, err := getAllContainersWithPort(pod, portName)
-		if err != nil {
-			resultChan <- metricsResult{
-				pod: pod.GetName(),
-				err: err,
+		atomic.AddInt32(&activeRoutines, 1)
+		go func(p corev1.Pod) {
+			defer atomic.AddInt32(&activeRoutines, -1)
+			containers, err := getAllContainersWithPort(p, portName)
+			if err != nil {
+				resultChan <- metricsResult{
+					pod: p.GetName(),
+					err: err,
+				}
+				return
 			}
-			continue
-		}
 
-		for i := range containers {
-			atomic.AddInt32(&activeRoutines, 1)
-			go func(p corev1.Pod, c corev1.Container) {
-				defer atomic.AddInt32(&activeRoutines, -1)
+			for _, c := range containers {
 				bytes, err := getContainerMetrics(k8sAPI, p, c, emitLogs, portName)
 
 				resultChan <- metricsResult{
@@ -121,9 +121,8 @@ func getMetrics(
 					metrics:   bytes,
 					err:       err,
 				}
-
-			}(pod, containers[i])
-		}
+			}
+		}(pod)
 	}
 
 	for {
