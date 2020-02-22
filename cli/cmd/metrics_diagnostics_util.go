@@ -97,7 +97,7 @@ func getMetrics(
 ) []metricsResult {
 	var results []metricsResult
 
-	resultChan := make(chan metricsResult)
+	resultChan := make(chan metricsResult, len(pods))
 	var activeRoutines int32
 	for _, pod := range pods {
 		containers, err := getAllContainersWithPort(pod, portName)
