@@ -19,7 +19,7 @@ import (
 
 const (
 	versionPlaceholder  = "{version}"
-	linkerdChartName = "linkerd2"
+	linkerdChartName    = "linkerd2"
 	linkerdChartRootDir = "linkerd2"
 )
 
