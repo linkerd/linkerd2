@@ -97,7 +97,7 @@ func getMetrics(
 ) []metricsResult {
 	var results []metricsResult
 
-	resultChan := make(chan metricsResult, len(pods))
+	resultChan := make(chan metricsResult)
 	var activeRoutines int32
 	for _, pod := range pods {
 		atomic.AddInt32(&activeRoutines, 1)
