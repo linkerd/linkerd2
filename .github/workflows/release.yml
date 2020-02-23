@@ -1,9 +1,18 @@
+#
+# This file is a mostly a concatenation of `kind_integration.yml` and
+# `cloud_integration.yml`, specifically for release. Once GitHub Actions
+# supports YAML anchors, we should be able to share most of the content
+# between these files:
+# https://github.community/t5/GitHub-Actions/Support-for-YAML-anchors/m-p/30336
+#
+
 name: Release
 on:
   push:
     tags:
     - "*"
 jobs:
+  # todo: Keep in sync with `cloud_integration.yml`
   docker_build:
     name: Docker build
     runs-on: ubuntu-18.04
@@ -29,6 +38,7 @@ jobs:
       run: |
         export PATH="`pwd`/bin:$PATH"
         bin/docker-build
+  # todo: Keep in sync with `cloud_integration.yml`
   docker_push:
     name: Docker push
     runs-on: ubuntu-18.04
@@ -63,6 +73,7 @@ jobs:
         bin/docker-push $TAG
         bin/docker-retag-all $TAG master
         bin/docker-push master
+  # todo: Keep in sync with `kind_integration.yml`
   kind_integration_tests:
     strategy:
       matrix:
@@ -154,6 +165,7 @@ jobs:
 
         init_test_run $HOME/.linkerd
         ${{ matrix.integration_test }}_integration_tests
+  # todo: Keep in sync with `cloud_integration.yml`
   cloud_integration_tests:
     name: Cloud integration tests
     runs-on: ubuntu-18.04

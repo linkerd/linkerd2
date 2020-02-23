@@ -4,6 +4,7 @@ on:
     branches:
     - master
 jobs:
+  # todo: Keep in sync with `release.yml`
   docker_build:
     name: Docker build
     runs-on: ubuntu-18.04
@@ -29,6 +30,7 @@ jobs:
       run: |
         export PATH="`pwd`/bin:$PATH"
         bin/docker-build
+  # todo: Keep in sync with `release.yml`
   docker_push:
     name: Docker push
     runs-on: ubuntu-18.04
@@ -63,6 +65,7 @@ jobs:
         bin/docker-push $TAG
         bin/docker-retag-all $TAG master
         bin/docker-push master
+  # todo: Keep in sync with `release.yml`
   cloud_integration_tests:
     name: Cloud integration tests
     runs-on: ubuntu-18.04

@@ -59,6 +59,7 @@ jobs:
       with:
         name: image-archives
         path: /home/runner/archives
+  # todo: Keep in sync with `release.yml`
   kind_integration_tests:
     strategy:
       matrix:
