@@ -1,0 +1,43 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+
+if [[ $# -ne 1 ]]; then
+    echo "usage: ${0##*/} (edge|stable)-xx.xx.xx" >&2
+    exit 1
+fi
+
+new_linkerd_version="$1"
+
+# Verify the tag format
+tag_format="^(edge|stable)-([0-9]+)\.([0-9]+)\.([0-9]+)$"
+if [[ $new_linkerd_version =~ $tag_format ]]; then
+    # todo: Use these values to verify the tag version increment.
+    # release_channel="${BASH_REMATCH[1]}"
+    # release_major="${BASH_REMATCH[2]}"
+    # release_minor="${BASH_REMATCH[3]}"
+    # release_patch="${BASH_REMATCH[4]}"
+    :
+else
+    echo "tag format incorrect; expected: $tag_format"
+    echo "example: edge-20.12.2, stable-2.10.1"
+    exit 1
+fi
+
+# todo: Verify the tag version increment.
+
+rootdir=$( cd "${0%/*}"/.. && pwd )
+
+# Make temporary file to save the release commit message into.
+tmp=$(mktemp -t release-commit-message.XXX.txt)
+
+# Save commit message into temporary file.
+#
+# Match each occurence of the regex and increment `n` by 1. While n == 1
+# (which is true only for the first section) print that line of `CHANGES.md`.
+# This ends up being the first section of release changes.
+awk '/^## (edge|stable)-[0-9]+\.[0-9]+\.[0-9]+/{n++} n==1' "$rootdir"/CHANGES.md > "$tmp"
+
+# Create an unsigned tag with the commit message.
+git tag -s -F "$tmp" "$new_linkerd_version"
