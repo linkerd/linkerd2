@@ -33,38 +33,25 @@ type PortForward struct {
 	config     *rest.Config
 }
 
-// NewProxyMetricsForward returns an instance of the PortForward struct that can
-// be used to establish a port-forward connection to a linkerd-proxy's metrics
-// endpoint, specified by namespace and proxyPod.
-func NewProxyMetricsForward(
+// NewContainerMetricsForward returns an instance of the PortForward struct that can
+// be used to establish a port-forward connection to a containers metrics
+// endpoint, specified by namespace, pod, container and portName.
+func NewContainerMetricsForward(
 	k8sAPI *KubernetesAPI,
 	pod corev1.Pod,
+	container corev1.Container,
 	emitLogs bool,
+	portName string,
 ) (*PortForward, error) {
-	if pod.Status.Phase != corev1.PodRunning {
-		return nil, fmt.Errorf("pod not running: %s", pod.GetName())
-	}
-
-	var container corev1.Container
-	for _, c := range pod.Spec.Containers {
-		if c.Name == ProxyContainerName {
-			container = c
-			break
-		}
-	}
-	if container.Name != ProxyContainerName {
-		return nil, fmt.Errorf("no %s container found for pod %s", ProxyContainerName, pod.GetName())
-	}
-
 	var port corev1.ContainerPort
 	for _, p := range container.Ports {
-		if p.Name == ProxyAdminPortName {
+		if p.Name == portName {
 			port = p
 			break
 		}
 	}
-	if port.Name != ProxyAdminPortName {
-		return nil, fmt.Errorf("no %s port found for container %s/%s", ProxyAdminPortName, pod.GetName(), container.Name)
+	if port.Name != portName {
+		return nil, fmt.Errorf("no %s port found for container %s/%s", portName, pod.GetName(), container.Name)
 	}
 
 	return newPortForward(k8sAPI, pod.GetNamespace(), pod.GetName(), "localhost", 0, int(port.ContainerPort), emitLogs)
