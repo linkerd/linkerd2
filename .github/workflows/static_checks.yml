@@ -2,6 +2,9 @@ name: Static checks
 on:
   pull_request: {}
   push:
+    paths-ignore:
+    - '*.md'
+    - '**/*.md'
     branches:
     - master
 jobs:
