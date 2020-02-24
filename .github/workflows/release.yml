@@ -212,10 +212,36 @@ jobs:
       run: |
         export TAG="$($HOME/.linkerd version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
+  gh_release:
+    name: Create GH release
+    runs-on: ubuntu-18.04
+    needs: [kind_integration_tests, cloud_integration_tests]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Pull CLI binaries
+      env:
+        TAG: ${{ github.ref }}
+      run : bin/docker-pull-binaries $TAG
+    - name: Create release
+      id: create_release
+      uses: softprops/action-gh-release@91409e7
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        draft: false
+        prelease: false
+        files: |
+          ./target/release/linkerd2-cli-${{ github.ref }}-darwin
+          ./target/release/linkerd2-cli-${{ github.ref }}-darwin.sha256
+          ./target/release/linkerd2-cli-${{ github.ref }}-linux
+          ./target/release/linkerd2-cli-${{ github.ref }}-linux.sha256
+          ./target/release/linkerd2-cli-${{ github.ref }}-windows.exe
+          ./target/release/linkerd2-cli-${{ github.ref }}-windows.exe.sha256
   chart_deploy:
     name: Helm chart deploy
     runs-on: ubuntu-18.04
-    needs: [kind_integration_tests, cloud_integration_tests]
+    needs: [gh_release]
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
