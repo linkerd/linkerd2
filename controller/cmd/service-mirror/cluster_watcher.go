@@ -9,6 +9,7 @@ import (
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/rest"
@@ -22,9 +23,6 @@ import (
 //TODO: Handle temporary network partitions
 
 //TODO: Type check events so we avoid unsafe casting (especially in deletions)
-
-//TODO: Whenever getting k8s objects from the local Lister, always make a deep copy in case
-// modifying to avoid messing with that that is in the client-go cache
 
 type (
 	// RemoteClusterServiceWatcher is a watcher instantiated for every cluster that is being watched
@@ -121,6 +119,48 @@ type (
 		Namespace string
 	}
 )
+
+func (rcsw *RemoteClusterServiceWatcher) getLocalService(ns, name string) (*corev1.Service, error) {
+	svc, err := rcsw.localAPIClient.Svc().Lister().Services(ns).Get(name)
+	if err != nil {
+		return nil, err
+	}
+	return svc.DeepCopy(), nil
+}
+
+func (rcsw *RemoteClusterServiceWatcher) getLocalEndpoints(ns, name string) (*corev1.Endpoints, error) {
+	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(ns).Get(name)
+	if err != nil {
+		return nil, err
+	}
+	return endpoints.DeepCopy(), nil
+}
+
+func (rcsw *RemoteClusterServiceWatcher) listLocalServices(matchLabels map[string]string) ([]*corev1.Service, error) {
+	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []*corev1.Service
+	for _, s := range services {
+		ret = append(ret, s.DeepCopy())
+	}
+	return ret, nil
+}
+
+func (rcsw *RemoteClusterServiceWatcher) listLocalEndpoints(matchLabels map[string]string) ([]*corev1.Endpoints, error) {
+	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []*corev1.Endpoints
+	for _, e := range endpoints {
+		ret = append(ret, e.DeepCopy())
+	}
+	return ret, nil
+}
 
 func (rcsw *RemoteClusterServiceWatcher) extractGatewayInfo(gateway *corev1.Service) ([]corev1.EndpointAddress, int32, string, error) {
 	if len(gateway.Status.LoadBalancer.Ingress) == 0 {
@@ -231,7 +271,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 		consts.RemoteClusterNameLabel: rcsw.clusterName,
 	}
 
-	servicesOnLocalCluster, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
+	servicesOnLocalCluster, err := rcsw.listLocalServices(matchLabels)
 	if err != nil {
 		return fmt.Errorf("failed obtaining local services while GC-ing: %s", err)
 	}
@@ -259,7 +299,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 		consts.RemoteClusterNameLabel: rcsw.clusterName,
 	}
 
-	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
+	services, err := rcsw.listLocalServices(matchLabels)
 	if err != nil {
 		return fmt.Errorf("could not retrieve mirrored services that need cleaning up: %s", err)
 	}
@@ -271,7 +311,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 		rcsw.log.Debugf("Deleted service %s/%s", svc.Namespace, svc.Name)
 
 	}
-	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
+	endpoints, err := rcsw.listLocalEndpoints(matchLabels)
 	if err != nil {
 		return fmt.Errorf("could not retrieve Endpoints that need cleaning up: %s", err)
 	}
@@ -450,7 +490,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayUpdated(ev *RemoteGa
 		if updatedService.Labels != nil {
 			updatedService.Labels[consts.RemoteGatewayResourceVersionLabel] = ev.newResourceVersion
 		}
-		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
+		endpoints, err := rcsw.getLocalEndpoints(svc.Namespace, svc.Name)
 		if err != nil {
 			return err
 		}
@@ -539,31 +579,39 @@ func (rcsw *RemoteClusterServiceWatcher) handleConsiderGatewayUpdateDispatch(eve
 }
 
 func (rcsw *RemoteClusterServiceWatcher) onUpdate(old, new interface{}) {
-	oldService := old.(*corev1.Service)
 	newService := new.(*corev1.Service)
-	if oldService.ResourceVersion != newService.ResourceVersion {
-		if gtwData := getGatewayMetadata(newService.Annotations); gtwData != nil {
-			// if we have gateway data we are talking about a mirrored service
-			localName := rcsw.mirroredResourceName(newService.Name, newService.Namespace)
-			localService, err := rcsw.localAPIClient.Svc().Lister().Services(newService.Namespace).Get(localName)
-			if err == nil && localService != nil {
-				lastMirroredRemoteVersion, ok := localService.Labels[consts.RemoteResourceVersionLabel]
-				if ok && lastMirroredRemoteVersion != newService.ResourceVersion {
-					endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(newService.Namespace).Get(localName)
-					if err == nil {
-						rcsw.eventsQueue.Add(&RemoteServiceUpdated{
-							localService:   localService,
-							localEndpoints: endpoints,
-							remoteUpdate:   newService,
-							gatewayData:    gtwData,
-						})
-					}
-				}
+	if gtwData := getGatewayMetadata(newService.Annotations); gtwData != nil {
+		// if we have gateway data we are talking about a mirrored service
+		localName := rcsw.mirroredResourceName(newService.Name, newService.Namespace)
+		localService, err := rcsw.getLocalService(newService.Namespace, localName)
+		if err != nil {
+			if kerrors.IsNotFound(err) {
+				// this is a service that was existing and so far and became mirrored.
+				// we are seeing it as an update but from our perspective it is a create
+				// operation
+				rcsw.eventsQueue.Add(&RemoteServiceCreated{
+					service:            newService,
+					gatewayData:        gtwData,
+					newResourceVersion: newService.ResourceVersion,
+				})
 			}
 		} else {
-			// if not we consider dispatching a gateway update (if this is a gateway for any mirrored service)
-			rcsw.eventsQueue.Add(&ConsiderGatewayUpdateDispatch{maybeGateway: newService})
+			lastMirroredRemoteVersion, ok := localService.Labels[consts.RemoteResourceVersionLabel]
+			if ok && lastMirroredRemoteVersion != newService.ResourceVersion {
+				endpoints, err := rcsw.getLocalEndpoints(newService.Namespace, localName)
+				if err == nil {
+					rcsw.eventsQueue.Add(&RemoteServiceUpdated{
+						localService:   localService,
+						localEndpoints: endpoints,
+						remoteUpdate:   newService,
+						gatewayData:    gtwData,
+					})
+				}
+			}
 		}
+	} else {
+		// if not we consider dispatching a gateway update (if this is a gateway for any mirrored service)
+		rcsw.eventsQueue.Add(&ConsiderGatewayUpdateDispatch{maybeGateway: newService})
 	}
 }
 
@@ -571,7 +619,7 @@ func (rcsw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 	service := svc.(*corev1.Service)
 	if gtwMeta := getGatewayMetadata(service.Annotations); gtwMeta != nil {
 		localName := rcsw.mirroredResourceName(service.Name, service.Namespace)
-		localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(localName)
+		localService, err := rcsw.getLocalService(service.Namespace, localName)
 		if err != nil {
 			// in this case we need to create a new service as we do not have one present
 			rcsw.eventsQueue.Add(&RemoteServiceCreated{
@@ -589,7 +637,7 @@ func (rcsw *RemoteClusterServiceWatcher) onAdd(svc interface{}) {
 				// translate that as an UPDATE. If nothing has changed, we can just skip
 				// that event. This is the reason why we keep the last observed resource
 				// version of the remote object locally.
-				endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(service.Namespace).Get(localName)
+				endpoints, err := rcsw.getLocalEndpoints(service.Namespace, localName)
 				if err == nil {
 					rcsw.eventsQueue.Add(&RemoteServiceUpdated{
 						localService:   localService,
@@ -629,7 +677,7 @@ func (rcsw *RemoteClusterServiceWatcher) mirroredServicesForGateway(gatewayData 
 		consts.RemoteGatewayNsLabel:   gatewayData.Namespace,
 	}
 
-	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
+	services, err := rcsw.listLocalServices(matchLabels)
 	if err != nil {
 		return nil, err
 	}
@@ -643,7 +691,7 @@ func (rcsw *RemoteClusterServiceWatcher) endpointsForGateway(gatewayData *gatewa
 		consts.RemoteGatewayNsLabel:   gatewayData.Namespace,
 	}
 
-	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
+	endpoints, err := rcsw.listLocalEndpoints(matchLabels)
 	if err != nil {
 		return nil, err
 	}
