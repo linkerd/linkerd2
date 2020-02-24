@@ -22,8 +22,6 @@ import (
 
 //TODO: Handle temporary network partitions
 
-//TODO: Type check events so we avoid unsafe casting (especially in deletions)
-
 type (
 	// RemoteClusterServiceWatcher is a watcher instantiated for every cluster that is being watched
 	// Its main job is to listen to events coming from the remote cluster and react accordingly, keeping
@@ -699,11 +697,18 @@ func (rcsw *RemoteClusterServiceWatcher) endpointsForGateway(gatewayData *gatewa
 }
 
 func (rcsw *RemoteClusterServiceWatcher) onDelete(svc interface{}) {
-	var service *corev1.Service
-	if ev, ok := svc.(cache.DeletedFinalStateUnknown); ok {
-		service = ev.Obj.(*corev1.Service)
-	} else {
-		service = svc.(*corev1.Service)
+	service, ok := svc.(*corev1.Service)
+	if !ok {
+		tombstone, ok := svc.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			rcsw.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", svc)
+			return
+		}
+		service, ok = tombstone.Obj.(*corev1.Service)
+		if !ok {
+			rcsw.log.Errorf("DeletedFinalStateUnknown contained object that is not a Service %#v", svc)
+			return
+		}
 	}
 	if gtwData := getGatewayMetadata(service.Annotations); gtwData != nil {
 		rcsw.eventsQueue.Add(&RemoteServiceDeleted{

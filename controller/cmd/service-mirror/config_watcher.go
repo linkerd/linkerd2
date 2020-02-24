@@ -49,12 +49,26 @@ func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int) *RemoteClu
 
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc: func(obj interface{}) {
-					if err := rcw.registerRemoteCluster(obj); err != nil {
+					secret := obj.(*corev1.Secret)
+					if err := rcw.registerRemoteCluster(secret); err != nil {
 						log.Errorf("Cannot register remote cluster: %s", err)
 					}
 				},
 				DeleteFunc: func(obj interface{}) {
-					if err := rcw.unregisterRemoteCluster(obj); err != nil {
+					secret, ok := obj.(*corev1.Secret)
+					if !ok {
+						tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+						if !ok {
+							log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+							return
+						}
+						secret, ok = tombstone.Obj.(*corev1.Secret)
+						if !ok {
+							log.Errorf("DeletedFinalStateUnknown contained object that is not a Secret %#v", obj)
+							return
+						}
+					}
+					if err := rcw.unregisterRemoteCluster(secret); err != nil {
 						log.Errorf("Cannot unregister remote cluster: %s", err)
 					}
 				},
@@ -76,8 +90,7 @@ func (rcw *RemoteClusterConfigWatcher) Stop() {
 	}
 }
 
-func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(obj interface{}) error {
-	secret := obj.(*corev1.Secret)
+func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secret) error {
 	config, name, err := parseRemoteClusterSecret(secret)
 	if err != nil {
 		return err
@@ -106,8 +119,7 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(obj interface{}) er
 
 }
 
-func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(obj interface{}) error {
-	secret := obj.(*corev1.Secret)
+func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(secret *corev1.Secret) error {
 	_, name, err := parseRemoteClusterSecret(secret)
 	if err != nil {
 		return err
