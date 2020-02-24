@@ -499,8 +499,8 @@ func TestMergeRaw(t *testing.T) {
 			InstallNamespace:       true,
 		}
 
-		// Overwrite values should not be unmarshalled from values struct as the zero values are added
-		// causing overwriting of fields not present in the inital struct to zero values. This can be mitigated
+		// Overwrite values should not be unmarshal from values struct as the zero values are added
+		// causing overwriting of fields not present in the initial struct to zero values. This can be mitigated
 		// partially by using omitempty, but then we don't have relevant checks in helm templates as they would
 		// be nil when omitempty is present.
 		rawOverwriteValues := `
