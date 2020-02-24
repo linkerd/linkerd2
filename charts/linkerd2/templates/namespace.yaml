@@ -13,4 +13,5 @@ metadata:
   labels:
     {{.Values.global.linkerdNamespaceLabel}}: "true"
     config.linkerd.io/admission-webhooks: disabled
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 {{ end -}}

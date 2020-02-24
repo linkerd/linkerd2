@@ -14,6 +14,7 @@ metadata:
   labels:
     linkerd.io/is-control-plane: "true"
     config.linkerd.io/admission-webhooks: disabled
+    linkerd.io/control-plane-ns: linkerd
 ---
 # Source: linkerd2/templates/identity-rbac.yaml
 ---
