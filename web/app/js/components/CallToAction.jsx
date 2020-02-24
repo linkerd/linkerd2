@@ -29,7 +29,7 @@ function getSteps(numResources, resource) {
   ];
 }
 
-const CallToAction = ({ resource, numResources }) => {
+const CallToAction = ({ resource, numResources, classes }) => {
   const steps = getSteps(numResources, resource);
   const lastStep = steps.length - 1; // hardcode the last step as the active step
 
@@ -38,6 +38,7 @@ const CallToAction = ({ resource, numResources }) => {
       <Typography>The service mesh was successfully installed!</Typography>
       <Stepper
         activeStep={lastStep}
+        className={classes.instructions}
         orientation="vertical">
         {
           steps.map((step, i) => {
