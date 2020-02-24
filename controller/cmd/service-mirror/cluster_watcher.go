@@ -18,6 +18,8 @@ import (
 )
 
 //TODO: Handle temporary network partitions
+//TODO: Refactor logic so the tranformation of ADD, UPDATE and DELETE
+// events are also requable (we are hitting the API there)
 
 type (
 	// RemoteClusterServiceWatcher is a watcher instantiated for every cluster that is being watched
@@ -56,7 +58,8 @@ type (
 		gatewayData    *gatewayMetadata
 	}
 
-	// RemoteServiceDeleted when a remote service is going away
+	// RemoteServiceDeleted when a remote service is going away or it is not
+	// considered mirrored anymore
 	RemoteServiceDeleted struct {
 		Name      string
 		Namespace string
@@ -370,7 +373,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 
 	ev.localService.Labels = rcsw.getMirroredServiceLabels(ev.remoteUpdate, ev.gatewayData)
 	ev.localService.Labels[consts.RemoteGatewayResourceVersionLabel] = resVersion
-	ev.localService.Spec.Ports = ev.remoteUpdate.Spec.Ports
+	ev.localService.Spec.Ports = remapRemoteServicePorts(ev.remoteUpdate.Spec.Ports)
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.localService.Namespace).Update(ev.localService); err != nil {
 		return err
@@ -460,7 +463,6 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 }
 
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGatewayDeleted) error {
-
 	affectedEndpoints, err := rcsw.endpointsForGateway(ev.gatewayData)
 	if err != nil {
 		return err
@@ -573,6 +575,9 @@ func (rcsw *RemoteClusterServiceWatcher) handleConsiderGatewayUpdateDispatch(eve
 	return nil
 }
 
+// this method is common to both CREATE and UPDATE because if we have been
+// offline for some time due to a crash a CREATE for a service that we have
+// observed before is simply a case of UPDATE
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.Service) {
 	localName := rcsw.mirroredResourceName(service.Name, service.Namespace)
 	localService, err := rcsw.getLocalService(service.Namespace, localName)
@@ -580,7 +585,9 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 
 	if err != nil {
 		if kerrors.IsNotFound(err) && gtwData != nil {
-			// a service that has been annotated after creation
+			// at this point we know that this is a service that
+			// we are not mirroring but has gateway data, so we need
+			// to create it
 			rcsw.eventsQueue.Add(&RemoteServiceCreated{
 				service:            service,
 				gatewayData:        gtwData,
@@ -588,10 +595,17 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 			})
 		}
 		if kerrors.IsNotFound(err) {
+			// at this point we know that we do not have such a service
+			// and the remote service does not have metadata. So we try to
+			// dispatch a gateway update as the remote service might be a
+			/// gateway for some of our already mirrored services
 			rcsw.eventsQueue.Add(&ConsiderGatewayUpdateDispatch{maybeGateway: service})
 		}
 	} else {
 		if gtwData != nil {
+			// at this point we know this is an update to a service that we already
+			// have locally, so we try and see whether the res version has changed
+			// and if so, dispatch an RemoteServiceUpdated event
 			lastMirroredRemoteVersion, ok := localService.Labels[consts.RemoteResourceVersionLabel]
 			if ok && lastMirroredRemoteVersion != service.ResourceVersion {
 				endpoints, err := rcsw.getLocalEndpoints(service.Namespace, localName)
@@ -605,6 +619,10 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 				}
 			}
 		} else {
+			// if this is missing gateway metadata, but we have the
+			// service we can dispatch a RemoteServiceDeleted event
+			// because at some point in time we mirrored this service,
+			// however it is not mirrorable anymore
 			rcsw.eventsQueue.Add(&RemoteServiceDeleted{
 				Name:      service.Name,
 				Namespace: service.Namespace,
