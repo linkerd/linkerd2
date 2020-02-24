@@ -1,3 +1,4 @@
+namespace: default
 serviceMirrorUID: 2103
 logLevel: info
 eventRequeueLimit: 3

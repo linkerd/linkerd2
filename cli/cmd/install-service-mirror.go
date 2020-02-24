@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +16,7 @@ import (
 )
 
 type installServiceMirrorOptions struct {
+	namespace           string
 	controlPlaneVersion string
 	dockerRegistry      string
 	logLevel            string
@@ -45,6 +47,7 @@ func newCmdInstallServiceMirror() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(&options.logLevel, "log-level", "", options.logLevel, "Log level for the Service Mirror Component")
 	cmd.PersistentFlags().Int64Var(&options.uid, "uid", options.uid, "Run the Service Mirror component under this user ID")
 	cmd.PersistentFlags().Int32Var(&options.requeueLimit, "event-requeue-limit", options.requeueLimit, "The number of times a failed update from the remote cluster is allowed to be requeued (retried)")
+	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "", options.namespace, "The namespace in which the Service Mirror Component is to be installed")
 
 	return cmd
 }
@@ -55,6 +58,7 @@ func newInstallServiceMirrorOptionsWithDefaults() (*installServiceMirrorOptions,
 		return nil, err
 	}
 	return &installServiceMirrorOptions{
+		namespace:           defaults.Namespace,
 		controlPlaneVersion: version.Version,
 		dockerRegistry:      defaultDockerRegistry,
 		logLevel:            defaults.LogLevel,
@@ -68,6 +72,7 @@ func (options *installServiceMirrorOptions) buildValues() (*servicemirror.Values
 	if err != nil {
 		return nil, err
 	}
+	installValues.Namespace = options.namespace
 	installValues.LogLevel = options.logLevel
 	installValues.ControllerImageVersion = options.controlPlaneVersion
 	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
@@ -80,6 +85,10 @@ func (options *installServiceMirrorOptions) buildValues() (*servicemirror.Values
 func (options *installServiceMirrorOptions) validate() error {
 	if !alphaNumDashDot.MatchString(options.controlPlaneVersion) {
 		return fmt.Errorf("%s is not a valid version", options.controlPlaneVersion)
+	}
+
+	if options.namespace == "" {
+		return errors.New("you need to specify a namespace")
 	}
 
 	if _, err := log.ParseLevel(options.logLevel); err != nil {

@@ -14,6 +14,7 @@ const (
 
 // Values contains the top-level elements in the Helm charts
 type Values struct {
+	Namespace              string `json:"namespace"`
 	ControllerImage        string `json:"controllerImage"`
 	ControllerImageVersion string `json:"controllerImageVersion"`
 	ServiceMirrorUID       int64  `json:"serviceMirrorUID"`

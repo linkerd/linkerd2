@@ -2,6 +2,7 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror
+  namespace: {{.Values.namespace}}
   labels:
     ControllerComponentLabel: service-mirror
 rules:
@@ -13,6 +14,7 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror
+  namespace: {{.Values.namespace}}
   labels:
     ControllerComponentLabel: service-mirror
 roleRef:
@@ -22,11 +24,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-service-mirror
+  namespace: {{.Values.namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-service-mirror
+  namespace: {{.Values.namespace}}
   labels:
     ControllerComponentLabel: service-mirror
 ---
@@ -36,6 +40,7 @@ metadata:
   labels:
     ControllerComponentLabel: service-mirror
   name: linkerd-service-mirror
+  namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
