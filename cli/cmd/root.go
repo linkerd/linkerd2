@@ -48,9 +48,10 @@ var (
 
 	// These regexs are not as strict as they could be, but are a quick and dirty
 	// sanity check against illegal characters.
-	alphaNumDash              = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
-	alphaNumDashDot           = regexp.MustCompile(`^[\.a-zA-Z0-9-]+$`)
-	alphaNumDashDotSlashColon = regexp.MustCompile(`^[\./a-zA-Z0-9-:]+$`)
+	alphaNumDash                        = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
+	alphaNumDashDot                     = regexp.MustCompile(`^[\.a-zA-Z0-9-]+$`)
+	alphaNumDashDotSlashColon           = regexp.MustCompile(`^[\./a-zA-Z0-9-:]+$`)
+	alphaNumDashDotSlashColonUnderscore = regexp.MustCompile(`^[\./a-zA-Z0-9-:_]+$`)
 
 	// Full Rust log level syntax at
 	// https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging
