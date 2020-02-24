@@ -30,7 +30,11 @@ func newCmdDiagnostics() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "diagnostics",
 		Short: "Fetch metrics directly from the Linkerd control plane containers",
-		Args:  cobra.NoArgs,
+		Long: `Fetch metrics directly from Linkerd control plane containers.
+
+  This command initiates port-forward to each control plane process, and
+  queries the /metrics endpoint on them.`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
