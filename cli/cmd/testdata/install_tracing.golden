@@ -3082,13 +3082,13 @@ metadata:
   name: linkerd-values
   namespace: linkerd
   labels:
-    linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   values: |-
     tracing:
+      enabled: true
       collector:
         image: omnition/opencensus-collector:0.1.10
         name: linkerd-collector
@@ -3099,7 +3099,6 @@ data:
           memory:
             limit: 2Gi
             request: 400Mi
-      enabled: true
       jaeger:
         image: jaegertracing/all-in-one:1.8
         name: linkerd-jaeger
