@@ -15,11 +15,11 @@ import (
 )
 
 type installServiceMirrorOptions struct {
-	logLevel     string
-	image        string
-	version      string
-	uid          int64
-	requeueLimit int32
+	controlPlaneVersion string
+	dockerRegistry      string
+	logLevel            string
+	uid                 int64
+	requeueLimit        int32
 }
 
 const helmServiceMirrorDefaultChartName = "linkerd2-service-mirror"
@@ -40,11 +40,11 @@ func newCmdInstallServiceMirror() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&options.version, "version", "", options.version, "The Version of the Service Mirror component")
-	cmd.PersistentFlags().StringVarP(&options.version, "image", "", options.version, "The image of the Service Mirror component")
+	cmd.PersistentFlags().StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
+	cmd.PersistentFlags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
 	cmd.PersistentFlags().StringVarP(&options.logLevel, "log-level", "", options.logLevel, "Log level for the Service Mirror Component")
 	cmd.PersistentFlags().Int64Var(&options.uid, "uid", options.uid, "Run the Service Mirror component under this user ID")
-	cmd.PersistentFlags().Int32Var(&options.requeueLimit, "event-requeue-limit", options.requeueLimit, "The number of times an failed update from the remote cluster is allowed to be requeued (retried)")
+	cmd.PersistentFlags().Int32Var(&options.requeueLimit, "event-requeue-limit", options.requeueLimit, "The number of times a failed update from the remote cluster is allowed to be requeued (retried)")
 
 	return cmd
 }
@@ -55,11 +55,11 @@ func newInstallServiceMirrorOptionsWithDefaults() (*installServiceMirrorOptions,
 		return nil, err
 	}
 	return &installServiceMirrorOptions{
-		version:      version.Version,
-		logLevel:     defaults.LogLevel,
-		image:        defaults.ServiceMirrorImage,
-		uid:          defaults.ServiceMirrorUID,
-		requeueLimit: defaults.EventRequeueLimit,
+		controlPlaneVersion: version.Version,
+		dockerRegistry:      defaultDockerRegistry,
+		logLevel:            defaults.LogLevel,
+		uid:                 defaults.ServiceMirrorUID,
+		requeueLimit:        defaults.EventRequeueLimit,
 	}, nil
 }
 
@@ -68,10 +68,9 @@ func (options *installServiceMirrorOptions) buildValues() (*servicemirror.Values
 	if err != nil {
 		return nil, err
 	}
-	installValues.Namespace = controlPlaneNamespace
 	installValues.LogLevel = options.logLevel
-	installValues.ServiceMirrorImage = options.image
-	installValues.ServiceMirrorVersion = options.version
+	installValues.ControllerImageVersion = options.controlPlaneVersion
+	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
 	installValues.ServiceMirrorUID = options.uid
 	installValues.EventRequeueLimit = options.requeueLimit
 
@@ -79,8 +78,8 @@ func (options *installServiceMirrorOptions) buildValues() (*servicemirror.Values
 }
 
 func (options *installServiceMirrorOptions) validate() error {
-	if !alphaNumDashDot.MatchString(options.version) {
-		return fmt.Errorf("%s is not a valid version", options.version)
+	if !alphaNumDashDot.MatchString(options.controlPlaneVersion) {
+		return fmt.Errorf("%s is not a valid version", options.controlPlaneVersion)
 	}
 
 	if _, err := log.ParseLevel(options.logLevel); err != nil {

@@ -1,15 +1,9 @@
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: {{.Values.namespace}}
----
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.namespace}}-service-mirror
+  name: linkerd-service-mirror
   labels:
     ControllerComponentLabel: service-mirror
-    ControllerNamespaceLabel: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["endpoints", "services", "secrets", "namespaces"]
@@ -18,27 +12,23 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-{{.Values.namespace}}-service-mirror
+  name: linkerd-service-mirror
   labels:
     ControllerComponentLabel: service-mirror
-    ControllerNamespaceLabel: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-{{.Values.namespace}}-service-mirror
+  name: linkerd-service-mirror
 subjects:
 - kind: ServiceAccount
   name: linkerd-service-mirror
-  namespace: {{.Values.namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-service-mirror
-  namespace: {{.Values.namespace}}
   labels:
     ControllerComponentLabel: service-mirror
-    ControllerNamespaceLabel: {{.Values.namespace}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -46,25 +36,22 @@ metadata:
   labels:
     ControllerComponentLabel: service-mirror
   name: linkerd-service-mirror
-  namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
       ControllerComponentLabel: service-mirror
-      ControllerNamespaceLabel: {{.Values.namespace}}
   template:
     metadata:
       labels:
         ControllerComponentLabel: service-mirror
-        ControllerNamespaceLabel: {{.Values.namespace}}
     spec:
       containers:
       - args:
         - service-mirror
         - -log-level={{.Values.logLevel}}
         - -event-requeue-limit={{.Values.eventRequeueLimit}}
-        image: {{.Values.serviceMirrorImage}}:{{.Values.serviceMirrorVersion}}
+        image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
         name: service-mirror
         securityContext:
           runAsUser: {{.Values.serviceMirrorUID}}
