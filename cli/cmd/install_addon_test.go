@@ -1,43 +1,12 @@
 package cmd
 
 import (
-	"bytes"
-	"fmt"
 	"reflect"
 	"testing"
 
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"sigs.k8s.io/yaml"
 )
-
-func TestAddOnRender(t *testing.T) {
-	withTracingAddon, err := testInstallOptions()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v\n", err)
-	}
-
-	withTracingAddonValues, _, _ := withTracingAddon.validateAndBuild("", nil)
-	withTracingAddonValues.Tracing["enabled"] = true
-	addFakeTLSSecrets(withTracingAddonValues)
-
-	testCases := []struct {
-		values         *charts.Values
-		goldenFileName string
-	}{
-		{withTracingAddonValues, "install_tracing.golden"},
-	}
-
-	for i, tc := range testCases {
-		tc := tc // pin
-		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
-			var buf bytes.Buffer
-			if err := render(&buf, tc.values); err != nil {
-				t.Fatalf("Failed to render templates: %v", err)
-			}
-			diffTestdata(t, tc.goldenFileName, buf.String())
-		})
-	}
-}
 
 func TestMergeRaw(t *testing.T) {
 	t.Run("Test Ovewriting of Values struct", func(*testing.T) {
