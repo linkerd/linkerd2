@@ -212,6 +212,17 @@ jobs:
       run: |
         export TAG="$($HOME/.linkerd version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
+  website_publish:
+    name: Linkerd website publish
+    runs-on: ubuntu-18.04
+    needs: [kind_integration_tests, cloud_integration_tests]
+    steps:
+    - name: Create linkerd/website repository dispatch event
+      uses: peter-evans/repository-dispatch@v1
+      with:
+        token: ${{ secrets.RELEASE_TOKEN }}
+        repository: linkerd/website
+        event-type: release
   chart_deploy:
     name: Helm chart deploy
     runs-on: ubuntu-18.04
