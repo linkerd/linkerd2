@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"time"
 
@@ -96,6 +95,8 @@ const (
 	helmDefaultChartName = "linkerd2"
 	helmDefaultChartDir  = "linkerd2"
 
+	tracingChartName = "tracing"
+
 	errMsgCannotInitializeClient = `Unable to install the Linkerd control plane. Cannot connect to the Kubernetes cluster:
 
 %s
@@ -150,6 +151,12 @@ var (
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
 		"templates/linkerd-values.yaml",
+	}
+
+	tracingTemplates = []*chartutil.BufferedFile{
+		{Name: chartutil.ChartfileName},
+		{Name: "templates/tracing-rbac.yaml"},
+		{Name: "templates/tracing.yaml"},
 	}
 )
 
@@ -560,7 +567,7 @@ func (options *installOptions) installPersistentFlagSet() *pflag.FlagSet {
 	return flags
 }
 
-// UpdateValuesFromConfig takes a values struct and updates its add-on values from the config installOption
+// UpdateAddOnValuesFromConfig takes a values struct and updates its add-on values from the config installOption
 func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Values) error {
 
 	if options.addOnConfig != "" {
@@ -589,8 +596,7 @@ func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Val
 }
 
 func mergeRaw(a, b []byte) ([]byte, error) {
-	aMap := make(map[string]interface{})
-	bMap := make(map[string]interface{})
+	var aMap, bMap chartutil.Values
 
 	err := yaml.Unmarshal(a, &aMap)
 	if err != nil {
@@ -602,7 +608,7 @@ func mergeRaw(a, b []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	chartutil.Values.MergeInto(aMap, bMap)
+	aMap.MergeInto(bMap)
 	return yaml.Marshal(aMap)
 
 }
@@ -825,45 +831,33 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		return err
 	}
 
-	dependencies, err := charts.LoadDependencies(helmDefaultChartName)
-	if err != nil {
-		return err
-	}
-
-	// Render for each add-on separately and attach
-	for _, dep := range dependencies {
-		chartName := dep.Metadata.Name
-		if chartName == "partials" {
-			continue
+	if values.Stage != configStage {
+		addons, err := parseAddOnValues(values)
+		if err != nil {
+			return err
 		}
 
-		addOnValues, enabled := checkAddon(values, chartName)
-		if enabled {
-			files := []*chartutil.BufferedFile{
-				{Name: chartutil.ChartfileName},
-			}
+		for addon, values := range addons {
+			var chart *charts.Chart
+			switch addon {
+			case "tracing":
+				chart = &charts.Chart{
+					Name:      tracingChartName,
+					Dir:       filepath.Join(addOnChartsPath, tracingChartName),
+					Namespace: controlPlaneNamespace,
+					RawValues: append(rawValues, values...),
+					Files:     tracingTemplates,
+				}
 
-			for _, template := range dep.Templates {
-				files = append(files, &chartutil.BufferedFile{
-					Name: template.Name,
-					Data: template.Data,
-				})
-			}
+				b, err := chart.Render()
+				if err != nil {
+					return err
+				}
 
-			subChart := &charts.Chart{
-				Name:      chartName,
-				Dir:       filepath.Join(addOnChartsPath, chartName),
-				Namespace: controlPlaneNamespace,
-				RawValues: append(rawValues, addOnValues...),
-				Files:     files,
+				if _, err := buf.WriteString(b.String()); err != nil {
+					return err
+				}
 			}
-
-			addOnBuf, err := subChart.Render()
-			if err != nil {
-				return err
-			}
-
-			buf.Write(addOnBuf.Bytes())
 		}
 	}
 
@@ -1216,18 +1210,20 @@ func toIdentityContext(idvals *identityWithAnchorsAndTrustDomain) *pb.IdentityCo
 		Scheme:             idvals.Identity.Issuer.Scheme,
 	}
 }
-func checkAddon(values *l5dcharts.Values, name string) (addonvalues []byte, enabled bool) {
 
-	r := reflect.ValueOf(values)
+func parseAddOnValues(values *l5dcharts.Values) (map[string][]byte, error) {
+	addonValues := map[string][]byte{}
 
-	if !reflect.Indirect(r).FieldByName(strings.Title(name)).IsNil() {
-		if reflect.Indirect(r).FieldByName(strings.Title(name)).MapIndex(reflect.ValueOf("enabled")).Interface().(bool) {
-			values, err := yaml.Marshal(reflect.Indirect(r).FieldByName(strings.Title(name)).Interface())
+	if values.Tracing != nil {
+		if values.Tracing["enabled"].(bool) {
+			data, err := yaml.Marshal(values.Tracing)
 			if err != nil {
-				return nil, false
+				return nil, err
 			}
-			return values, true
+
+			addonValues[tracingChartName] = data
 		}
 	}
-	return nil, false
+
+	return addonValues, nil
 }

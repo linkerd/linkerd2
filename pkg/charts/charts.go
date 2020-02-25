@@ -2,26 +2,18 @@ package charts
 
 import (
 	"bytes"
-	"io/ioutil"
-	"net/http"
 	"path"
-	fpath "path/filepath"
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/proto/hapi/chart"
 	helmChart "k8s.io/helm/pkg/proto/hapi/chart"
 	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/timeconv"
 )
 
-const (
-	versionPlaceholder  = "{version}"
-	linkerdChartName    = "linkerd2"
-	linkerdChartRootDir = "linkerd2"
-)
+const versionPlaceholder = "{version}"
 
 // Chart holds the necessary info to render a Helm chart
 type Chart struct {
@@ -30,106 +22,6 @@ type Chart struct {
 	Namespace string
 	RawValues []byte
 	Files     []*chartutil.BufferedFile
-}
-
-// LoadChart returns a new Chart object that contains all the files of the
-// specified chart. The chart's files are loaded from the virtual filesystem
-// using the Helm's chartutil.LoadFiles() helper function.
-func LoadChart(chartName string) (*helmChart.Chart, error) {
-	var vfiles []*chartutil.BufferedFile
-
-	// retrieve all the files of a chart located at linkerdChartRootRid
-	walkVFS := func() error {
-		files, err := readVirtualFiles(linkerdChartRootDir, chartName)
-		if err != nil {
-			return err
-		}
-
-		for path, file := range files {
-			data, err := ioutil.ReadAll(file)
-			if err != nil {
-				return err
-			}
-
-			filename := path
-			if strings.HasPrefix(path, chartName) {
-				filename = path[len(chartName)+1:]
-			}
-
-			vfiles = append(vfiles, &chartutil.BufferedFile{
-				Name: filename,
-				Data: data,
-			})
-		}
-
-		return nil
-	}
-
-	if err := walkVFS(); err != nil {
-		return nil, err
-	}
-
-	return chartutil.LoadFiles(vfiles)
-}
-
-// LoadDependencies loads all the dependent subcharts of the specified chart.
-// It relies on LoadChart to load the files and metadata of the chart from the
-// VFS.
-func LoadDependencies(chartName string) ([]*chart.Chart, error) {
-	chart, err := LoadChart(chartName)
-	if err != nil {
-		return nil, err
-	}
-
-	return chart.Dependencies, nil
-}
-
-// readVirtualFiles read the content of a file from the VFS. If the file is
-// directory, it also loads the children files content, recursively.
-//
-// The result map is keyed off the full path of the files, which is needed
-// by the renderer. The http.File struct contains only the file basename.
-func readVirtualFiles(filename, root string) (map[string]http.File, error) {
-	filepath := filename
-	if !strings.HasPrefix(filepath, root) {
-		filepath = fpath.Join(root, filename)
-	}
-
-	file, err := static.Templates.Open(filepath)
-	if err != nil {
-		return nil, err
-	}
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-
-	if !fileInfo.IsDir() {
-		return map[string]http.File{filepath: file}, nil
-	}
-
-	// file is a directory. read its children files.
-	files := map[string]http.File{}
-	filesInfo, err := file.Readdir(0)
-	if err != nil {
-		return nil, err
-	}
-
-	parent := fileInfo.Name()
-	for _, fileInfo := range filesInfo {
-		filename := fpath.Join(parent, fileInfo.Name())
-		children, err := readVirtualFiles(filename, root)
-		if err != nil {
-			return nil, err
-		}
-
-		for path, file := range children {
-			files[path] = file
-		}
-	}
-
-	return files, nil
 }
 
 func (chart *Chart) render(partialsFiles []*chartutil.BufferedFile) (bytes.Buffer, error) {
