@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestNewProxyMetricsForward(t *testing.T) {
+func TestNewContainerMetricsForward(t *testing.T) {
 	// TODO: test successful cases by mocking out `clientset.CoreV1().RESTClient()`
 	tests := []struct {
 		ns         string
@@ -35,49 +37,11 @@ spec:
 			},
 			errors.New("no linkerd-admin port found for container pod-name/linkerd-proxy"),
 		},
-		{
-			"pod-ns",
-			"pod-name",
-			[]string{`apiVersion: v1
-kind: Pod
-metadata:
-  name: pod-name
-  namespace: pod-ns
-status:
-  phase: Running
-spec:
-  containers:
-  - name: bad-container
-    ports:
-    - name: linkerd-admin
-      port: 123`,
-			},
-			errors.New("no linkerd-proxy container found for pod pod-name"),
-		},
-		{
-			"pod-ns",
-			"pod-name",
-			[]string{`apiVersion: v1
-kind: Pod
-metadata:
-  name: pod-name
-  namespace: pod-ns
-status:
-  phase: Stopped
-spec:
-  containers:
-  - name: linkerd-proxy
-    ports:
-    - name: linkerd-admin
-      port: 123`,
-			},
-			errors.New("pod not running: pod-name"),
-		},
 	}
 
 	for i, test := range tests {
 		test := test // pin
-		t.Run(fmt.Sprintf("%d: NewProxyMetricsForward returns expected result", i), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%d: NewContainerMetricsForward returns expected result", i), func(t *testing.T) {
 			k8sClient, err := NewFakeAPI(test.k8sConfigs...)
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
@@ -86,7 +50,12 @@ spec:
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
 			}
-			_, err = NewProxyMetricsForward(&KubernetesAPI{Interface: k8sClient}, *pod, false)
+			var container corev1.Container
+			for _, c := range pod.Spec.Containers {
+				container = c
+				break
+			}
+			_, err = NewContainerMetricsForward(&KubernetesAPI{Interface: k8sClient}, *pod, container, false, ProxyAdminPortName)
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||

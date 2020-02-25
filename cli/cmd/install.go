@@ -44,6 +44,7 @@ type (
 		controlPlaneVersion         string
 		controllerReplicas          uint
 		controllerLogLevel          string
+		prometheusImage             string
 		highAvailability            bool
 		controllerUID               int64
 		disableH2Upgrade            bool
@@ -188,6 +189,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		controlPlaneVersion:         version.Version,
 		controllerReplicas:          defaults.ControllerReplicas,
 		controllerLogLevel:          defaults.ControllerLogLevel,
+		prometheusImage:             defaults.PrometheusImage,
 		highAvailability:            defaults.Global.HighAvailability,
 		controllerUID:               defaults.ControllerUID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
@@ -460,6 +462,12 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel,
 		"Log level for the controller and web components",
 	)
+
+	flags.StringVar(
+		&options.prometheusImage, "prometheus-image", options.prometheusImage,
+		"Custom Prometheus image name",
+	)
+
 	flags.BoolVar(
 		&options.highAvailability, "ha", options.highAvailability,
 		"Enable HA deployment config for the control plane (default false)",
@@ -651,6 +659,10 @@ func (options *installOptions) validate() error {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
+	if options.prometheusImage != "" && !alphaNumDashDotSlashColonUnderscore.MatchString(options.prometheusImage) {
+		return fmt.Errorf("%s is not a valid prometheus image", options.prometheusImage)
+	}
+
 	if err := options.proxyConfigOptions.validate(); err != nil {
 		return err
 	}
@@ -733,6 +745,9 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+	if options.prometheusImage != "" {
+		installValues.PrometheusImage = options.prometheusImage
+	}
 	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.Global.CNIEnabled = options.cniEnabled
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects

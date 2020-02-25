@@ -190,8 +190,8 @@ setup_helm() {
         kubectl --context=$k8s_context label ns $tiller_namespace linkerd.io/is-test-helm=true
         kubectl --context=$k8s_context create clusterrolebinding ${tiller_namespace}:tiller-cluster-admin --clusterrole=cluster-admin --serviceaccount=${tiller_namespace}:default
         kubectl --context=$k8s_context label clusterrolebinding ${tiller_namespace}:tiller-cluster-admin linkerd.io/is-test-helm=true
+        "$bindir"/helm-build
         "$helm_path" --kube-context=$k8s_context --tiller-namespace=$tiller_namespace init --wait
-        "$helm_path" --kube-context=$k8s_context --tiller-namespace=$tiller_namespace dependency update "$helm_chart"
         "$helm_path" --kube-context=$k8s_context --tiller-namespace=$tiller_namespace repo add linkerd https://helm.linkerd.io/stable
     )
     exit_on_err 'error setting up Helm'

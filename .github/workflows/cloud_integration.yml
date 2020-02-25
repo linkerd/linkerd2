@@ -1,11 +1,13 @@
 name: Cloud integration
 on:
   push:
+    paths-ignore:
+    - '*.md'
+    - '**/*.md'
     branches:
     - master
-    tags:
-    - "*"
 jobs:
+  # todo: Keep in sync with `release.yml`
   docker_build:
     name: Docker build
     runs-on: ubuntu-18.04
@@ -31,6 +33,7 @@ jobs:
       run: |
         export PATH="`pwd`/bin:$PATH"
         bin/docker-build
+  # todo: Keep in sync with `release.yml`
   docker_push:
     name: Docker push
     runs-on: ubuntu-18.04
@@ -43,7 +46,7 @@ jobs:
         . bin/_tag.sh
         echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
     - name: Configure gcloud
-      uses: linkerd/linkerd2-action-gcloud@v1.0.0
+      uses: linkerd/linkerd2-action-gcloud@v1.0.1
       with:
         cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
         gcp_project: ${{ secrets.GCP_PROJECT }}
@@ -65,6 +68,7 @@ jobs:
         bin/docker-push $TAG
         bin/docker-retag-all $TAG master
         bin/docker-push master
+  # todo: Keep in sync with `release.yml`
   cloud_integration_tests:
     name: Cloud integration tests
     runs-on: ubuntu-18.04
@@ -72,6 +76,13 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
+    - name: Try to load cached Go modules
+      uses: actions/cache@v1
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
     - name: Install linkerd CLI
       id: install_cli
       run: |
@@ -85,7 +96,7 @@ jobs:
         echo "Installed Linkerd CLI version: $TAG"
         echo "::set-output name=tag::$TAG"
     - name: Create GKE cluster
-      uses: linkerd/linkerd2-action-gcloud@v1.0.0
+      uses: linkerd/linkerd2-action-gcloud@v1.0.1
       with:
         cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
         gcp_project: ${{ secrets.GCP_PROJECT }}
@@ -104,31 +115,3 @@ jobs:
       run: |
         export TAG="$($HOME/.linkerd version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
-  chart_deploy:
-    name: Helm chart deploy
-    if: startsWith(github.ref, 'refs/tags')
-    runs-on: ubuntu-18.04
-    needs: [cloud_integration_tests]
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Configure gsutils
-      uses: linkerd/linkerd2-action-gcloud@v1.0.0
-      with:
-        cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
-        gcp_project: ${{ secrets.GCP_PROJECT }}
-        gcp_zone: ${{ secrets.GCP_ZONE }}
-    - name: Edge Helm chart creation and upload
-      if: startsWith(github.ref, 'refs/tags/edge')
-      run: |
-        mkdir -p target/helm
-        gsutil cp gs://helm.linkerd.io/edge/index.yaml target/helm/index-pre.yaml
-        bin/helm-build package
-        gsutil rsync target/helm gs://helm.linkerd.io/edge
-    - name: Stable Helm chart creation and upload
-      if: startsWith(github.ref, 'refs/tags/stable')
-      run: |
-        mkdir -p target/helm
-        gsutil cp gs://helm.linkerd.io/stable/index.yaml target/helm/index-pre.yaml
-        bin/helm-build package
-        gsutil rsync target/helm gs://helm.linkerd.io/stable

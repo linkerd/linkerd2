@@ -2,10 +2,11 @@ name: Unit tests
 on:
   pull_request: {}
   push:
+    paths-ignore:
+    - '*.md'
+    - '**/*.md'
     branches:
     - master
-    tags:
-    - "*"
 jobs:
   go_unit_tests:
     name: Go unit tests

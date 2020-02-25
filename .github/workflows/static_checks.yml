@@ -2,10 +2,11 @@ name: Static checks
 on:
   pull_request: {}
   push:
+    paths-ignore:
+    - '*.md'
+    - '**/*.md'
     branches:
     - master
-    tags:
-    - "*"
 jobs:
   go_dependencies:
     name: Go dependencies
