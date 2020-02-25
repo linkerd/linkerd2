@@ -67,11 +67,26 @@ func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int) *RemoteClu
 							return
 						}
 					}
-					if err := rcw.unregisterRemoteCluster(secret); err != nil {
+					if err := rcw.unregisterRemoteCluster(secret, true); err != nil {
 						log.Errorf("Cannot unregister remote cluster: %s", err)
 					}
 				},
-				UpdateFunc: func(_, obj interface{}) {
+				UpdateFunc: func(old, new interface{}) {
+					oldSecret := old.(*corev1.Secret)
+					newSecret := new.(*corev1.Secret)
+
+					if oldSecret.ResourceVersion != newSecret.ResourceVersion {
+						if err := rcw.unregisterRemoteCluster(oldSecret, false); err != nil {
+							log.Errorf("Cannot unregister remote cluster: %s", err)
+							return
+						}
+
+						if err := rcw.registerRemoteCluster(newSecret); err != nil {
+							log.Errorf("Cannot register remote cluster: %s", err)
+						}
+
+					}
+
 					//TODO: Handle update (it might be that the credentials have changed...)
 				},
 			},
@@ -118,7 +133,7 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 
 }
 
-func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(secret *corev1.Secret) error {
+func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(secret *corev1.Secret, cleanState bool) error {
 	_, name, err := parseRemoteClusterSecret(secret)
 	if err != nil {
 		return err
@@ -126,7 +141,7 @@ func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(secret *corev1.Se
 	rcw.Lock()
 	defer rcw.Unlock()
 	if watcher, ok := rcw.clusterWatchers[name]; ok {
-		watcher.Stop(true)
+		watcher.Stop(cleanState)
 	} else {
 		return fmt.Errorf("cannot find watcher for cluser: %s", name)
 	}
