@@ -548,14 +548,8 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 		serviceToCreate.Annotations[consts.RemoteGatewayResourceVersionAnnotation] = resVersion
 
 	} else {
-		message := fmt.Sprintf("Could not resolve gateway for %s: %s", serviceInfo, err)
-		if kerrors.IsNotFound(err) {
-			// if we cannot find the gateway, we create a service without endpoints and just warn
-			rcsw.log.Warn(message)
-		} else {
-			// otherwise this might be another error that is worth of retrying
-			return RetryableError{[]error{errors.New(message)}}
-		}
+		rcsw.log.Warnf("Could not resolve gateway for %s: %s, skipping subsets", serviceInfo, err)
+		endpointsToCreate.Subsets = nil
 	}
 
 	rcsw.log.Debugf("Creating a new service mirror for %s", serviceInfo)
@@ -936,8 +930,10 @@ func (rcsw *RemoteClusterServiceWatcher) Start() {
 }
 
 // Stop stops watching the cluster and cleans up all mirrored resources
-func (rcsw *RemoteClusterServiceWatcher) Stop() {
+func (rcsw *RemoteClusterServiceWatcher) Stop(cleanupState bool) {
 	close(rcsw.stopper)
-	rcsw.eventsQueue.Add(&ClusterUnregistered{})
+	if cleanupState {
+		rcsw.eventsQueue.Add(&ClusterUnregistered{})
+	}
 	rcsw.eventsQueue.ShutDown()
 }

@@ -85,7 +85,7 @@ func (rcw *RemoteClusterConfigWatcher) Stop() {
 	rcw.Lock()
 	defer rcw.Unlock()
 	for _, watcher := range rcw.clusterWatchers {
-		watcher.Stop()
+		watcher.Stop(false)
 	}
 }
 
@@ -126,7 +126,7 @@ func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(secret *corev1.Se
 	rcw.Lock()
 	defer rcw.Unlock()
 	if watcher, ok := rcw.clusterWatchers[name]; ok {
-		watcher.Stop()
+		watcher.Stop(true)
 	} else {
 		return fmt.Errorf("cannot find watcher for cluser: %s", name)
 	}
