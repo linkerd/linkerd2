@@ -346,6 +346,8 @@ const (
 	// version of a mirrored resource. Useful when doing updates
 	RemoteResourceVersionAnnotation = SvcMirrorPrefix + "/remote-resource-version"
 
+	// RemoteServiceFqName is the fully qualified name of the mirrored service
+	// on the remote cluster
 	RemoteServiceFqName = SvcMirrorPrefix + "/remote-svc-fq-name"
 
 	// RemoteGatewayResourceVersionAnnotation is the last observed remote resource
@@ -357,10 +359,8 @@ const (
 	// to a remote cluster
 	ConfigKeyName = "kubeconfig"
 
-	// ConfigKeyName is the name of the named port that must be present on a
-	// remote gateway
+	// GatewayPortName is the name of the incoming port of the gateway
 	GatewayPortName = "incoming-port"
-
 )
 
 // CreatedByAnnotationValue returns the value associated with
