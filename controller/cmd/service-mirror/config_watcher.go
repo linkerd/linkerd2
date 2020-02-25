@@ -18,15 +18,14 @@ import (
 type RemoteClusterConfigWatcher struct {
 	k8sAPI          *k8s.API
 	clusterWatchers map[string]*RemoteClusterServiceWatcher
-	mutex           *sync.Mutex
 	requeueLimit    int
+	sync.RWMutex
 }
 
 // NewRemoteClusterConfigWatcher Creates a new config watcher
 func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int) *RemoteClusterConfigWatcher {
 	rcw := &RemoteClusterConfigWatcher{
 		k8sAPI:          k8sAPI,
-		mutex:           &sync.Mutex{},
 		clusterWatchers: map[string]*RemoteClusterServiceWatcher{},
 		requeueLimit:    requeueLimit,
 	}
@@ -83,8 +82,8 @@ func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int) *RemoteClu
 
 // Stop Shuts down all created config and cluster watchers
 func (rcw *RemoteClusterConfigWatcher) Stop() {
-	rcw.mutex.Lock()
-	defer rcw.mutex.Unlock()
+	rcw.Lock()
+	defer rcw.Unlock()
 	for _, watcher := range rcw.clusterWatchers {
 		watcher.Stop()
 	}
@@ -101,8 +100,8 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 		return fmt.Errorf("unable to parse kube config: %s", err)
 	}
 
-	rcw.mutex.Lock()
-	defer rcw.mutex.Unlock()
+	rcw.Lock()
+	defer rcw.Unlock()
 
 	if _, ok := rcw.clusterWatchers[name]; ok {
 		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", name)
@@ -124,8 +123,8 @@ func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(secret *corev1.Se
 	if err != nil {
 		return err
 	}
-	rcw.mutex.Lock()
-	defer rcw.mutex.Unlock()
+	rcw.Lock()
+	defer rcw.Unlock()
 	if watcher, ok := rcw.clusterWatchers[name]; ok {
 		watcher.Stop()
 	} else {
