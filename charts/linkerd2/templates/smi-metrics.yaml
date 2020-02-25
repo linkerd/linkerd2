@@ -1,0 +1,111 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: smi-metrics
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    {{.Values.global.controllerComponentLabel}}: smi-metrics
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  name: linkerd-smi-metrics
+  namespace: {{.Values.global.namespace}}
+data:
+  config.yml: |
+    {{- $files := .Files }}
+    {{- $files.Get "smi-metrics-config.yaml" | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: linkerd-smi-metrics
+  namespace: {{.Values.global.namespace}}
+  labels:
+    app.kubernetes.io/name: smi-metrics
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    {{.Values.global.controllerComponentLabel}}: smi-metrics
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{.Values.global.controllerComponentLabel}}: smi-metrics
+      {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+      {{- include "partials.proxy.labels" .Values.global.proxy | nindent 6}}
+  template:
+    metadata:
+      annotations:
+        {{- if empty .Values.global.cliVersion }}
+        linkerd.io/helm-release-version: {{ $.Release.Revision | quote}}
+        {{- end }}
+        {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+        {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
+      labels:
+        {{.Values.global.controllerComponentLabel}}: smi-metrics
+        {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+        {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
+    spec:
+      {{- include "linkerd.node-selector" . | nindent 6 }}
+      {{- if .Values.enablePodAntiAffinity -}}
+      {{- $local := dict "component" "tap" "label" .Values.global.controllerComponentLabel -}}
+      {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
+      {{- end }}
+      serviceAccountName: linkerd-smi-metrics
+      containers:
+      - name: shim
+        image: {{ .Values.smiMetricsImage }}
+        imagePullPolicy: {{ .Values.global.pullPolicy }}
+
+        command:
+        - /smi-metrics
+        - --config=/config.yml
+
+        ports:
+        - containerPort: 8080
+          name: api
+          protocol: TCP
+        - containerPort: 8081
+          name: admin
+          protocol: TCP
+
+        volumeMounts:
+        - name: config
+          mountPath: /config.yml
+          subPath: config.yml
+        - mountPath: /var/run/smi-metrics
+          name: tls
+          readOnly: true
+
+      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if not .Values.global.cniEnabled -}}
+      initContainers:
+      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+
+      volumes:
+      - name: config
+        configMap:
+          name: linkerd-smi-metrics
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      - name: tls
+        secret:
+          secretName: linkerd-smi-metrics-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: linkerd-smi-metrics
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: smi-metrics
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+spec:
+  ports:
+    - port: 443
+      targetPort: api
+      protocol: TCP
+  selector:
+    {{.Values.global.controllerComponentLabel}}: smi-metrics

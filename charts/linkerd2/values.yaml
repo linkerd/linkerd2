@@ -168,3 +168,5 @@ installNamespace: true
 # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector.
 nodeSelector:
   beta.kubernetes.io/os: linux
+
+smiMetricsImage: deislabs/smi-metrics:v0.2.0

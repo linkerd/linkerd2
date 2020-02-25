@@ -1,0 +1,66 @@
+---
+###
+### SMI-Metrics RBAC
+###
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    {{.Values.global.controllerComponentLabel}}: smi-metrics
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  name: linkerd-smi-metrics
+  namespace: {{.Values.global.namespace}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: linkerd-smi-metrics
+  labels:
+    {{.Values.global.controllerComponentLabel}}: smi-metrics
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+- kind: ServiceAccount
+  name: linkerd-smi-metrics
+  namespace: {{.Values.global.namespace}}
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: linkerd-smi-metrics-tls
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: smi-metrics
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+type: kubernetes.io/tls
+data:
+  {{ $cn := printf "linkerd-smi-metrics.%s.svc" .Values.global.namespace -}}
+  {{ $ca := genCA $cn 365 -}}
+  {{ $cert := genSignedCert $cn nil nil 365 $ca -}}
+  tls.crt: {{ b64enc $cert.Cert }}
+  tls.key: {{ b64enc $cert.Key }}
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.metrics.smi-spec.io
+  labels:
+    {{.Values.global.controllerComponentLabel}}: smi-metrics
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+spec:
+  group: metrics.smi-spec.io
+  version: v1alpha1
+  insecureSkipTLSVerify: false
+  groupPriorityMinimum: 100
+  versionPriority: 100
+  service:
+    name: linkerd-smi-metrics
+    namespace: {{.Values.global.namespace}}
+  caBundle: {{ b64enc $ca.Cert }}

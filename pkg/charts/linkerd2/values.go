@@ -47,6 +47,7 @@ type (
 		ProfileValidator            *ProfileValidator `json:"profileValidator"`
 		Tap                         *Tap              `json:"tap"`
 		NodeSelector                map[string]string `json:"nodeSelector"`
+		SmiMetricsImage             string            `json:"smiMetricsImage"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
 		GrafanaResources       *Resources `json:"grafanaResources"`
