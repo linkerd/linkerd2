@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{"linkerd.io/inject":"disabled"},"labels":{"config.linkerd.io/admission-webhooks":"disabled","foo":"bar","linkerd.io/control-plane-ns":"linkerd","linkerd.io/is-control-plane":"true"},"name":"linkerd"}}
+    linkerd.io/inject: disabled
+  creationTimestamp: "2020-02-26T15:21:02Z"
+  labels:
+    config.linkerd.io/admission-webhooks: disabled
+    foo: bar
+    linkerd.io/control-plane-ns: linkerd
+    linkerd.io/is-control-plane: "true"
+  name: linkerd
+  resourceVersion: "36194"
+  selfLink: /api/v1/namespaces/linkerd
+  uid: cec381b4-f1cc-4175-9434-004b9fa8188d
+spec:
+  finalizers:
+  - kubernetes
+status:
+  phase: Active
