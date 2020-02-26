@@ -249,6 +249,35 @@ jobs:
         token: ${{ secrets.RELEASE_TOKEN }}
         repository: linkerd/website
         event-type: release
+  website_publish_check:
+    name: Linkerd website publish check
+    if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
+    runs-on: ubuntu-18.04
+    needs: [website_publish]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Set environment variables from scripts
+      run: |
+        . bin/_tag.sh
+        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+    - name: Set install target for stable
+      if: startsWith(github.ref, 'refs/tags/stable')
+      run: echo ::set-env name=INSTALL::install
+    - name: Set install target for edge
+      if: startsWith(github.ref, 'refs/tags/edge')
+      run: echo ::set-env name=INSTALL::install-edge
+    - name: Check published version
+      run: |
+        until RES=$(curl -sL https://run.linkerd.io/$INSTALL | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
+          || (( count++ >= 10 ))
+        do
+          sleep 5
+        done
+        if [[ -z $RES ]]; then
+          echo "::error::The version '$TAG' was NOT found published in the website"
+          exit 1
+        fi
   chart_deploy:
     name: Helm chart deploy
     runs-on: ubuntu-18.04
