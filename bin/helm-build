@@ -5,6 +5,7 @@ set -e
 setValues() {
     sed -i "s/$1/$2/" charts/linkerd2/values.yaml
     sed -i "s/$1/$2/" charts/linkerd2-cni/values.yaml
+    sed -i "s/$1/$2/" charts/linkerd2-service-mirror/values.yaml
 }
 
 showErr() {
