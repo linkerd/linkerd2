@@ -60,7 +60,7 @@ const (
 	Svc
 	TS
 	Node
-	SC
+	Secret
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -83,7 +83,7 @@ type API struct {
 	svc      coreinformers.ServiceInformer
 	ts       tsinformers.TrafficSplitInformer
 	node     coreinformers.NodeInformer
-	sc       coreinformers.SecretInformer
+	secret   coreinformers.SecretInformer
 
 	syncChecks        []cache.InformerSynced
 	sharedInformers   informers.SharedInformerFactory
@@ -92,7 +92,7 @@ type API struct {
 }
 
 // InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
-func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
+func InitializeAPI(kubeConfig string, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
 	config, err := k8s.GetConfig(kubeConfig, "")
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
@@ -103,21 +103,29 @@ func InitializeAPI(kubeConfig string, resources ...APIResource) (*API, error) {
 		return nil, err
 	}
 
-	return initAPI(k8sClient, config, resources...)
+	return initAPI(k8sClient, config, ensureClusterWideAccess, resources...)
 }
 
 // InitializeAPIForConfig creates Kubernetes clients and returns an initialized API wrapper.
-func InitializeAPIForConfig(kubeConfig *rest.Config, resources ...APIResource) (*API, error) {
+func InitializeAPIForConfig(kubeConfig *rest.Config, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
 	k8sClient, err := k8s.NewAPIForConfig(kubeConfig, "", []string{}, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	return initAPI(k8sClient, kubeConfig, resources...)
+	return initAPI(k8sClient, kubeConfig, ensureClusterWideAccess, resources...)
 }
 
-func initAPI(k8sClient *k8s.KubernetesAPI, kubeConfig *rest.Config, resources ...APIResource) (*API, error) {
+func initAPI(k8sClient *k8s.KubernetesAPI, kubeConfig *rest.Config, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
+	// check for cluster-wide access
 	var err error
+
+	if ensureClusterWideAccess {
+		err := k8s.ClusterAccess(k8sClient)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// check for need and access to ServiceProfiles
 	var spClient *spclient.Clientset
@@ -229,22 +237,16 @@ func NewAPI(
 		case Node:
 			api.node = sharedInformers.Core().V1().Nodes()
 			api.syncChecks = append(api.syncChecks, api.node.Informer().HasSynced)
-		case SC:
-			api.sc = sharedInformers.Core().V1().Secrets()
-			api.syncChecks = append(api.syncChecks, api.sc.Informer().HasSynced)
+		case Secret:
+			api.secret = sharedInformers.Core().V1().Secrets()
+			api.syncChecks = append(api.syncChecks, api.secret.Informer().HasSynced)
 		}
 	}
 	return api
 }
 
 // Sync waits for all informers to be synced.
-func (api *API) Sync() {
-	api.SyncWithStopCh(nil)
-}
-
-// SyncWithStopCh waits for all informers to be synced.
-//TODO Added temporary to avoid making the diff too irrelevant
-func (api *API) SyncWithStopCh(stopCh chan struct{}) {
+func (api *API) Sync(stopCh chan struct{}) {
 	api.sharedInformers.Start(stopCh)
 	api.spSharedInformers.Start(stopCh)
 	api.tsSharedInformers.Start(stopCh)
@@ -388,10 +390,10 @@ func (api *API) Node() coreinformers.NodeInformer {
 
 // Secret provides access to a shared informer and lister for Secrets.
 func (api *API) Secret() coreinformers.SecretInformer {
-	if api.sc == nil {
+	if api.secret == nil {
 		panic("Secret informer not configured")
 	}
-	return api.sc
+	return api.secret
 }
 
 // CJ provides access to a shared informer and lister for CronJobs.

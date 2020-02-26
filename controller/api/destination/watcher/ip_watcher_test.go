@@ -434,7 +434,7 @@ status:
 			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
 			watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
 
-			k8sAPI.Sync()
+			k8sAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 
@@ -572,7 +572,7 @@ status:
 			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
 			watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
 
-			k8sAPI.Sync()
+			k8sAPI.Sync(nil)
 
 			listener := newBufferingEndpointListener()
 

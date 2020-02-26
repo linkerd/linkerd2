@@ -379,7 +379,7 @@ status:
 
 			fakeGrpcServer := newGRPCTapServer(uint(tapPort), "controller-ns", "cluster.local", k8sAPI)
 
-			k8sAPI.Sync()
+			k8sAPI.Sync(nil)
 
 			err = fakeGrpcServer.TapByResource(&exp.req, &stream)
 			if !reflect.DeepEqual(err, exp.err) {
@@ -609,7 +609,7 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 			s := NewGrpcTapServer(4190, "controller-ns", "cluster.local", k8sAPI)
-			k8sAPI.Sync()
+			k8sAPI.Sync(nil)
 
 			labels := make(map[string]string)
 			ip, err := addr.ParsePublicIPV4(exp.requestedIP)

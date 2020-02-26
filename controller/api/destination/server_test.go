@@ -99,7 +99,7 @@ spec:
 	}
 	log := logging.WithField("test", t.Name())
 
-	k8sAPI.Sync()
+	k8sAPI.Sync(nil)
 
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)

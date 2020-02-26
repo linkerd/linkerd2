@@ -186,7 +186,7 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadat
 
 // NewRemoteClusterServiceWatcher constructs a new cluster watcher
 func NewRemoteClusterServiceWatcher(localAPI *k8s.API, cfg *rest.Config, clusterName string, requeueLimit int, clusterDomain string) (*RemoteClusterServiceWatcher, error) {
-	remoteAPI, err := k8s.InitializeAPIForConfig(cfg, k8s.Svc)
+	remoteAPI, err := k8s.InitializeAPIForConfig(cfg, false, k8s.Svc)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize remote api for cluster %s: %s", clusterName, err)
 	}
@@ -836,7 +836,7 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 
 // Start starts watching the remote cluster
 func (rcsw *RemoteClusterServiceWatcher) Start() {
-	rcsw.remoteAPIClient.SyncWithStopCh(rcsw.stopper)
+	rcsw.remoteAPIClient.Sync(rcsw.stopper)
 	rcsw.eventsQueue.Add(&OprhanedServicesGcTriggered{})
 	rcsw.remoteAPIClient.Svc().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{

@@ -104,3 +104,9 @@ func ServiceProfilesAccess(k8sClient kubernetes.Interface) error {
 
 	return errors.New("ServiceProfile CRD not found")
 }
+
+// ClusterAccess verifies whether k8sClient is authorized to access all pods in
+// all namespaces in the cluster.
+func ClusterAccess(k8sClient kubernetes.Interface) error {
+	return ResourceAuthz(k8sClient, "", "list", "", "", "pods", "")
+}

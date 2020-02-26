@@ -25,7 +25,8 @@ func Main(args []string) {
 
 	k8sAPI, err := k8s.InitializeAPI(
 		*kubeConfigPath,
-		k8s.SC,
+		false,
+		k8s.Secret,
 		k8s.Svc,
 		k8s.NS,
 		k8s.Endpoint,
@@ -35,7 +36,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	k8sAPI.Sync()
+	k8sAPI.Sync(nil)
 	watcher := NewRemoteClusterConfigWatcher(k8sAPI, *requeueLimit)
 	log.Info("Started cluster config watcher")
 

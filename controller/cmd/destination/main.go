@@ -36,7 +36,7 @@ func Main(args []string) {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	k8sAPI, err := k8s.InitializeAPI(
-		*kubeConfigPath,
+		*kubeConfigPath, true,
 		k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
 	)
 	if err != nil {
@@ -85,7 +85,7 @@ func Main(args []string) {
 		done,
 	)
 
-	k8sAPI.Sync() // blocks until caches are synced
+	k8sAPI.Sync(nil) // blocks until caches are synced
 
 	go func() {
 		log.Infof("starting gRPC server on %s", *addr)
