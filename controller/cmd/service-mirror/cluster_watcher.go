@@ -29,6 +29,7 @@ type (
 	// problems or general glitch in the Matrix.
 	RemoteClusterServiceWatcher struct {
 		clusterName     string
+		clusterDomain   string
 		remoteAPIClient *k8s.API
 		localAPIClient  *k8s.API
 		stopper         chan struct{}
@@ -228,7 +229,7 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadat
 }
 
 // NewRemoteClusterServiceWatcher constructs a new cluster watcher
-func NewRemoteClusterServiceWatcher(localAPI *k8s.API, cfg *rest.Config, clusterName string, requeueLimit int) (*RemoteClusterServiceWatcher, error) {
+func NewRemoteClusterServiceWatcher(localAPI *k8s.API, cfg *rest.Config, clusterName string, requeueLimit int, clusterDomain string) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(cfg, k8s.Svc)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize remote api for cluster %s: %s", clusterName, err)
@@ -236,6 +237,7 @@ func NewRemoteClusterServiceWatcher(localAPI *k8s.API, cfg *rest.Config, cluster
 	stopper := make(chan struct{})
 	return &RemoteClusterServiceWatcher{
 		clusterName:     clusterName,
+		clusterDomain:   clusterDomain,
 		remoteAPIClient: remoteAPI,
 		localAPIClient:  localAPI,
 		stopper:         stopper,
@@ -268,7 +270,7 @@ func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceLabels(gatewayData *g
 func (rcsw *RemoteClusterServiceWatcher) getMirroredServiceAnnotations(remoteService *corev1.Service) map[string]string {
 	return map[string]string{
 		consts.RemoteResourceVersionAnnotation: remoteService.ResourceVersion, // needed to detect real changes
-		consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.svc.cluster.local", remoteService.Name, remoteService.Namespace),
+		consts.RemoteServiceFqName:             fmt.Sprintf("%s.%s.svc.%s", remoteService.Name, remoteService.Namespace, rcsw.clusterDomain),
 	}
 }
 

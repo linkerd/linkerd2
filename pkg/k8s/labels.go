@@ -342,6 +342,11 @@ const (
 	// allows us to associate a mirrored service with a remote cluster
 	RemoteClusterNameLabel = SvcMirrorPrefix + "/cluster-name"
 
+	// RemoteClusterDomainAnnotation is present on the secret
+	// carrying the config of the remote cluster, to allow for
+	// using custom cluster domains
+	RemoteClusterDomainAnnotation = SvcMirrorPrefix + "/remote-cluster-domain"
+
 	// RemoteResourceVersionAnnotation is the last observed remote resource
 	// version of a mirrored resource. Useful when doing updates
 	RemoteResourceVersionAnnotation = SvcMirrorPrefix + "/remote-resource-version"

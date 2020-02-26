@@ -105,7 +105,7 @@ func (rcw *RemoteClusterConfigWatcher) Stop() {
 }
 
 func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secret) error {
-	config, name, err := parseRemoteClusterSecret(secret)
+	config, name, domain, err := parseRemoteClusterSecret(secret)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", name)
 	}
 
-	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, name, rcw.requeueLimit)
+	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, name, rcw.requeueLimit, domain)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 }
 
 func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(secret *corev1.Secret, cleanState bool) error {
-	_, name, err := parseRemoteClusterSecret(secret)
+	_, name, _, err := parseRemoteClusterSecret(secret)
 	if err != nil {
 		return err
 	}
@@ -150,14 +150,18 @@ func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(secret *corev1.Se
 	return nil
 }
 
-func parseRemoteClusterSecret(secret *corev1.Secret) ([]byte, string, error) {
+func parseRemoteClusterSecret(secret *corev1.Secret) ([]byte, string, string, error) {
 	clusterName, hasClusterName := secret.Annotations[consts.RemoteClusterNameLabel]
 	config, hasConfig := secret.Data[consts.ConfigKeyName]
+	domain, hasDomain := secret.Annotations[consts.RemoteClusterDomainAnnotation]
 	if !hasClusterName {
-		return nil, "", fmt.Errorf("secret of type %s should contain key %s", consts.MirrorSecretType, consts.ConfigKeyName)
+		return nil, "", "", fmt.Errorf("secret of type %s should contain key %s", consts.MirrorSecretType, consts.ConfigKeyName)
 	}
 	if !hasConfig {
-		return nil, "", fmt.Errorf("secret should contain remote cluster name as annotation %s", consts.RemoteClusterNameLabel)
+		return nil, "", "", fmt.Errorf("secret should contain remote cluster name as annotation %s", consts.RemoteClusterNameLabel)
 	}
-	return config, clusterName, nil
+	if !hasDomain {
+		return nil, "", "", fmt.Errorf("secret should contain remote cluster domain as annotation %s", consts.RemoteClusterDomainAnnotation)
+	}
+	return config, clusterName, domain, nil
 }
