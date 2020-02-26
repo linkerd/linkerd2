@@ -168,3 +168,23 @@ installNamespace: true
 # https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector.
 nodeSelector:
   beta.kubernetes.io/os: linux
+
+
+# Configuration for Add-ons
+tracing:
+  enabled: false
+  collector:
+    name: linkerd-collector
+    image: omnition/opencensus-collector:0.1.10
+    resources:
+      cpu:
+        limit: 1
+        request: 200m
+      memory:
+        limit: 2Gi
+        request: 400Mi
+  jaeger:
+    name: linkerd-jaeger
+    image: jaegertracing/all-in-one:1.8
+    resources:
+

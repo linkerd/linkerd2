@@ -2,3 +2,7 @@ dependencies:
 - name: partials
   version: 0.1.0
   repository: file://../partials
+- name: tracing
+  version: 0.1.0
+  repository: file://../add-ons/tracing
+  condition: tracing.enabled

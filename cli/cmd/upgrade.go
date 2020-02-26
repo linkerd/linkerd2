@@ -9,12 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/config"
-	"github.com/linkerd/linkerd2/pkg/issuercerts"
-
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -24,6 +23,7 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -337,6 +337,35 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 
 	values.Stage = stage
 
+	// Update Add-Ons Configuration from the linkerd-value cm
+	cmRawValues, _ := GetConfigMap(k, k8s.ValuesConfigMapName, controlPlaneNamespace)
+
+	if cmRawValues != nil {
+		//Cm is present now get the data
+		cmData := cmRawValues["values"]
+		rawValues, err := yaml.Marshal(values)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// over-write add-on values with cmValues
+		// Merge Add-On Values with Values
+		if rawValues, err = mergeRaw(rawValues, []byte(cmData)); err != nil {
+			return nil, nil, err
+		}
+
+		if err = yaml.Unmarshal(rawValues, &values); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// Update  add-ons Configuration  from config file
+	// This allow users to over-write add-ons configuration during upgrades
+	err = options.UpdateAddOnValuesFromConfig(values)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return values, configs, nil
 }
 
@@ -485,6 +514,16 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 		},
 	}, nil
 
+}
+
+// GetConfigMap returns the data in a configmap
+func GetConfigMap(kubeAPI kubernetes.Interface, name string, namespace string) (map[string]string, error) {
+	cm, err := kubeAPI.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return cm.Data, nil
 }
 
 func readIssuer(trustPEM, issuerCrtPath, issuerKeyPath string) (*issuercerts.IssuerCertData, error) {
