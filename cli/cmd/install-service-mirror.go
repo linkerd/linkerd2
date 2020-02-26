@@ -40,6 +40,7 @@ func newCmdInstallServiceMirror() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return renderServiceMirror(os.Stdout, options)
 		},
+		Hidden: true,
 	}
 
 	cmd.PersistentFlags().StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
