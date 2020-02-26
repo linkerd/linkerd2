@@ -408,26 +408,6 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 		}
 	}
 
-	namespaces, err := rcsw.localAPIClient.NS().Lister().List(labels.Set(matchLabels).AsSelector())
-	if err != nil {
-		innerErr := fmt.Errorf("could not retrieve Namespaces that need cleaning up: %s", err)
-		if kerrors.IsNotFound(err) {
-			return innerErr
-		}
-		return RetryableError{[]error{innerErr}}
-	}
-
-	for _, ns := range namespaces {
-		if err := rcsw.localAPIClient.Client.CoreV1().Namespaces().Delete(ns.Name, &metav1.DeleteOptions{}); err != nil {
-			if kerrors.IsNotFound(err) {
-				continue
-			}
-			errors = append(errors, fmt.Errorf("Could not delete  Namespace %s: %s", ns.Name, err))
-		} else {
-			rcsw.log.Debugf("Deleted Namespace %s", ns.Name)
-		}
-	}
-
 	if len(errors) > 0 {
 		return RetryableError{errors}
 	}
