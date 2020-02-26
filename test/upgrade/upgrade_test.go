@@ -33,7 +33,7 @@ func TestUpgradeWithUpdatedConfig(t *testing.T) {
 		t.Fatalf("kubectl get command failed with %s\n%s", err, kubectlOut)
 	}
 
-	var golden string = "kubectl.apply.golden"
+	golden := "kubectl.apply.golden"
 	err = TestHelper.ValidateOutput(kubectlOut, golden)
 	if err != nil {
 		t.Fatal(err.Error())
