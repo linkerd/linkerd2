@@ -19,10 +19,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Set environment variables from scripts
-      run: |
-        . bin/_tag.sh
-        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
     - name: Setup SSH config for Packet
       run: |
         mkdir -p ~/.ssh/
@@ -212,10 +208,39 @@ jobs:
       run: |
         export TAG="$($HOME/.linkerd version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
+  gh_release:
+    name: Create GH release
+    if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
+    runs-on: ubuntu-18.04
+    needs: [kind_integration_tests, cloud_integration_tests]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Set environment variables from scripts
+      run: |
+        . bin/_tag.sh
+        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+    - name: Pull CLI binaries
+      run : bin/docker-pull-binaries $TAG
+    - name: Create release
+      id: create_release
+      uses: softprops/action-gh-release@91409e7
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        draft: false
+        prelease: false
+        files: |
+          ./target/release/linkerd2-cli-*-darwin
+          ./target/release/linkerd2-cli-*-darwin.sha256
+          ./target/release/linkerd2-cli-*-linux
+          ./target/release/linkerd2-cli-*-linux.sha256
+          ./target/release/linkerd2-cli-*-windows.exe
+          ./target/release/linkerd2-cli-*-windows.exe.sha256
   chart_deploy:
     name: Helm chart deploy
     runs-on: ubuntu-18.04
-    needs: [kind_integration_tests, cloud_integration_tests]
+    needs: [gh_release]
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
