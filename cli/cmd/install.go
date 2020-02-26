@@ -1231,7 +1231,9 @@ func parseAddOnValues(values *l5dcharts.Values) (map[string][]byte, error) {
 	addonValues := map[string][]byte{}
 
 	if values.Tracing != nil {
-		if values.Tracing["enabled"].(bool) {
+		if enabled, ok := values.Tracing["enabled"].(bool); !ok {
+			return nil, fmt.Errorf("invalid value for 'Tracing.enabled' (should be boolean):", values.Tracing["enabled"])
+		} else if enabled {
 			data, err := yaml.Marshal(values.Tracing)
 			if err != nil {
 				return nil, err
