@@ -55,7 +55,6 @@ spec:
       - args:
         - service-mirror
         - -log-level={{.Values.logLevel}}
-        - -event-requeue-limit={{.Values.eventRequeueLimit}}
         image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
         name: service-mirror
         securityContext:

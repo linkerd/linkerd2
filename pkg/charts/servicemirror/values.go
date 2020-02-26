@@ -19,7 +19,6 @@ type Values struct {
 	ControllerImageVersion string `json:"controllerImageVersion"`
 	ServiceMirrorUID       int64  `json:"serviceMirrorUID"`
 	LogLevel               string `json:"logLevel"`
-	EventRequeueLimit      int32  `json:"eventRequeueLimit"`
 }
 
 // NewValues returns a new instance of the Values type.

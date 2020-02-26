@@ -18,16 +18,14 @@ import (
 type RemoteClusterConfigWatcher struct {
 	k8sAPI          *k8s.API
 	clusterWatchers map[string]*RemoteClusterServiceWatcher
-	requeueLimit    int
 	sync.RWMutex
 }
 
 // NewRemoteClusterConfigWatcher Creates a new config watcher
-func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int) *RemoteClusterConfigWatcher {
+func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API) *RemoteClusterConfigWatcher {
 	rcw := &RemoteClusterConfigWatcher{
 		k8sAPI:          k8sAPI,
 		clusterWatchers: map[string]*RemoteClusterServiceWatcher{},
-		requeueLimit:    requeueLimit,
 	}
 	k8sAPI.Secret().Informer().AddEventHandler(
 		cache.FilteringResourceEventHandler{
@@ -122,7 +120,7 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", name)
 	}
 
-	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, name, rcw.requeueLimit, domain)
+	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, name, domain)
 	if err != nil {
 		return err
 	}

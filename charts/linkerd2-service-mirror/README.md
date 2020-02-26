@@ -18,4 +18,3 @@ The following table lists the configurable parameters of the linkerd2-service-mi
 |`namespace`                           | Service Mirror component namespace                                                |`linkerd-service-mirror`|
 |`serviceMirrorUID`                    | User id under which the Service Mirror shall be ran                               |`2103`|
 |`logLevel`                            | Log level for the Service Mirror component                                        |`info`|
-|`eventRequeueLimit`                   | Number of times update from the remote cluster is allowed to be requeued (retried)|`3`|

@@ -21,7 +21,6 @@ type installServiceMirrorOptions struct {
 	dockerRegistry      string
 	logLevel            string
 	uid                 int64
-	requeueLimit        int32
 }
 
 const helmServiceMirrorDefaultChartName = "linkerd2-service-mirror"
@@ -47,7 +46,6 @@ func newCmdInstallServiceMirror() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
 	cmd.PersistentFlags().StringVarP(&options.logLevel, "log-level", "", options.logLevel, "Log level for the Service Mirror Component")
 	cmd.PersistentFlags().Int64Var(&options.uid, "uid", options.uid, "Run the Service Mirror component under this user ID")
-	cmd.PersistentFlags().Int32Var(&options.requeueLimit, "event-requeue-limit", options.requeueLimit, "The number of times a failed update from the remote cluster is allowed to be requeued (retried)")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "", options.namespace, "The namespace in which the Service Mirror Component is to be installed")
 
 	return cmd
@@ -64,7 +62,6 @@ func newInstallServiceMirrorOptionsWithDefaults() (*installServiceMirrorOptions,
 		dockerRegistry:      defaultDockerRegistry,
 		logLevel:            defaults.LogLevel,
 		uid:                 defaults.ServiceMirrorUID,
-		requeueLimit:        defaults.EventRequeueLimit,
 	}, nil
 }
 
@@ -78,7 +75,6 @@ func (options *installServiceMirrorOptions) buildValues() (*servicemirror.Values
 	installValues.ControllerImageVersion = options.controlPlaneVersion
 	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
 	installValues.ServiceMirrorUID = options.uid
-	installValues.EventRequeueLimit = options.requeueLimit
 
 	return installValues, nil
 }
