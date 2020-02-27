@@ -62,7 +62,7 @@ func verifyInstallApp(t *testing.T) {
 }
 
 func checkAppWoks(t *testing.T) error {
-	return TestHelper.RetryFor(20*time.Second, func() error {
+	return TestHelper.RetryFor(40*time.Second, func() error {
 		args := []string{"stat", "deploy", "-n", TestHelper.GetTestNamespace(TestAppNamespaceSuffix), "--from", "deploy/slow-cooker", "-t", "1m"}
 		out, stderr, err := TestHelper.LinkerdRun(args...)
 		if err != nil {
@@ -70,7 +70,7 @@ func checkAppWoks(t *testing.T) error {
 		}
 		rowStats, err := testutil.ParseRows(out, 1, 8)
 		if err != nil {
-			return err
+			return fmt.Errorf("%s\n%s", err, stderr)
 		}
 
 		stat := rowStats[TestAppBackendDeploymentName]
