@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
@@ -58,7 +59,8 @@ jobs:
     # https://github.com/actions/upload-artifact/issues/8
     - name: Upload artifact (Forked repositories)
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
-      uses: actions/upload-artifact@v1
+      # actions/upload-artifact@v1
+      uses: actions/upload-artifact@3446296
       with:
         name: image-archives
         path: /home/runner/archives
@@ -72,9 +74,11 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
     - name: Try to load cached Go modules
-      uses: actions/cache@v1
+      # actions/cache@v1.1.2
+      uses: actions/cache@70655ec
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -97,7 +101,8 @@ jobs:
         echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
     - name: Download image archives (Forked repositories)
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
-      uses: actions/download-artifact@v1
+      # actions/download-artifact@v1
+      uses: actions/download-artifact@18f0f59
       with:
         name: image-archives
     - name: Load cli-bin image into local docker images
@@ -122,12 +127,14 @@ jobs:
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
     - name: Setup default KinD cluster
       if: matrix.integration_test != 'custom_domain'
-      uses: engineerd/setup-kind@v0.3.0
+      # engineerd/setup-kind@v0.3.0
+      uses: engineerd/setup-kind@d0e9be1
       with:
         version: "v0.6.1"
     - name: Setup custom_domain KinD cluster
       if: matrix.integration_test == 'custom_domain'
-      uses: engineerd/setup-kind@v0.3.0
+      # engineerd/setup-kind@v0.3.0
+      uses: engineerd/setup-kind@d0e9be1
       with:
         config: test/testdata/custom_cluster_domain_config.yaml
         version: "v0.6.1"
