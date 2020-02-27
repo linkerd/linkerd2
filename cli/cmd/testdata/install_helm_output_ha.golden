@@ -3346,3 +3346,5 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-tap-tls
+---
+# Source: linkerd2/templates/linkerd-values.yaml

@@ -83,6 +83,9 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 		{Name: "charts/partials/templates/_debug.tpl"},
 		{Name: "charts/partials/templates/_capabilities.tpl"},
 		{Name: "charts/partials/templates/_trace.tpl"},
+		{Name: "charts/partials/templates/_nodeselector.tpl"},
+		{Name: "charts/partials/templates/_affinity.tpl"},
+		{Name: "charts/partials/templates/_validate.tpl"},
 	}
 	return chart.render(l5dPartials)
 }

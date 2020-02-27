@@ -1,0 +1,223 @@
+---
+###
+### Tracing Collector Service
+###
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{printf "%s-config" .Values.collector.name}}
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+data:
+  linkerd-collector-config: |
+    receivers:
+      opencensus:
+        port: 55678
+      zipkin:
+        port: 9411
+    queued-exporters:
+      jaeger-all-in-one:
+        num-workers: 4
+        queue-size: 100
+        retry-on-failure: true
+        sender-type: jaeger-thrift-http
+        jaeger-thrift-http:
+          collector-endpoint: {{printf "http://%s.%s:14268/api/traces" .Values.jaeger.name .Values.global.namespace }}
+          timeout: 5s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Values.collector.name}}
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+spec:
+  type: ClusterIP
+  ports:
+  - name: opencensus
+    port: 55678
+    protocol: TCP
+    targetPort: 55678
+  - name: zipkin
+    port: 9411
+    protocol: TCP
+    targetPort: 9411
+  selector:
+    {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
+---
+{{ if empty .Values.global.proxy.image.version -}}
+{{ $_ := set .Values.global.proxy.image "Version" .Values.global.linkerdVersion -}}
+{{ end -}}
+{{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
+{{ $_ := set .Values.global.proxy "component" .Values.collector.name -}}
+{{ include "linkerd.proxy.validation" .Values.global.proxy -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+  labels:
+    app.kubernetes.io/name: {{.Values.collector.name}}
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  name: {{.Values.collector.name}}
+  namespace: {{.Values.global.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
+      {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+      {{- include "partials.proxy.labels" .Values.global.proxy | nindent 6}}
+  minReadySeconds: 5
+  progressDeadlineSeconds: 120
+  template:
+    metadata:
+      annotations:
+        {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+        {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8888"
+        prometheus.io/scrape: "true"
+      labels:
+        {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
+        {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+        {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
+    spec:
+      containers:
+      - command:
+        - /occollector_linux
+        - --config=/conf/linkerd-collector-config.yaml
+        env:
+        - name: GOGC
+          value: "80"
+        image: {{.Values.collector.image}}
+        imagePullPolicy: {{.Values.global.imagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 13133
+        name: oc-collector
+        ports:
+        - containerPort: 55678
+        - containerPort: 9411
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 13133
+        {{- if .Values.collector.resources -}}
+        {{- include "partials.resources" .Values.collector.resources | nindent 8 }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /conf
+          name: {{ printf "%s-config-val" .Values.collector.name}}
+      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if not .Values.global.noInitContainer -}}
+      initContainers:
+      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      serviceAccountName: {{.Values.collector.name}}
+      volumes:
+      - configMap:
+          items:
+          - key: linkerd-collector-config
+            path: linkerd-collector-config.yaml
+          name: {{printf "%s-config" .Values.collector.name}}
+        name: {{ printf "%s-config-val" .Values.collector.name}}
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
+---
+###
+### Tracing Jaeger Service
+###
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Values.jaeger.name}}
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: {{.Values.jaeger.name}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.Values.global.controllerComponentLabel}}: {{.Values.jaeger.name}}
+  ports:
+    - name: collection
+      port: 14268
+    - name: ui
+      port: 16686
+---
+{{ if empty .Values.global.proxy.image.version -}}
+{{ $_ := set .Values.global.proxy.image "Version" .Values.global.linkerdVersion -}}
+{{ end -}}
+{{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
+{{ $_ := set .Values.global.proxy "component" .Values.jaeger.name -}}
+{{ include "linkerd.proxy.validation" .Values.global.proxy -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+  labels:
+    app.kubernetes.io/name: {{.Values.jaeger.name}}
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    {{.Values.global.controllerComponentLabel}}: {{.Values.jaeger.name}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  name: {{.Values.jaeger.name}}
+  namespace: {{.Values.global.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{.Values.global.controllerComponentLabel}}: {{.Values.jaeger.name}}
+      {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+      {{- include "partials.proxy.labels" .Values.global.proxy | nindent 6}}
+  template:
+    metadata:
+      annotations:
+        {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+        {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8888"
+        prometheus.io/scrape: "true"
+      labels:
+        {{.Values.global.controllerComponentLabel}}: {{.Values.jaeger.name}}
+        {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+        {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
+    spec:
+      containers:
+      - image: {{.Values.jaeger.image}}
+        imagePullPolicy: {{.Values.global.imagePullPolicy}}
+        name: jaeger
+        ports:
+        - containerPort: 14268
+          name: collection
+        - containerPort: 16686
+          name: ui
+        {{- if .Values.jaeger.resources -}}
+        {{- include "partials.resources" .Values.jaeger.resources | nindent 8 }}
+        {{- end }}
+      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if not .Values.global.noInitContainer -}}
+      initContainers:
+      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      dnsPolicy: ClusterFirst
+      serviceAccountName: linkerd-jaeger
+      volumes:
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
