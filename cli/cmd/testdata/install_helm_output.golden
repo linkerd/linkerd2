@@ -3220,8 +3220,8 @@ spec:
       serviceAccountName: linkerd-smi-metrics
       containers:
       - name: shim
-        image: 
-        imagePullPolicy: 
+        image: deislabs/smi-metrics:v0.2.0
+        imagePullPolicy: IfNotPresent
 
         command:
         - /smi-metrics
