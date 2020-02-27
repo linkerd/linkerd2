@@ -32,6 +32,7 @@ type tapOptions struct {
 	authority   string
 	path        string
 	output      string
+	labelSelector string
 }
 
 type endpoint struct {
@@ -111,6 +112,7 @@ func newTapOptions() *tapOptions {
 		authority:   "",
 		path:        "",
 		output:      "",
+		labelSelector: "",
 	}
 }
 
@@ -179,6 +181,7 @@ func newCmdTap() *cobra.Command {
 				Authority:   options.authority,
 				Path:        options.path,
 				Extract:     options.output == jsonOutput,
+				LabelSelector: options.labelSelector,
 			}
 
 			err := options.validate()
@@ -218,6 +221,9 @@ func newCmdTap() *cobra.Command {
 		"Display requests with paths that start with this prefix")
 	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output,
 		fmt.Sprintf("Output format. One of: \"%s\", \"%s\"", wideOutput, jsonOutput))
+	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector,
+		"Selector (label query) to filter on, supports '=', '==', and '!='")
+
 
 	return cmd
 }

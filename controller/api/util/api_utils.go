@@ -112,6 +112,7 @@ type TapRequestParams struct {
 	Authority   string
 	Path        string
 	Extract     bool
+	LabelSelector string
 }
 
 // GRPCError generates a gRPC error code, as defined in
@@ -514,6 +515,7 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 	return &pb.TapByResourceRequest{
 		Target: &pb.ResourceSelection{
 			Resource: &target,
+			LabelSelector: params.LabelSelector,
 		},
 		MaxRps: params.MaxRps,
 		Match: &pb.TapByResourceRequest_Match{
