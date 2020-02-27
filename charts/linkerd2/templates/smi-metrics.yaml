@@ -54,8 +54,8 @@ spec:
       serviceAccountName: linkerd-smi-metrics
       containers:
       - name: shim
-        image: {{ .Values.smiMetricsImage }}
-        imagePullPolicy: {{ .Values.global.pullPolicy }}
+        image: {{ .Values.smiMetrics.image }}
+        imagePullPolicy: {{.Values.global.imagePullPolicy}}
 
         command:
         - /smi-metrics
