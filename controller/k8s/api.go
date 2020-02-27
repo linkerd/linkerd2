@@ -246,7 +246,7 @@ func NewAPI(
 }
 
 // Sync waits for all informers to be synced.
-func (api *API) Sync(stopCh chan struct{}) {
+func (api *API) Sync(stopCh <-chan struct{}) {
 	api.sharedInformers.Start(stopCh)
 	api.spSharedInformers.Start(stopCh)
 	api.tsSharedInformers.Start(stopCh)
