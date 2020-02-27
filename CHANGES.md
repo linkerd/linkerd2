@@ -7,14 +7,13 @@ The existing optional `tracing` components Jaeger and OpenCensus can now be
 installed as add-on components.
 
 There will be more information to come about the new add-on model, but please
-refer to the [issue](https://github.com/linkerd/linkerd2/issues/3794) for how
-to get started.
+refer to the details of [#3955](https://github.com/linkerd/linkerd2/pull/3955) for how to get started.
 
 * CLI
   * Added the `linkerd diagnostics` command to get metrics only from the
     control plane, excluding metrics from the data plane proxies (thanks
     @srv-twry!)
-  * Added the `linkerd install --prometheus-image` subcommand for installing a
+  * Added the `linkerd install --prometheus-image` option for installing a
     custom Prometheus image (thanks @christyjacob4!)
   * Fixed an issue with `linkerd upgrade` where changes to the `Namespace`
     object were ignored (thanks @supra08!)
