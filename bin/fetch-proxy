@@ -28,7 +28,7 @@ curl -sLO "$assetbase/$shafile"
 
 tar -zxvf "$pkgfile" >&2
 expected=$(awk '{print $1}' "$shafile")
-if [[ "$OSTYPE" == "darwin"* ]]; then
+if [ $(uname) == "Darwin" ]; then
   computed=$(openssl dgst -sha256 "$pkgfile" | awk '{print $2}')
 else
   computed=$(sha256sum "$pkgfile" | awk '{print $1}')
