@@ -136,6 +136,9 @@ func chartControlPlane(t *testing.T, ha bool, ignoreOutboundPorts string, ignore
 		"templates/_debug.tpl",
 		"templates/_trace.tpl",
 		"templates/_capabilities.tpl",
+		"templates/_affinity.tpl",
+		"templates/_nodeselector.tpl",
+		"templates/_validate.tpl",
 	}
 
 	chartPartials := chartPartials(t, partialPaths)

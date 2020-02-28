@@ -128,6 +128,9 @@ func TestRender(t *testing.T) {
 		Dashboard: &charts.Dashboard{
 			Replicas: 1,
 		},
+		Tracing: map[string]interface{}{
+			"enabled": false,
+		},
 	}
 
 	haOptions, err := testInstallOptions()

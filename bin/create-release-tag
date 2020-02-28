@@ -8,11 +8,11 @@ if [[ $# -ne 1 ]]; then
     exit 1
 fi
 
-new_linkerd_version="$1"
+tag="$1"
 
 # Verify the tag format
 tag_format="^(edge|stable)-([0-9]+)\.([0-9]+)\.([0-9]+)$"
-if [[ $new_linkerd_version =~ $tag_format ]]; then
+if [[ $tag =~ $tag_format ]]; then
     # todo: Use these values to verify the tag version increment.
     # release_channel="${BASH_REMATCH[1]}"
     # release_major="${BASH_REMATCH[2]}"
@@ -40,4 +40,12 @@ tmp=$(mktemp -t release-commit-message.XXX.txt)
 awk '/^## (edge|stable)-[0-9]+\.[0-9]+\.[0-9]+/{n++} n==1' "$rootdir"/CHANGES.md > "$tmp"
 
 # Create an unsigned tag with the commit message.
-git tag -s -F "$tmp" "$new_linkerd_version"
+git tag -s -F "$tmp" "$tag"
+
+# Success message
+echo "tag created and signed."
+echo ""
+echo "tag: $tag"
+echo ""
+echo "To push tag, run:"
+echo "    git push origin $tag"
