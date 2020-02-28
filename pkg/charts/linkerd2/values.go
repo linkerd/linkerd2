@@ -47,7 +47,7 @@ type (
 		ProfileValidator            *ProfileValidator `json:"profileValidator"`
 		Tap                         *Tap              `json:"tap"`
 		NodeSelector                map[string]string `json:"nodeSelector"`
-		SmiMetrics                  *SmiMetrics       `json:"smiMetrics"`
+		SMIMetrics                  *SMIMetrics       `json:"smiMetrics"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
 		GrafanaResources       *Resources `json:"grafanaResources"`
@@ -203,8 +203,8 @@ type (
 		*TLS
 	}
 
-	// SmiMetrics has all the SmiMetrics's Helm variables
-	SmiMetrics struct {
+	// SMIMetrics has all the SMIMetrics's Helm variables
+	SMIMetrics struct {
 		*TLS
 		Image string `json:"image"`
 	}

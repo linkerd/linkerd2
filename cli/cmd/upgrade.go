@@ -342,7 +342,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		}
 		smiMetricsTLS = &charts.TLS{}
 	}
-	values.SmiMetrics.TLS = smiMetricsTLS
+	values.SMIMetrics.TLS = smiMetricsTLS
 
 	values.Stage = stage
 

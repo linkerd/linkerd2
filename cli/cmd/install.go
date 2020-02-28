@@ -201,7 +201,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
 		controlPlaneTracing:         defaults.Global.ControlPlaneTracing,
-		smiMetricsImage:             defaults.SmiMetrics.Image,
+		smiMetricsImage:             defaults.SMIMetrics.Image,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -762,7 +762,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
-	installValues.SmiMetrics.Image = options.smiMetricsImage
+	installValues.SMIMetrics.Image = options.smiMetricsImage
 
 	installValues.Global.Proxy = &l5dcharts.Proxy{
 		EnableExternalProfiles: options.enableExternalProfiles,
