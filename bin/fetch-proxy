@@ -28,11 +28,7 @@ curl -sLO "$assetbase/$shafile"
 
 tar -zxvf "$pkgfile" >&2
 expected=$(awk '{print $1}' "$shafile")
-if [ $(uname) == "Darwin" ]; then
-  computed=$(openssl dgst -sha256 "$pkgfile" | awk '{print $2}')
-else
-  computed=$(sha256sum "$pkgfile" | awk '{print $1}')
-fi
+computed=$(shasum -a 256 "$pkgfile" | awk '{print $1}')
 if [ "$computed" != "$expected" ]; then
   echo 'sha mismatch' >&2
   exit 1
