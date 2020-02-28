@@ -53,7 +53,10 @@ func (s *grpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*
 	// TopRoutes will return one table for each resource object requested.
 	tables := make([]resourceTable, 0)
 	targetResource := req.GetSelector().GetResource()
-
+	labelSelector, err := getTopLabelSelector(req)
+	if err != nil {
+		return nil, err
+	}
 	if targetResource.GetType() == k8s.Authority {
 		// Authority cannot be the target because authorities don't have namespaces,
 		// therefore there is no namespace in which to look for a service profile.
@@ -61,7 +64,7 @@ func (s *grpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*
 	}
 
 	// Non-authority resource
-	objects, err := s.k8sAPI.GetObjects(targetResource.Namespace, targetResource.Type, targetResource.Name, labels.Everything())
+	objects, err := s.k8sAPI.GetObjects(targetResource.Namespace, targetResource.Type, targetResource.Name, labelSelector)
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +117,10 @@ func (s *grpcServer) topRoutesFor(ctx context.Context, req *pb.TopRoutesRequest,
 	}
 	clientNs := req.GetSelector().GetResource().GetNamespace()
 	typ := req.GetSelector().GetResource().GetType()
+	labelSelector, err := getTopLabelSelector(req)
+	if err != nil {
+		return nil, err
+	}
 	targetResource := &pb.Resource{
 		Name:      name,
 		Namespace: req.GetSelector().GetResource().GetNamespace(),
@@ -128,14 +135,14 @@ func (s *grpcServer) topRoutesFor(ctx context.Context, req *pb.TopRoutesRequest,
 
 	if requestedResource.GetType() == k8s.Authority {
 		// Authorities may not be a source, so we know this is a ToResource.
-		profiles, err = s.getProfilesForAuthority(requestedResource.GetName(), clientNs)
+		profiles, err = s.getProfilesForAuthority(requestedResource.GetName(), clientNs, labelSelector)
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		// Non-authority resource.
 		// Lookup individual resource objects.
-		objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name, labels.Everything())
+		objects, err := s.k8sAPI.GetObjects(requestedResource.Namespace, requestedResource.Type, requestedResource.Name, labelSelector)
 		if err != nil {
 			return nil, err
 		}
@@ -191,10 +198,10 @@ func validateRequest(req *pb.TopRoutesRequest) *pb.TopRoutesResponse {
 	return nil
 }
 
-func (s *grpcServer) getProfilesForAuthority(authority string, clientNs string) (map[string]*sp.ServiceProfile, error) {
+func (s *grpcServer) getProfilesForAuthority(authority string, clientNs string, labelSelector labels.Selector) (map[string]*sp.ServiceProfile, error) {
 	if authority == "" {
 		// All authorities
-		ps, err := s.k8sAPI.SP().Lister().ServiceProfiles(clientNs).List(labels.Everything())
+		ps, err := s.k8sAPI.SP().Lister().ServiceProfiles(clientNs).List(labelSelector)
 		if err != nil {
 			return nil, err
 		}
@@ -346,4 +353,16 @@ func processRouteMetrics(results []promResult, timeWindow string, table indexedT
 			}
 		}
 	}
+}
+
+func getTopLabelSelector(req *pb.TopRoutesRequest) (labels.Selector, error) {
+	labelSelector := labels.Everything()
+	if s := req.GetSelector().GetLabelSelector(); s != "" {
+		var err error
+		labelSelector, err = labels.Parse(s)
+		if err != nil {
+			return nil, fmt.Errorf("invalid label selector \"%s\": %s", s, err)
+		}
+	}
+	return labelSelector, nil
 }

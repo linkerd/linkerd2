@@ -19,9 +19,10 @@ import (
 
 type routesOptions struct {
 	statOptionsBase
-	toResource   string
-	toNamespace  string
-	dstIsService bool
+	toResource    string
+	toNamespace   string
+	dstIsService  bool
+	labelSelector string
 }
 
 type routeRowStats struct {
@@ -36,6 +37,7 @@ func newRoutesOptions() *routesOptions {
 		statOptionsBase: *newStatOptionsBase(),
 		toResource:      "",
 		toNamespace:     "",
+		labelSelector:   "",
 	}
 }
 
@@ -77,6 +79,7 @@ This command will only display traffic which is sent to a service that has a Ser
 	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, shows outbound stats to the specified resource")
 	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, fmt.Sprintf("Output format; one of: \"%s\", \"%s\", or \"%s\"", tableOutput, wideOutput, jsonOutput))
+	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector, "Selector (label query) to filter on, supports '=', '==', and '!='")
 
 	return cmd
 }
@@ -318,6 +321,7 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 			ResourceType: target.Type,
 			Namespace:    options.namespace,
 		},
+		LabelSelector: options.labelSelector,
 	}
 
 	options.dstIsService = !(target.GetType() == k8s.Authority)

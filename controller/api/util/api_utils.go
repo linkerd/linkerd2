@@ -94,24 +94,25 @@ type EdgesRequestParams struct {
 // requests.
 type TopRoutesRequestParams struct {
 	StatsBaseRequestParams
-	ToNamespace string
-	ToType      string
-	ToName      string
+	ToNamespace   string
+	ToType        string
+	ToName        string
+	LabelSelector string
 }
 
 // TapRequestParams contains parameters that are used to build a
 // TapByResourceRequest.
 type TapRequestParams struct {
-	Resource    string
-	Namespace   string
-	ToResource  string
-	ToNamespace string
-	MaxRps      float32
-	Scheme      string
-	Method      string
-	Authority   string
-	Path        string
-	Extract     bool
+	Resource      string
+	Namespace     string
+	ToResource    string
+	ToNamespace   string
+	MaxRps        float32
+	Scheme        string
+	Method        string
+	Authority     string
+	Path          string
+	Extract       bool
 	LabelSelector string
 }
 
@@ -302,6 +303,7 @@ func BuildTopRoutesRequest(p TopRoutesRequestParams) (*pb.TopRoutesRequest, erro
 				Name:      p.ResourceName,
 				Type:      resourceType,
 			},
+			LabelSelector: p.LabelSelector,
 		},
 		TimeWindow: window,
 	}
@@ -514,7 +516,7 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 
 	return &pb.TapByResourceRequest{
 		Target: &pb.ResourceSelection{
-			Resource: &target,
+			Resource:      &target,
 			LabelSelector: params.LabelSelector,
 		},
 		MaxRps: params.MaxRps,
