@@ -68,38 +68,52 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: shellcheck
-      # TODO: fix our shell scripts and re-enable checks
+      # TODO: Each file listed here is excluded from shellcheck because it
+      # fails. As we fix files we can remove them from this list.
+      #
+      # Once we have this list paired down signficantly, we can switch to
+      # disabling specific checks across all files, for example:
+      # bin/shellcheck bin/* --exclude=SC1000
+      #
+      # For more information on shellcheck failures:
+      # https://github.com/koalaman/shellcheck/wiki/Checks
       run: |
-        bin/shellcheck bin/* --exclude="\
-        SC1036,\
-        SC1061,\
-        SC1062,\
-        SC1072,\
-        SC1073,\
-        SC1081,\
-        SC1088,\
-        SC1090,\
-        SC2001,\
-        SC2005,\
-        SC2013,\
-        SC2027,\
-        SC2034,\
-        SC2039,\
-        SC2046,\
-        SC2048,\
-        SC2064,\
-        SC2068,\
-        SC2086,\
-        SC2089,\
-        SC2090,\
-        SC2116,\
-        SC2120,\
-        SC2124,\
-        SC2155,\
-        SC2175,\
-        SC2119,\
-        SC2148,\
-        SC2154,\
-        SC2215,\
-        SC2220,\
-        SC2236"
+        find ./bin -type f \
+        ! -name build-cli-bin \
+        ! -name docker-build-base \
+        ! -name docker-build-cli-bin \
+        ! -name docker-build-cni-plugin \
+        ! -name docker-build-controller \
+        ! -name docker-build-debug \
+        ! -name docker-build-go-deps \
+        ! -name docker-build-grafana \
+        ! -name docker-build-proxy \
+        ! -name docker-build-web \
+        ! -name docker-images \
+        ! -name docker-pull \
+        ! -name docker-pull-binaries \
+        ! -name docker-pull-deps \
+        ! -name docker-push \
+        ! -name docker-push-deps \
+        ! -name docker-retag-all \
+        ! -name _docker.sh \
+        ! -name fetch-proxy \
+        ! -name fmt \
+        ! -name helm-build \
+        ! -name kind-load \
+        ! -name lint \
+        ! -name _log.sh \
+        ! -name minikube-start-hyperv.bat \
+        ! -name mkube \
+        ! -name protoc-go.sh \
+        ! -name root-tag \
+        ! -name _tag.sh \
+        ! -name test-cleanup \
+        ! -name test-clouds-cleanup \
+        ! -name test-clouds \
+        ! -name test-run \
+        ! -name _test-run.sh \
+        ! -name test-scale \
+        ! -name update-go-deps-shas \
+        ! -name web \
+        | xargs -I {} bin/shellcheck {}
