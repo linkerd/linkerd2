@@ -38,7 +38,7 @@ data:
   requestheader-extra-headers-prefix: '["X-Remote-Extra-"]'
   requestheader-group-headers: '["X-Remote-Group"]'
   requestheader-username-headers: '["X-Remote-User"]'
- `,
+`,
 			},
 		},
 	}
@@ -88,7 +88,7 @@ data:
   requestheader-extra-headers-prefix: '["X-Remote-Extra-"]'
   requestheader-group-headers: '["X-Remote-Group"]'
   requestheader-username-headers: '["X-Remote-User"]'
- `,
+`,
 			},
 			clientCAPem:    "requestheader-client-ca-file",
 			allowedNames:   []string{"name1", "name2"},
