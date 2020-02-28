@@ -29,15 +29,15 @@ func TestNewAPIServer(t *testing.T) {
 apiVersion: v1
 kind: ConfigMap
 metadata:
- name: extension-apiserver-authentication
- namespace: kube-system
+  name: extension-apiserver-authentication
+  namespace: kube-system
 data:
- client-ca-file: 'client-ca-file'
- requestheader-allowed-names: '["name1", "name2"]'
- requestheader-client-ca-file: 'requestheader-client-ca-file'
- requestheader-extra-headers-prefix: '["X-Remote-Extra-"]'
- requestheader-group-headers: '["X-Remote-Group"]'
- requestheader-username-headers: '["X-Remote-User"]'
+  client-ca-file: 'client-ca-file'
+  requestheader-allowed-names: '["name1", "name2"]'
+  requestheader-client-ca-file: 'requestheader-client-ca-file'
+  requestheader-extra-headers-prefix: '["X-Remote-Extra-"]'
+  requestheader-group-headers: '["X-Remote-Group"]'
+  requestheader-username-headers: '["X-Remote-User"]'
  `,
 			},
 		},
@@ -79,15 +79,15 @@ func TestAPIServerAuth(t *testing.T) {
 apiVersion: v1
 kind: ConfigMap
 metadata:
- name: extension-apiserver-authentication
- namespace: kube-system
+  name: extension-apiserver-authentication
+  namespace: kube-system
 data:
- client-ca-file: 'client-ca-file'
- requestheader-allowed-names: '["name1", "name2"]'
- requestheader-client-ca-file: 'requestheader-client-ca-file'
- requestheader-extra-headers-prefix: '["X-Remote-Extra-"]'
- requestheader-group-headers: '["X-Remote-Group"]'
- requestheader-username-headers: '["X-Remote-User"]'
+  client-ca-file: 'client-ca-file'
+  requestheader-allowed-names: '["name1", "name2"]'
+  requestheader-client-ca-file: 'requestheader-client-ca-file'
+  requestheader-extra-headers-prefix: '["X-Remote-Extra-"]'
+  requestheader-group-headers: '["X-Remote-Group"]'
+  requestheader-username-headers: '["X-Remote-User"]'
  `,
 			},
 			clientCAPem:    "requestheader-client-ca-file",

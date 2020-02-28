@@ -490,7 +490,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "extension API server authentication is properly configured",
+					description: "can read extension-apiserver-authentication configmap",
 					hintAnchor:  "pre-k8s",
 					check: func(context.Context) error {
 						return hc.checkExtensionAPIServerAuthentication()
