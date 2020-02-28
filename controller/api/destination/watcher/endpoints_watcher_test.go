@@ -54,6 +54,36 @@ func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
 	bel.noEndpointsExists = exists
 }
 
+type bufferingEndpointListenerWithResVersion struct {
+	added   []string
+	removed []string
+}
+
+func newBufferingEndpointListenerWithResVersion() *bufferingEndpointListenerWithResVersion {
+	return &bufferingEndpointListenerWithResVersion{
+		added:   []string{},
+		removed: []string{},
+	}
+}
+
+func addressStringWithResVerson(address Address) string {
+	return fmt.Sprintf("%s:%d:%s", address.IP, address.Port, address.Pod.ResourceVersion)
+}
+
+func (bel *bufferingEndpointListenerWithResVersion) Add(set PodSet) {
+	for _, address := range set.Pods {
+		bel.added = append(bel.added, addressStringWithResVerson(address))
+	}
+}
+
+func (bel *bufferingEndpointListenerWithResVersion) Remove(set PodSet) {
+	for _, address := range set.Pods {
+		bel.removed = append(bel.removed, addressStringWithResVerson(address))
+	}
+}
+
+func (bel *bufferingEndpointListenerWithResVersion) NoEndpoints(exists bool) {}
+
 func TestEndpointsWatcher(t *testing.T) {
 	for _, tt := range []struct {
 		serviceType                      string
@@ -818,6 +848,155 @@ subsets:
 				t.Fatalf("Expected noEndpointsExists to be [%t], got [%t]",
 					tt.expectedNoEndpointsServiceExists, listener.noEndpointsExists)
 			}
+		})
+	}
+}
+
+func testPod(resVersion string) *corev1.Pod {
+	return &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			ResourceVersion: resVersion,
+			Name:            "name1-1",
+			Namespace:       "ns",
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			PodIP: "172.17.0.12",
+		},
+	}
+}
+
+func TestPodChangeDetection(t *testing.T) {
+	endpoints := &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Endpoints",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name1",
+			Namespace: "ns",
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Addresses: []corev1.EndpointAddress{
+					{
+						IP:       "172.17.0.12",
+						Hostname: "name1-1",
+						TargetRef: &corev1.ObjectReference{
+							Kind:      "Pod",
+							Namespace: "ns",
+							Name:      "name1-1",
+						},
+					},
+				},
+				Ports: []corev1.EndpointPort{
+					{
+						Port: 8989,
+					},
+				},
+			},
+		},
+	}
+
+	k8sConfigs := []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+    hostname: name1-1
+    targetRef:
+      kind: Pod
+      name: name1-1
+      namespace: ns
+  ports:
+  - port: 8989`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  resourceVersion: "1"
+status:
+  phase: Running
+  podIP: 172.17.0.12`}
+
+	for _, tt := range []struct {
+		serviceType       string
+		id                ServiceID
+		hostname          string
+		port              Port
+		newPod            *corev1.Pod
+		expectedAddresses []string
+	}{
+		{
+			serviceType: "will update pod if resource version is different",
+			id:          ServiceID{Name: "name1", Namespace: "ns"},
+			port:        8989,
+			hostname:    "name1-1",
+			newPod:      testPod("2"),
+
+			expectedAddresses: []string{"172.17.0.12:8989:1", "172.17.0.12:8989:2"},
+		},
+		{
+			serviceType: "will not update pod if resource version is the same",
+			id:          ServiceID{Name: "name1", Namespace: "ns"},
+			port:        8989,
+			hostname:    "name1-1",
+			newPod:      testPod("1"),
+
+			expectedAddresses: []string{"172.17.0.12:8989:1"},
+		},
+	} {
+		tt := tt // pin
+		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(k8sConfigs...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+
+			k8sAPI.Sync()
+
+			listener := newBufferingEndpointListenerWithResVersion()
+
+			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = k8sAPI.Pod().Informer().GetStore().Add(tt.newPod)
+			if err != nil {
+				t.Fatal(err)
+			}
+			k8sAPI.Sync()
+
+			watcher.addEndpoints(endpoints)
+
+			actualAddresses := make([]string, 0)
+			actualAddresses = append(actualAddresses, listener.added...)
+			sort.Strings(actualAddresses)
+
+			testCompare(t, tt.expectedAddresses, actualAddresses)
 		})
 	}
 }
