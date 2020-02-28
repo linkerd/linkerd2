@@ -35,6 +35,7 @@ type topOptions struct {
 	path        string
 	hideSources bool
 	routes      bool
+	labelSelector string
 }
 
 type topRequest struct {
@@ -268,6 +269,7 @@ func newTopOptions() *topOptions {
 		path:        "",
 		hideSources: false,
 		routes:      false,
+		labelSelector: "",
 	}
 }
 
@@ -326,6 +328,7 @@ func newCmdTop() *cobra.Command {
 				Method:      options.method,
 				Authority:   options.authority,
 				Path:        options.path,
+				LabelSelector: options.labelSelector,
 			}
 
 			if options.hideSources {
@@ -374,6 +377,7 @@ func newCmdTop() *cobra.Command {
 		"Display requests with paths that start with this prefix")
 	cmd.PersistentFlags().BoolVar(&options.hideSources, "hide-sources", options.hideSources, "Hide the source column")
 	cmd.PersistentFlags().BoolVar(&options.routes, "routes", options.routes, "Display data per route instead of per path")
+	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector, "Selector (label query) to filter on, supports '=', '==', and '!='")
 
 	return cmd
 }
