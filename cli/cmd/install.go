@@ -822,22 +822,22 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 
 	files := []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
-		{Name: "smi-metrics-config.yaml"},
 	}
 
 	if values.Stage == "" || values.Stage == configStage {
 		for _, template := range templatesConfigStage {
-			files = append(files, &chartutil.BufferedFile{
-				Name: template,
-			})
+			files = append(files,
+				&chartutil.BufferedFile{Name: template},
+			)
 		}
 	}
 
 	if values.Stage == "" || values.Stage == controlPlaneStage {
 		for _, template := range templatesControlPlaneStage {
-			files = append(files, &chartutil.BufferedFile{
-				Name: template,
-			})
+			files = append(files,
+				&chartutil.BufferedFile{Name: template},
+				&chartutil.BufferedFile{Name: "smi-metrics-config.yaml"},
+			)
 		}
 	}
 
