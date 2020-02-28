@@ -13,6 +13,7 @@ of this repo, unless otherwise indicated by a `cd` command.
 - [Unit tests](#unit-tests)
   - [Go](#go)
   - [Javascript](#javascript)
+  - [Shell](#shell)
 - [Integration tests](#integration-tests)
   - [Prerequisites](#prerequisites)
   - [Running tests](#running-tests)
@@ -78,6 +79,12 @@ Run watch mode:
 ```bash
 bin/web test --watch # runs -o by default (tests only files changed since last commit)
 bin/web test --watchAll # runs all tests after a change to a file
+```
+
+## Shell
+
+```bash
+bin/shellcheck bin/*
 ```
 
 # Integration tests
