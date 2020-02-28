@@ -394,6 +394,63 @@ func TestCheckCanCreate(t *testing.T) {
 	}
 }
 
+func TestCheckExtensionAPIServerAuthentication(t *testing.T) {
+	tests := []struct {
+		k8sConfigs []string
+		err        error
+	}{
+		{
+			[]string{},
+			fmt.Errorf("configmaps %q not found", k8s.ExtensionAPIServerAuthenticationConfigMapName),
+		},
+		{
+			[]string{`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+ name: extension-apiserver-authentication
+ namespace: kube-system
+data:
+ foo : 'bar'
+ `,
+			},
+			fmt.Errorf("--%s is not configured", k8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey),
+		},
+		{
+
+			[]string{fmt.Sprintf(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+ name: extension-apiserver-authentication 
+ namespace: kube-system
+data:
+  %s : 'bar'
+  `, k8s.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey)},
+			nil,
+		},
+	}
+	for i, test := range tests {
+		test := test
+		t.Run(fmt.Sprintf("%d: returns expected extension apiserver authentication check result", i), func(t *testing.T) {
+			hc := NewHealthChecker([]CategoryID{}, &Options{})
+			var err error
+			hc.kubeAPI, err = k8s.NewFakeAPI(test.k8sConfigs...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = hc.checkExtensionAPIServerAuthentication()
+			if err != nil || test.err != nil {
+				if (err == nil && test.err != nil) ||
+					(err != nil && test.err == nil) ||
+					(err.Error() != test.err.Error()) {
+					t.Fatalf("Unexpected error (Expected: %s, Got: %s)", test.err, err)
+				}
+			}
+		})
+	}
+}
+
 func TestCheckClockSkew(t *testing.T) {
 	tests := []struct {
 		k8sConfigs []string

@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	k8sutils "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
 func TestNewAPIServer(t *testing.T) {
@@ -21,7 +21,7 @@ func TestNewAPIServer(t *testing.T) {
 		err    error
 	}{
 		{
-			err: errors.New("failed to load [extension-apiserver-authentication] config: configmaps \"extension-apiserver-authentication\" not found"),
+			err: fmt.Errorf("failed to load [%s] config: configmaps %q not found", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, k8sutils.ExtensionAPIServerAuthenticationConfigMapName),
 		},
 		{
 			err: nil,
@@ -72,7 +72,7 @@ func TestAPIServerAuth(t *testing.T) {
 		err            error
 	}{
 		{
-			err: errors.New("failed to load [extension-apiserver-authentication] config: configmaps \"extension-apiserver-authentication\" not found"),
+			err: fmt.Errorf("failed to load [%s] config: configmaps \"%s\" not found", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, k8sutils.ExtensionAPIServerAuthenticationConfigMapName),
 		},
 		{
 			k8sRes: []string{`

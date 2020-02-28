@@ -30,6 +30,14 @@ const (
 	// control plane (e.g. web, controller).
 	ControllerComponentLabel = Prefix + "/control-plane-component"
 
+	// ExtensionAPIServerAuthenticationConfigMapName is the name of the ConfigMap where
+	// authentication data for extension API servers is placed.
+	ExtensionAPIServerAuthenticationConfigMapName = "extension-apiserver-authentication"
+
+	// ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey is the key that
+	// contains the value of the "--requestheader-client-ca-file" flag.
+	ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey = "requestheader-client-ca-file"
+
 	// ControllerNSLabel is injected into mesh-enabled apps, identifying the
 	// namespace of the Linkerd control plane.
 	ControllerNSLabel = Prefix + "/control-plane-ns"

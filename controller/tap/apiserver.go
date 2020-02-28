@@ -11,6 +11,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/linkerd/linkerd2/controller/gen/controller/tap"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	k8sutils "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -122,15 +123,17 @@ func (a *apiServer) validate(req *http.Request) error {
 // kubectl -n kube-system get cm/extension-apiserver-authentication
 // accessible via the extension-apiserver-authentication-reader role
 func apiServerAuth(k8sAPI *k8s.API) (string, []string, string, string, error) {
-	cmName := "extension-apiserver-authentication"
 
 	cm, err := k8sAPI.Client.CoreV1().
-		ConfigMaps("kube-system").
-		Get(cmName, metav1.GetOptions{})
+		ConfigMaps(metav1.NamespaceSystem).
+		Get(k8sutils.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
+
 	if err != nil {
-		return "", nil, "", "", fmt.Errorf("failed to load [%s] config: %s", cmName, err)
+		return "", nil, "", "", fmt.Errorf("failed to load [%s] config: %s", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, err)
 	}
-	clientCAPem, ok := cm.Data["requestheader-client-ca-file"]
+
+	clientCAPem, ok := cm.Data[k8sutils.ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey]
+
 	if !ok {
 		return "", nil, "", "", fmt.Errorf("no client CA cert available for apiextension-server")
 	}
