@@ -2,6 +2,7 @@ package test
 
 import (
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/linkerd/linkerd2/testutil"
@@ -23,19 +24,14 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestUpgradeWithUpdatedConfig(t *testing.T) {
-	upgradeResources, err := testutil.ReadFile("testdata/label_update.yaml")
+	cmd := "check"
+	out, stderr, err := TestHelper.LinkerdRun(cmd)
 	if err != nil {
-		t.Fatalf("failed to read label update file: %s", err)
+		t.Fatalf("Update command failed\n%s\n%s", out, stderr)
 	}
 
-	kubectlOut, err := TestHelper.Kubectl(upgradeResources, "apply", "--prune", "-l", "linkerd.io/control-plane-ns=linkerd", "-oyaml", "-f", "-")
-	if err != nil {
-		t.Fatalf("kubectl get command failed with %s\n%s", err, kubectlOut)
-	}
-
-	golden := "kubectl.apply.golden"
-	err = TestHelper.ValidateOutput(kubectlOut, golden)
-	if err != nil {
-		t.Fatal(err.Error())
+	match, _ := regexp.MatchString("linkerd.io/control-plane-ns", out)
+	if !match {
+		t.Fatalf("Linkerd control plane namespace label not found in yaml.")
 	}
 }
