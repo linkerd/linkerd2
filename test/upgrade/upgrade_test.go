@@ -2,7 +2,10 @@ package test
 
 import (
 	"os"
+<<<<<<< HEAD
 	"regexp"
+=======
+>>>>>>> 75e328819f22946bd95352aec94f0a81b549b4c3
 	"testing"
 
 	"github.com/linkerd/linkerd2/testutil"
