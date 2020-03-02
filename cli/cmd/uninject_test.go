@@ -75,7 +75,7 @@ func TestUninjectYAML(t *testing.T) {
 			reportFileName: "inject_emojivoto_istio_uninject.report",
 		},
 		{
-			inputFileName:  "inject_contour.input.yml",
+			inputFileName:  "inject_contour.golden.yml",
 			goldenFileName: "inject_contour.input.yml",
 			reportFileName: "inject_contour_uninject.report",
 		},

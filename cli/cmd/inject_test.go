@@ -242,7 +242,7 @@ func TestUninjectAndInject(t *testing.T) {
 		},
 		{
 			inputFileName:    "inject_contour.input.yml",
-			goldenFileName:   "inject_contour.input.yml",
+			goldenFileName:   "inject_contour.golden.yml",
 			reportFileName:   "inject_contour.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,

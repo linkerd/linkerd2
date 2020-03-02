@@ -1,9 +1,9 @@
 
 √ pods do not use host networking
-‼ known 3rd party sidecar detected in deployment/contour
+√ pods do not have a 3rd party proxy or initContainer already injected
 √ pods are not annotated to disable injection
-‼ no supported objects found
+√ at least one resource injected
 √ pod specs do not include UDP ports
 
-deployment "contour" skipped
+deployment "contour" injected
 
