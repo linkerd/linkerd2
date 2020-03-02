@@ -278,6 +278,9 @@ const (
 	// TapServiceName is the name of the tap APIService
 	TapServiceName = "linkerd-tap"
 
+	// SmiMetricsServiceName is the name of the SMI metrics APIService
+	SmiMetricsServiceName = "linkerd-smi-metrics"
+
 	// AdmissionWebhookLabel indicates whether admission webhooks are enabled for a namespace
 	AdmissionWebhookLabel = ProxyConfigAnnotationsPrefix + "/admission-webhooks"
 
