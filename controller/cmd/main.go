@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	servicemirror "github.com/linkerd/linkerd2/controller/cmd/service-mirror"
+
 	"github.com/linkerd/linkerd2/controller/cmd/destination"
 	"github.com/linkerd/linkerd2/controller/cmd/heartbeat"
 	"github.com/linkerd/linkerd2/controller/cmd/identity"
@@ -34,6 +36,8 @@ func main() {
 		spvalidator.Main(os.Args[2:])
 	case "tap":
 		tap.Main(os.Args[2:])
+	case "service-mirror":
+		servicemirror.Main(os.Args[2:])
 	default:
 		fmt.Printf("unknown subcommand: %s", os.Args[1])
 		os.Exit(1)

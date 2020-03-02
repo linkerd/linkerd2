@@ -42,7 +42,7 @@ func newAPI(retry bool, resourceConfigs []string, extraConfigs ...string) (*API,
 	}
 
 	if retry {
-		api.Sync()
+		api.Sync(nil)
 	}
 
 	return api, k8sResults, nil

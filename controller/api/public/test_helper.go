@@ -571,7 +571,7 @@ func newMockGrpcServer(exp expectedStatRPC) (*MockProm, *grpcServer, error) {
 		[]string{},
 	)
 
-	k8sAPI.Sync()
+	k8sAPI.Sync(nil)
 
 	return mockProm, fakeGrpcServer, nil
 }

@@ -42,6 +42,7 @@ func Main(args []string) {
 
 	k8sAPI, err := k8s.InitializeAPI(
 		*kubeConfigPath,
+		true,
 		k8s.CJ,
 		k8s.DS,
 		k8s.SS,
@@ -86,7 +87,7 @@ func Main(args []string) {
 		log.Fatal(err.Error())
 	}
 
-	k8sAPI.Sync() // blocks until caches are synced
+	k8sAPI.Sync(nil) // blocks until caches are synced
 
 	go func() {
 		log.Infof("starting APIServer on %s", *apiServerAddr)

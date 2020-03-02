@@ -405,7 +405,7 @@ status:
 				[]string{},
 			)
 
-			k8sAPI.Sync()
+			k8sAPI.Sync(nil)
 
 			rsp, err := fakeGrpcServer.ListPods(context.TODO(), exp.req)
 			if !reflect.DeepEqual(err, exp.err) {
@@ -507,7 +507,7 @@ metadata:
 				[]string{},
 			)
 
-			k8sAPI.Sync()
+			k8sAPI.Sync(nil)
 
 			rsp, err := fakeGrpcServer.ListServices(context.TODO(), &pb.ListServicesRequest{})
 			if err != exp.err {
@@ -540,7 +540,7 @@ func TestConfig(t *testing.T) {
 		fakeGrpcServer.mountPathProxyConfig = "testdata/proxy.conf.json"
 		fakeGrpcServer.mountPathInstallConfig = "testdata/install.conf.json"
 
-		k8sAPI.Sync()
+		k8sAPI.Sync(nil)
 
 		rsp, err := fakeGrpcServer.Config(context.Background(), &pb.Empty{})
 		if err != nil {
