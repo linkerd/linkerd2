@@ -61,7 +61,8 @@ type (
 		WebResources           *Resources `json:"webResources"`
 
 		// Addon Structures
-		Tracing map[string]interface{} `json:"tracing"`
+		Tracing      map[string]interface{} `json:"tracing"`
+		AlertManager map[string]interface{} `json:"alertmanager"`
 	}
 
 	// Global values common across all charts

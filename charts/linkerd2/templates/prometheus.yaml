@@ -14,12 +14,31 @@ metadata:
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
+  prometheus_rules.yml: |-
+    groups:
+    - name: example
+      rules:
+      - alert: DeadMansSwitch
+        annotations:
+          description: This is a DeadMansSwitch meant to ensure that the entire Alerting pipeline is functional.
+          summary: Alerting DeadMansSwitch
+        expr: vector(1)
+        labels:
+          severity: none
   prometheus.yml: |-
     global:
       scrape_interval: 10s
       scrape_timeout: 10s
       evaluation_interval: 10s
 
+    {{- if .Values.alertmanager.enabled }}
+    alerting:
+      alertmanagers:
+      - scheme: http
+        static_configs:
+        - targets: ['{{.Values.alertmanager.name}}:9093']
+    {{- end }}
+    
     rule_files:
     - /etc/prometheus/*_rules.yml
 

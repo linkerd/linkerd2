@@ -133,6 +133,12 @@ heartbeatSchedule: "0 0 * * *"
 prometheusImage: prom/prometheus:v2.15.2
 prometheusLogLevel: *controller_log_level
 
+# alertmanager configuration 
+alertmanager:
+  enabled: false
+  name: linkerd-alertmanager
+  image: prom/alertmanager:v0.20.0
+
 # proxy injector configuration
 proxyInjector:
   # if empty, Helm will auto-generate these fields

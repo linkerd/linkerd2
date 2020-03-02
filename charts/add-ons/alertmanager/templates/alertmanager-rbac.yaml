@@ -1,0 +1,13 @@
+---
+###
+### linkerd-alertmanager RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: {{.Values.alertmanager.name}}
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: {{.Values.alertmanager.name}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}

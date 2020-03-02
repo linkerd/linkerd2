@@ -1,0 +1,103 @@
+---
+###
+### Alert Manager
+###
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{.Values.alertmanager.name}}-config
+  namespace: {{.Values.global.namespace}}
+data:
+  config.yml: |-
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 10s
+      receiver: 'sysdig-test'
+    receivers:
+    - name: 'sysdig-test'
+      webhook_configs:
+      - url: 'https://webhook.site/c21467b9-7ce4-4389-998b-8d91578433f3' 
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{.Values.alertmanager.name}}
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: {{.Values.alertmanager.name}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.Values.global.controllerComponentLabel}}: {{.Values.alertmanager.name}}
+  ports:
+  - name: admin-http
+    port: 9093
+    targetPort: 9093
+---
+{{ if empty .Values.global.proxy.image.version -}}
+{{ $_ := set .Values.global.proxy.image "Version" .Values.global.linkerdVersion -}}
+{{ end -}}
+{{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
+{{ $_ := set .Values.global.proxy "component" .Values.alertmanager.name -}}
+{{ include "linkerd.proxy.validation" .Values.global.proxy -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+  labels:
+    app.kubernetes.io/name: {{.Values.alertmanager.name}}
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    {{.Values.global.controllerComponentLabel}}: {{.Values.alertmanager.name}}
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  name: linkerd-alertmanager
+  namespace: {{.Values.global.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{.Values.global.controllerComponentLabel}}: {{.Values.alertmanager.name}}
+      {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+      {{- include "partials.proxy.labels" .Values.global.proxy | nindent 6}}
+  template:
+    metadata:
+      annotations:
+        {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+        {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
+      labels:
+        {{.Values.global.controllerComponentLabel}}: {{.Values.alertmanager.name}}
+        {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+        {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
+    spec:
+      containers:
+        - name: {{.Values.alertmanager.name}}
+          image: {{.Values.alertmanager.image}}
+          imagePullPolicy: {{.Values.global.imagePullPolicy}}
+          args:
+          - "--config.file=/etc/alertmanager/alertmanager.yml"
+          # - "--storage.path=/alertmanager"
+          volumeMounts:
+          - name: {{.Values.alertmanager.name}}-config
+            mountPath: /etc/alertmanager/alertmanager.yml
+            subPath: config.yml
+          # - name: alertmanager
+          #   mountPath: /alertmanager
+          ports:
+          - containerPort: 9093
+          name: admin-http
+      volumes:
+      - name: {{.Values.alertmanager.name}}-config
+        configMap:
+          name: {{.Values.alertmanager.name}}-config
+      # - name: alertmanager
+      #   emptyDir: {}
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
