@@ -31,7 +31,7 @@ func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerF
 	defer close(stop)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sAPI, err := k8s.InitializeAPI(*kubeconfig, APIResources...)
+	k8sAPI, err := k8s.InitializeAPI(*kubeconfig, true, APIResources...)
 	if err != nil {
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
@@ -46,7 +46,7 @@ func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerF
 		log.Fatalf("failed to initialize the webhook server: %s", err)
 	}
 
-	k8sAPI.Sync()
+	k8sAPI.Sync(nil)
 
 	go s.Start()
 	go admin.StartServer(*metricsAddr)

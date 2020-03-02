@@ -116,7 +116,7 @@ func TestTrafficSplitWatcher(t *testing.T) {
 
 			watcher := NewTrafficSplitWatcher(k8sAPI, logging.WithField("test", t.Name()))
 
-			k8sAPI.Sync()
+			k8sAPI.Sync(nil)
 
 			listener := newBufferingTrafficSplitListener()
 
@@ -172,7 +172,7 @@ func TestTrafficSplitWatcherDelete(t *testing.T) {
 
 			watcher := NewTrafficSplitWatcher(k8sAPI, logging.WithField("test", t.Name()))
 
-			k8sAPI.Sync()
+			k8sAPI.Sync(nil)
 
 			listener := newDeletingTrafficSplitListener()
 

@@ -319,6 +319,67 @@ const (
 	//
 	// In the future, this should be changed to a time- and audience-scoped secret.
 	IdentityServiceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+	/*
+	 * Service mirror constants
+	 */
+
+	// SvcMirrorPrefix is the prefix common to all labels and annotations
+	// and types used by the service mirror component
+	SvcMirrorPrefix = "mirror.linkerd.io"
+
+	// MirrorSecretType is the type of secret that is supposed to contain
+	// the access information for remote clusters.
+	MirrorSecretType = SvcMirrorPrefix + "/remote-kubeconfig"
+
+	// GatewayNameAnnotation is the annotation that is present on the remote
+	// service, indicating which gateway is supposed to route traffic to it
+	GatewayNameAnnotation = SvcMirrorPrefix + "/gateway-name"
+
+	// RemoteGatewayNameLabel is same as GatewayNameAnnotation but on the local,
+	// mirrored service. It's used for quick querying when we want to figure out
+	// the services that are being associated with a certain gateway
+	RemoteGatewayNameLabel = SvcMirrorPrefix + "/remote-gateway-name"
+
+	// GatewayNsAnnotation is present on the remote service, indicating the ns
+	// in which we can find the gateway
+	GatewayNsAnnotation = SvcMirrorPrefix + "/gateway-ns"
+
+	// RemoteGatewayNsLabel follows the same kind of logic as RemoteGatewayNameLabel
+	RemoteGatewayNsLabel = SvcMirrorPrefix + "/remote-gateway-ns"
+
+	// MirroredResourceLabel indicates that this resource is the result
+	// of a mirroring operation (can be a namespace or a service)
+	MirroredResourceLabel = SvcMirrorPrefix + "/mirrored-service"
+
+	// RemoteClusterNameLabel put on a local mirrored service, it
+	// allows us to associate a mirrored service with a remote cluster
+	RemoteClusterNameLabel = SvcMirrorPrefix + "/cluster-name"
+
+	// RemoteClusterDomainAnnotation is present on the secret
+	// carrying the config of the remote cluster, to allow for
+	// using custom cluster domains
+	RemoteClusterDomainAnnotation = SvcMirrorPrefix + "/remote-cluster-domain"
+
+	// RemoteResourceVersionAnnotation is the last observed remote resource
+	// version of a mirrored resource. Useful when doing updates
+	RemoteResourceVersionAnnotation = SvcMirrorPrefix + "/remote-resource-version"
+
+	// RemoteServiceFqName is the fully qualified name of the mirrored service
+	// on the remote cluster
+	RemoteServiceFqName = SvcMirrorPrefix + "/remote-svc-fq-name"
+
+	// RemoteGatewayResourceVersionAnnotation is the last observed remote resource
+	// version of the gateway for a particular mirrored service. It is used
+	// in cases we detect a change in a remote gateway
+	RemoteGatewayResourceVersionAnnotation = SvcMirrorPrefix + "/remote-gateway-resource-version"
+
+	// ConfigKeyName is the key in the secret that stores the kubeconfig needed to connect
+	// to a remote cluster
+	ConfigKeyName = "kubeconfig"
+
+	// GatewayPortName is the name of the incoming port of the gateway
+	GatewayPortName = "incoming-port"
 )
 
 // CreatedByAnnotationValue returns the value associated with

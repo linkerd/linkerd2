@@ -46,7 +46,7 @@ func Main(args []string) {
 	defer destinationConn.Close()
 
 	k8sAPI, err := k8s.InitializeAPI(
-		*kubeConfigPath,
+		*kubeConfigPath, true,
 		k8s.CJ, k8s.DS, k8s.Deploy, k8s.Job, k8s.NS, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc, k8s.SS, k8s.SP, k8s.TS,
 	)
 	if err != nil {
@@ -84,7 +84,7 @@ func Main(args []string) {
 		strings.Split(*ignoredNamespaces, ","),
 	)
 
-	k8sAPI.Sync() // blocks until caches are synced
+	k8sAPI.Sync(nil) // blocks until caches are synced
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

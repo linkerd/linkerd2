@@ -99,6 +99,11 @@ func (chart *Chart) RenderCNI() (bytes.Buffer, error) {
 	return chart.render(cniPartials)
 }
 
+// RenderServiceMirror returns a bytes buffer with the result of rendering a Helm chart
+func (chart *Chart) RenderServiceMirror() (bytes.Buffer, error) {
+	return chart.render([]*chartutil.BufferedFile{})
+}
+
 // ReadFile updates the buffered file with the data read from disk
 func ReadFile(dir string, f *chartutil.BufferedFile) error {
 	filename := dir + f.Name
