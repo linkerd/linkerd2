@@ -118,6 +118,44 @@ func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) 
 	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)
 }
 
+// PluralResourceNameFromFriendlyName returns a pluralized canonical name from common shorthands used in command line tools.
+// This works based on https://github.com/kubernetes/kubernetes/blob/63ffb1995b292be0a1e9ebde6216b83fc79dd988/pkg/kubectl/kubectl.go#L39
+// This also works for non-k8s resources, e.g. authorities
+func PluralResourceNameFromFriendlyName(friendlyName string) (string, error) {
+	switch friendlyName {
+	case "au", "authority", "authorities":
+		return "authorities", nil
+	case "cj", "cronjob", "cronjobs":
+		return "cronjobs", nil
+	case "ds", "daemonset", "daemonsets":
+		return "daemonsets", nil
+	case "deploy", "deployment", "deployments":
+		return "deployments", nil
+	case "job", "jobs":
+		return "jobs", nil
+	case "ns", "namespace", "namespaces":
+		return "namespaces", nil
+	case "po", "pod", "pods":
+		return "pods", nil
+	case "rc", "replicationcontroller", "replicationcontrollers":
+		return "replicationcontrollers", nil
+	case "rs", "replicaset", "replicasets":
+		return "replicasets", nil
+	case "svc", "service", "services":
+		return "services", nil
+	case "sp", "serviceprofile", "serviceprofiles":
+		return "serviceprofiles", nil
+	case "sts", "statefulset", "statefulsets":
+		return "statefulsets", nil
+	case "ts", "trafficsplit", "trafficsplits":
+		return "trafficsplits", nil
+	case "all":
+		return All, nil
+	}
+
+	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)
+}
+
 // ShortNameFromCanonicalResourceName returns the shortest name for a k8s canonical name.
 // Essentially the reverse of CanonicalResourceNameFromFriendlyName
 func ShortNameFromCanonicalResourceName(canonicalName string) string {

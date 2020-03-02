@@ -335,6 +335,15 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 	values.Tap = &charts.Tap{TLS: tapTLS}
 
+	smiMetricsTLS, err := fetchK8sTLSSecret(k, k8s.SmiMetricsServiceName, options)
+	if err != nil {
+		if !kerrors.IsNotFound(err) {
+			return nil, nil, fmt.Errorf("could not fetch existing SMI metrics secret: %s", err)
+		}
+		smiMetricsTLS = &charts.TLS{}
+	}
+	values.SMIMetrics.TLS = smiMetricsTLS
+
 	values.Stage = stage
 
 	// Update Add-Ons Configuration from the linkerd-value cm
@@ -406,6 +415,26 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 	value := &charts.TLS{
 		KeyPEM: string(secret.Data["key.pem"]),
 		CrtPEM: string(secret.Data["crt.pem"]),
+	}
+
+	if err := options.verifyTLS(value, webhook); err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func fetchK8sTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+	secret, err := k.CoreV1().
+		Secrets(controlPlaneNamespace).
+		Get(webhookSecretName(webhook), metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	value := &charts.TLS{
+		KeyPEM: string(secret.Data["tls.key"]),
+		CrtPEM: string(secret.Data["tls.crt"]),
 	}
 
 	if err := options.verifyTLS(value, webhook); err != nil {

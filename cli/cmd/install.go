@@ -55,6 +55,7 @@ type (
 		restrictDashboardPrivileges bool
 		controlPlaneTracing         bool
 		identityOptions             *installIdentityOptions
+		smiMetricsImage             string
 		*proxyConfigOptions
 
 		recordedFlags []*pb.Install_Flag
@@ -135,6 +136,7 @@ var (
 		"templates/sp-validator-rbac.yaml",
 		"templates/tap-rbac.yaml",
 		"templates/psp.yaml",
+		"templates/smi-metrics-rbac.yaml",
 	}
 
 	templatesControlPlaneStage = []string{
@@ -151,6 +153,7 @@ var (
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
+		"templates/smi-metrics.yaml",
 		"templates/linkerd-values.yaml",
 	}
 
@@ -198,6 +201,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
 		controlPlaneTracing:         defaults.Global.ControlPlaneTracing,
+		smiMetricsImage:             defaults.SMIMetrics.Image,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -519,6 +523,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	)
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
+	flags.StringVar(&options.smiMetricsImage, "smi-metrics-image", options.smiMetricsImage, "SMI Metrics image")
 	flags.MarkHidden("control-plane-version")
 	flags.MarkHidden("control-plane-tracing")
 
@@ -757,6 +762,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
+	installValues.SMIMetrics.Image = options.smiMetricsImage
 
 	installValues.Global.Proxy = &l5dcharts.Proxy{
 		EnableExternalProfiles: options.enableExternalProfiles,
@@ -820,17 +826,18 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 
 	if values.Stage == "" || values.Stage == configStage {
 		for _, template := range templatesConfigStage {
-			files = append(files, &chartutil.BufferedFile{
-				Name: template,
-			})
+			files = append(files,
+				&chartutil.BufferedFile{Name: template},
+			)
 		}
 	}
 
 	if values.Stage == "" || values.Stage == controlPlaneStage {
+		files = append(files, &chartutil.BufferedFile{Name: "smi-metrics-config.yaml"})
 		for _, template := range templatesControlPlaneStage {
-			files = append(files, &chartutil.BufferedFile{
-				Name: template,
-			})
+			files = append(files,
+				&chartutil.BufferedFile{Name: template},
+			)
 		}
 	}
 

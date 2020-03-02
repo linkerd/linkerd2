@@ -39,6 +39,7 @@ var (
 		"linkerd-identity":       1,
 		"linkerd-prometheus":     1,
 		"linkerd-proxy-injector": 1,
+		"linkerd-smi-metrics":    1,
 		"linkerd-sp-validator":   1,
 		"linkerd-tap":            1,
 		"linkerd-web":            1,
