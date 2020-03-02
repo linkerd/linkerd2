@@ -833,10 +833,10 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 	}
 
 	if values.Stage == "" || values.Stage == controlPlaneStage {
+		files = append(files, &chartutil.BufferedFile{Name: "smi-metrics-config.yaml"})
 		for _, template := range templatesControlPlaneStage {
 			files = append(files,
 				&chartutil.BufferedFile{Name: template},
-				&chartutil.BufferedFile{Name: "smi-metrics-config.yaml"},
 			)
 		}
 	}
