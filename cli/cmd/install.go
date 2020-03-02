@@ -167,7 +167,7 @@ var (
 
 	alertmanagerTemplates = []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
-		// {Name: "templates/alertmanager-rbac.yaml"},
+		{Name: "templates/alertmanager-rbac.yaml"},
 		{Name: "templates/alertmanager.yaml"},
 	}
 )

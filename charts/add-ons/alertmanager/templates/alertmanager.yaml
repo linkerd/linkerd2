@@ -6,7 +6,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: {{.Values.alertmanager.name}}-config
+  name: linkerd-{{.Values.alertmanager.name}}-config
   namespace: {{.Values.global.namespace}}
 data:
   config.yml: |-
@@ -46,7 +46,7 @@ spec:
 {{ $_ := set .Values.global.proxy.image "Version" .Values.global.linkerdVersion -}}
 {{ end -}}
 {{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set .Values.global.proxy "component" .Values.alertmanager.name -}}
+{{ $_ := set .Values.global.proxy "component" "linkerd-alertmanager" -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -59,7 +59,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: {{.Values.alertmanager.name}}
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-  name: linkerd-alertmanager
+  name: linkerd-{{.Values.alertmanager.name}}
   namespace: {{.Values.global.namespace}}
 spec:
   replicas: 1
@@ -78,26 +78,31 @@ spec:
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
+      {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
-        - name: {{.Values.alertmanager.name}}
-          image: {{.Values.alertmanager.image}}
-          imagePullPolicy: {{.Values.global.imagePullPolicy}}
-          args:
-          - "--config.file=/etc/alertmanager/alertmanager.yml"
-          # - "--storage.path=/alertmanager"
-          volumeMounts:
-          - name: {{.Values.alertmanager.name}}-config
-            mountPath: /etc/alertmanager/alertmanager.yml
-            subPath: config.yml
-          # - name: alertmanager
-          #   mountPath: /alertmanager
-          ports:
-          - containerPort: 9093
+      - args:
+        - "--config.file=/etc/alertmanager/alertmanager.yml"
+        image: {{.Values.alertmanager.image}}
+        imagePullPolicy: {{.Values.global.imagePullPolicy}}
+        name: {{.Values.alertmanager.name}}
+        ports:
+        - containerPort: 9093
           name: admin-http
-      volumes:
-      - name: {{.Values.alertmanager.name}}-config
-        configMap:
+        # securityContext:
+        #   runAsUser: 65534
+        volumeMounts:
+        - mountPath: /etc/alertmanager/alertmanager.yml
           name: {{.Values.alertmanager.name}}-config
-      # - name: alertmanager
-      #   emptyDir: {}
+          subPath : config.yml
+          readOnly: true
+      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if not .Values.global.cniEnabled -}}
+      initContainers:
+      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      serviceAccountName: linkerd-{{.Values.alertmanager.name}}
+      volumes:
+      - configMap:
+          name: linkerd-{{.Values.alertmanager.name}}-config
+        name: {{.Values.alertmanager.name}}-config
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}

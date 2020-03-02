@@ -6,7 +6,7 @@
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: {{.Values.alertmanager.name}}
+  name: linkerd-{{.Values.alertmanager.name}}
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: {{.Values.alertmanager.name}}

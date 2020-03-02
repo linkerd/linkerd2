@@ -136,7 +136,7 @@ prometheusLogLevel: *controller_log_level
 # alertmanager configuration 
 alertmanager:
   enabled: false
-  name: linkerd-alertmanager
+  name: alertmanager
   image: prom/alertmanager
 
 # proxy injector configuration
