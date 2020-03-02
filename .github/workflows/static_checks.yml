@@ -98,7 +98,6 @@ jobs:
         ! -name docker-retag-all \
         ! -name _docker.sh \
         ! -name fmt \
-        ! -name helm-build \
         ! -name kind-load \
         ! -name lint \
         ! -name _log.sh \
@@ -115,4 +114,4 @@ jobs:
         ! -name test-scale \
         ! -name update-go-deps-shas \
         ! -name web \
-        | xargs -I {} bin/shellcheck {}
+        | xargs -I {} bin/shellcheck -x {}
