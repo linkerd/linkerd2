@@ -97,7 +97,6 @@ jobs:
         ! -name docker-push-deps \
         ! -name docker-retag-all \
         ! -name _docker.sh \
-        ! -name fetch-proxy \
         ! -name fmt \
         ! -name helm-build \
         ! -name kind-load \
