@@ -2,6 +2,7 @@ package smimetrics
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -11,17 +12,21 @@ import (
 )
 
 type (
+	// TrafficMetricsList is a list of TrafficMetrics objects for a Resource.
 	TrafficMetricsList struct {
 		Resource Resource         `json:"resource"`
 		Items    []TrafficMetrics `json:"items"`
 	}
 
+	// Resource names a Kubernetes resource.  If Name is blank, this refers to
+	// a resource kind.  Otherwise, it refers to a specific named resource.
 	Resource struct {
 		Kind      string `json:"kind"`
 		Name      string `json:"name"`
 		Namespace string `json:"namespace"`
 	}
 
+	// TrafficMetrics is a collection of metrics for a Resource.
 	TrafficMetrics struct {
 		Window   string   `json:"window"`
 		Resource Resource `json:"resource"`
@@ -29,11 +34,14 @@ type (
 		Metrics  []Metric `json:"metrics"`
 	}
 
+	// Edge indicates if the associated metrics are measured on the inbound
+	// or outbound side and which resource is the peer.
 	Edge struct {
 		Direction string   `json:"direction"`
 		Resource  Resource `json:"resource"`
 	}
 
+	// Metric is an individual traffic metric.
 	Metric struct {
 		Name  string `json:"name"`
 		Unit  string `json:"unit"`
@@ -41,13 +49,16 @@ type (
 	}
 )
 
+const apiBase = "/apis/metrics.smi-spec.io/v1alpha1"
+
+// GetTrafficMetrics returns the inbound traffic metrics for a specific named
+// resource.
 func GetTrafficMetrics(k8sAPI *k8s.KubernetesAPI, namespace, kind, name string, params map[string]string) (*TrafficMetrics, error) {
-	path := "/apis/metrics.smi-spec.io/v1alpha1"
+	ns := ""
 	if namespace != "" {
-		path = path + "/namespaces/" + namespace
+		ns = "/namespaces/" + namespace
 	}
-	path = path + "/" + kind
-	path = path + "/" + name
+	path := fmt.Sprintf("%s%s/%s/%s", apiBase, ns, kind, name)
 
 	bytes, err := getMetricsResponse(k8sAPI, path, params)
 	if err != nil {
@@ -57,12 +68,14 @@ func GetTrafficMetrics(k8sAPI *k8s.KubernetesAPI, namespace, kind, name string, 
 	return parseTrafficMetrics(bytes)
 }
 
+// GetTrafficMetricsList returns the inbound traffic metrics for all resources
+// of a given kind.
 func GetTrafficMetricsList(k8sAPI *k8s.KubernetesAPI, namespace, kind string, params map[string]string) (*TrafficMetricsList, error) {
-	path := "/apis/metrics.smi-spec.io/v1alpha1"
+	ns := ""
 	if namespace != "" {
-		path = path + "/namespaces/" + namespace
+		ns = "/namespaces/" + namespace
 	}
-	path = path + "/" + kind
+	path := fmt.Sprintf("%s%s/%s", apiBase, ns, kind)
 
 	bytes, err := getMetricsResponse(k8sAPI, path, params)
 	if err != nil {
@@ -72,14 +85,14 @@ func GetTrafficMetricsList(k8sAPI *k8s.KubernetesAPI, namespace, kind string, pa
 	return parseTrafficMetricsList(bytes)
 }
 
+// GetTrafficMetricsEdgesList returns the edge traffic metrics for a specific
+// named resource.
 func GetTrafficMetricsEdgesList(k8sAPI *k8s.KubernetesAPI, namespace, kind, name string, params map[string]string) (*TrafficMetricsList, error) {
-	path := "/apis/metrics.smi-spec.io/v1alpha1"
+	ns := ""
 	if namespace != "" {
-		path = path + "/namespaces/" + namespace
+		ns = "/namespaces/" + namespace
 	}
-	path = path + "/" + kind
-	path = path + "/" + name
-	path = path + "/edges"
+	path := fmt.Sprintf("%s%s/%s/%s/edges", apiBase, ns, kind, name)
 
 	bytes, err := getMetricsResponse(k8sAPI, path, params)
 	if err != nil {

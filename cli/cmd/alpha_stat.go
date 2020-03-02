@@ -160,6 +160,7 @@ func renderTrafficMetrics(metrics *smimetrics.TrafficMetrics, w *tabwriter.Write
 func renderTrafficMetricsList(metrics *smimetrics.TrafficMetricsList, w *tabwriter.Writer) {
 	renderTrafficHeaders(w, false)
 	for _, row := range metrics.Items {
+		row := row // Copy to satisfy golint.
 		for _, col := range metricsToRow(&row, false) {
 			fmt.Fprint(w, col)
 			fmt.Fprint(w, "\t")
@@ -172,6 +173,7 @@ func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w *ta
 	outbound := toResource != nil
 	renderTrafficHeaders(w, outbound)
 	for _, row := range metrics.Items {
+		row := row // Copy to satisfy golint.
 		if row.Edge.Direction != "to" {
 			continue
 		}

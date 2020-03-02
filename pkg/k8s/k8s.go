@@ -32,6 +32,12 @@ const (
 	l5dJob = "k8s_job"
 )
 
+type resourceName struct {
+	short  string
+	full   string
+	plural string
+}
+
 // AllResources is a sorted list of all resources defined as constants above.
 var AllResources = []string{
 	Authority,
@@ -65,6 +71,23 @@ var StatAllResourceTypes = []string{
 	ReplicaSet,
 }
 
+var resourceNames = []resourceName{
+	{"au", "authority", "authorities"},
+	{"cj", "cronjob", "cronjobs"},
+	{"ds", "daemonset", "daemonsets"},
+	{"deploy", "deployment", "deployments"},
+	{"job", "job", "jobs"},
+	{"ns", "namespace", "namespaces"},
+	{"po", "pod", "pods"},
+	{"rc", "replicationcontroller", "replicationcontrollers"},
+	{"rs", "replicaset", "replicasets"},
+	{"svc", "service", "services"},
+	{"sp", "serviceprofile", "serviceprofiles"},
+	{"sts", "statefulset", "statefulsets"},
+	{"ts", "trafficsplit", "trafficsplits"},
+	{"all", "all", "all"},
+}
+
 // GetConfig returns kubernetes config based on the current environment.
 // If fpath is provided, loads configuration from that file. Otherwise,
 // GetConfig uses default strategy to load configuration from $KUBECONFIG,
@@ -84,37 +107,11 @@ func GetConfig(fpath, kubeContext string) (*rest.Config, error) {
 // This works based on https://github.com/kubernetes/kubernetes/blob/63ffb1995b292be0a1e9ebde6216b83fc79dd988/pkg/kubectl/kubectl.go#L39
 // This also works for non-k8s resources, e.g. authorities
 func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) {
-	switch friendlyName {
-	case "au", "authority", "authorities":
-		return Authority, nil
-	case "cj", "cronjob", "cronjobs":
-		return CronJob, nil
-	case "ds", "daemonset", "daemonsets":
-		return DaemonSet, nil
-	case "deploy", "deployment", "deployments":
-		return Deployment, nil
-	case "job", "jobs":
-		return Job, nil
-	case "ns", "namespace", "namespaces":
-		return Namespace, nil
-	case "po", "pod", "pods":
-		return Pod, nil
-	case "rc", "replicationcontroller", "replicationcontrollers":
-		return ReplicationController, nil
-	case "rs", "replicaset", "replicasets":
-		return ReplicaSet, nil
-	case "svc", "service", "services":
-		return Service, nil
-	case "sp", "serviceprofile", "serviceprofiles":
-		return ServiceProfile, nil
-	case "sts", "statefulset", "statefulsets":
-		return StatefulSet, nil
-	case "ts", "trafficsplit", "trafficsplits":
-		return TrafficSplit, nil
-	case "all":
-		return All, nil
+	for _, name := range resourceNames {
+		if friendlyName == name.short || friendlyName == name.full || friendlyName == name.plural {
+			return name.full, nil
+		}
 	}
-
 	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)
 }
 
@@ -122,37 +119,11 @@ func CanonicalResourceNameFromFriendlyName(friendlyName string) (string, error) 
 // This works based on https://github.com/kubernetes/kubernetes/blob/63ffb1995b292be0a1e9ebde6216b83fc79dd988/pkg/kubectl/kubectl.go#L39
 // This also works for non-k8s resources, e.g. authorities
 func PluralResourceNameFromFriendlyName(friendlyName string) (string, error) {
-	switch friendlyName {
-	case "au", "authority", "authorities":
-		return "authorities", nil
-	case "cj", "cronjob", "cronjobs":
-		return "cronjobs", nil
-	case "ds", "daemonset", "daemonsets":
-		return "daemonsets", nil
-	case "deploy", "deployment", "deployments":
-		return "deployments", nil
-	case "job", "jobs":
-		return "jobs", nil
-	case "ns", "namespace", "namespaces":
-		return "namespaces", nil
-	case "po", "pod", "pods":
-		return "pods", nil
-	case "rc", "replicationcontroller", "replicationcontrollers":
-		return "replicationcontrollers", nil
-	case "rs", "replicaset", "replicasets":
-		return "replicasets", nil
-	case "svc", "service", "services":
-		return "services", nil
-	case "sp", "serviceprofile", "serviceprofiles":
-		return "serviceprofiles", nil
-	case "sts", "statefulset", "statefulsets":
-		return "statefulsets", nil
-	case "ts", "trafficsplit", "trafficsplits":
-		return "trafficsplits", nil
-	case "all":
-		return All, nil
+	for _, name := range resourceNames {
+		if friendlyName == name.short || friendlyName == name.full || friendlyName == name.plural {
+			return name.plural, nil
+		}
 	}
-
 	return "", fmt.Errorf("cannot find Kubernetes canonical name from friendly name [%s]", friendlyName)
 }
 
