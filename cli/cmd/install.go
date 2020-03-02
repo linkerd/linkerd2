@@ -883,7 +883,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 					Dir:       filepath.Join(addOnChartsPath, tracingChartName),
 					Namespace: controlPlaneNamespace,
 					RawValues: append(rawValues, values...),
-					Files:     alertmanagerTemplates,
+					Files:     tracingTemplates,
 				}
 
 				b, err := chart.Render()
