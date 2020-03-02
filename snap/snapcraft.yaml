@@ -1,0 +1,25 @@
+name: linkerd
+base: core18
+version: '0.1' # just for humans, typically '1.2+git' or '1.3.2'
+summary: Command-line utility to interact with linkerd
+description: |
+    Linkerd is a service mesh, designed to give platform-wide observability,
+    reliability, and security without requiring configuration or code changes.
+
+#icon: https://user-images.githubusercontent.com/9226/33582867-3e646e02-d90c-11e7-85a2-2e238737e859.png
+grade: devel
+confinement: devmode
+
+parts:
+    linkerd:
+        plugin: go
+        go-importpath: github.com/linkerd/linkerd2
+        source: .
+        source-type: git
+        source-tag: go1.13
+        build-packages:
+            - gcc
+
+apps:
+    linkerd:
+        command: bin/linkerd
