@@ -61,3 +61,57 @@ jobs:
       run: |
         echo "$GITCOOKIE_SH" | bash
         bin/fmt
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: shellcheck
+      # TODO: Each file listed here is excluded from shellcheck because it
+      # fails. As we fix files we can remove them from this list.
+      #
+      # Once we have this list paired down signficantly, we can switch to
+      # disabling specific checks across all files, for example:
+      # bin/shellcheck bin/* --exclude=SC1000
+      #
+      # For more information on shellcheck failures:
+      # https://github.com/koalaman/shellcheck/wiki/Checks
+      run: |
+        find ./bin -type f \
+        ! -name build-cli-bin \
+        ! -name docker-build-base \
+        ! -name docker-build-cli-bin \
+        ! -name docker-build-cni-plugin \
+        ! -name docker-build-controller \
+        ! -name docker-build-debug \
+        ! -name docker-build-go-deps \
+        ! -name docker-build-grafana \
+        ! -name docker-build-proxy \
+        ! -name docker-build-web \
+        ! -name docker-images \
+        ! -name docker-pull \
+        ! -name docker-pull-binaries \
+        ! -name docker-pull-deps \
+        ! -name docker-push \
+        ! -name docker-push-deps \
+        ! -name docker-retag-all \
+        ! -name _docker.sh \
+        ! -name fmt \
+        ! -name kind-load \
+        ! -name lint \
+        ! -name _log.sh \
+        ! -name minikube-start-hyperv.bat \
+        ! -name mkube \
+        ! -name protoc-go.sh \
+        ! -name root-tag \
+        ! -name _tag.sh \
+        ! -name test-cleanup \
+        ! -name test-clouds-cleanup \
+        ! -name test-clouds \
+        ! -name test-run \
+        ! -name _test-run.sh \
+        ! -name test-scale \
+        ! -name update-go-deps-shas \
+        ! -name web \
+        | xargs -I {} bin/shellcheck -x {}

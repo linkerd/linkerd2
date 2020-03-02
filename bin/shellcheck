@@ -1,0 +1,29 @@
+#!/bin/sh
+
+set -eu
+
+scversion=v0.7.0
+
+bindir=$( cd "${0%/*}" && pwd )
+targetbin=$( cd "$bindir"/.. && pwd )/target/bin
+scbin=$targetbin/.shellcheck-$scversion
+
+if [ ! -f "$scbin" ]; then
+  if [ "$(uname -s)" = Darwin ]; then
+    file=darwin.x86_64.tar.xz
+  elif [ "$(uname -o)" = Msys ]; then
+    # TODO: work on windows
+    file=zip
+  else
+    case $(uname -m) in
+      x86_64) file=linux.x86_64.tar.xz ;;
+      arm) file=linux.aarch64.tar.xz ;;
+    esac
+  fi
+
+  mkdir -p "$targetbin"
+  wget -qO- "https://storage.googleapis.com/shellcheck/shellcheck-${scversion?}.$file" | tar -OxJv "shellcheck-${scversion}/shellcheck" > "$scbin"
+  chmod +x "$scbin"
+fi
+
+"$scbin" "$@"
