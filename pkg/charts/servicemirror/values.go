@@ -42,7 +42,7 @@ func readDefaults(chartDir string) (*Values, error) {
 		return nil, err
 	}
 	values := Values{}
-	if err := yaml.Unmarshal(file.Data, &values); err != nil {
+	if err := yaml.Unmarshal(charts.InsertVersion(file.Data), &values); err != nil {
 		return nil, err
 	}
 	return &values, nil
