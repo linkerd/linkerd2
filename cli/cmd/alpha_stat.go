@@ -17,6 +17,17 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+var allowedKinds = map[string]struct{}{
+	k8s.CronJob:               struct{}{},
+	k8s.Deployment:            struct{}{},
+	k8s.Job:                   struct{}{},
+	k8s.Namespace:             struct{}{},
+	k8s.Pod:                   struct{}{},
+	k8s.ReplicaSet:            struct{}{},
+	k8s.ReplicationController: struct{}{},
+	k8s.StatefulSet:           struct{}{},
+}
+
 type alphaStatOptions struct {
 	namespace  string
 	toResource string
@@ -87,6 +98,9 @@ Examples:
 			target, err := util.BuildResource(options.namespace, args[0])
 			if err != nil {
 				return err
+			}
+			if _, ok := allowedKinds[target.GetType()]; !ok {
+				return fmt.Errorf("%s is not a supported resource type", target.GetType())
 			}
 			kind, err := k8s.PluralResourceNameFromFriendlyName(target.GetType())
 			if err != nil {
