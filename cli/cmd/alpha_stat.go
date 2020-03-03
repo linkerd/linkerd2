@@ -198,7 +198,6 @@ func renderTrafficHeaders(w *tabwriter.Writer, outbound bool) {
 		headers = append(headers, "NAME")
 	}
 	headers = append(headers,
-		"NAME",
 		"SUCCESS",
 		"RPS",
 		"LATENCY_P50",
