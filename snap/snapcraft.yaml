@@ -16,10 +16,10 @@ parts:
         go-importpath: github.com/linkerd/linkerd2
         source: .
         source-type: git
-        source-tag: go1.13
-        build-packages:
-            - gcc
-
+        override-build: |
+            cd /root/parts/linkerd/src/
+            ./bin/build-cli-bin
+            mv ./target/cli/linux/linkerd ~/prime/
 apps:
     linkerd:
-        command: bin/linkerd
+        command: linkerd
