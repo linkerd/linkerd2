@@ -1,16 +1,16 @@
 package cmd
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"text/tabwriter"
+	"io"
 	"time"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/smimetrics"
+	"github.com/linkerd/linkerd2/pkg/table"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -37,6 +37,7 @@ func newCmdAlphaStat() *cobra.Command {
   * daemonsets
   * deployments
   * jobs
+  * namespace
   * pods
   * replicasets
   * replicationcontrollers
@@ -97,22 +98,19 @@ Examples:
 				return errors.New("the --to resource must have the same kind as the target resource")
 			}
 
-			var buffer bytes.Buffer
-
-			w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
 			if name != "" {
 				if toResource != nil {
 					metrics, err := smimetrics.GetTrafficMetricsEdgesList(k8sAPI, target.GetNamespace(), kind, name, nil)
 					if err != nil {
 						return err
 					}
-					renderTrafficMetricsEdgesList(metrics, w, toResource)
+					renderTrafficMetricsEdgesList(metrics, stdout, toResource)
 				} else {
 					metrics, err := smimetrics.GetTrafficMetrics(k8sAPI, target.GetNamespace(), kind, name, nil)
 					if err != nil {
 						return err
 					}
-					renderTrafficMetrics(metrics, w)
+					renderTrafficMetrics(metrics, stdout)
 				}
 			} else {
 				if toResource != nil {
@@ -122,11 +120,9 @@ Examples:
 				if err != nil {
 					return err
 				}
-				renderTrafficMetricsList(metrics, w)
+				renderTrafficMetricsList(metrics, stdout)
 			}
 
-			w.Flush()
-			fmt.Print(buffer.String())
 			return nil
 		},
 	}
@@ -148,30 +144,26 @@ func buildToResource(namespace, to string) *public.Resource {
 	return &toResource
 }
 
-func renderTrafficMetrics(metrics *smimetrics.TrafficMetrics, w *tabwriter.Writer) {
-	renderTrafficHeaders(w, false)
-	for _, col := range metricsToRow(metrics, false) {
-		fmt.Fprint(w, col)
-		fmt.Fprint(w, "\t")
-	}
-	fmt.Fprint(w, "\n")
+func renderTrafficMetrics(metrics *smimetrics.TrafficMetrics, w io.Writer) {
+	t := buildTable(false)
+	t.Data = []table.Row{metricsToRow(metrics, false)}
+	t.Render(w)
 }
 
-func renderTrafficMetricsList(metrics *smimetrics.TrafficMetricsList, w *tabwriter.Writer) {
-	renderTrafficHeaders(w, false)
+func renderTrafficMetricsList(metrics *smimetrics.TrafficMetricsList, w io.Writer) {
+	t := buildTable(false)
+	t.Data = []table.Row{}
 	for _, row := range metrics.Items {
 		row := row // Copy to satisfy golint.
-		for _, col := range metricsToRow(&row, false) {
-			fmt.Fprint(w, col)
-			fmt.Fprint(w, "\t")
-		}
-		fmt.Fprint(w, "\n")
+		t.Data = append(t.Data, metricsToRow(&row, false))
 	}
+	t.Render(w)
 }
 
-func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w *tabwriter.Writer, toResource *public.Resource) {
+func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.Writer, toResource *public.Resource) {
 	outbound := toResource != nil
-	renderTrafficHeaders(w, outbound)
+	t := buildTable(outbound)
+	t.Data = []table.Row{}
 	for _, row := range metrics.Items {
 		row := row // Copy to satisfy golint.
 		if row.Edge.Direction != "to" {
@@ -182,33 +174,9 @@ func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w *ta
 			log.Debugf("Skipping edge %v", row.Edge.Resource)
 			continue
 		}
-		for _, col := range metricsToRow(&row, outbound) {
-			fmt.Fprint(w, col)
-			fmt.Fprint(w, "\t")
-		}
-		fmt.Fprint(w, "\n")
+		t.Data = append(t.Data, metricsToRow(&row, outbound))
 	}
-}
-
-func renderTrafficHeaders(w *tabwriter.Writer, outbound bool) {
-	headers := []string{}
-	if outbound {
-		headers = append(headers, "FROM", "TO")
-	} else {
-		headers = append(headers, "NAME")
-	}
-	headers = append(headers,
-		"SUCCESS",
-		"RPS",
-		"LATENCY_P50",
-		"LATENCY_P90",
-		"LATENCY_P99",
-	)
-	for _, header := range headers {
-		fmt.Fprint(w, header)
-		fmt.Fprint(w, "\t")
-	}
-	fmt.Fprint(w, "\n")
+	t.Render(w)
 }
 
 func getNumericMetric(metrics *smimetrics.TrafficMetrics, name string) *resource.Quantity {
@@ -253,16 +221,66 @@ func metricsToRow(metrics *smimetrics.TrafficMetrics, outbound bool) []string {
 		rps = fmt.Sprintf("%.1frps", rate)
 	}
 
-	row := []string{metrics.Resource.Name}
+	var to string
 	if outbound {
-		row = append(row, metrics.Edge.Resource.Name)
+		to = metrics.Edge.Resource.Name
 	}
 
-	return append(row,
+	return []string{
+		metrics.Resource.Name, // Name
+		metrics.Resource.Name, // From
+		to,                    // To
 		sr,
 		rps,
 		getNumericMetricWithUnit(metrics, "p50_response_latency"),
 		getNumericMetricWithUnit(metrics, "p90_response_latency"),
 		getNumericMetricWithUnit(metrics, "p99_response_latency"),
-	)
+	}
+}
+
+func buildTable(outbound bool) table.Table {
+	columns := []table.Column{
+		table.Column{
+			Header:    "NAME",
+			Width:     4,
+			Hide:      outbound,
+			Flexible:  true,
+			LeftAlign: true,
+		},
+		table.Column{
+			Header:    "FROM",
+			Width:     4,
+			Hide:      !outbound,
+			Flexible:  true,
+			LeftAlign: true,
+		},
+		table.Column{
+			Header:    "TO",
+			Width:     2,
+			Hide:      !outbound,
+			Flexible:  true,
+			LeftAlign: true,
+		},
+		table.Column{
+			Header: "SUCCESS",
+			Width:  7,
+		},
+		table.Column{
+			Header: "RPS",
+			Width:  9,
+		},
+		table.Column{
+			Header: "LATENCY_P50",
+			Width:  11,
+		},
+		table.Column{
+			Header: "LATENCY_P90",
+			Width:  11,
+		},
+		table.Column{
+			Header: "LATENCY_P99",
+			Width:  11,
+		},
+	}
+	return table.NewTable(columns, []table.Row{})
 }
