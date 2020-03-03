@@ -53,7 +53,6 @@ func newCmdAlphaStat() *cobra.Command {
   * replicasets
   * replicationcontrollers
   * statefulsets
-  * trafficsplits
 or it may be a specific named resource of one of the above kinds.
 
 linkerd alpha stat will return a table of the requested resource or resources
@@ -63,9 +62,7 @@ unless the --to flag is specified.
 
 The --to flag accepts a resource kind or a specific resource and instead
 displays the metrics measured on the client side from the root resource to
-the to-resource.  At least one of the root resource or the to-resource must be
-a specific named resource.  The --to flag is incompatible with a trafficsplit
-root resource.
+the to-resource.  The root resource must be a specific named resource.
 
 Examples:
   # Topline Resource Metrics
@@ -78,16 +75,7 @@ Examples:
   linkerd alpha stat -n emojivoto deploy/web --to=deploy
 
   # Outbound to a specific destination
-  linkerd alpha stat -n emojivoto deploy/web --to=deploy/emoji
-
-  # Who calls web?
-  linkerd alpha stat -n emojivoto deploy --to deploy/web
-
-  # Traffic splits
-  linkerd alpha stat -n emojivoto ts
-
-  # How is web's traffic split?
-  linkerd alpha stat -n emojivoto deploy/web --to=ts`,
+  linkerd alpha stat -n emojivoto deploy/web --to=deploy/emoji`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
@@ -108,6 +96,7 @@ Examples:
 			}
 			name := target.GetName()
 			toResource := buildToResource(options.namespace, options.toResource)
+			// TODO: Lift this requirement once the API supports it.
 			if toResource != nil && toResource.GetType() != target.GetType() {
 				return errors.New("the --to resource must have the same kind as the target resource")
 			}
