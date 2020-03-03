@@ -8,6 +8,7 @@ import (
 )
 
 type (
+	// Table represts a table of data to be rendered.
 	Table struct {
 		Columns       []Column
 		Data          []Row
@@ -15,8 +16,10 @@ type (
 		ColumnSpacing string
 	}
 
+	// Row is a single row of data in a table.
 	Row = []string
 
+	// Column represents metadata about a column in a table.
 	Column struct {
 		Header string
 		Width  int
@@ -30,6 +33,7 @@ type (
 
 const defaultColumnSpacing = "  "
 
+// NewTable creates a new table with the given columns and rows.
 func NewTable(cols []Column, data []Row) Table {
 	return Table{
 		Columns:       cols,
@@ -39,6 +43,7 @@ func NewTable(cols []Column, data []Row) Table {
 	}
 }
 
+// Render writes the full table to the given Writer.
 func (t *Table) Render(w io.Writer) {
 	columnWidths := t.columnWidths()
 	t.renderRow(w, t.headerRow(), columnWidths)
