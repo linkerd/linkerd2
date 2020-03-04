@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	kubeSystem = "kube-system"
 	podIPIndex = "ip"
 )
 
@@ -180,9 +179,6 @@ func (ew *EndpointsWatcher) Unsubscribe(id ServiceID, port Port, hostname string
 
 func (ew *EndpointsWatcher) addService(obj interface{}) {
 	service := obj.(*corev1.Service)
-	if service.Namespace == kubeSystem {
-		return
-	}
 	id := ServiceID{
 		Namespace: service.Namespace,
 		Name:      service.Name,
@@ -208,9 +204,6 @@ func (ew *EndpointsWatcher) deleteService(obj interface{}) {
 		}
 	}
 
-	if service.Namespace == kubeSystem {
-		return
-	}
 	id := ServiceID{
 		Namespace: service.Namespace,
 		Name:      service.Name,
@@ -224,9 +217,6 @@ func (ew *EndpointsWatcher) deleteService(obj interface{}) {
 
 func (ew *EndpointsWatcher) addEndpoints(obj interface{}) {
 	endpoints := obj.(*corev1.Endpoints)
-	if endpoints.Namespace == kubeSystem {
-		return
-	}
 	id := ServiceID{
 		Namespace: endpoints.Namespace,
 		Name:      endpoints.Name,
@@ -252,9 +242,6 @@ func (ew *EndpointsWatcher) deleteEndpoints(obj interface{}) {
 		}
 	}
 
-	if endpoints.Namespace == kubeSystem {
-		return
-	}
 	id := ServiceID{
 		Namespace: endpoints.Namespace,
 		Name:      endpoints.Name,

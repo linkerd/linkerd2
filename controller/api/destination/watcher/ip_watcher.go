@@ -106,7 +106,7 @@ func (iw *IPWatcher) Unsubscribe(clusterIP string, port Port, listener EndpointU
 
 func (iw *IPWatcher) addService(obj interface{}) {
 	service := obj.(*corev1.Service)
-	if service.Namespace == kubeSystem || service.Spec.ClusterIP == "None" {
+	if service.Spec.ClusterIP == "None" {
 		return
 	}
 
@@ -130,10 +130,6 @@ func (iw *IPWatcher) deleteService(obj interface{}) {
 		}
 	}
 
-	if service.Namespace == kubeSystem {
-		return
-	}
-
 	ss, ok := iw.getServiceSubscriptions(service.Spec.ClusterIP)
 	if ok {
 		ss.deleteService()
@@ -142,9 +138,6 @@ func (iw *IPWatcher) deleteService(obj interface{}) {
 
 func (iw *IPWatcher) addPod(obj interface{}) {
 	pod := obj.(*corev1.Pod)
-	if pod.Namespace == kubeSystem {
-		return
-	}
 	if pod.Status.PodIP == "" {
 		// Pod has not yet been assigned an IP address.
 		return
@@ -166,10 +159,6 @@ func (iw *IPWatcher) deletePod(obj interface{}) {
 			iw.log.Errorf("DeletedFinalStateUnknown contained object that is not a Pod %#v", obj)
 			return
 		}
-	}
-
-	if pod.Namespace == kubeSystem {
-		return
 	}
 
 	ss, ok := iw.getServiceSubscriptions(pod.Status.PodIP)
