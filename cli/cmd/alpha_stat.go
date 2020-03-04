@@ -172,8 +172,12 @@ func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.
 		if row.Edge.Direction != "to" {
 			continue
 		}
+		if toResource != nil && row.Edge.Resource.Namespace != toResource.GetNamespace() {
+			log.Debugf("Skipping edge %v", row.Edge.Resource)
+			continue
+		}
 		if toResource != nil && toResource.GetName() != "" &&
-			(row.Edge.Resource.Name != toResource.GetName() || row.Edge.Resource.Namespace != toResource.GetNamespace()) {
+			(row.Edge.Resource.Name != toResource.GetName()) {
 			log.Debugf("Skipping edge %v", row.Edge.Resource)
 			continue
 		}
