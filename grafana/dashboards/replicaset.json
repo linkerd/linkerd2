@@ -2208,7 +2208,7 @@
     "templating": {
       "list": [
         {
-          "allValue": null,
+          "allValue": ".*",
           "current": {
             "text": "default",
             "value": "default"
@@ -2233,7 +2233,7 @@
           "useTags": false
         },
         {
-          "allValue": null,
+          "allValue": ".*",
           "current": {
             "text": "rs1",
             "value": "rs1"
@@ -2258,7 +2258,7 @@
           "useTags": false
         },
         {
-          "allValue": null,
+          "allValue": ".*",
           "current": {
             "text": "All",
             "value": "$__all"
@@ -2283,7 +2283,7 @@
           "useTags": false
         },
         {
-          "allValue": null,
+          "allValue": ".*",
           "current": {
             "text": "All",
             "value": "$__all"

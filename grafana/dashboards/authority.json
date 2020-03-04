@@ -1180,7 +1180,7 @@
   "templating": {
     "list": [
       {
-        "allValue": null,
+        "allValue": ".*",
         "current": {},
         "datasource": "prometheus",
         "definition": "",
@@ -1202,7 +1202,7 @@
         "useTags": false
       },
       {
-        "allValue": null,
+        "allValue": ".*",
         "current": {},
         "datasource": "prometheus",
         "definition": "",
