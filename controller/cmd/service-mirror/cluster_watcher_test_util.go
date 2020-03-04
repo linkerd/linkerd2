@@ -87,7 +87,7 @@ func remoteServiceAsYaml(name, namespace, gtwName, gtwNs, resourceVersion string
 	if err != nil {
 		t.Fatal(err)
 	}
-	return fmt.Sprintf("%s", bytes)
+	return string(bytes)
 }
 
 func mirroredService(name, namespace, gtwName, gtwNs, resourceVersion, gatewayResourceVersion string, ports []corev1.ServicePort) *corev1.Service {
@@ -128,7 +128,7 @@ func mirroredServiceAsYaml(name, namespace, gtwName, gtwNs, resourceVersion, gat
 	if err != nil {
 		t.Fatal(err)
 	}
-	return fmt.Sprintf("%s", bytes)
+	return string(bytes)
 }
 
 func gateway(name, namespace, resourceVersion, ip, portName string, port int32) *corev1.Service {
@@ -166,7 +166,7 @@ func gatewayAsYaml(name, namespace, resourceVersion, ip, portName string, port i
 	if err != nil {
 		t.Fatal(err)
 	}
-	return fmt.Sprintf("%s", bytes)
+	return string(bytes)
 }
 
 func endpoints(name, namespace, gtwName, gtwNs, gatewayIP string, ports []corev1.EndpointPort) *corev1.Endpoints {
@@ -210,5 +210,5 @@ func endpointsAsYaml(name, namespace, gtwName, gtwNs, gatewayIP string, ports []
 	if err != nil {
 		t.Fatal(err)
 	}
-	return fmt.Sprintf("%s", bytes)
+	return string(bytes)
 }

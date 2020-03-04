@@ -66,25 +66,49 @@ func runTestCase(tc *testCase, t *testing.T) {
 		localAPI.Sync(nil)
 		remoteAPI.Sync(nil)
 
-		for _, expected := range tc.expectedLocalServices {
-			actual, err := localAPI.Client.CoreV1().Services(expected.Namespace).Get(expected.Name, metav1.GetOptions{})
+		if tc.expectedLocalServices == nil {
+			// ensure the are no local services
+			services, err := localAPI.Client.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{})
 			if err != nil {
-				t.Fatalf("Could not find mirrored service with name %s", expected.Name)
-			}
-
-			if err := diffServices(expected, actual); err != nil {
 				t.Fatal(err)
+			}
+			if len(services.Items) > 0 {
+				t.Fatalf("Was expecting no local services but instead found %v", services.Items)
+
+			}
+		} else {
+			for _, expected := range tc.expectedLocalServices {
+				actual, err := localAPI.Client.CoreV1().Services(expected.Namespace).Get(expected.Name, metav1.GetOptions{})
+				if err != nil {
+					t.Fatalf("Could not find mirrored service with name %s", expected.Name)
+				}
+
+				if err := diffServices(expected, actual); err != nil {
+					t.Fatal(err)
+				}
 			}
 		}
 
-		for _, expected := range tc.expectedLocalEndpoints {
-			actual, err := localAPI.Client.CoreV1().Endpoints(expected.Namespace).Get(expected.Name, metav1.GetOptions{})
+		if tc.expectedLocalEndpoints == nil {
+			// ensure the are no local endpoints
+			endpoints, err := localAPI.Client.CoreV1().Endpoints(corev1.NamespaceAll).List(metav1.ListOptions{})
 			if err != nil {
-				t.Fatalf("Could not find endpoints with name %s", expected.Name)
-			}
-
-			if err := diffEndpoints(expected, actual); err != nil {
 				t.Fatal(err)
+			}
+			if len(endpoints.Items) > 0 {
+				t.Fatalf("Was expecting no local endpoints but instead found %d", len(endpoints.Items))
+
+			}
+		} else {
+			for _, expected := range tc.expectedLocalEndpoints {
+				actual, err := localAPI.Client.CoreV1().Endpoints(expected.Namespace).Get(expected.Name, metav1.GetOptions{})
+				if err != nil {
+					t.Fatalf("Could not find endpoints with name %s", expected.Name)
+				}
+
+				if err := diffEndpoints(expected, actual); err != nil {
+					t.Fatal(err)
+				}
 			}
 		}
 
@@ -250,8 +274,8 @@ func TestRemoteServiceDeleted(t *testing.T) {
 			},
 
 			localResources: []string{
-				mirroredServiceAsYaml("test-service-remote-to-delete", "test-namespace-to-delete", "", "", "", "", nil, t),
-				endpointsAsYaml("test-service-remote-to-delete", "test-namespace-to-delete", "", "", "", nil, t),
+				mirroredServiceAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "", "", "", nil, t),
+				endpointsAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "", "", nil, t),
 			},
 		},
 	} {
@@ -878,6 +902,12 @@ func onAddOrUpdateTestCases(t *testing.T, isAdd bool) []testCase {
 					Namespace: "gateway-ns",
 				},
 			}},
+			expectedLocalServices: []*corev1.Service{
+				mirroredService("test-service-remote", "test-namespace", "gateway", "gateway-ns", "pastResourceVersion", "gatewayResVersion", nil),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				endpoints("test-service-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", nil),
+			},
 		},
 		{
 			testDescription: fmt.Sprintf("not not enqueue any events as this update does not really tell us anything new (res version is the same...) (%s)", testType),
@@ -887,6 +917,12 @@ func onAddOrUpdateTestCases(t *testing.T, isAdd bool) []testCase {
 			localResources: []string{
 				mirroredServiceAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "currentResVersion", "gatewayResVersion", nil, t),
 				endpointsAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", nil, t),
+			},
+			expectedLocalServices: []*corev1.Service{
+				mirroredService("test-service-remote", "test-namespace", "gateway", "gateway-ns", "currentResVersion", "gatewayResVersion", nil),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				endpoints("test-service-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", nil),
 			},
 		},
 		{
@@ -902,6 +938,13 @@ func onAddOrUpdateTestCases(t *testing.T, isAdd bool) []testCase {
 				Name:      "test-service",
 				Namespace: "test-namespace",
 			}},
+
+			expectedLocalServices: []*corev1.Service{
+				mirroredService("test-service-remote", "test-namespace", "gateway", "gateway-ns", "currentResVersion", "gatewayResVersion", nil),
+			},
+			expectedLocalEndpoints: []*corev1.Endpoints{
+				endpoints("test-service-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", nil),
+			},
 		},
 	}
 }
