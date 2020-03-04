@@ -1,3 +1,25 @@
+## edge-20.3.1
+
+This release introduces new functionality mainly focused around 
+observability and multicluster support. 
+
+* CLI
+  * Improved the `linkerd check` command to check for extension server
+    certificate (thanks @christyjacob4!)
+* Controller
+  * Removed restrictions preventing Linkerd from injecting proxies into
+    contour (thanks @alfatraining!)
+  * Added the SMI metrics API to the standard `linkerd install` flow. This
+    is the first step towards allowing Linkerd to consume the SMI metrics
+    API in the CLI and Web dashboard.
+  * Added an experimental version of a service mirroring controller, allowing
+    discovery of services on remote clusters  
+* Web UI
+  * Fixed a bug causing incorrect Grafana links to be rendered in the web
+    dashboard.
+* Internal
+  * Various CI and shell script fixes and improvements
+
 ## edge-20.2.3
 
 This release introduces the first optional add-on `tracing`, added through the
