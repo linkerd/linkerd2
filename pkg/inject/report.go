@@ -19,6 +19,7 @@ const (
 	annotationAtWorkload             = "workload"
 	invalidInjectAnnotationWorkload  = "invalid_inject_annotation_at_workload"
 	invalidInjectAnnotationNamespace = "invalid_inject_annotation_at_ns"
+	disabledAutoServiceTokenAcc      = "disabled_automount_service_account_token_account"
 )
 
 var (
@@ -31,6 +32,7 @@ var (
 		injectDisableAnnotationPresent:   fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
 		invalidInjectAnnotationWorkload:  fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
 		invalidInjectAnnotationNamespace: fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
+		disabledAutoServiceTokenAcc:      fmt.Sprintf("automountServiceAccountToken set to \"false\""),
 	}
 )
 
@@ -150,6 +152,14 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string
 	// cli     | n/a       | enabled  | yes      | false
 	// cli     | n/a       | ""       | yes      | false
 	// cli     | n/a       | disabled | no       | true
+
+	// Check https://github.com/linkerd/linkerd2/issues/3183
+	serviceAccountToken := conf.pod.spec.AutomountServiceAccountToken
+	if serviceAccountToken != nil {
+		if !*serviceAccountToken {
+			return true, disabledAutoServiceTokenAcc, ""
+		}
+	}
 
 	podAnnotation := conf.pod.meta.Annotations[k8s.ProxyInjectAnnotation]
 	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
