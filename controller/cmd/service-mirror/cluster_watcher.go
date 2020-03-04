@@ -39,9 +39,8 @@ type (
 	// RemoteServiceCreated is generated whenever a remote service is created Observing
 	// this event means that the service in question is not mirrored atm
 	RemoteServiceCreated struct {
-		service            *corev1.Service
-		gatewayData        *gatewayMetadata
-		newResourceVersion string
+		service     *corev1.Service
+		gatewayData *gatewayMetadata
 	}
 
 	// RemoteServiceUpdated is generated when we see something about an already
@@ -65,8 +64,7 @@ type (
 	// RemoteGatewayDeleted is observed when a service that is a gateway to at least
 	// one already mirrored service is deleted
 	RemoteGatewayDeleted struct {
-		gatewayData       *gatewayMetadata
-		affectedEndpoints []*corev1.Endpoints
+		gatewayData *gatewayMetadata
 	}
 
 	// RemoteGatewayUpdated happens when a service that is a gateway to at least
@@ -376,14 +374,23 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteServiceDeleted) error {
 	localServiceName := rcsw.mirroredResourceName(ev.Name)
 	rcsw.log.Debugf("Deleting mirrored service %s/%s and its corresponding Endpoints", ev.Namespace, localServiceName)
+	var errors []error
 	if err := rcsw.localAPIClient.Client.CoreV1().Services(ev.Namespace).Delete(localServiceName, &metav1.DeleteOptions{}); err != nil {
-		if kerrors.IsNotFound(err) {
-			return nil
+		if !kerrors.IsNotFound(err) {
+			errors = append(errors, fmt.Errorf("could not delete Service: %s/%s: %s", ev.Namespace, localServiceName, err))
 		}
-		// we can try deleting it again
-		return RetryableError{[]error{fmt.Errorf("could not delete Service: %s/%s: %s", ev.Namespace, localServiceName, err)}}
-
 	}
+
+	if err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.Namespace).Delete(localServiceName, &metav1.DeleteOptions{}); err != nil {
+		if !kerrors.IsNotFound(err) {
+			errors = append(errors, fmt.Errorf("could not delete Endpoints: %s/%s: %s", ev.Namespace, localServiceName, err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return RetryableError{errors}
+	}
+
 	rcsw.log.Debugf("Successfully deleted Service: %s/%s", ev.Namespace, localServiceName)
 	return nil
 }
@@ -402,6 +409,10 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 				Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate, gatewayPort),
 			},
 		}
+
+		ev.localEndpoints.Labels[consts.RemoteGatewayNameLabel] = ev.gatewayData.Name
+		ev.localEndpoints.Labels[consts.RemoteGatewayNsLabel] = ev.gatewayData.Namespace
+
 	} else {
 		rcsw.log.Warnf("Could not resolve gateway for %s: %s, nulling endpoints", serviceInfo, err)
 		ev.localEndpoints.Subsets = nil
@@ -617,11 +628,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleConsiderGatewayUpdateDispatch(eve
 			rcsw.log.Warnf("Gateway [%s/%s] is not a compliant gateway anymore, dispatching GatewayDeleted event: %s", event.maybeGateway.Namespace, event.maybeGateway.Name, err)
 			// in case something changed about this gateway and it is not really a gateway anymore,
 			// simply dispatch deletion event so all endpoints are nulled
-			endpoints, err := rcsw.endpointsForGateway(gatewayMeta)
-			if err != nil {
-				return RetryableError{[]error{err}}
-			}
-			rcsw.eventsQueue.AddRateLimited(&RemoteGatewayDeleted{gatewayMeta, endpoints})
+			rcsw.eventsQueue.AddRateLimited(&RemoteGatewayDeleted{gatewayMeta})
 		} else {
 			affectedServices, err := rcsw.affectedMirroredServicesForGatewayUpdate(gtwMetadata, event.maybeGateway.ResourceVersion)
 			if err != nil {
@@ -662,9 +669,8 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 				// we are not mirroring but has gateway data, so we need
 				// to create it
 				rcsw.eventsQueue.Add(&RemoteServiceCreated{
-					service:            service,
-					gatewayData:        gtwData,
-					newResourceVersion: service.ResourceVersion,
+					service:     service,
+					gatewayData: gtwData,
 				})
 			} else {
 				// at this point we know that we do not have such a service
@@ -769,41 +775,48 @@ func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service)
 	}
 }
 
+func (rcsw *RemoteClusterServiceWatcher) processNextEvent() (bool, interface{}, error) {
+	event, done := rcsw.eventsQueue.Get()
+	var err error
+	switch ev := event.(type) {
+	case *OnAddCalled:
+		err = rcsw.createOrUpdateService(ev.svc)
+	case *OnUpdateCalled:
+		err = rcsw.createOrUpdateService(ev.svc)
+	case *OnDeleteCalled:
+		rcsw.handleOnDelete(ev.svc)
+	case *RemoteServiceCreated:
+		err = rcsw.handleRemoteServiceCreated(ev)
+	case *RemoteServiceUpdated:
+		err = rcsw.handleRemoteServiceUpdated(ev)
+	case *RemoteServiceDeleted:
+		err = rcsw.handleRemoteServiceDeleted(ev)
+	case *RemoteGatewayUpdated:
+		err = rcsw.handleRemoteGatewayUpdated(ev)
+	case *RemoteGatewayDeleted:
+		err = rcsw.handleRemoteGatewayDeleted(ev)
+	case *ConsiderGatewayUpdateDispatch:
+		err = rcsw.handleConsiderGatewayUpdateDispatch(ev)
+	case *ClusterUnregistered:
+		err = rcsw.cleanupMirroredResources()
+	case *OprhanedServicesGcTriggered:
+		err = rcsw.cleanupOrphanedServices()
+	default:
+		if ev != nil || !done { // we get a nil in case we are shutting down...
+			rcsw.log.Warnf("Received unknown event: %v", ev)
+		}
+	}
+
+	return done, event, err
+
+}
+
 // the main processing loop in which we handle more domain specific events
 // and deal with retries
 func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 	for {
-		event, done := rcsw.eventsQueue.Get()
-		var err error
-		switch ev := event.(type) {
-		case *OnAddCalled:
-			err = rcsw.createOrUpdateService(ev.svc)
-		case *OnUpdateCalled:
-			err = rcsw.createOrUpdateService(ev.svc)
-		case *OnDeleteCalled:
-			rcsw.handleOnDelete(ev.svc)
-		case *RemoteServiceCreated:
-			err = rcsw.handleRemoteServiceCreated(ev)
-		case *RemoteServiceUpdated:
-			err = rcsw.handleRemoteServiceUpdated(ev)
-		case *RemoteServiceDeleted:
-			err = rcsw.handleRemoteServiceDeleted(ev)
-		case *RemoteGatewayUpdated:
-			err = rcsw.handleRemoteGatewayUpdated(ev)
-		case *RemoteGatewayDeleted:
-			err = rcsw.handleRemoteGatewayDeleted(ev)
-		case *ConsiderGatewayUpdateDispatch:
-			err = rcsw.handleConsiderGatewayUpdateDispatch(ev)
-		case *ClusterUnregistered:
-			err = rcsw.cleanupMirroredResources()
-		case *OprhanedServicesGcTriggered:
-			err = rcsw.cleanupOrphanedServices()
-		default:
-			if ev != nil || !done { // we get a nil in case we are shutting down...
-				rcsw.log.Warnf("Received unknown event: %v", ev)
-			}
-		}
 
+		done, event, err := rcsw.processNextEvent()
 		// the logic here is that there might have been an API
 		// connectivity glitch or something. So its not a bad idea to requeue
 		// the event and try again up to a number of limits, just to ensure
