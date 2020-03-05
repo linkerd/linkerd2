@@ -18,7 +18,10 @@ experimenting with this feature, please join us in
 * Web UI
   * Fixed a bug causing incorrect Grafana links to be rendered in the web
     dashboard.
-
+* Proxy
+  * Fixed a bug that could cause the proxy's load balancer to stop processing
+    updates from service discovery.
+    
 ## edge-20.2.3
 
 This release introduces the first optional add-on `tracing`, added through the
