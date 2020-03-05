@@ -1,7 +1,11 @@
 ## edge-20.3.1
 
 This release introduces new functionality mainly focused around
-observability and multi-cluster support.
+observability and multi-cluster support via `service mirroring`.
+
+If you would like to learn more about `service mirroring` or are interested in
+experimenting with this feature, please join us in
+[Linkerd Slack](https://slack.linkerd.io) for help and feedback.
 
 * CLI
   * Improved the `linkerd check` command to check for extension server
@@ -9,11 +13,8 @@ observability and multi-cluster support.
 * Controller
   * Removed restrictions preventing Linkerd from injecting proxies into
     Contour (thanks @alfatraining!)
-  * Added the SMI metrics API to the standard `linkerd install` flow; this
-    is the first step towards allowing Linkerd to consume the SMI metrics
-    API in the CLI and Web dashboard.
   * Added an experimental version of a service mirroring controller, allowing
-    discovery of services on remote clusters
+    discovery of services on remote clusters.
 * Web UI
   * Fixed a bug causing incorrect Grafana links to be rendered in the web
     dashboard.
