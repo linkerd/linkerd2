@@ -49,7 +49,7 @@ func newCmdAlphaStat() *cobra.Command {
   * daemonsets
   * deployments
   * jobs
-  * namespace
+  * namespaces
   * pods
   * replicasets
   * replicationcontrollers
