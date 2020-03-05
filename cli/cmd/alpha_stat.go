@@ -6,11 +6,11 @@ import (
 	"io"
 	"time"
 
+	"github.com/linkerd/linkerd2/cli/table"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/smimetrics"
-	"github.com/linkerd/linkerd2/pkg/table"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -19,6 +19,7 @@ import (
 
 var allowedKinds = map[string]struct{}{
 	k8s.CronJob:               struct{}{},
+	k8s.DaemonSet:             struct{}{},
 	k8s.Deployment:            struct{}{},
 	k8s.Job:                   struct{}{},
 	k8s.Namespace:             struct{}{},
