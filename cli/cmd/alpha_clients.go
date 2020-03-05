@@ -7,13 +7,10 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/smimetrics"
 	"github.com/spf13/cobra"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type alphaClientsOptions struct {
-	namespace     string
-	allNamespaces bool
+	namespace string
 }
 
 func newCmdAlphaClients() *cobra.Command {
@@ -61,106 +58,17 @@ Examples:
 			if err != nil {
 				return err
 			}
-			clientNs := options.namespace
-			if options.allNamespaces {
-				clientNs = ""
-			}
 
-			clients, err := getAllResourceNamesOfKind(k8sAPI, clientNs, target.GetType())
+			metrics, err := smimetrics.GetTrafficMetricsEdgesList(k8sAPI, options.namespace, kind, target.GetName(), nil)
 			if err != nil {
 				return err
 			}
-
-			metricsList := smimetrics.TrafficMetricsList{
-				Items: []smimetrics.TrafficMetrics{},
-			}
-
-			for _, c := range clients {
-				metrics, err := smimetrics.GetTrafficMetricsEdgesList(k8sAPI, c.GetNamespace(), kind, c.GetName(), nil)
-				if err != nil {
-					continue
-				}
-				metricsList.Items = append(metricsList.Items, metrics.Items...)
-			}
-			renderTrafficMetricsEdgesList(&metricsList, stdout, &target)
+			renderTrafficMetricsEdgesList(metrics, stdout, &target, "from")
 
 			return nil
 		},
 	}
 
 	clientsCmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
-	clientsCmd.PersistentFlags().BoolVarP(&options.allNamespaces, "all-namespaces", "A", options.allNamespaces, "If present, returns stats from clients in all namespaces")
-
 	return clientsCmd
-}
-
-func getAllResourceNamesOfKind(k8sAPI *k8s.KubernetesAPI, namespace, kind string) ([]metav1.ObjectMeta, error) {
-	names := []metav1.ObjectMeta{}
-	switch kind {
-	case k8s.CronJob:
-		list, err := k8sAPI.BatchV2alpha1().CronJobs(namespace).List(metav1.ListOptions{})
-		if err != nil {
-			return nil, err
-		}
-		for _, i := range list.Items {
-			names = append(names, i.ObjectMeta)
-		}
-	case k8s.DaemonSet:
-		list, err := k8sAPI.AppsV1().DaemonSets(namespace).List(metav1.ListOptions{})
-		if err != nil {
-			return nil, err
-		}
-		for _, i := range list.Items {
-			names = append(names, i.ObjectMeta)
-		}
-	case k8s.Deployment:
-		list, err := k8sAPI.AppsV1().Deployments(namespace).List(metav1.ListOptions{})
-		if err != nil {
-			return nil, err
-		}
-		for _, i := range list.Items {
-			names = append(names, i.ObjectMeta)
-		}
-	case k8s.Job:
-		list, err := k8sAPI.BatchV1().Jobs(namespace).List(metav1.ListOptions{})
-		if err != nil {
-			return nil, err
-		}
-		for _, i := range list.Items {
-			names = append(names, i.ObjectMeta)
-		}
-	case k8s.Pod:
-		list, err := k8sAPI.CoreV1().Pods(namespace).List(metav1.ListOptions{})
-		if err != nil {
-			return nil, err
-		}
-		for _, i := range list.Items {
-			names = append(names, i.ObjectMeta)
-		}
-	case k8s.ReplicaSet:
-		list, err := k8sAPI.AppsV1().ReplicaSets(namespace).List(metav1.ListOptions{})
-		if err != nil {
-			return nil, err
-		}
-		for _, i := range list.Items {
-			names = append(names, i.ObjectMeta)
-		}
-	case k8s.ReplicationController:
-		list, err := k8sAPI.CoreV1().ReplicationControllers(namespace).List(metav1.ListOptions{})
-		if err != nil {
-			return nil, err
-		}
-		for _, i := range list.Items {
-			names = append(names, i.ObjectMeta)
-		}
-	case k8s.StatefulSet:
-		list, err := k8sAPI.AppsV1().StatefulSets(namespace).List(metav1.ListOptions{})
-		if err != nil {
-			return nil, err
-		}
-		for _, i := range list.Items {
-			names = append(names, i.ObjectMeta)
-		}
-	}
-	return names, nil
 }

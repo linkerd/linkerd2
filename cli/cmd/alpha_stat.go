@@ -107,7 +107,7 @@ Examples:
 					if err != nil {
 						return err
 					}
-					renderTrafficMetricsEdgesList(metrics, stdout, toResource)
+					renderTrafficMetricsEdgesList(metrics, stdout, toResource, "to")
 				} else {
 					metrics, err := smimetrics.GetTrafficMetrics(k8sAPI, target.GetNamespace(), kind, name, nil)
 					if err != nil {
@@ -163,13 +163,13 @@ func renderTrafficMetricsList(metrics *smimetrics.TrafficMetricsList, w io.Write
 	t.Render(w)
 }
 
-func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.Writer, toResource *public.Resource) {
+func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.Writer, toResource *public.Resource, direction string) {
 	outbound := toResource != nil
 	t := buildTable(outbound)
 	t.Data = []table.Row{}
 	for _, row := range metrics.Items {
 		row := row // Copy to satisfy golint.
-		if row.Edge.Direction != "to" {
+		if row.Edge.Direction != direction {
 			continue
 		}
 		if toResource != nil && row.Edge.Resource.Namespace != toResource.GetNamespace() {
