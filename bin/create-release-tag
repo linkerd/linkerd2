@@ -3,10 +3,12 @@
 set -o errexit
 set -o nounset
 
-# Assert at least one argument was passed.
-if [[ $# -lt 1 ]]; then
-    echo "usage: ${0##*/} edge" >&2
-    echo "usage: ${0##*/} stable x.x.x" >&2
+# Assert at least one and at most two arguments were passed.
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+    echo "Error: ${0##*/} accepts 1 or 2 arguments" >&2
+    echo "Usage:" >&2
+    echo "    ${0##*/} edge" >&2
+    echo "    ${0##*/} stable x.x.x" >&2
     exit 1
 fi
 
@@ -15,23 +17,29 @@ release_channel="$1"
 # Verify the release channel.
 release_channel_regex="(edge|stable)"
 if [[ ! $release_channel =~ $release_channel_regex ]]; then
-    echo "valid release channels: edge, stable"
+    echo "Error: valid release channels: edge, stable"
+    echo "Usage:"
+    echo "    bin/create-release-tag edge"
+    echo "    bin/create-release-tag stable 2.4.8"
     exit 1
 fi
 
-stable_tag=${2:-}
-if [ -n "$stable_tag" ]; then
-    # Assert the release channel is not `edge`.
-    if [ "$release_channel" == "edge" ]; then
-        echo "edge release channel does not take tag argument"
+if [ "$release_channel" == "stable" ]; then
+    if [ $# -ne 2 ]; then
+        echo "Error: accepts 2 arguments"
+        echo "Usage:"
+        echo "    bin/create-release-tag stable 2.4.8"
         exit 1
     fi
+
+    stable_tag="$2"
 
     # Verify the stable tag format.
     stable_tag_regex="^([0-9]+)\.([0-9]+)\.([0-9]+)$"
     if [[ ! $stable_tag =~ $stable_tag_regex ]]; then
-        echo "stable tag incorrect"
-        echo "expected example: 2.4.8"
+        echo "Error: version reference incorrect"
+        echo "Usage:"
+        echo "    bin/create-release-tag stable 2.4.8"
         exit 1
     fi
 
@@ -40,11 +48,20 @@ if [ -n "$stable_tag" ]; then
 fi
 
 if [ "$release_channel" == "edge" ]; then
-    edge_tag_regex="(edge)-([0-9]{2})\.([0-9]{1,2})\.([0-9]+)"
+if [ $# -ne 1 ]; then
+        echo "Error: accepts 1 argument"
+        echo "Usage:"
+        echo "    bin/create-release-tag edge"
+        exit 1
+    fi
+
+    # Some awks on Linux do no support quantifiers in regex, so this regex is
+    # explicit.
+    edge_tag_regex="(edge)-([0-9][0-9])\.([0-9]|[0-9][0-9])\.([0-9]+)"
     url="https://run.linkerd.io/install-edge"
 
     # Get the current edge version.
-    current_edge=$(curl -sL $url | awk -v tag_format="$edge_tag_regex" '$0 ~ tag_format {print}')
+    current_edge=$(curl -sL $url | awk -v tag_format="$edge_tag_regex" '$0 ~ tag_format')
 
     # Get the third and fourth groups of the regex; they are the month and
     # month minor values for the current edge version.
@@ -64,8 +81,7 @@ if [ "$release_channel" == "edge" ]; then
     fi
 
     # Set the script global `release_tag` variable.
-    new_edge_tag="edge-$yy.$new_mm.$new_xx"
-    release_tag=$new_edge_tag
+    release_tag="edge-$yy.$new_mm.$new_xx"
 fi
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
