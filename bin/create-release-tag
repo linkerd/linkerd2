@@ -20,9 +20,9 @@ if [[ ! $release_channel =~ $release_channel_regex ]]; then
 fi
 
 stable_tag=${2:-}
-if [ ! -z $stable_tag ]; then
+if [ -n "$stable_tag" ]; then
     # Assert the release channel is not `edge`.
-    if [ $release_channel == "edge" ]; then
+    if [ "$release_channel" == "edge" ]; then
         echo "edge release channel does not take tag argument"
         exit 1
     fi
@@ -39,7 +39,7 @@ if [ ! -z $stable_tag ]; then
     release_tag="stable-$stable_tag"
 fi
 
-if [ $release_channel == "edge" ]; then
+if [ "$release_channel" == "edge" ]; then
     edge_tag_regex="(edge)-([0-9]{2})\.([0-9]{1,2})\.([0-9]+)"
     url="https://run.linkerd.io/install-edge"
 
@@ -48,8 +48,8 @@ if [ $release_channel == "edge" ]; then
 
     # Get the third and fourth groups of the regex; they are the month and
     # month minor values for the current edge version.
-    current_mm=$(echo $current_edge | sed -n -E "s/.*$edge_tag_regex}$/\3/p")
-    current_xx=$(echo $current_edge | sed -n -E "s/.*$edge_tag_regex}$/\4/p")
+    current_mm=$(echo "$current_edge" | sed -n -E "s/.*$edge_tag_regex}$/\3/p")
+    current_xx=$(echo "$current_edge" | sed -n -E "s/.*$edge_tag_regex}$/\4/p")
 
     yy=$(date +"%y")
     
@@ -57,7 +57,7 @@ if [ $release_channel == "edge" ]; then
     new_mm=$(date +"%-m")
 
     # If this is a new month, `new_xx` should be 1; otherwise increment it.
-    if [ ! $new_mm == $current_mm ]; then
+    if [ ! "$new_mm" == "$current_mm" ]; then
         new_xx="1"
     else
         new_xx=$((current_xx+1))
