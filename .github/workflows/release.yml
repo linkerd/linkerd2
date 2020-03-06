@@ -289,7 +289,7 @@ jobs:
         until RES=$(curl -sL https://run.linkerd.io/$INSTALL | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
           || (( count++ >= 10 ))
         do
-          sleep 5
+          sleep 30
         done
         if [[ -z $RES ]]; then
           echo "::error::The version '$TAG' was NOT found published in the website"
