@@ -68,7 +68,7 @@ Examples:
 			if err != nil {
 				return err
 			}
-			renderTrafficMetricsEdgesList(metrics, stdout, &target, "from")
+			renderTrafficMetricsEdgesList(metrics, stdout, nil, "from")
 
 			return nil
 		},
