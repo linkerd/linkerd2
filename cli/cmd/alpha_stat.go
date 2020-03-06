@@ -30,8 +30,9 @@ var allowedKinds = map[string]struct{}{
 }
 
 type alphaStatOptions struct {
-	namespace  string
-	toResource string
+	namespace     string
+	toResource    string
+	allNamespaces bool
 }
 
 func newCmdAlphaStat() *cobra.Command {
@@ -84,7 +85,16 @@ Examples:
 				return err
 			}
 
-			target, err := util.BuildResource(options.namespace, args[0])
+			namespace := options.namespace
+			if options.allNamespaces {
+				namespace = ""
+			}
+			target, err := util.BuildResource(namespace, args[0])
+			if target.GetName() != "" {
+				// Getting a named resource from all-namespaces is not supported.
+				// Fall back to the configured namespace.
+				target.Namespace = options.namespace
+			}
 			if err != nil {
 				return err
 			}
@@ -96,7 +106,7 @@ Examples:
 				return err
 			}
 			name := target.GetName()
-			toResource := buildToResource(options.namespace, options.toResource)
+			toResource := buildToResource(namespace, options.toResource)
 			// TODO: Lift this requirement once the API supports it.
 			if toResource != nil && toResource.GetType() != target.GetType() {
 				return errors.New("the --to resource must have the same kind as the target resource")
@@ -133,6 +143,7 @@ Examples:
 
 	statCmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the specified resource")
 	statCmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, restricts outbound stats to the specified resource name")
+	statCmd.PersistentFlags().BoolVarP(&options.allNamespaces, "all-namespaces", "A", options.allNamespaces, "Ignore the --namespace flag and fetches data from all namespaces")
 
 	return statCmd
 }
@@ -173,10 +184,15 @@ func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.
 		if row.Edge.Direction != "to" {
 			continue
 		}
-		if toResource != nil && toResource.GetName() != "" &&
-			(row.Edge.Resource.Name != toResource.GetName() || row.Edge.Resource.Namespace != toResource.GetNamespace()) {
-			log.Debugf("Skipping edge %v", row.Edge.Resource)
-			continue
+		if toResource != nil {
+			if toResource.GetName() != "" && row.Edge.Resource.Name != toResource.GetName() {
+				log.Debugf("Skipping edge %v", row.Edge.Resource)
+				continue
+			}
+			if toResource.GetNamespace() != "" && row.Edge.Resource.Namespace != toResource.GetNamespace() {
+				log.Debugf("Skipping edge %v", row.Edge.Resource)
+				continue
+			}
 		}
 		t.Data = append(t.Data, metricsToRow(&row, outbound))
 	}
