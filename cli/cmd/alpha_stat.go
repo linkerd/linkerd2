@@ -309,5 +309,7 @@ func buildTable(outbound, allNamespaces bool) table.Table {
 			Width:  11,
 		},
 	}
-	return table.NewTable(columns, []table.Row{})
+	t := table.NewTable(columns, []table.Row{})
+	t.Sort = []int{0, 1} // Sort by namespace, then name.
+	return t
 }
