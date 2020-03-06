@@ -151,15 +151,23 @@ func getMetricsResponse(k8sAPI *k8s.KubernetesAPI, path string, params map[strin
 	return ioutil.ReadAll(httpRsp.Body)
 }
 
-func parseTrafficMetrics(bytes []byte) (*TrafficMetrics, error) {
+func handleStatusResponse(bytes []byte) error {
 	var status Status
 	json.Unmarshal(bytes, &status)
 	if status.Kind == "Status" {
-		return nil, errors.New(status.Message)
+		return errors.New(status.Message)
+	}
+	return nil
+}
+
+func parseTrafficMetrics(bytes []byte) (*TrafficMetrics, error) {
+	err := handleStatusResponse(bytes)
+	if err != nil {
+		return nil, err
 	}
 
 	var metrics TrafficMetrics
-	err := json.Unmarshal(bytes, &metrics)
+	err = json.Unmarshal(bytes, &metrics)
 	if err != nil {
 		log.Errorf("Failed to decode response as TrafficMetrics [%s]: %v", string(bytes), err)
 		return nil, errors.New(string(bytes))
@@ -171,14 +179,13 @@ func parseTrafficMetrics(bytes []byte) (*TrafficMetrics, error) {
 }
 
 func parseTrafficMetricsList(bytes []byte) (*TrafficMetricsList, error) {
-	var status Status
-	json.Unmarshal(bytes, &status)
-	if status.Kind == "Status" {
-		return nil, errors.New(status.Message)
+	err := handleStatusResponse(bytes)
+	if err != nil {
+		return nil, err
 	}
 
 	var metrics TrafficMetricsList
-	err := json.Unmarshal(bytes, &metrics)
+	err = json.Unmarshal(bytes, &metrics)
 	if err != nil {
 		log.Errorf("Failed to decode response as TrafficMetricsList [%s]: %v", string(bytes), err)
 		return nil, errors.New(string(bytes))
