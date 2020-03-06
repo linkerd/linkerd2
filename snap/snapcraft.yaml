@@ -6,20 +6,20 @@ description: |
     Linkerd is a service mesh, designed to give platform-wide observability,
     reliability, and security without requiring configuration or code changes.
 
-#icon: https://user-images.githubusercontent.com/9226/33582867-3e646e02-d90c-11e7-85a2-2e238737e859.png
 grade: devel
 confinement: devmode
 
 parts:
     linkerd:
-        plugin: go
-        go-importpath: github.com/linkerd/linkerd2
+        plugin: dump
         source: .
-        source-type: git
-        override-build: |
-            cd /root/parts/linkerd/src/
-            ./bin/build-cli-bin
-            mv ./target/cli/linux/linkerd ~/prime/
+        override-pull: |
+            cd "$SNAPCRAFT_PART_SOURCE" # this line might be wrong. also maybe unneeded
+            curl -sSLO https://github.com/linkerd/linkerd2/releases/download/edge-20.3.1/linkerd2-cli-edge-20.3.1-linux
+            mv linkerd2-cli-edge-20.3.1-linux linkerd # rename binary to linkerd
+            chmod +x linkerd
+        build-packages:
+            - curl
 apps:
     linkerd:
         command: linkerd
