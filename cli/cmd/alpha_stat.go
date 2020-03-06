@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -87,7 +88,7 @@ Examples:
 
 			namespace := options.namespace
 			if options.allNamespaces {
-				namespace = ""
+				namespace = corev1.NamespaceAll
 			}
 			target, err := util.BuildResource(namespace, args[0])
 			if err != nil {
