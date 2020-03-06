@@ -13,6 +13,7 @@ pr=$1
 
 if [ -z "$GITHUB_TOKEN" ]
 then
+  # shellcheck disable=SC2016
   echo 'Generate a personal access token at https://github.com/settings/tokens and set it in the $GITHUB_TOKEN env var'
   exit 1
 fi
@@ -27,7 +28,7 @@ archive_url=$(curl -s -H "$auth" "$artifacts" | jq -r '.artifacts[0].archive_dow
 
 dir=$(mktemp -d -t "linkerd-pr-$pr.XXXXXXXXXX")
 
-cd "$dir"
+cd "$dir" || exit
 
 echo "### Downloading images ###"
 
