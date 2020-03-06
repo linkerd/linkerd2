@@ -230,7 +230,9 @@ jobs:
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
+        . bin/_release.sh
         echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+        extract_release_notes NOTES.md
     - name: Pull CLI binaries
       run : bin/docker-pull-binaries $TAG
     - name: Create release
@@ -242,6 +244,7 @@ jobs:
       with:
         draft: false
         prelease: false
+        body_path: NOTES.md
         files: |
           ./target/release/linkerd2-cli-*-darwin
           ./target/release/linkerd2-cli-*-darwin.sha256
@@ -253,7 +256,7 @@ jobs:
     name: Linkerd website publish
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     runs-on: ubuntu-18.04
-    needs: [kind_integration_tests, cloud_integration_tests]
+    needs: [gh_release]
     steps:
     - name: Create linkerd/website repository dispatch event
       # peter-evans/repository-dispatch@v1

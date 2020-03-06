@@ -28,6 +28,7 @@ func newCmdAlphaClients() *cobra.Command {
   * daemonsets
   * deployments
   * jobs
+  * namespaces
   * pods
   * replicasets
   * replicationcontrollers
