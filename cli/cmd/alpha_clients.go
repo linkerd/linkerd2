@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/linkerd/linkerd2/controller/api/util"
@@ -54,6 +55,9 @@ Examples:
 			}
 			if _, ok := allowedKinds[target.GetType()]; !ok {
 				return fmt.Errorf("%s is not a supported resource type", target.GetType())
+			}
+			if target.GetName() == "" {
+				return errors.New("You must specify a resource name")
 			}
 			kind, err := k8s.PluralResourceNameFromFriendlyName(target.GetType())
 			if err != nil {
