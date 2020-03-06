@@ -531,7 +531,7 @@ status:
 		deletingPod    bool
 	}{
 		{
-			description:    "can delete pods",
+			description:    "can delete addresses",
 			k8sConfigs:     podK8sConfig,
 			host:           "172.17.0.12",
 			port:           8989,
@@ -539,7 +539,7 @@ status:
 			deletingPod:    true,
 		},
 		{
-			description:    "can delete pods wrapped in a DeletedFinalStateUnknown",
+			description:    "can delete addresses wrapped in a DeletedFinalStateUnknown",
 			k8sConfigs:     podK8sConfig,
 			host:           "172.17.0.12",
 			port:           8989,

@@ -374,6 +374,9 @@ const (
 	// in cases we detect a change in a remote gateway
 	RemoteGatewayResourceVersionAnnotation = SvcMirrorPrefix + "/remote-gateway-resource-version"
 
+	// RemoteGatewayIdentity follows the same kind of logic as RemoteGatewayNameLabel
+	RemoteGatewayIdentity = SvcMirrorPrefix + "/remote-gateway-identity"
+
 	// ConfigKeyName is the key in the secret that stores the kubeconfig needed to connect
 	// to a remote cluster
 	ConfigKeyName = "kubeconfig"

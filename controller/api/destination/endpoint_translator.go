@@ -39,9 +39,9 @@ func newEndpointTranslator(
 	return &endpointTranslator{controllerNS, identityTrustDomain, enableH2Upgrade, stream, log}
 }
 
-func (et *endpointTranslator) Add(set watcher.PodSet) {
+func (et *endpointTranslator) Add(set watcher.AddressSet) {
 	addrs := []*pb.WeightedAddr{}
-	for _, address := range set.Pods {
+	for _, address := range set.Addresses {
 		var (
 			wa  *pb.WeightedAddr
 			err error
@@ -49,13 +49,30 @@ func (et *endpointTranslator) Add(set watcher.PodSet) {
 		if address.Pod != nil {
 			wa, err = et.toWeightedAddr(address)
 		} else {
-			// handling address with no associated pod, such as those
-			// belonging to headless services
+			// handling address with no associated pod
 			var addr *net.TcpAddress
 			addr, err = et.toAddr(address)
 			wa = &pb.WeightedAddr{
 				Addr:   addr,
 				Weight: defaultWeight,
+			}
+
+			if address.Identity != "" {
+				wa.TlsIdentity = &pb.TlsIdentity{
+					Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
+						DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
+							Name: address.Identity,
+						},
+					},
+				}
+				// in this case we most likely have a proxy on the side, so set protocol hint as well.
+				if et.enableH2Upgrade {
+					wa.ProtocolHint = &pb.ProtocolHint{
+						Protocol: &pb.ProtocolHint_H2_{
+							H2: &pb.ProtocolHint_H2{},
+						},
+					}
+				}
 			}
 		}
 		if err != nil {
@@ -78,9 +95,9 @@ func (et *endpointTranslator) Add(set watcher.PodSet) {
 	}
 }
 
-func (et *endpointTranslator) Remove(set watcher.PodSet) {
+func (et *endpointTranslator) Remove(set watcher.AddressSet) {
 	addrs := []*net.TcpAddress{}
-	for _, address := range set.Pods {
+	for _, address := range set.Addresses {
 		tcpAddr, err := et.toAddr(address)
 		if err != nil {
 			et.log.Errorf("Failed to translate endpoints to addr: %s", err)
