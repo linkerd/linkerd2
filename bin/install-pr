@@ -1,0 +1,64 @@
+#!/bin/sh
+
+### Install PR ###
+#
+# This script takes a Github pull request number as an argument, downloads the
+# docker images from the pull request's artifacts, pushes them, and installs
+# them on your Kubernetes cluster.  Requires a Github personal access token
+# in the $GITHUB_TOKEN environment variable.
+
+set -e
+
+pr=$1
+
+if [ -z "$GITHUB_TOKEN" ]
+then
+  echo 'Generate a personal access token at https://github.com/settings/tokens and set it in the $GITHUB_TOKEN env var'
+  exit 1
+fi
+
+auth="Authorization: token $GITHUB_TOKEN"
+
+branch=$(curl -s -H "$auth" "https://api.github.com/repos/linkerd/linkerd2/pulls/$pr" | jq -r '.head.ref')
+
+artifacts=$(curl -s -H "$auth" "https://api.github.com/repos/linkerd/linkerd2/actions/workflows/kind_integration.yml/runs?branch=$branch" | jq -r '.workflow_runs[0].artifacts_url')
+
+archive_url=$(curl -s -H "$auth" "$artifacts" | jq -r '.artifacts[0].archive_download_url')
+
+dir=$(mktemp -d -t "linkerd-pr-$pr.XXXXXXXXXX")
+
+cd "$dir"
+
+echo "### Downloading images ###"
+
+curl -L -o archive.zip -H "$auth" "$archive_url"
+
+unzip -o archive.zip
+
+echo "### Pushing images ###"
+
+for archive in cli-bin cni-plugin controller debug grafana proxy web
+do 
+  image=$(docker load -i "$archive.tar" | sed "s/Loaded image: //")
+  docker push "$image"
+  tag=$(echo "$image" | cut -f 2 -d ":")
+done
+
+cd -
+
+rm -rf "$dir"
+
+linkerd=$(bin/docker-pull-binaries "$tag" | head -n 1)
+
+echo "### Pre checks ###"
+
+$linkerd check --pre
+
+echo "### Installing $tag ###"
+
+$linkerd install | kubectl apply -f -
+
+$linkerd check
+
+echo "### Linkerd installed. CLI available: "
+echo "$linkerd"
