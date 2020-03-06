@@ -90,14 +90,14 @@ Examples:
 				namespace = ""
 			}
 			target, err := util.BuildResource(namespace, args[0])
-			if target.GetName() != "" {
-				// Getting a named resource from all-namespaces is not supported.
-				// Fall back to the configured namespace.
-				target.Namespace = options.namespace
-			}
 			if err != nil {
 				return err
 			}
+			if target.GetName() != "" && options.allNamespaces {
+				// Getting a named resource from all-namespaces is not supported.
+				return errors.New("cannot use --all-namespaces flag with a named target resource")
+			}
+
 			if _, ok := allowedKinds[target.GetType()]; !ok {
 				return fmt.Errorf("%s is not a supported resource type", target.GetType())
 			}
@@ -106,7 +106,7 @@ Examples:
 				return err
 			}
 			name := target.GetName()
-			toResource := buildToResource(namespace, options.toResource)
+			toResource := buildToResource("", options.toResource)
 			// TODO: Lift this requirement once the API supports it.
 			if toResource != nil && toResource.GetType() != target.GetType() {
 				return errors.New("the --to resource must have the same kind as the target resource")
@@ -124,7 +124,7 @@ Examples:
 					if err != nil {
 						return err
 					}
-					renderTrafficMetrics(metrics, stdout)
+					renderTrafficMetrics(metrics, options.allNamespaces, stdout)
 				}
 			} else {
 				if toResource != nil {
@@ -134,7 +134,7 @@ Examples:
 				if err != nil {
 					return err
 				}
-				renderTrafficMetricsList(metrics, stdout)
+				renderTrafficMetricsList(metrics, options.allNamespaces, stdout)
 			}
 
 			return nil
@@ -159,14 +159,14 @@ func buildToResource(namespace, to string) *public.Resource {
 	return &toResource
 }
 
-func renderTrafficMetrics(metrics *smimetrics.TrafficMetrics, w io.Writer) {
-	t := buildTable(false)
+func renderTrafficMetrics(metrics *smimetrics.TrafficMetrics, allNamespaces bool, w io.Writer) {
+	t := buildTable(false, allNamespaces)
 	t.Data = []table.Row{metricsToRow(metrics, false)}
 	t.Render(w)
 }
 
-func renderTrafficMetricsList(metrics *smimetrics.TrafficMetricsList, w io.Writer) {
-	t := buildTable(false)
+func renderTrafficMetricsList(metrics *smimetrics.TrafficMetricsList, allNamespaces bool, w io.Writer) {
+	t := buildTable(false, allNamespaces)
 	t.Data = []table.Row{}
 	for _, row := range metrics.Items {
 		row := row // Copy to satisfy golint.
@@ -176,8 +176,7 @@ func renderTrafficMetricsList(metrics *smimetrics.TrafficMetricsList, w io.Write
 }
 
 func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.Writer, toResource *public.Resource) {
-	outbound := toResource != nil
-	t := buildTable(outbound)
+	t := buildTable(true, false)
 	t.Data = []table.Row{}
 	for _, row := range metrics.Items {
 		row := row // Copy to satisfy golint.
@@ -194,7 +193,7 @@ func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.
 				continue
 			}
 		}
-		t.Data = append(t.Data, metricsToRow(&row, outbound))
+		t.Data = append(t.Data, metricsToRow(&row, true))
 	}
 	t.Render(w)
 }
@@ -243,10 +242,11 @@ func metricsToRow(metrics *smimetrics.TrafficMetrics, outbound bool) []string {
 
 	var to string
 	if outbound {
-		to = metrics.Edge.Resource.Name
+		to = metrics.Edge.Resource.String()
 	}
 
 	return []string{
+		metrics.Resource.Namespace,
 		metrics.Resource.Name, // Name
 		metrics.Resource.Name, // From
 		to,                    // To
@@ -258,8 +258,15 @@ func metricsToRow(metrics *smimetrics.TrafficMetrics, outbound bool) []string {
 	}
 }
 
-func buildTable(outbound bool) table.Table {
+func buildTable(outbound, allNamespaces bool) table.Table {
 	columns := []table.Column{
+		table.Column{
+			Header:    "NAMESPACE",
+			Width:     4,
+			Hide:      !allNamespaces,
+			Flexible:  true,
+			LeftAlign: true,
+		},
 		table.Column{
 			Header:    "NAME",
 			Width:     4,
