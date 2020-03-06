@@ -323,6 +323,13 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:      true,
 			testInjectConfig: proxyIgnorePortsConfig,
 		},
+		{
+			inputFileName:    "inject_emojivoto_deployment_automountServiceAccountToken_false.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment_automountServiceAccountToken_false.report",
+			injectProxy:      false,
+			testInjectConfig: defaultConfig,
+		},
 	}
 
 	for i, tc := range testCases {
