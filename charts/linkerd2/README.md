@@ -85,6 +85,7 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | Parameter                             | Description                                                                                                                                                                           | Default                              |
 |:--------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------|
 | `controllerImage`                     | Docker image for the controller, tap and identity components                                                                                                                          | `gcr.io/linkerd-io/controller`       |
+| `controllerImageVersion`              | Tag for the controller container docker image                                                                                                                                         | latest version                       |
 | `controllerLogLevel`                  | Log level for the control plane components                                                                                                                                            | `info`                               |
 | `controllerReplicas`                  | Number of replicas for each control plane pod                                                                                                                                         | `1`                                  |
 | `controllerUID`                       | User ID for the control plane components                                                                                                                                              | `2103`                               |
@@ -154,6 +155,7 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | `tap.keyPEM`                          | Certificate key for Tap component. If not provided then Helm will generate one.                                                                                                                                             ||
 | `webhookFailurePolicy`                | Failure policy for the proxy injector                                                                                                                                                 | `Ignore`                             |
 | `webImage`                            | Docker image for the web container                                                                                                                                                    | `gcr.io/linkerd-io/web`              |
+| `enforcedHostRegexp`                  | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information                                   | `gcr.io/linkerd-io/web`              |
 
 ## Add-Ons Configuration
 
