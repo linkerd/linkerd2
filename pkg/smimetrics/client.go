@@ -60,6 +60,10 @@ type (
 
 const apiBase = "/apis/metrics.smi-spec.io/v1alpha1"
 
+func (r Resource) String() string {
+	return fmt.Sprintf("%s.%s", r.Name, r.Namespace)
+}
+
 // GetTrafficMetrics returns the inbound traffic metrics for a specific named
 // resource.
 func GetTrafficMetrics(k8sAPI *k8s.KubernetesAPI, namespace, kind, name string, params map[string]string) (*TrafficMetrics, error) {
