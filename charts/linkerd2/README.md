@@ -155,6 +155,28 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | `webhookFailurePolicy`                | Failure policy for the proxy injector                                                                                                                                                 | `Ignore`                             |
 | `webImage`                            | Docker image for the web container                                                                                                                                                    | `gcr.io/linkerd-io/web`              |
 
+## Add-Ons Configuration
+
+### Tracing Add-On
+
+The following table lists the configurable parameters for the Tracing Add-On.
+
+| Parameter                             | Description                                                                                                                                                                           | Default                              |
+|:--------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------|
+| `tracing.enabled`                     | Flag to enable tracing components to be installed                                                                                                                                                | `false`
+| `tracing.collector.name`                | Name of the trace collector Service                                                                                                                                                 | `linkerd-collector`                             |
+| `tracing.collector.image`                | Docker image for the trace collector                                                                                                                                                 | `omnition/opencensus-collector:0.1.10`                             |
+| `tracing.collector.resources.cpu.limit`       | Maximum amount of CPU units that the trace collector container can use                                                                                                                     | `1`                               |
+| `tracing.collector.resources.cpu.request`     | Amount of CPU units that the trace collector container requests                                                                                                                            | `200m`                                |
+| `tracing.collector.resources.memory.limit`    | Maximum amount of memory that the trace collector container can use                                                                                                                        | `2Gi`                               |
+| `tracing.collector.resources.memory.request`  | Amount of memory that the trace collector container requests                                                                                                                               | `400Mi`                               |
+| `tracing.jaeger.name`                | Name of the jaeger instance                                                                                                                                                 | `linkerd-jaeger`                             |
+| `tracing.jaeger.image`                | Docker image for the jaeger instance                                                                                                                                                 | `jaegertracing/all-in-one:1.8`                             |
+| `tracing.jaeger.resources.cpu.limit`       | Maximum amount of CPU units that the jaeger container can use                                                                                                                     ||
+| `tracing.jaeger.resources.cpu.request`     | Amount of CPU units that the jaeger container requests                                                                                                                            ||
+| `tracing.jaeger.resources.memory.limit`    | Maximum amount of memory that the jaeger container can use                                                                                                                        ||
+| `tracing.jaeger.resources.memory.request`  | Amount of memory that the jaeger container requests                                                                                                                               ||
+
 ## Get involved
 
 * Check out Linkerd's source code at [Github][linkerd2].

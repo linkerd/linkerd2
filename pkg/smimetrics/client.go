@@ -2,6 +2,7 @@ package smimetrics
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -46,6 +47,14 @@ type (
 		Name  string `json:"name"`
 		Unit  string `json:"unit"`
 		Value string `json:"value"`
+	}
+
+	// Status is an API response that is returned when the operation is not
+	// successful.
+	Status struct {
+		Kind    string `json:"kind"`
+		Status  string `json:"status"`
+		Message string `json:"message"`
 	}
 )
 
@@ -146,24 +155,47 @@ func getMetricsResponse(k8sAPI *k8s.KubernetesAPI, path string, params map[strin
 	return ioutil.ReadAll(httpRsp.Body)
 }
 
+func handleStatusResponse(bytes []byte) error {
+	var status Status
+	json.Unmarshal(bytes, &status)
+	if status.Kind == "Status" {
+		return errors.New(status.Message)
+	}
+	return nil
+}
+
 func parseTrafficMetrics(bytes []byte) (*TrafficMetrics, error) {
-	var metrics TrafficMetrics
-	err := json.Unmarshal(bytes, &metrics)
+	err := handleStatusResponse(bytes)
 	if err != nil {
-		log.Errorf("Failed to decode response as TrafficMetrics [%s]: %v", string(bytes), err)
 		return nil, err
 	}
+
+	var metrics TrafficMetrics
+	err = json.Unmarshal(bytes, &metrics)
+	if err != nil {
+		log.Errorf("Failed to decode response as TrafficMetrics [%s]: %v", string(bytes), err)
+		return nil, errors.New(string(bytes))
+	}
+
+	log.Debugf("Parsed TrafficMetrics: %+v", metrics)
 
 	return &metrics, nil
 }
 
 func parseTrafficMetricsList(bytes []byte) (*TrafficMetricsList, error) {
-	var metrics TrafficMetricsList
-	err := json.Unmarshal(bytes, &metrics)
+	err := handleStatusResponse(bytes)
 	if err != nil {
-		log.Errorf("Failed to decode response as TrafficMetricsList [%s]: %v", string(bytes), err)
 		return nil, err
 	}
+
+	var metrics TrafficMetricsList
+	err = json.Unmarshal(bytes, &metrics)
+	if err != nil {
+		log.Errorf("Failed to decode response as TrafficMetricsList [%s]: %v", string(bytes), err)
+		return nil, errors.New(string(bytes))
+	}
+
+	log.Debugf("Parsed TrafficMetricsList: %+v", metrics)
 
 	return &metrics, nil
 }

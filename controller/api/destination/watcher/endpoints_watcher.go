@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -24,19 +25,24 @@ const (
 // https://github.com/linkerd/linkerd2/issues/2204
 
 type (
-	// Address represents an individual port on an specific pod.
+	// Address represents an individual port on a specific endpoint.
+	// This endpoint might be the result of a the existence of a pod
+	// that is targeted by this service; alternatively it can be the
+	// case that this endpoint is not associated with a pod and maps
+	// to some other IP (i.e. a remote service gateway)
 	Address struct {
 		IP        string
 		Port      Port
 		Pod       *corev1.Pod
 		OwnerName string
 		OwnerKind string
+		Identity  string
 	}
 
-	// PodSet is a set of pods, indexed by IP.
-	PodSet struct {
-		Pods   map[PodID]Address
-		Labels map[string]string
+	// AddressSet is a set of Address, indexed by ID.
+	AddressSet struct {
+		Addresses map[ID]Address
+		Labels    map[string]string
 	}
 
 	portAndHostname struct {
@@ -89,15 +95,15 @@ type (
 		k8sAPI     *k8s.API
 
 		exists    bool
-		pods      PodSet
+		addresses AddressSet
 		listeners []EndpointUpdateListener
 		metrics   endpointsMetrics
 	}
 
 	// EndpointUpdateListener is the interface that subscribers must implement.
 	EndpointUpdateListener interface {
-		Add(set PodSet)
-		Remove(set PodSet)
+		Add(set AddressSet)
+		Remove(set AddressSet)
 		NoEndpoints(exists bool)
 	}
 )
@@ -417,32 +423,32 @@ func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus
 // portPublisher.
 
 func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
-	newPods := pp.endpointsToAddresses(endpoints)
-	if len(newPods.Pods) == 0 {
+	newAddressSet := pp.endpointsToAddresses(endpoints)
+	if len(newAddressSet.Addresses) == 0 {
 		for _, listener := range pp.listeners {
 			listener.NoEndpoints(true)
 		}
 	} else {
-		add, remove := diffPods(pp.pods, newPods)
+		add, remove := diffAddresses(pp.addresses, newAddressSet)
 		for _, listener := range pp.listeners {
-			if len(remove.Pods) > 0 {
+			if len(remove.Addresses) > 0 {
 				listener.Remove(remove)
 			}
-			if len(add.Pods) > 0 {
+			if len(add.Addresses) > 0 {
 				listener.Add(add)
 			}
 		}
 	}
 	pp.exists = true
-	pp.pods = newPods
+	pp.addresses = newAddressSet
 
 	pp.metrics.incUpdates()
-	pp.metrics.setPods(len(pp.pods.Pods))
+	pp.metrics.setPods(len(pp.addresses.Addresses))
 	pp.metrics.setExists(true)
 }
 
-func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSet {
-	pods := make(map[PodID]Address)
+func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
+	addresses := make(map[ID]Address)
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
 		for _, endpoint := range subset.Addresses {
@@ -458,9 +464,11 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 					}, "-"),
 					Namespace: endpoints.ObjectMeta.Namespace,
 				}
-				pods[id] = Address{
-					IP:   endpoint.IP,
-					Port: resolvedPort,
+
+				addresses[id] = Address{
+					IP:       endpoint.IP,
+					Port:     resolvedPort,
+					Identity: endpoints.Annotations[consts.RemoteGatewayIdentity],
 				}
 				continue
 			}
@@ -475,7 +483,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 					continue
 				}
 				ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(pod, false)
-				pods[id] = Address{
+				addresses[id] = Address{
 					IP:        endpoint.IP,
 					Port:      resolvedPort,
 					Pod:       pod,
@@ -485,9 +493,9 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) PodSe
 			}
 		}
 	}
-	return PodSet{
-		Pods:   pods,
-		Labels: map[string]string{"service": endpoints.Name, "namespace": endpoints.Namespace},
+	return AddressSet{
+		Addresses: addresses,
+		Labels:    map[string]string{"service": endpoints.Name, "namespace": endpoints.Namespace},
 	}
 }
 
@@ -517,7 +525,7 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 
 func (pp *portPublisher) noEndpoints(exists bool) {
 	pp.exists = exists
-	pp.pods = PodSet{}
+	pp.addresses = AddressSet{}
 	for _, listener := range pp.listeners {
 		listener.NoEndpoints(exists)
 	}
@@ -529,8 +537,8 @@ func (pp *portPublisher) noEndpoints(exists bool) {
 
 func (pp *portPublisher) subscribe(listener EndpointUpdateListener) {
 	if pp.exists {
-		if len(pp.pods.Pods) > 0 {
-			listener.Add(pp.pods)
+		if len(pp.addresses.Addresses) > 0 {
+			listener.Add(pp.addresses)
 		} else {
 			listener.NoEndpoints(true)
 		}
@@ -584,28 +592,28 @@ func getTargetPort(service *corev1.Service, port Port) namedPort {
 	return targetPort
 }
 
-func diffPods(oldPods, newPods PodSet) (add, remove PodSet) {
+func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSet) {
 	// TODO: this detects pods which have been added or removed, but does not
-	// detect pods which have been modified.  A modified pod should trigger
+	// detect addresses which have been modified.  A modified address should trigger
 	// an add of the new version.
-	addPods := make(map[PodID]Address)
-	removePods := make(map[PodID]Address)
-	for id, pod := range newPods.Pods {
-		if _, ok := oldPods.Pods[id]; !ok {
-			addPods[id] = pod
+	addAddesses := make(map[ID]Address)
+	removeAddresses := make(map[ID]Address)
+	for id, address := range newAddresses.Addresses {
+		if _, ok := oldAddresses.Addresses[id]; !ok {
+			addAddesses[id] = address
 		}
 	}
-	for id, pod := range oldPods.Pods {
-		if _, ok := newPods.Pods[id]; !ok {
-			removePods[id] = pod
+	for id, address := range oldAddresses.Addresses {
+		if _, ok := newAddresses.Addresses[id]; !ok {
+			removeAddresses[id] = address
 		}
 	}
-	add = PodSet{
-		Pods:   addPods,
-		Labels: newPods.Labels,
+	add = AddressSet{
+		Addresses: addAddesses,
+		Labels:    newAddresses.Labels,
 	}
-	remove = PodSet{
-		Pods: removePods,
+	remove = AddressSet{
+		Addresses: removeAddresses,
 	}
 	return
 }

@@ -264,7 +264,7 @@ func buildTable(outbound, allNamespaces bool) table.Table {
 	columns := []table.Column{
 		table.Column{
 			Header:    "NAMESPACE",
-			Width:     4,
+			Width:     9,
 			Hide:      !allNamespaces,
 			Flexible:  true,
 			LeftAlign: true,
