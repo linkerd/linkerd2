@@ -155,7 +155,7 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | `tap.keyPEM`                          | Certificate key for Tap component. If not provided then Helm will generate one.                                                                                                                                             ||
 | `webhookFailurePolicy`                | Failure policy for the proxy injector                                                                                                                                                 | `Ignore`                             |
 | `webImage`                            | Docker image for the web container                                                                                                                                                    | `gcr.io/linkerd-io/web`              |
-| `enforcedHostRegexp`                  | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information                                   | `gcr.io/linkerd-io/web`              |
+| `enforcedHostRegexp`                  | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information                                   | `""`              |
 
 ## Add-Ons Configuration
 
