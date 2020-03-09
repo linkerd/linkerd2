@@ -193,4 +193,3 @@ tracing:
     name: linkerd-jaeger
     image: jaegertracing/all-in-one:1.8
     resources:
-
