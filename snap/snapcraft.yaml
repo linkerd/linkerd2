@@ -13,12 +13,11 @@ parts:
     linkerd:
         plugin: dump
         source: .
-        override-pull: |
-            curl -sSLO https://github.com/linkerd/linkerd2/releases/download/stable-2.7.0/linkerd2-cli-stable-2.7.0-linux
-            mv linkerd2-cli-stable-2.7.0-linux linkerd # rename binary to linkerd
-            chmod +x linkerd
-        build-packages:
-            - curl
+        stage:
+            - target/release/linkerd2-cli-*-linux
+        override-stage: |
+            snapcraftctl stage
+            cp target/release/linkerd2-cli-*-linux $SNAPCRAFT_PRIME/linkerd
 apps:
     linkerd:
         command: linkerd
