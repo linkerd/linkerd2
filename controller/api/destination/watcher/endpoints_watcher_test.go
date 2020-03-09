@@ -27,17 +27,21 @@ func newBufferingEndpointListener() *bufferingEndpointListener {
 }
 
 func addressString(address Address) string {
-	return fmt.Sprintf("%s:%d", address.IP, address.Port)
+	addressString := fmt.Sprintf("%s:%d", address.IP, address.Port)
+	if address.Identity != "" {
+		addressString = fmt.Sprintf("%s/%s", addressString, address.Identity)
+	}
+	return addressString
 }
 
-func (bel *bufferingEndpointListener) Add(set PodSet) {
-	for _, address := range set.Pods {
+func (bel *bufferingEndpointListener) Add(set AddressSet) {
+	for _, address := range set.Addresses {
 		bel.added = append(bel.added, addressString(address))
 	}
 }
 
-func (bel *bufferingEndpointListener) Remove(set PodSet) {
-	for _, address := range set.Pods {
+func (bel *bufferingEndpointListener) Remove(set AddressSet) {
+	for _, address := range set.Addresses {
 		bel.removed = append(bel.removed, addressString(address))
 	}
 }
@@ -271,7 +275,7 @@ status:
 			expectedError:                    false,
 		},
 		{
-			serviceType: "local services with missing pods",
+			serviceType: "local services with missing addresses",
 			k8sConfigs: []string{`
 apiVersion: v1
 kind: Service
@@ -615,5 +619,165 @@ status:
 		})
 
 	}
+}
 
+func TestEndpointsWatcherServiceMirrors(t *testing.T) {
+	for _, tt := range []struct {
+		serviceType                      string
+		k8sConfigs                       []string
+		id                               ServiceID
+		hostname                         string
+		port                             Port
+		expectedAddresses                []string
+		expectedNoEndpoints              bool
+		expectedNoEndpointsServiceExists bool
+	}{
+		{
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1-remote
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1-remote
+  namespace: ns
+  annotations:
+    mirror.linkerd.io/remote-gateway-identity: "gateway-identity-1"
+    mirror.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
+  labels:
+    mirror.linkerd.io/mirrored-service: "true"
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+  ports:
+  - port: 8989`,
+			},
+			serviceType: "mirrored service with identity",
+			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
+			port:        8989,
+			expectedAddresses: []string{
+				"172.17.0.12:8989/gateway-identity-1",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+		},
+		{
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1-remote
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1-remote
+  namespace: ns
+  annotations:
+    mirror.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
+  labels:
+    mirror.linkerd.io/mirrored-service: "true"
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+  ports:
+  - port: 8989`,
+			},
+			serviceType: "mirrored service without identity",
+			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
+			port:        8989,
+			expectedAddresses: []string{
+				"172.17.0.12:8989",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+		},
+
+		{
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1-remote
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1-remote
+  namespace: ns
+  annotations:
+    mirror.linkerd.io/remote-gateway-identity: "gateway-identity-1"
+    mirror.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
+  labels:
+    mirror.linkerd.io/mirrored-service: "true"
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+  ports:
+  - port: 9999`,
+			},
+			serviceType: "mirrored service with remapped port in endpoints",
+			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
+			port:        9999,
+			expectedAddresses: []string{
+				"172.17.0.12:9999/gateway-identity-1",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+		},
+	} {
+		tt := tt // pin
+		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+
+			k8sAPI.Sync(nil)
+
+			listener := newBufferingEndpointListener()
+
+			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			actualAddresses := make([]string, 0)
+			actualAddresses = append(actualAddresses, listener.added...)
+			sort.Strings(actualAddresses)
+
+			testCompare(t, tt.expectedAddresses, actualAddresses)
+
+			if listener.noEndpointsCalled != tt.expectedNoEndpoints {
+				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
+					tt.expectedNoEndpoints, listener.noEndpointsCalled)
+			}
+
+			if listener.noEndpointsExists != tt.expectedNoEndpointsServiceExists {
+				t.Fatalf("Expected noEndpointsExists to be [%t], got [%t]",
+					tt.expectedNoEndpointsServiceExists, listener.noEndpointsExists)
+			}
+		})
+	}
 }
