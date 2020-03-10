@@ -105,6 +105,13 @@ var (
 		Port:     2,
 		Identity: "some-identity",
 	}
+
+	remoteGatewayWithTLSAndAuthOverride = watcher.Address{
+		IP:                "1.1.1.2",
+		Port:              2,
+		Identity:          "some-identity",
+		AuthorityOverride: "some-auth.com:2",
+	}
 )
 
 func makeEndpointTranslator(t *testing.T) (*mockDestinationGetServer, *endpointTranslator) {
@@ -162,6 +169,46 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 		actualProtocolHint := addrs[0].GetProtocolHint()
 		if !reflect.DeepEqual(actualProtocolHint, expectedProtocolHint) {
 			t.Fatalf("Expected ProtoclHint to be [%v] but was [%v]", expectedProtocolHint, actualProtocolHint)
+		}
+	})
+
+	t.Run("Sends TlsIdentity and Auth override when present", func(t *testing.T) {
+		expectedTLSIdentity := &pb.TlsIdentity_DnsLikeIdentity{
+			Name: "some-identity",
+		}
+
+		expectedProtocolHint := &pb.ProtocolHint{
+			Protocol: &pb.ProtocolHint_H2_{
+				H2: &pb.ProtocolHint_H2{},
+			},
+		}
+
+		expectedAuthOverride := &pb.AuthorityOverride{
+			AuthorityOverride: "some-auth.com:2",
+		}
+
+		mockGetServer, translator := makeEndpointTranslator(t)
+
+		translator.Add(mkAddressSetForServices(remoteGatewayWithTLSAndAuthOverride))
+
+		addrs := mockGetServer.updatesReceived[0].GetAdd().GetAddrs()
+		if len(addrs) != 1 {
+			t.Fatalf("Expected [1] address returned, got %v", addrs)
+		}
+
+		actualTLSIdentity := addrs[0].GetTlsIdentity().GetDnsLikeIdentity()
+		if !reflect.DeepEqual(actualTLSIdentity, expectedTLSIdentity) {
+			t.Fatalf("Expected TlsIdentity to be [%v] but was [%v]", expectedTLSIdentity, actualTLSIdentity)
+		}
+
+		actualProtocolHint := addrs[0].GetProtocolHint()
+		if !reflect.DeepEqual(actualProtocolHint, expectedProtocolHint) {
+			t.Fatalf("Expected ProtoclHint to be [%v] but was [%v]", expectedProtocolHint, actualProtocolHint)
+		}
+
+		actualAuthOverride := addrs[0].GetAuthorityOverride()
+		if !reflect.DeepEqual(actualProtocolHint, expectedProtocolHint) {
+			t.Fatalf("Expected AuthOverride to be [%v] but was [%v]", expectedAuthOverride, actualAuthOverride)
 		}
 	})
 

@@ -31,7 +31,7 @@ require (
 	github.com/huandu/xstrings v1.2.0 // indirect
 	github.com/imdario/mergo v0.3.7
 	github.com/julienschmidt/httprouter v1.2.0
-	github.com/linkerd/linkerd2-proxy-api v0.1.10
+	github.com/linkerd/linkerd2-proxy-api v0.1.12-0.20200309112816-75a7b3b20597
 	github.com/linkerd/linkerd2-proxy-init v1.3.2
 	github.com/mattn/go-isatty v0.0.9
 	github.com/mattn/go-runewidth v0.0.2
