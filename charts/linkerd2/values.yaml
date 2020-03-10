@@ -122,9 +122,6 @@ identity:
       # PEM-encoded ECDSA private key
       keyPEM: |
 
-# grafana configuration
-grafanaImage: gcr.io/linkerd-io/grafana
-
 # heartbeat configuration
 disableHeartBeat: false
 heartbeatSchedule: "0 0 * * *"
@@ -193,3 +190,10 @@ tracing:
     name: linkerd-jaeger
     image: jaegertracing/all-in-one:1.8
     resources:
+
+grafana:
+  enabled: true
+  name: linkerd-grafana
+  image: gcr.io/linkerd-io/grafana
+  resources:
+    

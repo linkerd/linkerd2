@@ -1,9 +1,12 @@
 dependencies:
+- name: grafana
+  repository: file://../add-ons/grafana
+  version: 0.1.0
 - name: partials
   repository: file://../partials
   version: 0.1.0
 - name: tracing
   repository: file://../add-ons/tracing
   version: 0.1.0
-digest: sha256:e33d9505af13cd9a047d9a2d6094af4b4d62cdc9ee64970dc3d2bba6809066d0
-generated: "2020-01-30T00:02:25.011181273+05:30"
+digest: sha256:08c66460ec01a7f23b454edb731decb45137a684c29c8abab9e0f4fcbeb2756c
+generated: "2020-03-09T17:15:48.782813773+05:30"

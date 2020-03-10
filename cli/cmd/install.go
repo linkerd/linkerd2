@@ -98,6 +98,7 @@ const (
 	helmDefaultChartDir  = "linkerd2"
 
 	tracingChartName = "tracing"
+	grafanaChartName = "grafana"
 
 	errMsgCannotInitializeClient = `Unable to install the Linkerd control plane. Cannot connect to the Kubernetes cluster:
 
@@ -131,7 +132,6 @@ var (
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
 		"templates/prometheus-rbac.yaml",
-		"templates/grafana-rbac.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
 		"templates/tap-rbac.yaml",
@@ -149,7 +149,6 @@ var (
 		"templates/heartbeat.yaml",
 		"templates/web.yaml",
 		"templates/prometheus.yaml",
-		"templates/grafana.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
@@ -161,6 +160,12 @@ var (
 		{Name: chartutil.ChartfileName},
 		{Name: "templates/tracing-rbac.yaml"},
 		{Name: "templates/tracing.yaml"},
+	}
+
+	grafanaTemplates = []*chartutil.BufferedFile{
+		{Name: chartutil.ChartfileName},
+		{Name: "templates/grafana-rbac.yaml"},
+		{Name: "templates/grafana.yaml"},
 	}
 )
 
@@ -880,6 +885,23 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 				if _, err := buf.WriteString(b.String()); err != nil {
 					return err
 				}
+			case "grafana":
+				chart = &charts.Chart{
+					Name:      grafanaChartName,
+					Dir:       filepath.Join(addOnChartsPath, grafanaChartName),
+					Namespace: controlPlaneNamespace,
+					RawValues: append(rawValues, values...),
+					Files:     grafanaTemplates,
+				}
+
+				b, err := chart.Render()
+				if err != nil {
+					return err
+				}
+
+				if _, err := buf.WriteString(b.String()); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -1247,6 +1269,19 @@ func parseAddOnValues(values *l5dcharts.Values) (map[string][]byte, error) {
 			}
 
 			addonValues[tracingChartName] = data
+		}
+	}
+
+	if values.Grafana != nil {
+		if enabled, ok := values.Grafana["enabled"].(bool); !ok {
+			return nil, fmt.Errorf("invalid value for 'Grafana.enabled' (should be boolean): %s", values.Grafana["enabled"])
+		} else if enabled {
+			data, err := yaml.Marshal(values.Tracing)
+			if err != nil {
+				return nil, err
+			}
+
+			addonValues[grafanaChartName] = data
 		}
 	}
 

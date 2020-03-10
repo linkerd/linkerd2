@@ -6,7 +6,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-grafana-config
+  name: {{.Values.name}}-config
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: grafana
@@ -15,7 +15,7 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   grafana.ini: |-
-    instance_name = linkerd-grafana
+    instance_name = {{.Values.name}}
 
     [server]
     root_url = %(protocol)s://%(domain)s:/grafana/
@@ -66,7 +66,7 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-grafana
+  name: {{.Values.name}}
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: grafana
@@ -83,7 +83,7 @@ spec:
     targetPort: 3000
 ---
 {{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set .Values.global.proxy "component" "linkerd-grafana" -}}
+{{ $_ := set .Values.global.proxy "component" "{{.Values.name}}" -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -96,7 +96,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: grafana
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-  name: linkerd-grafana
+  name: {{.Values.name}}
   namespace: {{.Values.global.namespace}}
 spec:
   replicas: 1
@@ -120,7 +120,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: {{.Values.grafanaImage}}:{{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+        image: {{.Values.image}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -135,8 +135,8 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-        {{- if .Values.grafanaResources -}}
-        {{- include "partials.resources" .Values.grafanaResources | nindent 8 }}
+        {{- if .Values.resources -}}
+        {{- include "partials.resources" .Values.resources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsUser: 472
@@ -151,7 +151,7 @@ spec:
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
-      serviceAccountName: linkerd-grafana
+      serviceAccountName: {{.Values.name}}
       volumes:
       - emptyDir: {}
         name: data
@@ -163,6 +163,6 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-          name: linkerd-grafana-config
+          name: {{.Values.name}}-config
         name: grafana-config
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
