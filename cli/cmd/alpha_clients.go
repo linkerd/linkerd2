@@ -8,6 +8,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/smimetrics"
 	"github.com/spf13/cobra"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 type alphaClientsOptions struct {
@@ -16,7 +18,7 @@ type alphaClientsOptions struct {
 
 func newCmdAlphaClients() *cobra.Command {
 	options := alphaClientsOptions{
-		namespace: "default",
+		namespace: corev1.NamespaceDefault,
 	}
 
 	clientsCmd := &cobra.Command{
@@ -36,9 +38,9 @@ func newCmdAlphaClients() *cobra.Command {
   * statefulsets
 
 linkerd alpha clients will return a table of the requested resource's clients
-showing traffic metrics metrics to the requested resource such as request rate,
-success rate, and latency percentiles.  These values are measured on the client
-side and, for example, include network latency.
+showing traffic metrics to the requested resource such as request rate, success
+rate, and latency percentiles.  These values are measured on the client side
+and, for example, include network latency.
 
 Examples:
   linkerd alpha clients -n emojivoto deploy/web`,
