@@ -746,6 +746,43 @@ subsets:
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
 		},
+		{
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1-remote
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1-remote
+  namespace: ns
+  annotations:
+    mirror.linkerd.io/remote-gateway-identity: ""
+    mirror.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
+  labels:
+    mirror.linkerd.io/mirrored-service: "true"
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+  ports:
+  - port: 9999`,
+			},
+			serviceType: "mirrored service with empty identity and remapped port in endpoints",
+			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
+			port:        9999,
+			expectedAddresses: []string{
+				"172.17.0.12:9999/name1-remote-fq:9999",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+		},
 	} {
 		tt := tt // pin
 		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
