@@ -509,7 +509,16 @@
   },
   "timepicker": {
     "refresh_intervals": [
-      "30s"
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
     ],
     "time_options": [
       "5m",
@@ -524,7 +533,7 @@
     ]
   },
   "timezone": "",
-  "title": "Linkerd Route Dashboard",
-  "uid": "3MJhqTQZz",
+  "title": "Linkerd Route",
+  "uid": "route",
   "version": 1
 }
