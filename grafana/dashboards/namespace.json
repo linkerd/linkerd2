@@ -893,7 +893,7 @@
   "templating": {
     "list": [
       {
-        "allValue": null,
+        "allValue": ".*",
         "current": {},
         "datasource": "prometheus",
         "definition": "label_values(process_start_time_seconds{deployment!=\"\"}, namespace)",
@@ -915,7 +915,7 @@
         "useTags": false
       },
       {
-        "allValue": null,
+        "allValue": ".*",
         "current": {},
         "datasource": "prometheus",
         "definition": "label_values(process_start_time_seconds{namespace=\"$namespace\"}, deployment)",

@@ -2121,7 +2121,7 @@
   "templating": {
     "list": [
       {
-        "allValue": null,
+        "allValue": ".*",
         "current": {},
         "datasource": "prometheus",
         "definition": "",
@@ -2143,7 +2143,7 @@
         "useTags": false
       },
       {
-        "allValue": null,
+        "allValue": ".*",
         "current": {},
         "datasource": "prometheus",
         "definition": "",
@@ -2165,7 +2165,7 @@
         "useTags": false
       },
       {
-        "allValue": null,
+        "allValue": ".*",
         "current": {},
         "datasource": "prometheus",
         "definition": "label_values(process_start_time_seconds{namespace=\"$namespace\"}, deployment)",
@@ -2187,7 +2187,7 @@
         "useTags": false
       },
       {
-        "allValue": null,
+        "allValue": ".*",
         "current": {
           "text": "All",
           "value": "$__all"
@@ -2212,7 +2212,7 @@
         "useTags": false
       },
       {
-        "allValue": null,
+        "allValue": ".*",
         "current": {
           "text": "All",
           "value": "$__all"
