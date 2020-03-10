@@ -523,8 +523,8 @@
     ]
   },
   "time": {
-    "from": "2020-03-08T07:39:21.984Z",
-    "to": "2020-03-08T10:03:17.105Z"
+    "from": "now-5m",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
