@@ -7,9 +7,15 @@
 # them on your Kubernetes cluster.  Requires a Github personal access token
 # in the $GITHUB_TOKEN environment variable.
 
-set -e
+set -eo pipefail
 
 pr=$1
+
+if [ -z "$pr" ]
+then
+  echo "usage: ${0##*/} (PR number)" >&2
+  exit 1
+fi
 
 if [ -z "$GITHUB_TOKEN" ]
 then
