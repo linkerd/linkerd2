@@ -22,7 +22,7 @@ if [ ! -f "$scbin" ]; then
   fi
 
   mkdir -p "$targetbin"
-  wget -qO- "https://storage.googleapis.com/shellcheck/shellcheck-${scversion?}.$file" | tar -OxJv "shellcheck-${scversion}/shellcheck" > "$scbin"
+  curl -sLf "https://storage.googleapis.com/shellcheck/shellcheck-${scversion?}.$file" | tar -OxJv "shellcheck-${scversion}/shellcheck" > "$scbin"
   chmod +x "$scbin"
 fi
 
