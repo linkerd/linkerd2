@@ -91,6 +91,7 @@ type (
 	portPublisher struct {
 		id         ServiceID
 		targetPort namedPort
+		srcPort    Port
 		hostname   string
 		log        *logging.Entry
 		k8sAPI     *k8s.API
@@ -393,6 +394,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 	port := &portPublisher{
 		listeners:  []EndpointUpdateListener{},
 		targetPort: targetPort,
+		srcPort:    srcPort,
 		hostname:   hostname,
 		exists:     exists,
 		k8sAPI:     sp.k8sAPI,
@@ -468,7 +470,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 
 				var authorityOverride string
 				if fqName, ok := endpoints.Annotations[consts.RemoteServiceFqName]; ok {
-					authorityOverride = fmt.Sprintf("%s:%d", fqName, resolvedPort)
+					authorityOverride = fmt.Sprintf("%s:%d", fqName, pp.srcPort)
 				}
 
 				addresses[id] = Address{

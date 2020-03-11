@@ -719,7 +719,8 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-  - port: 8989`,
+  - port: 8989
+    targetPort: 8989`,
 				`
 apiVersion: v1
 kind: Endpoints
@@ -741,7 +742,7 @@ subsets:
 			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
 			port:        8989,
 			expectedAddresses: []string{
-				"172.17.0.12:9999/gateway-identity-1/name1-remote-fq:9999",
+				"172.17.0.12:9999/gateway-identity-1/name1-remote-fq:8989",
 			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
@@ -756,7 +757,8 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-  - port: 8989`,
+  - port: 8989
+    targetPort: 8989`,
 				`
 apiVersion: v1
 kind: Endpoints
@@ -776,9 +778,9 @@ subsets:
 			},
 			serviceType: "mirrored service with empty identity and remapped port in endpoints",
 			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
-			port:        9999,
+			port:        8989,
 			expectedAddresses: []string{
-				"172.17.0.12:9999/name1-remote-fq:9999",
+				"172.17.0.12:9999/name1-remote-fq:8989",
 			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
