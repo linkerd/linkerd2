@@ -19,7 +19,6 @@ func TestNewValues(t *testing.T) {
 		ControllerImageVersion:      testVersion,
 		WebImage:                    "gcr.io/linkerd-io/web",
 		PrometheusImage:             "prom/prometheus:v2.15.2",
-		GrafanaImage:                "gcr.io/linkerd-io/grafana",
 		ControllerReplicas:          1,
 		ControllerLogLevel:          "info",
 		PrometheusLogLevel:          "info",
@@ -140,6 +139,7 @@ func TestNewValues(t *testing.T) {
 
 	// Make Add-On Values nil to not have to check for their defaults
 	actual.Tracing = nil
+	actual.Grafana = nil
 
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected, actual)
@@ -227,6 +227,7 @@ func TestNewValues(t *testing.T) {
 
 		// Make Add-On Values nil to not have to check for their defaults
 		actual.Tracing = nil
+		actual.Grafana = nil
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)
