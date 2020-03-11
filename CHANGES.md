@@ -7,10 +7,8 @@ new observability and security functionality.
   * Added the `linkerd alpha stat` command, which uses the smi-metrics
     API; the latter enables access to metrics to be controlled with RBAC 
 * Controller
-  * Improved the `destinations` service to allow it to set the TLS identity
-    based on metadata present on the `Endpoints` objects of services
   * Added support for configuring service profile timeouts
-    `(x-linkerd-timeout)` via OpenAPI spec (thanks @ lewiscowper!)
+    `(x-linkerd-timeout)` via OpenAPI spec (thanks @lewiscowper!)
 * Web UI
   * Improved the Grafana dashboards to use a globing operator for Prometheus in
     order to avoid producing queries that are too large (thanks @mmiller1!)
@@ -18,8 +16,6 @@ new observability and security functionality.
   * Improved the `linkerd2` chart README (thanks @lundbird!)
 * Proxy
   * Fixed a bug that could cause log levels to be processed incorrectly
-  * Removed cache capacity limitations, allowing services to fail eagerly
-  * Improved backpressure support
 
 ## edge-20.3.1
 
