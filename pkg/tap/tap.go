@@ -3,6 +3,7 @@ package tap
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -37,7 +38,7 @@ func Reader(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, timeout tim
 	if err != nil {
 		return nil, nil, err
 	}
-	url.Path = protohttp.TapReqToURL(req)
+	url.Path = fmt.Sprintf("%s%s", url.Path, protohttp.TapReqToURL(req))
 
 	httpReq, err := http.NewRequest(
 		http.MethodPost,
