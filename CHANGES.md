@@ -1,3 +1,22 @@
+## edge-20.3.2
+
+This release introduces substantial proxy improvements as well as
+new observability and security functionality.
+
+* CLI
+  * Added the `linkerd alpha stat` command, which uses the smi-metrics
+    API; the latter enables access to metrics to be controlled with RBAC 
+* Controller
+  * Added support for configuring service profile timeouts
+    `(x-linkerd-timeout)` via OpenAPI spec (thanks @lewiscowper!)
+* Web UI
+  * Improved the Grafana dashboards to use a globing operator for Prometheus in
+    order to avoid producing queries that are too large (thanks @mmiller1!)
+* Helm
+  * Improved the `linkerd2` chart README (thanks @lundbird!)
+* Proxy
+  * Fixed a bug that could cause log levels to be processed incorrectly
+
 ## edge-20.3.1
 
 This release introduces new functionality mainly focused around
