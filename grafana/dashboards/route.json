@@ -67,9 +67,7 @@
       "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
+      "options": {},
       "percentage": false,
       "pointradius": 1,
       "points": false,
@@ -91,10 +89,10 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Success Rate",
+      "title": "SUCCESS RATE",
       "tooltip": {
         "shared": true,
-        "sort": 0,
+        "sort": 2,
         "value_type": "individual"
       },
       "type": "graph",
@@ -183,10 +181,10 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Requests Per Second",
+      "title": "REQUEST RATE",
       "tooltip": {
         "shared": true,
-        "sort": 0,
+        "sort": 2,
         "value_type": "individual"
       },
       "type": "graph",
@@ -199,11 +197,11 @@
       },
       "yaxes": [
         {
-          "format": "short",
-          "label": null,
+          "format": "rps",
+          "label": "",
           "logBase": 1,
           "max": null,
-          "min": null,
+          "min": 0,
           "show": true
         },
         {
@@ -294,10 +292,10 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Latency",
+      "title": "LATENCY",
       "tooltip": {
         "shared": true,
-        "sort": 0,
+        "sort": 2,
         "value_type": "individual"
       },
       "type": "graph",
@@ -371,7 +369,7 @@
         "includeAll": false,
         "label": null,
         "multi": false,
-        "name": "namespace",
+        "name": "Namespace",
         "options": [],
         "query": "label_values(route_response_total, namespace)",
         "refresh": 2,
