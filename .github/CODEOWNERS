@@ -1,3 +1,25 @@
 CHANGES.md @wmorgan @klingerf @olix0r @admc
 GOVERNANCE.md @klingerf @olix0r
 MAINTAINERS.md @klingerf @olix0r
+
+/.github/workflows/ @alpeb @kleimkuhler
+/charts @alpeb @zaharidichev
+
+/charts/linkerd2-cni @hemakl @zaharidichev
+/charts/linkerd-service-mirror @zaharidichev
+
+/cli @alpeb @adleong @zaharidichev
+
+/cni-plugin @hemakl @zaharidichev
+
+/controller @adleong @alpeb @kleimkuhler
+
+/pkg @adleong @alpeb
+
+# These do not have clear owners today
+# /grafana
+# /proto
+# /proxy-identity
+# /test
+# /testutil
+# /web
