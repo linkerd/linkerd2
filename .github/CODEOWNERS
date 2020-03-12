@@ -2,7 +2,7 @@ CHANGES.md @wmorgan @klingerf @olix0r @admc
 GOVERNANCE.md @klingerf @olix0r
 MAINTAINERS.md @klingerf @olix0r
 
-/.github/workflows/* @alpeb @kleimkuhler
+/.github/workflows/ @alpeb @kleimkuhler
 /charts @alpeb @zaharidichev
 
 /charts/linkerd2-cni @hemakl @zaharidichev
