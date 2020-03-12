@@ -113,8 +113,8 @@ fi
 
 # Get the URL for downloading the artifacts archive.
 auth="Authorization: token $GITHUB_TOKEN"
-branch=$(curl -sL "$linkerd2_pulls_url/$pr" | jq -r '.head.ref')
-artifacts=$(curl -sL "$linkerd2_kind_integration_url/runs?branch=$branch" | jq -r '.workflow_runs[0].artifacts_url')
+branch=$(curl -sL -H "$auth" "$linkerd2_pulls_url/$pr" | jq -r '.head.ref')
+artifacts=$(curl -sL -H "$auth" "$linkerd2_kind_integration_url/runs?branch=$branch" | jq -r '.workflow_runs[0].artifacts_url')
 archive=$(curl -sL -H "$auth" "$artifacts" | jq -r '.artifacts[0].archive_download_url')
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
@@ -147,7 +147,7 @@ docker cp "$container_id":/out/linkerd-"$platform" "$rootdir"/target/cli/"$platf
 installed_cli=1
 
 # Load images into local docker images
-if [ $is_kind ]
+if [ $is_kind -eq 1 ]
 then
   # Create new KinD cluster
   cluster_name="pr-$pr"
@@ -186,7 +186,7 @@ fi
 
 cd -
 
-if [ $is_kind ]
+if [ $is_kind -eq 1 ]
 then
   "$bindir"/linkerd "${context_flag[@]}" check --pre
   "$bindir"/linkerd "${context_flag[@]}" install | kubectl "${context_flag[@]}" apply -f -
