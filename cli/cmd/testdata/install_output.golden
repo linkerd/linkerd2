@@ -3355,7 +3355,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: GrafanaImage
+        image: GrafanaImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:

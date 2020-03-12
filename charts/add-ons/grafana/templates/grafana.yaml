@@ -120,7 +120,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: {{.Values.image}}
+        image: {{.Values.image}}:{{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:

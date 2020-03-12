@@ -3350,7 +3350,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana
+        image: gcr.io/linkerd-io/grafana:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
