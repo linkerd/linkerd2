@@ -3224,7 +3224,7 @@ spec:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: 
+  name: linkerd-grafana
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
@@ -3237,7 +3237,7 @@ metadata:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: -config
+  name: linkerd-grafana-config
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
@@ -3246,7 +3246,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   grafana.ini: |-
-    instance_name = 
+    instance_name = linkerd-grafana
 
     [server]
     root_url = %(protocol)s://%(domain)s:/grafana/
@@ -3297,7 +3297,7 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: 
+  name: linkerd-grafana
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
@@ -3324,7 +3324,7 @@ metadata:
     app.kubernetes.io/version: UPGRADE-CONTROL-PLANE-VERSION
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
-  name: 
+  name: linkerd-grafana
   namespace: linkerd
 spec:
   replicas: 1
@@ -3332,7 +3332,7 @@ spec:
     matchLabels:
       linkerd.io/control-plane-component: grafana
       linkerd.io/control-plane-ns: linkerd
-      linkerd.io/proxy-deployment: {{.Values.name}}
+      linkerd.io/proxy-deployment: linkerd-grafana
   template:
     metadata:
       annotations:
@@ -3342,7 +3342,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
-        linkerd.io/proxy-deployment: {{.Values.name}}
+        linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -3350,7 +3350,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: 
+        image: gcr.io/linkerd-io/grafana
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3471,6 +3471,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:v1.3.1
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -3492,7 +3494,7 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      serviceAccountName: 
+      serviceAccountName: linkerd-grafana
       volumes:
       - emptyDir: {}
         name: data
@@ -3504,7 +3506,7 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-          name: -config
+          name: linkerd-grafana-config
         name: grafana-config
       - emptyDir:
           medium: Memory

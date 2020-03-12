@@ -3229,7 +3229,7 @@ spec:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: 
+  name: linkerd-grafana
   namespace: Namespace
   labels:
     ControllerComponentLabel: grafana
@@ -3242,7 +3242,7 @@ metadata:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: -config
+  name: linkerd-grafana-config
   namespace: Namespace
   labels:
     ControllerComponentLabel: grafana
@@ -3251,7 +3251,7 @@ metadata:
     CreatedByAnnotation: CliVersion
 data:
   grafana.ini: |-
-    instance_name = 
+    instance_name = linkerd-grafana
 
     [server]
     root_url = %(protocol)s://%(domain)s:/grafana/
@@ -3302,7 +3302,7 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: 
+  name: linkerd-grafana
   namespace: Namespace
   labels:
     ControllerComponentLabel: grafana
@@ -3329,7 +3329,7 @@ metadata:
     app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: grafana
     ControllerNamespaceLabel: Namespace
-  name: 
+  name: linkerd-grafana
   namespace: Namespace
 spec:
   replicas: 1
@@ -3337,7 +3337,7 @@ spec:
     matchLabels:
       ControllerComponentLabel: grafana
       ControllerNamespaceLabel: Namespace
-      linkerd.io/proxy-deployment: {{.Values.name}}
+      linkerd.io/proxy-deployment: linkerd-grafana
   template:
     metadata:
       annotations:
@@ -3347,7 +3347,7 @@ spec:
       labels:
         ControllerComponentLabel: grafana
         ControllerNamespaceLabel: Namespace
-        linkerd.io/proxy-deployment: {{.Values.name}}
+        linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -3355,7 +3355,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: 
+        image: GrafanaImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
@@ -3475,6 +3475,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: ProxyInitImageName:ProxyInitVersion
         imagePullPolicy: ImagePullPolicy
         name: linkerd-init
@@ -3496,7 +3498,7 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      serviceAccountName: 
+      serviceAccountName: linkerd-grafana
       volumes:
       - emptyDir: {}
         name: data
@@ -3508,7 +3510,7 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-          name: -config
+          name: linkerd-grafana-config
         name: grafana-config
       - emptyDir:
           medium: Memory
