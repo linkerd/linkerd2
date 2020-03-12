@@ -1276,7 +1276,7 @@ func parseAddOnValues(values *l5dcharts.Values) (map[string][]byte, error) {
 		if enabled, ok := values.Grafana["enabled"].(bool); !ok {
 			return nil, fmt.Errorf("invalid value for 'Grafana.enabled' (should be boolean): %s", values.Grafana["enabled"])
 		} else if enabled {
-			data, err := yaml.Marshal(values.Tracing)
+			data, err := yaml.Marshal(values.Grafana)
 			if err != nil {
 				return nil, err
 			}

@@ -83,7 +83,7 @@ spec:
     targetPort: 3000
 ---
 {{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set .Values.global.proxy "component" "{{.Values.name}}" -}}
+{{ $_ := set .Values.global.proxy "component" .Values.name -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
