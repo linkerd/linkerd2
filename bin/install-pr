@@ -13,27 +13,25 @@ cleanup() {
   # Remove temporary directory.
   rm -rf "$archive_tmp"
   
-  if [ "$installed_cli" -eq 1 ]
+  if [ "$installed_cli" ]
   then
     echo ""
     echo "Linkerd CLI installed!"
     echo "Usage:"
     echo "    bin/linkerd $context_flag version"
-  elif [ "$installed_cli" -eq 0 ]
-  then
+  else [ "$installed_cli" ]
     echo ""
     echo "Linkerd CLI install failed!"
   fi
 
-  if [ "$linkerd_check" -eq 1 ]
+  if [ "$linkerd_check" ]
   then
     echo ""
     echo "'linkerd check' passed!"
     echo "Usage:"
     echo "    bin/linkerd ${context_flag[*]} check"
     echo "    kubectl ${context_flag[*]} -n linkerd get pods"
-  elif [ "$linkerd_check" -eq 0 ]
-  then
+  else
     echo ""
     echo "'linkerd check' failed!"
     echo "Check again before debugging:"
@@ -42,22 +40,20 @@ cleanup() {
     echo "    kubectl ${context_flag[*]} -n linkerd get pods"
   fi
 
-  if [[ $is_kind -eq 1 && $kind_setup -eq 0 ]]
+  if [[ $is_kind && $kind_setup ]]
   then
     echo "Script failed at or before KinD cluster creation."
   fi
 }
 
-trap cleanup EXIT
-
 # Initialize variables used throughout script.
 archive_tmp=
 context_flag=
 
-installed_cli=0
-kind_setup=0
-linkerd_check=0
-is_kind=0
+installed_cli=
+kind_setup=
+linkerd_check=
+is_kind=
 
 linkerd2_pulls_url="https://api.github.com/repos/linkerd/linkerd2/pulls"
 linkerd2_kind_integration_url="https://api.github.com/repos/linkerd/linkerd2/actions/workflows/kind_integration.yml"
@@ -79,8 +75,6 @@ do
       echo ""
       echo "    # Install Linkerd into a new KinD cluster"
       echo "    bin/install-pr [-k|--kind] ####"
-      installed_cli=2
-      linkerd_check=2
       exit 0
       ;;
     -k|--kind)
@@ -95,6 +89,8 @@ do
   esac
   shift
 done
+
+trap cleanup EXIT
 
 pr=$1
 
@@ -147,7 +143,7 @@ docker cp "$container_id":/out/linkerd-"$platform" "$rootdir"/target/cli/"$platf
 installed_cli=1
 
 # Load images into local docker images
-if [ $is_kind -eq 1 ]
+if [ $is_kind ]
 then
   # Create new KinD cluster
   cluster_name="pr-$pr"
@@ -186,7 +182,7 @@ fi
 
 cd -
 
-if [ $is_kind -eq 1 ]
+if [ $is_kind ]
 then
   "$bindir"/linkerd "${context_flag[@]}" check --pre
   "$bindir"/linkerd "${context_flag[@]}" install | kubectl "${context_flag[@]}" apply -f -
