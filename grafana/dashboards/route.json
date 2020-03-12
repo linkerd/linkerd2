@@ -83,7 +83,7 @@
           "expr": "sum(irate(route_response_total{classification=\"success\", namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, app) / sum(irate(route_response_total{namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, app)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "src={{app}}, {{rt_route}}, dst={{dst}}",
+          "legendFormat": "src/{{app}}, route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         }
       ],
@@ -174,9 +174,8 @@
         {
           "expr": "sum(irate(route_response_total{app=~\"$app\", namespace=~\"$namespace\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, app)",
           "format": "time_series",
-          "instant": false,
           "intervalFactor": 1,
-          "legendFormat": "src={{app}},route={{rt_route}}, dst={{dst}}",
+          "legendFormat": "src/{{app}}, route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         }
       ],
@@ -270,12 +269,24 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.$percentile, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, app))",
+          "expr": "histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, app))",
           "format": "time_series",
-          "hide": false,
-          "instant": false,
           "intervalFactor": 1,
-          "legendFormat": "src={{app}}, route={{rt_route}}, dst={{dst}}",
+          "legendFormat": "src/{{app}}, route/{{rt_route}}, dst/{{dst}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, app))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "src/{{app}}, route/{{rt_route}}, dst/{{dst}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, app))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "src/{{app}}, route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         }
       ],
@@ -453,45 +464,6 @@
         "tagsQuery": "",
         "type": "query",
         "useTags": false
-      },
-      {
-        "allValue": null,
-        "current": {
-          "text": "50",
-          "value": [
-            "50"
-          ]
-        },
-        "hide": 0,
-        "includeAll": true,
-        "label": null,
-        "multi": true,
-        "name": "percentile",
-        "options": [
-          {
-            "selected": false,
-            "text": "All",
-            "value": "$__all"
-          },
-          {
-            "selected": true,
-            "text": "50",
-            "value": "50"
-          },
-          {
-            "selected": false,
-            "text": "95",
-            "value": "95"
-          },
-          {
-            "selected": false,
-            "text": "99",
-            "value": "99"
-          }
-        ],
-        "query": "50,95,99",
-        "skipUrlSync": false,
-        "type": "custom"
       }
     ]
   },
