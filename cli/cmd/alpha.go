@@ -12,6 +12,7 @@ func newCmdAlpha() *cobra.Command {
 	}
 
 	alphaCmd.AddCommand(newCmdAlphaStat())
+	alphaCmd.AddCommand(newCmdAlphaClients())
 
 	return alphaCmd
 }
