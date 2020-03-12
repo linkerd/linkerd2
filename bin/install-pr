@@ -9,63 +9,189 @@
 
 set -eo pipefail
 
+cleanup() {
+  # Remove temporary directory.
+  rm -rf "$archive_tmp"
+  
+  if [ "$installed_cli" ]
+  then
+    echo ""
+    echo "Linkerd CLI installed!"
+    echo "Usage:"
+    echo "    bin/linkerd ${context_flag[@]} version"
+  else
+    echo ""
+    echo "Linkerd CLI install failed!"
+  fi
+
+  if [ "$linkerd_check" ]
+  then
+    echo ""
+    echo "'linkerd check' passed!"
+    echo "Usage:"
+    echo "    bin/linkerd ${context_flag[@]} check"
+    echo "    kubectl ${context_flag[@]} -n linkerd get pods"
+  else
+    echo ""
+    echo "'linkerd check' failed!"
+    echo "Check again before debugging:"
+    echo "    bin/linkerd ${context_flag[@]} check --pre"
+    echo "    bin/linkerd ${context_flag[@]} check"
+    echo "    kubectl ${context_flag[@]} -n linkerd get pods"
+  fi
+
+  if [[ $is_kind && ! $kind_setup ]]
+  then
+    echo "Script failed at or before KinD cluster creation."
+  fi
+}
+
+trap cleanup EXIT
+
+# Initialize variables used throughout script.
+archive_tmp=
+context_flag=
+
+installed_cli=
+kind_setup=
+linkerd_check=
+is_kind=
+
+linkerd2_pulls_url="https://api.github.com/repos/linkerd/linkerd2/pulls"
+linkerd2_kind_integration_url="https://api.github.com/repos/linkerd/linkerd2/actions/workflows/kind_integration.yml"
+
+# Read script flags and arguments.
+while :
+do
+  case $1 in
+    -h|--help)
+      echo "Install Linkerd with the changes made in a GitHub Pull Request."
+      echo ""
+      echo "Note:"
+      echo "    If installing into an existing Kubernetes cluster, this script"
+      echo "    assumes the cluster is not a KinD cluster."
+      echo ""
+      echo "Usage:"
+      echo "    # Install Linkerd into the 'kubectl' current cluster"
+      echo "    bin/install-pr ####"
+      echo ""
+      echo "    # Install Linkerd into a new KinD cluster"
+      echo "    bin/install-pr [-k|--kind] ####"
+      exit 0
+      ;;
+    -k|--kind)
+      is_kind=1
+      ;;
+    -?*)
+      echo "Error: Unknown option: $1" >&2
+      exit 1
+      ;;
+    *)
+      break
+  esac
+  shift
+done
+
 pr=$1
 
 if [ -z "$pr" ]
 then
-  echo "usage: ${0##*/} (PR number)" >&2
+  echo "Usage: ${0##*/} (PR number)" >&2
   exit 1
 fi
 
 if [ -z "$GITHUB_TOKEN" ]
 then
   # shellcheck disable=SC2016
-  echo 'Generate a personal access token at https://github.com/settings/tokens and set it in the $GITHUB_TOKEN env var'
+  echo 'Error: Generate a personal access token at https://github.com/settings/tokens and set it in the $GITHUB_TOKEN env var'
   exit 1
 fi
 
+# Get the URL for downloading the artifacts archive.
 auth="Authorization: token $GITHUB_TOKEN"
+branch=$(curl -sL "$linkerd2_pulls_url/$pr" | jq -r '.head.ref')
+artifacts=$(curl -sL "$linkerd2_kind_integration_url/runs?branch=$branch" | jq -r '.workflow_runs[0].artifacts_url')
+archive=$(curl -sL -H "$auth" "$artifacts" | jq -r '.artifacts[0].archive_download_url')
 
-branch=$(curl -s -H "$auth" "https://api.github.com/repos/linkerd/linkerd2/pulls/$pr" | jq -r '.head.ref')
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+archive_tmp=$(mktemp -d -t "linkerd-pr-$pr.XXXXXXXXXX")
 
-artifacts=$(curl -s -H "$auth" "https://api.github.com/repos/linkerd/linkerd2/actions/workflows/kind_integration.yml/runs?branch=$branch" | jq -r '.workflow_runs[0].artifacts_url')
+# Change directory temporarily and download artifact.
+cd "$archive_tmp"
 
-archive_url=$(curl -s -H "$auth" "$artifacts" | jq -r '.artifacts[0].archive_download_url')
-
-dir=$(mktemp -d -t "linkerd-pr-$pr.XXXXXXXXXX")
-
-cd "$dir" || exit
-
-echo "### Downloading images ###"
-
-curl -L -o archive.zip -H "$auth" "$archive_url"
-
+curl -L -o archive.zip -H "$auth" "$archive"
 unzip -o archive.zip
 
-echo "### Pushing images ###"
+# Install the Linkerd CLI.
+image=$(docker load -i cli-bin.tar | sed 's/Loaded image: //')
+container_id=$(docker create "$image")
 
-for archive in cli-bin cni-plugin controller debug grafana proxy web
-do 
-  image=$(docker load -i "$archive.tar" | sed "s/Loaded image: //")
-  docker push "$image"
-  tag=$(echo "$image" | cut -f 2 -d ":")
-done
+case $(uname) in
+  Darwin)
+    platform="darwin"
+    ;;
+  Linux)
+    platform="linux"
+    ;;
+  *)
+    platform="windows"
+    ;;
+esac
+
+docker cp "$container_id":/out/linkerd-"$platform" "$rootdir"/target/cli/"$platform"/linkerd
+installed_cli=1
+
+# Load images into local docker images
+if [ $is_kind ]
+then
+  # Create new KinD cluster
+  cluster_name="pr-$pr"
+  context_flag=(--context kind-$cluster_name)
+
+  if "$bindir"/kind get clusters | grep "$cluster_name"
+  then
+    echo "Error: KinD cluster '$cluster_name' exists"
+    exit 1
+  fi
+  
+  "$bindir"/kind create cluster --name "$cluster_name"
+
+  # Load images into cluster
+  for image in cni-plugin controller debug grafana proxy web
+  do
+    echo "Loading $image image into cluster.."
+    "$bindir"/kind load image-archive --name "$cluster_name" $image.tar || tee load_fail &
+  done
+
+  # Wait for `kind load` background processes to copmlete. Exit early if any
+  # job failed.
+  wait < <(jobs -p)
+  if [ -f load_fail ]
+  then
+    echo "Loading docker images into KinD cluster failed."
+    exit 1
+  fi
+  kind_setup=1
+else
+  for image in cni-plugin controller debug grafana proxy web
+  do
+    docker load -i "$image.tar"
+  done
+fi
 
 cd -
 
-rm -rf "$dir"
+if [ $is_kind ]
+then
+  "$bindir"/linkerd "${context_flag[@]}" check --pre
+  "$bindir"/linkerd "${context_flag[@]}" install | kubectl "${context_flag[@]}" apply -f -
+  "$bindir"/linkerd "${context_flag[@]}" check
+else
+  "$bindir"/linkerd check --pre
+  "$bindir"/linkerd install | kubectl apply -f -
+  "$bindir"/linkerd check
+fi
+linkerd_check=1
 
-linkerd=$(bin/docker-pull-binaries "$tag" | head -n 1)
-
-echo "### Pre checks ###"
-
-$linkerd check --pre
-
-echo "### Installing $tag ###"
-
-$linkerd install | kubectl apply -f -
-
-$linkerd check
-
-echo "### Linkerd installed. CLI available: "
-echo "$linkerd"
+exit 0
