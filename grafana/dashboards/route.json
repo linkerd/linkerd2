@@ -85,12 +85,12 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.$percentile, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\", status_code=~\"$status_code\"}[1m])) by (le, rt_route, dst, app, status_code))",
+          "expr": "histogram_quantile(0.$percentile, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, app))",
           "format": "time_series",
           "hide": false,
           "instant": false,
           "intervalFactor": 1,
-          "legendFormat": "src={{app}}, {{status_code}}, {{rt_route}}, dst={{dst}}",
+          "legendFormat": "src={{app}}, route={{rt_route}}, dst={{dst}}",
           "refId": "A"
         }
       ],
@@ -271,11 +271,11 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(route_response_total{app=~\"$app\", namespace=~\"$namespace\", rt_route=~\"$route\", dst=~\"$dst\", status_code=~\"$status_code\"}[1m])) by (rt_route, dst, app, status_code)",
+          "expr": "sum(irate(route_response_total{app=~\"$app\", namespace=~\"$namespace\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, app)",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
-          "legendFormat": "src={{app}}, {{status_code}}, {{rt_route}}, dst={{dst}}",
+          "legendFormat": "src={{app}},route={{rt_route}}, dst={{dst}}",
           "refId": "A"
         }
       ],
@@ -444,33 +444,6 @@
         "name": "route",
         "options": [],
         "query": "label_values(route_response_total{app=~\"$app\", namespace=~\"$namespace\", dst=~\"$dst\"}, rt_route)",
-        "refresh": 2,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 1,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
-        "allValue": null,
-        "current": {
-          "text": "All",
-          "value": [
-            "$__all"
-          ]
-        },
-        "datasource": "prometheus",
-        "definition": "label_values(route_response_total{app=~\"$app\", namespace=~\"$namespace\", rt_route=~\"$route\", dst=~\"$dst\"}, status_code)",
-        "hide": 0,
-        "includeAll": true,
-        "label": null,
-        "multi": true,
-        "name": "status_code",
-        "options": [],
-        "query": "label_values(route_response_total{app=~\"$app\", namespace=~\"$namespace\", rt_route=~\"$route\", dst=~\"$dst\"}, status_code)",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
