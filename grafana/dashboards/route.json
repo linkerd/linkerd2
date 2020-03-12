@@ -69,7 +69,7 @@
       "nullPointMode": "null",
       "options": {},
       "percentage": false,
-      "pointradius": 1,
+      "pointradius": 5,
       "points": false,
       "renderer": "flot",
       "seriesOverrides": [],
@@ -78,10 +78,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(route_response_total{classification=\"success\", namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, app) / sum(irate(route_response_total{namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, app)",
+          "expr": "sum(irate(route_response_total{classification=\"success\", namespace=~\"$namespace\", deployment=~\"$deployment\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, deployment) / sum(irate(route_response_total{namespace=~\"$namespace\", deployment=~\"$deployment\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "src/{{app}}, route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "src/{{deployment}}, route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         }
       ],
@@ -170,10 +170,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(route_response_total{app=~\"$app\", namespace=~\"$namespace\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, app)",
+          "expr": "sum(irate(route_response_total{deployment=~\"$deployment\", namespace=~\"$namespace\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, deployment)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "src/{{app}}, route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "src/{{deployment}}, route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         }
       ],
@@ -247,18 +247,12 @@
         "values": true
       },
       "lines": true,
-      "linewidth": 1,
-      "links": [
-        {
-          "url": "/"
-        }
-      ],
+      "linewidth": 2,
+      "links": [],
       "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
+      "options": {},
       "percentage": false,
-      "pointradius": 2,
+      "pointradius": 5,
       "points": false,
       "renderer": "flot",
       "seriesOverrides": [],
@@ -267,24 +261,24 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, app))",
+          "expr": "histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", deployment=~\"$deployment\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "src/{{app}}, route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "src/{{deployment}}, route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, app))",
+          "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", deployment=~\"$deployment\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "src/{{app}}, route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "src/{{deployment}}, route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", app=~\"$app\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, app))",
+          "expr": "histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", deployment=~\"$deployment\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, deployment))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "src/{{app}}, route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "src/{{deployment}}, route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         }
       ],
@@ -396,7 +390,7 @@
         "includeAll": true,
         "label": null,
         "multi": true,
-        "name": "dst",
+        "name": "Destination",
         "options": [],
         "query": "label_values(route_response_total{namespace=~\"$namespace\"}, dst)",
         "refresh": 2,
@@ -418,14 +412,14 @@
           ]
         },
         "datasource": "prometheus",
-        "definition": "label_values(route_response_total{namespace=~\"$namespace\", dst=~\"$dst\"}, app)",
+        "definition": "label_values(route_response_total{namespace=~\"$namespace\", dst=~\"$dst\"}, deployment)",
         "hide": 0,
         "includeAll": true,
         "label": null,
         "multi": true,
-        "name": "app",
+        "name": "deployment",
         "options": [],
-        "query": "label_values(route_response_total{namespace=~\"$namespace\", dst=~\"$dst\"}, app)",
+        "query": "label_values(route_response_total{namespace=~\"$namespace\", dst=~\"$dst\"}, deployment)",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -445,14 +439,14 @@
           ]
         },
         "datasource": "prometheus",
-        "definition": "label_values(route_response_total{app=~\"$app\", namespace=~\"$namespace\", dst=~\"$dst\"}, rt_route)",
+        "definition": "label_values(route_response_total{deployment=~\"$deployment\", namespace=~\"$namespace\", dst=~\"$dst\"}, rt_route)",
         "hide": 0,
         "includeAll": false,
         "label": null,
         "multi": false,
         "name": "route",
         "options": [],
-        "query": "label_values(route_response_total{app=~\"$app\", namespace=~\"$namespace\", dst=~\"$dst\"}, rt_route)",
+        "query": "label_values(route_response_total{deployment=~\"$deployment\", namespace=~\"$namespace\", dst=~\"$dst\"}, rt_route)",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
