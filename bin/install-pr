@@ -69,7 +69,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 dir=$(mktemp -d -t "linkerd-pr-$pr.XXXXXXXXXX")
 
 # Change directory temporarily and download artifact
-cd "$dir"
+cd "$dir" || exit
 
 curl -L -o archive.zip -H "$auth" "$archive"
 unzip -o archive.zip
