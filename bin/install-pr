@@ -21,12 +21,22 @@ do
       echo "    assumes the cluster is not a KinD cluster."
       echo ""
       echo "Usage:"
-      echo "    # Install Linkerd into the 'kubectl' current cluster"
+      echo "    --context='': The name of the kubeconfig context to use"
+      echo ""
+      echo "    # Install Linkerd into the current cluster"
       echo "    bin/install-pr ####"
       echo ""
-      echo "    # Install Linkerd into a new KinD cluster"
+      echo "    # Install Linkerd into the current KinD cluster"
       echo "    bin/install-pr [-k|--kind] ####"
+      echo ""
+      echo "    # Install Linkerd into the context's KinD cluster"
+      echo "    bin/install-pr [-k|--kind] --context kind ####"
       exit 0
+      ;;
+    --context)
+      context=$2
+      context_flag="--context $context"
+      shift
       ;;
     -k|--kind)
       is_kind=1
@@ -45,7 +55,9 @@ pr=$1
 
 if [ -z "$pr" ]
 then
-  echo "Usage: ${0##*/} (PR number)" >&2
+  echo "Error: ${0##*/} accepts 1 argument" >&2
+  echo "Usage:" >&2
+  echo "    ${0##*/} ####" >&2
   exit 1
 fi
 
@@ -68,40 +80,35 @@ archive=$(curl -sL -H "$auth" "$artifacts" | jq -r '.artifacts[0].archive_downlo
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 dir=$(mktemp -d -t "linkerd-pr-$pr.XXXXXXXXXX")
 
-# Change directory temporarily and download artifact
 cd "$dir" || exit
+
+echo "### Downloading images ###"
 
 curl -L -o archive.zip -H "$auth" "$archive"
 unzip -o archive.zip
 
-# Push the Linkerd CLI
+echo "### Loading images into Docker ###"
+
 image=$(docker load -i cli-bin.tar | sed 's/Loaded image: //')
-docker push "$image"
 tag=$(echo "$image" | cut -f 2 -d ":")
 
-# Load images into local docker images
 if [ $is_kind ]
 then
-  # Create new KinD cluster
-  cluster_name="pr-$pr"
-  context_flag=(--context kind-"$cluster_name")
-
-  if "$bindir"/kind get clusters | grep "$cluster_name"
+  # KinD context strings are created by prepending `kind-` to the cluster name
+  # shellcheck disable=SC2086
+  if [ $context ]
   then
-    echo "Error: KinD cluster '$cluster_name' exists"
-    exit 1
+    name=$(echo "$context" | sed -n -E "s/(kind)-(.*)/\2/p")
+    name_flag="--name $name"
   fi
-  
-  "$bindir"/kind create cluster --name "$cluster_name"
 
-  # Load images into cluster
   for image in cni-plugin controller debug grafana proxy web
   do
-    echo "Loading $image image into cluster.."
-    "$bindir"/kind load image-archive --name "$cluster_name" $image.tar || tee load_fail &
+    # shellcheck disable=SC2086
+    "$bindir"/kind load image-archive $name_flag $image.tar || touch load_fail &
   done
 
-  # Wait for `kind load` background processes to copmlete; exit early if any
+  # Wait for `kind load` background processes to complete; exit early if any
   # job failed
   wait < <(jobs -p)
   if [ -f load_fail ]
@@ -117,6 +124,7 @@ else
 fi
 
 cd -
+
 rm -rf "$dir"
 
 case $(uname) in
@@ -131,16 +139,20 @@ case $(uname) in
     ;;
 esac
 
-# Install the Linkerd CLI
 linkerd=$("$bindir"/docker-pull-binaries "$tag" | awk -v platform=$platform '$0 ~ platform')
 
-# shellcheck disable=SC2068
-"$linkerd" ${context_flag[@]} check --pre
-# shellcheck disable=SC2068
-"$linkerd" ${context_flag[@]} install | kubectl ${context_flag[@]} apply -f -
-# shellcheck disable=SC2068
-"$linkerd" ${context_flag[@]} check
+echo "### Pre checks ###"
+
+# shellcheck disable=SC2086
+(set -x; "$linkerd" $context_flag check --pre)
+
+echo "### Installing $tag ###"
+
+# shellcheck disable=SC2086
+(set -x; "$linkerd" $context_flag install | kubectl $context_flag apply -f -)
+# shellcheck disable=SC2086
+(set -x; "$linkerd" $context_flag check)
 
 echo ""
 echo "Linkerd installed. CLI available:"
-echo "$linkerd ${context_flag[*]}"
+echo "$linkerd"
