@@ -141,8 +141,8 @@ echo "### Pre checks ###"
 
 # shellcheck disable=SC2086
 (
-  set -x"$linkerd"
-  $context_flag check --pre
+  set -x
+  "$linkerd" $context_flag check --pre
 )
 
 echo "### Installing $tag ###"
