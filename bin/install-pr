@@ -140,14 +140,20 @@ linkerd=$("$bindir"/docker-pull-binaries "$tag" | awk -v platform=$platform '$0 
 echo "### Pre checks ###"
 
 # shellcheck disable=SC2086
-(set -x; "$linkerd" $context_flag check --pre)
+(
+  set -x"$linkerd"
+  $context_flag check --pre
+)
 
 echo "### Installing $tag ###"
 
-# shellcheck disable=SC2086
-(set -x; "$linkerd" $context_flag install | kubectl $context_flag apply -f -)
-# shellcheck disable=SC2086
-(set -x; "$linkerd" $context_flag check)
+(
+  set -x
+  # shellcheck disable=SC2086
+  "$linkerd" $context_flag install | kubectl $context_flag apply -f -
+  # shellcheck disable=SC2086
+  "$linkerd" $context_flag check
+)
 
 echo ""
 echo "Linkerd installed. CLI available:"
