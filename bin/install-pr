@@ -16,21 +16,17 @@ do
     -h|--help)
       echo "Install Linkerd with the changes made in a GitHub Pull Request."
       echo ""
-      echo "Note:"
-      echo "    If installing into an existing Kubernetes cluster, this script"
-      echo "    assumes the cluster is not a KinD cluster."
-      echo ""
       echo "Usage:"
-      echo "    --context='': The name of the kubeconfig context to use"
+      echo "    --context: The name of the kubeconfig context to use"
       echo ""
       echo "    # Install Linkerd into the current cluster"
-      echo "    bin/install-pr ####"
+      echo "    bin/install-pr 1234"
       echo ""
       echo "    # Install Linkerd into the current KinD cluster"
-      echo "    bin/install-pr [-k|--kind] ####"
+      echo "    bin/install-pr [-k|--kind] 1234"
       echo ""
-      echo "    # Install Linkerd into the context's KinD cluster"
-      echo "    bin/install-pr [-k|--kind] --context kind ####"
+      echo "    # Install Linkerd into the 'kind-pr-1234' KinD cluster"
+      echo "    bin/install-pr [-k|--kind] --context kind-pr-1234 1234"
       exit 0
       ;;
     --context)
