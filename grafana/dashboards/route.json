@@ -12,23 +12,293 @@
       }
     ]
   },
-  "description": "Latency, SR, RPS, by destination and route",
   "editable": true,
   "gnetId": null,
-  "graphTooltip": 0,
-  "id": 19,
-  "iteration": 1583720427416,
+  "graphTooltip": 1,
+  "id": null,
+  "iteration": 1539806914987,
   "links": [],
   "panels": [
     {
-      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">route/$route</span>\n</div>",
+      "content": "<div style=\"display: flex; align-items: center\">\n  <img src=\"https://linkerd.io/images/identity/favicon/linkerd-favicon.png\" style=\"height:32px;\"/>&nbsp;\n  <span style=\"font-size: 32px\">dst/$dst</span>\n</div>",
       "gridPos": {
         "h": 2,
         "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 20,
+      "id": 2,
+      "links": [],
+      "mode": "html",
+      "options": {},
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#d44a3a",
+        "rgba(237, 129, 40, 0.89)",
+        "#299c46"
+      ],
+      "datasource": "prometheus",
+      "decimals": null,
+      "format": "percentunit",
+      "gauge": {
+        "maxValue": 1,
+        "minValue": 0,
+        "show": true,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 2
+      },
+      "id": 4,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "options": {},
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": true,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": true
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", dst=\"$dst\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) / sum(irate(route_response_total{namespace=\"$namespace\", dst=\"$dst\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s]))",
+          "format": "time_series",
+          "instant": false,
+          "intervalFactor": 1,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "thresholds": "0.9,.99",
+      "title": "SUCCESS RATE",
+      "transparent": true,
+      "type": "singlestat",
+      "valueFontSize": "80%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "current"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#299c46",
+        "rgba(237, 129, 40, 0.89)",
+        "#d44a3a"
+      ],
+      "datasource": "prometheus",
+      "decimals": null,
+      "format": "none",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 2
+      },
+      "id": 6,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "options": {},
+      "postfix": " RPS",
+      "postfixFontSize": "100%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": true,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": true
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "sum(irate(route_request_total{namespace=\"$namespace\", dst=\"$dst\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s]))",
+          "format": "time_series",
+          "instant": false,
+          "intervalFactor": 1,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "thresholds": "",
+      "title": "REQUEST RATE",
+      "transparent": true,
+      "type": "singlestat",
+      "valueFontSize": "100%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "current"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#299c46",
+        "rgba(237, 129, 40, 0.89)",
+        "#d44a3a"
+      ],
+      "datasource": "prometheus",
+      "decimals": null,
+      "format": "none",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 2
+      },
+      "id": 8,
+      "interval": null,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "options": {},
+      "postfix": " ms",
+      "postfixFontSize": "100%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": true,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": true
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", dst=\"$dst\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (le, dst, rt_route))",
+          "format": "time_series",
+          "instant": false,
+          "intervalFactor": 1,
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "thresholds": "",
+      "title": "P95 LATENCY",
+      "transparent": true,
+      "type": "singlestat",
+      "valueFontSize": "100%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "current"
+    },
+    {
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>TOP-LINE TRAFFIC</span>\n</div>",
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 10,
       "links": [],
       "mode": "html",
       "options": {},
@@ -41,27 +311,23 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
-      "fill": 0,
-      "fillGradient": 0,
+      "datasource": "prometheus",
+      "fill": 1,
       "gridPos": {
-        "h": 17,
-        "w": 24,
+        "h": 7,
+        "w": 8,
         "x": 0,
-        "y": 17
+        "y": 8
       },
-      "hiddenSeries": false,
-      "id": 6,
+      "id": 12,
       "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": true,
-        "hideEmpty": true,
+        "avg": false,
+        "current": false,
         "max": false,
-        "min": true,
-        "show": true,
+        "min": false,
+        "show": false,
         "total": false,
-        "values": true
+        "values": false
       },
       "lines": true,
       "linewidth": 2,
@@ -78,10 +344,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\",  rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (namespace, dst, rt_route) / sum(irate(route_response_total{namespace=\"$namespace\",  rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (namespace, dst, rt_route)",
+          "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", dst=\"$dst\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (dst, rt_route) / sum(irate(route_response_total{namespace=\"$namespace\", dst=\"$dst\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (dst, rt_route)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "dst/{{dst}}",
           "refId": "A"
         }
       ],
@@ -105,11 +371,12 @@
       },
       "yaxes": [
         {
+          "decimals": null,
           "format": "percentunit",
           "label": "",
           "logBase": 1,
-          "max": 1,
-          "min": 0,
+          "max": "1",
+          "min": null,
           "show": true
         },
         {
@@ -131,37 +398,31 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
-      "fill": 1,
-      "fillGradient": 0,
+      "datasource": "prometheus",
+      "fill": 0,
       "gridPos": {
-        "h": 19,
-        "w": 24,
-        "x": 0,
-        "y": 34
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 8
       },
-      "hiddenSeries": false,
-      "id": 8,
+      "id": 14,
       "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": true,
-        "hideEmpty": true,
-        "max": true,
+        "avg": false,
+        "current": false,
+        "max": false,
         "min": false,
-        "show": true,
+        "show": false,
         "total": false,
-        "values": true
+        "values": false
       },
       "lines": true,
-      "linewidth": 1,
+      "linewidth": 2,
       "links": [],
       "nullPointMode": "null",
-      "options": {
-        "dataLinks": []
-      },
+      "options": {},
       "percentage": false,
-      "pointradius": 2,
+      "pointradius": 5,
       "points": false,
       "renderer": "flot",
       "seriesOverrides": [],
@@ -170,11 +431,317 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(route_response_total{namespace=\"$namespace\", rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (namespace, rt_route, dst)",
+          "expr": "sum(irate(route_request_total{namespace=\"$namespace\", dst=\"$dst\", direction=\"inbound\", rt_route=\"$rt_route\", tls=\"true\"}[30s])) by (dst, rt_route)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "🔒dst/{{dst}}, 🔒route/{{rt_route}}",
           "refId": "A"
+        },
+        {
+          "expr": "sum(irate(route_request_total{namespace=\"$namespace\", dst=\"$dst\", direction=\"inbound\", rt_route=\"$rt_route\", tls!=\"true\"}[30s])) by (dst, rt_route)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "dst/{{dst}}, route/{{rt_route}}",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "REQUEST RATE",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "decimals": null,
+          "format": "rps",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "id": 16,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {},
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", dst=\"$dst\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (le, dst, rt_route))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "p50 dst/{{dst}}, route/{{rt_route}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", dst=\"$dst\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (le, dst, rt_route))",
+          "format": "time_series",
+          "hide": false,
+          "intervalFactor": 1,
+          "legendFormat": "p95 dst/{{dst}}, route/{{rt_route}}",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", dst=\"$dst\", direction=\"inbound\", rt_route=\"$rt_route\"}[30s])) by (le, dst, rt_route))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "p99 dst/{{dst}}, route/{{rt_route}}",
+          "refId": "C"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "LATENCY",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "decimals": null,
+          "format": "ms",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC BY DEPLOYMENT</span>\n</div>",
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "id": 18,
+      "links": [],
+      "mode": "html",
+      "options": {},
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 17
+      },
+      "id": 20,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {},
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", dst=\"$dst\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (deployment, rt_route) / sum(irate(route_response_total{namespace=\"$namespace\", dst=\"$dst\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (deployment, rt_route)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "deploy/{{deployment}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "SUCCESS RATE",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "decimals": null,
+          "format": "percentunit",
+          "label": "",
+          "logBase": 1,
+          "max": "1",
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 17
+      },
+      "id": 22,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {},
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(irate(route_request_total{namespace=\"$namespace\", dst=\"$dst\", direction=\"outbound\", tls=\"true\", rt_route=\"$rt_route\"}[30s])) by (deployment, rt_route)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "🔒deploy/{{deployment}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(irate(route_request_total{namespace=\"$namespace\", dst=\"$dst\", direction=\"outbound\", tls!=\"true\", rt_route=\"$rt_route\"}[30s])) by (deployment, rt_route)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "deploy/{{deployment}}",
+          "refId": "B"
         }
       ],
       "thresholds": [],
@@ -201,7 +768,7 @@
           "label": "",
           "logBase": 1,
           "max": null,
-          "min": 0,
+          "min": "0",
           "show": true
         },
         {
@@ -225,26 +792,21 @@
       "dashes": false,
       "datasource": "prometheus",
       "fill": 1,
-      "fillGradient": 0,
       "gridPos": {
-        "h": 17,
-        "w": 24,
-        "x": 0,
-        "y": 0
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 17
       },
-      "hiddenSeries": false,
-      "id": 4,
+      "id": 24,
       "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": true,
-        "hideEmpty": true,
-        "max": true,
+        "avg": false,
+        "current": false,
+        "max": false,
         "min": false,
-        "rightSide": false,
-        "show": true,
+        "show": false,
         "total": false,
-        "values": true
+        "values": false
       },
       "lines": true,
       "linewidth": 2,
@@ -261,24 +823,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (le, namespace, rt_route, dst))",
+          "expr": "histogram_quantile(0.95, sum(rate(route_response_latency_ms_bucket{namespace=\"$namespace\", dst=\"$dst\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (le, deployment, rt_route))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "route/{{rt_route}}, dst/{{dst}}",
-          "refId": "A"
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (le, namespace, rt_route, dst))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "route/{{rt_route}}, dst/{{dst}}",
-          "refId": "A"
-        },
-        {
-          "expr": "histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (le, namespace,rt_route, dst))",
-          "format": "time_series",
-          "intervalFactor": 1,
-          "legendFormat": "route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "P95 deploy/{{deployment}}",
           "refId": "A"
         }
       ],
@@ -286,7 +834,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "LATENCY",
+      "title": "P95 LATENCY",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -303,7 +851,289 @@
       "yaxes": [
         {
           "format": "ms",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC BY POD</span>\n</div>",
+      "gridPos": {
+        "h": 2,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 26,
+      "links": [],
+      "mode": "html",
+      "options": {},
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 26
+      },
+      "id": 28,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {},
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\", dst=\"$dst\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (pod, rt_route) / sum(irate(route_response_total{namespace=\"$namespace\", dst=\"$dst\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (pod, rt_route)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "po/{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "SUCCESS RATE",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "decimals": null,
+          "format": "percentunit",
           "label": "",
+          "logBase": 1,
+          "max": "1",
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 26
+      },
+      "id": 30,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {},
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(irate(route_request_total{namespace=\"$namespace\", dst=\"$dst\", direction=\"outbound\", tls=\"true\", rt_route=\"$rt_route\"}[30s])) by (pod, rt_route)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "🔒po/{{pod}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(irate(route_request_total{namespace=\"$namespace\", dst=\"$dst\", direction=\"outbound\", tls!=\"true\", rt_route=\"$rt_route\"}[30s])) by (pod, rt_route)",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "po/{{pod}}",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "REQUEST RATE",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "rps",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 26
+      },
+      "id": 32,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": false,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {},
+      "percentage": false,
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(route_response_latency_ms_bucket{namespace=\"$namespace\", dst=\"$dst\", direction=\"outbound\", rt_route=\"$rt_route\"}[30s])) by (le, pod))",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "P95 po/{{pod, rt_route}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "P95 LATENCY",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "ms",
+          "label": null,
           "logBase": 1,
           "max": null,
           "min": null,
@@ -329,10 +1159,10 @@
         "h": 3,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 33
       },
       "height": "1px",
-      "id": 171,
+      "id": 34,
       "links": [],
       "mode": "html",
       "options": {},
@@ -342,7 +1172,7 @@
     }
   ],
   "refresh": "1m",
-  "schemaVersion": 22,
+  "schemaVersion": 18,
   "style": "dark",
   "tags": [
     "linkerd"
@@ -351,21 +1181,16 @@
     "list": [
       {
         "allValue": null,
-        "current": {
-          "text": "All",
-          "value": [
-            "$__all"
-          ]
-        },
+        "current": {},
         "datasource": "prometheus",
-        "definition": "label_values(route_response_total, namespace)",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "Namespace",
         "multi": false,
         "name": "namespace",
         "options": [],
-        "query": "label_values(route_response_total, namespace)",
+        "query": "label_values(route_request_total, namespace)",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -378,21 +1203,16 @@
       },
       {
         "allValue": null,
-        "current": {
-          "text": "All",
-          "value": [
-            "$__all"
-          ]
-        },
+        "current": {},
         "datasource": "prometheus",
-        "definition": "label_values(route_response_total{namespace=\"$namespace\"}, dst)",
+        "definition": "",
         "hide": 0,
-        "includeAll": true,
+        "includeAll": false,
         "label": "Destination",
-        "multi": true,
+        "multi": false,
         "name": "dst",
         "options": [],
-        "query": "label_values(route_response_total{namespace=\"$namespace\"}, dst)",
+        "query": "label_values(route_request_total{namespace=\"$namespace\"}, dst)",
         "refresh": 2,
         "regex": ".*\\..*\\..*\\..*\\..*",
         "skipUrlSync": false,
@@ -404,32 +1224,27 @@
         "useTags": false
       },
       {
-        "allValue": null,
-        "current": {
-          "text": "All",
-          "value": [
-            "$__all"
-          ]
-        },
-        "datasource": "prometheus",
-        "definition": "label_values(route_response_total{namespace=\"$namespace\", dst=~\"$dst\"}, rt_route)",
-        "hide": 0,
-        "includeAll": false,
-        "label": "Route",
-        "multi": false,
-        "name": "route",
-        "options": [],
-        "query": "label_values(route_response_total{namespace=\"$namespace\", dst=~\"$dst\"}, rt_route)",
-        "refresh": 2,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 1,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      }
+          "allValue": null,
+          "current": {},
+          "datasource": "prometheus",
+          "definition": "",
+          "hide": 0,
+          "includeAll": false,
+          "label": "Route",
+          "multi": false,
+          "name": "rt_route",
+          "options": [],
+          "query": "label_values(route_request_total{namespace=\"$namespace\", dst=\"$dst\"}, rt_route)",
+          "refresh": 2,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 1,
+          "tagValuesQuery": "",
+          "tags": [],
+          "tagsQuery": "",
+          "type": "query",
+          "useTags": false
+        }
     ]
   },
   "time": {
