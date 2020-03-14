@@ -10,29 +10,29 @@ import (
 )
 
 const (
-	hostNetworkEnabled               = "host_network_enabled"
-	sidecarExists                    = "sidecar_already_exists"
-	unsupportedResource              = "unsupported_resource"
-	injectEnableAnnotationAbsent     = "injection_enable_annotation_absent"
-	injectDisableAnnotationPresent   = "injection_disable_annotation_present"
-	annotationAtNamespace            = "namespace"
-	annotationAtWorkload             = "workload"
-	invalidInjectAnnotationWorkload  = "invalid_inject_annotation_at_workload"
-	invalidInjectAnnotationNamespace = "invalid_inject_annotation_at_ns"
-	disabledAutoServiceTokenAcc      = "disabled_automount_service_account_token_account"
+	hostNetworkEnabled                   = "host_network_enabled"
+	sidecarExists                        = "sidecar_already_exists"
+	unsupportedResource                  = "unsupported_resource"
+	injectEnableAnnotationAbsent         = "injection_enable_annotation_absent"
+	injectDisableAnnotationPresent       = "injection_disable_annotation_present"
+	annotationAtNamespace                = "namespace"
+	annotationAtWorkload                 = "workload"
+	invalidInjectAnnotationWorkload      = "invalid_inject_annotation_at_workload"
+	invalidInjectAnnotationNamespace     = "invalid_inject_annotation_at_ns"
+	disabledAutomountServiceAccountToken = "disabled_automount_service_account_token_account"
 )
 
 var (
 	// Reasons is a map of inject skip reasons with human readable sentences
 	Reasons = map[string]string{
-		hostNetworkEnabled:               "hostNetwork is enabled",
-		sidecarExists:                    "pod has a sidecar injected already",
-		unsupportedResource:              "this resource kind is unsupported",
-		injectEnableAnnotationAbsent:     fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled),
-		injectDisableAnnotationPresent:   fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
-		invalidInjectAnnotationWorkload:  fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
-		invalidInjectAnnotationNamespace: fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
-		disabledAutoServiceTokenAcc:      fmt.Sprintf("automountServiceAccountToken set to \"false\""),
+		hostNetworkEnabled:                   "hostNetwork is enabled",
+		sidecarExists:                        "pod has a sidecar injected already",
+		unsupportedResource:                  "this resource kind is unsupported",
+		injectEnableAnnotationAbsent:         fmt.Sprintf("neither the namespace nor the pod have the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectEnabled),
+		injectDisableAnnotationPresent:       fmt.Sprintf("pod has the annotation \"%s:%s\"", k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled),
+		invalidInjectAnnotationWorkload:      fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
+		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
+		disabledAutomountServiceAccountToken: fmt.Sprintf("automountServiceAccountToken set to \"false\""),
 	}
 )
 
@@ -157,7 +157,7 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string
 	serviceAccountToken := conf.pod.spec.AutomountServiceAccountToken
 	if serviceAccountToken != nil {
 		if !*serviceAccountToken {
-			return true, disabledAutoServiceTokenAcc, ""
+			return true, disabledAutomountServiceAccountToken, ""
 		}
 	}
 
