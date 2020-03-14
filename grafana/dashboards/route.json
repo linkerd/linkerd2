@@ -1,4 +1,3 @@
-
 {
   "annotations": {
     "list": [
@@ -13,7 +12,7 @@
       }
     ]
   },
-  "description": "Latency, SR, RPS, by deployment and route",
+  "description": "Latency, SR, RPS, by destination and route",
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
@@ -79,10 +78,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(route_response_total{classification=\"success\", namespace=~\"$namespace\", deployment=~\"$deployment\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, deployment) / sum(irate(route_response_total{namespace=~\"$namespace\", deployment=~\"$deployment\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, deployment)",
+          "expr": "sum(irate(route_response_total{classification=\"success\", namespace=\"$namespace\",  rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (namespace, dst, rt_route) / sum(irate(route_response_total{namespace=\"$namespace\",  rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (namespace, dst, rt_route)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "src/{{deployment}}, route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         }
       ],
@@ -171,10 +170,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(route_response_total{deployment=~\"$deployment\", namespace=~\"$namespace\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (rt_route, dst, deployment)",
+          "expr": "sum(irate(route_response_total{namespace=\"$namespace\", rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (namespace, rt_route, dst)",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "src/{{deployment}}, route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         }
       ],
@@ -262,24 +261,24 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", deployment=~\"$deployment\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, deployment))",
+          "expr": "histogram_quantile(0.5, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (le, namespace, rt_route, dst))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "src/{{deployment}}, route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", deployment=~\"$deployment\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, deployment))",
+          "expr": "histogram_quantile(0.95, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (le, namespace, rt_route, dst))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "src/{{deployment}}, route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{namespace=~\"$namespace\", deployment=~\"$deployment\", rt_route=~\"$route\", dst=~\"$dst\"}[1m])) by (le, rt_route, dst, deployment))",
+          "expr": "histogram_quantile(0.99, sum(irate(route_response_latency_ms_bucket{namespace=\"$namespace\", rt_route=\"$route\", dst=~\"$dst\"}[1m])) by (le, namespace,rt_route, dst))",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "src/{{deployment}}, route/{{rt_route}}, dst/{{dst}}",
+          "legendFormat": "route/{{rt_route}}, dst/{{dst}}",
           "refId": "A"
         }
       ],
@@ -386,14 +385,14 @@
           ]
         },
         "datasource": "prometheus",
-        "definition": "label_values(route_response_total{namespace=~\"$namespace\"}, dst)",
+        "definition": "label_values(route_response_total{namespace=\"$namespace\"}, dst)",
         "hide": 0,
         "includeAll": true,
         "label": "Destination",
         "multi": true,
         "name": "dst",
         "options": [],
-        "query": "label_values(route_response_total{namespace=~\"$namespace\"}, dst)",
+        "query": "label_values(route_response_total{namespace=\"$namespace\"}, dst)",
         "refresh": 2,
         "regex": ".*\\..*\\..*\\..*\\..*",
         "skipUrlSync": false,
@@ -413,41 +412,14 @@
           ]
         },
         "datasource": "prometheus",
-        "definition": "label_values(route_response_total{namespace=~\"$namespace\", dst=~\"$dst\"}, deployment)",
-        "hide": 0,
-        "includeAll": false,
-        "label": "Deployment",
-        "multi": false,
-        "name": "deployment",
-        "options": [],
-        "query": "label_values(route_response_total{namespace=~\"$namespace\", dst=~\"$dst\"}, deployment)",
-        "refresh": 2,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 1,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
-        "allValue": null,
-        "current": {
-          "text": "All",
-          "value": [
-            "$__all"
-          ]
-        },
-        "datasource": "prometheus",
-        "definition": "label_values(route_response_total{deployment=~\"$deployment\", namespace=~\"$namespace\", dst=~\"$dst\"}, rt_route)",
+        "definition": "label_values(route_response_total{namespace=\"$namespace\", dst=~\"$dst\"}, rt_route)",
         "hide": 0,
         "includeAll": false,
         "label": "Route",
         "multi": false,
         "name": "route",
         "options": [],
-        "query": "label_values(route_response_total{deployment=~\"$deployment\", namespace=~\"$namespace\", dst=~\"$dst\"}, rt_route)",
+        "query": "label_values(route_response_total{namespace=\"$namespace\", dst=~\"$dst\"}, rt_route)",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
