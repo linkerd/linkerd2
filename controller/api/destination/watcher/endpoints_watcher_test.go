@@ -736,7 +736,7 @@ subsets:
 			},
 			serviceType: "mirrored service with remapped port in endpoints",
 			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
-			port:        9999,
+			port:        8989,
 			expectedAddresses: []string{
 				"172.17.0.12:9999/gateway-identity-1",
 			},
