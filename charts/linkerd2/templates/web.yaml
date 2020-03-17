@@ -63,6 +63,9 @@ spec:
       - args:
         - -api-addr=linkerd-controller-api.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8085
         - -grafana-addr=linkerd-grafana.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:3000
+        {{- if .Values.tracing.enabled }}
+        - -jaeger-addr={{.Values.tracing.jaeger.name}}.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:16686
+        {{- end}}
         - -controller-namespace={{.Values.global.namespace}}
         - -log-level={{.Values.controllerLogLevel}}
         {{- if .Values.enforcedHostRegexp }}

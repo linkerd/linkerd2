@@ -27,7 +27,8 @@ type (
 		uuid                string
 		controllerNamespace string
 		clusterDomain       string
-		grafanaProxy        *grafanaProxy
+		grafanaProxy        *reverseProxy
+		jaegerProxy         *reverseProxy
 		hc                  healthChecker
 		statCache           *cache.Cache
 	}
@@ -92,4 +93,8 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 
 func (h *handler) handleGrafana(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	h.grafanaProxy.ServeHTTP(w, req)
+}
+
+func (h *handler) handleJaeger(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	h.jaegerProxy.ServeHTTP(w, req)
 }

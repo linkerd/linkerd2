@@ -83,6 +83,7 @@ Please see https://linkerd.io/dns-rebinding for an explanation of what is happen
 func NewServer(
 	addr string,
 	grafanaAddr string,
+	jaegerAddr string,
 	templateDir string,
 	staticDir string,
 	uuid string,
@@ -114,7 +115,8 @@ func NewServer(
 		uuid:                uuid,
 		controllerNamespace: controllerNamespace,
 		clusterDomain:       clusterDomain,
-		grafanaProxy:        newGrafanaProxy(grafanaAddr),
+		grafanaProxy:        newReverseProxy(grafanaAddr, "/grafana"),
+		jaegerProxy:         newReverseProxy(jaegerAddr, ""),
 		hc:                  hc,
 		statCache:           cache.New(statExpiration, statCleanupInterval),
 	}
@@ -196,6 +198,15 @@ func NewServer(
 	server.router.PATCH("/grafana/*grafanapath", handler.handleGrafana)
 	server.router.POST("/grafana/*grafanapath", handler.handleGrafana)
 	server.router.PUT("/grafana/*grafanapath", handler.handleGrafana)
+
+	// jaeger proxy
+	server.router.DELETE("/jaeger/*jaegerpath", handler.handleJaeger)
+	server.router.GET("/jaeger/*jaegerpath", handler.handleJaeger)
+	server.router.HEAD("/jaeger/*jaegerpath", handler.handleJaeger)
+	server.router.OPTIONS("/jaeger/*jaegerpath", handler.handleJaeger)
+	server.router.PATCH("/jaeger/*jaegerpath", handler.handleJaeger)
+	server.router.POST("/jaeger/*jaegerpath", handler.handleJaeger)
+	server.router.PUT("/jaeger/*jaegerpath", handler.handleJaeger)
 
 	return httpServer
 }

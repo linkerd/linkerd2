@@ -201,7 +201,9 @@ spec:
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
       containers:
-      - image: {{.Values.jaeger.image}}
+      - args:
+        - --query.base-path=/jaeger
+        image: {{.Values.jaeger.image}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         name: jaeger
         ports:

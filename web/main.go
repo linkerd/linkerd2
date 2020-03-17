@@ -29,6 +29,7 @@ func main() {
 	metricsAddr := cmd.String("metrics-addr", ":9994", "address to serve scrapable metrics on")
 	apiAddr := cmd.String("api-addr", "127.0.0.1:8085", "address of the linkerd-controller-api service")
 	grafanaAddr := cmd.String("grafana-addr", "127.0.0.1:3000", "address of the linkerd-grafana service")
+	jaegerAddr := cmd.String("jaeger-addr", "127.0.0.1:16686", "address of the jaeger service")
 	templateDir := cmd.String("template-dir", "templates", "directory to search for template files")
 	staticDir := cmd.String("static-dir", "app/dist", "directory to search for static files")
 	reload := cmd.Bool("reload", true, "reloading set to true or false")
@@ -97,7 +98,7 @@ func main() {
 		log.Fatalf("invalid --enforced-host parameter: %s", err)
 	}
 
-	server := srv.NewServer(*addr, *grafanaAddr, *templateDir, *staticDir, uuid,
+	server := srv.NewServer(*addr, *grafanaAddr, *jaegerAddr, *templateDir, *staticDir, uuid,
 		*controllerNamespace, clusterDomain, *reload, reHost, client, k8sAPI, hc)
 
 	go func() {
