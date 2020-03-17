@@ -49,7 +49,6 @@ func (et *endpointTranslator) Add(set watcher.AddressSet) {
 		if address.Pod != nil {
 			wa, err = et.toWeightedAddr(address)
 		} else {
-
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
 				authOverride = &pb.AuthorityOverride{
