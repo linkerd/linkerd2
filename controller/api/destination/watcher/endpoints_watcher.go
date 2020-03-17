@@ -570,9 +570,9 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 
 // getTargetPort returns the port specified as an argument if no service is
 // present. If the service is present and it has a port spec matching the
-// specified port and a target port configured, it returns the name of the
-// service's port (not the name of the target pod port), so that it can be
-// looked up in the endpoints API response, which uses service port names.
+// specified port, it returns the name of the service's port (not the name
+// of the target pod port), so that it can be looked up in the endpoints API
+// response, which uses service port names.
 func getTargetPort(service *corev1.Service, port Port) namedPort {
 	// Use the specified port as the target port by default
 	targetPort := intstr.FromInt(int(port))
@@ -581,10 +581,10 @@ func getTargetPort(service *corev1.Service, port Port) namedPort {
 		return targetPort
 	}
 
-	// If a port spec exists with a port matching the specified port and a target
-	// port configured, use that port spec's name as the target port
+	// If a port spec exists with a port matching the specified port use that
+	// port spec's name as the target port
 	for _, portSpec := range service.Spec.Ports {
-		if portSpec.Port == int32(port) && portSpec.TargetPort != intstr.FromInt(0) {
+		if portSpec.Port == int32(port) {
 			return intstr.FromString(portSpec.Name)
 		}
 	}
