@@ -719,8 +719,7 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-  - port: 8989
-    targetPort: 8989`,
+  - port: 8989`,
 				`
 apiVersion: v1
 kind: Endpoints
@@ -757,8 +756,7 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-  - port: 8989
-    targetPort: 8989`,
+  - port: 8989`,
 				`
 apiVersion: v1
 kind: Endpoints
