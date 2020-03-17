@@ -31,7 +31,6 @@ do
       ;;
     --context)
       context=$2
-      context_flag="--context $context"
       shift
       ;;
     -k|--kind)
@@ -91,17 +90,14 @@ tag=$(echo "$image" | cut -f 2 -d ":")
 if [ $is_kind ]
 then
   # KinD context strings are created by prepending `kind-` to the cluster name
-  # shellcheck disable=SC2086
-  if [ $context ]
+  if [ "$context" ]
   then
     name=$(echo "$context" | sed -n -E "s/(kind)-(.*)/\2/p")
-    name_flag="--name $name"
   fi
 
   for image in cni-plugin controller debug grafana proxy web
   do
-    # shellcheck disable=SC2086
-    "$bindir"/kind load image-archive $name_flag $image.tar || touch load_fail &
+    "$bindir"/kind load image-archive ${name:+'--name' "$name"} $image.tar || touch load_fail &
   done
 
   # Wait for `kind load` background processes to complete; exit early if any
@@ -115,7 +111,8 @@ then
 else
   for image in cni-plugin controller debug grafana proxy web
   do
-    docker load -i "$image.tar"
+    image=$(docker load -i "$image.tar" | sed 's/Loaded image: //')
+    docker push "$image"
   done
 fi
 
@@ -139,20 +136,17 @@ linkerd=$("$bindir"/docker-pull-binaries "$tag" | awk -v platform=$platform '$0 
 
 echo "### Pre checks ###"
 
-# shellcheck disable=SC2086
 (
   set -x
-  "$linkerd" $context_flag check --pre
+  "$linkerd" ${context:+'--context' "$context"} check --pre
 )
 
 echo "### Installing $tag ###"
 
 (
   set -x
-  # shellcheck disable=SC2086
-  "$linkerd" $context_flag install | kubectl $context_flag apply -f -
-  # shellcheck disable=SC2086
-  "$linkerd" $context_flag check
+  "$linkerd" ${context:+'--context' "$context"} install | kubectl ${context:+'--context' "$context"} apply -f -
+  "$linkerd" ${context:+'--context' "$context"} check
 )
 
 echo ""
