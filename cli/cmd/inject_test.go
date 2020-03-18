@@ -323,13 +323,6 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:      true,
 			testInjectConfig: proxyIgnorePortsConfig,
 		},
-		{
-			inputFileName:    "inject_emojivoto_deployment_automountServiceAccountToken_false.input.yml",
-			goldenFileName:   "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.yml",
-			reportFileName:   "inject_emojivoto_deployment_automountServiceAccountToken_false.report",
-			injectProxy:      false,
-			testInjectConfig: defaultConfig,
-		},
 	}
 
 	for i, tc := range testCases {
@@ -403,6 +396,13 @@ func TestRunInjectCmd(t *testing.T) {
 			stdErrGoldenFileName: "inject_gettest_deployment.good.golden.stderr",
 			exitCode:             0,
 			injectProxy:          true,
+		},
+		{
+			inputFileName:        "inject_emojivoto_deployment_automountServiceAccountToken_false.input.yml",
+			stdOutGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.yml",
+			stdErrGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.stderr",
+			exitCode:             1,
+			injectProxy:          false,
 		},
 	}
 

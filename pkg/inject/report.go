@@ -196,3 +196,7 @@ func isInjectAnnotationValid(annotation string) bool {
 	}
 	return true
 }
+
+func (r *Report) IsAutomountServiceAccountTokenDisabled() bool {
+	return r.InjectDisabledReason == disabledAutomountServiceAccountToken
+}
