@@ -7,6 +7,8 @@
 
 run:
   deadline: 5m
+  skip-dirs:
+  - controller/gen
 issues:
   exclude-use-default: false
 linters:
