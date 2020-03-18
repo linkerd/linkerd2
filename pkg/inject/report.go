@@ -197,6 +197,8 @@ func isInjectAnnotationValid(annotation string) bool {
 	return true
 }
 
+//IsAutomountServiceAccountTokenDisabled checks if the injection skip reason is
+//due to `automountServiceAccountToken: false` on the pod spec
 func (r *Report) IsAutomountServiceAccountTokenDisabled() bool {
 	return r.InjectDisabledReason == disabledAutomountServiceAccountToken
 }
