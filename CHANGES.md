@@ -1,3 +1,22 @@
+## edge-20.3.3
+
+This release introduces new experimental CLI commands for querying metrics using
+the Service Mesh Interface (SMI) and for multi-cluster support via service
+mirroring.
+
+If you would like to learn more about service mirroring or SMI, or are
+interested in experimenting with these features, please join us in
+[Linkerd Slack](https://slack.linkerd.io) for help and feedback.
+
+* CLI
+  * Added experimental `linkerd cluster` commands for managing multi-cluster
+    service mirroring
+  * Added the experimental `linkerd alpha clients` command, which uses the
+    smi-metrics API to display client-side metrics from each of a resource's
+    clients
+  * Added retries to some `linkerd check` checks to prevent spurious failures
+    when run immediately after cluster creation or Linkerd installation
+
 ## edge-20.3.2
 
 This release introduces substantial proxy improvements as well as
