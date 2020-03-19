@@ -125,6 +125,7 @@ func init() {
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
 	RootCmd.AddCommand(newCmdInstallServiceMirror())
+	RootCmd.AddCommand(newCmdCluster())
 }
 
 type statOptionsBase struct {
