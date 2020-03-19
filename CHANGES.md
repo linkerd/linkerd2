@@ -24,7 +24,7 @@ new observability and security functionality.
 
 * CLI
   * Added the `linkerd alpha stat` command, which uses the smi-metrics
-    API; the latter enables access to metrics to be controlled with RBAC
+    API; the latter enables access to metrics to be controlled with RBAC 
 * Controller
   * Added support for configuring service profile timeouts
     `(x-linkerd-timeout)` via OpenAPI spec (thanks @lewiscowper!)
@@ -59,7 +59,7 @@ experimenting with this feature, please join us in
 * Proxy
   * Fixed a bug that could cause the proxy's load balancer to stop processing
     updates from service discovery.
-
+    
 ## edge-20.2.3
 
 This release introduces the first optional add-on `tracing`, added through the
