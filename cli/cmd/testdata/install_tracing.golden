@@ -3544,17 +3544,11 @@ data:
     tracing:
       enabled: true
       collector:
-        image: omnition/opencensus-collector:0.1.10
+        image: omnition/opencensus-collector:0.1.11
         name: linkerd-collector
-        resources:
-          cpu:
-            limit: 1
-            request: 200m
-          memory:
-            limit: 2Gi
-            request: 400Mi
+        resources: null
       jaeger:
-        image: jaegertracing/all-in-one:1.8
+        image: jaegertracing/all-in-one:1.17.1
         name: linkerd-jaeger
         resources: null
 ---
@@ -3682,7 +3676,7 @@ spec:
         env:
         - name: GOGC
           value: "80"
-        image: omnition/opencensus-collector:0.1.10
+        image: omnition/opencensus-collector:0.1.11
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3696,13 +3690,6 @@ spec:
           httpGet:
             path: /
             port: 13133
-        resources:
-          limits:
-            cpu: "1"
-            memory: "2Gi"
-          requests:
-            cpu: "200m"
-            memory: "400Mi"
         volumeMounts:
         - mountPath: /conf
           name: linkerd-collector-config-val
@@ -3898,7 +3885,7 @@ spec:
         linkerd.io/proxy-deployment: linkerd-jaeger
     spec:
       containers:
-      - image: jaegertracing/all-in-one:1.8
+      - image: jaegertracing/all-in-one:1.17.1
         imagePullPolicy: IfNotPresent
         name: jaeger
         ports:
