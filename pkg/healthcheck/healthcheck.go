@@ -599,9 +599,10 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "control plane replica sets are ready",
-					hintAnchor:  "l5d-existence-replicasets",
-					fatal:       true,
+					description:   "control plane replica sets are ready",
+					hintAnchor:    "l5d-existence-replicasets",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
 					check: func(context.Context) error {
 						controlPlaneReplicaSet, err := hc.kubeAPI.GetReplicaSets(hc.ControlPlaneNamespace)
 						if err != nil {
@@ -611,9 +612,10 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "no unschedulable pods",
-					hintAnchor:  "l5d-existence-unschedulable-pods",
-					fatal:       true,
+					description:   "no unschedulable pods",
+					hintAnchor:    "l5d-existence-unschedulable-pods",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
 					check: func(context.Context) error {
 						// do not save this into hc.controlPlanePods, as this check may
 						// succeed prior to all expected control plane pods being up

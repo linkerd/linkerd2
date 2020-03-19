@@ -300,7 +300,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 			if r.Kind != "" {
 				output.Write([]byte(fmt.Sprintf("%s \"%s\" skipped\n", r.Kind, r.Name)))
 			} else {
-				output.Write([]byte(fmt.Sprintf("document missing \"kind\" field, skipped\n")))
+				output.Write([]byte(fmt.Sprintln("document missing \"kind\" field, skipped")))
 			}
 		}
 	}

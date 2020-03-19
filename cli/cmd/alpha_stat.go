@@ -119,7 +119,7 @@ Examples:
 					if err != nil {
 						return err
 					}
-					renderTrafficMetricsEdgesList(metrics, stdout, toResource)
+					renderTrafficMetricsEdgesList(metrics, stdout, toResource, "to")
 				} else {
 					metrics, err := smimetrics.GetTrafficMetrics(k8sAPI, target.GetNamespace(), kind, name, nil)
 					if err != nil {
@@ -162,7 +162,7 @@ func buildToResource(namespace, to string) *public.Resource {
 
 func renderTrafficMetrics(metrics *smimetrics.TrafficMetrics, allNamespaces bool, w io.Writer) {
 	t := buildTable(false, allNamespaces)
-	t.Data = []table.Row{metricsToRow(metrics, false)}
+	t.Data = []table.Row{metricsToRow(metrics, "")}
 	t.Render(w)
 }
 
@@ -171,17 +171,17 @@ func renderTrafficMetricsList(metrics *smimetrics.TrafficMetricsList, allNamespa
 	t.Data = []table.Row{}
 	for _, row := range metrics.Items {
 		row := row // Copy to satisfy golint.
-		t.Data = append(t.Data, metricsToRow(&row, false))
+		t.Data = append(t.Data, metricsToRow(&row, ""))
 	}
 	t.Render(w)
 }
 
-func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.Writer, toResource *public.Resource) {
+func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.Writer, toResource *public.Resource, direction string) {
 	t := buildTable(true, false)
 	t.Data = []table.Row{}
 	for _, row := range metrics.Items {
 		row := row // Copy to satisfy golint.
-		if row.Edge.Direction != "to" {
+		if row.Edge.Direction != direction {
 			continue
 		}
 		if toResource != nil {
@@ -189,12 +189,8 @@ func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.
 				log.Debugf("Skipping edge %v", row.Edge.Resource)
 				continue
 			}
-			if toResource.GetNamespace() != "" && row.Edge.Resource.Namespace != toResource.GetNamespace() {
-				log.Debugf("Skipping edge %v", row.Edge.Resource)
-				continue
-			}
 		}
-		t.Data = append(t.Data, metricsToRow(&row, true))
+		t.Data = append(t.Data, metricsToRow(&row, direction))
 	}
 	t.Render(w)
 }
@@ -226,7 +222,7 @@ func getNumericMetricWithUnit(metrics *smimetrics.TrafficMetrics, name string) s
 	return ""
 }
 
-func metricsToRow(metrics *smimetrics.TrafficMetrics, outbound bool) []string {
+func metricsToRow(metrics *smimetrics.TrafficMetrics, direction string) []string {
 	success := getNumericMetric(metrics, "success_count").MilliValue()
 	failure := getNumericMetric(metrics, "failure_count").MilliValue()
 	sr := "-"
@@ -242,15 +238,20 @@ func metricsToRow(metrics *smimetrics.TrafficMetrics, outbound bool) []string {
 	}
 
 	var to string
-	if outbound {
+	var from string
+	if direction == "to" {
 		to = metrics.Edge.Resource.String()
+		from = metrics.Resource.Name
+	} else if direction == "from" {
+		to = metrics.Resource.Name
+		from = metrics.Edge.Resource.String()
 	}
 
 	return []string{
 		metrics.Resource.Namespace,
-		metrics.Resource.Name, // Name
-		metrics.Resource.Name, // From
-		to,                    // To
+		metrics.Resource.Name,
+		from,
+		to,
 		sr,
 		rps,
 		getNumericMetricWithUnit(metrics, "p50_response_latency"),

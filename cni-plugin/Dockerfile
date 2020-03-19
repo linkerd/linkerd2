@@ -1,5 +1,5 @@
 ## compile cni-plugin utility
-FROM gcr.io/linkerd-io/go-deps:93ea34a8 as golang
+FROM gcr.io/linkerd-io/go-deps:6b9a8ea4 as golang
 WORKDIR /linkerd-build
 COPY pkg pkg
 COPY controller controller
