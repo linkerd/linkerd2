@@ -52,14 +52,29 @@ func newCmdCluster() *cobra.Command {
 	createOpts := createOptions{}
 	exportOpts := exportServiceOptions{}
 	clusterCmd := &cobra.Command{
+
 		Hidden: true,
-		Use:    "cluster manages the multicluster  setup for Linkerd",
-		Short:  "cluster manages the multicluster  setup for Linkerd",
+		Use:    "cluster [flags]",
 		Args:   cobra.NoArgs,
+		Short:  "Manages the multicluster setup for Linkerd",
+		Long: `Manages the multicluster setup for Linkerd.
+
+This command provides subcommands to manage the multicluster support
+functionality of Linkerd. You can use it to deploy credentials to
+remote clusters, extract them as well as export remote services to be
+available across clusters.`,
+		Example: `  # Create remote cluster credentials.
+  linkerd --context=cluster-a cluster create-credentials | kubectl --context=cluster-a apply -f -
+
+  # Extract mirroring cluster credentials from cluster A and install them on cluster B
+  linkerd --context=cluster-a cluster get-credentials --cluster-name=remote | kubectl apply --context=cluster-b -f -
+
+  # Export service from cluster A to be available to other clusters
+  linkerd --context=cluster-a cluster export-service --service-name=backend-svc --service-namespace=default --gateway-name=linkerd-gateway --gateway-ns=default`,
 	}
 
 	createCredentialsCommand := &cobra.Command{
-		Hidden: true,
+		Hidden: false,
 		Use:    "create-credentials",
 		Short:  "Create the necessary credentials for service mirroring",
 		Args:   cobra.NoArgs,
@@ -116,7 +131,7 @@ func newCmdCluster() *cobra.Command {
 	}
 
 	getCredentialsCmd := &cobra.Command{
-		Hidden: true,
+		Hidden: false,
 		Use:    "get-credentials",
 		Short:  "Get cluster credentials as a secret",
 		Args:   cobra.NoArgs,
@@ -216,7 +231,7 @@ func newCmdCluster() *cobra.Command {
 	}
 
 	exportServiceCmd := &cobra.Command{
-		Hidden: true,
+		Hidden: false,
 		Use:    "export-service",
 		Short:  "Exposes a remote service to be mirrored",
 		Args:   cobra.NoArgs,
