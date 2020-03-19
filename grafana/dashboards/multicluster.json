@@ -98,7 +98,7 @@
             "tableColumn": "",
             "targets": [
                 {
-                    "expr": "sum(irate(response_total{classification=\"success\", dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s])) / sum(irate(response_total{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s]))",
+                    "expr": "sum(irate(response_total{classification=\"success\", dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s])) / sum(irate(response_total{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s]))",
                     "format": "time_series",
                     "instant": false,
                     "intervalFactor": 1,
@@ -183,7 +183,7 @@
             "tableColumn": "",
             "targets": [
                 {
-                    "expr": "sum(irate(request_total{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s]))",
+                    "expr": "sum(irate(request_total{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s]))",
                     "format": "time_series",
                     "instant": false,
                     "intervalFactor": 1,
@@ -268,7 +268,7 @@
             "tableColumn": "",
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s])) by (le))",
+                    "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s])) by (le))",
                     "format": "time_series",
                     "instant": false,
                     "intervalFactor": 1,
@@ -344,7 +344,7 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "sum(irate(response_total{classification=\"success\", dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s])) by (dst_remote_gateway) / sum(irate(response_total{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s])) by (dst_remote_gateway)",
+                    "expr": "sum(irate(response_total{classification=\"success\", dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s])) by (dst_remote_gateway) / sum(irate(response_total{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s])) by (dst_remote_gateway)",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "gateway/{{dst_remote_gateway}}",
@@ -431,14 +431,14 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "sum(irate(request_total{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_remote_gateway)",
+                    "expr": "sum(irate(request_total{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\", tls=\"true\"}[30s])) by (dst_remote_gateway)",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "🔒gateway/{{dst_remote_gateway}}",
                     "refId": "A"
                 },
                 {
-                    "expr": "sum(irate(request_total{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", tls!=\"true\"}[30s])) by (dst_remote_gateway)",
+                    "expr": "sum(irate(request_total{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", tls!=\"true\"}[30s])) by (dst_remote_gateway)",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "gatewy/{{dst_remote_gateway}}",
@@ -525,14 +525,14 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s])) by (le, dst_remote_gateway))",
+                    "expr": "histogram_quantile(0.5, sum(irate(response_latency_ms_bucket{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s])) by (le, dst_remote_gateway))",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "p50 gateway/{{dst_remote_gateway}}",
                     "refId": "A"
                 },
                 {
-                    "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s])) by (le, dst_remote_gateway))",
+                    "expr": "histogram_quantile(0.95, sum(irate(response_latency_ms_bucket{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s])) by (le, dst_remote_gateway))",
                     "format": "time_series",
                     "hide": false,
                     "intervalFactor": 1,
@@ -540,7 +540,7 @@
                     "refId": "B"
                 },
                 {
-                    "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{ndst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s])) by (le, dst_remote_gateway))",
+                    "expr": "histogram_quantile(0.99, sum(irate(response_latency_ms_bucket{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s])) by (le, dst_remote_gateway))",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "p99 gateway/{{dst_remote_gateway}}",
@@ -643,7 +643,7 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "sum(irate(response_total{classification=\"success\", dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s])) by (dst_remote_service) / sum(irate(response_total{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s])) by (dst_remote_service)",
+                    "expr": "sum(irate(response_total{classification=\"success\", dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s])) by (dst_remote_service) / sum(irate(response_total{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s])) by (dst_remote_service)",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "remote-svc/{{dst_remote_service}}",
@@ -730,14 +730,14 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "sum(irate(request_total{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", tls=\"true\"}[30s])) by (dst_remote_service)",
+                    "expr": "sum(irate(request_total{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", tls=\"true\"}[30s])) by (dst_remote_service)",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "🔒remote-svc/{{dst_remote_service}}",
                     "refId": "A"
                 },
                 {
-                    "expr": "sum(irate(request_total{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", tls!=\"true\"}[30s])) by (dst_remote_service)",
+                    "expr": "sum(irate(request_total{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", tls!=\"true\"}[30s])) by (dst_remote_service)",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "remote-svc/{{dst_remote_service}}",
@@ -823,7 +823,7 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{dst_remote_gateway=\"$gateway\", dst_remote_cluster=\"$cluster\", direction=\"outbound\"}[30s])) by (le, dst_remote_service))",
+                    "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{dst_remote_gateway=\"$gateway\", dst_remote_gateway=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster=\"\", direction=\"outbound\"}[30s])) by (le, dst_remote_service))",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "P95 remote-svc/{{dst_remote_service}}",

@@ -21,12 +21,12 @@ const (
 	podIPIndex = "ip"
 
 	// metrics labels
-	service = "service"
-	namespace = "namespace"
+	service                = "service"
+	namespace              = "namespace"
 	remoteGatewayNamespace = "remote_gateway_namespace"
-	remoteGateway = "remote_gateway"
-	remoteCluster = "remote_cluster"
-	remoteService = "remote_service"
+	remoteGateway          = "remote_gateway"
+	remoteCluster          = "remote_cluster"
+	remoteService          = "remote_service"
 	remoteServiceNamespace = "remote_service_namespace"
 )
 
@@ -459,13 +459,13 @@ func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	pp.metrics.setExists(true)
 }
 
-func metricLabels (endpoints *corev1.Endpoints) map[string]string {
+func metricLabels(endpoints *corev1.Endpoints) map[string]string {
 	labels := map[string]string{service: endpoints.Name, namespace: endpoints.Namespace}
 
-	gateway,hasRemoteGateway := endpoints.Labels[consts.RemoteGatewayNameLabel]
-	gatewayNs,hasRemoteGatwayNs := endpoints.Labels[consts.RemoteGatewayNsLabel]
-	remoteClusterName,hasRemoteClusterName := endpoints.Labels[consts.RemoteClusterNameLabel]
-	serviceFqn,hasServiceFqn := endpoints.Annotations[consts.RemoteServiceFqName]
+	gateway, hasRemoteGateway := endpoints.Labels[consts.RemoteGatewayNameLabel]
+	gatewayNs, hasRemoteGatwayNs := endpoints.Labels[consts.RemoteGatewayNsLabel]
+	remoteClusterName, hasRemoteClusterName := endpoints.Labels[consts.RemoteClusterNameLabel]
+	serviceFqn, hasServiceFqn := endpoints.Annotations[consts.RemoteServiceFqName]
 
 	if hasRemoteGateway && hasRemoteGatwayNs && hasRemoteClusterName && hasServiceFqn {
 		// this means we are looking at Endpoints created for the purpose of mirroring
@@ -535,9 +535,9 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 			}
 		}
 	}
-	return AddressSet {
+	return AddressSet{
 		Addresses: addresses,
-		Labels:     metricLabels(endpoints),
+		Labels:    metricLabels(endpoints),
 	}
 }
 
