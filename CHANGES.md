@@ -1,3 +1,22 @@
+## edge-20.3.3
+
+This release introduces new experimental CLI commands for querying metrics using
+the Service Mesh Interface (SMI) and for multi-cluster support via service
+mirroring.
+
+If you would like to learn more about service mirroring or SMI, or are
+interested in experimenting with these features, please join us in
+[Linkerd Slack](https://slack.linkerd.io) for help and feedback.
+
+* CLI
+  * Added experimental `linkerd cluster` commands for managing multi-cluster
+    service mirroring
+  * Added the experimental `linkerd alpha clients` command, which uses the
+    smi-metrics API to display client-side metrics from each of a resource's
+    clients
+  * Added retries to some `linkerd check` checks to prevent spurious failures
+    when run immediately after cluster creation or Linkerd installation
+
 ## edge-20.3.2
 
 This release introduces substantial proxy improvements as well as
@@ -5,7 +24,7 @@ new observability and security functionality.
 
 * CLI
   * Added the `linkerd alpha stat` command, which uses the smi-metrics
-    API; the latter enables access to metrics to be controlled with RBAC 
+    API; the latter enables access to metrics to be controlled with RBAC
 * Controller
   * Added support for configuring service profile timeouts
     `(x-linkerd-timeout)` via OpenAPI spec (thanks @lewiscowper!)
@@ -40,7 +59,7 @@ experimenting with this feature, please join us in
 * Proxy
   * Fixed a bug that could cause the proxy's load balancer to stop processing
     updates from service discovery.
-    
+
 ## edge-20.2.3
 
 This release introduces the first optional add-on `tracing`, added through the
