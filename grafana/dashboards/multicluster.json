@@ -590,7 +590,7 @@
             }
         },
         {
-            "content": "<div class=\"text-center dashboard-header\">\n  <span>INBOUND TRAFFIC BY REMOTE SERVICE</span>\n</div>",
+            "content": "<div class=\"text-center dashboard-header\">\n  <span>TRAFFIC BY REMOTE SERVICE</span>\n</div>",
             "gridPos": {
                 "h": 2,
                 "w": 24,
@@ -823,7 +823,7 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{dst_remote_gateway=\"$gateway\", dst_remote_gateway=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster=\"\", direction=\"outbound\"}[30s])) by (le, dst_remote_service))",
+                    "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{dst_remote_gateway=\"$gateway\", dst_remote_gateway!=\"\", dst_remote_cluster=\"$cluster\", dst_remote_cluster!=\"\", direction=\"outbound\"}[30s])) by (le, dst_remote_service))",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "P95 remote-svc/{{dst_remote_service}}",
