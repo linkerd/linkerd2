@@ -25,6 +25,8 @@ const (
 	jsonOutput  = "json"
 	tableOutput = "table"
 	wideOutput  = "wide"
+
+	maxRps = 100.0
 )
 
 var (
