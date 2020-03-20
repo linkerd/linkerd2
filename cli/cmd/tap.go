@@ -106,7 +106,7 @@ func newTapOptions() *tapOptions {
 		namespace:     "default",
 		toResource:    "",
 		toNamespace:   "",
-		maxRps:        100.0,
+		maxRps:        maxRps,
 		scheme:        "",
 		method:        "",
 		authority:     "",

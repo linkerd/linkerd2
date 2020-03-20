@@ -262,7 +262,7 @@ func newTopOptions() *topOptions {
 		namespace:     "default",
 		toResource:    "",
 		toNamespace:   "",
-		maxRps:        100.0,
+		maxRps:        maxRps,
 		scheme:        "",
 		method:        "",
 		authority:     "",
