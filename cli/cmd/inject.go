@@ -166,9 +166,6 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return b, reports, err
 	}
 	if b, _ := report.Injectable(); !b {
-		if report.IsAutomountServiceAccountTokenDisabled() {
-			return nil, reports, fmt.Errorf(report.InjectDisabledReason)
-		}
 		return bytes, reports, nil
 	}
 

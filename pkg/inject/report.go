@@ -39,16 +39,17 @@ var (
 // Report contains the Kind and Name for a given workload along with booleans
 // describing the result of the injection transformation
 type Report struct {
-	Kind                 string
-	Name                 string
-	HostNetwork          bool
-	Sidecar              bool
-	UDP                  bool // true if any port in any container has `protocol: UDP`
-	UnsupportedResource  bool
-	InjectDisabled       bool
-	InjectDisabledReason string
-	InjectAnnotationAt   string
-	TracingEnabled       bool
+	Kind                         string
+	Name                         string
+	HostNetwork                  bool
+	Sidecar                      bool
+	UDP                          bool // true if any port in any container has `protocol: UDP`
+	UnsupportedResource          bool
+	InjectDisabled               bool
+	InjectDisabledReason         string
+	InjectAnnotationAt           string
+	TracingEnabled               bool
+	AutomountServiceAccountToken bool
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
 	// proxy-init containers have been uninjected in this report
@@ -75,8 +76,9 @@ func newReport(conf *ResourceConfig) *Report {
 	}
 
 	report := &Report{
-		Kind: strings.ToLower(conf.workload.metaType.Kind),
-		Name: name,
+		Kind:                         strings.ToLower(conf.workload.metaType.Kind),
+		Name:                         name,
+		AutomountServiceAccountToken: true,
 	}
 
 	if conf.pod.meta != nil && conf.pod.spec != nil {
@@ -85,6 +87,9 @@ func newReport(conf *ResourceConfig) *Report {
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
 		report.TracingEnabled = conf.pod.meta.Annotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != "" || conf.nsAnnotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != ""
+		if conf.pod.spec.AutomountServiceAccountToken != nil {
+			report.AutomountServiceAccountToken = *conf.pod.spec.AutomountServiceAccountToken
+		}
 	} else if report.Kind != k8s.Namespace {
 		report.UnsupportedResource = true
 	}
@@ -113,6 +118,10 @@ func (r *Report) Injectable() (bool, []string) {
 	}
 	if r.InjectDisabled {
 		reasons = append(reasons, r.InjectDisabledReason)
+	}
+
+	if !r.AutomountServiceAccountToken {
+		reasons = append(reasons, disabledAutomountServiceAccountToken)
 	}
 
 	if len(reasons) > 0 {
@@ -153,14 +162,6 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string
 	// cli     | n/a       | ""       | yes      | false
 	// cli     | n/a       | disabled | no       | true
 
-	// Check https://github.com/linkerd/linkerd2/issues/3183
-	serviceAccountToken := conf.pod.spec.AutomountServiceAccountToken
-	if serviceAccountToken != nil {
-		if !*serviceAccountToken {
-			return true, disabledAutomountServiceAccountToken, ""
-		}
-	}
-
 	podAnnotation := conf.pod.meta.Annotations[k8s.ProxyInjectAnnotation]
 	nsAnnotation := conf.nsAnnotations[k8s.ProxyInjectAnnotation]
 
@@ -195,10 +196,4 @@ func isInjectAnnotationValid(annotation string) bool {
 		return false
 	}
 	return true
-}
-
-//IsAutomountServiceAccountTokenDisabled checks if the injection skip reason is
-//due to `automountServiceAccountToken: false` on the pod spec
-func (r *Report) IsAutomountServiceAccountTokenDisabled() bool {
-	return r.InjectDisabledReason == disabledAutomountServiceAccountToken
 }
