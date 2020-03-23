@@ -206,6 +206,20 @@ func TestUninjectAndInject(t *testing.T) {
 			testInjectConfig: defaultConfig,
 		},
 		{
+			inputFileName:    "inject_emojivoto_cronjob.input.yml",
+			goldenFileName:   "inject_emojivoto_cronjob.golden.yml",
+			reportFileName:   "inject_emojivoto_cronjob.report",
+			injectProxy:      false,
+			testInjectConfig: defaultConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_cronjob_nometa.input.yml",
+			goldenFileName:   "inject_emojivoto_cronjob_nometa.golden.yml",
+			reportFileName:   "inject_emojivoto_cronjob.report",
+			injectProxy:      false,
+			testInjectConfig: defaultConfig,
+		},
+		{
 			inputFileName:    "inject_emojivoto_pod.input.yml",
 			goldenFileName:   "inject_emojivoto_pod.golden.yml",
 			reportFileName:   "inject_emojivoto_pod.report",
