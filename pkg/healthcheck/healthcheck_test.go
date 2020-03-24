@@ -750,6 +750,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-destination
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-identity
   namespace: test-ns
   labels:
@@ -769,6 +778,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-smi-metrics
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -943,6 +961,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-destination
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-identity
   namespace: test-ns
   labels:
@@ -962,6 +989,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-smi-metrics
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1145,6 +1181,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-destination
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-identity
   namespace: test-ns
   labels:
@@ -1164,6 +1209,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-smi-metrics
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1356,6 +1410,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-destination
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-identity
   namespace: test-ns
   labels:
@@ -1375,6 +1438,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-smi-metrics
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1576,6 +1648,15 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
+  name: linkerd-destination
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
   name: linkerd-identity
   namespace: test-ns
   labels:
@@ -1595,6 +1676,15 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
+  namespace: test-ns
+  labels:
+    linkerd.io/control-plane-ns: test-ns
+`,
+				`
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-smi-metrics
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
