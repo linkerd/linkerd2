@@ -416,6 +416,24 @@ func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
 	if TestHelper.UpgradeHelmFromVersion() == "" {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
+
+	// TODO: remove when 2.8.0 is released
+	_, err := TestHelper.Kubectl("",
+		"--namespace", TestHelper.GetLinkerdNamespace(),
+		"create", "serviceaccount", "linkerd-smi-metrics",
+	)
+	if err != nil {
+		t.Fatalf("linkerd-smi-metrics SA creation failed: %s", err)
+	}
+	_, err = TestHelper.Kubectl("",
+		"--namespace", TestHelper.GetLinkerdNamespace(),
+		"label", "serviceaccount", "linkerd-smi-metrics",
+		"linkerd.io/control-plane-ns="+TestHelper.GetLinkerdNamespace(),
+	)
+	if err != nil {
+		t.Fatalf("linkerd-smi-metrics SA labeling failed: %s", err)
+	}
+
 	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
 }
 
@@ -423,6 +441,16 @@ func TestUpgradeHelm(t *testing.T) {
 	if TestHelper.UpgradeHelmFromVersion() == "" {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
+
+	// TODO: remove when 2.8.0 is released
+	_, err := TestHelper.Kubectl("",
+		"--namespace", TestHelper.GetLinkerdNamespace(),
+		"delete", "serviceaccount", "linkerd-smi-metrics",
+	)
+	if err != nil {
+		t.Fatalf("linkerd-smi-metrics SA deletion failed: %s", err)
+	}
+	time.Sleep(3 * time.Second)
 
 	args := []string{
 		"--reset-values",
