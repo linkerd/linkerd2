@@ -119,7 +119,6 @@ lifecycle:
         - -c
         - sleep {{.Values.global.proxy.waitBeforeExitSeconds}}
 {{- end }}
-{{- if or (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) }}
 volumeMounts:
 - name: podinfo
   mountPath: var/run/linkerd/podinfo
@@ -133,4 +132,3 @@ volumeMounts:
   readOnly: {{.Values.global.proxy.saMountPath.readOnly}}
 {{- end -}}
 {{- end -}}
-{{- end }}
