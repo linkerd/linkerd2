@@ -121,6 +121,8 @@ lifecycle:
 {{- end }}
 {{- if or (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) }}
 volumeMounts:
+- name: podinfo
+  mountPath: var/run/linkerd/podinfo
 {{- if not .Values.global.proxy.disableIdentity }}
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity

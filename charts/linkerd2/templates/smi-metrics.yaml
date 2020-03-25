@@ -88,6 +88,7 @@ spec:
         configMap:
           name: linkerd-smi-metrics
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
       - name: tls
         secret:
           secretName: linkerd-smi-metrics-tls

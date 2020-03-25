@@ -73,6 +73,12 @@
   {{- end }}
   {
     "op": "add",
+    "path": "{{$prefix}}/spec/volumes/-",
+    "value":
+      {{- include "partials.proxy.volumes.labels" . | fromYaml | toPrettyJson | nindent 6 }}
+  },
+  {
+    "op": "add",
     "path": "{{$prefix}}/spec/containers/-",
     "value":
       {{- include "partials.proxy" . | fromYaml | toPrettyJson | nindent 6 }}

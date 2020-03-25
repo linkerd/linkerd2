@@ -166,3 +166,4 @@ spec:
           name: linkerd-grafana-config
         name: grafana-config
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}

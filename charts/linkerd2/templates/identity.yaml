@@ -127,4 +127,5 @@ spec:
         secret:
           secretName: linkerd-identity-issuer
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{end -}}
