@@ -131,7 +131,7 @@ func mirroredServiceAsYaml(name, namespace, gtwName, gtwNs, resourceVersion, gat
 	return string(bytes)
 }
 
-func gateway(name, namespace, resourceVersion, ip, portName string, port int32) *corev1.Service {
+func gateway(name, namespace, resourceVersion, ip, portName string, port int32, identity string) *corev1.Service {
 	svc := corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -141,6 +141,9 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32) 
 			Name:            name,
 			Namespace:       namespace,
 			ResourceVersion: resourceVersion,
+			Annotations: map[string]string{
+				consts.GatewayIdentity: identity,
+			},
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -159,8 +162,8 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32) 
 	return &svc
 }
 
-func gatewayAsYaml(name, namespace, resourceVersion, ip, portName string, port int32, t *testing.T) string {
-	gtw := gateway(name, namespace, resourceVersion, ip, portName, port)
+func gatewayAsYaml(name, namespace, resourceVersion, ip, portName string, port int32, identity string, t *testing.T) string {
+	gtw := gateway(name, namespace, resourceVersion, ip, portName, port, identity)
 
 	bytes, err := yaml.Marshal(gtw)
 	if err != nil {
@@ -169,7 +172,7 @@ func gatewayAsYaml(name, namespace, resourceVersion, ip, portName string, port i
 	return string(bytes)
 }
 
-func endpoints(name, namespace, gtwName, gtwNs, gatewayIP string, ports []corev1.EndpointPort) *corev1.Endpoints {
+func endpoints(name, namespace, gtwName, gtwNs, gatewayIP string, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	var subsets []corev1.EndpointSubset
 	if gatewayIP != "" {
 		subsets = []corev1.EndpointSubset{
@@ -184,7 +187,7 @@ func endpoints(name, namespace, gtwName, gtwNs, gatewayIP string, ports []corev1
 		}
 	}
 
-	return &corev1.Endpoints{
+	endpoints := &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Endpoints",
 			APIVersion: "v1",
@@ -198,13 +201,22 @@ func endpoints(name, namespace, gtwName, gtwNs, gatewayIP string, ports []corev1
 				consts.RemoteGatewayNameLabel: gtwName,
 				consts.RemoteGatewayNsLabel:   gtwNs,
 			},
+			Annotations: map[string]string{
+				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.cluster.local", strings.Replace(name, "-remote", "", 1), namespace),
+			},
 		},
 		Subsets: subsets,
 	}
+
+	if gatewayIdentity != "" {
+		endpoints.Annotations[consts.RemoteGatewayIdentity] = gatewayIdentity
+	}
+
+	return endpoints
 }
 
-func endpointsAsYaml(name, namespace, gtwName, gtwNs, gatewayIP string, ports []corev1.EndpointPort, t *testing.T) string {
-	ep := endpoints(name, namespace, gtwName, gtwNs, gatewayIP, ports)
+func endpointsAsYaml(name, namespace, gtwName, gtwNs, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort, t *testing.T) string {
+	ep := endpoints(name, namespace, gtwName, gtwNs, gatewayIP, gatewayIdentity, ports)
 
 	bytes, err := yaml.Marshal(ep)
 	if err != nil {

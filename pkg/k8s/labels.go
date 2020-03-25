@@ -377,6 +377,9 @@ const (
 	// RemoteGatewayIdentity follows the same kind of logic as RemoteGatewayNameLabel
 	RemoteGatewayIdentity = SvcMirrorPrefix + "/remote-gateway-identity"
 
+	// GatewayIdentity can be found on the remote gateway service
+	GatewayIdentity = SvcMirrorPrefix + "/gateway-identity"
+
 	// ConfigKeyName is the key in the secret that stores the kubeconfig needed to connect
 	// to a remote cluster
 	ConfigKeyName = "kubeconfig"
