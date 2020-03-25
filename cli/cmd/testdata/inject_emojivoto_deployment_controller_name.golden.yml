@@ -155,15 +155,15 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       volumes:
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - downwardAPI:
           items:
           - fieldRef:
               fieldPath: metadata.labels
             path: labels
         name: podinfo
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -322,13 +322,13 @@ spec:
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       volumes:
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - downwardAPI:
           items:
           - fieldRef:
               fieldPath: metadata.labels
             path: labels
         name: podinfo
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
