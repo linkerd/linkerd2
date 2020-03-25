@@ -121,6 +121,8 @@ items:
             runAsUser: 2102
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
+          - mountPath: var/run/linkerd/podinfo
+            name: podinfo
           - mountPath: /var/run/linkerd/identity/end-entity
             name: linkerd-identity-end-entity
         initContainers:
@@ -158,6 +160,12 @@ items:
         - emptyDir:
             medium: Memory
           name: linkerd-identity-end-entity
+        - downwardAPI:
+            items:
+            - fieldRef:
+                fieldPath: metadata.labels
+              path: labels
+          name: podinfo
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
@@ -274,6 +282,8 @@ items:
             runAsUser: 2102
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
+          - mountPath: var/run/linkerd/podinfo
+            name: podinfo
           - mountPath: /var/run/linkerd/identity/end-entity
             name: linkerd-identity-end-entity
         initContainers:
@@ -311,6 +321,12 @@ items:
         - emptyDir:
             medium: Memory
           name: linkerd-identity-end-entity
+        - downwardAPI:
+            items:
+            - fieldRef:
+                fieldPath: metadata.labels
+              path: labels
+          name: podinfo
 - null
 - null
 kind: List

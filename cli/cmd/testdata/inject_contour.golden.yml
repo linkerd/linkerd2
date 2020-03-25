@@ -137,6 +137,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - mountPath: var/run/linkerd/podinfo
+          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -185,4 +187,10 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: labels
+        name: podinfo
 ---

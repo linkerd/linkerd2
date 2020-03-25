@@ -1061,6 +1061,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - name: podinfo
+          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1107,6 +1109,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
 ---
 ###
 ### Controller
@@ -1280,6 +1288,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - name: podinfo
+          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1323,6 +1333,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
 ---
 ###
 ### Destination Controller Service
@@ -1496,6 +1512,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - name: podinfo
+          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1539,6 +1557,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
 
 ---
 ###
@@ -1716,6 +1740,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - name: podinfo
+          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1759,6 +1785,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
 ---
 ###
 ### Prometheus
@@ -2066,6 +2098,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - name: podinfo
+          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2111,6 +2145,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
 ---
 ###
 ### Grafana
@@ -2341,6 +2381,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - name: podinfo
+          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2393,6 +2435,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
 ---
 ###
 ### Proxy Injector
@@ -2545,6 +2593,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - name: podinfo
+          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2591,6 +2641,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
 ---
 kind: Service
 apiVersion: v1
@@ -2779,6 +2835,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - name: podinfo
+          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2822,6 +2880,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
 ---
 ###
 ### Tap
@@ -3001,6 +3065,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - name: podinfo
+          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -3044,6 +3110,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - name: tls
         secret:
           secretName: linkerd-tap-tls
@@ -3374,6 +3446,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - name: podinfo
+          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -3416,6 +3490,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - name: tls
         secret:
           secretName: linkerd-smi-metrics-tls
