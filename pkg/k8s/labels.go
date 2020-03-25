@@ -242,6 +242,10 @@ const (
 	// volume mounted into each proxy to store identity credentials.
 	IdentityEndEntityVolumeName = "linkerd-identity-end-entity"
 
+	// PodInfoVolumeName is the name assigned to the
+	// volume mounted into each proxy to store pod labels.
+	PodInfoVolumeName = "podinfo"
+
 	// IdentityIssuerSecretName is the name of the Secret that stores issuer credentials.
 	IdentityIssuerSecretName = "linkerd-identity-issuer"
 
