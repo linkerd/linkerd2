@@ -78,6 +78,24 @@
     }
   },
   {
+      "op": "add",
+      "path": "/spec/volumes/-",
+      "value":
+      {
+          "downwardAPI": {
+              "items": [
+                  {
+                      "fieldRef": {
+                          "fieldPath": "metadata.labels"
+                      },
+                      "path": "labels"
+                  }
+              ]
+          },
+          "name": "podinfo"
+      }
+  },
+  {
     "op": "add",
     "path": "/spec/containers/-",
     "value": {
@@ -172,7 +190,13 @@
         "readOnlyRootFilesystem": true,
         "runAsUser": 2102
       },
-      "terminationMessagePolicy": "FallbackToLogsOnError"
+      "terminationMessagePolicy": "FallbackToLogsOnError",
+      "volumeMounts": [
+          {
+              "mountPath": "var/run/linkerd/podinfo",
+              "name": "podinfo"
+          }
+      ]
     }
   }
 ]
