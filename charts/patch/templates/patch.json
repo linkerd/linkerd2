@@ -1,5 +1,12 @@
 {{ $prefix := .Values.pathPrefix -}}
 [
+  {{- if .Values.addRootMetadata }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/metadata",
+    "value": {}
+  },
+  {{- end }}
   {{- if .Values.addRootAnnotations }}
   {
     "op": "add",
