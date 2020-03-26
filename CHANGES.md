@@ -10,6 +10,8 @@ This release introduces several fixes and improvements to the CLI.
   * Fixed an error when injecting Cronjobs that have no metadata
   * Relaxed the clock skew check to match the default node heartbeat interval
     on Kubernetes 1.17 and made this check a warning
+  * Fixed a bug where the linkerd-smi-metrics pod could not be created on
+    clusters with pod security policy enabled
 * Internal
   * Upgraded tracing components to more recent versions and improved resource
     defaults (thanks @Pothulapati!)
