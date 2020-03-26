@@ -1,3 +1,19 @@
+## edge-20.3.4
+
+This release introduces several fixes and improvements to the CLI.
+
+* CLI
+  * Added support for kubectl-style label selectors in many CLI commands (thanks
+    @mayankshah1607!)
+  * Fixed the path regex in service profiles generated from proto files without
+    a package name (thanks @amariampolskiy!)
+  * Fixed an error when injecting Cronjobs that have no metadata
+  * Relaxed the clock skew check to match the default node heartbeat interval
+    on Kubernetes 1.17 and made this check a warning
+* Internal
+  * Upgraded tracing components to more recent versions and improved resource
+    defaults (thanks @Pothulapati!)
+
 ## edge-20.3.3
 
 This release introduces new experimental CLI commands for querying metrics using
