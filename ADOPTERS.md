@@ -21,6 +21,7 @@
 - [Paybase](https://paybase.io/)
 - [PlayStudios Asia](https://www.playstudios.asia)
 - [Studyo](https://studyo.co)
+- [Transit](https://transit.app)
 - [Vernacular.ai](https://vernacular.ai/)
 
 If you're using Linkerd 2.x and aren't on this list, please [submit a pull
