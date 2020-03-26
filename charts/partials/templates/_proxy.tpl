@@ -22,6 +22,8 @@ env:
   value: 10000ms
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
   value: 10000ms
+- name: LINKERD2_PROXY_LABELS_FILE_PATH
+  value: /var/run/linkerd/podinfo/labels
 - name: _pod_ns
   valueFrom:
     fieldRef:
