@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
-	tslisters "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/listers/split/v1alpha1"
+	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
+	tslisters "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/listers/split/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"

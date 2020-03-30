@@ -5,7 +5,7 @@ import (
 
 	"k8s.io/client-go/tools/cache"
 
-	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
+	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/resource"

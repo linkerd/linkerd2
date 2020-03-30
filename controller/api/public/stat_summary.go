@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
+	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
 	proto "github.com/golang/protobuf/proto"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"

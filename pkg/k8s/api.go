@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
+	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
