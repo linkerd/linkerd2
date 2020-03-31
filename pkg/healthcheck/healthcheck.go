@@ -175,22 +175,25 @@ var linkerdHAControlPlaneComponents = []string{
 	"linkerd-tap",
 }
 
+// ExpectedServiceAccountNames is a list of the service accounts that a healthy
+// Linkerd installation should have. Note that linkerd-heartbeat is optional,
+// so it doesn't appear here.
+var ExpectedServiceAccountNames = []string{
+	"linkerd-controller",
+	"linkerd-destination",
+	"linkerd-grafana",
+	"linkerd-identity",
+	"linkerd-prometheus",
+	"linkerd-proxy-injector",
+	"linkerd-smi-metrics",
+	"linkerd-sp-validator",
+	"linkerd-web",
+	"linkerd-tap",
+}
+
 var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
-
-	expectedServiceAccountNames = []string{
-		"linkerd-controller",
-		"linkerd-destination",
-		"linkerd-grafana",
-		"linkerd-identity",
-		"linkerd-prometheus",
-		"linkerd-proxy-injector",
-		"linkerd-smi-metrics",
-		"linkerd-sp-validator",
-		"linkerd-web",
-		"linkerd-tap",
-	}
 )
 
 // Resource provides a way to describe a Kubernetes object, kind, and name.
@@ -705,7 +708,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-sa",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkServiceAccounts(expectedServiceAccountNames)
+						return hc.checkServiceAccounts(ExpectedServiceAccountNames)
 					},
 				},
 				{

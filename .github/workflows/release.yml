@@ -140,20 +140,8 @@ jobs:
         PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
         PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.15.2
       run: |
-        # For each container, load the image archive into the KinD cluster.
-        #
-        # `kind load` cannot take input from STDIN, so `<(command)` syntax is
-        # used to load the output into the KinD cluster. Set `DOCKER_HOST` for
-        # a single command, and `docker save` the container from the Packet
-        # host.
-        for image in proxy controller web cni-plugin debug grafana; do
-          kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save "$DOCKER_REGISTRY/$image:$TAG") || tee load_fail &
-        done
-
-        # Wait for `kind load` background processes to complete. Exit early if
-        # any job failed.
-        wait < <(jobs -p)
-        test -f load_fail && exit 1 || true
+        # Fetch images from the Packet host and load them into the local KinD cluster
+        bin/kind-load --images --images-host ssh://linkerd-docker
 
         # Load proxy-init and prometheus images into KinD while it is
         # available. Allow these commands to fail since they will be cached

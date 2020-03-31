@@ -1,17 +1,87 @@
-#!/bin/sh
+#!/bin/bash
 
-set -eu
+set -eo pipefail
 
-# If cluster name is unset or null, default to $USER.
-cluster=${1:-$USER}
+images=""
+images_host=""
+
+while :
+do
+  case $1 in
+    -h|--help)
+      echo "Load into KinD the images for Linkerd's proxy, controller, web, grafana, cli-bin, debug and cni-plugin."
+      echo ""
+      echo "Usage:"
+      echo "    bin/kind-load [--images] [--images-host ssh://linkerd-docker]"
+      echo ""
+      echo "Examples:"
+      echo ""
+      echo "    # Load images from the local docker instance"
+      echo "    bin/kind-load"
+      echo ""
+      echo "    # Load images from tar files located in the current directory"
+      echo "    bin/kind-load --images"
+      echo ""
+      echo "    # Retrieve images from a remote docker instance and then load them into KinD"
+      echo "    bin/kind-load --images --images-host ssh://linkerd-docker"
+      echo ""
+      echo "Available Commands:"
+      echo "    --images: use 'kind load image-archive' to load the images from local .tar files in the current directory."
+      echo "    --images-host: the argument to this option is used as the remote docker instance from which images are first retrieved"
+      echo "                   (using 'docker save') to be then loaded into KinD. This command requires --images."
+      exit 0
+      ;;
+    --images)
+      images=1
+      ;;
+    --images-host)
+      images_host=$2
+      if [ -z "$images_host" ]; then
+        echo "Error: the argument for --images-host was not specified"
+        exit 1
+      fi
+      shift
+      ;;
+    *)
+      break
+  esac
+  shift
+done
+
+if [ "$images_host" ] && [ -z "$images" ]; then
+  echo "Error: --images-host needs to be used with --images" >&2
+  exit 1
+fi
+
+# If cluster name is unset or null, default to "kind".
+cluster=${1:-"kind"}
 
 bindir=$( cd "${0%/*}" && pwd )
 
+# shellcheck source=bin/_tag.sh
 . "$bindir"/_tag.sh
+# shellcheck source=bin/_docker.sh
+. "$bindir"/_docker.sh
 
-tag=$(head_root_tag)
-org_repo=gcr.io/linkerd-io
+TAG=${TAG:-$(head_root_tag)}
 
-for img in proxy controller web grafana ; do
-    "$bindir"/kind load docker-image "$org_repo/$img:$tag" --name $cluster
+rm -f load_fail
+for img in proxy controller web grafana cli-bin debug cni-plugin ; do
+  if [ $images ]; then
+    if [ "$images_host" ]; then
+      DOCKER_HOST=$images_host docker save "$DOCKER_REGISTRY/$img:$TAG" > $img.tar
+    fi
+    cmd=(image-archive "$img.tar")
+  else
+    cmd=(docker-image "$DOCKER_REGISTRY/$img:$TAG")
+  fi
+
+  "$bindir"/kind --name "$cluster" load "${cmd[@]}" || touch load_fail &
 done
+
+wait < <(jobs -p)
+if [ -f load_fail ]; then
+  echo "Loading docker images into KinD cluster failed."
+  rm load_fail
+  exit 1
+fi
