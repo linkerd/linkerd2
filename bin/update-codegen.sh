@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -eux
+set -eu
 
 bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
