@@ -133,4 +133,4 @@ volumeMounts:
   name: {{.Values.global.proxy.saMountPath.name}}
   readOnly: {{.Values.global.proxy.saMountPath.readOnly}}
 {{- end -}}
-{{- end -}}
+{{- end  }}

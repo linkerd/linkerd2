@@ -79,11 +79,6 @@
   },
   {
       "op": "add",
-      "path": "/spec/volumes",
-      "value": []
-  },
-  {
-      "op": "add",
       "path": "/spec/volumes/-",
       "value":
       {

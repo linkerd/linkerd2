@@ -219,6 +219,14 @@ spec:
       serviceAccountName: linkerd-tap
       terminationGracePeriodSeconds: 30
       volumes:
+      - configMap:
+          defaultMode: 420
+          name: linkerd-config
+        name: config
+      - name: tls
+        secret:
+          defaultMode: 420
+          secretName: linkerd-tap-tls
       - downwardAPI:
           items:
           - fieldRef:

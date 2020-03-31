@@ -123,6 +123,7 @@ type patch struct {
 	Annotations           map[string]string         `json:"annotations"`
 	AddRootLabels         bool                      `json:"addRootLabels"`
 	AddRootInitContainers bool                      `json:"addRootInitContainers"`
+	AddRootVolumes        bool                      `json:"addRootVolumes"`
 	Labels                map[string]string         `json:"labels"`
 	DebugContainer        *l5dcharts.DebugContainer `json:"debugContainer"`
 }
@@ -543,6 +544,8 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	values.Global.IdentityTrustAnchorsPEM = idctx.GetTrustAnchorsPem()
 	values.Global.IdentityTrustDomain = idctx.GetTrustDomain()
 	values.Identity = &l5dcharts.Identity{}
+
+	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
 
 	if trace := conf.trace(); trace != nil {
 		log.Infof("tracing enabled: remote service=%s, service account=%s", trace.CollectorSvcAddr, trace.CollectorSvcAccount)

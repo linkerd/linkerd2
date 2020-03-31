@@ -59,11 +59,13 @@
   },
   {{- end }}
   {{- if .Values.global.proxy }}
+  {{- if .Values.addRootVolumes }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes",
     "value": []
   },
+  {{- end }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",
