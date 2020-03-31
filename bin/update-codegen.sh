@@ -14,18 +14,18 @@ CUSTOM_RESOURCE_NAME=serviceprofile
 # CUSTOM_RESOURCE_VERSION :: the version of the resource
 CUSTOM_RESOURCE_VERSION=v1alpha2
 
-rm -f ${rootdir}/controller/gen/apis/${CUSTOM_RESOURCE_NAME}/${CUSTOM_RESOURCE_VERSION}/zz_generated.deepcopy.go
-rm -rf ${rootdir}/controller/gen/client
-rm -rf "$GOPATH/src/$ROOT_PACKAGE/controller/gen"
+rm -f "${rootdir}/controller/gen/apis/${CUSTOM_RESOURCE_NAME}/${CUSTOM_RESOURCE_VERSION}/zz_generated.deepcopy.go"
+rm -rf "${rootdir}/controller/gen/client"
+rm -rf "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen"
 
-chmod +x "${codegen_pkg}"/generate-groups.sh
+chmod +x "${codegen_pkg}/generate-groups.sh"
 
 # run the code-generator entrypoint script
-GO111MODULE="on" "${codegen_pkg}"/generate-groups.sh \
+GO111MODULE="on" "${codegen_pkg}/generate-groups.sh" \
   "deepcopy,client,informer,lister" \
-  "$ROOT_PACKAGE/controller/gen/client" \
-  "$ROOT_PACKAGE/controller/gen/apis" \
-  $CUSTOM_RESOURCE_NAME:$CUSTOM_RESOURCE_VERSION
+  "${ROOT_PACKAGE}/controller/gen/client" \
+  "${ROOT_PACKAGE}/controller/gen/apis" \
+  "${CUSTOM_RESOURCE_NAME}:${CUSTOM_RESOURCE_VERSION}"
 
 # copy generated code out of GOPATH
-cp -R "$GOPATH/src/$ROOT_PACKAGE/controller/gen" "controller/"
+cp -R "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen" "controller/"
