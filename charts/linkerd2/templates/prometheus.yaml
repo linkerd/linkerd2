@@ -15,6 +15,11 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   prometheus.yml: |-
+    {{- if .Values.prometheusAlertmanagers }}
+    alerting:
+      alertmanagers:
+        {{- toYaml .Values.prometheusAlertmanagers | trim | nindent 8 }}
+    {{- end }}
     global:
       scrape_interval: 10s
       scrape_timeout: 10s
@@ -22,6 +27,7 @@ data:
 
     rule_files:
     - /etc/prometheus/*_rules.yml
+    - /etc/prometheus/*_rules.yaml
 
     scrape_configs:
     - job_name: 'prometheus'
@@ -209,6 +215,9 @@ spec:
         - --storage.tsdb.retention.time=6h
         - --config.file=/etc/prometheus/prometheus.yml
         - --log.level={{lower .Values.prometheusLogLevel}}
+        {{- range $key, $value := .Values.prometheusExtraArgs}}
+        - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
+        {{- end }}
         image: {{.Values.prometheusImage}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
@@ -233,10 +242,17 @@ spec:
         securityContext:
           runAsUser: 65534
         volumeMounts:
+      {{- range .Values.prometheusRuleConfigMapMounts }}
+        - name: {{ .name }}
+          mountPath: /etc/prometheus/{{ .subPath }}
+          subPath: {{ .subPath }}
+          readOnly: true
+      {{- end }}
         - mountPath: /data
           name: data
-        - mountPath: /etc/prometheus
+        - mountPath: /etc/prometheus/prometheus.yml
           name: prometheus-config
+          subPath: prometheus.yml
           readOnly: true
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
@@ -245,6 +261,11 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-prometheus
       volumes:
+    {{- range .Values.prometheusRuleConfigMapMounts }}
+      - name: {{ .name }}
+        configMap:
+          name: {{ .configMap }}
+    {{- end }}
       - emptyDir: {}
         name: data
       - configMap:

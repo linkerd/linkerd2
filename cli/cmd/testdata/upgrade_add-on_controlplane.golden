@@ -990,6 +990,7 @@ data:
 
     rule_files:
     - /etc/prometheus/*_rules.yml
+    - /etc/prometheus/*_rules.yaml
 
     scrape_configs:
     - job_name: 'prometheus'
@@ -1196,8 +1197,9 @@ spec:
         volumeMounts:
         - mountPath: /data
           name: data
-        - mountPath: /etc/prometheus
+        - mountPath: /etc/prometheus/prometheus.yml
           name: prometheus-config
+          subPath: prometheus.yml
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
