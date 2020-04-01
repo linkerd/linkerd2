@@ -19,7 +19,7 @@ do
       echo "    # Load images from the local docker instance"
       echo "    bin/kind-load"
       echo ""
-      echo "    # Load images from tar files located in the current directory"
+      echo "    # Load images from tar files located under the 'image-archives' directory"
       echo "    bin/kind-load --images"
       echo ""
       echo "    # Retrieve images from a remote docker instance and then load them into KinD"
@@ -65,13 +65,18 @@ bindir=$( cd "${0%/*}" && pwd )
 
 TAG=${TAG:-$(head_root_tag)}
 
+# This is really to load the kind binary synchronously, before
+# the parallel executions below attempt doing so
+"$bindir"/kind version
+
 rm -f load_fail
 for img in proxy controller web grafana cli-bin debug cni-plugin ; do
   if [ $images ]; then
     if [ "$images_host" ]; then
-      DOCKER_HOST=$images_host docker save "$DOCKER_REGISTRY/$img:$TAG" > $img.tar
+      mkdir -p image-archives
+      DOCKER_HOST=$images_host docker save "$DOCKER_REGISTRY/$img:$TAG" > image-archives/$img.tar
     fi
-    cmd=(image-archive "$img.tar")
+    cmd=(image-archive "image-archives/$img.tar")
   else
     cmd=(docker-image "$DOCKER_REGISTRY/$img:$TAG")
   fi
