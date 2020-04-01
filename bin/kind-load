@@ -73,7 +73,8 @@ rm -f load_fail
 for img in proxy controller web grafana cli-bin debug cni-plugin ; do
   if [ $images ]; then
     if [ "$images_host" ]; then
-      DOCKER_HOST=$images_host docker save "$DOCKER_REGISTRY/$img:$TAG" > $img.tar
+      mkdir -p image-archives
+      DOCKER_HOST=$images_host docker save "$DOCKER_REGISTRY/$img:$TAG" > image-archives/$img.tar
     fi
     cmd=(image-archive "image-archives/$img.tar")
   else

@@ -98,7 +98,6 @@ jobs:
         ! -name docker-retag-all \
         ! -name _docker.sh \
         ! -name fmt \
-        ! -name kind-load \
         ! -name lint \
         ! -name _log.sh \
         ! -name minikube-start-hyperv.bat \
