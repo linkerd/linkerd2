@@ -9,64 +9,16 @@ import (
 	"net/url"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/metrics/v1alpha1"
 	log "github.com/sirupsen/logrus"
-)
-
-type (
-	// TrafficMetricsList is a list of TrafficMetrics objects for a Resource.
-	TrafficMetricsList struct {
-		Resource Resource         `json:"resource"`
-		Items    []TrafficMetrics `json:"items"`
-	}
-
-	// Resource names a Kubernetes resource.  If Name is blank, this refers to
-	// a resource kind.  Otherwise, it refers to a specific named resource.
-	Resource struct {
-		Kind      string `json:"kind"`
-		Name      string `json:"name"`
-		Namespace string `json:"namespace"`
-	}
-
-	// TrafficMetrics is a collection of metrics for a Resource.
-	TrafficMetrics struct {
-		Window   string   `json:"window"`
-		Resource Resource `json:"resource"`
-		Edge     Edge     `json:"edge"`
-		Metrics  []Metric `json:"metrics"`
-	}
-
-	// Edge indicates if the associated metrics are measured on the inbound
-	// or outbound side and which resource is the peer.
-	Edge struct {
-		Direction string   `json:"direction"`
-		Resource  Resource `json:"resource"`
-	}
-
-	// Metric is an individual traffic metric.
-	Metric struct {
-		Name  string `json:"name"`
-		Unit  string `json:"unit"`
-		Value string `json:"value"`
-	}
-
-	// Status is an API response that is returned when the operation is not
-	// successful.
-	Status struct {
-		Kind    string `json:"kind"`
-		Status  string `json:"status"`
-		Message string `json:"message"`
-	}
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const apiBase = "/apis/metrics.smi-spec.io/v1alpha1"
 
-func (r Resource) String() string {
-	return fmt.Sprintf("%s.%s", r.Name, r.Namespace)
-}
-
 // GetTrafficMetrics returns the inbound traffic metrics for a specific named
 // resource.
-func GetTrafficMetrics(k8sAPI *k8s.KubernetesAPI, namespace, kind, name string, params map[string]string) (*TrafficMetrics, error) {
+func GetTrafficMetrics(k8sAPI *k8s.KubernetesAPI, namespace, kind, name string, params map[string]string) (*v1alpha1.TrafficMetrics, error) {
 	ns := ""
 	if namespace != "" {
 		ns = "/namespaces/" + namespace
@@ -83,7 +35,7 @@ func GetTrafficMetrics(k8sAPI *k8s.KubernetesAPI, namespace, kind, name string, 
 
 // GetTrafficMetricsList returns the inbound traffic metrics for all resources
 // of a given kind.
-func GetTrafficMetricsList(k8sAPI *k8s.KubernetesAPI, namespace, kind string, params map[string]string) (*TrafficMetricsList, error) {
+func GetTrafficMetricsList(k8sAPI *k8s.KubernetesAPI, namespace, kind string, params map[string]string) (*v1alpha1.TrafficMetricsList, error) {
 	ns := ""
 	if namespace != "" {
 		ns = "/namespaces/" + namespace
@@ -100,7 +52,7 @@ func GetTrafficMetricsList(k8sAPI *k8s.KubernetesAPI, namespace, kind string, pa
 
 // GetTrafficMetricsEdgesList returns the edge traffic metrics for a specific
 // named resource.
-func GetTrafficMetricsEdgesList(k8sAPI *k8s.KubernetesAPI, namespace, kind, name string, params map[string]string) (*TrafficMetricsList, error) {
+func GetTrafficMetricsEdgesList(k8sAPI *k8s.KubernetesAPI, namespace, kind, name string, params map[string]string) (*v1alpha1.TrafficMetricsList, error) {
 	ns := ""
 	if namespace != "" {
 		ns = "/namespaces/" + namespace
@@ -156,7 +108,7 @@ func getMetricsResponse(k8sAPI *k8s.KubernetesAPI, path string, params map[strin
 }
 
 func handleStatusResponse(bytes []byte) error {
-	var status Status
+	var status metav1.Status
 	json.Unmarshal(bytes, &status)
 	if status.Kind == "Status" {
 		return errors.New(status.Message)
@@ -164,13 +116,13 @@ func handleStatusResponse(bytes []byte) error {
 	return nil
 }
 
-func parseTrafficMetrics(bytes []byte) (*TrafficMetrics, error) {
+func parseTrafficMetrics(bytes []byte) (*v1alpha1.TrafficMetrics, error) {
 	err := handleStatusResponse(bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	var metrics TrafficMetrics
+	var metrics v1alpha1.TrafficMetrics
 	err = json.Unmarshal(bytes, &metrics)
 	if err != nil {
 		log.Errorf("Failed to decode response as TrafficMetrics [%s]: %v", string(bytes), err)
@@ -182,13 +134,13 @@ func parseTrafficMetrics(bytes []byte) (*TrafficMetrics, error) {
 	return &metrics, nil
 }
 
-func parseTrafficMetricsList(bytes []byte) (*TrafficMetricsList, error) {
+func parseTrafficMetricsList(bytes []byte) (*v1alpha1.TrafficMetricsList, error) {
 	err := handleStatusResponse(bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	var metrics TrafficMetricsList
+	var metrics v1alpha1.TrafficMetricsList
 	err = json.Unmarshal(bytes, &metrics)
 	if err != nil {
 		log.Errorf("Failed to decode response as TrafficMetricsList [%s]: %v", string(bytes), err)
