@@ -1,3 +1,25 @@
+## stable-2.7.1
+
+This release introduces substantial proxy improvements, resulting from continued
+profiling & performance analysis. Also support for Kubernetes 1.17 was improved.
+
+To install this release, run: curl https://run.linkerd.io/install | sh
+
+**Full release notes**:
+
+* CLI
+  * Relaxed the clock skew check to match the default node heartbeat interval on
+    Kubernetes 1.17 and made this check a warning
+* Proxy
+  * Fixed a bug that could cause log levels to be processed incorrectly
+  * Fixed a bug that could cause the proxy's load balancer to stop processing
+    updates from service discovery
+  * Increased the inbound router's default capacity from 100 to 10k to
+    accommodate environments that have a high cardinality of virtual hosts
+    served by a single pod
+  * Added `request_errors_total` metric exposing the number of requests that
+    receive synthesized responses due to proxy errors
+
 ## stable-2.7.0
 
 This release adds support for integrating Linkerd's PKI with an external
