@@ -1,3 +1,17 @@
+## edge-20.4.1
+
+This release introduces some cool new functionalities, all provided by our
+awesome community of contributors!
+
+* CLI
+  * Added `linkerd uninstall` command to uninstall the control plane (thanks
+    @Matei207!)
+* Controller
+  * Fail proxy injection if the pod has spec has `automountServiceAccountToken`
+    disabled (thanks @mayankshah1607!)
+* Web UI
+  * Added a route dashboard to Grafana (thanks @lundbird!)
+
 ## edge-20.3.4
 
 This release introduces several fixes and improvements to the CLI.
