@@ -536,6 +536,13 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		conf.injectProxyInit(values)
 	}
 
+	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
+
+	if trace := conf.trace(); trace != nil {
+		log.Infof("tracing enabled: remote service=%s, service account=%s", trace.CollectorSvcAddr, trace.CollectorSvcAccount)
+		values.Global.Proxy.Trace = trace
+	}
+
 	idctx := conf.identityContext()
 	if idctx == nil {
 		values.Global.Proxy.DisableIdentity = true
@@ -545,12 +552,6 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	values.Global.IdentityTrustDomain = idctx.GetTrustDomain()
 	values.Identity = &l5dcharts.Identity{}
 
-	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
-
-	if trace := conf.trace(); trace != nil {
-		log.Infof("tracing enabled: remote service=%s, service account=%s", trace.CollectorSvcAddr, trace.CollectorSvcAccount)
-		values.Global.Proxy.Trace = trace
-	}
 }
 
 func (conf *ResourceConfig) injectProxyInit(values *patch) {
