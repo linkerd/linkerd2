@@ -166,11 +166,8 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		b, err := conf.InjectNamespace(rt.overrideAnnotations)
 		return b, reports, err
 	}
-	if b, _ := report.Injectable(); !b {
-		if !report.AutomountServiceAccountToken {
-			return bytes, reports, errors.New(automountServiceAccountTokenDesc)
-		}
-		return bytes, reports, nil
+	if b, reasons := report.Injectable(); !b {
+		return bytes, reports, report.GetInjectFailReason(reasons)
 	}
 
 	if rt.injectProxy {

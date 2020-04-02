@@ -2,6 +2,7 @@ package inject
 
 import (
 	"fmt"
+	"github.com/fatih/color"
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -34,6 +35,7 @@ var (
 		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
 		disabledAutomountServiceAccountToken: fmt.Sprintf("automountServiceAccountToken set to \"false\""),
 	}
+	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7") // ×
 )
 
 // Report contains the Kind and Name for a given workload along with booleans
@@ -128,6 +130,14 @@ func (r *Report) Injectable() (bool, []string) {
 		return false, reasons
 	}
 	return true, nil
+}
+
+func (r *Report) GetInjectFailReason(reasons []string) error {
+	desc := fmt.Sprintf("Resource with name \"%s\" of kind \"%s\" cannot be injected due to the following reasons:\n", r.Name, r.Kind)
+	for _, reason := range reasons {
+		desc += fmt.Sprintf("\n%s %s", failStatus, Reasons[reason])
+	}
+	return fmt.Errorf(desc)
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {
