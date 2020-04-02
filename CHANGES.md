@@ -7,7 +7,7 @@ awesome community of contributors!
   * Added `linkerd uninstall` command to uninstall the control plane (thanks
     @Matei207!)
 * Controller
-  * Fail proxy injection if the pod has spec has `automountServiceAccountToken`
+  * Fail proxy injection if the pod spec has `automountServiceAccountToken`
     disabled (thanks @mayankshah1607!)
 * Web UI
   * Added a route dashboard to Grafana (thanks @lundbird!)
