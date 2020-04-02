@@ -1,6 +1,3 @@
+Error transforming resources: Resource with name "" of kind "" cannot be injected due to the following reasons:
 
-deployment "web" injected
-deployment "emoji" injected
-document missing "kind" field, skipped
-document missing "kind" field, skipped
-
+× this resource kind is unsupported

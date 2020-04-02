@@ -1,9 +1,3 @@
+Error transforming resources: Resource with name "web" of kind "deployment" cannot be injected due to the following reasons:
 
-‼ "hostNetwork: true" detected in deployment/web
-√ pods do not have a 3rd party proxy or initContainer already injected
-√ pods are not annotated to disable injection
-‼ no supported objects found
-√ pod specs do not include UDP ports
-
-deployment "web" skipped
-
+× hostNetwork is enabled
