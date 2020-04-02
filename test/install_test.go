@@ -542,6 +542,33 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 	}
 }
 
+func TestUninstall(t *testing.T) {
+	cmd := []string{"uninstall"}
+
+	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	if err != nil {
+		t.Fatalf("linkerd uninstall command failed\n%s\n%s", out, stderr)
+	}
+
+	var golden string
+	installNs := TestHelper.GetLinkerdNamespace()
+	switch installNs {
+	case "l5d-integration-external-issuer":
+		golden = "uninstall.external-issuer.golden"
+	case "l5d-integration-upgrade":
+		golden = "uninstall.upgrade.golden"
+	case "l5d-integration-helm":
+		golden = "uninstall.helm.golden"
+	default:
+		golden = "uninstall.golden"
+	}
+
+	err = TestHelper.ValidateOutput(out, golden)
+	if err != nil {
+		t.Fatalf("Received unexpected output\n%s", err.Error())
+	}
+}
+
 func TestInstallSP(t *testing.T) {
 	cmd := []string{"install-sp"}
 
