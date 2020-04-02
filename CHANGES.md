@@ -3,7 +3,7 @@
 This release introduces substantial proxy improvements, resulting from continued
 profiling & performance analysis. Also support for Kubernetes 1.17 was improved.
 
-To install this release, run: curl https://run.linkerd.io/install | sh
+To install this release, run:  `curl https://run.linkerd.io/install | sh`
 
 **Full release notes**:
 
