@@ -60,4 +60,7 @@ spec:
         name: service-mirror
         securityContext:
           runAsUser: {{.Values.serviceMirrorUID}}
+        ports:
+        - containerPort: 9999
+          name: admin-http
       serviceAccountName: linkerd-service-mirror

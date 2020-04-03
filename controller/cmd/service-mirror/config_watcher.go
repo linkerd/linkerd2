@@ -20,14 +20,16 @@ type RemoteClusterConfigWatcher struct {
 	clusterWatchers map[string]*RemoteClusterServiceWatcher
 	requeueLimit    int
 	sync.RWMutex
+	probeEvents chan interface{}
 }
 
 // NewRemoteClusterConfigWatcher Creates a new config watcher
-func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int) *RemoteClusterConfigWatcher {
+func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int, probeEvents chan interface{}) *RemoteClusterConfigWatcher {
 	rcw := &RemoteClusterConfigWatcher{
 		k8sAPI:          k8sAPI,
 		clusterWatchers: map[string]*RemoteClusterServiceWatcher{},
 		requeueLimit:    requeueLimit,
+		probeEvents:     probeEvents,
 	}
 	k8sAPI.Secret().Informer().AddEventHandler(
 		cache.FilteringResourceEventHandler{
@@ -105,12 +107,12 @@ func (rcw *RemoteClusterConfigWatcher) Stop() {
 }
 
 func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secret) error {
-	config, name, domain, err := parseRemoteClusterSecret(secret)
+	config, err := parseRemoteClusterSecret(secret)
 	if err != nil {
 		return err
 	}
 
-	clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
+	clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config.apiConfig)
 	if err != nil {
 		return fmt.Errorf("unable to parse kube config: %s", err)
 	}
@@ -118,50 +120,68 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 	rcw.Lock()
 	defer rcw.Unlock()
 
-	if _, ok := rcw.clusterWatchers[name]; ok {
-		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", name)
+	if _, ok := rcw.clusterWatchers[config.clusterName]; ok {
+		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", config.clusterName)
 	}
 
-	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, name, rcw.requeueLimit, domain)
+	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, config.clusterName, rcw.requeueLimit, config.clusterDomain, config.probePort, config.probePath, config.probePeriodSeconds, rcw.probeEvents)
 	if err != nil {
 		return err
 	}
 
-	rcw.clusterWatchers[name] = watcher
+	rcw.clusterWatchers[config.clusterName] = watcher
 	watcher.Start()
 	return nil
 
 }
 
 func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(secret *corev1.Secret, cleanState bool) error {
-	_, name, _, err := parseRemoteClusterSecret(secret)
+	config, err := parseRemoteClusterSecret(secret)
 	if err != nil {
 		return err
 	}
 	rcw.Lock()
 	defer rcw.Unlock()
-	if watcher, ok := rcw.clusterWatchers[name]; ok {
+	if watcher, ok := rcw.clusterWatchers[config.clusterName]; ok {
 		watcher.Stop(cleanState)
 	} else {
-		return fmt.Errorf("cannot find watcher for cluser: %s", name)
+		return fmt.Errorf("cannot find watcher for cluser: %s", config.clusterName)
 	}
-	delete(rcw.clusterWatchers, name)
+	delete(rcw.clusterWatchers, config.clusterName)
 
 	return nil
 }
 
-func parseRemoteClusterSecret(secret *corev1.Secret) ([]byte, string, string, error) {
+type watchedClusterConfig struct {
+	apiConfig          []byte
+	clusterName        string
+	clusterDomain      string
+	probePort          int32
+	probePath          string
+	probePeriodSeconds int32
+}
+
+func parseRemoteClusterSecret(secret *corev1.Secret) (*watchedClusterConfig, error) {
 	clusterName, hasClusterName := secret.Annotations[consts.RemoteClusterNameLabel]
 	config, hasConfig := secret.Data[consts.ConfigKeyName]
 	domain, hasDomain := secret.Annotations[consts.RemoteClusterDomainAnnotation]
 	if !hasClusterName {
-		return nil, "", "", fmt.Errorf("secret of type %s should contain key %s", consts.MirrorSecretType, consts.ConfigKeyName)
+		return nil, fmt.Errorf("secret of type %s should contain key %s", consts.MirrorSecretType, consts.ConfigKeyName)
 	}
 	if !hasConfig {
-		return nil, "", "", fmt.Errorf("secret should contain remote cluster name as annotation %s", consts.RemoteClusterNameLabel)
+		return nil, fmt.Errorf("secret should contain remote cluster name as annotation %s", consts.RemoteClusterNameLabel)
 	}
 	if !hasDomain {
-		return nil, "", "", fmt.Errorf("secret should contain remote cluster domain as annotation %s", consts.RemoteClusterDomainAnnotation)
+		return nil, fmt.Errorf("secret should contain remote cluster domain as annotation %s", consts.RemoteClusterDomainAnnotation)
 	}
-	return config, clusterName, domain, nil
+
+	//TODO Externalize the port,path and period through  the get-credentials command
+	return &watchedClusterConfig{
+		apiConfig:          config,
+		clusterName:        clusterName,
+		clusterDomain:      domain,
+		probePort:          80,
+		probePath:          "/nginx-health",
+		probePeriodSeconds: 3,
+	}, nil
 }

@@ -26,14 +26,18 @@ type (
 	// it can be requeued up to N times, to ensure that the failure is not due to some temporary network
 	// problems or general glitch in the Matrix.
 	RemoteClusterServiceWatcher struct {
-		clusterName     string
-		clusterDomain   string
-		remoteAPIClient *k8s.API
-		localAPIClient  *k8s.API
-		stopper         chan struct{}
-		log             *logging.Entry
-		eventsQueue     workqueue.RateLimitingInterface
-		requeueLimit    int
+		clusterName        string
+		clusterDomain      string
+		remoteAPIClient    *k8s.API
+		localAPIClient     *k8s.API
+		stopper            chan struct{}
+		log                *logging.Entry
+		eventsQueue        workqueue.RateLimitingInterface
+		requeueLimit       int
+		probePort          int32
+		probePath          string
+		probePeriodSeconds int32
+		probeChan          chan<- interface{}
 	}
 
 	// RemoteServiceCreated is generated whenever a remote service is created Observing
@@ -57,8 +61,9 @@ type (
 	// RemoteServiceDeleted when a remote service is going away or it is not
 	// considered mirrored anymore
 	RemoteServiceDeleted struct {
-		Name      string
-		Namespace string
+		Name        string
+		Namespace   string
+		GatewayData *gatewayMetadata
 	}
 
 	// RemoteGatewayDeleted is observed when a service that is a gateway to at least
@@ -187,7 +192,17 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadat
 }
 
 // NewRemoteClusterServiceWatcher constructs a new cluster watcher
-func NewRemoteClusterServiceWatcher(localAPI *k8s.API, cfg *rest.Config, clusterName string, requeueLimit int, clusterDomain string) (*RemoteClusterServiceWatcher, error) {
+func NewRemoteClusterServiceWatcher(
+	localAPI *k8s.API,
+	cfg *rest.Config,
+	clusterName string,
+	requeueLimit int,
+	clusterDomain string,
+	probePort int32,
+	probePath string,
+	probePeriodSeconds int32,
+	probeChan chan<- interface{},
+) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(cfg, false, k8s.Svc)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize remote api for cluster %s: %s", clusterName, err)
@@ -203,8 +218,12 @@ func NewRemoteClusterServiceWatcher(localAPI *k8s.API, cfg *rest.Config, cluster
 			"cluster":    clusterName,
 			"apiAddress": cfg.Host,
 		}),
-		eventsQueue:  workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		requeueLimit: requeueLimit,
+		eventsQueue:        workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		requeueLimit:       requeueLimit,
+		probePort:          probePort,
+		probePath:          probePath,
+		probePeriodSeconds: probePeriodSeconds,
+		probeChan:          probeChan,
 	}, nil
 }
 
@@ -314,6 +333,13 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 	if len(errors) > 0 {
 		return RetryableError{errors}
 	}
+
+	rcsw.probeChan <- &ClusterRegistered{
+		clusterName:   rcsw.clusterName,
+		port:          rcsw.probePort,
+		path:          rcsw.probePath,
+		periodSeconds: rcsw.probePeriodSeconds,
+	}
 	return nil
 }
 
@@ -396,6 +422,13 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteSe
 	}
 
 	rcsw.log.Debugf("Successfully deleted Service: %s/%s", ev.Namespace, localServiceName)
+	rcsw.probeChan <- &MirroredServiceUnpaired{
+		serviceName:      localServiceName,
+		serviceNamespace: ev.Namespace,
+		gatewayName:      ev.GatewayData.Name,
+		gatewayNs:        ev.GatewayData.Namespace,
+		clusterName:      rcsw.clusterName,
+	}
 	return nil
 }
 
@@ -404,6 +437,16 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteSe
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteServiceUpdated) error {
 	serviceInfo := fmt.Sprintf("%s/%s", ev.remoteUpdate.Namespace, ev.remoteUpdate.Name)
 	rcsw.log.Debugf("Updating remote mirrored service %s/%s", ev.localService.Namespace, ev.localService.Name)
+
+	if ev.localEndpoints.Labels[consts.RemoteGatewayNameLabel] != ev.gatewayData.Name {
+		rcsw.probeChan <- &MirroredServiceUnpaired{
+			serviceName:      ev.localService.Name,
+			serviceNamespace: ev.localService.Namespace,
+			gatewayName:      ev.localEndpoints.Labels[consts.RemoteGatewayNameLabel],
+			gatewayNs:        ev.localEndpoints.Labels[consts.RemoteGatewayNsLabel],
+			clusterName:      rcsw.clusterName,
+		}
+	}
 
 	gatewayEndpoints, gatewayPort, resVersion, gatewayIdentity, err := rcsw.resolveGateway(ev.gatewayData)
 	if err == nil {
@@ -458,6 +501,17 @@ func remapRemoteServicePorts(ports []corev1.ServicePort) []corev1.ServicePort {
 	return newPorts
 }
 
+func endpointAddressesToIps(addrs []corev1.EndpointAddress) []string {
+	result := []string{}
+
+	for _, a := range addrs {
+
+		result = append(result, a.IP)
+	}
+
+	return result
+}
+
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteServiceCreated) error {
 	remoteService := ev.service.DeepCopy()
 	serviceInfo := fmt.Sprintf("%s/%s", remoteService.Namespace, remoteService.Name)
@@ -510,6 +564,21 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 		if gatewayIdentity != "" {
 			endpointsToCreate.Annotations[consts.RemoteGatewayIdentity] = gatewayIdentity
 		}
+
+		rcsw.probeChan <- &MirroredServicePaired{
+			serviceName:      serviceToCreate.Name,
+			serviceNamespace: serviceToCreate.Namespace,
+			GatewayProbeSpec: &GatewayProbeSpec{
+				clusterName:   rcsw.clusterName,
+				gatewayName:   ev.gatewayData.Name,
+				gatewayNs:     ev.gatewayData.Namespace,
+				gatewayIps:    endpointAddressesToIps(gatewayEndpoints),
+				port:          rcsw.probePort,
+				path:          rcsw.probePath,
+				periodSeconds: rcsw.probePeriodSeconds,
+			},
+		}
+
 	} else {
 		rcsw.log.Warnf("Could not resolve gateway for %s: %s, skipping subsets", serviceInfo, err)
 		endpointsToCreate.Subsets = nil
@@ -564,6 +633,18 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGa
 
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayUpdated(ev *RemoteGatewayUpdated) error {
 	rcsw.log.Debugf("Updating %d services due to remote gateway [%s/%s] update", len(ev.affectedServices), ev.gatewayData.Namespace, ev.gatewayData.Name)
+
+	rcsw.probeChan <- &GatewayUpdated{
+		GatewayProbeSpec: &GatewayProbeSpec{
+			clusterName:   rcsw.clusterName,
+			gatewayName:   ev.gatewayData.Name,
+			gatewayNs:     ev.gatewayData.Namespace,
+			gatewayIps:    endpointAddressesToIps(ev.newEndpointAddresses),
+			port:          rcsw.probePort,
+			path:          rcsw.probePath,
+			periodSeconds: rcsw.probePeriodSeconds,
+		},
+	}
 
 	var errors []error
 	for _, svc := range ev.affectedServices {
@@ -785,8 +866,9 @@ func (rcsw *RemoteClusterServiceWatcher) endpointsForGateway(gatewayData *gatewa
 func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service) {
 	if gtwData := getGatewayMetadata(service.Annotations); gtwData != nil {
 		rcsw.eventsQueue.Add(&RemoteServiceDeleted{
-			Name:      service.Name,
-			Namespace: service.Namespace,
+			Name:        service.Name,
+			Namespace:   service.Namespace,
+			GatewayData: gtwData,
 		})
 	} else {
 		rcsw.eventsQueue.Add(&RemoteGatewayDeleted{

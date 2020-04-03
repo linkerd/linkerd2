@@ -2,6 +2,7 @@ package servicemirror
 
 import (
 	"flag"
+	"github.com/linkerd/linkerd2/pkg/admin"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,6 +18,7 @@ func Main(args []string) {
 
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to the local kube config")
 	requeueLimit := cmd.Int("event-requeue-limit", 3, "requeue limit for events")
+	metricsAddr := cmd.String("metrics-addr", ":9999", "address to serve scrapable metrics on")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -36,12 +38,18 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
+	probeEvents := make(chan interface{}, 500)
+	probeManager := NewProbeManager(probeEvents, k8sAPI)
+	probeManager.Start()
+
 	k8sAPI.Sync(nil)
-	watcher := NewRemoteClusterConfigWatcher(k8sAPI, *requeueLimit)
+	watcher := NewRemoteClusterConfigWatcher(k8sAPI, *requeueLimit, probeEvents)
 	log.Info("Started cluster config watcher")
 
-	<-stop
+	go admin.StartServer(*metricsAddr)
 
+	<-stop
 	log.Info("Stopping cluster config watcher")
 	watcher.Stop()
+	probeManager.Stop()
 }
