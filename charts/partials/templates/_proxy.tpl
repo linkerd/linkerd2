@@ -1,5 +1,5 @@
 {{ define "partials.proxy" -}}
-{{ if and .Values.global.proxy.component (index .Values.global.proxy.perComponentResources .Values.global.proxy.component)}}
+{{ if and .Values.global.proxy.component (and .Values.global.proxy.perComponentResources (index .Values.global.proxy.perComponentResources .Values.global.proxy.component))}}
 {{ $_ := set .Values.global.proxy "actualResources" (index .Values.global.proxy.perComponentResources .Values.global.proxy.component) -}}
 {{ else }}
 {{ if .Values.global.proxy.resources}}
