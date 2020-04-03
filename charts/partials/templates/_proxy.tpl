@@ -2,11 +2,11 @@
 {{ if .Values.global.proxy.perComponentResource }}
 {{ if .Values.global.proxy.component }}
 {{ if (index .Values.global.proxy.perComponentResources .Values.global.proxy.component) }}
-{{ $_ := set .Local.hasPerComponentResourcePreconditions 1}}
+{{ $_ := set .hasPerComponentResourcePreconditions 1}}
 {{ end }}
 {{ end }}
 {{ end }}
-{{ if .Local.hasPerComponentResourcePreconditions}}
+{{ if .hasPerComponentResourcePreconditions}}
 {{ $_ := set .Values.global.proxy "actualResources" (index .Values.global.proxy.perComponentResources .Values.global.proxy.component) -}}
 {{ else }}
 {{ if .Values.global.proxy.resources}}
