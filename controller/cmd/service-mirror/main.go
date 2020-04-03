@@ -2,10 +2,11 @@ package servicemirror
 
 import (
 	"flag"
-	"github.com/linkerd/linkerd2/pkg/admin"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/linkerd/linkerd2/pkg/admin"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/flags"

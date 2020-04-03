@@ -2,11 +2,12 @@ package servicemirror
 
 import (
 	"fmt"
-	logging "github.com/sirupsen/logrus"
 	"math/rand"
 	"net/http"
 	"sync"
 	"time"
+
+	logging "github.com/sirupsen/logrus"
 )
 
 // ProbeWorker is responsible for monitoring gateways using a probe specification
