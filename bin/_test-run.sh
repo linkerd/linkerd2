@@ -32,8 +32,11 @@ init_test_run() {
 # These 3 functions are the primary entrypoints into running integration tests.
 # They each expect a fresh Kubernetes cluster:
 # 1. upgrade_integration_tests
-# 2. helm_integration_tests
-# 3. deep_integration_tests
+# 2. helm_upgrade_integration_tests
+# 3. helm_integration_tests
+# 4. uninstall_tests
+# 5. custom_domain_integration_tests
+# 6. external_issuer_integration_tests
 
 upgrade_integration_tests() {
     # run upgrade test:
@@ -76,7 +79,7 @@ helm_integration_tests() {
 }
 
 uninstall_tests() {
-    run_test "$test_directory/uninstall_test.go" --linkerd-namespace=$linkerd_namespace
+    run_test "$test_directory/uninstall/uninstall_test.go" --linkerd-namespace=$linkerd_namespace --uninstall=true
     exit_on_err 'error during uninstall tests'
     cleanup
 }
@@ -90,13 +93,13 @@ deep_integration_tests() {
     cleanup
 }
 
-function custom_domain_integration_tests() {
+custom_domain_integration_tests() {
     run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace --cluster-domain="custom.domain"
     exit_on_err 'error during install'
     cleanup
 }
 
-function external_issuer_integration_tests() {
+external_issuer_integration_tests() {
     run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace-external-issuer --external-issuer=true
     exit_on_err 'error during install with --external-issuer=true'
 

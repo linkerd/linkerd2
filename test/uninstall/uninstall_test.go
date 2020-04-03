@@ -1,4 +1,4 @@
-package test
+package uninstall
 
 import (
 	"fmt"

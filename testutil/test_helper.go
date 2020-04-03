@@ -27,6 +27,7 @@ type TestHelper struct {
 	upgradeFromVersion string
 	clusterDomain      string
 	externalIssuer     bool
+	uninstall          bool
 	httpClient         http.Client
 	KubernetesHelper
 	helm
@@ -82,6 +83,7 @@ func NewTestHelper() *TestHelper {
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	upgradeHelmFromVersion := flag.String("upgrade-helm-from-version", "", "Indicate a version of the Linkerd helm chart from which the helm installation is being upgraded")
+	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
 	flag.Parse()
 
 	if !*runTests {
@@ -121,6 +123,7 @@ func NewTestHelper() *TestHelper {
 		},
 		clusterDomain:  *clusterDomain,
 		externalIssuer: *externalIssuer,
+		uninstall:      *uninstall,
 	}
 
 	version, stderr, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -184,6 +187,11 @@ func (h *TestHelper) UpgradeHelmFromVersion() string {
 // ExternalIssuer determines whether linkerd should be installed with --identity-external-issuer
 func (h *TestHelper) ExternalIssuer() bool {
 	return h.externalIssuer
+}
+
+// Uninstall determines whether the "linkerd uninstall" integration test should be run
+func (h *TestHelper) Uninstall() bool {
+	return h.uninstall
 }
 
 // UpgradeFromVersion returns the base version of the upgrade test.
