@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	admissionRegistration "k8s.io/api/admissionregistration/v1beta1"
 	core "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	policy "k8s.io/api/policy/v1beta1"
 	rbac "k8s.io/api/rbac/v1"
 	apiextension "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -240,7 +240,7 @@ func fetchPodSecurityPolicy(k *k8s.KubernetesAPI, options metav1.ListOptions) ([
 
 	resources := make([]kubernetesResource, len(list.Items))
 	for i, item := range list.Items {
-		resources[i] = newKubernetesResource(extensions.SchemeGroupVersion.String(), "PodSecurityPolicy", item.Name)
+		resources[i] = newKubernetesResource(policy.SchemeGroupVersion.String(), "PodSecurityPolicy", item.Name)
 	}
 
 	return resources, nil

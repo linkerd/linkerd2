@@ -75,6 +75,12 @@ helm_integration_tests() {
     cleanup
 }
 
+uninstall_tests() {
+    run_test "$test_directory/uninstall_test.go" --linkerd-namespace=$linkerd_namespace
+    exit_on_err 'error during uninstall tests'
+    cleanup
+}
+
 deep_integration_tests() {
     run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace
     exit_on_err 'error during install'

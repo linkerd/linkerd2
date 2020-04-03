@@ -41,6 +41,25 @@ type helm struct {
 	upgradeFromVersion string
 }
 
+type deploySpec struct {
+	Replicas   int
+	Containers []string
+}
+
+// LinkerdDeployReplicas is a map containing the number of replicas for each Deployment and the main
+// container name
+var LinkerdDeployReplicas = map[string]deploySpec{
+	"linkerd-controller":     {1, []string{"public-api"}},
+	"linkerd-destination":    {1, []string{"destination"}},
+	"linkerd-tap":            {1, []string{"tap"}},
+	"linkerd-grafana":        {1, []string{}},
+	"linkerd-identity":       {1, []string{"identity"}},
+	"linkerd-prometheus":     {1, []string{}},
+	"linkerd-sp-validator":   {1, []string{"sp-validator"}},
+	"linkerd-web":            {1, []string{"web"}},
+	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
+}
+
 // NewTestHelper creates a new instance of TestHelper for the current test run.
 // The new TestHelper can be configured via command line flags.
 func NewTestHelper() *TestHelper {
