@@ -34,7 +34,7 @@ init_test_run() {
 # 1. upgrade_integration_tests
 # 2. helm_upgrade_integration_tests
 # 3. helm_integration_tests
-# 4. uninstall_tests
+# 4. uninstall_integration_tests
 # 5. custom_domain_integration_tests
 # 6. external_issuer_integration_tests
 
@@ -78,7 +78,7 @@ helm_integration_tests() {
     cleanup
 }
 
-uninstall_tests() {
+uninstall_integration_tests() {
     run_test "$test_directory/uninstall/uninstall_test.go" --linkerd-namespace=$linkerd_namespace --uninstall=true
     exit_on_err 'error during uninstall tests'
     cleanup

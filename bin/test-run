@@ -19,7 +19,7 @@ printf 'Testing Linkerd version [%s] namespace [%s] k8s-context [%s]\n' "$linker
 upgrade_integration_tests
 helm_integration_tests
 helm_upgrade_integration_tests
-uninstall_tests
+uninstall_integration_tests
 deep_integration_tests
 external_issuer_integration_tests
 
