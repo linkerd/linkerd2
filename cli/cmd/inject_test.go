@@ -256,7 +256,7 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment_udp.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         1,
+			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_already_injected.input.yml",
