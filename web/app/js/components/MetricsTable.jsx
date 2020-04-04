@@ -2,6 +2,7 @@ import { displayName, friendlyTitle, metricToFormatter } from './util/Utils.js';
 import BaseTable from './BaseTable.jsx';
 import ErrorModal from './ErrorModal.jsx';
 import GrafanaLink from './GrafanaLink.jsx';
+import JaegerLink from './JaegerLink.jsx';
 import Grid from '@material-ui/core/Grid';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -154,6 +155,26 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     },
   };
 
+
+  const jaegerColumn = {
+    title: 'Jaeger',
+    key: 'JaegerDashboard',
+    isNumeric: true,
+    render: row => {
+      if (!isAuthorityTable && (!row.added || _get(row, 'pods.totalPods') === '0')) {
+        return null;
+      }
+
+      return (
+        <JaegerLink
+          name={row.name}
+          namespace={row.namespace}
+          resource={row.type}
+          PrefixedLink={PrefixedLink} />
+      );
+    },
+  };
+
   const nameColumn = {
     title: isMultiResourceTable ? 'Resource' : friendlyTitle(resource).singular,
     dataIndex: 'name',
@@ -202,6 +223,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
 
   if (!isTrafficSplitTable) {
     columns = columns.concat(grafanaColumn);
+    columns = columns.concat(jaegerColumn);
   }
 
   if (!showNamespaceColumn) {
