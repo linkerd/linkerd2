@@ -132,6 +132,8 @@ func (r *Report) Injectable() (bool, []string) {
 	return true, nil
 }
 
+//GetInjectFailReason is used to generate a string that lists the reasons why the injection process
+//may have failed. This method must be used along with Injectable() to generate readable errors
 func (r *Report) GetInjectFailReason(reasons []string) error {
 	desc := fmt.Sprintf("Resource with name \"%s\" of kind \"%s\" cannot be injected due to the following reasons:\n", r.Name, r.Kind)
 	for _, reason := range reasons {
