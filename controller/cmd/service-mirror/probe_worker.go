@@ -113,7 +113,7 @@ func (pw *ProbeWorker) doProbe() {
 		} else {
 			pw.log.Debug("Gateway is healthy")
 			pw.metrics.alive.Set(1)
-			pw.metrics.latencies.Observe(end.Seconds())
+			pw.metrics.latencies.Observe(float64(end.Milliseconds()))
 		}
 
 		if err := resp.Body.Close(); err != nil {

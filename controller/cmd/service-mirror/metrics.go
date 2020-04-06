@@ -40,14 +40,15 @@ func newProbeMetricVecs() probeMetricVecs {
 
 	latencies := promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name: "gateway_request_latency_seconds",
+			Name: "gateway_request_latency_ms",
 			Help: "A histogram of latencies to a remote gateway.",
-			Buckets: append(append(append(append(
-				prometheus.LinearBuckets(0.01, 0.01, 5),
-				prometheus.LinearBuckets(0.1, 0.1, 5)...),
-				prometheus.LinearBuckets(1, 1, 5)...),
-				prometheus.LinearBuckets(10, 10, 5)...),
-			),
+			Buckets: []float64{
+				1, 2, 3, 4, 5,
+				10, 20, 30, 40, 50,
+				100, 200, 300, 400, 500,
+				1000, 2000, 3000, 4000, 5000,
+				10000, 20000, 30000, 40000, 50000,
+			},
 		},
 		labelNames)
 
