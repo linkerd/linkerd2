@@ -53,6 +53,7 @@ func runTestCase(tc *testCase, t *testing.T) {
 			log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
 			eventsQueue:     q,
 			requeueLimit:    0,
+			probeChan:       make(chan interface{}, probeChanBufferSize),
 		}
 
 		for _, ev := range tc.events {
@@ -270,6 +271,10 @@ func TestRemoteServiceDeleted(t *testing.T) {
 				&RemoteServiceDeleted{
 					Name:      "test-service-remote-to-delete",
 					Namespace: "test-namespace-to-delete",
+					GatewayData: &gatewayMetadata{
+						Name:      "gateway",
+						Namespace: "gateway-ns",
+					},
 				},
 			},
 
@@ -1075,6 +1080,10 @@ func TestOnDelete(t *testing.T) {
 				&RemoteServiceDeleted{
 					Name:      "test-service",
 					Namespace: "test-namespace",
+					GatewayData: &gatewayMetadata{
+						Name:      "gateway",
+						Namespace: "gateway-ns",
+					},
 				},
 			},
 		},
