@@ -10,7 +10,7 @@
     "latency_ms_p99": 123,
     "apex": "apex_name",
     "leaf": "service-1",
-    "weight": "900m"
+    "weight": "900"
   },
   {
     "namespace": "default",
@@ -23,6 +23,6 @@
     "latency_ms_p99": 123,
     "apex": "apex_name",
     "leaf": "service-2",
-    "weight": "100m"
+    "weight": "100"
   }
 ]
