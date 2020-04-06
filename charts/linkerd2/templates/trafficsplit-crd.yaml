@@ -1,7 +1,7 @@
 ---
 ###
 ### TrafficSplit CRD
-### Copied from https://github.com/deislabs/smi-sdk-go/blob/cea7e1e9372304bbb6c74a3f6ca788d9eaa9cc58/crds/split.yaml
+### Copied from https://github.com/servicemeshinterface/smi-sdk-go/blob/3e7f2bf69231a5f0982f68b976605d5dc7a64f49/crds/split.yaml
 ###
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -14,16 +14,64 @@ metadata:
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 spec:
   group: split.smi-spec.io
-  version: v1alpha1
   scope: Namespaced
   names:
     kind: TrafficSplit
+    listKind: TrafficSplitList
     shortNames:
-      - ts
+    - ts
     plural: trafficsplits
     singular: trafficsplit
+  version: v1alpha3
+  versions:
+    - name: v1alpha3
+      served: true
+      storage: true
+    - name: v1alpha2
+      served: false
+      storage: false
+    - name: v1alpha1
+      served: false
+      storage: false
   additionalPrinterColumns:
   - name: Service
     type: string
     description: The apex service of this split.
     JSONPath: .spec.service
+  validation:
+    openAPIV3Schema:
+      required:
+        - service
+        - backends
+      properties:
+        service:
+          description: The apex service of this split.
+          type: string
+        backends:
+          description: The backend services of this split.
+          type: array
+          items:
+            type: object
+            required: ['service', 'weight']
+            properties:
+              service:
+                description: Name of the Kubernetes service.
+                type: string
+              weight:
+                description: Traffic weight value of this backend.
+                type: number
+              matches:
+                description: The HTTP route groups that this traffic split should match.
+                type: array
+                items:
+                  type: object
+                  required: ['kind', 'name']
+                  properties:
+                    kind:
+                      description: Kind of the matching group.
+                      type: string
+                      enum:
+                        - HTTPRouteGroup
+                    name:
+                      description: Name of the matching group.
+                      type: string

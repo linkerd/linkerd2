@@ -6,8 +6,9 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/prometheus/client_golang/prometheus"
-	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
-	tslisters "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/listers/split/v1alpha1"
+	ts1 "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
+	ts2 "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha2"
+	ts3 "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha3"
 	logging "github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
@@ -18,7 +19,7 @@ type (
 	// Listeners can subscribe to a particular apex service and
 	// TrafficSplitWatcher will publish all TrafficSplits for that apex service.
 	TrafficSplitWatcher struct {
-		tsLister   tslisters.TrafficSplitLister
+		k8sAPI     *k8s.API
 		publishers map[ServiceID]*trafficSplitPublisher
 
 		log          *logging.Entry
@@ -26,7 +27,7 @@ type (
 	}
 
 	trafficSplitPublisher struct {
-		split     *ts.TrafficSplit
+		split     *ts3.TrafficSplit
 		listeners []TrafficSplitUpdateListener
 
 		log          *logging.Entry
@@ -37,7 +38,7 @@ type (
 
 	// TrafficSplitUpdateListener is the interface that subscribers must implement.
 	TrafficSplitUpdateListener interface {
-		UpdateTrafficSplit(split *ts.TrafficSplit)
+		UpdateTrafficSplit(split *ts3.TrafficSplit)
 	}
 )
 
@@ -47,12 +48,26 @@ var splitVecs = newMetricsVecs("trafficsplit", []string{"namespace", "service"})
 // TrafficSplit changes.
 func NewTrafficSplitWatcher(k8sAPI *k8s.API, log *logging.Entry) *TrafficSplitWatcher {
 	watcher := &TrafficSplitWatcher{
-		tsLister:   k8sAPI.TS().Lister(),
+		k8sAPI:     k8sAPI,
 		publishers: make(map[ServiceID]*trafficSplitPublisher),
 		log:        log.WithField("component", "traffic-split-watcher"),
 	}
 
-	k8sAPI.TS().Informer().AddEventHandler(
+	k8sAPI.TS1().Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    watcher.addTrafficSplit,
+			UpdateFunc: watcher.updateTrafficSplit,
+			DeleteFunc: watcher.deleteTrafficSplit,
+		},
+	)
+	k8sAPI.TS2().Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    watcher.addTrafficSplit,
+			UpdateFunc: watcher.updateTrafficSplit,
+			DeleteFunc: watcher.deleteTrafficSplit,
+		},
+	)
+	k8sAPI.TS3().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    watcher.addTrafficSplit,
 			UpdateFunc: watcher.updateTrafficSplit,
@@ -92,7 +107,18 @@ func (tsw *TrafficSplitWatcher) Unsubscribe(id ServiceID, listener TrafficSplitU
 }
 
 func (tsw *TrafficSplitWatcher) addTrafficSplit(obj interface{}) {
-	split := obj.(*ts.TrafficSplit)
+	var split *ts3.TrafficSplit
+	switch s := obj.(type) {
+	case *ts3.TrafficSplit:
+		split = s
+	case *ts2.TrafficSplit:
+		split = k8s.ConvertTrafficSplitV1alpha2(s)
+	case *ts1.TrafficSplit:
+		split = k8s.ConvertTrafficSplitV1alpha1(s)
+	default:
+		tsw.log.Errorf("object is not a TrafficSplit: %#v", obj)
+		return
+	}
 	id := ServiceID{
 		Name:      split.Spec.Service,
 		Namespace: split.Namespace,
@@ -108,18 +134,29 @@ func (tsw *TrafficSplitWatcher) updateTrafficSplit(old interface{}, new interfac
 }
 
 func (tsw *TrafficSplitWatcher) deleteTrafficSplit(obj interface{}) {
-	split, ok := obj.(*ts.TrafficSplit)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			tsw.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
-			return
-		}
-		split, ok = tombstone.Obj.(*ts.TrafficSplit)
-		if !ok {
+	var split *ts3.TrafficSplit
+	switch s := obj.(type) {
+	case *ts3.TrafficSplit:
+		split = s
+	case *ts2.TrafficSplit:
+		split = k8s.ConvertTrafficSplitV1alpha2(s)
+	case *ts1.TrafficSplit:
+		split = k8s.ConvertTrafficSplitV1alpha1(s)
+	case cache.DeletedFinalStateUnknown:
+		switch s := s.Obj.(type) {
+		case *ts3.TrafficSplit:
+			split = s
+		case *ts2.TrafficSplit:
+			split = k8s.ConvertTrafficSplitV1alpha2(s)
+		case *ts1.TrafficSplit:
+			split = k8s.ConvertTrafficSplitV1alpha1(s)
+		default:
 			tsw.log.Errorf("DeletedFinalStateUnknown contained object that is not a TrafficSplit %#v", obj)
 			return
 		}
+	default:
+		tsw.log.Errorf("object is not a TrafficSplit: %#v", obj)
+		return
 	}
 
 	id := ServiceID{
@@ -133,7 +170,7 @@ func (tsw *TrafficSplitWatcher) deleteTrafficSplit(obj interface{}) {
 	}
 }
 
-func (tsw *TrafficSplitWatcher) getOrNewTrafficSplitPublisher(id ServiceID, split *ts.TrafficSplit) *trafficSplitPublisher {
+func (tsw *TrafficSplitWatcher) getOrNewTrafficSplitPublisher(id ServiceID, split *ts3.TrafficSplit) *trafficSplitPublisher {
 	tsw.Lock()
 	defer tsw.Unlock()
 
@@ -141,7 +178,7 @@ func (tsw *TrafficSplitWatcher) getOrNewTrafficSplitPublisher(id ServiceID, spli
 	if !ok {
 		if split == nil {
 			var err error
-			split, err = tsw.tsLister.TrafficSplits(id.Namespace).Get(id.Name)
+			split, err = tsw.k8sAPI.GetTrafficSplit(id.Namespace, id.Name)
 			if err != nil && !apierrors.IsNotFound(err) {
 				tsw.log.Errorf("error getting TrafficSplit: %s", err)
 			}
@@ -208,7 +245,7 @@ func (tsp *trafficSplitPublisher) unsubscribe(listener TrafficSplitUpdateListene
 	tsp.splitMetrics.setSubscribers(len(tsp.listeners))
 }
 
-func (tsp *trafficSplitPublisher) update(split *ts.TrafficSplit) {
+func (tsp *trafficSplitPublisher) update(split *ts3.TrafficSplit) {
 	tsp.Lock()
 	defer tsp.Unlock()
 	tsp.log.Debug("Updating TrafficSplit")

@@ -13,9 +13,15 @@ import (
 	sp "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	tsv1alpha1 "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
+	tsv1alpha2 "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha2"
+	tsv1alpha3 "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha3"
 	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions"
-	tsinformers "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
+	tsinformers1 "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
+	tsinformers2 "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha2"
+	tsinformers3 "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha3"
+
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -81,7 +87,9 @@ type API struct {
 	sp       spinformers.ServiceProfileInformer
 	ss       appv1informers.StatefulSetInformer
 	svc      coreinformers.ServiceInformer
-	ts       tsinformers.TrafficSplitInformer
+	ts1      tsinformers1.TrafficSplitInformer
+	ts2      tsinformers2.TrafficSplitInformer
+	ts3      tsinformers3.TrafficSplitInformer
 	node     coreinformers.NodeInformer
 	secret   coreinformers.SecretInformer
 
@@ -232,8 +240,14 @@ func NewAPI(
 			api.svc = sharedInformers.Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
 		case TS:
-			api.ts = tsSharedInformers.Split().V1alpha1().TrafficSplits()
-			api.syncChecks = append(api.syncChecks, api.ts.Informer().HasSynced)
+			api.ts1 = tsSharedInformers.Split().V1alpha1().TrafficSplits()
+			api.ts2 = tsSharedInformers.Split().V1alpha2().TrafficSplits()
+			api.ts3 = tsSharedInformers.Split().V1alpha3().TrafficSplits()
+			api.syncChecks = append(api.syncChecks,
+				api.ts1.Informer().HasSynced,
+				api.ts2.Informer().HasSynced,
+				api.ts3.Informer().HasSynced,
+			)
 		case Node:
 			api.node = sharedInformers.Core().V1().Nodes()
 			api.syncChecks = append(api.syncChecks, api.node.Informer().HasSynced)
@@ -373,11 +387,27 @@ func (api *API) SPAvailable() bool {
 }
 
 // TS provides access to a shared informer and lister for TrafficSplits.
-func (api *API) TS() tsinformers.TrafficSplitInformer {
-	if api.ts == nil {
+func (api *API) TS1() tsinformers1.TrafficSplitInformer {
+	if api.ts1 == nil {
 		panic("TS informer not configured")
 	}
-	return api.ts
+	return api.ts1
+}
+
+// TS provides access to a shared informer and lister for TrafficSplits.
+func (api *API) TS2() tsinformers2.TrafficSplitInformer {
+	if api.ts2 == nil {
+		panic("TS informer not configured")
+	}
+	return api.ts2
+}
+
+// TS provides access to a shared informer and lister for TrafficSplits.
+func (api *API) TS3() tsinformers3.TrafficSplitInformer {
+	if api.ts3 == nil {
+		panic("TS informer not configured")
+	}
+	return api.ts3
 }
 
 // Node provides access to a shared informer and lister for Nodes.
@@ -988,15 +1018,12 @@ func (api *API) GetServicesFor(obj runtime.Object, includeFailed bool) ([]*corev
 }
 
 func (api *API) getLeafServices(apex *corev1.Service) ([]*corev1.Service, error) {
-	splits, err := api.TS().Lister().TrafficSplits(apex.Namespace).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
+	splits := api.ListTrafficSplits(apex.Namespace, labels.Everything())
 	leaves := []*corev1.Service{}
 	for _, split := range splits {
 		if split.Spec.Service == apex.Name {
 			for _, backend := range split.Spec.Backends {
-				if backend.Weight.Sign() == 1 {
+				if backend.Weight > 0 {
 					svc, err := api.Svc().Lister().Services(apex.Namespace).Get(backend.Service)
 					if err != nil {
 						log.Errorf("TrafficSplit %s/%s references non-existent service %s", apex.Namespace, split.Name, backend.Service)
@@ -1008,6 +1035,109 @@ func (api *API) getLeafServices(apex *corev1.Service) ([]*corev1.Service, error)
 		}
 	}
 	return leaves, nil
+}
+
+func (api *API) GetTrafficSplit(namespace, name string) (*tsv1alpha3.TrafficSplit, error) {
+	v1alpha3, err3 := api.TS3().Lister().TrafficSplits(namespace).Get(name)
+	if err3 == nil {
+		return v1alpha3, nil
+	}
+	v1alpha2, err2 := api.TS2().Lister().TrafficSplits(namespace).Get(name)
+	if err2 == nil {
+		return ConvertTrafficSplitV1alpha2(v1alpha2), nil
+	}
+	v1alpha1, err1 := api.TS1().Lister().TrafficSplits(namespace).Get(name)
+	if err1 == nil {
+		return ConvertTrafficSplitV1alpha1(v1alpha1), nil
+	}
+	return nil, err3
+}
+
+func (api *API) ListTrafficSplits(namespace string, selector labels.Selector) []*tsv1alpha3.TrafficSplit {
+	splits := []*tsv1alpha3.TrafficSplit{}
+	var v1alpha3 []*tsv1alpha3.TrafficSplit
+	var err error
+	if namespace == "" {
+		v1alpha3, err = api.TS3().Lister().List(selector)
+	} else {
+		v1alpha3, err = api.TS3().Lister().TrafficSplits(namespace).List(selector)
+	}
+	if err == nil {
+		splits = append(splits, v1alpha3...)
+	}
+
+	var v1alpha2 []*tsv1alpha2.TrafficSplit
+	if namespace == "" {
+		v1alpha2, err = api.TS2().Lister().List(selector)
+	} else {
+		v1alpha2, err = api.TS2().Lister().TrafficSplits(namespace).List(selector)
+	}
+	if err == nil {
+		for _, split := range v1alpha2 {
+			splits = append(splits, ConvertTrafficSplitV1alpha2(split))
+		}
+	}
+
+	var v1alpha1 []*tsv1alpha1.TrafficSplit
+	if namespace == "" {
+		v1alpha1, err = api.TS1().Lister().List(selector)
+	} else {
+		v1alpha1, err = api.TS1().Lister().TrafficSplits(namespace).List(selector)
+	}
+	if err == nil {
+		for _, split := range v1alpha1 {
+			splits = append(splits, ConvertTrafficSplitV1alpha1(split))
+		}
+	}
+	return splits
+}
+
+func ConvertTrafficSplitV1alpha1(ts *tsv1alpha1.TrafficSplit) *tsv1alpha3.TrafficSplit {
+	log.Infof("converting v1alpha1 TrafficSplit: %s.%s", ts.Name, ts.Namespace)
+
+	backends := make([]tsv1alpha3.TrafficSplitBackend, len(ts.Spec.Backends))
+	for i, backend := range ts.Spec.Backends {
+		backends[i] = tsv1alpha3.TrafficSplitBackend{
+			Service: backend.Service,
+			Weight:  int(backend.Weight.MilliValue()),
+		}
+	}
+
+	return &tsv1alpha3.TrafficSplit{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: tsv1alpha3.SchemeGroupVersion.String(),
+			Kind:       "trafficsplit",
+		},
+		ObjectMeta: ts.ObjectMeta,
+		Spec: tsv1alpha3.TrafficSplitSpec{
+			Service:  ts.Spec.Service,
+			Backends: backends,
+		},
+	}
+}
+
+func ConvertTrafficSplitV1alpha2(ts *tsv1alpha2.TrafficSplit) *tsv1alpha3.TrafficSplit {
+	log.Infof("converting v1alpha2 TrafficSplit: %s.%s", ts.Name, ts.Namespace)
+
+	backends := make([]tsv1alpha3.TrafficSplitBackend, len(ts.Spec.Backends))
+	for i, backend := range ts.Spec.Backends {
+		backends[i] = tsv1alpha3.TrafficSplitBackend{
+			Service: backend.Service,
+			Weight:  backend.Weight,
+		}
+	}
+
+	return &tsv1alpha3.TrafficSplit{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: tsv1alpha3.SchemeGroupVersion.String(),
+			Kind:       "trafficsplit",
+		},
+		ObjectMeta: ts.ObjectMeta,
+		Spec: tsv1alpha3.TrafficSplitSpec{
+			Service:  ts.Spec.Service,
+			Backends: backends,
+		},
+	}
 }
 
 // GetServiceProfileFor returns the service profile for a given service.  We

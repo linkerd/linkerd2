@@ -5,7 +5,8 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
-	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
+	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha3"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // trafficSplitAdaptor merges traffic splits into service profiles, encoding
@@ -59,7 +60,7 @@ func (tsa *trafficSplitAdaptor) publish() {
 				// The proxy expects authorities to be absolute and have the
 				// host part end with a trailing dot.
 				Authority: fmt.Sprintf("%s.%s.svc.%s.:%d", backend.Service, tsa.id.Namespace, tsa.clusterDomain, tsa.port),
-				Weight:    *backend.Weight,
+				Weight:    *resource.NewMilliQuantity(int64(backend.Weight), resource.DecimalSI),
 			}
 			overrides = append(overrides, dst)
 		}

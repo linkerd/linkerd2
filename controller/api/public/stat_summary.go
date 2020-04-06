@@ -11,7 +11,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/model"
-	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
+	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -264,9 +264,9 @@ func (s *grpcServer) k8sResourceQuery(ctx context.Context, req *pb.StatSummaryRe
 	return resourceResult{res: &rsp, err: nil}
 }
 
-func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha1.TrafficSplit, error) {
+func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha3.TrafficSplit, error) {
 	var err error
-	var trafficSplits []*v1alpha1.TrafficSplit
+	var trafficSplits []*v1alpha3.TrafficSplit
 
 	res := req.GetSelector().GetResource()
 	labelSelector, err := getLabelSelector(req)
@@ -275,13 +275,14 @@ func (s *grpcServer) getTrafficSplits(req *pb.StatSummaryRequest) ([]*v1alpha1.T
 	}
 
 	if res.GetNamespace() == "" {
-		trafficSplits, err = s.k8sAPI.TS().Lister().List(labelSelector)
+		trafficSplits = s.k8sAPI.ListTrafficSplits("", labelSelector)
 	} else if res.GetName() == "" {
-		trafficSplits, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).List(labelSelector)
+
+		trafficSplits = s.k8sAPI.ListTrafficSplits(res.GetNamespace(), labelSelector)
 	} else {
-		var ts *v1alpha1.TrafficSplit
-		ts, err = s.k8sAPI.TS().Lister().TrafficSplits(res.GetNamespace()).Get(res.GetName())
-		trafficSplits = []*v1alpha1.TrafficSplit{ts}
+		var ts *v1alpha3.TrafficSplit
+		ts, err = s.k8sAPI.GetTrafficSplit(res.GetNamespace(), res.GetName())
+		trafficSplits = []*v1alpha3.TrafficSplit{ts}
 	}
 
 	return trafficSplits, err
@@ -315,7 +316,7 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 
 		for _, backend := range backends {
 			name := backend.Service
-			weight := backend.Weight.String()
+			weight := fmt.Sprintf("%d", backend.Weight)
 
 			currentLeaf := tsKey{
 				Namespace: tsStats.namespace,
