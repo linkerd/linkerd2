@@ -27,6 +27,7 @@ type TestHelper struct {
 	upgradeFromVersion string
 	clusterDomain      string
 	externalIssuer     bool
+	uninstall          bool
 	httpClient         http.Client
 	KubernetesHelper
 	helm
@@ -39,6 +40,25 @@ type helm struct {
 	releaseName        string
 	tillerNs           string
 	upgradeFromVersion string
+}
+
+type deploySpec struct {
+	Replicas   int
+	Containers []string
+}
+
+// LinkerdDeployReplicas is a map containing the number of replicas for each Deployment and the main
+// container name
+var LinkerdDeployReplicas = map[string]deploySpec{
+	"linkerd-controller":     {1, []string{"public-api"}},
+	"linkerd-destination":    {1, []string{"destination"}},
+	"linkerd-tap":            {1, []string{"tap"}},
+	"linkerd-grafana":        {1, []string{}},
+	"linkerd-identity":       {1, []string{"identity"}},
+	"linkerd-prometheus":     {1, []string{}},
+	"linkerd-sp-validator":   {1, []string{"sp-validator"}},
+	"linkerd-web":            {1, []string{"web"}},
+	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -63,6 +83,7 @@ func NewTestHelper() *TestHelper {
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	upgradeHelmFromVersion := flag.String("upgrade-helm-from-version", "", "Indicate a version of the Linkerd helm chart from which the helm installation is being upgraded")
+	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
 	flag.Parse()
 
 	if !*runTests {
@@ -102,6 +123,7 @@ func NewTestHelper() *TestHelper {
 		},
 		clusterDomain:  *clusterDomain,
 		externalIssuer: *externalIssuer,
+		uninstall:      *uninstall,
 	}
 
 	version, stderr, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -165,6 +187,11 @@ func (h *TestHelper) UpgradeHelmFromVersion() string {
 // ExternalIssuer determines whether linkerd should be installed with --identity-external-issuer
 func (h *TestHelper) ExternalIssuer() bool {
 	return h.externalIssuer
+}
+
+// Uninstall determines whether the "linkerd uninstall" integration test should be run
+func (h *TestHelper) Uninstall() bool {
+	return h.uninstall
 }
 
 // UpgradeFromVersion returns the base version of the upgrade test.
