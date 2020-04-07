@@ -33,6 +33,18 @@ func TestRoutes(t *testing.T) {
 			file:    "routes_one_output_json.golden",
 		}, t)
 	})
+
+	wideOptions := newRoutesOptions()
+	wideOptions.toResource = "deploy/bar"
+	wideOptions.outputFormat = wideOutput
+	t.Run("Returns wider route stats", func(t *testing.T) {
+		testRoutesCall(routesParamsExp{
+			routes:  []string{"/a", "/b", "/c"},
+			counts:  []uint64{90, 60, 0, 30},
+			options: wideOptions,
+			file:    "routes_one_output_wide.golden",
+		}, t)
+	})
 }
 
 func testRoutesCall(exp routesParamsExp, t *testing.T) {
