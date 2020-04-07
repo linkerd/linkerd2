@@ -13,7 +13,7 @@ The following table lists the configurable parameters of the linkerd2-service-mi
 
 | Parameter                            | Description                                                                       | Default                       |
 |--------------------------------------|-----------------------------------------------------------------------------------|-------------------------------|
-|`controllerComponentLabel`    | Control plane label. Do not edit                                                   | `linkerd.io/control-plane-component` |
+|`controllerComponentLabel`            | Control plane label. Do not edit                                                  | `linkerd.io/control-plane-component`|
 |`controllerImage`                     | Docker image for the Service mirror component (uses the Linkerd controller image) |`gcr.io/linkerd-io/controller`|
 |`controllerImageVersion`              | Tag for the Service Mirror container Docker image                                 |latest version|
 |`namespace`                           | Service Mirror component namespace                                                |`linkerd-service-mirror`|

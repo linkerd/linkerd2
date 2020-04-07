@@ -114,6 +114,8 @@ func (m *ProbeManager) handleMirroredServiceUnpaired(event *MirroredServiceUnpai
 			worker.Stop()
 			delete(m.probeWorkers, probeKey)
 		}
+	} else {
+		log.Debugf("Could not find a worker for %s while handling MirroredServiceUnpaired event", probeKey)
 	}
 }
 
@@ -122,6 +124,8 @@ func (m *ProbeManager) handleGatewayUpdated(event *GatewayUpdated) {
 	worker, ok := m.probeWorkers[probeKey]
 	if ok {
 		worker.UpdateProbeSpec(event.GatewayProbeSpec)
+	} else {
+		log.Debugf("Could not find a worker for %s while handling MirroredServiceUnpaired event", probeKey)
 	}
 }
 

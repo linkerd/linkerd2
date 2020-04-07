@@ -46,20 +46,20 @@ func (pw *ProbeWorker) DcrNumServices() {
 	pw.metrics.services.Dec()
 }
 
-// UpdateProbeSpec  is used to update the probe specification when something about the gateway changes
+// UpdateProbeSpec is used to update the probe specification when something about the gateway changes
 func (pw *ProbeWorker) UpdateProbeSpec(spec *GatewayProbeSpec) {
 	pw.Lock()
 	pw.probe = spec
 	pw.Unlock()
 }
 
-// Stop stops this probe worker
+// Stop this probe worker
 func (pw *ProbeWorker) Stop() {
 	pw.log.Debug("Stopping probe worker for")
 	close(pw.stopCh)
 }
 
-// Start starts this probe worker
+// Start this probe worker
 func (pw *ProbeWorker) Start() {
 	pw.log.Debug("Starting probe worker")
 	go pw.run()
