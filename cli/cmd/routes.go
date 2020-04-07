@@ -206,6 +206,7 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 	templateString = templateString + "%dms\t%dms\t%dms\t\n"
 
 	emptyTemplateString := routeTemplate + "\t%s\t-\t-\t-\t-\t-\t\n"
+	emptyWideTemplateString := routeTemplate + "\t%s\t-\t-\t-\t-\t-\t-\t-\t\n"
 	for _, row := range stats {
 
 		values := []interface{}{
@@ -233,7 +234,11 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 
 			fmt.Fprintf(w, templateString, values...)
 		} else {
-			fmt.Fprintf(w, emptyTemplateString, values...)
+			if outputActual {
+				fmt.Fprintf(w, emptyWideTemplateString, values...)
+			} else {
+				fmt.Fprintf(w, emptyTemplateString, values...)
+			}
 		}
 	}
 }
