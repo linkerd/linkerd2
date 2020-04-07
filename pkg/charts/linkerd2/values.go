@@ -206,7 +206,8 @@ type (
 	// SMIMetrics has all the SMIMetrics's Helm variables
 	SMIMetrics struct {
 		*TLS
-		Image string `json:"image"`
+		Enabled bool   `json:"enabled"`
+		Image   string `json:"image"`
 	}
 
 	// TLS has a pair of PEM-encoded key and certificate variables used in the
