@@ -793,9 +793,6 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-web
   namespace: linkerd
-- kind: ServiceAccount
-  name: linkerd-smi-metrics
-  namespace: linkerd
 
 ---
 kind: ConfigMap

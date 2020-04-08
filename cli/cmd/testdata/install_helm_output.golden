@@ -865,9 +865,6 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-web
   namespace: linkerd
-- kind: ServiceAccount
-  name: linkerd-smi-metrics
-  namespace: linkerd
 ---
 # Source: linkerd2/templates/smi-metrics-rbac.yaml
 
