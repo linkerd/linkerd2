@@ -61,6 +61,12 @@ func (c *grpcOverHTTPClient) TopRoutes(ctx context.Context, req *pb.TopRoutesReq
 	return &msg, err
 }
 
+func (c *grpcOverHTTPClient) Gateways(ctx context.Context, req *pb.GatewaysRequest, _ ...grpc.CallOption) (*pb.GatewaysResponse, error) {
+	var msg pb.GatewaysResponse
+	err := c.apiRequest(ctx, "Gateways", req, &msg)
+	return &msg, err
+}
+
 func (c *grpcOverHTTPClient) Version(ctx context.Context, req *pb.Empty, _ ...grpc.CallOption) (*pb.VersionInfo, error) {
 	var msg pb.VersionInfo
 	err := c.apiRequest(ctx, "Version", req, &msg)

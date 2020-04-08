@@ -483,10 +483,45 @@ message RouteTable {
   }
 }
 
+
+message GatewaysTable {
+  repeated Row rows = 1;
+  
+  message Row {
+    string namespace = 1;
+    string name = 2;
+    string cluster_name = 3;
+    uint64 paired_services = 4;
+    bool alive = 5;
+    uint64 latency_ms_p50 = 6;
+    uint64 latency_ms_p95 = 7;
+    uint64 latency_ms_p99 = 8;
+  }
+}
+
+message GatewaysRequest {
+  string remote_cluster_name = 1;
+  string gateway_namespace = 2;
+  string time_window = 3;
+}
+
+message GatewaysResponse {
+  oneof response {
+    Ok ok = 1;
+    ResourceError error = 2;
+  }
+
+  message Ok {
+    GatewaysTable gateways_table = 1;
+  }
+}
+
 service Api {
   rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
 
   rpc Edges(EdgesRequest) returns (EdgesResponse) {}
+  
+  rpc Gateways(GatewaysRequest) returns (GatewaysResponse) {}
 
   rpc TopRoutes(TopRoutesRequest) returns (TopRoutesResponse) {}
 

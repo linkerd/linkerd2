@@ -31,6 +31,11 @@ func (m *mockGrpcServer) StatSummary(ctx context.Context, req *pb.StatSummaryReq
 	return m.ResponseToReturn.(*pb.StatSummaryResponse), m.ErrorToReturn
 }
 
+func (m *mockGrpcServer) Gateways(ctx context.Context, req *pb.GatewaysRequest) (*pb.GatewaysResponse, error) {
+	m.LastRequestReceived = req
+	return m.ResponseToReturn.(*pb.GatewaysResponse), m.ErrorToReturn
+}
+
 func (m *mockGrpcServer) TopRoutes(ctx context.Context, req *pb.TopRoutesRequest) (*pb.TopRoutesResponse, error) {
 	m.LastRequestReceived = req
 	return m.ResponseToReturn.(*pb.TopRoutesResponse), m.ErrorToReturn
