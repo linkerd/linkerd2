@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,7 +19,7 @@ func TestServe(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		testServer := &Server{nil, k8sAPI, nil, nil}
+		testServer := &Server{nil, k8sAPI, nil, nil, &sync.RWMutex{}}
 
 		in := bytes.NewReader(nil)
 		request := httptest.NewRequest(http.MethodGet, "/", in)
@@ -38,7 +39,7 @@ func TestServe(t *testing.T) {
 
 func TestShutdown(t *testing.T) {
 	server := &http.Server{Addr: ":0"}
-	testServer := &Server{server, nil, nil, nil}
+	testServer := &Server{server, nil, nil, nil, &sync.RWMutex{}}
 
 	go func() {
 		if err := testServer.ListenAndServe(); err != nil {
