@@ -18,6 +18,7 @@ import (
 	idctl "github.com/linkerd/linkerd2/controller/identity"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/config"
+	"github.com/linkerd/linkerd2/pkg/credswatcher"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
@@ -120,7 +121,7 @@ func Main(args []string) {
 	//
 	// Create and start FS creds watcher
 	//
-	watcher := idctl.NewFsCredsWatcher(*issuerPath, issuerEvent, issuerError)
+	watcher := credswatcher.NewFsCredsWatcher(*issuerPath, issuerEvent, issuerError)
 	go func() {
 		if err := watcher.StartWatching(ctx); err != nil {
 			log.Fatalf("Failed to start creds watcher: %s", err)

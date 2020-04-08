@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
@@ -13,6 +14,7 @@ import (
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -27,6 +29,7 @@ type Server struct {
 	api      *k8s.API
 	handler  handlerFunc
 	recorder record.EventRecorder
+	tlsMutex *sync.RWMutex
 }
 
 // NewServer returns a new instance of Server
@@ -56,7 +59,9 @@ func NewServer(api *k8s.API, addr string, cred *pkgTls.Cred, handler handlerFunc
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: component})
 
-	s := &Server{server, api, handler, recorder}
+	tlsMutex := &sync.RWMutex{}
+
+	s := &Server{server, api, handler, recorder, tlsMutex}
 	s.Handler = http.HandlerFunc(s.serve)
 	return s, nil
 }
@@ -136,9 +141,22 @@ func (s *Server) processReq(data []byte) *admissionv1beta1.AdmissionReview {
 	return admissionReview
 }
 
+func (s *Server) updateTLSCred(cert tls.Certificate) {
+	s.tlsMutex.Lock()
+	defer s.tlsMutex.Unlock()
+	s.TLSConfig.Certificates = []tls.Certificate{cert}
+}
+
 // Shutdown initiates a graceful shutdown of the underlying HTTP server.
 func (s *Server) Shutdown(ctx context.Context) error {
 	return s.Server.Shutdown(ctx)
+}
+
+func (s *Server) getEventRecordFunc(object runtime.Object) func(string, string, string) {
+	fun := func(eventType, reason, message string) {
+		s.recorder.Event(object, eventType, reason, message)
+	}
+	return fun
 }
 
 func decode(data []byte) (*admissionv1beta1.AdmissionReview, error) {
