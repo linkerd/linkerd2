@@ -102,12 +102,12 @@ func (m *ProbeManager) handleMirroredServicePaired(event *MirroredServicePaired)
 	worker, ok := m.probeWorkers[probeKey]
 	if ok {
 		log.Debugf("Probe worker %s already exists", probeKey)
-		worker.IncNumServices()
+		worker.PairService(event.serviceName, event.serviceNamespace)
 	} else {
 		log.Debugf("Creating probe worker %s", probeKey)
 		probeMetrics := m.metricVecs.newMetrics(event.gatewayNs, event.gatewayName, event.clusterName)
 		worker = NewProbeWorker(event.GatewayProbeSpec, &probeMetrics, probeKey)
-		worker.IncNumServices()
+		worker.PairService(event.serviceName, event.serviceNamespace)
 		m.probeWorkers[probeKey] = worker
 		worker.Start()
 	}
@@ -117,8 +117,8 @@ func (m *ProbeManager) handleMirroredServiceUnpaired(event *MirroredServiceUnpai
 	probeKey := probeKey(event.gatewayNs, event.gatewayName, event.clusterName)
 	worker, ok := m.probeWorkers[probeKey]
 	if ok {
-		worker.DcrNumServices()
-		if worker.numAssociatedServices < 1 {
+		worker.UnPairService(event.serviceName, event.serviceNamespace)
+		if worker.NumPairedServices() < 1 {
 			log.Debugf("Probe worker's %s associated services dropped to 0, cleaning up", probeKey)
 			worker.Stop()
 			delete(m.probeWorkers, probeKey)

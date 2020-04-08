@@ -15,37 +15,48 @@ const httpGatewayTimeoutMillis = 50000
 // ProbeWorker is responsible for monitoring gateways using a probe specification
 type ProbeWorker struct {
 	*sync.RWMutex
-	probe                 *GatewayProbeSpec
-	numAssociatedServices int32
-	stopCh                chan struct{}
-	metrics               *probeMetrics
-	log                   *logging.Entry
+	probe          *GatewayProbeSpec
+	pairedServices map[string]bool
+	stopCh         chan struct{}
+	metrics        *probeMetrics
+	log            *logging.Entry
 }
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
 func NewProbeWorker(probe *GatewayProbeSpec, metrics *probeMetrics, probekey string) *ProbeWorker {
 	return &ProbeWorker{
-		RWMutex:               &sync.RWMutex{},
-		probe:                 probe,
-		numAssociatedServices: 0,
-		stopCh:                make(chan struct{}),
-		metrics:               metrics,
+		RWMutex:        &sync.RWMutex{},
+		probe:          probe,
+		pairedServices: make(map[string]bool),
+		stopCh:         make(chan struct{}),
+		metrics:        metrics,
 		log: logging.WithFields(logging.Fields{
 			"probe-key": probekey,
 		}),
 	}
 }
 
-// IncNumServices increments the number of services that are routed by the gateway
-func (pw *ProbeWorker) IncNumServices() {
-	pw.numAssociatedServices++
-	pw.metrics.services.Inc()
+// NumPairedServices returns the number of paired services for this probe worker
+func (pw *ProbeWorker) NumPairedServices() int {
+	return len(pw.pairedServices)
 }
 
-// DcrNumServices decrements the number of services that are routed by the gateway
-func (pw *ProbeWorker) DcrNumServices() {
-	pw.numAssociatedServices--
-	pw.metrics.services.Dec()
+// PairService increments the number of services that are routed by the gateway
+func (pw *ProbeWorker) PairService(serviceName, serviceNamespace string) {
+	svcKey := fmt.Sprintf("%s-%s", serviceNamespace, serviceName)
+	if _, ok := pw.pairedServices[svcKey]; !ok {
+		pw.pairedServices[svcKey] = true
+		pw.metrics.services.Inc()
+	}
+}
+
+// UnPairService decrements the number of services that are routed by the gateway
+func (pw *ProbeWorker) UnPairService(serviceName, serviceNamespace string) {
+	svcKey := fmt.Sprintf("%s-%s", serviceNamespace, serviceName)
+	if _, ok := pw.pairedServices[svcKey]; ok {
+		delete(pw.pairedServices, svcKey)
+		pw.metrics.services.Dec()
+	}
 }
 
 // UpdateProbeSpec is used to update the probe specification when something about the gateway changes
