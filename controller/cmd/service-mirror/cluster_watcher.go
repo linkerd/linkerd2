@@ -438,7 +438,9 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 	serviceInfo := fmt.Sprintf("%s/%s", ev.remoteUpdate.Namespace, ev.remoteUpdate.Name)
 	rcsw.log.Debugf("Updating remote mirrored service %s/%s", ev.localService.Namespace, ev.localService.Name)
 
-	if ev.localEndpoints.Labels[consts.RemoteGatewayNameLabel] != ev.gatewayData.Name {
+	gatewayChanged := false
+	if ev.localEndpoints.Labels[consts.RemoteGatewayNameLabel] != ev.gatewayData.Name || ev.localEndpoints.Labels[consts.RemoteGatewayNsLabel] != ev.gatewayData.Namespace {
+		gatewayChanged = true
 		rcsw.probeChan <- &MirroredServiceUnpaired{
 			serviceName:      ev.localService.Name,
 			serviceNamespace: ev.localService.Namespace,
@@ -464,6 +466,22 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 			ev.localEndpoints.Annotations[consts.RemoteGatewayIdentity] = gatewayIdentity
 		} else {
 			delete(ev.localEndpoints.Annotations, consts.RemoteGatewayIdentity)
+		}
+
+		if gatewayChanged {
+			rcsw.probeChan <- &MirroredServicePaired{
+				serviceName:      ev.localService.Name,
+				serviceNamespace: ev.localService.Namespace,
+				GatewayProbeSpec: &GatewayProbeSpec{
+					clusterName:   rcsw.clusterName,
+					gatewayName:   ev.gatewayData.Name,
+					gatewayNs:     ev.gatewayData.Namespace,
+					gatewayIps:    endpointAddressesToIps(gatewayEndpoints),
+					port:          rcsw.probePort,
+					path:          rcsw.probePath,
+					periodSeconds: rcsw.probePeriodSeconds,
+				},
+			}
 		}
 
 	} else {

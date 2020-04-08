@@ -9,18 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-// NewProbeManager creates a new probe manager
-func NewProbeManager(events chan interface{}, k8sAPI *k8s.API) *ProbeManager {
-	metricVecs := newProbeMetricVecs()
-	return &ProbeManager{
-		k8sAPI:       k8sAPI,
-		probeWorkers: make(map[string]*ProbeWorker),
-		events:       events,
-		metricVecs:   &metricVecs,
-		done:         make(chan struct{}, 1),
-	}
-}
-
 // ProbeManager takes care of managing the lifecycle of probe workers
 type ProbeManager struct {
 	k8sAPI       *k8s.API
@@ -58,7 +46,7 @@ type MirroredServicePaired struct {
 	*GatewayProbeSpec
 }
 
-// ClusterRegistered is emitted when a new cluster becomes registred for mirroring
+// ClusterRegistered is emitted when a new cluster becomes registered for mirroring
 type ClusterRegistered struct {
 	clusterName   string
 	port          int32
@@ -66,9 +54,26 @@ type ClusterRegistered struct {
 	periodSeconds int32
 }
 
+// ClusterNotRegistered is is emitted when the cluster is not monitored anymore
+type ClusterNotRegistered struct {
+	clusterName string
+}
+
 // GatewayUpdated is emitted when something about the gateway is updated (i.e. its external IP(s))
 type GatewayUpdated struct {
 	*GatewayProbeSpec
+}
+
+// NewProbeManager creates a new probe manager
+func NewProbeManager(events chan interface{}, k8sAPI *k8s.API) *ProbeManager {
+	metricVecs := newProbeMetricVecs()
+	return &ProbeManager{
+		k8sAPI:       k8sAPI,
+		probeWorkers: make(map[string]*ProbeWorker),
+		events:       events,
+		metricVecs:   &metricVecs,
+		done:         make(chan struct{}),
+	}
 }
 
 func probeKey(gatewayNamespace string, gatewayName string, clusterName string) string {
@@ -85,6 +90,10 @@ func (m *ProbeManager) handleEvent(ev interface{}) {
 		m.handleGatewayUpdated(ev)
 	case *ClusterRegistered:
 		m.handleClusterRegistered(ev)
+	case *ClusterNotRegistered:
+		m.handleClusterNotRegistered(ev)
+	default:
+		log.Errorf("Received unknown event: %v", ev)
 	}
 }
 
@@ -170,6 +179,37 @@ func (m *ProbeManager) handleClusterRegistered(event *ClusterRegistered) {
 
 }
 
+func (m *ProbeManager) stopProbe(key string) {
+	if worker, ok := m.probeWorkers[key]; ok {
+		worker.Stop()
+		delete(m.probeWorkers, key)
+	} else {
+		log.Infof("Could not find probe worker with key %s", key)
+	}
+}
+
+func (m *ProbeManager) handleClusterNotRegistered(event *ClusterNotRegistered) {
+	matchLabels := map[string]string{
+		consts.MirroredResourceLabel:  "true",
+		consts.RemoteClusterNameLabel: event.clusterName,
+	}
+
+	services, err := m.k8sAPI.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
+	if err != nil {
+		log.Errorf("Was not able to unregister cluster %s, %s", event.clusterName, err)
+	}
+
+	stopped := make(map[string]bool)
+	for _, svc := range services {
+		probeKey := probeKey(svc.Labels[consts.RemoteGatewayNameLabel], svc.Labels[consts.RemoteGatewayNameLabel], event.clusterName)
+
+		if _, ok := stopped[probeKey]; !ok {
+			m.stopProbe(probeKey)
+			stopped[probeKey] = true
+		}
+	}
+}
+
 func (m *ProbeManager) run() {
 	for {
 		select {
@@ -178,9 +218,8 @@ func (m *ProbeManager) run() {
 			m.handleEvent(event)
 		case <-m.done:
 			log.Debug("Shutting down ProbeManager")
-			for key, worker := range m.probeWorkers {
-				worker.Stop()
-				delete(m.probeWorkers, key)
+			for key := range m.probeWorkers {
+				m.stopProbe(key)
 			}
 			return
 		}

@@ -10,6 +10,8 @@ import (
 	logging "github.com/sirupsen/logrus"
 )
 
+const httpGatewayTimeoutMillis = 50000
+
 // ProbeWorker is responsible for monitoring gateways using a probe specification
 type ProbeWorker struct {
 	*sync.RWMutex
@@ -26,7 +28,7 @@ func NewProbeWorker(probe *GatewayProbeSpec, metrics *probeMetrics, probekey str
 		RWMutex:               &sync.RWMutex{},
 		probe:                 probe,
 		numAssociatedServices: 0,
-		stopCh:                make(chan struct{}, 1),
+		stopCh:                make(chan struct{}),
 		metrics:               metrics,
 		log: logging.WithFields(logging.Fields{
 			"probe-key": probekey,
@@ -36,13 +38,13 @@ func NewProbeWorker(probe *GatewayProbeSpec, metrics *probeMetrics, probekey str
 
 // IncNumServices increments the number of services that are routed by the gateway
 func (pw *ProbeWorker) IncNumServices() {
-	pw.numAssociatedServices = pw.numAssociatedServices + 1
+	pw.numAssociatedServices++
 	pw.metrics.services.Inc()
 }
 
 // DcrNumServices decrements the number of services that are routed by the gateway
 func (pw *ProbeWorker) DcrNumServices() {
-	pw.numAssociatedServices = pw.numAssociatedServices - 1
+	pw.numAssociatedServices--
 	pw.metrics.services.Dec()
 }
 
@@ -101,8 +103,11 @@ func (pw *ProbeWorker) doProbe() {
 		pw.log.Debug("No ips. Marking as unhealthy")
 		pw.metrics.alive.Set(0)
 	} else {
+		client := http.Client{
+			Timeout: httpGatewayTimeoutMillis * time.Millisecond,
+		}
 		start := time.Now()
-		resp, err := http.Get(fmt.Sprintf("http://%s:%d/%s", ipToTry, pw.probe.port, pw.probe.path))
+		resp, err := client.Get(fmt.Sprintf("http://%s:%d/%s", ipToTry, pw.probe.port, pw.probe.path))
 		end := time.Since(start)
 		if err != nil {
 			pw.log.Errorf("Problem connecting with gateway. Marking as unhealthy %s", err)

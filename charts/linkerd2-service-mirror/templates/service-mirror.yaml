@@ -16,7 +16,7 @@ metadata:
   name: linkerd-service-mirror
   namespace: {{.Values.namespace}}
   labels:
-    ControllerComponentLabel: service-mirror
+    {{.Values.controllerComponentLabel}}: linkerd-service-mirror
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
