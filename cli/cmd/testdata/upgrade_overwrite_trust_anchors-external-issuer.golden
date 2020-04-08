@@ -824,6 +824,9 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-web
   namespace: linkerd
+- kind: ServiceAccount
+  name: linkerd-smi-metrics
+  namespace: linkerd
 ---
 ###
 ### SMI-Metrics RBAC
@@ -3044,7 +3047,7 @@ spec:
       serviceAccountName: linkerd-smi-metrics
       containers:
       - name: shim
-        image: deislabs/smi-metrics:v0.2.0
+        image: deislabs/smi-metrics:v0.2.1
         imagePullPolicy: IfNotPresent
 
         command:

@@ -31,6 +31,9 @@ func addressString(address Address) string {
 	if address.Identity != "" {
 		addressString = fmt.Sprintf("%s/%s", addressString, address.Identity)
 	}
+	if address.AuthorityOverride != "" {
+		addressString = fmt.Sprintf("%s/%s", addressString, address.AuthorityOverride)
+	}
 	return addressString
 }
 
@@ -664,7 +667,7 @@ subsets:
 			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
 			port:        8989,
 			expectedAddresses: []string{
-				"172.17.0.12:8989/gateway-identity-1",
+				"172.17.0.12:8989/gateway-identity-1/name1-remote-fq:8989",
 			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
@@ -700,7 +703,7 @@ subsets:
 			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
 			port:        8989,
 			expectedAddresses: []string{
-				"172.17.0.12:8989",
+				"172.17.0.12:8989/name1-remote-fq:8989",
 			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
@@ -738,7 +741,44 @@ subsets:
 			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
 			port:        8989,
 			expectedAddresses: []string{
-				"172.17.0.12:9999/gateway-identity-1",
+				"172.17.0.12:9999/gateway-identity-1/name1-remote-fq:8989",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+		},
+		{
+			k8sConfigs: []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1-remote
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+				`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name1-remote
+  namespace: ns
+  annotations:
+    mirror.linkerd.io/remote-gateway-identity: ""
+    mirror.linkerd.io/remote-svc-fq-name: "name1-remote-fq"
+  labels:
+    mirror.linkerd.io/mirrored-service: "true"
+subsets:
+- addresses:
+  - ip: 172.17.0.12
+  ports:
+  - port: 9999`,
+			},
+			serviceType: "mirrored service with empty identity and remapped port in endpoints",
+			id:          ServiceID{Name: "name1-remote", Namespace: "ns"},
+			port:        8989,
+			expectedAddresses: []string{
+				"172.17.0.12:9999/name1-remote-fq:8989",
 			},
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,

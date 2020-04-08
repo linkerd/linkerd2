@@ -1,3 +1,59 @@
+## edge-20.4.1
+
+This release introduces some cool new functionalities, all provided by our
+awesome community of contributors! Also two bugs were fixed that were introduced
+since edge-20.3.2.
+
+* CLI
+  * Added `linkerd uninstall` command to uninstall the control plane (thanks
+    @Matei207!)
+  * Fixed a bug causing `linkerd routes -o wide` to not show the proper actual
+    success rate
+* Controller
+  * Fail proxy injection if the pod spec has `automountServiceAccountToken`
+    disabled (thanks @mayankshah1607!)
+* Web UI
+  * Added a route dashboard to Grafana (thanks @lundbird!)
+* Proxy
+  * Fixed a bug causing the proxy's inbound to spuriously return 503 timeouts
+
+## edge-20.3.4
+
+This release introduces several fixes and improvements to the CLI.
+
+* CLI
+  * Added support for kubectl-style label selectors in many CLI commands (thanks
+    @mayankshah1607!)
+  * Fixed the path regex in service profiles generated from proto files without
+    a package name (thanks @amariampolskiy!)
+  * Fixed an error when injecting Cronjobs that have no metadata
+  * Relaxed the clock skew check to match the default node heartbeat interval
+    on Kubernetes 1.17 and made this check a warning
+  * Fixed a bug where the linkerd-smi-metrics pod could not be created on
+    clusters with pod security policy enabled
+* Internal
+  * Upgraded tracing components to more recent versions and improved resource
+    defaults (thanks @Pothulapati!)
+
+## edge-20.3.3
+
+This release introduces new experimental CLI commands for querying metrics using
+the Service Mesh Interface (SMI) and for multi-cluster support via service
+mirroring.
+
+If you would like to learn more about service mirroring or SMI, or are
+interested in experimenting with these features, please join us in
+[Linkerd Slack](https://slack.linkerd.io) for help and feedback.
+
+* CLI
+  * Added experimental `linkerd cluster` commands for managing multi-cluster
+    service mirroring
+  * Added the experimental `linkerd alpha clients` command, which uses the
+    smi-metrics API to display client-side metrics from each of a resource's
+    clients
+  * Added retries to some `linkerd check` checks to prevent spurious failures
+    when run immediately after cluster creation or Linkerd installation
+
 ## edge-20.3.2
 
 This release introduces substantial proxy improvements as well as

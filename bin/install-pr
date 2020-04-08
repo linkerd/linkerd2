@@ -95,19 +95,7 @@ then
     name=$(echo "$context" | sed -n -E "s/(kind)-(.*)/\2/p")
   fi
 
-  for image in cni-plugin controller debug grafana proxy web
-  do
-    "$bindir"/kind load image-archive ${name:+'--name' "$name"} $image.tar || touch load_fail &
-  done
-
-  # Wait for `kind load` background processes to complete; exit early if any
-  # job failed
-  wait < <(jobs -p)
-  if [ -f load_fail ]
-  then
-    echo "Loading docker images into KinD cluster failed."
-    exit 1
-  fi
+  "$bindir"/kind-load --images ${name:+'--name' "$name"}
 else
   for image in cni-plugin controller debug grafana proxy web
   do

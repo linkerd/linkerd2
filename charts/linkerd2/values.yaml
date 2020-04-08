@@ -167,7 +167,7 @@ nodeSelector:
   beta.kubernetes.io/os: linux
 
 smiMetrics:
-  image: deislabs/smi-metrics:v0.2.0
+  image: deislabs/smi-metrics:v0.2.1
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
@@ -178,17 +178,11 @@ tracing:
   enabled: false
   collector:
     name: linkerd-collector
-    image: omnition/opencensus-collector:0.1.10
+    image: omnition/opencensus-collector:0.1.11
     resources:
-      cpu:
-        limit: 1
-        request: 200m
-      memory:
-        limit: 2Gi
-        request: 400Mi
   jaeger:
     name: linkerd-jaeger
-    image: jaegertracing/all-in-one:1.8
+    image: jaegertracing/all-in-one:1.17.1
     resources:
 
 grafana:

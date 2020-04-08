@@ -66,7 +66,7 @@ jobs:
   kind_integration_tests:
     strategy:
       matrix:
-        integration_test: [deep, upgrade, helm, helm_upgrade, custom_domain, external_issuer]
+        integration_test: [deep, upgrade, helm, helm_upgrade, uninstall, custom_domain, external_issuer]
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -142,20 +142,8 @@ jobs:
         PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
         PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.15.2
       run: |
-        # For each container, load the image archive into the KinD cluster.
-        #
-        # `kind load` cannot take input from STDIN, so `<(command)` syntax is
-        # used to load the output into the KinD cluster. Set `DOCKER_HOST` for
-        # a single command, and `docker save` the container from the Packet
-        # host.
-        for image in proxy controller web cni-plugin debug grafana; do
-          kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save "$DOCKER_REGISTRY/$image:$TAG") || tee load_fail &
-        done
-
-        # Wait for `kind load` background processes to complete. Exit early if
-        # any job failed.
-        wait < <(jobs -p)
-        test -f load_fail && exit 1 || true
+        # Fetch images from the Packet host and load them into the local KinD cluster
+        bin/kind-load --images --images-host ssh://linkerd-docker
 
         # Load proxy-init and prometheus images into KinD while it is
         # available. Allow these commands to fail since they will be cached
@@ -165,14 +153,7 @@ jobs:
     - name: Load image archives into the local KinD cluster (Forked repositories)
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: |
-        for image in proxy controller web cni-plugin debug grafana; do
-          kind load image-archive image-archives/$image.tar || tee load_fail &
-        done
-
-        # Wait for `kind load` background processes to complete. Exit early if
-        # any job failed.
-        wait < <(jobs -p)
-        test -f load_fail && exit 1 || true
+        bin/kind-load --images
     - name: Run integration tests
       run: |
         # Export `init_test_run` and `*_integration_tests` into the

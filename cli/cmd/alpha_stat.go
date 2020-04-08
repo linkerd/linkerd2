@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/linkerd/linkerd2/cli/table"
 	"github.com/linkerd/linkerd2/controller/api/util"
@@ -14,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/metrics/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -160,28 +160,28 @@ func buildToResource(namespace, to string) *public.Resource {
 	return &toResource
 }
 
-func renderTrafficMetrics(metrics *smimetrics.TrafficMetrics, allNamespaces bool, w io.Writer) {
+func renderTrafficMetrics(metrics *v1alpha1.TrafficMetrics, allNamespaces bool, w io.Writer) {
 	t := buildTable(false, allNamespaces)
 	t.Data = []table.Row{metricsToRow(metrics, "")}
 	t.Render(w)
 }
 
-func renderTrafficMetricsList(metrics *smimetrics.TrafficMetricsList, allNamespaces bool, w io.Writer) {
+func renderTrafficMetricsList(metrics *v1alpha1.TrafficMetricsList, allNamespaces bool, w io.Writer) {
 	t := buildTable(false, allNamespaces)
 	t.Data = []table.Row{}
 	for _, row := range metrics.Items {
 		row := row // Copy to satisfy golint.
-		t.Data = append(t.Data, metricsToRow(&row, ""))
+		t.Data = append(t.Data, metricsToRow(row, ""))
 	}
 	t.Render(w)
 }
 
-func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.Writer, toResource *public.Resource, direction string) {
+func renderTrafficMetricsEdgesList(metrics *v1alpha1.TrafficMetricsList, w io.Writer, toResource *public.Resource, direction string) {
 	t := buildTable(true, false)
 	t.Data = []table.Row{}
 	for _, row := range metrics.Items {
 		row := row // Copy to satisfy golint.
-		if row.Edge.Direction != direction {
+		if string(row.Edge.Direction) != direction {
 			continue
 		}
 		if toResource != nil {
@@ -190,39 +190,31 @@ func renderTrafficMetricsEdgesList(metrics *smimetrics.TrafficMetricsList, w io.
 				continue
 			}
 		}
-		t.Data = append(t.Data, metricsToRow(&row, direction))
+		t.Data = append(t.Data, metricsToRow(row, direction))
 	}
 	t.Render(w)
 }
 
-func getNumericMetric(metrics *smimetrics.TrafficMetrics, name string) *resource.Quantity {
+func getNumericMetric(metrics *v1alpha1.TrafficMetrics, name string) *resource.Quantity {
 	for _, m := range metrics.Metrics {
 		if m.Name == name {
-			quantity, err := resource.ParseQuantity(m.Value)
-			if err != nil {
-				return resource.NewQuantity(0, resource.DecimalSI)
-			}
-			return &quantity
+			return m.Value
 		}
 	}
 	return resource.NewQuantity(0, resource.DecimalSI)
 }
 
-func getNumericMetricWithUnit(metrics *smimetrics.TrafficMetrics, name string) string {
+func getNumericMetricWithUnit(metrics *v1alpha1.TrafficMetrics, name string) string {
 	for _, m := range metrics.Metrics {
 		if m.Name == name {
-			quantity, err := resource.ParseQuantity(m.Value)
-			if err != nil {
-				return ""
-			}
-			value := quantity.Value()
+			value := m.Value.Value()
 			return fmt.Sprintf("%d%s", value, m.Unit)
 		}
 	}
 	return ""
 }
 
-func metricsToRow(metrics *smimetrics.TrafficMetrics, direction string) []string {
+func metricsToRow(metrics *v1alpha1.TrafficMetrics, direction string) []string {
 	success := getNumericMetric(metrics, "success_count").MilliValue()
 	failure := getNumericMetric(metrics, "failure_count").MilliValue()
 	sr := "-"
@@ -230,12 +222,8 @@ func metricsToRow(metrics *smimetrics.TrafficMetrics, direction string) []string
 		rate := float32(success) / float32(success+failure) * 100
 		sr = fmt.Sprintf("%.2f%%", rate)
 	}
-	rps := "-"
-	window, err := time.ParseDuration(metrics.Window)
-	if err == nil {
-		rate := float64(success+failure) / 1000.0 / window.Seconds()
-		rps = fmt.Sprintf("%.1frps", rate)
-	}
+	rate := float64(success+failure) / 1000.0 / metrics.Window.Seconds()
+	rps := fmt.Sprintf("%.1frps", rate)
 
 	var to string
 	var from string

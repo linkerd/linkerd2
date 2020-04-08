@@ -23,12 +23,13 @@ import (
 
 const (
 	// for inject reports
-	hostNetworkDesc    = "pods do not use host networking"
-	sidecarDesc        = "pods do not have a 3rd party proxy or initContainer already injected"
-	injectDisabledDesc = "pods are not annotated to disable injection"
-	unsupportedDesc    = "at least one resource injected"
-	udpDesc            = "pod specs do not include UDP ports"
-	slash              = "/"
+	hostNetworkDesc                  = "pods do not use host networking"
+	sidecarDesc                      = "pods do not have a 3rd party proxy or initContainer already injected"
+	injectDisabledDesc               = "pods are not annotated to disable injection"
+	unsupportedDesc                  = "at least one resource injected"
+	udpDesc                          = "pod specs do not include UDP ports"
+	slash                            = "/"
+	automountServiceAccountTokenDesc = "cannot enable mTLS when automountServiceAccountToken set to \"false\""
 )
 
 type resourceTransformerInject struct {
@@ -165,8 +166,10 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		b, err := conf.InjectNamespace(rt.overrideAnnotations)
 		return b, reports, err
 	}
-
 	if b, _ := report.Injectable(); !b {
+		if !report.AutomountServiceAccountToken {
+			return bytes, reports, errors.New(automountServiceAccountTokenDesc)
+		}
 		return bytes, reports, nil
 	}
 

@@ -206,6 +206,20 @@ func TestUninjectAndInject(t *testing.T) {
 			testInjectConfig: defaultConfig,
 		},
 		{
+			inputFileName:    "inject_emojivoto_cronjob.input.yml",
+			goldenFileName:   "inject_emojivoto_cronjob.golden.yml",
+			reportFileName:   "inject_emojivoto_cronjob.report",
+			injectProxy:      false,
+			testInjectConfig: defaultConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_cronjob_nometa.input.yml",
+			goldenFileName:   "inject_emojivoto_cronjob_nometa.golden.yml",
+			reportFileName:   "inject_emojivoto_cronjob.report",
+			injectProxy:      false,
+			testInjectConfig: defaultConfig,
+		},
+		{
 			inputFileName:    "inject_emojivoto_pod.input.yml",
 			goldenFileName:   "inject_emojivoto_pod.golden.yml",
 			reportFileName:   "inject_emojivoto_pod.report",
@@ -396,6 +410,13 @@ func TestRunInjectCmd(t *testing.T) {
 			stdErrGoldenFileName: "inject_gettest_deployment.good.golden.stderr",
 			exitCode:             0,
 			injectProxy:          true,
+		},
+		{
+			inputFileName:        "inject_emojivoto_deployment_automountServiceAccountToken_false.input.yml",
+			stdOutGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.yml",
+			stdErrGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.stderr",
+			exitCode:             1,
+			injectProxy:          false,
 		},
 	}
 

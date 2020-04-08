@@ -8,14 +8,14 @@ import (
 
 	"k8s.io/client-go/rest"
 
-	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
-	ts "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions"
-	tsinformers "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
 	spv1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	sp "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions"
 	spinformers "github.com/linkerd/linkerd2/controller/gen/client/informers/externalversions/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
+	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions"
+	tsinformers "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/informers/externalversions/split/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

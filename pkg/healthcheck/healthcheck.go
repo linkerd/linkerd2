@@ -160,11 +160,11 @@ const HintBaseURL = "https://linkerd.io/checks/#"
 
 // AllowedClockSkew sets the allowed skew in clock synchronization
 // between the system running inject command and the node(s), being
-// based on assumed node's heartbeat interval (<= 60 seconds) plus default TLS
+// based on assumed node's heartbeat interval (5 minutes) plus default TLS
 // clock skew allowance.
 //
 // TODO: Make this default value overridiable, e.g. by CLI flag
-const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
+const AllowedClockSkew = 5*time.Minute + tls.DefaultClockSkewAllowance
 
 var linkerdHAControlPlaneComponents = []string{
 	"linkerd-controller",
@@ -175,19 +175,25 @@ var linkerdHAControlPlaneComponents = []string{
 	"linkerd-tap",
 }
 
+// ExpectedServiceAccountNames is a list of the service accounts that a healthy
+// Linkerd installation should have. Note that linkerd-heartbeat is optional,
+// so it doesn't appear here.
+var ExpectedServiceAccountNames = []string{
+	"linkerd-controller",
+	"linkerd-destination",
+	"linkerd-grafana",
+	"linkerd-identity",
+	"linkerd-prometheus",
+	"linkerd-proxy-injector",
+	"linkerd-smi-metrics",
+	"linkerd-sp-validator",
+	"linkerd-web",
+	"linkerd-tap",
+}
+
 var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
-
-	expectedServiceAccountNames = []string{
-		"linkerd-controller",
-		"linkerd-identity",
-		"linkerd-prometheus",
-		"linkerd-proxy-injector",
-		"linkerd-sp-validator",
-		"linkerd-web",
-		"linkerd-tap",
-	}
 )
 
 // Resource provides a way to describe a Kubernetes object, kind, and name.
@@ -498,6 +504,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "no clock skew detected",
 					hintAnchor:  "pre-k8s-clock-skew",
+					warning:     true,
 					check: func(context.Context) error {
 						return hc.checkClockSkew()
 					},
@@ -701,7 +708,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-sa",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkServiceAccounts(expectedServiceAccountNames)
+						return hc.checkServiceAccounts(ExpectedServiceAccountNames)
 					},
 				},
 				{

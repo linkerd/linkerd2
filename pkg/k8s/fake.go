@@ -5,13 +5,13 @@ import (
 	"io"
 	"strings"
 
-	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
-	tsfake "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/fake"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	spfake "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/fake"
+	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
+	tsfake "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned/fake"
 
-	tsscheme "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned/scheme"
 	spscheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
+	tsscheme "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned/scheme"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -117,6 +118,7 @@ type ResourceConfig struct {
 type patch struct {
 	l5dcharts.Values
 	PathPrefix            string                    `json:"pathPrefix"`
+	AddRootMetadata       bool                      `json:"addRootMetadata"`
 	AddRootAnnotations    bool                      `json:"addRootAnnotations"`
 	Annotations           map[string]string         `json:"annotations"`
 	AddRootLabels         bool                      `json:"addRootLabels"`
@@ -641,6 +643,12 @@ func (conf *ResourceConfig) injectObjectMeta(values *patch) {
 }
 
 func (conf *ResourceConfig) injectPodAnnotations(values *patch) {
+	// ObjectMetaAnnotations.Annotations is nil for new empty structs, but we always initialize
+	// it to an empty map in parse() above, so we follow suit here.
+	emptyMeta := &metav1.ObjectMeta{Annotations: map[string]string{}}
+	// Cronjobs in batch/v1beta1 might have an empty `spec.jobTemplate.spec.template.metadata`
+	// field so we make sure to create it if needed, before attempting adding annotations
+	values.AddRootMetadata = reflect.DeepEqual(conf.pod.meta, emptyMeta)
 	values.AddRootAnnotations = len(conf.pod.meta.Annotations) == 0
 
 	for _, k := range sortedKeys(conf.pod.annotations) {

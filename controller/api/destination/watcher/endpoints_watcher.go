@@ -31,12 +31,13 @@ type (
 	// case that this endpoint is not associated with a pod and maps
 	// to some other IP (i.e. a remote service gateway)
 	Address struct {
-		IP        string
-		Port      Port
-		Pod       *corev1.Pod
-		OwnerName string
-		OwnerKind string
-		Identity  string
+		IP                string
+		Port              Port
+		Pod               *corev1.Pod
+		OwnerName         string
+		OwnerKind         string
+		Identity          string
+		AuthorityOverride string
 	}
 
 	// AddressSet is a set of Address, indexed by ID.
@@ -90,6 +91,7 @@ type (
 	portPublisher struct {
 		id         ServiceID
 		targetPort namedPort
+		srcPort    Port
 		hostname   string
 		log        *logging.Entry
 		k8sAPI     *k8s.API
@@ -392,6 +394,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 	port := &portPublisher{
 		listeners:  []EndpointUpdateListener{},
 		targetPort: targetPort,
+		srcPort:    srcPort,
 		hostname:   hostname,
 		exists:     exists,
 		k8sAPI:     sp.k8sAPI,
@@ -465,10 +468,16 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					Namespace: endpoints.ObjectMeta.Namespace,
 				}
 
+				var authorityOverride string
+				if fqName, ok := endpoints.Annotations[consts.RemoteServiceFqName]; ok {
+					authorityOverride = fmt.Sprintf("%s:%d", fqName, pp.srcPort)
+				}
+
 				addresses[id] = Address{
-					IP:       endpoint.IP,
-					Port:     resolvedPort,
-					Identity: endpoints.Annotations[consts.RemoteGatewayIdentity],
+					IP:                endpoint.IP,
+					Port:              resolvedPort,
+					Identity:          endpoints.Annotations[consts.RemoteGatewayIdentity],
+					AuthorityOverride: authorityOverride,
 				}
 				continue
 			}
