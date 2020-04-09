@@ -78,6 +78,7 @@ spec:
           name: tls
           readOnly: true
 
+      {{- $_ := set .Values.global.proxy "resources" (default .Values.global.proxy.resources .Values.smiMetrics.proxy.resources) }}        
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:

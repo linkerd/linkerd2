@@ -1,18 +1,4 @@
 {{ define "partials.proxy" -}}
-{{ if .Values.global.proxy.perComponentResource }}
-{{ if .Values.global.proxy.component }}
-{{ if (index .Values.global.proxy.perComponentResources .Values.global.proxy.component) }}
-{{ $_ := set .hasPerComponentResourcePreconditions 1}}
-{{ end }}
-{{ end }}
-{{ end }}
-{{ if .hasPerComponentResourcePreconditions}}
-{{ $_ := set .Values.global.proxy "actualResources" (index .Values.global.proxy.perComponentResources .Values.global.proxy.component) -}}
-{{ else }}
-{{ if .Values.global.proxy.resources}}
-{{ $_ := set .Values.global.proxy "actualResources" .Values.global.proxy.resources -}}
-{{ end }}
-{{ end }}
 env:
 - name: LINKERD2_PROXY_LOG
   value: {{.Values.global.proxy.logLevel}}
@@ -113,8 +99,8 @@ readinessProbe:
     path: /ready
     port: {{.Values.global.proxy.ports.admin}}
   initialDelaySeconds: 2
-{{- if .Values.global.proxy.actualResources }}
-{{ include "partials.resources" .Values.global.proxy.actualResources }}
+{{- if .Values.global.proxy.resources }}
+{{ include "partials.resources" .Values.global.proxy.resources }}
 {{- end }}
 securityContext:
   allowPrivilegeEscalation: false

@@ -88,6 +88,18 @@ controllerImage: gcr.io/linkerd-io/controller
 controllerLogLevel: &controller_log_level info
 controllerReplicas: 1
 controllerUID: 2103
+# set resources for controller linkerd proxy
+# see global.proxy.resources for details.
+#controllerProxyResources:
+
+
+# destination configuration
+destination:
+  proxy:
+  # set resources for prometheus and prometheus linkerd proxy respectively
+  # see global.proxy.resources for details.
+  #resources:
+
 
 # web dashboard configuration
 dashboard:
@@ -122,8 +134,17 @@ identity:
       # PEM-encoded ECDSA private key
       keyPEM: |
 
+  proxy:
+    # set resources for identity linkerd proxy
+    # see global.proxy.resources for details.
+    #resources:
+
 # grafana configuration
 grafanaImage: gcr.io/linkerd-io/grafana
+# set resources for grafana linkerd proxy
+# see global.proxy.resources for details.
+#grafanaProxyResources:
+
 
 # heartbeat configuration
 disableHeartBeat: false
@@ -132,6 +153,10 @@ heartbeatSchedule: "0 0 * * *"
 # prometheus configuration
 prometheusImage: prom/prometheus:v2.15.2
 prometheusLogLevel: *controller_log_level
+# set resources for prometheus and prometheus linkerd proxy respectively
+# see global.proxy.resources for details.
+#prometheusResources:
+#prometeheusProxyResources:
 
 # proxy injector configuration
 proxyInjector:
@@ -139,6 +164,10 @@ proxyInjector:
   crtPEM: |
 
   keyPEM: |
+
+  proxy:
+    # see global.proxy.resources for details.
+    #resources:
 
 # service profile validator configuration
 profileValidator:
@@ -154,8 +183,17 @@ tap:
 
   keyPEM: |
 
+  proxy:
+    # see global.proxy.resources for details.
+    #resources:
+
 # web configuration
 webImage: gcr.io/linkerd-io/web
+# set resources for web UI and web linkerd proxy respectively
+# see global.proxy.resources for details.
+#webResources:
+#webProxyResources:
+
 
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:
@@ -177,6 +215,10 @@ smiMetrics:
 
   keyPEM: |
 
+  proxy:
+  # set resources for linkerd proxy, see global.proxy.resources for details
+  #resources:
+
 # Configuration for Add-ons
 tracing:
   enabled: false
@@ -188,3 +230,9 @@ tracing:
     name: linkerd-jaeger
     image: jaegertracing/all-in-one:1.17.1
     resources:
+
+
+# set resources for the sp-validator and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#spValidatorResources:
+#spValidatorProxyResources:
