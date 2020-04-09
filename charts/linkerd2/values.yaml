@@ -94,11 +94,10 @@ controllerUID: 2103
 
 
 # destination configuration
-destination:
-  proxy:
-  # set resources for prometheus and prometheus linkerd proxy respectively
-  # see global.proxy.resources for details.
-  #resources:
+# set resources for the sp-validator and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#destinationResources:
+#destinationProxyResources:
 
 
 # web dashboard configuration
@@ -134,10 +133,11 @@ identity:
       # PEM-encoded ECDSA private key
       keyPEM: |
 
-  proxy:
-    # set resources for identity linkerd proxy
-    # see global.proxy.resources for details.
-    #resources:
+# set resources for identity and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#identityResources:
+#identityProxyResources:
+
 
 # grafana configuration
 grafanaImage: gcr.io/linkerd-io/grafana
@@ -165,9 +165,11 @@ proxyInjector:
 
   keyPEM: |
 
-  proxy:
-    # see global.proxy.resources for details.
-    #resources:
+
+# set resources for proxy injector and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#proxyInjectorResources:
+#proxyInjectorProxyResources:
 
 # service profile validator configuration
 profileValidator:
@@ -183,13 +185,14 @@ tap:
 
   keyPEM: |
 
-  proxy:
-    # see global.proxy.resources for details.
-    #resources:
+# set resources for tap and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#tapResources:
+#tapProxyResources:
 
 # web configuration
 webImage: gcr.io/linkerd-io/web
-# set resources for web UI and web linkerd proxy respectively
+# set resources for web UI and its linkerd proxy respectively
 # see global.proxy.resources for details.
 #webResources:
 #webProxyResources:
@@ -214,6 +217,11 @@ smiMetrics:
   crtPEM: |
 
   keyPEM: |
+
+
+# set resources for smi-metrics linkerd proxy
+# see global.proxy.resources for details.
+#smiMetricsProxyResources:
 
   proxy:
   # set resources for linkerd proxy, see global.proxy.resources for details
