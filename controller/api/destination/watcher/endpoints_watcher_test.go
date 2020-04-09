@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 )
 
@@ -70,14 +71,14 @@ func addressStringWithResVerson(address Address) string {
 	return fmt.Sprintf("%s:%d:%s", address.IP, address.Port, address.Pod.ResourceVersion)
 }
 
-func (bel *bufferingEndpointListenerWithResVersion) Add(set PodSet) {
-	for _, address := range set.Pods {
+func (bel *bufferingEndpointListenerWithResVersion) Add(set AddressSet) {
+	for _, address := range set.Addresses {
 		bel.added = append(bel.added, addressStringWithResVerson(address))
 	}
 }
 
-func (bel *bufferingEndpointListenerWithResVersion) Remove(set PodSet) {
-	for _, address := range set.Pods {
+func (bel *bufferingEndpointListenerWithResVersion) Remove(set AddressSet) {
+	for _, address := range set.Addresses {
 		bel.removed = append(bel.removed, addressStringWithResVerson(address))
 	}
 }
@@ -870,6 +871,125 @@ func testPod(resVersion string) *corev1.Pod {
 	}
 }
 
+func endpoints(identity string) *corev1.Endpoints {
+	return &corev1.Endpoints{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Endpoints",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "remote-service",
+			Namespace: "ns",
+			Annotations: map[string]string{
+				consts.RemoteGatewayIdentity: identity,
+				consts.RemoteServiceFqName:   "remote-service.svc.default.cluster.local",
+			},
+			Labels: map[string]string{
+				consts.MirroredResourceLabel: "true",
+			},
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Addresses: []corev1.EndpointAddress{
+					{
+						IP: "1.2.3.4",
+					},
+				},
+				Ports: []corev1.EndpointPort{
+					{
+						Port: 80,
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestEndpointsChangeDetection(t *testing.T) {
+
+	k8sConfigs := []string{`
+apiVersion: v1
+kind: Service
+metadata:
+  name: remote-service
+  namespace: ns
+spec:
+  ports:
+  - port: 80
+    targetPort: 80`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: remote-service
+  namespace: ns
+  annotations:
+    mirror.linkerd.io/remote-gateway-identity: "gateway-identity-1"
+    mirror.linkerd.io/remote-svc-fq-name: "remote-service.svc.default.cluster.local"
+  labels:
+    mirror.linkerd.io/mirrored-service: "true"
+subsets:
+- addresses:
+  - ip: 1.2.3.4
+  ports:
+  - port: 80`,
+	}
+
+	for _, tt := range []struct {
+		serviceType       string
+		id                ServiceID
+		port              Port
+		newEndpoints      *corev1.Endpoints
+		expectedAddresses []string
+	}{
+		{
+			serviceType:       "will update endpoints if identity is different",
+			id:                ServiceID{Name: "remote-service", Namespace: "ns"},
+			port:              80,
+			newEndpoints:      endpoints("gateway-identity-2"),
+			expectedAddresses: []string{"1.2.3.4:80/gateway-identity-1/remote-service.svc.default.cluster.local:80", "1.2.3.4:80/gateway-identity-2/remote-service.svc.default.cluster.local:80"},
+		},
+
+		{
+			serviceType:       "will not update endpoints if identity is the same",
+			id:                ServiceID{Name: "remote-service", Namespace: "ns"},
+			port:              80,
+			newEndpoints:      endpoints("gateway-identity-1"),
+			expectedAddresses: []string{"1.2.3.4:80/gateway-identity-1/remote-service.svc.default.cluster.local:80"},
+		},
+	} {
+
+		tt := tt // pin
+		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(k8sConfigs...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+
+			k8sAPI.Sync(nil)
+
+			listener := newBufferingEndpointListener()
+
+			err = watcher.Subscribe(tt.id, tt.port, "", listener)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			k8sAPI.Sync(nil)
+
+			watcher.addEndpoints(tt.newEndpoints)
+
+			actualAddresses := make([]string, 0)
+			actualAddresses = append(actualAddresses, listener.added...)
+			sort.Strings(actualAddresses)
+
+			testCompare(t, tt.expectedAddresses, actualAddresses)
+		})
+	}
+}
+
 func TestPodChangeDetection(t *testing.T) {
 	endpoints := &corev1.Endpoints{
 		TypeMeta: metav1.TypeMeta{
@@ -975,7 +1095,7 @@ status:
 
 			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
 
-			k8sAPI.Sync()
+			k8sAPI.Sync(nil)
 
 			listener := newBufferingEndpointListenerWithResVersion()
 
@@ -988,7 +1108,7 @@ status:
 			if err != nil {
 				t.Fatal(err)
 			}
-			k8sAPI.Sync()
+			k8sAPI.Sync(nil)
 
 			watcher.addEndpoints(endpoints)
 

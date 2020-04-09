@@ -601,17 +601,17 @@ func getTargetPort(service *corev1.Service, port Port) namedPort {
 	return targetPort
 }
 
-func addressChanged(oldAddress *Address, newAddress *Address) bool {
-	if oldAddress.Pod !=  nil && newAddress.Pod != nil {
+func addressChanged(oldAddress Address, newAddress Address) bool {
+	if oldAddress.Pod != nil && newAddress.Pod != nil {
 		// if these addresses are owned by pods we can check the resource versions
 		return oldAddress.Pod.ResourceVersion != newAddress.Pod.ResourceVersion
-	} else {
-		// in this case the identity could have changed; this can happen when for
-		// example a mirrored service is reassigned to a new gateway with a different
-		// identity and the service mirroring controller picks that and updates the
-		// identity
-		return oldAddress.Identity != newAddress.Identity
 	}
+	// in this case the identity could have changed; this can happen when for
+	// example a mirrored service is reassigned to a new gateway with a different
+	// identity and the service mirroring controller picks that and updates the
+	// identity
+	return oldAddress.Identity != newAddress.Identity
+
 }
 
 func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSet) {
@@ -622,7 +622,7 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 	removeAddresses := make(map[ID]Address)
 	for id, newAddress := range newAddresses.Addresses {
 		if oldAddress, ok := oldAddresses.Addresses[id]; ok {
-			if addressChanged(&oldAddress, &newAddress) {
+			if addressChanged(oldAddress, newAddress) {
 				addAddesses[id] = newAddress
 			}
 		} else {
