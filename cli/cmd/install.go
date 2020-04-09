@@ -533,6 +533,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	flags.MarkHidden("control-plane-version")
 	flags.MarkHidden("control-plane-tracing")
 	flags.MarkHidden("smi-metrics")
+	flags.MarkHidden("smi-metrics-image")
 
 	return flags
 }
