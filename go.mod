@@ -1,6 +1,6 @@
 module github.com/linkerd/linkerd2
 
-go 1.13.4
+go 1.13
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.6.0
@@ -32,7 +32,7 @@ require (
 	github.com/imdario/mergo v0.3.7
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/linkerd/linkerd2-proxy-api v0.1.10
-	github.com/linkerd/linkerd2-proxy-init v1.3.1
+	github.com/linkerd/linkerd2-proxy-init v1.3.2
 	github.com/mattn/go-isatty v0.0.9
 	github.com/mattn/go-runewidth v0.0.2
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
@@ -61,7 +61,7 @@ require (
 	sigs.k8s.io/yaml v1.1.0
 )
 
-replace github.com/wercker/stern => github.com/linkerd/stern v0.0.0-20190907020106-201e8ccdff9c
+replace github.com/wercker/stern => github.com/linkerd/stern v0.0.0-20200316183041-1ab5375fb7e9
 
 replace k8s.io/apimachinery v0.0.0-20181127105237-2b1284ed4c93 => k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93
 

@@ -160,11 +160,11 @@ const HintBaseURL = "https://linkerd.io/checks/#"
 
 // AllowedClockSkew sets the allowed skew in clock synchronization
 // between the system running inject command and the node(s), being
-// based on assumed node's heartbeat interval (<= 60 seconds) plus default TLS
+// based on assumed node's heartbeat interval (5 minutes) plus default TLS
 // clock skew allowance.
 //
 // TODO: Make this default value overridiable, e.g. by CLI flag
-const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
+const AllowedClockSkew = 5*time.Minute + tls.DefaultClockSkewAllowance
 
 var (
 	retryWindow    = 5 * time.Second
@@ -483,6 +483,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "no clock skew detected",
 					hintAnchor:  "pre-k8s-clock-skew",
+					warning:     true,
 					check: func(context.Context) error {
 						return hc.checkClockSkew()
 					},

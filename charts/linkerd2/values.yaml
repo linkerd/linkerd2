@@ -11,7 +11,7 @@ global:
   controlPlaneTracing: false
 
   # control plane version. See Proxy section for proxy version
-  linkerdVersion: &linkerd_version stable-2.7.0
+  linkerdVersion: &linkerd_version stable-2.7.1
 
   namespace: linkerd
 
@@ -56,7 +56,7 @@ global:
     image:
       name: gcr.io/linkerd-io/proxy-init
       pullPolicy: *image_pull_policy
-      version: v1.1.0
+      version: v1.3.2
     resources:
       cpu:
         limit: 100m
