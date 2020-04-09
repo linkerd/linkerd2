@@ -170,6 +170,7 @@ nodeSelector:
   beta.kubernetes.io/os: linux
 
 smiMetrics:
+  enabled: false
   image: deislabs/smi-metrics:v0.2.1
   # if empty, Helm will auto-generate these fields
   crtPEM: |

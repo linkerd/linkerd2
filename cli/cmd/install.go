@@ -55,6 +55,7 @@ type (
 		restrictDashboardPrivileges bool
 		controlPlaneTracing         bool
 		identityOptions             *installIdentityOptions
+		smiMetricsEnabled           bool
 		smiMetricsImage             string
 		*proxyConfigOptions
 
@@ -201,6 +202,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
 		controlPlaneTracing:         defaults.Global.ControlPlaneTracing,
+		smiMetricsEnabled:           defaults.SMIMetrics.Enabled,
 		smiMetricsImage:             defaults.SMIMetrics.Image,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
@@ -521,11 +523,17 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.addOnConfig, "addon-config", options.addOnConfig,
 		"A path to a configuration file of add-ons",
 	)
+	flags.BoolVar(
+		&options.smiMetricsEnabled, "smi-metrics", options.smiMetricsEnabled,
+		"Enables installing the SMI-Metrics controller",
+	)
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.StringVar(&options.smiMetricsImage, "smi-metrics-image", options.smiMetricsImage, "SMI Metrics image")
 	flags.MarkHidden("control-plane-version")
 	flags.MarkHidden("control-plane-tracing")
+	flags.MarkHidden("smi-metrics")
+	flags.MarkHidden("smi-metrics-image")
 
 	return flags
 }
@@ -763,6 +771,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.DisableHeartBeat = options.disableHeartbeat
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
 	installValues.SMIMetrics.Image = options.smiMetricsImage
+	installValues.SMIMetrics.Enabled = options.smiMetricsEnabled
 
 	installValues.Global.Proxy = &l5dcharts.Proxy{
 		EnableExternalProfiles: options.enableExternalProfiles,

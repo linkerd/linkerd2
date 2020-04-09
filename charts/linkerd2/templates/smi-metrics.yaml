@@ -1,3 +1,4 @@
+{{- if .Values.smiMetrics.enabled }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -109,3 +110,4 @@ spec:
       protocol: TCP
   selector:
     {{.Values.global.controllerComponentLabel}}: smi-metrics
+{{- end }}
