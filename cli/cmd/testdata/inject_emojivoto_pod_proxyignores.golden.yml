@@ -8,6 +8,7 @@ metadata:
   labels:
     app: vote-bot
     linkerd.io/control-plane-ns: linkerd
+    linkerd.io/workload-ns: emojivoto
   name: vote-bot
   namespace: emojivoto
 spec:

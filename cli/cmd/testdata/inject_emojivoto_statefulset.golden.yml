@@ -19,6 +19,7 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-statefulset: web
+        linkerd.io/workload-ns: emojivoto
     spec:
       containers:
       - env:

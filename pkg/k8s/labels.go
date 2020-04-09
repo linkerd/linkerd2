@@ -70,7 +70,10 @@ const (
 	// CronJob that this proxy belongs to.
 	ProxyCronJobLabel = Prefix + "/proxy-cronjob"
 
-	/*
+	// WorkloadNamespaceLabel is injected into mesh-enabled apps, identifying the
+	// Namespace that this proxy belongs to.
+	WorkloadNamespaceLabel = Prefix + "/workload-ns" /*
+
 	 * Annotations
 	 */
 

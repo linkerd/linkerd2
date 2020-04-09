@@ -342,6 +342,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyDeploymentLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *corev1.ReplicationController:
@@ -352,6 +353,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyReplicationControllerLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(v.Spec.Template)
 
 	case *appsv1.ReplicaSet:
@@ -362,6 +364,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyReplicaSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *batchv1.Job:
@@ -372,6 +375,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyJobLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *appsv1.DaemonSet:
@@ -382,6 +386,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyDaemonSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *appsv1.StatefulSet:
@@ -392,6 +397,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyStatefulSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *corev1.Namespace:
@@ -413,6 +419,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyCronJobLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.JobTemplate.Spec.Template)
 
 	case *corev1.Pod:
@@ -442,7 +449,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
 			}
 		}
-
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 	default:
 		// unmarshal the metadata of other resource kinds like namespace, secret,
 		// config map etc. to be used in the report struct

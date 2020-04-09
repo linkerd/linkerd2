@@ -20,6 +20,11 @@
     "value": "owner-deployment"
   },
   {
+      "op": "add",
+      "path": "/metadata/labels/linkerd.io~1workload-ns",
+      "value": "kube-public"
+  },
+  {
     "op": "add",
     "path": "/spec/initContainers",
     "value": []

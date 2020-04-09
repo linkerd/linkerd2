@@ -20,6 +20,7 @@ items:
           app: web-svc
           linkerd.io/control-plane-ns: linkerd
           linkerd.io/proxy-deployment: web
+          linkerd.io/workload-ns: emojivoto
       spec:
         containers:
         - env:
@@ -188,6 +189,7 @@ items:
           app: emoji-svc
           linkerd.io/control-plane-ns: linkerd
           linkerd.io/proxy-deployment: emoji
+          linkerd.io/workload-ns: emojivoto
       spec:
         containers:
         - env:
