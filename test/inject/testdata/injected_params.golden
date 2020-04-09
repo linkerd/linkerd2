@@ -35,6 +35,7 @@ spec:
         app: inject-test-terminus
         linkerd.io/control-plane-ns: fake-ns
         linkerd.io/proxy-deployment: inject-test-terminus
+        linkerd.io/workload-ns: terminus
     spec:
       containers:
       - args:
