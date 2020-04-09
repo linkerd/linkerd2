@@ -14,9 +14,8 @@ To install this release, run:  `curl https://run.linkerd.io/install | sh`
   * Fixed a bug that could cause log levels to be processed incorrectly
   * Fixed a bug that could cause the proxy's load balancer to stop processing
     updates from service discovery
-  * Increased the inbound router's default capacity from 100 to 10k to
-    accommodate environments that have a high cardinality of virtual hosts
-    served by a single pod
+  * Removed the inbound router's default capacity to accommodate environments
+    that have a high cardinality of virtual hosts served by a single pod
   * Added `request_errors_total` metric exposing the number of requests that
     receive synthesized responses due to proxy errors
 
