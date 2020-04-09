@@ -15,11 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-type deploySpec struct {
-	replicas   int
-	containers []string
-}
-
 //////////////////////
 ///   TEST SETUP   ///
 //////////////////////
@@ -44,18 +39,6 @@ var (
 		"linkerd-prometheus",
 		"linkerd-web",
 		"linkerd-tap",
-	}
-
-	linkerdDeployReplicas = map[string]deploySpec{
-		"linkerd-controller":     {1, []string{"public-api"}},
-		"linkerd-destination":    {1, []string{"destination"}},
-		"linkerd-tap":            {1, []string{"tap"}},
-		"linkerd-grafana":        {1, []string{}},
-		"linkerd-identity":       {1, []string{"identity"}},
-		"linkerd-prometheus":     {1, []string{}},
-		"linkerd-sp-validator":   {1, []string{"sp-validator"}},
-		"linkerd-web":            {1, []string{"web"}},
-		"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 	}
 
 	// Linkerd commonly logs these errors during testing, remove these once
@@ -402,11 +385,11 @@ func TestResourcesPostInstall(t *testing.T) {
 	}
 
 	// Tests Pods and Deployments
-	for deploy, spec := range linkerdDeployReplicas {
-		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.replicas); err != nil {
+	for deploy, spec := range testutil.LinkerdDeployReplicas {
+		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
 			t.Fatal(fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err))
 		}
-		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.replicas); err != nil {
+		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
 			t.Fatal(fmt.Errorf("Error validating deploy [%s]:\n%s", deploy, err))
 		}
 	}
@@ -697,9 +680,9 @@ func TestLogs(t *testing.T) {
 	clientGoRegex := regexp.MustCompile("client-go@")
 	hasClientGoLogs := false
 
-	for deploy, spec := range linkerdDeployReplicas {
+	for deploy, spec := range testutil.LinkerdDeployReplicas {
 		deploy := strings.TrimPrefix(deploy, "linkerd-")
-		containers := append(spec.containers, k8s.ProxyContainerName)
+		containers := append(spec.Containers, k8s.ProxyContainerName)
 
 		for _, container := range containers {
 			container := container // pin
@@ -793,8 +776,8 @@ func TestEvents(t *testing.T) {
 }
 
 func TestRestarts(t *testing.T) {
-	for deploy, spec := range linkerdDeployReplicas {
-		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.replicas); err != nil {
+	for deploy, spec := range testutil.LinkerdDeployReplicas {
+		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
 			t.Fatal(fmt.Errorf("Error validating pods [%s]:\n%s", deploy, err))
 		}
 	}

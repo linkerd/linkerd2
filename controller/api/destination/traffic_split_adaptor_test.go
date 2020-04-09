@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	ts "github.com/deislabs/smi-sdk-go/pkg/apis/split/v1alpha1"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
+	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -29,12 +29,13 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 		},
 	}
 
+	weight := resource.MustParse("1000m")
 	split := &ts.TrafficSplit{
 		Spec: ts.TrafficSplitSpec{
 			Backends: []ts.TrafficSplitBackend{
 				{
 					Service: "bar",
-					Weight:  resource.MustParse("1000m"),
+					Weight:  &weight,
 				},
 			},
 		},
