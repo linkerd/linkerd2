@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: inject-test-terminus
+  namespace: terminus
 spec:
   selector:
     matchLabels:
