@@ -28,6 +28,7 @@ const (
 	injectDisabledDesc = "pods are not annotated to disable injection"
 	unsupportedDesc    = "at least one resource injected"
 	udpDesc            = "pod specs do not include UDP ports"
+	automountServiceAccountTokenDesc = "pods allowed to automount API credentials"
 	slash              = "/"
 )
 
@@ -214,6 +215,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	sidecar := []string{}
 	udp := []string{}
 	injectDisabled := []string{}
+	automountServiceAccountTokenFalse := []string{}
 	warningsPrinted := verbose
 
 	for _, r := range reports {
@@ -238,6 +240,11 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 		if r.InjectDisabled {
 			injectDisabled = append(injectDisabled, r.ResName())
+			warningsPrinted = true
+		}
+
+		if !r.AutomountServiceAccountToken {
+			automountServiceAccountTokenFalse = append(automountServiceAccountTokenFalse, r.ResName())
 			warningsPrinted = true
 		}
 	}
@@ -283,6 +290,10 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 		output.Write([]byte(fmt.Sprintf("%s %s %s \"protocol: UDP\"\n", warnStatus, strings.Join(udp, ", "), verb)))
 	} else if verbose {
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, udpDesc)))
+	}
+
+	if len(automountServiceAccountTokenFalse) > 0 {
+		output.Write([]byte(fmt.Sprintf("%s \"automountServiceAccountToken: false\" detected in %s\n", warnStatus, strings.Join(automountServiceAccountTokenFalse, ", "))))
 	}
 
 	//
