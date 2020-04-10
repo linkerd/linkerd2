@@ -4,6 +4,7 @@
 √ pods are not annotated to disable injection
 √ at least one resource injected
 √ pod specs do not include UDP ports
+√ pods are allowed to automount API credentials
 
 deployment "redis" injected
 
@@ -13,6 +14,7 @@ deployment "redis" injected
 √ pods are not annotated to disable injection
 √ at least one resource injected
 √ pod specs do not include UDP ports
+√ pods are allowed to automount API credentials
 
 deployment "nginx" injected
 

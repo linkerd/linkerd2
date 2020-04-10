@@ -1,3 +1,4 @@
 
+√ pods are allowed to automount API credentials
 deployment "linkerd-tap" injected
 

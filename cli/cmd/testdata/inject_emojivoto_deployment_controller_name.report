@@ -1,4 +1,5 @@
 
+√ pods are allowed to automount API credentials
 deployment "controller" injected
 deployment "not-controller" injected
 

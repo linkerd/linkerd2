@@ -1,4 +1,5 @@
 
+√ pods are allowed to automount API credentials
 deployment "web1" injected
 deployment "web2" injected
 deployment "web3" injected

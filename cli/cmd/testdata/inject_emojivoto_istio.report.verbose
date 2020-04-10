@@ -4,6 +4,7 @@
 √ pods are not annotated to disable injection
 ‼ no supported objects found
 √ pod specs do not include UDP ports
+√ pods are allowed to automount API credentials
 
 deployment "web" skipped
 
