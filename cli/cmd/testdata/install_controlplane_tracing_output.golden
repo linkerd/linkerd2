@@ -2881,12 +2881,6 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-sp-validator-tls
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity

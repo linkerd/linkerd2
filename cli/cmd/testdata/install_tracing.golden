@@ -3374,12 +3374,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
 ---
 ###
 ### Tracing Jaeger Service
@@ -3575,9 +3569,3 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
