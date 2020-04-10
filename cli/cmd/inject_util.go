@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	"github.com/linkerd/linkerd2/pkg/inject"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +22,18 @@ import (
 type resourceTransformer interface {
 	transform([]byte) ([]byte, []inject.Report, error)
 	generateReport([]inject.Report, io.Writer)
+}
+
+//This object implements the error interface
+//It will help processYAML() method differentiate when an error
+//is occurring due to a pod being uninjectable; in which case,
+//it is accumulated into the final report, rather than exiting the injection process
+type injectionErrorObj struct {
+	Message string
+}
+
+func (e injectionErrorObj) Error() string {
+	return fmt.Sprint(e.Message)
 }
 
 // Returns the integer representation of os.Exit code; 0 on success and 1 on failure.
@@ -77,7 +90,10 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 			result, irs, err = rt.transform(bytes)
 		}
 		if err != nil {
-			return err
+			if !isErrorOfTypeInject(err) {
+				return err
+			}
+			result = []byte(err.Error())
 		}
 		reports = append(reports, irs...)
 		out.Write(result)
@@ -87,6 +103,10 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 	rt.generateReport(reports, report)
 
 	return nil
+}
+
+func isErrorOfTypeInject(err error) bool {
+	return reflect.TypeOf(err).Name() == "injectionErrorObj"
 }
 
 func kindIsList(bytes []byte) (bool, error) {
@@ -109,7 +129,9 @@ func processList(bytes []byte, rt resourceTransformer) ([]byte, []inject.Report,
 	for _, item := range sourceList.Items {
 		result, irs, err := rt.transform(item.Raw)
 		if err != nil {
-			return nil, nil, err
+			if !isErrorOfTypeInject(err) {
+				return nil, nil, err
+			}
 		}
 
 		// At this point, we have yaml. The kubernetes internal representation is

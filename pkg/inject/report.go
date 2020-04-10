@@ -135,12 +135,12 @@ func (r *Report) Injectable() (bool, []string) {
 
 //GetInjectFailReason is used to generate a string that lists the reasons why the injection process
 //may have failed. This method must be used along with Injectable() to generate readable errors
-func (r *Report) GetInjectFailReason(reasons []string) []byte {
+func (r *Report) GetInjectFailReason(reasons []string) string {
 	desc := fmt.Sprintf("Resource with name \"%s\" of kind \"%s\" cannot be injected due to the following reasons:\n", r.Name, r.Kind)
 	for _, reason := range reasons {
 		desc += fmt.Sprintf("\n%s %s\n", failStatus, Reasons[reason])
 	}
-	return []byte(desc)
+	return desc
 }
 
 func checkUDPPorts(t *v1.PodSpec) bool {

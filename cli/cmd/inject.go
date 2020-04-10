@@ -166,7 +166,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return b, reports, err
 	}
 	if b, reasons := report.Injectable(); !b {
-		return report.GetInjectFailReason(reasons), reports, nil
+		return bytes, reports, injectionErrorObj{Message:report.GetInjectFailReason(reasons)}
 	}
 
 	if rt.injectProxy {
