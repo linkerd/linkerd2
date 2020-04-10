@@ -136,7 +136,6 @@ spec:
           name: {{printf "%s-config" .Values.collector.name}}
         name: {{ printf "%s-config-val" .Values.collector.name}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
 ---
 ###
 ### Tracing Jaeger Service
@@ -222,4 +221,3 @@ spec:
       serviceAccountName: linkerd-jaeger
       volumes:
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
