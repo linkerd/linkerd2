@@ -10,6 +10,7 @@ const (
 	gatewayNamespaceLabel = "gateway_namespace"
 	gatewayClusterName    = "remote_cluster_name"
 	eventTypeLabelName    = "event_type"
+	probeSuccessfulLabel  = "probe_successful"
 )
 
 type probeMetricVecs struct {
@@ -18,16 +19,26 @@ type probeMetricVecs struct {
 	latencies *prometheus.HistogramVec
 	enqueues  *prometheus.CounterVec
 	dequeues  *prometheus.CounterVec
+	probes    *prometheus.CounterVec
 }
 
 type probeMetrics struct {
 	services  prometheus.Gauge
 	alive     prometheus.Gauge
 	latencies prometheus.Observer
+	probes    *prometheus.CounterVec
 }
 
 func newProbeMetricVecs() probeMetricVecs {
 	labelNames := []string{gatewayNameLabel, gatewayNamespaceLabel, gatewayClusterName}
+
+	probes := promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "gateway_probes",
+			Help: "A counter for the number of actual performed probes to a gateway",
+		},
+		[]string{gatewayNameLabel, gatewayNamespaceLabel, gatewayClusterName, probeSuccessfulLabel},
+	)
 
 	enqueues := promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -81,18 +92,25 @@ func newProbeMetricVecs() probeMetricVecs {
 		latencies: latencies,
 		enqueues:  enqueues,
 		dequeues:  dequeues,
+		probes:    probes,
 	}
 }
-func (mv probeMetricVecs) newWorkerMetrics(gatewayNamespace, gatewayName, remoteClusterName string) probeMetrics {
+func (mv probeMetricVecs) newWorkerMetrics(gatewayNamespace, gatewayName, remoteClusterName string) (*probeMetrics, error) {
 
 	labels := prometheus.Labels{
 		gatewayNameLabel:      gatewayName,
 		gatewayNamespaceLabel: gatewayNamespace,
 		gatewayClusterName:    remoteClusterName,
 	}
-	return probeMetrics{
+
+	curriedProbes, err := mv.probes.CurryWith(labels)
+	if err != nil {
+		return nil, err
+	}
+	return &probeMetrics{
 		services:  mv.services.With(labels),
 		alive:     mv.alive.With(labels),
 		latencies: mv.latencies.With(labels),
-	}
+		probes:    curriedProbes,
+	}, nil
 }

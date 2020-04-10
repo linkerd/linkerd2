@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	logging "github.com/sirupsen/logrus"
 )
 
@@ -79,8 +81,7 @@ func (pw *ProbeWorker) Start() {
 }
 
 func (pw *ProbeWorker) run() {
-
-	periodInMillis := pw.probe.periodSeconds
+	periodInMillis := pw.probe.periodSeconds * 1000
 	probeTickerPeriod := time.Duration(periodInMillis) * time.Millisecond
 	maxJitter := time.Duration(periodInMillis/10) * time.Millisecond // max jitter is 10% of period
 	probeTicker := NewTicker(probeTickerPeriod, maxJitter)
@@ -108,6 +109,9 @@ func (pw *ProbeWorker) doProbe() {
 	pw.RLock()
 	defer pw.RUnlock()
 
+	successLabel := prometheus.Labels{probeSuccessfulLabel: "true"}
+	notSuccessLabel := prometheus.Labels{probeSuccessfulLabel: "false"}
+
 	ipToTry := pw.pickAnIP()
 	if ipToTry == "" {
 		pw.log.Debug("No ips. Marking as unhealthy")
@@ -122,13 +126,16 @@ func (pw *ProbeWorker) doProbe() {
 		if err != nil {
 			pw.log.Errorf("Problem connecting with gateway. Marking as unhealthy %s", err)
 			pw.metrics.alive.Set(0)
+			pw.metrics.probes.With(notSuccessLabel).Inc()
 		} else if resp.StatusCode != 200 {
 			pw.log.Debugf("Gateway returned unexpected status %d. Marking as unhealthy", resp.StatusCode)
 			pw.metrics.alive.Set(0)
+			pw.metrics.probes.With(notSuccessLabel).Inc()
 		} else {
 			pw.log.Debug("Gateway is healthy")
 			pw.metrics.alive.Set(1)
 			pw.metrics.latencies.Observe(float64(end.Milliseconds()))
+			pw.metrics.probes.With(successLabel).Inc()
 		}
 
 		if err := resp.Body.Close(); err != nil {

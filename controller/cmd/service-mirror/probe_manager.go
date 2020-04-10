@@ -131,11 +131,15 @@ func (m *ProbeManager) handleMirroredServicePaired(event *MirroredServicePaired)
 		worker.PairService(event.serviceName, event.serviceNamespace)
 	} else {
 		log.Debugf("Creating probe worker %s", probeKey)
-		probeMetrics := m.metricVecs.newWorkerMetrics(event.gatewayNs, event.gatewayName, event.clusterName)
-		worker = NewProbeWorker(event.GatewayProbeSpec, &probeMetrics, probeKey)
-		worker.PairService(event.serviceName, event.serviceNamespace)
-		m.probeWorkers[probeKey] = worker
-		worker.Start()
+		probeMetrics, err := m.metricVecs.newWorkerMetrics(event.gatewayNs, event.gatewayName, event.clusterName)
+		if err != nil {
+			log.Errorf("Could not crete probe metrics: %s", err)
+		} else {
+			worker = NewProbeWorker(event.GatewayProbeSpec, probeMetrics, probeKey)
+			worker.PairService(event.serviceName, event.serviceNamespace)
+			m.probeWorkers[probeKey] = worker
+			worker.Start()
+		}
 	}
 }
 
@@ -186,8 +190,7 @@ func (m *ProbeManager) handleClusterRegistered(event *ClusterRegistered) {
 		}
 
 		log.Debugf("Syncing service %s", svc.Name)
-
-		paired := MirroredServicePaired{
+		m.enqueueEvent(&MirroredServicePaired{
 			serviceName:      svc.Name,
 			serviceNamespace: svc.Namespace,
 			GatewayProbeSpec: &GatewayProbeSpec{
@@ -199,10 +202,8 @@ func (m *ProbeManager) handleClusterRegistered(event *ClusterRegistered) {
 				path:          event.path,
 				periodSeconds: event.periodSeconds,
 			},
-		}
-		m.events <- &paired
+		})
 	}
-
 }
 
 func (m *ProbeManager) stopProbe(key string) {
