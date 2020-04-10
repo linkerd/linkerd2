@@ -1135,8 +1135,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_LABELS_FILE_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1193,8 +1191,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - name: podinfo
-          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1241,12 +1237,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
+      
 ---
 # Source: linkerd2/templates/controller.yaml
 ---
@@ -1357,8 +1348,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_LABELS_FILE_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1415,8 +1404,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - name: podinfo
-          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1460,12 +1447,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
+      
 ---
 # Source: linkerd2/templates/destination.yaml
 ---
@@ -1576,8 +1558,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_LABELS_FILE_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1634,8 +1614,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - name: podinfo
-          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1679,12 +1657,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
+      
 ---
 # Source: linkerd2/templates/heartbeat.yaml
 ---
@@ -1845,8 +1818,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_LABELS_FILE_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1903,8 +1874,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - name: podinfo
-          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1948,12 +1917,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
+      
 ---
 # Source: linkerd2/templates/prometheus.yaml
 ---
@@ -2196,8 +2160,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_LABELS_FILE_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2256,8 +2218,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - name: podinfo
-          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2303,12 +2263,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
+      
 ---
 # Source: linkerd2/templates/grafana.yaml
 ---
@@ -2476,8 +2431,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_LABELS_FILE_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2534,8 +2487,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - name: podinfo
-          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2588,12 +2539,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
+      
 ---
 # Source: linkerd2/templates/proxy-injector.yaml
 ---
@@ -2684,8 +2630,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_LABELS_FILE_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2742,8 +2686,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - name: podinfo
-          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2790,12 +2732,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
+      
 ---
 kind: Service
 apiVersion: v1
@@ -2922,8 +2859,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_LABELS_FILE_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2980,8 +2915,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - name: podinfo
-          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -3025,12 +2958,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
+      
 ---
 # Source: linkerd2/templates/tap.yaml
 ---
@@ -3148,8 +3076,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_LABELS_FILE_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -3206,8 +3132,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - name: podinfo
-          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -3251,12 +3175,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
+      
       - name: tls
         secret:
           secretName: linkerd-tap-tls
@@ -3357,8 +3276,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_LABELS_FILE_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -3415,8 +3332,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - name: podinfo
-          mountPath: var/run/linkerd/podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
