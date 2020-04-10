@@ -45,15 +45,15 @@ func runTestCase(tc *testCase, t *testing.T) {
 		q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 		watcher := RemoteClusterServiceWatcher{
-			clusterName:     clusterName,
-			clusterDomain:   clusterDomain,
-			remoteAPIClient: remoteAPI,
-			localAPIClient:  localAPI,
-			stopper:         nil,
-			log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
-			eventsQueue:     q,
-			requeueLimit:    0,
-			probeChan:       make(chan interface{}, probeChanBufferSize),
+			clusterName:       clusterName,
+			clusterDomain:     clusterDomain,
+			remoteAPIClient:   remoteAPI,
+			localAPIClient:    localAPI,
+			stopper:           nil,
+			log:               logging.WithFields(logging.Fields{"cluster": clusterName}),
+			eventsQueue:       q,
+			requeueLimit:      0,
+			enqueueProbeEvent: func(event interface{}) {},
 		}
 
 		for _, ev := range tc.events {

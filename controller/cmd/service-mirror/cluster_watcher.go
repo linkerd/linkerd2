@@ -37,7 +37,7 @@ type (
 		probePort          int32
 		probePath          string
 		probePeriodSeconds int32
-		probeChan          chan<- interface{}
+		enqueueProbeEvent  func(event interface{})
 	}
 
 	// RemoteServiceCreated is generated whenever a remote service is created Observing
@@ -201,7 +201,7 @@ func NewRemoteClusterServiceWatcher(
 	probePort int32,
 	probePath string,
 	probePeriodSeconds int32,
-	probeChan chan<- interface{},
+	enqueueProbeEvent func(event interface{}),
 ) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(cfg, false, k8s.Svc)
 	if err != nil {
@@ -223,7 +223,7 @@ func NewRemoteClusterServiceWatcher(
 		probePort:          probePort,
 		probePath:          probePath,
 		probePeriodSeconds: probePeriodSeconds,
-		probeChan:          probeChan,
+		enqueueProbeEvent:  enqueueProbeEvent,
 	}, nil
 }
 
@@ -334,12 +334,12 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 		return RetryableError{errors}
 	}
 
-	rcsw.probeChan <- &ClusterRegistered{
+	rcsw.enqueueProbeEvent(&ClusterRegistered{
 		clusterName:   rcsw.clusterName,
 		port:          rcsw.probePort,
 		path:          rcsw.probePath,
 		periodSeconds: rcsw.probePeriodSeconds,
-	}
+	})
 	return nil
 }
 
@@ -422,13 +422,13 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteSe
 	}
 
 	rcsw.log.Debugf("Successfully deleted Service: %s/%s", ev.Namespace, localServiceName)
-	rcsw.probeChan <- &MirroredServiceUnpaired{
+	rcsw.enqueueProbeEvent(&MirroredServiceUnpaired{
 		serviceName:      localServiceName,
 		serviceNamespace: ev.Namespace,
 		gatewayName:      ev.GatewayData.Name,
 		gatewayNs:        ev.GatewayData.Namespace,
 		clusterName:      rcsw.clusterName,
-	}
+	})
 	return nil
 }
 
@@ -441,13 +441,13 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 	gatewayChanged := false
 	if ev.localEndpoints.Labels[consts.RemoteGatewayNameLabel] != ev.gatewayData.Name || ev.localEndpoints.Labels[consts.RemoteGatewayNsLabel] != ev.gatewayData.Namespace {
 		gatewayChanged = true
-		rcsw.probeChan <- &MirroredServiceUnpaired{
+		rcsw.enqueueProbeEvent(&MirroredServiceUnpaired{
 			serviceName:      ev.localService.Name,
 			serviceNamespace: ev.localService.Namespace,
 			gatewayName:      ev.localEndpoints.Labels[consts.RemoteGatewayNameLabel],
 			gatewayNs:        ev.localEndpoints.Labels[consts.RemoteGatewayNsLabel],
 			clusterName:      rcsw.clusterName,
-		}
+		})
 	}
 
 	gatewayEndpoints, gatewayPort, resVersion, gatewayIdentity, err := rcsw.resolveGateway(ev.gatewayData)
@@ -469,7 +469,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 		}
 
 		if gatewayChanged {
-			rcsw.probeChan <- &MirroredServicePaired{
+			rcsw.enqueueProbeEvent(&MirroredServicePaired{
 				serviceName:      ev.localService.Name,
 				serviceNamespace: ev.localService.Namespace,
 				GatewayProbeSpec: &GatewayProbeSpec{
@@ -481,7 +481,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 					path:          rcsw.probePath,
 					periodSeconds: rcsw.probePeriodSeconds,
 				},
-			}
+			})
 		}
 
 	} else {
@@ -583,7 +583,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 			endpointsToCreate.Annotations[consts.RemoteGatewayIdentity] = gatewayIdentity
 		}
 
-		rcsw.probeChan <- &MirroredServicePaired{
+		rcsw.enqueueProbeEvent(&MirroredServicePaired{
 			serviceName:      serviceToCreate.Name,
 			serviceNamespace: serviceToCreate.Namespace,
 			GatewayProbeSpec: &GatewayProbeSpec{
@@ -595,7 +595,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 				path:          rcsw.probePath,
 				periodSeconds: rcsw.probePeriodSeconds,
 			},
-		}
+		})
 
 	} else {
 		rcsw.log.Warnf("Could not resolve gateway for %s: %s, skipping subsets", serviceInfo, err)
@@ -652,7 +652,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGa
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayUpdated(ev *RemoteGatewayUpdated) error {
 	rcsw.log.Debugf("Updating %d services due to remote gateway [%s/%s] update", len(ev.affectedServices), ev.gatewayData.Namespace, ev.gatewayData.Name)
 
-	rcsw.probeChan <- &GatewayUpdated{
+	rcsw.enqueueProbeEvent(&GatewayUpdated{
 		GatewayProbeSpec: &GatewayProbeSpec{
 			clusterName:   rcsw.clusterName,
 			gatewayName:   ev.gatewayData.Name,
@@ -662,7 +662,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayUpdated(ev *RemoteGa
 			path:          rcsw.probePath,
 			periodSeconds: rcsw.probePeriodSeconds,
 		},
-	}
+	})
 
 	var errors []error
 	for _, svc := range ev.affectedServices {

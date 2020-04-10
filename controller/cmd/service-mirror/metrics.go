@@ -5,14 +5,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var labelNames = []string{
-	"gateway_name", "gateway_namespace", "remote_cluster_name",
-}
+const (
+	gatewayNameLabel      = "gateway_name"
+	gatewayNamespaceLabel = "gateway_namespace"
+	gatewayClusterName    = "remote_cluster_name"
+	eventTypeLabelName    = "event_type"
+)
 
 type probeMetricVecs struct {
 	services  *prometheus.GaugeVec
 	alive     *prometheus.GaugeVec
 	latencies *prometheus.HistogramVec
+	enqueues  *prometheus.CounterVec
+	dequeues  *prometheus.CounterVec
 }
 
 type probeMetrics struct {
@@ -22,6 +27,24 @@ type probeMetrics struct {
 }
 
 func newProbeMetricVecs() probeMetricVecs {
+	labelNames := []string{gatewayNameLabel, gatewayNamespaceLabel, gatewayClusterName}
+
+	enqueues := promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "probe_manager_event_enqueues",
+			Help: "A counter for the number of enqueued events to the probe manager",
+		},
+		[]string{eventTypeLabelName},
+	)
+
+	dequeues := promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "probe_manager_event_dequeues",
+			Help: "A counter for the number of dequeued events to the probe manager",
+		},
+		[]string{eventTypeLabelName},
+	)
+
 	services := promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "num_mirrored_services",
@@ -56,14 +79,16 @@ func newProbeMetricVecs() probeMetricVecs {
 		services:  services,
 		alive:     alive,
 		latencies: latencies,
+		enqueues:  enqueues,
+		dequeues:  dequeues,
 	}
 }
-func (mv probeMetricVecs) newMetrics(gatewayNamespace, gatewayName, remoteClusterName string) probeMetrics {
+func (mv probeMetricVecs) newWorkerMetrics(gatewayNamespace, gatewayName, remoteClusterName string) probeMetrics {
 
 	labels := prometheus.Labels{
-		"gateway_name":        gatewayName,
-		"gateway_namespace":   gatewayNamespace,
-		"remote_cluster_name": remoteClusterName,
+		gatewayNameLabel:      gatewayName,
+		gatewayNamespaceLabel: gatewayNamespace,
+		gatewayClusterName:    remoteClusterName,
 	}
 	return probeMetrics{
 		services:  mv.services.With(labels),

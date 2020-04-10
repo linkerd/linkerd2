@@ -3,11 +3,15 @@ package servicemirror
 import (
 	"fmt"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/labels"
 )
+
+const probeChanBufferSize = 500
 
 // ProbeManager takes care of managing the lifecycle of probe workers
 type ProbeManager struct {
@@ -65,15 +69,37 @@ type GatewayUpdated struct {
 }
 
 // NewProbeManager creates a new probe manager
-func NewProbeManager(events chan interface{}, k8sAPI *k8s.API) *ProbeManager {
+func NewProbeManager(k8sAPI *k8s.API) *ProbeManager {
 	metricVecs := newProbeMetricVecs()
 	return &ProbeManager{
 		k8sAPI:       k8sAPI,
 		probeWorkers: make(map[string]*ProbeWorker),
-		events:       events,
+		events:       make(chan interface{}, probeChanBufferSize),
 		metricVecs:   &metricVecs,
 		done:         make(chan struct{}),
 	}
+}
+
+func eventTypeString(ev interface{}) string {
+	switch ev.(type) {
+	case *MirroredServicePaired:
+		return "MirroredServicePaired"
+	case *MirroredServiceUnpaired:
+		return "MirroredServiceUnpaired"
+	case *GatewayUpdated:
+		return "GatewayUpdated"
+	case *ClusterRegistered:
+		return "ClusterRegistered"
+	case *ClusterNotRegistered:
+		return "ClusterNotRegistered"
+	default:
+		return "Unknown"
+	}
+}
+
+func (m *ProbeManager) enqueueEvent(event interface{}) {
+	m.metricVecs.enqueues.With(prometheus.Labels{eventTypeLabelName: eventTypeString(event)}).Inc()
+	m.events <- event
 }
 
 func probeKey(gatewayNamespace string, gatewayName string, clusterName string) string {
@@ -105,7 +131,7 @@ func (m *ProbeManager) handleMirroredServicePaired(event *MirroredServicePaired)
 		worker.PairService(event.serviceName, event.serviceNamespace)
 	} else {
 		log.Debugf("Creating probe worker %s", probeKey)
-		probeMetrics := m.metricVecs.newMetrics(event.gatewayNs, event.gatewayName, event.clusterName)
+		probeMetrics := m.metricVecs.newWorkerMetrics(event.gatewayNs, event.gatewayName, event.clusterName)
 		worker = NewProbeWorker(event.GatewayProbeSpec, &probeMetrics, probeKey)
 		worker.PairService(event.serviceName, event.serviceNamespace)
 		m.probeWorkers[probeKey] = worker
@@ -215,6 +241,7 @@ func (m *ProbeManager) run() {
 		select {
 		case event := <-m.events:
 			log.Debugf("Received event: %v", event)
+			m.metricVecs.dequeues.With(prometheus.Labels{eventTypeLabelName: eventTypeString(event)}).Inc()
 			m.handleEvent(event)
 		case <-m.done:
 			log.Debug("Shutting down ProbeManager")

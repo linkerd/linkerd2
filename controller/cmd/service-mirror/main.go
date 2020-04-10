@@ -12,8 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const probeChanBufferSize = 500
-
 // Main executes the tap service-mirror
 func Main(args []string) {
 	cmd := flag.NewFlagSet("service-mirror", flag.ExitOnError)
@@ -40,12 +38,11 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	probeEvents := make(chan interface{}, probeChanBufferSize)
-	probeManager := NewProbeManager(probeEvents, k8sAPI)
+	probeManager := NewProbeManager(k8sAPI)
 	probeManager.Start()
 
 	k8sAPI.Sync(nil)
-	watcher := NewRemoteClusterConfigWatcher(k8sAPI, *requeueLimit, probeEvents)
+	watcher := NewRemoteClusterConfigWatcher(k8sAPI, *requeueLimit, probeManager.enqueueEvent)
 	log.Info("Started cluster config watcher")
 
 	go admin.StartServer(*metricsAddr)
