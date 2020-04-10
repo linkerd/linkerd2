@@ -1160,15 +1160,15 @@ spec:
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - downwardAPI:
           items:
           - fieldRef:
               fieldPath: metadata.labels
             path: "labels"
         name: podinfo
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 ###
 ### Controller
@@ -1391,15 +1391,15 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - downwardAPI:
           items:
           - fieldRef:
               fieldPath: metadata.labels
             path: "labels"
         name: podinfo
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 ###
 ### Destination Controller Service
@@ -1622,15 +1622,15 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - downwardAPI:
           items:
           - fieldRef:
               fieldPath: metadata.labels
             path: "labels"
         name: podinfo
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 ###
 ### Heartbeat
@@ -1901,15 +1901,15 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - downwardAPI:
           items:
           - fieldRef:
               fieldPath: metadata.labels
             path: "labels"
         name: podinfo
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 ###
 ### Prometheus
@@ -2262,6 +2262,12 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-prometheus
       volumes:
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - emptyDir: {}
         name: data
       - configMap:
@@ -2270,12 +2276,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
 ---
 ###
 ### Grafana
@@ -2563,15 +2563,15 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - downwardAPI:
           items:
           - fieldRef:
               fieldPath: metadata.labels
             path: "labels"
         name: podinfo
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 ###
 ### Proxy Injector
@@ -2775,15 +2775,15 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-tls
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - downwardAPI:
           items:
           - fieldRef:
               fieldPath: metadata.labels
             path: "labels"
         name: podinfo
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 kind: Service
 apiVersion: v1
@@ -3020,15 +3020,15 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-sp-validator-tls
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - downwardAPI:
           items:
           - fieldRef:
               fieldPath: metadata.labels
             path: "labels"
         name: podinfo
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
 ---
 ###
 ### Tap
@@ -3257,15 +3257,15 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - downwardAPI:
           items:
           - fieldRef:
               fieldPath: metadata.labels
             path: "labels"
         name: podinfo
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
       - name: tls
         secret:
           secretName: linkerd-tap-tls
@@ -3643,15 +3643,15 @@ spec:
       - name: config
         configMap:
           name: linkerd-smi-metrics
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
       - downwardAPI:
           items:
           - fieldRef:
               fieldPath: metadata.labels
             path: "labels"
         name: podinfo
+      - emptyDir:
+          medium: Memory
+        name: linkerd-identity-end-entity
       - name: tls
         secret:
           secretName: linkerd-smi-metrics-tls

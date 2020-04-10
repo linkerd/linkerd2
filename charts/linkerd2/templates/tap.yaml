@@ -113,10 +113,10 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
-      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{- end }}
+      {{ end -}}
+      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
       - name: tls
         secret:
           secretName: linkerd-tap-tls

@@ -1140,7 +1140,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 ###
 ### Controller
@@ -1357,7 +1356,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 ###
 ### Destination Controller Service
@@ -1574,7 +1572,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 ###
 ### Heartbeat
@@ -1839,7 +1836,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 ###
 ### Prometheus
@@ -2192,7 +2188,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 ###
 ### Grafana
@@ -2475,7 +2470,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 ###
 ### Proxy Injector
@@ -2674,7 +2668,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 kind: Service
 apiVersion: v1
@@ -2906,7 +2899,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 ###
 ### Tap
@@ -3129,7 +3121,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
       - name: tls
         secret:
           secretName: linkerd-tap-tls
@@ -3502,7 +3493,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
       - name: tls
         secret:
           secretName: linkerd-smi-metrics-tls

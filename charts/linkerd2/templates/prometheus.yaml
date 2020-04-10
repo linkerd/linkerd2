@@ -231,12 +231,12 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-prometheus
       volumes:
+      {{- if .Values.global.controlPlaneTracing }}
+      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- end }}
       - emptyDir: {}
         name: data
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ if .Values.global.controlPlaneTracing -}}
-      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{- end }}

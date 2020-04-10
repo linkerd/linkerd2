@@ -1237,7 +1237,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 # Source: linkerd2/templates/controller.yaml
 ---
@@ -1447,7 +1446,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 # Source: linkerd2/templates/destination.yaml
 ---
@@ -1657,7 +1655,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 # Source: linkerd2/templates/heartbeat.yaml
 ---
@@ -1917,7 +1914,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 # Source: linkerd2/templates/prometheus.yaml
 ---
@@ -2263,7 +2259,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 # Source: linkerd2/templates/grafana.yaml
 ---
@@ -2539,7 +2534,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 # Source: linkerd2/templates/proxy-injector.yaml
 ---
@@ -2732,7 +2726,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 kind: Service
 apiVersion: v1
@@ -2958,7 +2951,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
 ---
 # Source: linkerd2/templates/tap.yaml
 ---
@@ -3175,7 +3167,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
       - name: tls
         secret:
           secretName: linkerd-tap-tls
@@ -3374,7 +3365,6 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      
       - name: tls
         secret:
           secretName: linkerd-smi-metrics-tls
