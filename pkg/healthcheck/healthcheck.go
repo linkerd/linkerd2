@@ -1147,11 +1147,16 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
+						outdatedPods := []string{}
 						for _, pod := range pods {
 							err = hc.latestVersions.Match(pod.ProxyVersion)
 							if err != nil {
-								return fmt.Errorf("%s: %s", pod.Name, err)
+								outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, pod.ProxyVersion))
 							}
+						}
+						if len(outdatedPods) > 0 {
+							podList := strings.Join(outdatedPods, "\n")
+							return fmt.Errorf("Some data plane pods are not running the current version:\n%s", podList)
 						}
 						return nil
 					},
