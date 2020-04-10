@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: inject-test-terminus
-  namespace: terminus
 spec:
   selector:
     matchLabels:
@@ -21,7 +20,7 @@ spec:
         app: inject-test-terminus
         linkerd.io/control-plane-ns: fake-ns
         linkerd.io/proxy-deployment: inject-test-terminus
-        linkerd.io/workload-ns: terminus
+        linkerd.io/workload-ns: ""
     spec:
       containers:
       - args:
