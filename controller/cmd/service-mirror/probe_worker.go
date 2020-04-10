@@ -16,7 +16,7 @@ const httpGatewayTimeoutMillis = 50000
 type ProbeWorker struct {
 	*sync.RWMutex
 	probe          *GatewayProbeSpec
-	pairedServices map[string]bool
+	pairedServices map[string]struct{}
 	stopCh         chan struct{}
 	metrics        *probeMetrics
 	log            *logging.Entry
@@ -27,7 +27,7 @@ func NewProbeWorker(probe *GatewayProbeSpec, metrics *probeMetrics, probekey str
 	return &ProbeWorker{
 		RWMutex:        &sync.RWMutex{},
 		probe:          probe,
-		pairedServices: make(map[string]bool),
+		pairedServices: make(map[string]struct{}),
 		stopCh:         make(chan struct{}),
 		metrics:        metrics,
 		log: logging.WithFields(logging.Fields{
@@ -45,8 +45,8 @@ func (pw *ProbeWorker) NumPairedServices() int {
 func (pw *ProbeWorker) PairService(serviceName, serviceNamespace string) {
 	svcKey := fmt.Sprintf("%s-%s", serviceNamespace, serviceName)
 	if _, ok := pw.pairedServices[svcKey]; !ok {
-		pw.pairedServices[svcKey] = true
-		pw.metrics.services.Inc()
+		pw.pairedServices[svcKey] = struct{}{}
+		pw.metrics.services.Set(float64(len(pw.pairedServices)))
 	}
 }
 
@@ -55,7 +55,7 @@ func (pw *ProbeWorker) UnPairService(serviceName, serviceNamespace string) {
 	svcKey := fmt.Sprintf("%s-%s", serviceNamespace, serviceName)
 	if _, ok := pw.pairedServices[svcKey]; ok {
 		delete(pw.pairedServices, svcKey)
-		pw.metrics.services.Dec()
+		pw.metrics.services.Set(float64(len(pw.pairedServices)))
 	}
 }
 
@@ -79,12 +79,11 @@ func (pw *ProbeWorker) Start() {
 }
 
 func (pw *ProbeWorker) run() {
-	probeTickerPeriod := time.Duration(pw.probe.periodSeconds) * time.Second
 
-	// Introduce some randomness to avoid bursts of probes
-	time.Sleep(time.Duration(rand.Float64() * float64(probeTickerPeriod)))
-
-	probeTicker := time.NewTicker(probeTickerPeriod)
+	periodInMillis := pw.probe.periodSeconds
+	probeTickerPeriod := time.Duration(periodInMillis) * time.Millisecond
+	maxJitter := time.Duration(periodInMillis/10) * time.Millisecond // max jitter is 10% of period
+	probeTicker := NewTicker(probeTickerPeriod, maxJitter)
 
 probeLoop:
 	for {
