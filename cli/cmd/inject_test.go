@@ -24,7 +24,6 @@ type testCase struct {
 	testInjectConfig       *config.All
 	overrideAnnotations    map[string]string
 	enableDebugSidecarFlag bool
-	exitCode               int
 }
 
 func mkFilename(filename string, verbose bool) string {
@@ -52,8 +51,8 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 		allowNsInject:       true,
 	}
 
-	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, transformer); exitCode != tc.exitCode {
-		t.Fatalf("Expected exit code to be %d but got: %d", tc.exitCode, exitCode)
+	if exitCode := uninjectAndInject([]io.Reader{read}, report, output, transformer); exitCode != 0 {
+		t.Errorf("Unexpected error injecting YAML: %v\n", report)
 	}
 	diffTestdata(t, tc.goldenFileName, output.String())
 
@@ -122,7 +121,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
@@ -130,7 +128,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
 			testInjectConfig: emptyVersionConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
@@ -138,7 +135,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
 			testInjectConfig: emptyProxyVersionConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
@@ -149,7 +145,6 @@ func TestUninjectAndInject(t *testing.T) {
 			overrideAnnotations: map[string]string{
 				k8s.ProxyAdminPortAnnotation: "1234",
 			},
-			exitCode: 0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
@@ -160,7 +155,6 @@ func TestUninjectAndInject(t *testing.T) {
 			overrideAnnotations: map[string]string{
 				k8s.ProxyAdminPortAnnotation: "1234",
 			},
-			exitCode: 0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_list.input.yml",
@@ -168,7 +162,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_list.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_hostNetwork_false.input.yml",
@@ -176,15 +169,13 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment_hostNetwork_false.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_hostNetwork_true.input.yml",
-			goldenFileName:   "inject_error_empty_golden_file.golden.yml",
+			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_true.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_hostNetwork_true.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         1,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_capabilities.input.yml",
@@ -192,15 +183,13 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_injectDisabled.input.yml",
-			goldenFileName:   "inject_error_empty_golden_file.golden.yml",
+			goldenFileName:   "inject_emojivoto_deployment_injectDisabled.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_injectDisabled.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         1,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_controller_name.input.yml",
@@ -208,7 +197,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment_controller_name.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_statefulset.input.yml",
@@ -216,7 +204,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_statefulset.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_cronjob.input.yml",
@@ -224,7 +211,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_cronjob.report",
 			injectProxy:      false,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_cronjob_nometa.input.yml",
@@ -232,7 +218,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_cronjob.report",
 			injectProxy:      false,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod.input.yml",
@@ -240,7 +225,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_pod.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod_with_requests.input.yml",
@@ -248,7 +232,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_pod_with_requests.report",
 			injectProxy:      true,
 			testInjectConfig: proxyResourceConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_udp.input.yml",
@@ -256,7 +239,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment_udp.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_already_injected.input.yml",
@@ -264,15 +246,13 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_already_injected.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_istio.input.yml",
-			goldenFileName:   "inject_error_empty_golden_file.golden.yml",
+			goldenFileName:   "inject_emojivoto_istio.golden.yml",
 			reportFileName:   "inject_emojivoto_istio.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         1,
 		},
 		{
 			inputFileName:    "inject_contour.input.yml",
@@ -280,7 +260,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_contour.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_empty_resources.input.yml",
@@ -288,7 +267,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment_empty_resources.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         1,
 		},
 		{
 			inputFileName:    "inject_emojivoto_list_empty_resources.input.yml",
@@ -296,7 +274,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_list_empty_resources.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
-			exitCode:         1,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
@@ -304,7 +281,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
 			testInjectConfig: cniEnabledConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_config_overrides.input.yml",
@@ -312,7 +288,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
 			testInjectConfig: overrideConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:          "inject_emojivoto_deployment.input.yml",
@@ -321,7 +296,6 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:            true,
 			testInjectConfig:       defaultConfig,
 			enableDebugSidecarFlag: true,
-			exitCode:               0,
 		},
 		{
 			inputFileName:          "inject_tap_deployment.input.yml",
@@ -330,7 +304,6 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:            true,
 			testInjectConfig:       defaultConfig,
 			enableDebugSidecarFlag: true,
-			exitCode:               0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_namespace_good.input.yml",
@@ -338,7 +311,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_namespace_good.golden.report",
 			injectProxy:      false,
 			testInjectConfig: defaultConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_namespace_good.input.yml",
@@ -350,7 +322,6 @@ func TestUninjectAndInject(t *testing.T) {
 				k8s.IdentityModeAnnotation: "default",
 				k8s.CreatedByAnnotation:    "linkerd/cli dev-undefined",
 			},
-			exitCode: 0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
@@ -358,7 +329,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
 			testInjectConfig: proxyIgnorePortsConfig,
-			exitCode:         0,
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod.input.yml",
@@ -366,7 +336,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_pod.report",
 			injectProxy:      true,
 			testInjectConfig: proxyIgnorePortsConfig,
-			exitCode:         0,
 		},
 	}
 
