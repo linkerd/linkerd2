@@ -3516,12 +3516,7 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
+      
       - name: tls
         secret:
           secretName: linkerd-smi-metrics-tls
