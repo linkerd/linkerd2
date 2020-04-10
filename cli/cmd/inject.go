@@ -23,13 +23,13 @@ import (
 
 const (
 	// for inject reports
-	hostNetworkDesc    = "pods do not use host networking"
-	sidecarDesc        = "pods do not have a 3rd party proxy or initContainer already injected"
-	injectDisabledDesc = "pods are not annotated to disable injection"
-	unsupportedDesc    = "at least one resource injected"
-	udpDesc            = "pod specs do not include UDP ports"
+	hostNetworkDesc                  = "pods do not use host networking"
+	sidecarDesc                      = "pods do not have a 3rd party proxy or initContainer already injected"
+	injectDisabledDesc               = "pods are not annotated to disable injection"
+	unsupportedDesc                  = "at least one resource injected"
+	udpDesc                          = "pod specs do not include UDP ports"
 	automountServiceAccountTokenDesc = "pods allowed to automount API credentials"
-	slash              = "/"
+	slash                            = "/"
 )
 
 type resourceTransformerInject struct {
@@ -167,7 +167,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return b, reports, err
 	}
 	if b, reasons := report.Injectable(); !b {
-		return bytes, reports, injectionErrorObj{Message:report.GetInjectFailReason(reasons)}
+		return bytes, reports, injectionErrorObj{Message: report.GetInjectFailReason(reasons)}
 	}
 
 	if rt.injectProxy {
