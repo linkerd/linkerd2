@@ -28,7 +28,7 @@ const (
 	injectDisabledDesc               = "pods are not annotated to disable injection"
 	unsupportedDesc                  = "at least one resource injected"
 	udpDesc                          = "pod specs do not include UDP ports"
-	automountServiceAccountTokenDesc = "pods allowed to automount API credentials"
+	automountServiceAccountTokenDesc = "pods are allowed to automount API credentials"
 	slash                            = "/"
 )
 
@@ -294,6 +294,8 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 	if len(automountServiceAccountTokenFalse) > 0 {
 		output.Write([]byte(fmt.Sprintf("%s \"automountServiceAccountToken: false\" detected in %s\n", warnStatus, strings.Join(automountServiceAccountTokenFalse, ", "))))
+	} else {
+		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, automountServiceAccountTokenDesc)))
 	}
 
 	//
