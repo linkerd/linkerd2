@@ -66,7 +66,7 @@
     "value": []
   },
   {{- end }}
-  {{- if or .Values.global.controlPlaneTracing }}
+  {{- if (.Values.global.proxy.trace) }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",

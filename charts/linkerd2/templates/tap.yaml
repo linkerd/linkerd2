@@ -113,9 +113,6 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
-      {{ if .Values.global.controlPlaneTracing -}}
-      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
       - name: tls
         secret:
