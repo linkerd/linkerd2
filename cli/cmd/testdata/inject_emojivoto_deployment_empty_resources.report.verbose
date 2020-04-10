@@ -1,3 +1,11 @@
-Error transforming resources: Resource with name "" of kind "" cannot be injected due to the following reasons:
 
-× this resource kind is unsupported
+√ pods do not use host networking
+√ pods do not have a 3rd party proxy or initContainer already injected
+√ pods are not annotated to disable injection
+√ at least one resource injected
+√ pod specs do not include UDP ports
+
+deployment "web" injected
+document missing "kind" field, skipped
+document missing "kind" field, skipped
+

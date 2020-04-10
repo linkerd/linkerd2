@@ -1,3 +1,5 @@
-Error transforming resources: Resource with name "" of kind "" cannot be injected due to the following reasons:
 
-× this resource kind is unsupported
+deployment "web" injected
+document missing "kind" field, skipped
+document missing "kind" field, skipped
+

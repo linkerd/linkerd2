@@ -1,3 +1,6 @@
-Error transforming resources: Resource with name "web" of kind "deployment" cannot be injected due to the following reasons:
 
-× hostNetwork is enabled
+‼ "hostNetwork: true" detected in deployment/web
+‼ no supported objects found
+
+deployment "web" skipped
+

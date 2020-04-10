@@ -1,3 +1,6 @@
-Error transforming resources: Resource with name "web" of kind "deployment" cannot be injected due to the following reasons:
 
-× 
+‼ "linkerd.io/inject: disabled" annotation set on deployment/web
+‼ no supported objects found
+
+deployment "web" skipped
+

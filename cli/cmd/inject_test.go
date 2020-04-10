@@ -415,7 +415,7 @@ func TestRunInjectCmd(t *testing.T) {
 			inputFileName:        "inject_emojivoto_deployment_automountServiceAccountToken_false.input.yml",
 			stdOutGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.yml",
 			stdErrGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.stderr",
-			exitCode:             1,
+			exitCode:             0,
 			injectProxy:          false,
 		},
 	}
