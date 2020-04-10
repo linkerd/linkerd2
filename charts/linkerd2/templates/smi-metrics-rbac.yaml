@@ -1,3 +1,4 @@
+{{- if .Values.smiMetrics.enabled }}
 ---
 ###
 ### SMI-Metrics RBAC
@@ -63,3 +64,4 @@ spec:
     name: linkerd-smi-metrics
     namespace: {{.Values.global.namespace}}
   caBundle: {{ ternary (b64enc $cert.Cert) (b64enc (trim .Values.smiMetrics.crtPEM)) (empty .Values.smiMetrics.crtPEM) }}
+{{- end }}
