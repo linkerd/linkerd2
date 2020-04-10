@@ -24,7 +24,7 @@ env:
   value: 10000ms
 {{ if (.Values.global.proxy.trace) -}}
 {{ if (.Values.global.proxy.trace.collectorSvcAddr) -}}
-- name: LINKERD2_PROXY_LABELS_FILE_PATH
+- name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
   value: /var/run/linkerd/podinfo/labels
 {{ end -}}
 {{ end -}}
