@@ -602,16 +602,20 @@ func getTargetPort(service *corev1.Service, port Port) namedPort {
 }
 
 func addressChanged(oldAddress Address, newAddress Address) bool {
+
+	if oldAddress.Identity != newAddress.Identity {
+		// in this case the identity could have changed; this can happen when for
+		// example a mirrored service is reassigned to a new gateway with a different
+		// identity and the service mirroring controller picks that and updates the
+		// identity
+		return true
+	}
+
 	if oldAddress.Pod != nil && newAddress.Pod != nil {
 		// if these addresses are owned by pods we can check the resource versions
 		return oldAddress.Pod.ResourceVersion != newAddress.Pod.ResourceVersion
 	}
-	// in this case the identity could have changed; this can happen when for
-	// example a mirrored service is reassigned to a new gateway with a different
-	// identity and the service mirroring controller picks that and updates the
-	// identity
-	return oldAddress.Identity != newAddress.Identity
-
+	return false
 }
 
 func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSet) {
