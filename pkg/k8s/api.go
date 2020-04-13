@@ -221,3 +221,13 @@ func GetPodStatus(pod corev1.Pod) string {
 
 	return reason
 }
+
+// GetAddOnsConfigMap returns the data in a configmap
+func GetAddOnsConfigMap(kubeAPI kubernetes.Interface, namespace string) (map[string]string, error) {
+	cm, err := kubeAPI.CoreV1().ConfigMaps(namespace).Get(ValuesConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return cm.Data, nil
+}

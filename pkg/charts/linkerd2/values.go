@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/charts"
-
 	"github.com/imdario/mergo"
+	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
@@ -61,7 +60,7 @@ type (
 		WebResources           *Resources `json:"webResources"`
 
 		// Addon Structures
-		Tracing map[string]interface{} `json:"tracing"`
+		Tracing Tracing `json:"tracing"`
 	}
 
 	// Global values common across all charts
