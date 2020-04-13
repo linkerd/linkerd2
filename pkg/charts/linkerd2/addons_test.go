@@ -1,11 +1,10 @@
 package linkerd2
 
 import (
+	"reflect"
 	"testing"
 
-	"gotest.tools/assert"
-
-	"github.com/ghodss/yaml"
+	"sigs.k8s.io/yaml"
 )
 
 func TestParseAddOnValues(t *testing.T) {
@@ -26,6 +25,10 @@ Tracing:
 	}
 
 	// Check for Tracing addOn to be present
-	assert.Equal(t, len(addOns), 1)
-	assert.DeepEqual(t, addOns[0], Tracing{"enabled": true})
+	if len(addOns) != 1 {
+		t.Fatalf("expected 1 add-on to be present but found %d", len(addOns))
+	}
+	if !reflect.DeepEqual(addOns[0], Tracing{"enabled": true}) {
+		t.Fatal("expected tracing add-on to be present")
+	}
 }

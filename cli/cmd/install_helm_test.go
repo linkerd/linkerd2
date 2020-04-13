@@ -153,7 +153,6 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, addOnConfig string, goldenFil
 		}
 	}
 
-	fmt.Println(buf.String())
 	diffTestdata(t, goldenFileName, buf.String())
 }
 

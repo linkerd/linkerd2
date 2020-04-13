@@ -1,9 +1,8 @@
 package linkerd2
 
 import (
-	"gopkg.in/yaml.v2"
-
 	"k8s.io/helm/pkg/chartutil"
+	"sigs.k8s.io/yaml"
 )
 
 var (
