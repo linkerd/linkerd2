@@ -20,7 +20,7 @@ func ParseAddOnValues(values *Values) ([]AddOn, error) {
 
 	if values.Tracing != nil {
 		if enabled, ok := values.Tracing["enabled"].(bool); !ok {
-			return nil, fmt.Errorf("invalid value for 'tracing.enabled' (should be boolean): %s", values.Tracing["enabled"])
+			return nil, fmt.Errorf("invalid value for 'Tracing.enabled' (should be boolean): %s", values.Tracing["enabled"])
 		} else if enabled {
 			addOns = append(addOns, values.Tracing)
 		}

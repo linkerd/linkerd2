@@ -60,7 +60,7 @@ type (
 		WebResources           *Resources `json:"webResources"`
 
 		// Addon Structures
-		Tracing tracing `json:"tracing"`
+		Tracing Tracing `json:"tracing"`
 	}
 
 	// Global values common across all charts
@@ -216,7 +216,7 @@ type (
 		CrtPEM string `json:"crtPEM"`
 	}
 
-	// Trace has all the tracing-related Helm variables
+	// Trace has all the Tracing-related Helm variables
 	Trace struct {
 		CollectorSvcAddr    string `json:"collectorSvcAddr"`
 		CollectorSvcAccount string `json:"collectorSvcAccount"`

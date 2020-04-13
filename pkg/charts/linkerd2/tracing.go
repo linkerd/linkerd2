@@ -10,15 +10,17 @@ var (
 	tracingAddOn = "tracing"
 )
 
-type tracing map[string]interface{}
+// Tracing is a add-on that installs the distributed tracing
+// related components like OpenCensus Collector and Jaeger
+type Tracing map[string]interface{}
 
-// Name returns the name of the tracing add-on
-func (t tracing) Name() string {
+// Name returns the name of the Tracing add-on
+func (t Tracing) Name() string {
 	return tracingAddOn
 }
 
 // Values returns the configuration values that were assigned for this add-on
-func (t tracing) Values() []byte {
+func (t Tracing) Values() []byte {
 	values, err := yaml.Marshal(t)
 	if err != nil {
 		return nil
@@ -27,7 +29,7 @@ func (t tracing) Values() []byte {
 }
 
 //Templates returns the template files specific to this add-on
-func (t tracing) Templates() []*chartutil.BufferedFile {
+func (t Tracing) Templates() []*chartutil.BufferedFile {
 	return []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
 		{Name: "templates/tracing-rbac.yaml"},
