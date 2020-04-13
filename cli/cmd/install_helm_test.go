@@ -110,7 +110,6 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, addOnConfig string, goldenFil
 		overrideJSON = string(mergedConfig)
 	}
 
-	fmt.Println(overrideJSON)
 	overrideConfig := &pb.Config{
 		Raw: fmt.Sprintf(overrideJSON, k8s.IdentityIssuerExpiryAnnotation),
 	}

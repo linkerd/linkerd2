@@ -496,7 +496,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	)
 	flags.BoolVar(
 		&options.controlPlaneTracing, "control-plane-tracing", options.controlPlaneTracing,
-		"Enables Control Plane tracing with the defaults",
+		"Enables Control Plane Tracing with the defaults",
 	)
 	flags.StringVar(
 		&options.identityOptions.crtPEMFile, "identity-issuer-certificate-file", options.identityOptions.crtPEMFile,
