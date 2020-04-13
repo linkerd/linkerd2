@@ -96,21 +96,21 @@ func configureAndRunVersion(
 			defer cancel()
 			resp, err := client.ListPods(ctx, req)
 			if err != nil {
-				fmt.Println(stdout, "Proxy versions: unavailable")
+				fmt.Fprintln(stdout, "Proxy versions: unavailable")
 			} else {
 				counts := make(map[string]int)
 				for _, pod := range resp.GetPods() {
 					if pod.ControllerNamespace == controlPlaneNamespace {
-						if count, ok := counts[pod.GetProxyVersion()]; ok {
-							counts[pod.GetProxyVersion()] = count + 1
-						} else {
-							counts[pod.GetProxyVersion()] = 1
-						}
+						counts[pod.GetProxyVersion()]++
 					}
 				}
-				fmt.Println("Proxy versions:")
-				for version, count := range counts {
-					fmt.Printf("\t%s (%d pods)\n", version, count)
+				if len(counts) == 0 {
+					fmt.Fprintln(stdout, "Proxy versions: unavailable")
+				} else {
+					fmt.Fprintln(stdout, "Proxy versions:")
+					for version, count := range counts {
+						fmt.Fprintf(stdout, "\t%s (%d pods)\n", version, count)
+					}
 				}
 			}
 		}
