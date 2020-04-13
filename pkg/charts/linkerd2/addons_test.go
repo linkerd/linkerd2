@@ -11,7 +11,7 @@ import (
 func TestParseAddOnValues(t *testing.T) {
 
 	addonConfig := `
-Tracing:
+tracing:
   enabled: true
 `
 	var addOnValues Values
@@ -21,8 +21,11 @@ Tracing:
 	}
 
 	addOns, err := ParseAddOnValues(&addOnValues)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
 
-	// Check for Tracing addOn to be present
+	// Check for tracing addOn to be present
 	assert.Equal(t, len(addOns), 1)
-	assert.DeepEqual(t, addOns[0], Tracing{"enabled": true})
+	assert.DeepEqual(t, addOns[0], tracing{"enabled": true})
 }

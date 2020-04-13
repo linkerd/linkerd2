@@ -98,8 +98,6 @@ const (
 	helmDefaultChartName = "linkerd2"
 	helmDefaultChartDir  = "linkerd2"
 
-	tracingChartName = "tracing"
-
 	errMsgCannotInitializeClient = `Unable to install the Linkerd control plane. Cannot connect to the Kubernetes cluster:
 
 %s
@@ -498,7 +496,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	)
 	flags.BoolVar(
 		&options.controlPlaneTracing, "control-plane-tracing", options.controlPlaneTracing,
-		"Enables Control Plane Tracing with the defaults",
+		"Enables Control Plane tracing with the defaults",
 	)
 	flags.StringVar(
 		&options.identityOptions.crtPEMFile, "identity-issuer-certificate-file", options.identityOptions.crtPEMFile,

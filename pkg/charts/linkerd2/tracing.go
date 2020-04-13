@@ -1,38 +1,33 @@
 package linkerd2
 
 import (
-	"fmt"
-
 	"gopkg.in/yaml.v2"
 
 	"k8s.io/helm/pkg/chartutil"
 )
 
 var (
-	TracingAddOn = "tracing"
+	tracingAddOn = "tracing"
 )
 
-type Tracing map[string]interface{}
+type tracing map[string]interface{}
 
-func (t Tracing) Name() string {
-	return TracingAddOn
+// Name returns the name of the tracing add-on
+func (t tracing) Name() string {
+	return tracingAddOn
 }
 
-func (t Tracing) IsEnabled() bool {
-	return t["enabled"].(bool)
-}
-
-func (t Tracing) Values() []byte {
-	fmt.Print("Finding Values")
+// Values returns the configuration values that were assigned for this add-on
+func (t tracing) Values() []byte {
 	values, err := yaml.Marshal(t)
 	if err != nil {
 		return nil
 	}
-	fmt.Println("Found:", string(values))
 	return values
 }
 
-func (t Tracing) Templates() []*chartutil.BufferedFile {
+//Templates returns the template files specific to this add-on
+func (t tracing) Templates() []*chartutil.BufferedFile {
 	return []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
 		{Name: "templates/tracing-rbac.yaml"},
