@@ -5,4 +5,5 @@ linkerd.io/proxy-version: {{.image.version}}
 
 {{- define "partials.proxy.labels" -}}
 linkerd.io/proxy-{{.workloadKind}}: {{.component}}
+linkerd.io/workload-ns: {{.namespace}}
 {{- end -}}

@@ -901,6 +901,7 @@ spec:
       linkerd.io/control-plane-component: identity
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-identity
+      linkerd.io/workload-ns: linkerd
   template:
     metadata:
       annotations:
@@ -911,6 +912,7 @@ spec:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-identity
+        linkerd.io/workload-ns: linkerd
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -1121,6 +1123,7 @@ spec:
       linkerd.io/control-plane-component: controller
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-controller
+      linkerd.io/workload-ns: linkerd
   template:
     metadata:
       annotations:
@@ -1131,6 +1134,7 @@ spec:
         linkerd.io/control-plane-component: controller
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-controller
+        linkerd.io/workload-ns: linkerd
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -1339,6 +1343,7 @@ spec:
       linkerd.io/control-plane-component: destination
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-destination
+      linkerd.io/workload-ns: linkerd
   template:
     metadata:
       annotations:
@@ -1349,6 +1354,7 @@ spec:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-destination
+        linkerd.io/workload-ns: linkerd
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -1605,6 +1611,7 @@ spec:
       linkerd.io/control-plane-component: web
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-web
+      linkerd.io/workload-ns: linkerd
   template:
     metadata:
       annotations:
@@ -1615,6 +1622,7 @@ spec:
         linkerd.io/control-plane-component: web
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-web
+        linkerd.io/workload-ns: linkerd
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -1953,6 +1961,7 @@ spec:
       linkerd.io/control-plane-component: prometheus
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-prometheus
+      linkerd.io/workload-ns: linkerd
   template:
     metadata:
       annotations:
@@ -1963,6 +1972,7 @@ spec:
         linkerd.io/control-plane-component: prometheus
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-prometheus
+        linkerd.io/workload-ns: linkerd
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2237,6 +2247,7 @@ spec:
       linkerd.io/control-plane-component: grafana
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-grafana
+      linkerd.io/workload-ns: linkerd
   template:
     metadata:
       annotations:
@@ -2247,6 +2258,7 @@ spec:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-grafana
+        linkerd.io/workload-ns: linkerd
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2450,6 +2462,7 @@ spec:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-proxy-injector
+        linkerd.io/workload-ns: linkerd
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2688,6 +2701,7 @@ spec:
         linkerd.io/control-plane-component: sp-validator
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-sp-validator
+        linkerd.io/workload-ns: linkerd
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2897,6 +2911,7 @@ spec:
       linkerd.io/control-plane-component: tap
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-tap
+      linkerd.io/workload-ns: linkerd
   template:
     metadata:
       annotations:
@@ -2907,6 +2922,7 @@ spec:
         linkerd.io/control-plane-component: tap
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-tap
+        linkerd.io/workload-ns: linkerd
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
