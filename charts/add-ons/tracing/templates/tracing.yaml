@@ -135,6 +135,9 @@ spec:
             path: linkerd-collector-config.yaml
           name: {{printf "%s-config" .Values.collector.name}}
         name: {{ printf "%s-config-val" .Values.collector.name}}
+      {{ if .Values.global.controlPlaneTracing -}}
+      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
 ---
 ###
@@ -220,4 +223,7 @@ spec:
       dnsPolicy: ClusterFirst
       serviceAccountName: linkerd-jaeger
       volumes:
+      {{ if .Values.global.controlPlaneTracing -}}
+      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
