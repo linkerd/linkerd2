@@ -96,7 +96,8 @@ func TestRender(t *testing.T) {
 					Inbound:  4143,
 					Outbound: 4140,
 				},
-				UID: 2102,
+				UID:   2102,
+				Trace: &charts.Trace{},
 			},
 			ProxyInit: &charts.ProxyInit{
 				Image: &charts.Image{
@@ -242,6 +243,7 @@ func TestRender(t *testing.T) {
 			if err := render(&buf, tc.values); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
+			fmt.Println(buf.String())
 			diffTestdata(t, tc.goldenFileName, buf.String())
 		})
 	}
