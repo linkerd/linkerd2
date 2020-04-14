@@ -3218,7 +3218,7 @@ spec:
       linkerd.io/control-plane-component: linkerd-collector
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-collector
-      linkerd.io/workload-ns: 
+      linkerd.io/workload-ns: linkerd
   minReadySeconds: 5
   progressDeadlineSeconds: 120
   template:
@@ -3234,7 +3234,7 @@ spec:
         linkerd.io/control-plane-component: linkerd-collector
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-collector
-        linkerd.io/workload-ns: 
+        linkerd.io/workload-ns: linkerd
     spec:
       containers:
       - command:
@@ -3437,7 +3437,7 @@ spec:
       linkerd.io/control-plane-component: linkerd-jaeger
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-jaeger
-      linkerd.io/workload-ns: 
+      linkerd.io/workload-ns: linkerd
   template:
     metadata:
       annotations:
@@ -3451,7 +3451,7 @@ spec:
         linkerd.io/control-plane-component: linkerd-jaeger
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-jaeger
-        linkerd.io/workload-ns: 
+        linkerd.io/workload-ns: linkerd
     spec:
       containers:
       - image: jaegertracing/all-in-one:1.17.1
