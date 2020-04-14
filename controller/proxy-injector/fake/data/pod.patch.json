@@ -174,8 +174,7 @@
           "readOnlyRootFilesystem": true,
           "runAsUser": 2102
         },
-        "terminationMessagePolicy": "FallbackToLogsOnError",
-        "volumeMounts": null
+        "terminationMessagePolicy": "FallbackToLogsOnError"
       }
   }
 ]

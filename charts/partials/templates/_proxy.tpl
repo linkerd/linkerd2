@@ -121,7 +121,7 @@ lifecycle:
         - -c
         - sleep {{.Values.global.proxy.waitBeforeExitSeconds}}
 {{- end }}
-{{- if or (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) (.Values.global.proxy.trace) }}
+{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing)  (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) }}
 volumeMounts:
 {{- if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing) }}
 - mountPath: var/run/linkerd/podinfo
