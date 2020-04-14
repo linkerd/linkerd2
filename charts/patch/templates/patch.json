@@ -66,7 +66,7 @@
     "value": []
   },
   {{- end }}
-  {{- if (.Values.global.proxy.trace) }}
+  {{- if (.Values.global.proxy.trace.collectorSvcAddr) }}
   {
     "op": "add",
     "path": "{{$prefix}}/spec/volumes/-",

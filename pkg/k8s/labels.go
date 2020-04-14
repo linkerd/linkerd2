@@ -74,8 +74,9 @@ const (
 	// Namespace that this proxy belongs to.
 	WorkloadNamespaceLabel = Prefix + "/workload-ns" /*
 
-	 * Annotations
-	 */
+		/*
+		 * Annotations
+	*/
 
 	// CreatedByAnnotation indicates the source of the injected data plane
 	// (e.g. linkerd/cli v2.0.0).

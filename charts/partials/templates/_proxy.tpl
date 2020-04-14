@@ -22,11 +22,9 @@ env:
   value: 10000ms
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
   value: 10000ms
-{{ if (.Values.global.proxy.trace) -}}
-{{ if (.Values.global.proxy.trace.collectorSvcAddr) -}}
+{{ if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing) -}}
 - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
   value: /var/run/linkerd/podinfo/labels
-{{ end -}}
 {{ end -}}
 - name: _pod_ns
   valueFrom:
@@ -79,13 +77,11 @@ env:
   value: linkerd-collector.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:55678
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
   value: linkerd-collector.{{.Values.global.namespace}}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-{{ else if .Values.global.proxy.trace -}}
-{{ if .Values.global.proxy.trace.collectorSvcAddr -}}
+{{ else if .Values.global.proxy.trace.collectorSvcAddr -}}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
   value: {{ .Values.global.proxy.trace.collectorSvcAddr }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
   value: {{ .Values.global.proxy.trace.collectorSvcAccount }}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-{{ end -}}
 {{ end -}}
 image: {{.Values.global.proxy.image.name}}:{{.Values.global.proxy.image.version}}
 imagePullPolicy: {{.Values.global.proxy.image.pullPolicy}}
@@ -127,11 +123,9 @@ lifecycle:
 {{- end }}
 {{- if or (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) (.Values.global.proxy.trace) }}
 volumeMounts:
-{{- if (.Values.global.proxy.trace) }}
-{{- if (.Values.global.proxy.trace.collectorSvcAddr)}}
-- name: podinfo
-  mountPath: var/run/linkerd/podinfo
-{{- end -}}
+{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing) }}
+- mountPath: var/run/linkerd/podinfo
+  name: podinfo
 {{- end -}}
 {{- if not .Values.global.proxy.disableIdentity }}
 - mountPath: /var/run/linkerd/identity/end-entity

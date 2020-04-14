@@ -545,6 +545,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
 
+	values.Global.Proxy.Trace = &l5dcharts.Trace{}
 	if trace := conf.trace(); trace != nil {
 		log.Infof("tracing enabled: remote service=%s, service account=%s", trace.CollectorSvcAddr, trace.CollectorSvcAccount)
 		values.Global.Proxy.Trace = trace
