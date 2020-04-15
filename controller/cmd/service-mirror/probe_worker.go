@@ -127,6 +127,7 @@ func (pw *ProbeWorker) doProbe() {
 			pw.log.Errorf("Problem connecting with gateway. Marking as unhealthy %s", err)
 			pw.metrics.alive.Set(0)
 			pw.metrics.probes.With(notSuccessLabel).Inc()
+			return
 		} else if resp.StatusCode != 200 {
 			pw.log.Debugf("Gateway returned unexpected status %d. Marking as unhealthy", resp.StatusCode)
 			pw.metrics.alive.Set(0)
