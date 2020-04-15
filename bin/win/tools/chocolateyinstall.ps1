@@ -4,7 +4,7 @@ $toolsPath = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 $version = $env:chocolateyPackageVersion
 $pp = Get-PackageParameters
 
-if ($pp['path'] -ne $null){
+if ($null -ne $pp['path']){
 	$lpath = $pp['path']
 }
 elseif (Test-Path env:linkerdPath) {
@@ -14,7 +14,7 @@ else {
 	$lpath = $toolsPath
 }
 
-if ($pp['checksum'] -ne $null){
+if ($null -ne $pp['checksum']){
 	$checksum = $pp['checksum']
 }
 else{
