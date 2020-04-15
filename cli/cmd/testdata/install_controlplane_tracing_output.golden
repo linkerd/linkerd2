@@ -924,6 +924,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-identity
     spec:
       nodeSelector:
@@ -1157,6 +1158,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: controller
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-controller
     spec:
       nodeSelector:
@@ -1388,6 +1390,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-destination
     spec:
       nodeSelector:
@@ -1593,6 +1596,7 @@ spec:
         metadata:
           labels:
             linkerd.io/control-plane-component: heartbeat
+            linkerd.io/workload-ns: linkerd
           annotations:
             linkerd.io/created-by: linkerd/cli dev-undefined
         spec:
@@ -1667,6 +1671,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: web
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-web
     spec:
       nodeSelector:
@@ -2028,6 +2033,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: prometheus
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-prometheus
     spec:
       nodeSelector:
@@ -2324,6 +2330,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
@@ -2539,6 +2546,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       nodeSelector:
@@ -2789,6 +2797,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: sp-validator
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-sp-validator
     spec:
       nodeSelector:
@@ -3020,6 +3029,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: tap
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-tap
     spec:
       nodeSelector:

@@ -75,6 +75,7 @@ func TestRender(t *testing.T) {
 			CliVersion:               "CliVersion",
 			ControllerComponentLabel: "ControllerComponentLabel",
 			ControllerNamespaceLabel: "ControllerNamespaceLabel",
+			WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
 			CreatedByAnnotation:      "CreatedByAnnotation",
 			ProxyInjectAnnotation:    "ProxyInjectAnnotation",
 			ProxyInjectDisabled:      "ProxyInjectDisabled",

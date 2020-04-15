@@ -93,6 +93,7 @@ spec:
       labels:
         {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+        {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
       containers:
@@ -201,6 +202,7 @@ spec:
       labels:
         {{.Values.global.controllerComponentLabel}}: {{.Values.jaeger.name}}
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+        {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
       containers:
