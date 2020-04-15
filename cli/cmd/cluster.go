@@ -1,14 +1,12 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"sort"
+	"io"
 	"strings"
-	"text/tabwriter"
 
+	"github.com/linkerd/linkerd2/cli/table"
 	v1 "k8s.io/api/rbac/v1"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -312,9 +310,8 @@ available across clusters.`,
 			if err != nil {
 				return err
 			}
-			output := renderGateways(resp.GetOk().GatewaysTable.Rows)
-			_, err = fmt.Print(output)
-			return err
+			renderGateways(resp.GetOk().GatewaysTable.Rows, stdout)
+			return nil
 		},
 	}
 
@@ -351,18 +348,17 @@ func requestGatewaysFromAPI(client pb.ApiClient, req *pb.GatewaysRequest) (*pb.G
 	if e := resp.GetError(); e != nil {
 		return nil, fmt.Errorf("Gateways API response error: %v", e.Error)
 	}
-
 	return resp, nil
 }
 
-func renderGateways(rows []*pb.GatewaysTable_Row) string {
-	var buffer bytes.Buffer
-	w := tabwriter.NewWriter(&buffer, 0, 0, padding, ' ', tabwriter.AlignRight)
-	writeGatewayRowsToBuffer(rows, w)
-	w.Flush()
-
-	out := string(buffer.Bytes()[padding:])
-	return strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
+func renderGateways(rows []*pb.GatewaysTable_Row, w io.Writer) {
+	t := buildGatewaysTable()
+	t.Data = []table.Row{}
+	for _, row := range rows {
+		row := row // Copy to satisfy golint.
+		t.Data = append(t.Data, gatewaysRowToTableRow(row))
+	}
+	t.Render(w)
 }
 
 var (
@@ -370,125 +366,82 @@ var (
 	gatewayNamespaceHeader = "NAMESPACE"
 	clusterNameHeader      = "CLUSTER"
 	aliveHeader            = "ALIVE"
-	pairedServicesHeader   = "NUM SVC"
+	pairedServicesHeader   = "NUM_SVC"
 	latencyP50Header       = "LATENCY_P50"
 	latencyP95Header       = "LATENCY_P95"
 	latencyP99Header       = "LATENCY_P99"
 )
 
-func writeGatewayRowsToBuffer(rows []*pb.GatewaysTable_Row, w *tabwriter.Writer) {
-	maxNameLength := len(gatewayNameHeader)
-	maxNamespaceLength := len(gatewayNamespaceHeader)
-	maxClusterNameLength := len(clusterNameHeader)
-
-	rowsMap := make(map[string]*pb.GatewaysTable_Row)
-
-	for _, r := range rows {
-		name := r.Name
-		namespace := r.Namespace
-		clusterName := r.ClusterName
-		if len(name) > maxNameLength {
-			maxNameLength = len(name)
-		}
-
-		if len(namespace) > maxNamespaceLength {
-			maxNamespaceLength = len(namespace)
-		}
-
-		if len(clusterName) > maxClusterNameLength {
-			maxClusterNameLength = len(clusterName)
-		}
-
-		key := fmt.Sprintf("%s-%s-%s", r.ClusterName, r.Namespace, r.Name)
-		rowsMap[key] = r
+func buildGatewaysTable() table.Table {
+	columns := []table.Column{
+		table.Column{
+			Header:    clusterNameHeader,
+			Width:     7,
+			Flexible:  true,
+			LeftAlign: true,
+		},
+		table.Column{
+			Header:    gatewayNamespaceHeader,
+			Width:     9,
+			Flexible:  true,
+			LeftAlign: true,
+		},
+		table.Column{
+			Header:    gatewayNameHeader,
+			Width:     4,
+			Flexible:  true,
+			LeftAlign: true,
+		},
+		table.Column{
+			Header:    aliveHeader,
+			Width:     5,
+			Flexible:  true,
+			LeftAlign: true,
+		},
+		table.Column{
+			Header: pairedServicesHeader,
+			Width:  9,
+		},
+		table.Column{
+			Header: latencyP50Header,
+			Width:  11,
+		},
+		table.Column{
+			Header: latencyP95Header,
+			Width:  11,
+		},
+		table.Column{
+			Header: latencyP99Header,
+			Width:  11,
+		},
 	}
-
-	if len(rows) == 0 {
-		fmt.Fprintln(os.Stderr, "No traffic found.")
-		os.Exit(0)
-	}
-	printGatewayRows(rowsMap, w, maxNameLength, maxNamespaceLength, maxClusterNameLength)
+	t := table.NewTable(columns, []table.Row{})
+	t.Sort = []int{0, 1} // Sort by namespace, then name.
+	return t
 }
 
-func sortGatewaysKeys(gateways map[string]*pb.GatewaysTable_Row) []string {
-	var sortedKeys []string
-	for key := range gateways {
-		sortedKeys = append(sortedKeys, key)
-	}
-	sort.Strings(sortedKeys)
-	return sortedKeys
-}
-
-func printGatewayRows(rows map[string]*pb.GatewaysTable_Row, w *tabwriter.Writer, maxNameLength, maxNamespaceLength, maxClusterNameLength int) {
-	headers := make([]string, 0)
-	nameTemplate := fmt.Sprintf("%%-%ds", maxNameLength)
-	namespaceTemplate := fmt.Sprintf("%%-%ds", maxNamespaceLength)
-	clusterNameTemplate := fmt.Sprintf("%%-%ds", maxClusterNameLength)
-	aliveHeaderTemplate := fmt.Sprintf("%%-%ds", 5)
-
-	headers = append(headers, []string{
-		fmt.Sprintf(clusterNameTemplate, clusterNameHeader),
-		fmt.Sprintf(namespaceTemplate, gatewayNamespaceHeader),
-		fmt.Sprintf(nameTemplate, gatewayNameHeader),
-		pairedServicesHeader,
-		fmt.Sprintf(aliveHeaderTemplate, aliveHeader),
-		latencyP50Header,
-		latencyP95Header,
-		latencyP99Header,
-	}...)
-
-	headers[len(headers)-1] = headers[len(headers)-1] + "\t" // trailing \t is required to format last column
-
-	fmt.Fprintln(w, strings.Join(headers, "\t"))
-
-	sortedKeys := sortGatewaysKeys(rows)
-
-	for _, key := range sortedKeys {
-		row := rows[key]
-		values := make([]interface{}, 0)
-		templateString := "%s\t%s\t%s\t%d\t%s\t%dms\t%dms\t%dms\t\n"
-		templateStringEmpty := "%s\t%s\t%s\t%d\t%s\t-\t-\t-\t\n"
-
-		namePadding := 0
-		if maxNameLength > len(row.Name) {
-			namePadding = maxNameLength - len(row.Name)
-		}
-
-		namespacePadding := 0
-		if maxNamespaceLength > len(row.Namespace) {
-			namespacePadding = maxNamespaceLength - len(row.Namespace)
-		}
-
-		clusterNamePadding := 0
-		if maxClusterNameLength > len(row.ClusterName) {
-			clusterNamePadding = maxClusterNameLength - len(row.ClusterName)
-		}
-
-		values = append(values, row.ClusterName+strings.Repeat(" ", clusterNamePadding))
-		values = append(values, row.Namespace+strings.Repeat(" ", namespacePadding))
-		values = append(values, row.Name+strings.Repeat(" ", namePadding))
-		alive := "False"
-
+func gatewaysRowToTableRow(row *pb.GatewaysTable_Row) []string {
+	valueOrPlaceholder := func(value string) string {
 		if row.Alive {
-			alive = "True"
+			return value
 		}
-
-		if row.Alive {
-			values = append(values, []interface{}{
-				row.PairedServices,
-				alive,
-				row.LatencyMsP50,
-				row.LatencyMsP95,
-				row.LatencyMsP99,
-			}...)
-			fmt.Fprintf(w, templateString, values...)
-		} else {
-			values = append(values, []interface{}{
-				row.PairedServices,
-				alive,
-			}...)
-			fmt.Fprintf(w, templateStringEmpty, values...)
-		}
-
+		return "-"
 	}
+
+	alive := "False"
+
+	if row.Alive {
+		alive = "True"
+	}
+	return []string{
+		row.ClusterName,
+		row.Namespace,
+		row.Name,
+		alive,
+		fmt.Sprint(row.PairedServices),
+		valueOrPlaceholder(fmt.Sprintf("%dms", row.LatencyMsP50)),
+		valueOrPlaceholder(fmt.Sprintf("%dms", row.LatencyMsP95)),
+		valueOrPlaceholder(fmt.Sprintf("%dms", row.LatencyMsP99)),
+	}
+
 }
