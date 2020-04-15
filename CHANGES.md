@@ -1,3 +1,24 @@
+## edge-20.4.2
+
+This release brings a number of CLI fixes and Controller improvements.
+
+* CLI
+  * Fixed a bug that caused the proxy to crash after upgrade if
+    `--skip-outbound-ports` or `--skip-inbound-ports` were used
+  * Added `unmeshed` flag to the `stat` command, such that unmeshed resources
+    are only displayed if the user opts-in
+  * Added a `--smi-metrics` flag to `install`, to allow installation of the
+    experimental `linkerd-smi-metrics` component
+  * Fixed a bug in `linkerd stat`, causing incorrect output formatting when using
+    the `wide` flag
+  * Fixed a bug, causing `linkerd uninstall` to fail when attempting to delete
+    PSPs
+* Controller
+  * Improved the anti-affinity of `linkerd-smi-metrics` deployment to avoid
+    pod scheduling problems during `upgrade`
+  * Improved endpoints change detection in the `destinations` service, enabling
+    mirrored remote services to change cluster gateways      
+
 ## edge-20.4.1
 
 This release introduces some cool new functionalities, all provided by our
