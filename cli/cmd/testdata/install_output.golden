@@ -915,7 +915,6 @@ spec:
       ControllerComponentLabel: identity
       ControllerNamespaceLabel: Namespace
       linkerd.io/proxy-deployment: linkerd-identity
-      linkerd.io/workload-ns: Namespace
   template:
     metadata:
       annotations:
@@ -926,7 +925,6 @@ spec:
         ControllerComponentLabel: identity
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-identity
-        linkerd.io/workload-ns: Namespace
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -1134,7 +1132,6 @@ spec:
       ControllerComponentLabel: controller
       ControllerNamespaceLabel: Namespace
       linkerd.io/proxy-deployment: linkerd-controller
-      linkerd.io/workload-ns: Namespace
   template:
     metadata:
       annotations:
@@ -1145,7 +1142,6 @@ spec:
         ControllerComponentLabel: controller
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-controller
-        linkerd.io/workload-ns: Namespace
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -1351,7 +1347,6 @@ spec:
       ControllerComponentLabel: destination
       ControllerNamespaceLabel: Namespace
       linkerd.io/proxy-deployment: linkerd-destination
-      linkerd.io/workload-ns: Namespace
   template:
     metadata:
       annotations:
@@ -1362,7 +1357,6 @@ spec:
         ControllerComponentLabel: destination
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-destination
-        linkerd.io/workload-ns: Namespace
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -1616,7 +1610,6 @@ spec:
       ControllerComponentLabel: web
       ControllerNamespaceLabel: Namespace
       linkerd.io/proxy-deployment: linkerd-web
-      linkerd.io/workload-ns: Namespace
   template:
     metadata:
       annotations:
@@ -1627,7 +1620,6 @@ spec:
         ControllerComponentLabel: web
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-web
-        linkerd.io/workload-ns: Namespace
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -1963,7 +1955,6 @@ spec:
       ControllerComponentLabel: prometheus
       ControllerNamespaceLabel: Namespace
       linkerd.io/proxy-deployment: linkerd-prometheus
-      linkerd.io/workload-ns: Namespace
   template:
     metadata:
       annotations:
@@ -1974,7 +1965,6 @@ spec:
         ControllerComponentLabel: prometheus
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-prometheus
-        linkerd.io/workload-ns: Namespace
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2246,7 +2236,6 @@ spec:
       ControllerComponentLabel: grafana
       ControllerNamespaceLabel: Namespace
       linkerd.io/proxy-deployment: linkerd-grafana
-      linkerd.io/workload-ns: Namespace
   template:
     metadata:
       annotations:
@@ -2257,7 +2246,6 @@ spec:
         ControllerComponentLabel: grafana
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-grafana
-        linkerd.io/workload-ns: Namespace
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2458,7 +2446,6 @@ spec:
         ControllerComponentLabel: proxy-injector
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-proxy-injector
-        linkerd.io/workload-ns: Namespace
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2694,7 +2681,6 @@ spec:
         ControllerComponentLabel: sp-validator
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-sp-validator
-        linkerd.io/workload-ns: Namespace
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2901,7 +2887,6 @@ spec:
       ControllerComponentLabel: tap
       ControllerNamespaceLabel: Namespace
       linkerd.io/proxy-deployment: linkerd-tap
-      linkerd.io/workload-ns: Namespace
   template:
     metadata:
       annotations:
@@ -2912,7 +2897,6 @@ spec:
         ControllerComponentLabel: tap
         ControllerNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-tap
-        linkerd.io/workload-ns: Namespace
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux

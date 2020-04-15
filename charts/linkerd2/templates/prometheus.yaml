@@ -157,7 +157,6 @@ spec:
 {{ end -}}
 {{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
 {{ $_ := set .Values.global.proxy "component" "linkerd-prometheus" -}}
-{{ $_ := set .Values.global.proxy "namespace" .Values.global.namespace -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 apiVersion: apps/v1
 kind: Deployment

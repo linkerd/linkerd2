@@ -27,7 +27,6 @@ spec:
 ---
 {{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
 {{ $_ := set .Values.global.proxy "component" "linkerd-tap" -}}
-{{ $_ := set .Values.global.proxy "namespace" .Values.global.namespace -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 kind: Deployment
 apiVersion: apps/v1
