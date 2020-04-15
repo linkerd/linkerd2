@@ -381,7 +381,17 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) {
 	for _, i := range installFlags {
 		if f := flags.Lookup(i.GetName()); f != nil && !f.Changed {
-			f.Value.Set(i.GetValue())
+
+			// The function recordFlags() stores the string representation of flags in the ConfigMap
+			// so a stringSlice is stored e.g. as [a,b].
+			// To avoid having f.Value.Set() interpreting that as a string we need to remove
+			// the brackets
+			value := i.GetValue()
+			if f.Value.Type() == "stringSlice" {
+				value = strings.Trim(value, "[]")
+			}
+
+			f.Value.Set(value)
 			f.Changed = true
 		}
 	}
