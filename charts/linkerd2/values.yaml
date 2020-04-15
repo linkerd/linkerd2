@@ -143,6 +143,7 @@ identity:
 grafanaImage: gcr.io/linkerd-io/grafana
 # set resources for grafana linkerd proxy
 # see global.proxy.resources for details.
+#grafanaResources:
 #grafanaProxyResources:
 
 
@@ -218,14 +219,10 @@ smiMetrics:
 
   keyPEM: |
 
-
 # set resources for smi-metrics linkerd proxy
 # see global.proxy.resources for details.
+#smiMetricsResources:
 #smiMetricsProxyResources:
-
-  proxy:
-  # set resources for linkerd proxy, see global.proxy.resources for details
-  #resources:
 
 # Configuration for Add-ons
 tracing:
