@@ -85,7 +85,7 @@ image: {{.Values.global.proxy.image.name}}:{{.Values.global.proxy.image.version}
 imagePullPolicy: {{.Values.global.proxy.image.pullPolicy}}
 livenessProbe:
   httpGet:
-    path: /metrics
+    path: /live
     port: {{.Values.global.proxy.ports.admin}}
   initialDelaySeconds: 10
 name: linkerd-proxy
