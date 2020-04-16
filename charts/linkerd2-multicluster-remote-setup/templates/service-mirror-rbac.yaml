@@ -1,0 +1,39 @@
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: {{ .Values.serviceAccountNamespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{.Values.serviceAccountName}}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - list
+  - get
+  - watch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{.Values.serviceAccountName}}
+  namespace: {{.Values.serviceAccountNamespace}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{.Values.serviceAccountName}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{.Values.serviceAccountName}}
+subjects:
+- kind: ServiceAccount
+  name: {{.Values.serviceAccountName}}
+  namespace: {{.Values.serviceAccountNamespace}}
+

@@ -104,6 +104,11 @@ func (chart *Chart) RenderServiceMirror() (bytes.Buffer, error) {
 	return chart.render([]*chartutil.BufferedFile{})
 }
 
+// RenderRemoteClusterSetup returns a bytes buffer with the result of rendering a Helm chart
+func (chart *Chart) RenderRemoteClusterSetup() (bytes.Buffer, error) {
+	return chart.render([]*chartutil.BufferedFile{})
+}
+
 // ReadFile updates the buffered file with the data read from disk
 func ReadFile(dir string, f *chartutil.BufferedFile) error {
 	filename := dir + f.Name
