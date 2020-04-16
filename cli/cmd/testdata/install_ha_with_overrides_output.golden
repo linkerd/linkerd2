@@ -1049,7 +1049,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -1301,7 +1301,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -1550,7 +1550,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -1834,7 +1834,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2197,7 +2197,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2485,7 +2485,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2722,7 +2722,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2989,7 +2989,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -3244,7 +3244,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
