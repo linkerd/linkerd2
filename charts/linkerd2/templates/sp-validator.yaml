@@ -43,6 +43,11 @@ spec:
   selector:
     matchLabels:
       {{.Values.global.controllerComponentLabel}}: sp-validator
+  {{- if .Values.enablePodAntiAffinity }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
   template:
     metadata:
       annotations:

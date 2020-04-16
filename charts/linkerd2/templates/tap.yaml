@@ -48,6 +48,11 @@ spec:
       {{.Values.global.controllerComponentLabel}}: tap
       {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
       {{- include "partials.proxy.labels" .Values.global.proxy | nindent 6}}
+  {{- if .Values.enablePodAntiAffinity }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
   template:
     metadata:
       annotations:
