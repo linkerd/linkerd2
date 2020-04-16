@@ -17,7 +17,13 @@ This release brings a number of CLI fixes and Controller improvements.
   * Improved the anti-affinity of `linkerd-smi-metrics` deployment to avoid
     pod scheduling problems during `upgrade`
   * Improved endpoints change detection in the `linkerd-destination` service, enabling
-    mirrored remote services to change cluster gateways      
+    mirrored remote services to change cluster gateways
+  * Added `operationID` field to tap OpenAPI response to prevent issues during
+    upgrade from 2.6 to 2.7 
+* Proxy
+  * Added a new protocol detection timeout to prevent clients from consuming
+    resources indefinitely when not sending any data
+  * Added a `/live` endpoint for checking liveness  
 
 ## edge-20.4.1
 
