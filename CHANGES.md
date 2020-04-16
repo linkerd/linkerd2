@@ -23,7 +23,6 @@ This release brings a number of CLI fixes and Controller improvements.
 * Proxy
   * Added a new protocol detection timeout to prevent clients from consuming
     resources indefinitely when not sending any data
-  * Added a `/live` endpoint for checking liveness  
 
 ## edge-20.4.1
 
