@@ -9,7 +9,7 @@ var (
 	tracingAddOn = "tracing"
 )
 
-// Tracing is a add-on that installs the distributed tracing
+// Tracing is an add-on that installs the distributed tracing
 // related components like OpenCensus Collector and Jaeger
 type Tracing map[string]interface{}
 
@@ -27,7 +27,7 @@ func (t Tracing) Values() []byte {
 	return values
 }
 
-//Templates returns the template files specific to this add-on
+// Templates returns the template files specific to this add-on
 func (t Tracing) Templates() []*chartutil.BufferedFile {
 	return []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},

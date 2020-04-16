@@ -14,13 +14,13 @@ type AddOn interface {
 	Values() []byte
 }
 
-// ParseAddOnValues takes a Values struct, and returns an array of enabled add-ons
+// ParseAddOnValues takes a Values struct, and returns an array of the enabled add-ons
 func ParseAddOnValues(values *Values) ([]AddOn, error) {
 	var addOns []AddOn
 
 	if values.Tracing != nil {
 		if enabled, ok := values.Tracing["enabled"].(bool); !ok {
-			return nil, fmt.Errorf("invalid value for 'Tracing.enabled' (should be boolean): %s", values.Tracing["enabled"])
+			return nil, fmt.Errorf("invalid value for 'tracing.enabled' (should be boolean): %s", values.Tracing["enabled"])
 		} else if enabled {
 			addOns = append(addOns, values.Tracing)
 		}
