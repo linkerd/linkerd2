@@ -24,7 +24,7 @@ else{
 $packageArgs = @{
   packageName    = 'linkerd'
   fileFullPath   = "$lpath\linkerd.exe"
-  url64          = "https://github.com/linkerd/linkerd2/releases/download/$version/linkerd2-cli-$version-windows.exe"
+  url64          = "https://github.com/linkerd/linkerd2/releases/download/stable-$version/linkerd2-cli-stable-$version-windows.exe"
   checksum       = $checksum
   checksumType   = 'sha256'
 }
