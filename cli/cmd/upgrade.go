@@ -347,7 +347,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	values.Stage = stage
 
 	// Update Add-Ons Configuration from the linkerd-value cm
-	cmRawValues, _ := GetConfigMap(k, k8s.ValuesConfigMapName, controlPlaneNamespace)
+	cmRawValues, _ := k8s.GetAddOnsConfigMap(k, controlPlaneNamespace)
 
 	if cmRawValues != nil {
 		//Cm is present now get the data
@@ -553,16 +553,6 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 		},
 	}, nil
 
-}
-
-// GetConfigMap returns the data in a configmap
-func GetConfigMap(kubeAPI kubernetes.Interface, name string, namespace string) (map[string]string, error) {
-	cm, err := kubeAPI.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return cm.Data, nil
 }
 
 func readIssuer(trustPEM, issuerCrtPath, issuerKeyPath string) (*issuercerts.IssuerCertData, error) {

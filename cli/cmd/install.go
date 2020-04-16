@@ -98,8 +98,6 @@ const (
 	helmDefaultChartName = "linkerd2"
 	helmDefaultChartDir  = "linkerd2"
 
-	tracingChartName = "tracing"
-
 	errMsgCannotInitializeClient = `Unable to install the Linkerd control plane. Cannot connect to the Kubernetes cluster:
 
 %s
@@ -156,12 +154,6 @@ var (
 		"templates/tap.yaml",
 		"templates/smi-metrics.yaml",
 		"templates/linkerd-values.yaml",
-	}
-
-	tracingTemplates = []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName},
-		{Name: "templates/tracing-rbac.yaml"},
-		{Name: "templates/tracing.yaml"},
 	}
 )
 
@@ -864,31 +856,27 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 	}
 
 	if values.Stage != configStage {
-		addons, err := parseAddOnValues(values)
+		addons, err := l5dcharts.ParseAddOnValues(values)
 		if err != nil {
 			return err
 		}
 
-		for addon, values := range addons {
-			var chart *charts.Chart
-			switch addon {
-			case "tracing":
-				chart = &charts.Chart{
-					Name:      tracingChartName,
-					Dir:       filepath.Join(addOnChartsPath, tracingChartName),
-					Namespace: controlPlaneNamespace,
-					RawValues: append(rawValues, values...),
-					Files:     tracingTemplates,
-				}
+		for _, addon := range addons {
+			chart := &charts.Chart{
+				Name:      addon.Name(),
+				Dir:       filepath.Join(addOnChartsPath, addon.Name()),
+				Namespace: controlPlaneNamespace,
+				RawValues: append(rawValues, addon.Values()...),
+				Files:     addon.Templates(),
+			}
 
-				b, err := chart.Render()
-				if err != nil {
-					return err
-				}
+			b, err := chart.Render()
+			if err != nil {
+				return err
+			}
 
-				if _, err := buf.WriteString(b.String()); err != nil {
-					return err
-				}
+			if _, err := buf.WriteString(b.String()); err != nil {
+				return err
 			}
 		}
 	}
@@ -1241,23 +1229,4 @@ func toIdentityContext(idvals *identityWithAnchorsAndTrustDomain) *pb.IdentityCo
 		ClockSkewAllowance: ptypes.DurationProto(csa),
 		Scheme:             idvals.Identity.Issuer.Scheme,
 	}
-}
-
-func parseAddOnValues(values *l5dcharts.Values) (map[string][]byte, error) {
-	addonValues := map[string][]byte{}
-
-	if values.Tracing != nil {
-		if enabled, ok := values.Tracing["enabled"].(bool); !ok {
-			return nil, fmt.Errorf("invalid value for 'Tracing.enabled' (should be boolean): %s", values.Tracing["enabled"])
-		} else if enabled {
-			data, err := yaml.Marshal(values.Tracing)
-			if err != nil {
-				return nil, err
-			}
-
-			addonValues[tracingChartName] = data
-		}
-	}
-
-	return addonValues, nil
 }
