@@ -337,9 +337,10 @@ func (s *grpcServer) trafficSplitResourceQuery(ctx context.Context, req *pb.Stat
 					Namespace: tsStats.namespace,
 					Type:      req.GetSelector().GetResource().GetType(),
 				},
-				TimeWindow: req.TimeWindow,
-				Stats:      tsBasicStats[currentLeaf],
-				TsStats:    trafficSplitStats,
+				TimeWindow:     req.TimeWindow,
+				MeshedPodCount: 1,
+				Stats:          tsBasicStats[currentLeaf],
+				TsStats:        trafficSplitStats,
 			}
 			rows = append(rows, &row)
 		}
