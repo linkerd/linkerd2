@@ -16,6 +16,11 @@ type paramsExp struct {
 
 func TestStat(t *testing.T) {
 	options := newStatOptions()
+
+	// TODO: currently `linkerd stat ts` requires the --unmeshed flag
+	tsOptions := options
+	tsOptions.unmeshed = true
+
 	t.Run("Returns namespace stats", func(t *testing.T) {
 		testStatCall(paramsExp{
 			counts: &public.PodCounts{
@@ -45,7 +50,7 @@ func TestStat(t *testing.T) {
 
 	t.Run("Returns trafficsplit stats", func(t *testing.T) {
 		testStatCall(paramsExp{
-			options: options,
+			options: tsOptions,
 			resNs:   []string{"default"},
 			file:    "stat_one_ts_output.golden",
 		}, k8s.TrafficSplit, t)
@@ -67,7 +72,7 @@ func TestStat(t *testing.T) {
 
 	t.Run("Returns trafficsplit stats (json)", func(t *testing.T) {
 		testStatCall(paramsExp{
-			options: options,
+			options: tsOptions,
 			resNs:   []string{"default"},
 			file:    "stat_one_ts_output_json.golden",
 		}, k8s.TrafficSplit, t)
