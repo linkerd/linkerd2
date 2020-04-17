@@ -10,7 +10,9 @@ import (
 // a common abstraction for install, etc
 type AddOn interface {
 	Name() string
-	Templates() []*chartutil.BufferedFile
+	Chart() *chartutil.BufferedFile
+	ConfigStageTemplates() []*chartutil.BufferedFile
+	ControlPlaneStageTemplates() []*chartutil.BufferedFile
 	Values() []byte
 }
 

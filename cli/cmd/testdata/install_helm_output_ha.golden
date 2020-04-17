@@ -1007,6 +1007,9 @@ spec:
       linkerd.io/control-plane-component: identity
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-identity
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -1251,6 +1254,9 @@ spec:
       linkerd.io/control-plane-component: controller
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-controller
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -1493,6 +1499,9 @@ spec:
       linkerd.io/control-plane-component: destination
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-destination
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -2639,6 +2648,9 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -2902,6 +2914,9 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: sp-validator
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -3146,6 +3161,9 @@ spec:
       linkerd.io/control-plane-component: tap
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-tap
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:

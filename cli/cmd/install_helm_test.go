@@ -225,12 +225,10 @@ func buildAddOnChart(t *testing.T, addon l5dcharts.AddOn, chartPartials *pb.Char
 		},
 	}
 
-	for _, filepath := range addon.Templates() {
-		if filepath.Name != chartutil.ChartfileName {
-			addOnChart.Templates = append(addOnChart.Templates, &pb.Template{
-				Name: filepath.Name,
-			})
-		}
+	for _, filepath := range append(addon.ConfigStageTemplates(), addon.ControlPlaneStageTemplates()...) {
+		addOnChart.Templates = append(addOnChart.Templates, &pb.Template{
+			Name: filepath.Name,
+		})
 	}
 
 	for _, template := range addOnChart.Templates {

@@ -27,11 +27,23 @@ func (t Tracing) Values() []byte {
 	return values
 }
 
-// Templates returns the template files specific to this add-on
-func (t Tracing) Templates() []*chartutil.BufferedFile {
+// Chart returns the chart.yaml file of the add-on
+func (t Tracing) Chart() *chartutil.BufferedFile {
+	return &chartutil.BufferedFile{
+		Name: chartutil.ChartfileName,
+	}
+}
+
+// ConfigStageTemplates returns the template files that are part of the config stage
+func (t Tracing) ConfigStageTemplates() []*chartutil.BufferedFile {
 	return []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName},
 		{Name: "templates/tracing-rbac.yaml"},
+	}
+}
+
+// ControlPlaneStageTemplates returns the template files that are part of the Control Plane Stage.
+func (t Tracing) ControlPlaneStageTemplates() []*chartutil.BufferedFile {
+	return []*chartutil.BufferedFile{
 		{Name: "templates/tracing.yaml"},
 	}
 }
