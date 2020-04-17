@@ -863,6 +863,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 				&chartutil.BufferedFile{Name: template},
 			)
 		}
+
 		// Fill add-on's sub-charts with control-plane templates
 		for _, addOn := range addOns {
 			addOnCharts[addOn.Name()].Files = append(addOnCharts[addOn.Name()].Files, addOn.ControlPlaneStageTemplates()...)
