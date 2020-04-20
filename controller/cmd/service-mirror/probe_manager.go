@@ -8,6 +8,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -23,17 +24,6 @@ type ProbeManager struct {
 	done       chan struct{}
 }
 
-// GatewayProbeSpec is the specification of a probe that will be executed by the worker
-type GatewayProbeSpec struct {
-	clusterName   string
-	gatewayName   string
-	gatewayNs     string
-	gatewayIps    []string
-	port          int32
-	path          string
-	periodSeconds int32
-}
-
 // MirroredServiceUnpaired is emitted when a service is no longer mirrored
 type MirroredServiceUnpaired struct {
 	serviceName      string
@@ -47,15 +37,7 @@ type MirroredServiceUnpaired struct {
 type MirroredServicePaired struct {
 	serviceName      string
 	serviceNamespace string
-	*GatewayProbeSpec
-}
-
-// ClusterRegistered is emitted when a new cluster becomes registered for mirroring
-type ClusterRegistered struct {
-	clusterName   string
-	port          int32
-	path          string
-	periodSeconds int32
+	GatewaySpec
 }
 
 // ClusterNotRegistered is is emitted when the cluster is not monitored anymore
@@ -65,7 +47,7 @@ type ClusterNotRegistered struct {
 
 // GatewayUpdated is emitted when something about the gateway is updated (i.e. its external IP(s))
 type GatewayUpdated struct {
-	*GatewayProbeSpec
+	GatewaySpec
 }
 
 // NewProbeManager creates a new probe manager
@@ -88,8 +70,6 @@ func eventTypeString(ev interface{}) string {
 		return "MirroredServiceUnpaired"
 	case *GatewayUpdated:
 		return "GatewayUpdated"
-	case *ClusterRegistered:
-		return "ClusterRegistered"
 	case *ClusterNotRegistered:
 		return "ClusterNotRegistered"
 	default:
@@ -114,8 +94,6 @@ func (m *ProbeManager) handleEvent(ev interface{}) {
 		m.handleMirroredServiceUnpaired(ev)
 	case *GatewayUpdated:
 		m.handleGatewayUpdated(ev)
-	case *ClusterRegistered:
-		m.handleClusterRegistered(ev)
 	case *ClusterNotRegistered:
 		m.handleClusterNotRegistered(ev)
 	default:
@@ -123,22 +101,51 @@ func (m *ProbeManager) handleEvent(ev interface{}) {
 	}
 }
 
+func endpointAddressesToIps(addrs []corev1.EndpointAddress) []string {
+	result := []string{}
+
+	for _, a := range addrs {
+
+		result = append(result, a.IP)
+	}
+
+	return result
+}
+
+func gatewayToProbeSpec(gatewaySpec GatewaySpec) *probeSpec {
+
+	if gatewaySpec.ProbeConfig == nil {
+		return nil
+	}
+	return &probeSpec{
+		ips:             endpointAddressesToIps(gatewaySpec.addresses),
+		path:            gatewaySpec.path,
+		port:            gatewaySpec.port,
+		periodInSeconds: gatewaySpec.periodInSeconds,
+	}
+}
+
 func (m *ProbeManager) handleMirroredServicePaired(event *MirroredServicePaired) {
-	probeKey := probeKey(event.gatewayNs, event.gatewayName, event.clusterName)
+	probeKey := probeKey(event.gatewayNamespace, event.gatewayName, event.clusterName)
 	worker, ok := m.probeWorkers[probeKey]
 	if ok {
 		log.Debugf("Probe worker %s already exists", probeKey)
 		worker.PairService(event.serviceName, event.serviceNamespace)
 	} else {
 		log.Debugf("Creating probe worker %s", probeKey)
-		probeMetrics, err := m.metricVecs.newWorkerMetrics(event.gatewayNs, event.gatewayName, event.clusterName)
+		probeMetrics, err := m.metricVecs.newWorkerMetrics(event.gatewayNamespace, event.gatewayName, event.clusterName)
 		if err != nil {
 			log.Errorf("Could not crete probe metrics: %s", err)
 		} else {
-			worker = NewProbeWorker(event.GatewayProbeSpec, probeMetrics, probeKey)
-			worker.PairService(event.serviceName, event.serviceNamespace)
-			m.probeWorkers[probeKey] = worker
-			worker.Start()
+			probeSpec := gatewayToProbeSpec(event.GatewaySpec)
+			if probeSpec != nil {
+				worker = NewProbeWorker(probeSpec, probeMetrics, probeKey)
+				worker.PairService(event.serviceName, event.serviceNamespace)
+				m.probeWorkers[probeKey] = worker
+				worker.Start()
+			} else {
+				log.Debugf("No probe spec for: %s", probeKey)
+			}
 		}
 	}
 }
@@ -159,50 +166,17 @@ func (m *ProbeManager) handleMirroredServiceUnpaired(event *MirroredServiceUnpai
 }
 
 func (m *ProbeManager) handleGatewayUpdated(event *GatewayUpdated) {
-	probeKey := probeKey(event.gatewayNs, event.gatewayName, event.clusterName)
+	probeKey := probeKey(event.gatewayNamespace, event.gatewayName, event.clusterName)
 	worker, ok := m.probeWorkers[probeKey]
 	if ok {
-		worker.UpdateProbeSpec(event.GatewayProbeSpec)
-	} else {
-		log.Debugf("Could not find a worker for %s while handling MirroredServiceUnpaired event", probeKey)
-	}
-}
-
-func (m *ProbeManager) handleClusterRegistered(event *ClusterRegistered) {
-	matchLabels := map[string]string{
-		consts.MirroredResourceLabel:  "true",
-		consts.RemoteClusterNameLabel: event.clusterName,
-	}
-
-	services, err := m.k8sAPI.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
-	if err != nil {
-		log.Errorf("Was not able to sync cluster %s, %s", event.clusterName, err)
-	}
-
-	for _, svc := range services {
-		ips := []string{}
-		if endp, err := m.k8sAPI.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name); err == nil {
-			if len(endp.Subsets) == 1 {
-				for _, addr := range endp.Subsets[0].Addresses {
-					ips = append(ips, addr.IP)
-				}
-			}
+		probeSpec := gatewayToProbeSpec(event.GatewaySpec)
+		if probeSpec != nil {
+			worker.UpdateProbeSpec(probeSpec)
+		} else {
+			log.Debugf("No probe spec for: %s", probeKey)
 		}
-
-		log.Debugf("Syncing service %s", svc.Name)
-		m.enqueueEvent(&MirroredServicePaired{
-			serviceName:      svc.Name,
-			serviceNamespace: svc.Namespace,
-			GatewayProbeSpec: &GatewayProbeSpec{
-				clusterName:   event.clusterName,
-				gatewayName:   svc.Labels[consts.RemoteGatewayNameLabel],
-				gatewayNs:     svc.Labels[consts.RemoteGatewayNsLabel],
-				gatewayIps:    ips,
-				port:          event.port,
-				path:          event.path,
-				periodSeconds: event.periodSeconds,
-			},
-		})
+	} else {
+		log.Debugf("Could not find a worker for %s while handling GatewayUpdated event", probeKey)
 	}
 }
 

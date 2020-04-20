@@ -388,6 +388,15 @@ const (
 	// GatewayIdentity can be found on the remote gateway service
 	GatewayIdentity = SvcMirrorPrefix + "/gateway-identity"
 
+	// GatewayProbePort the port on which the gateway can be probed
+	GatewayProbePort = SvcMirrorPrefix + "/probe-port"
+
+	// GatewayProbePeriod the interval at which the health of the gateway should be probed
+	GatewayProbePeriod = SvcMirrorPrefix + "/probe-period"
+
+	// GatewayProbePath the path at which the health of the gateway should be probed
+	GatewayProbePath = SvcMirrorPrefix + "/probe-path"
+
 	// ConfigKeyName is the key in the secret that stores the kubeconfig needed to connect
 	// to a remote cluster
 	ConfigKeyName = "kubeconfig"

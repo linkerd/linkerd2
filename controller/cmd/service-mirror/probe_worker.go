@@ -14,10 +14,17 @@ import (
 
 const httpGatewayTimeoutMillis = 50000
 
+type probeSpec struct {
+	ips             []string
+	path            string
+	port            uint32
+	periodInSeconds uint32
+}
+
 // ProbeWorker is responsible for monitoring gateways using a probe specification
 type ProbeWorker struct {
 	*sync.RWMutex
-	probe          *GatewayProbeSpec
+	probeSpec      *probeSpec
 	pairedServices map[string]struct{}
 	stopCh         chan struct{}
 	metrics        *probeMetrics
@@ -25,10 +32,10 @@ type ProbeWorker struct {
 }
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
-func NewProbeWorker(probe *GatewayProbeSpec, metrics *probeMetrics, probekey string) *ProbeWorker {
+func NewProbeWorker(spec *probeSpec, metrics *probeMetrics, probekey string) *ProbeWorker {
 	return &ProbeWorker{
 		RWMutex:        &sync.RWMutex{},
-		probe:          probe,
+		probeSpec:      spec,
 		pairedServices: make(map[string]struct{}),
 		stopCh:         make(chan struct{}),
 		metrics:        metrics,
@@ -62,15 +69,15 @@ func (pw *ProbeWorker) UnPairService(serviceName, serviceNamespace string) {
 }
 
 // UpdateProbeSpec is used to update the probe specification when something about the gateway changes
-func (pw *ProbeWorker) UpdateProbeSpec(spec *GatewayProbeSpec) {
+func (pw *ProbeWorker) UpdateProbeSpec(spec *probeSpec) {
 	pw.Lock()
-	pw.probe = spec
+	pw.probeSpec = spec
 	pw.Unlock()
 }
 
 // Stop this probe worker
 func (pw *ProbeWorker) Stop() {
-	pw.log.Debug("Stopping probe worker for")
+	pw.log.Debug("Stopping probe worker")
 	close(pw.stopCh)
 }
 
@@ -81,7 +88,7 @@ func (pw *ProbeWorker) Start() {
 }
 
 func (pw *ProbeWorker) run() {
-	periodInMillis := pw.probe.periodSeconds * 1000
+	periodInMillis := pw.probeSpec.periodInSeconds * 1000
 	probeTickerPeriod := time.Duration(periodInMillis) * time.Millisecond
 	maxJitter := time.Duration(periodInMillis/10) * time.Millisecond // max jitter is 10% of period
 	probeTicker := NewTicker(probeTickerPeriod, maxJitter)
@@ -98,11 +105,11 @@ probeLoop:
 }
 
 func (pw *ProbeWorker) pickAnIP() string {
-	numIps := len(pw.probe.gatewayIps)
+	numIps := len(pw.probeSpec.ips)
 	if numIps == 0 {
 		return ""
 	}
-	return pw.probe.gatewayIps[rand.Int()%numIps]
+	return pw.probeSpec.ips[rand.Int()%numIps]
 }
 
 func (pw *ProbeWorker) doProbe() {
@@ -121,7 +128,7 @@ func (pw *ProbeWorker) doProbe() {
 			Timeout: httpGatewayTimeoutMillis * time.Millisecond,
 		}
 		start := time.Now()
-		resp, err := client.Get(fmt.Sprintf("http://%s:%d/%s", ipToTry, pw.probe.port, pw.probe.path))
+		resp, err := client.Get(fmt.Sprintf("http://%s:%d/%s", ipToTry, pw.probeSpec.port, pw.probeSpec.path))
 		end := time.Since(start)
 		if err != nil {
 			pw.log.Errorf("Problem connecting with gateway. Marking as unhealthy %s", err)

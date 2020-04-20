@@ -3,6 +3,7 @@ package servicemirror
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -40,6 +41,25 @@ type (
 		enqueueProbeEvent  func(event interface{})
 	}
 
+	// ProbeConfig describes the configured probe on particular gateway (if presents)
+	ProbeConfig struct {
+		path            string
+		port            uint32
+		periodInSeconds uint32
+	}
+
+	// GatewaySpec contains essential data about the gateway
+	GatewaySpec struct {
+		gatewayName      string
+		gatewayNamespace string
+		clusterName      string
+		addresses        []corev1.EndpointAddress
+		incomingPort     uint32
+		resourceVersion  string
+		identity         string
+		*ProbeConfig
+	}
+
 	// RemoteServiceCreated is generated whenever a remote service is created Observing
 	// this event means that the service in question is not mirrored atm
 	RemoteServiceCreated struct {
@@ -55,7 +75,7 @@ type (
 		localService   *corev1.Service
 		localEndpoints *corev1.Endpoints
 		remoteUpdate   *corev1.Service
-		gatewayData    *gatewayMetadata
+		gatewayData    gatewayMetadata
 	}
 
 	// RemoteServiceDeleted when a remote service is going away or it is not
@@ -63,25 +83,21 @@ type (
 	RemoteServiceDeleted struct {
 		Name        string
 		Namespace   string
-		GatewayData *gatewayMetadata
+		GatewayData gatewayMetadata
 	}
 
 	// RemoteGatewayDeleted is observed when a service that is a gateway to at least
 	// one already mirrored service is deleted
 	RemoteGatewayDeleted struct {
-		gatewayData *gatewayMetadata
+		gatewayData gatewayMetadata
 	}
 
 	// RemoteGatewayUpdated happens when a service that is a gateway to at least
 	// one already mirrored service is updated. This might mean an IP change,
 	// incoming port change, etc...
 	RemoteGatewayUpdated struct {
-		newPort              int32
-		newEndpointAddresses []corev1.EndpointAddress
-		gatewayData          *gatewayMetadata
-		newResourceVersion   string
-		affectedServices     []*corev1.Service
-		identity             string
+		gatewaySpec      GatewaySpec
+		affectedServices []*corev1.Service
 	}
 
 	// ConsiderGatewayUpdateDispatch is issued when we are receiving an update for a
@@ -148,47 +164,15 @@ func (re RetryableError) Error() string {
 	return fmt.Sprintf("Inner errors:\n\t%s", strings.Join(errorStrings, "\n\t"))
 }
 
-func (rcsw *RemoteClusterServiceWatcher) extractGatewayInfo(gateway *corev1.Service) ([]corev1.EndpointAddress, int32, string, string, error) {
-	if len(gateway.Status.LoadBalancer.Ingress) == 0 {
-		return nil, 0, "", "", errors.New("expected gateway to have at lest 1 external Ip address but it has none")
-	}
-
-	var foundPort = false
-	var port int32
-	for _, p := range gateway.Spec.Ports {
-		if p.Name == consts.GatewayPortName {
-			foundPort = true
-			port = p.Port
-			break
-		}
-	}
-
-	if !foundPort {
-		return nil, 0, "", "", fmt.Errorf("cannot find  port named %s on gateway", consts.GatewayPortName)
-	}
-
-	var gatewayEndpoints []corev1.EndpointAddress
-	for _, ingress := range gateway.Status.LoadBalancer.Ingress {
-		gatewayEndpoints = append(gatewayEndpoints, corev1.EndpointAddress{
-			IP:       ingress.IP,
-			Hostname: ingress.Hostname,
-		})
-	}
-
-	gatewayIdentity := gateway.Annotations[consts.GatewayIdentity]
-
-	return gatewayEndpoints, port, gateway.ResourceVersion, gatewayIdentity, nil
-}
-
 // When the gateway is resolved we need to produce a set of endpoint addresses that that
 // contain the external IPs that this gateway exposes. Therefore we return the IP addresses
 // as well as a single port on which the gateway is accessible.
-func (rcsw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadata) ([]corev1.EndpointAddress, int32, string, string, error) {
+func (rcsw *RemoteClusterServiceWatcher) resolveGateway(metadata *gatewayMetadata) (*GatewaySpec, error) {
 	gateway, err := rcsw.remoteAPIClient.Svc().Lister().Services(metadata.Namespace).Get(metadata.Name)
 	if err != nil {
-		return nil, 0, "", "", err
+		return nil, err
 	}
-	return rcsw.extractGatewayInfo(gateway)
+	return rcsw.extractGatewaySpec(gateway)
 }
 
 // NewRemoteClusterServiceWatcher constructs a new cluster watcher
@@ -328,18 +312,25 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 				// something went wrong getting the service, we can retry
 				errors = append(errors, err)
 			}
+		} else {
+			if gtwData := getGatewayMetadata(srv.Annotations); gtwData != nil {
+				gatewaySpec, err := rcsw.resolveGateway(gtwData)
+				if gatewaySpec != nil && err == nil {
+					rcsw.enqueueProbeEvent(&MirroredServicePaired{
+						serviceName:      srv.Name,
+						serviceNamespace: srv.Namespace,
+						GatewaySpec:      *gatewaySpec,
+					})
+				} else {
+					rcsw.log.Debugf("Could not resolve gateway for %s/%s: %s", srv.Namespace, srv.Name, err)
+				}
+			}
 		}
 	}
 	if len(errors) > 0 {
 		return RetryableError{errors}
 	}
 
-	rcsw.enqueueProbeEvent(&ClusterRegistered{
-		clusterName:   rcsw.clusterName,
-		port:          rcsw.probePort,
-		path:          rcsw.probePath,
-		periodSeconds: rcsw.probePeriodSeconds,
-	})
 	return nil
 }
 
@@ -450,20 +441,20 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 		})
 	}
 
-	gatewayEndpoints, gatewayPort, resVersion, gatewayIdentity, err := rcsw.resolveGateway(ev.gatewayData)
+	gatewaySpec, err := rcsw.resolveGateway(&ev.gatewayData)
 	if err == nil {
 		ev.localEndpoints.Subsets = []corev1.EndpointSubset{
 			{
-				Addresses: gatewayEndpoints,
-				Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate, gatewayPort),
+				Addresses: gatewaySpec.addresses,
+				Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate, int32(gatewaySpec.incomingPort)),
 			},
 		}
 
 		ev.localEndpoints.Labels[consts.RemoteGatewayNameLabel] = ev.gatewayData.Name
 		ev.localEndpoints.Labels[consts.RemoteGatewayNsLabel] = ev.gatewayData.Namespace
 
-		if gatewayIdentity != "" {
-			ev.localEndpoints.Annotations[consts.RemoteGatewayIdentity] = gatewayIdentity
+		if gatewaySpec.identity != "" {
+			ev.localEndpoints.Annotations[consts.RemoteGatewayIdentity] = gatewaySpec.identity
 		} else {
 			delete(ev.localEndpoints.Annotations, consts.RemoteGatewayIdentity)
 		}
@@ -472,15 +463,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 			rcsw.enqueueProbeEvent(&MirroredServicePaired{
 				serviceName:      ev.localService.Name,
 				serviceNamespace: ev.localService.Namespace,
-				GatewayProbeSpec: &GatewayProbeSpec{
-					clusterName:   rcsw.clusterName,
-					gatewayName:   ev.gatewayData.Name,
-					gatewayNs:     ev.gatewayData.Namespace,
-					gatewayIps:    endpointAddressesToIps(gatewayEndpoints),
-					port:          rcsw.probePort,
-					path:          rcsw.probePath,
-					periodSeconds: rcsw.probePeriodSeconds,
-				},
+				GatewaySpec:      *gatewaySpec,
 			})
 		}
 
@@ -493,9 +476,9 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 		return RetryableError{[]error{err}}
 	}
 
-	ev.localService.Labels = rcsw.getMirroredServiceLabels(ev.gatewayData)
+	ev.localService.Labels = rcsw.getMirroredServiceLabels(&ev.gatewayData)
 	ev.localService.Annotations = rcsw.getMirroredServiceAnnotations(ev.remoteUpdate)
-	ev.localService.Annotations[consts.RemoteGatewayResourceVersionAnnotation] = resVersion
+	ev.localService.Annotations[consts.RemoteGatewayResourceVersionAnnotation] = gatewaySpec.resourceVersion
 	ev.localService.Spec.Ports = remapRemoteServicePorts(ev.remoteUpdate.Spec.Ports)
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.localService.Namespace).Update(ev.localService); err != nil {
@@ -517,17 +500,6 @@ func remapRemoteServicePorts(ports []corev1.ServicePort) []corev1.ServicePort {
 		})
 	}
 	return newPorts
-}
-
-func endpointAddressesToIps(addrs []corev1.EndpointAddress) []string {
-	result := []string{}
-
-	for _, a := range addrs {
-
-		result = append(result, a.IP)
-	}
-
-	return result
 }
 
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteServiceCreated) error {
@@ -568,33 +540,25 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 	}
 
 	// Now we try to resolve the remote gateway
-	gatewayEndpoints, gatewayPort, resVersion, gatewayIdentity, err := rcsw.resolveGateway(ev.gatewayData)
+	gatewaySpec, err := rcsw.resolveGateway(ev.gatewayData)
 	if err == nil {
 		// only if we resolve it, we are updating the endpoints addresses and ports
-		rcsw.log.Debugf("Resolved remote gateway [%v:%d] for %s", gatewayEndpoints, gatewayPort, serviceInfo)
+		rcsw.log.Debugf("Resolved remote gateway [%v:%d] for %s", gatewaySpec.addresses, gatewaySpec.incomingPort, serviceInfo)
 		endpointsToCreate.Subsets = []corev1.EndpointSubset{
 			{
-				Addresses: gatewayEndpoints,
-				Ports:     rcsw.getEndpointsPorts(ev.service, gatewayPort),
+				Addresses: gatewaySpec.addresses,
+				Ports:     rcsw.getEndpointsPorts(ev.service, int32(gatewaySpec.incomingPort)),
 			},
 		}
-		serviceToCreate.Annotations[consts.RemoteGatewayResourceVersionAnnotation] = resVersion
-		if gatewayIdentity != "" {
-			endpointsToCreate.Annotations[consts.RemoteGatewayIdentity] = gatewayIdentity
+		serviceToCreate.Annotations[consts.RemoteGatewayResourceVersionAnnotation] = gatewaySpec.resourceVersion
+		if gatewaySpec.identity != "" {
+			endpointsToCreate.Annotations[consts.RemoteGatewayIdentity] = gatewaySpec.identity
 		}
 
 		rcsw.enqueueProbeEvent(&MirroredServicePaired{
 			serviceName:      serviceToCreate.Name,
 			serviceNamespace: serviceToCreate.Namespace,
-			GatewayProbeSpec: &GatewayProbeSpec{
-				clusterName:   rcsw.clusterName,
-				gatewayName:   ev.gatewayData.Name,
-				gatewayNs:     ev.gatewayData.Namespace,
-				gatewayIps:    endpointAddressesToIps(gatewayEndpoints),
-				port:          rcsw.probePort,
-				path:          rcsw.probePath,
-				periodSeconds: rcsw.probePeriodSeconds,
-			},
+			GatewaySpec:      *gatewaySpec,
 		})
 
 	} else {
@@ -621,7 +585,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 }
 
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGatewayDeleted) error {
-	affectedEndpoints, err := rcsw.endpointsForGateway(ev.gatewayData)
+	affectedEndpoints, err := rcsw.endpointsForGateway(&ev.gatewayData)
 	if err != nil {
 		// if we cannot find the endpoints, we can give up
 		if kerrors.IsNotFound(err) {
@@ -650,25 +614,17 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGa
 }
 
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayUpdated(ev *RemoteGatewayUpdated) error {
-	rcsw.log.Debugf("Updating %d services due to remote gateway [%s/%s] update", len(ev.affectedServices), ev.gatewayData.Namespace, ev.gatewayData.Name)
+	rcsw.log.Debugf("Updating %d services due to remote gateway [%s/%s] update", len(ev.affectedServices), ev.gatewaySpec.gatewayNamespace, ev.gatewaySpec.gatewayName)
 
 	rcsw.enqueueProbeEvent(&GatewayUpdated{
-		GatewayProbeSpec: &GatewayProbeSpec{
-			clusterName:   rcsw.clusterName,
-			gatewayName:   ev.gatewayData.Name,
-			gatewayNs:     ev.gatewayData.Namespace,
-			gatewayIps:    endpointAddressesToIps(ev.newEndpointAddresses),
-			port:          rcsw.probePort,
-			path:          rcsw.probePath,
-			periodSeconds: rcsw.probePeriodSeconds,
-		},
+		GatewaySpec: ev.gatewaySpec,
 	})
 
 	var errors []error
 	for _, svc := range ev.affectedServices {
 		updatedService := svc.DeepCopy()
 		if updatedService.Labels != nil {
-			updatedService.Annotations[consts.RemoteGatewayResourceVersionAnnotation] = ev.newResourceVersion
+			updatedService.Annotations[consts.RemoteGatewayResourceVersionAnnotation] = ev.gatewaySpec.resourceVersion
 		}
 		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(svc.Namespace).Get(svc.Name)
 		if err != nil {
@@ -679,13 +635,13 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayUpdated(ev *RemoteGa
 		updatedEndpoints := endpoints.DeepCopy()
 		updatedEndpoints.Subsets = []corev1.EndpointSubset{
 			{
-				Addresses: ev.newEndpointAddresses,
-				Ports:     rcsw.getEndpointsPorts(updatedService, ev.newPort),
+				Addresses: ev.gatewaySpec.addresses,
+				Ports:     rcsw.getEndpointsPorts(updatedService, int32(ev.gatewaySpec.incomingPort)),
 			},
 		}
 
-		if ev.identity != "" {
-			updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = ev.identity
+		if ev.gatewaySpec.identity != "" {
+			updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = ev.gatewaySpec.identity
 		} else {
 			delete(updatedEndpoints.Annotations, consts.RemoteGatewayIdentity)
 		}
@@ -740,11 +696,11 @@ func (rcsw *RemoteClusterServiceWatcher) handleConsiderGatewayUpdateDispatch(eve
 	}
 
 	if len(services) > 0 {
-		gatewayMeta := &gatewayMetadata{
+		gatewayMeta := gatewayMetadata{
 			Name:      event.maybeGateway.Name,
 			Namespace: event.maybeGateway.Namespace,
 		}
-		if endpoints, port, resVersion, identity, err := rcsw.extractGatewayInfo(event.maybeGateway); err != nil {
+		if gatewaySpec, err := rcsw.extractGatewaySpec(event.maybeGateway); err != nil {
 			rcsw.log.Warnf("Gateway [%s/%s] is not a compliant gateway anymore, dispatching GatewayDeleted event: %s", event.maybeGateway.Namespace, event.maybeGateway.Name, err)
 			// in case something changed about this gateway and it is not really a gateway anymore,
 			// simply dispatch deletion event so all endpoints are nulled
@@ -761,12 +717,8 @@ func (rcsw *RemoteClusterServiceWatcher) handleConsiderGatewayUpdateDispatch(eve
 
 			if len(affectedServices) > 0 {
 				rcsw.eventsQueue.Add(&RemoteGatewayUpdated{
-					newPort:              port,
-					newEndpointAddresses: endpoints,
-					gatewayData:          gatewayMeta,
-					newResourceVersion:   resVersion,
-					affectedServices:     affectedServices,
-					identity:             identity,
+					gatewaySpec:      *gatewaySpec,
+					affectedServices: affectedServices,
 				})
 			}
 
@@ -817,7 +769,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 						localService:   localService,
 						localEndpoints: endpoints,
 						remoteUpdate:   service,
-						gatewayData:    gtwData,
+						gatewayData:    *gtwData,
 					})
 				} else {
 					return RetryableError{[]error{err}}
@@ -886,11 +838,11 @@ func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service)
 		rcsw.eventsQueue.Add(&RemoteServiceDeleted{
 			Name:        service.Name,
 			Namespace:   service.Namespace,
-			GatewayData: gtwData,
+			GatewayData: *gtwData,
 		})
 	} else {
 		rcsw.eventsQueue.Add(&RemoteGatewayDeleted{
-			gatewayData: &gatewayMetadata{
+			gatewayData: gatewayMetadata{
 				Name:      service.Name,
 				Namespace: service.Namespace,
 			}})
@@ -1009,4 +961,62 @@ func (rcsw *RemoteClusterServiceWatcher) Stop(cleanupState bool) {
 		rcsw.eventsQueue.Add(&ClusterUnregistered{})
 	}
 	rcsw.eventsQueue.ShutDown()
+}
+
+func (rcsw *RemoteClusterServiceWatcher) extractGatewaySpec(gateway *corev1.Service) (*GatewaySpec, error) {
+	if len(gateway.Status.LoadBalancer.Ingress) == 0 {
+		return nil, errors.New("expected gateway to have at lest 1 external Ip address but it has none")
+	}
+
+	var foundPort = false
+	var port uint32
+	for _, p := range gateway.Spec.Ports {
+		if p.Name == consts.GatewayPortName {
+			foundPort = true
+			port = uint32(p.Port)
+			break
+		}
+	}
+
+	if !foundPort {
+		return nil, fmt.Errorf("cannot find  port named %s on gateway", consts.GatewayPortName)
+	}
+
+	var gatewayEndpoints []corev1.EndpointAddress
+	for _, ingress := range gateway.Status.LoadBalancer.Ingress {
+		gatewayEndpoints = append(gatewayEndpoints, corev1.EndpointAddress{
+			IP:       ingress.IP,
+			Hostname: ingress.Hostname,
+		})
+	}
+
+	gatewayIdentity := gateway.Annotations[consts.GatewayIdentity]
+
+	var probeCfg *ProbeConfig
+
+	probePath := gateway.Annotations[consts.GatewayProbePath]
+	probePort, err := strconv.ParseUint(gateway.Annotations[consts.GatewayProbePort], 10, 32)
+	if err == nil {
+		probePeriod, err := strconv.ParseUint(gateway.Annotations[consts.GatewayProbePeriod], 10, 32)
+		if err == nil {
+			if probePath != "" {
+				probeCfg = &ProbeConfig{
+					path:            probePath,
+					port:            uint32(probePort),
+					periodInSeconds: uint32(probePeriod),
+				}
+			}
+		}
+	}
+
+	return &GatewaySpec{
+		clusterName:      rcsw.clusterName,
+		gatewayName:      gateway.Name,
+		gatewayNamespace: gateway.Namespace,
+		addresses:        gatewayEndpoints,
+		incomingPort:     port,
+		resourceVersion:  gateway.ResourceVersion,
+		identity:         gatewayIdentity,
+		ProbeConfig:      probeCfg,
+	}, nil
 }
