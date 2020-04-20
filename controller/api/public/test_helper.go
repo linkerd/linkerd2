@@ -344,8 +344,7 @@ func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool,
 					Type:      resType,
 					Name:      resName,
 				},
-				TimeWindow:     "1m",
-				MeshedPodCount: 1,
+				TimeWindow: "1m",
 			}
 
 			if basicStats {
