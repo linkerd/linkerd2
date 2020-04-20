@@ -48,6 +48,7 @@ type (
 		controllerUID               int64
 		disableH2Upgrade            bool
 		disableHeartbeat            bool
+		heartbeatScheduleOverride   string
 		cniEnabled                  bool
 		skipChecks                  bool
 		omitWebhookSideEffects      bool
@@ -230,8 +231,11 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			// means at least 5 minutes of data available. Start the first CronJob 10
 			// minutes after `linkerd install` is run, to give the user 5 minutes to
 			// install.
-			t := time.Now().Add(10 * time.Minute).UTC()
-			return fmt.Sprintf("%d %d * * * ", t.Minute(), t.Hour())
+			if defaults.HeartbeatSchedule == "" {
+				t := time.Now().Add(10 * time.Minute).UTC()
+				return fmt.Sprintf("%d %d * * * ", t.Minute(), t.Hour())
+			}
+			return defaults.HeartbeatSchedule
 		},
 	}, nil
 }
@@ -478,6 +482,10 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	flags.BoolVar(
 		&options.disableHeartbeat, "disable-heartbeat", options.disableHeartbeat,
 		"Disables the heartbeat cronjob (default false)",
+	)
+	flags.StringVar(
+		&options.heartbeatScheduleOverride, "heartbeat-schedule", options.heartbeatScheduleOverride,
+		"A cron scheduling string (https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) for running the heartbeat job, e.g. '0 0 * * *'. The job should run once daily. (default: daily starting at now+10 minutes)",
 	)
 	flags.DurationVar(
 		&options.identityOptions.issuanceLifetime, "identity-issuance-lifetime", options.identityOptions.issuanceLifetime,
