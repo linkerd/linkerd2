@@ -145,7 +145,7 @@
         "imagePullPolicy": "IfNotPresent",
         "livenessProbe": {
           "httpGet": {
-            "path": "/metrics",
+            "path": "/live",
             "port": 4191
           },
           "initialDelaySeconds": 10
