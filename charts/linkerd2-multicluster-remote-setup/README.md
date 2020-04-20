@@ -18,6 +18,8 @@ The following table lists the configurable parameters of the linkerd2-multiclust
 |`identityTrustDomain`     | Trust domain used for identity of the existing linkerd installation                                             |`cluster.local`         |
 |`incomingPort`            | The port on which all the gateway will accept incoming traffic                                                  |`80`                    |
 |`linkerdNamespace`        | The namespace of the existing Linkerd installation                                                              |`linkerd`               |
+|`nginxImage`              | The Nginx image                                                                                                 |`nginx`                 |
+|`nginxImageVersion`       | The version of the Nginx image                                                                                  |`1.17`                  |
 |`probePath`               | The path tha that will be used by remote clusters for determining whether the gateway is alive                  |`/health`               |
 |`probePeriodSeconds`      | The interval (in seconds) between liveness probes                                                               |`3`                     |
 |`probePort`               | The port used for liveliness probing                                                                            |`81`                    |
