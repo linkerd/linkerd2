@@ -27,13 +27,6 @@ func (t Tracing) Values() []byte {
 	return values
 }
 
-// Chart returns the chart.yaml file of the add-on
-func (t Tracing) Chart() *chartutil.BufferedFile {
-	return &chartutil.BufferedFile{
-		Name: chartutil.ChartfileName,
-	}
-}
-
 // ConfigStageTemplates returns the template files that are part of the config stage
 func (t Tracing) ConfigStageTemplates() []*chartutil.BufferedFile {
 	return []*chartutil.BufferedFile{
