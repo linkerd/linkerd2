@@ -23,18 +23,28 @@ func TestRenderHelm(t *testing.T) {
 
 	t.Run("Non-HA mode", func(t *testing.T) {
 		ha := false
-		chartControlPlane := chartControlPlane(t, ha, "111", "222")
-		testRenderHelm(t, chartControlPlane, "install_helm_output.golden")
+		chartControlPlane := chartControlPlane(t, ha, nil, "111", "222")
+		testRenderHelm(t, chartControlPlane, "", "install_helm_output.golden")
 	})
 
 	t.Run("HA mode", func(t *testing.T) {
 		ha := true
-		chartControlPlane := chartControlPlane(t, ha, "111", "222")
-		testRenderHelm(t, chartControlPlane, "install_helm_output_ha.golden")
+		chartControlPlane := chartControlPlane(t, ha, nil, "111", "222")
+		testRenderHelm(t, chartControlPlane, "", "install_helm_output_ha.golden")
+	})
+
+	t.Run("Non-HA with add-ons mode", func(t *testing.T) {
+		ha := false
+		addOnConfig := `
+tracing:
+  enabled: true
+`
+		chartControlPlane := chartControlPlane(t, ha, []l5dcharts.AddOn{l5dcharts.Tracing{}}, "111", "222")
+		testRenderHelm(t, chartControlPlane, addOnConfig, "install_helm_output_addons.golden")
 	})
 }
 
-func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
+func testRenderHelm(t *testing.T, chart *pb.Chart, addOnConfig string, goldenFileName string) {
 	var (
 		chartName = "linkerd2"
 		namespace = "linkerd-dev"
@@ -91,6 +101,15 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 	  "crtPEM":"test-smi-metrics-crt-pem",
   }
 }`
+
+	if addOnConfig != "" {
+		mergedConfig, err := mergeRaw([]byte(overrideJSON), []byte(addOnConfig))
+		if err != nil {
+			t.Fatal("Unexpected error", err)
+		}
+		overrideJSON = string(mergedConfig)
+	}
+
 	overrideConfig := &pb.Config{
 		Raw: fmt.Sprintf(overrideJSON, k8s.IdentityIssuerExpiryAnnotation),
 	}
@@ -121,10 +140,23 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 		buf.WriteString(v)
 	}
 
+	for _, dep := range chart.Dependencies {
+		for _, template := range dep.Templates {
+			source := "linkerd2/charts" + "/" + dep.Metadata.Name + "/" + template.Name
+			v, exists := rendered[source]
+			if !exists {
+				// skip partial templates
+				continue
+			}
+			buf.WriteString("---\n# Source: " + source + "\n")
+			buf.WriteString(v)
+		}
+	}
+
 	diffTestdata(t, goldenFileName, buf.String())
 }
 
-func chartControlPlane(t *testing.T, ha bool, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
+func chartControlPlane(t *testing.T, ha bool, addons []l5dcharts.AddOn, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
 	values, err := readTestValues(t, ha, ignoreOutboundPorts, ignoreInboundPorts)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
@@ -162,6 +194,10 @@ func chartControlPlane(t *testing.T, ha bool, ignoreOutboundPorts string, ignore
 		},
 	}
 
+	for _, addon := range addons {
+		chart.Dependencies = append(chart.Dependencies, buildAddOnChart(t, addon, chartPartials))
+	}
+
 	for _, filepath := range append(templatesConfigStage, templatesControlPlaneStage...) {
 		chart.Templates = append(chart.Templates, &pb.Template{
 			Name: filepath,
@@ -174,6 +210,35 @@ func chartControlPlane(t *testing.T, ha bool, ignoreOutboundPorts string, ignore
 	}
 
 	return chart
+}
+
+func buildAddOnChart(t *testing.T, addon l5dcharts.AddOn, chartPartials *pb.Chart) *pb.Chart {
+	addOnChart := pb.Chart{
+		Metadata: &pb.Metadata{
+			Name: addon.Name(),
+			Sources: []string{
+				filepath.Join("..", "..", "..", "charts", "add-ons", addon.Name()),
+			},
+		},
+		Dependencies: []*pb.Chart{
+			chartPartials,
+		},
+	}
+
+	for _, filepath := range addon.Templates() {
+		if filepath.Name != chartutil.ChartfileName {
+			addOnChart.Templates = append(addOnChart.Templates, &pb.Template{
+				Name: filepath.Name,
+			})
+		}
+	}
+
+	for _, template := range addOnChart.Templates {
+		filepath := filepath.Join(addOnChart.Metadata.Sources[0], template.Name)
+		template.Data = []byte(readTestdata(t, filepath))
+	}
+
+	return &addOnChart
 }
 
 func chartPartials(t *testing.T, paths []string) *pb.Chart {

@@ -50,7 +50,7 @@ spec:
     spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- if .Values.enablePodAntiAffinity -}}
-      {{- $local := dict "component" "tap" "label" .Values.global.controllerComponentLabel -}}
+      {{- $local := dict "component" "smi-metrics" "label" .Values.global.controllerComponentLabel -}}
       {{- include "linkerd.pod-affinity" $local | nindent 6 -}}
       {{- end }}
       serviceAccountName: linkerd-smi-metrics

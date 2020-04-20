@@ -347,7 +347,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	values.Stage = stage
 
 	// Update Add-Ons Configuration from the linkerd-value cm
-	cmRawValues, _ := GetConfigMap(k, k8s.ValuesConfigMapName, controlPlaneNamespace)
+	cmRawValues, _ := k8s.GetAddOnsConfigMap(k, controlPlaneNamespace)
 
 	if cmRawValues != nil {
 		//Cm is present now get the data
@@ -381,7 +381,17 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) {
 	for _, i := range installFlags {
 		if f := flags.Lookup(i.GetName()); f != nil && !f.Changed {
-			f.Value.Set(i.GetValue())
+
+			// The function recordFlags() stores the string representation of flags in the ConfigMap
+			// so a stringSlice is stored e.g. as [a,b].
+			// To avoid having f.Value.Set() interpreting that as a string we need to remove
+			// the brackets
+			value := i.GetValue()
+			if f.Value.Type() == "stringSlice" {
+				value = strings.Trim(value, "[]")
+			}
+
+			f.Value.Set(value)
 			f.Changed = true
 		}
 	}
@@ -543,16 +553,6 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 		},
 	}, nil
 
-}
-
-// GetConfigMap returns the data in a configmap
-func GetConfigMap(kubeAPI kubernetes.Interface, name string, namespace string) (map[string]string, error) {
-	cm, err := kubeAPI.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return cm.Data, nil
 }
 
 func readIssuer(trustPEM, issuerCrtPath, issuerKeyPath string) (*issuercerts.IssuerCertData, error) {
