@@ -5,8 +5,9 @@
 We provide security updates for the two most recent minor versions released on the `stable`
 channel.
 
-For example, if `stable-2.7.1` is the most recent stable versions, we will address security updates for `stable-2.6.0` and later. Once `stable-2.8.0` is released, we will no longer
-provide updates for `stable-2.6.x releases
+For example, if `stable-2.7.1` is the most recent stable versions, we will address security
+updates for `stable-2.6.0` and later. Once `stable-2.8.0` is released, we will no longer provide
+updates for `stable-2.6.x` releases.
 
 ## Reporting a Vulnerability
 
