@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
@@ -139,7 +141,7 @@ type statOptionsBase struct {
 
 func newStatOptionsBase() *statOptionsBase {
 	return &statOptionsBase{
-		namespace:    "default",
+		namespace:    getDefaultNamespace(),
 		timeWindow:   "1m",
 		outputFormat: tableOutput,
 	}
@@ -187,6 +189,27 @@ func getSuccessRate(success, failure uint64) float64 {
 		return 0.0
 	}
 	return float64(success) / float64(success+failure)
+}
+
+// getDefaultNamespace fetches the default namespace
+// used in the current KubeConfig context
+func getDefaultNamespace() string {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
+
+	if kubeconfigPath != "" {
+		rules.ExplicitPath = kubeconfigPath
+	}
+
+	overrides := &clientcmd.ConfigOverrides{CurrentContext: kubeContext}
+	kubeCfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, overrides)
+	ns, _, err := kubeCfg.Namespace()
+
+	if err != nil {
+		log.Errorf("failed to set namespace from config context:%v", err)
+		return corev1.NamespaceDefault
+	}
+
+	return ns
 }
 
 // proxyConfigOptions holds values for command line flags that apply to both the

@@ -116,6 +116,28 @@ func TestCliTap(t *testing.T) {
 		}
 	})
 
+	t.Run("tap a deployment using context namespace", func(t *testing.T) {
+		out, err := TestHelper.Kubectl("", "config", "set-context", "--namespace="+prefixedNs, "--current")
+		if err != nil {
+			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
+		}
+
+		events, err := tap("deploy/t1")
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		err = validateExpected(events, expectedT1)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		out, err = TestHelper.Kubectl("", "config", "set-context", "--namespace=default", "--current")
+		if err != nil {
+			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
+		}
+	})
+
 	t.Run("tap a disabled deployment", func(t *testing.T) {
 		out, stderr, err := TestHelper.LinkerdRun("tap", "deploy/t4", "--namespace", prefixedNs)
 		if out != "" {

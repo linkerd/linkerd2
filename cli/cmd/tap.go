@@ -103,7 +103,7 @@ type tapEvent struct {
 
 func newTapOptions() *tapOptions {
 	return &tapOptions{
-		namespace:     "default",
+		namespace:     getDefaultNamespace(),
 		toResource:    "",
 		toNamespace:   "",
 		maxRps:        maxRps,
