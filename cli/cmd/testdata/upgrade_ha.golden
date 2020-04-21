@@ -915,6 +915,9 @@ spec:
       linkerd.io/control-plane-component: identity
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-identity
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -1051,7 +1054,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -1168,6 +1171,9 @@ spec:
       linkerd.io/control-plane-component: controller
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-controller
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -1305,7 +1311,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -1419,6 +1425,9 @@ spec:
       linkerd.io/control-plane-component: destination
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-destination
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -1556,7 +1565,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -1842,7 +1851,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2207,7 +2216,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2497,7 +2506,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2599,6 +2608,9 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -2736,7 +2748,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2870,6 +2882,9 @@ spec:
   selector:
     matchLabels:
       linkerd.io/control-plane-component: sp-validator
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -3005,7 +3020,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -3122,6 +3137,9 @@ spec:
       linkerd.io/control-plane-component: tap
       linkerd.io/control-plane-ns: linkerd
       linkerd.io/proxy-deployment: linkerd-tap
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
   template:
     metadata:
       annotations:
@@ -3262,7 +3280,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
