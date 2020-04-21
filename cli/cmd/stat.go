@@ -280,7 +280,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	}
 
 	for _, r := range rows {
-		if !options.unmeshed && r.GetMeshedPodCount() == 0 {
+		if r.Resource.Type != k8s.TrafficSplit && !options.unmeshed && r.GetMeshedPodCount() == 0 {
 			continue
 		}
 
@@ -359,7 +359,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	case tableOutput, wideOutput:
 		if len(statTables) == 0 {
 			fmt.Fprintln(os.Stderr, "No traffic found.")
-			os.Exit(0)
+			return
 		}
 		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength, options)
 	case jsonOutput:
