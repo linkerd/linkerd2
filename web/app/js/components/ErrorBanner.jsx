@@ -62,10 +62,6 @@ class ErrorSnackbar extends React.Component {
         TransitionComponent={props => <Slide direction="up" {...props} />}
         ContentProps={{
           'aria-describedby': 'message-id',
-          variantMapping: { // https://github.com/mui-org/material-ui/issues/13144
-            body1: 'div',
-            body2: 'div',
-          },
           className: classNames(classes.error, classes.margin),
         }}
         message={(

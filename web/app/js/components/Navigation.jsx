@@ -449,7 +449,7 @@ class NavigationBase extends React.Component {
         <Divider />
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-                Cluster
+            Cluster
           </Typography>
           { this.menuItem('/namespaces', 'Namespaces', namespaceIcon) }
 
@@ -468,6 +468,7 @@ class NavigationBase extends React.Component {
           value={{ name: formattedNamespaceName.toUpperCase() }}
           options={filteredNamespaces}
           autoSelect
+          getOptionSelected={option => option.name === selectedNamespace}
           getOptionLabel={option => { if (option.name !== '_all') { return option.name; } else { return 'All Namespaces'; } }}
           onChange={this.handleNamespaceChange}
           size="small"
@@ -495,7 +496,7 @@ class NavigationBase extends React.Component {
 
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-                Workloads
+            Workloads
           </Typography>
 
           { this.menuItem(`/namespaces/${selectedNamespace}/cronjobs`, 'Cron Jobs', cronJobIcon) }
@@ -517,7 +518,7 @@ class NavigationBase extends React.Component {
 
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-                Configuration
+            Configuration
           </Typography>
 
           { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, 'Traffic Splits', <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
@@ -526,7 +527,7 @@ class NavigationBase extends React.Component {
         <Divider />
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-                Tools
+            Tools
           </Typography>
 
           { this.menuItem('/tap', 'Tap', <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }

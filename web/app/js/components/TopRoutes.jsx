@@ -215,7 +215,7 @@ class TopRoutes extends React.Component {
                 variant="outlined"
                 disabled={requestInProgress || !query.namespace || !query.resource_type}
                 onClick={this.handleBtnClick(true)}>
-              Start
+                Start
               </Button>
             </Grid>
 
@@ -225,7 +225,7 @@ class TopRoutes extends React.Component {
                 variant="outlined"
                 disabled={!requestInProgress}
                 onClick={this.handleBtnClick(false)}>
-              Stop
+                Stop
               </Button>
             </Grid>
           </Grid>
