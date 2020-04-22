@@ -118,6 +118,8 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-web
   namespace: {{.Values.global.namespace}}
+{{- if .Values.smiMetrics.enabled }}
 - kind: ServiceAccount
   name: linkerd-smi-metrics
   namespace: {{.Values.global.namespace}}
+{{- end }}

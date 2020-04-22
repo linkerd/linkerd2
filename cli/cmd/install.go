@@ -55,6 +55,7 @@ type (
 		restrictDashboardPrivileges bool
 		controlPlaneTracing         bool
 		identityOptions             *installIdentityOptions
+		smiMetricsEnabled           bool
 		smiMetricsImage             string
 		*proxyConfigOptions
 
@@ -96,9 +97,6 @@ const (
 
 	helmDefaultChartName = "linkerd2"
 	helmDefaultChartDir  = "linkerd2"
-
-	tracingChartName = "tracing"
-	grafanaChartName = "grafana"
 
 	errMsgCannotInitializeClient = `Unable to install the Linkerd control plane. Cannot connect to the Kubernetes cluster:
 
@@ -155,18 +153,6 @@ var (
 		"templates/smi-metrics.yaml",
 		"templates/linkerd-values.yaml",
 	}
-
-	tracingTemplates = []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName},
-		{Name: "templates/tracing-rbac.yaml"},
-		{Name: "templates/tracing.yaml"},
-	}
-
-	grafanaTemplates = []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName},
-		{Name: "templates/grafana-rbac.yaml"},
-		{Name: "templates/grafana.yaml"},
-	}
 )
 
 // newInstallOptionsWithDefaults initializes install options with default
@@ -206,6 +192,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
 		controlPlaneTracing:         defaults.Global.ControlPlaneTracing,
+		smiMetricsEnabled:           defaults.SMIMetrics.Enabled,
 		smiMetricsImage:             defaults.SMIMetrics.Image,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
@@ -526,11 +513,17 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.addOnConfig, "addon-config", options.addOnConfig,
 		"A path to a configuration file of add-ons",
 	)
+	flags.BoolVar(
+		&options.smiMetricsEnabled, "smi-metrics", options.smiMetricsEnabled,
+		"Enables installing the SMI-Metrics controller",
+	)
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	flags.StringVar(&options.smiMetricsImage, "smi-metrics-image", options.smiMetricsImage, "SMI Metrics image")
 	flags.MarkHidden("control-plane-version")
 	flags.MarkHidden("control-plane-tracing")
+	flags.MarkHidden("smi-metrics")
+	flags.MarkHidden("smi-metrics-image")
 
 	return flags
 }
@@ -768,6 +761,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.DisableHeartBeat = options.disableHeartbeat
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
 	installValues.SMIMetrics.Image = options.smiMetricsImage
+	installValues.SMIMetrics.Enabled = options.smiMetricsEnabled
 
 	installValues.Global.Proxy = &l5dcharts.Proxy{
 		EnableExternalProfiles: options.enableExternalProfiles,
@@ -860,48 +854,27 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 	}
 
 	if values.Stage != configStage {
-		addons, err := parseAddOnValues(values)
+		addons, err := l5dcharts.ParseAddOnValues(values)
 		if err != nil {
 			return err
 		}
 
-		for addon, values := range addons {
-			var chart *charts.Chart
-			switch addon {
-			case "tracing":
-				chart = &charts.Chart{
-					Name:      tracingChartName,
-					Dir:       filepath.Join(addOnChartsPath, tracingChartName),
-					Namespace: controlPlaneNamespace,
-					RawValues: append(rawValues, values...),
-					Files:     tracingTemplates,
-				}
+		for _, addon := range addons {
+			chart := &charts.Chart{
+				Name:      addon.Name(),
+				Dir:       filepath.Join(addOnChartsPath, addon.Name()),
+				Namespace: controlPlaneNamespace,
+				RawValues: append(rawValues, addon.Values()...),
+				Files:     addon.Templates(),
+			}
 
-				b, err := chart.Render()
-				if err != nil {
-					return err
-				}
+			b, err := chart.Render()
+			if err != nil {
+				return err
+			}
 
-				if _, err := buf.WriteString(b.String()); err != nil {
-					return err
-				}
-			case "grafana":
-				chart = &charts.Chart{
-					Name:      grafanaChartName,
-					Dir:       filepath.Join(addOnChartsPath, grafanaChartName),
-					Namespace: controlPlaneNamespace,
-					RawValues: append(rawValues, values...),
-					Files:     grafanaTemplates,
-				}
-
-				b, err := chart.Render()
-				if err != nil {
-					return err
-				}
-
-				if _, err := buf.WriteString(b.String()); err != nil {
-					return err
-				}
+			if _, err := buf.WriteString(b.String()); err != nil {
+				return err
 			}
 		}
 	}
@@ -1254,36 +1227,4 @@ func toIdentityContext(idvals *identityWithAnchorsAndTrustDomain) *pb.IdentityCo
 		ClockSkewAllowance: ptypes.DurationProto(csa),
 		Scheme:             idvals.Identity.Issuer.Scheme,
 	}
-}
-
-func parseAddOnValues(values *l5dcharts.Values) (map[string][]byte, error) {
-	addonValues := map[string][]byte{}
-
-	if values.Tracing != nil {
-		if enabled, ok := values.Tracing["enabled"].(bool); !ok {
-			return nil, fmt.Errorf("invalid value for 'Tracing.enabled' (should be boolean): %s", values.Tracing["enabled"])
-		} else if enabled {
-			data, err := yaml.Marshal(values.Tracing)
-			if err != nil {
-				return nil, err
-			}
-
-			addonValues[tracingChartName] = data
-		}
-	}
-
-	if values.Grafana != nil {
-		if enabled, ok := values.Grafana["enabled"].(bool); !ok {
-			return nil, fmt.Errorf("invalid value for 'Grafana.enabled' (should be boolean): %s", values.Grafana["enabled"])
-		} else if enabled {
-			data, err := yaml.Marshal(values.Grafana)
-			if err != nil {
-				return nil, err
-			}
-
-			addonValues[grafanaChartName] = data
-		}
-	}
-
-	return addonValues, nil
 }
