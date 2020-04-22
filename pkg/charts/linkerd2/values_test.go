@@ -173,14 +173,18 @@ func TestNewValues(t *testing.T) {
 		expected.WebResources = controllerResources
 		expected.HeartbeatResources = controllerResources
 
-		expected.GrafanaResources = &Resources{
-			CPU: Constraints{
-				Limit:   controllerResources.CPU.Limit,
-				Request: controllerResources.CPU.Request,
+		expected.Grafana = make(map[string]interface{})
+		expected.Grafana["enabled"] = true
+		expected.Grafana["name"] = "linkerd-grafana"
+		expected.Grafana["image"] = "gcr.io/linkerd-io/grafana"
+		expected.Grafana["resources"] = map[string]interface{}{
+			"cpu": map[string]interface{}{
+				"limit":   controllerResources.CPU.Limit,
+				"request": controllerResources.CPU.Request,
 			},
-			Memory: Constraints{
-				Limit:   "1024Mi",
-				Request: "50Mi",
+			"memory": map[string]interface{}{
+				"limit":   "1024Mi",
+				"request": "50Mi",
 			},
 		}
 
@@ -227,7 +231,6 @@ func TestNewValues(t *testing.T) {
 
 		// Make Add-On Values nil to not have to check for their defaults
 		actual.Tracing = nil
-		actual.Grafana = nil
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)

@@ -26,5 +26,13 @@ func ParseAddOnValues(values *Values) ([]AddOn, error) {
 		}
 	}
 
+	if values.Grafana != nil {
+		if enabled, ok := values.Grafana["enabled"].(bool); !ok {
+			return nil, fmt.Errorf("invalid value for 'grafana.enabled' (should be boolean): %s", values.Grafana["enabled"])
+		} else if enabled {
+			addOns = append(addOns, values.Grafana)
+		}
+	}
+
 	return addOns, nil
 }

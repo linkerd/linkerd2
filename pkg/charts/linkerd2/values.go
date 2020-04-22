@@ -24,7 +24,6 @@ type (
 		ControllerImageVersion      string            `json:"controllerImageVersion"`
 		WebImage                    string            `json:"webImage"`
 		PrometheusImage             string            `json:"prometheusImage"`
-		GrafanaImage                string            `json:"grafanaImage"`
 		ControllerReplicas          uint              `json:"controllerReplicas"`
 		ControllerLogLevel          string            `json:"controllerLogLevel"`
 		PrometheusLogLevel          string            `json:"prometheusLogLevel"`
@@ -49,7 +48,6 @@ type (
 		SMIMetrics                  *SMIMetrics       `json:"smiMetrics"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
-		GrafanaResources       *Resources `json:"grafanaResources"`
 		HeartbeatResources     *Resources `json:"heartbeatResources"`
 		IdentityResources      *Resources `json:"identityResources"`
 		PrometheusResources    *Resources `json:"prometheusResources"`
@@ -61,6 +59,7 @@ type (
 
 		// Addon Structures
 		Tracing Tracing `json:"tracing"`
+		Grafana Grafana `json:"grafana"`
 	}
 
 	// Global values common across all charts

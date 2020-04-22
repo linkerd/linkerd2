@@ -23,13 +23,13 @@ func TestRenderHelm(t *testing.T) {
 
 	t.Run("Non-HA mode", func(t *testing.T) {
 		ha := false
-		chartControlPlane := chartControlPlane(t, ha, nil, "111", "222")
+		chartControlPlane := chartControlPlane(t, ha, "111", "222")
 		testRenderHelm(t, chartControlPlane, "", "install_helm_output.golden")
 	})
 
 	t.Run("HA mode", func(t *testing.T) {
 		ha := true
-		chartControlPlane := chartControlPlane(t, ha, nil, "111", "222")
+		chartControlPlane := chartControlPlane(t, ha, "111", "222")
 		testRenderHelm(t, chartControlPlane, "", "install_helm_output_ha.golden")
 	})
 
@@ -39,7 +39,7 @@ func TestRenderHelm(t *testing.T) {
 tracing:
   enabled: true
 `
-		chartControlPlane := chartControlPlane(t, ha, []l5dcharts.AddOn{l5dcharts.Tracing{}}, "111", "222")
+		chartControlPlane := chartControlPlane(t, ha, "111", "222")
 		testRenderHelm(t, chartControlPlane, addOnConfig, "install_helm_output_addons.golden")
 	})
 }
@@ -156,7 +156,7 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, addOnConfig string, goldenFil
 	diffTestdata(t, goldenFileName, buf.String())
 }
 
-func chartControlPlane(t *testing.T, ha bool, addons []l5dcharts.AddOn, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
+func chartControlPlane(t *testing.T, ha bool, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
 	values, err := readTestValues(t, ha, ignoreOutboundPorts, ignoreInboundPorts)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
@@ -192,6 +192,16 @@ func chartControlPlane(t *testing.T, ha bool, addons []l5dcharts.AddOn, ignoreOu
 		Values: &pb.Config{
 			Raw: string(values),
 		},
+	}
+	var helmValues l5dcharts.Values
+	err = yaml.Unmarshal(values, &helmValues)
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
+	addons, err := l5dcharts.ParseAddOnValues(&helmValues)
+	if err != nil {
+		t.Fatal("Unexpected error", err)
 	}
 
 	for _, addon := range addons {

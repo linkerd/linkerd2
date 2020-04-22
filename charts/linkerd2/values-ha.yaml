@@ -35,11 +35,12 @@ identityResources:
     request: 10Mi
 
 # grafana configuration
-grafanaResources:
-  cpu: *controller_resources_cpu
-  memory:
-    limit: 1024Mi
-    request: 50Mi
+grafana:
+  resources:
+    cpu: *controller_resources_cpu
+    memory:
+      limit: 1024Mi
+      request: 50Mi
 
 # heartbeat configuration
 heartbeatResources: *controller_resources
