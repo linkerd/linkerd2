@@ -337,6 +337,17 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:      true,
 			testInjectConfig: proxyIgnorePortsConfig,
 		},
+		{
+			inputFileName:    "inject_emojivoto_deployment.input.yml",
+			goldenFileName:   "inject_emojivoto_deployment_trace.golden.yml",
+			reportFileName:   "inject_emojivoto_deployment_trace.report",
+			injectProxy:      true,
+			testInjectConfig: defaultConfig,
+			overrideAnnotations: map[string]string{
+				k8s.ProxyTraceCollectorSvcAddrAnnotation:    "linkerd-collector",
+				k8s.ProxyTraceCollectorSvcAccountAnnotation: "linkerd-collector.linkerd",
+			},
+		},
 	}
 
 	for i, tc := range testCases {

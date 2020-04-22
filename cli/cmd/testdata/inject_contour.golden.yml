@@ -24,6 +24,7 @@ spec:
         app: contour
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: contour
+        linkerd.io/workload-ns: heptio-contour
     spec:
       containers:
       - args:

@@ -70,6 +70,10 @@ const (
 	// CronJob that this proxy belongs to.
 	ProxyCronJobLabel = Prefix + "/proxy-cronjob"
 
+	// WorkloadNamespaceLabel is injected into mesh-enabled apps, identifying the
+	// Namespace that this proxy belongs to.
+	WorkloadNamespaceLabel = Prefix + "/workload-ns"
+
 	/*
 	 * Annotations
 	 */
@@ -241,6 +245,10 @@ const (
 	// IdentityEndEntityVolumeName is the name assigned the temporary end-entity
 	// volume mounted into each proxy to store identity credentials.
 	IdentityEndEntityVolumeName = "linkerd-identity-end-entity"
+
+	// PodInfoVolumeName is the name assigned to the
+	// volume mounted into each proxy to store pod labels.
+	PodInfoVolumeName = "podinfo"
 
 	// IdentityIssuerSecretName is the name of the Secret that stores issuer credentials.
 	IdentityIssuerSecretName = "linkerd-identity-issuer"

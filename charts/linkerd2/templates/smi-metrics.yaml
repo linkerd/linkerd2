@@ -45,6 +45,7 @@ spec:
       labels:
         {{.Values.global.controllerComponentLabel}}: smi-metrics
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+        {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
@@ -85,6 +86,9 @@ spec:
       {{ end -}}
 
       volumes:
+      {{ if .Values.global.controlPlaneTracing -}}
+      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
       - name: config
         configMap:
           name: linkerd-smi-metrics

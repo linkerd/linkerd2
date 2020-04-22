@@ -11,6 +11,8 @@ spec:
   template:
     metadata:
       annotations:
+        config.alpha.linkerd.io/trace-collector-service-account: linkerd-collector.linkerd
+        config.linkerd.io/trace-collector: linkerd-collector
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-inject-proxy-version
@@ -35,14 +37,6 @@ spec:
         ports:
         - containerPort: 80
           name: http
-        securityContext:
-          allowPrivilegeEscalation: true
-          capabilities:
-            add:
-            - NET_BIND_SERVICE
-            drop:
-            - ALL
-          runAsUser: 33
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -64,6 +58,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -104,6 +100,10 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
+          value: linkerd-collector
+        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
+          value: linkerd-collector.linkerd..serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: gcr.io/linkerd-io/proxy:test-inject-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -124,15 +124,12 @@ spec:
           initialDelaySeconds: 2
         securityContext:
           allowPrivilegeEscalation: false
-          capabilities:
-            add:
-            - NET_BIND_SERVICE
-            drop:
-            - ALL
           readOnlyRootFilesystem: true
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - mountPath: var/run/linkerd/podinfo
+          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -161,15 +158,18 @@ spec:
             add:
             - NET_ADMIN
             - NET_RAW
-            - NET_BIND_SERVICE
-            drop:
-            - ALL
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
       volumes:
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: labels
+        name: podinfo
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity

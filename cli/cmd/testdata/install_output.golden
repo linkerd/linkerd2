@@ -924,6 +924,7 @@ spec:
       labels:
         ControllerComponentLabel: identity
         ControllerNamespaceLabel: Namespace
+        WorkloadNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-identity
     spec:
       nodeSelector:
@@ -1141,6 +1142,7 @@ spec:
       labels:
         ControllerComponentLabel: controller
         ControllerNamespaceLabel: Namespace
+        WorkloadNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-controller
     spec:
       nodeSelector:
@@ -1356,6 +1358,7 @@ spec:
       labels:
         ControllerComponentLabel: destination
         ControllerNamespaceLabel: Namespace
+        WorkloadNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-destination
     spec:
       nodeSelector:
@@ -1545,6 +1548,7 @@ spec:
         metadata:
           labels:
             ControllerComponentLabel: heartbeat
+            WorkloadNamespaceLabel: Namespace
           annotations:
             CreatedByAnnotation: CliVersion
         spec:
@@ -1619,6 +1623,7 @@ spec:
       labels:
         ControllerComponentLabel: web
         ControllerNamespaceLabel: Namespace
+        WorkloadNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-web
     spec:
       nodeSelector:
@@ -1964,6 +1969,7 @@ spec:
       labels:
         ControllerComponentLabel: prometheus
         ControllerNamespaceLabel: Namespace
+        WorkloadNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-prometheus
     spec:
       nodeSelector:
@@ -2245,6 +2251,7 @@ spec:
       labels:
         ControllerComponentLabel: grafana
         ControllerNamespaceLabel: Namespace
+        WorkloadNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
@@ -2445,6 +2452,7 @@ spec:
       labels:
         ControllerComponentLabel: proxy-injector
         ControllerNamespaceLabel: Namespace
+        WorkloadNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       nodeSelector:
@@ -2680,6 +2688,7 @@ spec:
       labels:
         ControllerComponentLabel: sp-validator
         ControllerNamespaceLabel: Namespace
+        WorkloadNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-sp-validator
     spec:
       nodeSelector:
@@ -2896,6 +2905,7 @@ spec:
       labels:
         ControllerComponentLabel: tap
         ControllerNamespaceLabel: Namespace
+        WorkloadNamespaceLabel: Namespace
         linkerd.io/proxy-deployment: linkerd-tap
     spec:
       nodeSelector:

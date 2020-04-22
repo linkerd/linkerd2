@@ -18,6 +18,7 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web1
+        linkerd.io/workload-ns: emojivoto
     spec:
       containers:
       - env:
@@ -177,6 +178,7 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web2
+        linkerd.io/workload-ns: emojivoto
     spec:
       containers:
       - env:
@@ -336,6 +338,7 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web3
+        linkerd.io/workload-ns: emojivoto
     spec:
       containers:
       - env:
@@ -495,6 +498,7 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web4
+        linkerd.io/workload-ns: emojivoto
     spec:
       containers:
       - env:
