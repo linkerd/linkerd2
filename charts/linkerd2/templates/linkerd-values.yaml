@@ -3,7 +3,6 @@
   As fields like global, etc are added by helm and we would not want them in the data, second level fields should be used 
   instead of directly specifying the add-on field.
 */ -}}
-{{ if or (.Values.tracing.enabled) -}}
 ---
 ###
 ### linkerd values
@@ -20,10 +19,21 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   values: |-
+{{- if .Values.tracing.enabled }}
     tracing:
       enabled: {{.Values.tracing.enabled}}
       collector:
   {{- toYaml .Values.tracing.collector | trim | nindent 8}}
       jaeger:
   {{- toYaml .Values.tracing.jaeger | trim | nindent 8}}
-{{ end -}}
+{{- end}}
+{{- if .Values.grafana.enabled }}
+    grafana:
+      enabled: {{.Values.grafana.enabled}}
+      name: {{.Values.grafana.name}}
+      image: {{.Values.grafana.image}}
+  {{- if .Values.grafana.resources }}
+      resources:
+  {{- toYaml .Values.grafana.resources | trim | nindent 6}}
+  {{- end }}
+{{- end }}

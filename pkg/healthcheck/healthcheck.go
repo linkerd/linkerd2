@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/issuercerts"
-
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -181,7 +181,6 @@ var linkerdHAControlPlaneComponents = []string{
 var ExpectedServiceAccountNames = []string{
 	"linkerd-controller",
 	"linkerd-destination",
-	"linkerd-grafana",
 	"linkerd-identity",
 	"linkerd-prometheus",
 	"linkerd-proxy-injector",
@@ -349,6 +348,7 @@ type HealthChecker struct {
 	issuerCert       *tls.Cred
 	trustAnchors     []*x509.Certificate
 	cniDaemonSet     *appsv1.DaemonSet
+	addOns           map[string]l5dcharts.AddOn
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -357,7 +357,7 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 		Options: options,
 	}
 
-	hc.categories = hc.allCategories()
+	hc.categories = append(hc.allCategories(), hc.addOnCategories()...)
 
 	checkMap := map[CategoryID]struct{}{}
 	for _, category := range categoryIDs {
