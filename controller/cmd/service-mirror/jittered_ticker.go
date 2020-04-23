@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//NB: This file was copied from: https://github.com/projectcalico/felix/blob/master/jitter/jittered_ticker.go
 
 package servicemirror
 

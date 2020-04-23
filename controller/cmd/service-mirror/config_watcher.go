@@ -124,7 +124,7 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", config.clusterName)
 	}
 
-	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, config.clusterName, rcw.requeueLimit, config.clusterDomain, config.probePort, config.probePath, config.probePeriodSeconds, rcw.enqueueProbeEvent)
+	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, config.clusterName, rcw.requeueLimit, config.clusterDomain, rcw.enqueueProbeEvent)
 	if err != nil {
 		return err
 	}
@@ -153,12 +153,9 @@ func (rcw *RemoteClusterConfigWatcher) unregisterRemoteCluster(secret *corev1.Se
 }
 
 type watchedClusterConfig struct {
-	apiConfig          []byte
-	clusterName        string
-	clusterDomain      string
-	probePort          int32
-	probePath          string
-	probePeriodSeconds int32
+	apiConfig     []byte
+	clusterName   string
+	clusterDomain string
 }
 
 func parseRemoteClusterSecret(secret *corev1.Secret) (*watchedClusterConfig, error) {
@@ -175,13 +172,9 @@ func parseRemoteClusterSecret(secret *corev1.Secret) (*watchedClusterConfig, err
 		return nil, fmt.Errorf("secret should contain remote cluster domain as annotation %s", consts.RemoteClusterDomainAnnotation)
 	}
 
-	//TODO Externalize the port,path and period through  the get-credentials command
 	return &watchedClusterConfig{
-		apiConfig:          config,
-		clusterName:        clusterName,
-		clusterDomain:      domain,
-		probePort:          80,
-		probePath:          "/nginx-health",
-		probePeriodSeconds: 3,
+		apiConfig:     config,
+		clusterName:   clusterName,
+		clusterDomain: domain,
 	}, nil
 }

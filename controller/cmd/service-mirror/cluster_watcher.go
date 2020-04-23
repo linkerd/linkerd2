@@ -27,18 +27,15 @@ type (
 	// it can be requeued up to N times, to ensure that the failure is not due to some temporary network
 	// problems or general glitch in the Matrix.
 	RemoteClusterServiceWatcher struct {
-		clusterName        string
-		clusterDomain      string
-		remoteAPIClient    *k8s.API
-		localAPIClient     *k8s.API
-		stopper            chan struct{}
-		log                *logging.Entry
-		eventsQueue        workqueue.RateLimitingInterface
-		requeueLimit       int
-		probePort          int32
-		probePath          string
-		probePeriodSeconds int32
-		enqueueProbeEvent  func(event interface{})
+		clusterName       string
+		clusterDomain     string
+		remoteAPIClient   *k8s.API
+		localAPIClient    *k8s.API
+		stopper           chan struct{}
+		log               *logging.Entry
+		eventsQueue       workqueue.RateLimitingInterface
+		requeueLimit      int
+		enqueueProbeEvent func(event interface{})
 	}
 
 	// ProbeConfig describes the configured probe on particular gateway (if presents)
@@ -182,9 +179,6 @@ func NewRemoteClusterServiceWatcher(
 	clusterName string,
 	requeueLimit int,
 	clusterDomain string,
-	probePort int32,
-	probePath string,
-	probePeriodSeconds int32,
 	enqueueProbeEvent func(event interface{}),
 ) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(cfg, false, k8s.Svc)
@@ -202,12 +196,9 @@ func NewRemoteClusterServiceWatcher(
 			"cluster":    clusterName,
 			"apiAddress": cfg.Host,
 		}),
-		eventsQueue:        workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		requeueLimit:       requeueLimit,
-		probePort:          probePort,
-		probePath:          probePath,
-		probePeriodSeconds: probePeriodSeconds,
-		enqueueProbeEvent:  enqueueProbeEvent,
+		eventsQueue:       workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		requeueLimit:      requeueLimit,
+		enqueueProbeEvent: enqueueProbeEvent,
 	}, nil
 }
 
@@ -956,6 +947,9 @@ func (rcsw *RemoteClusterServiceWatcher) Start() {
 
 // Stop stops watching the cluster and cleans up all mirrored resources
 func (rcsw *RemoteClusterServiceWatcher) Stop(cleanupState bool) {
+	rcsw.enqueueProbeEvent(&ClusterNotRegistered{
+		clusterName: rcsw.clusterName,
+	})
 	close(rcsw.stopper)
 	if cleanupState {
 		rcsw.eventsQueue.Add(&ClusterUnregistered{})
@@ -963,9 +957,32 @@ func (rcsw *RemoteClusterServiceWatcher) Stop(cleanupState bool) {
 	rcsw.eventsQueue.ShutDown()
 }
 
+func parseProbeConfig(data map[string]string) (*ProbeConfig, error) {
+	probePath := data[consts.GatewayProbePath]
+	probePort, err := strconv.ParseUint(data[consts.GatewayProbePort], 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	probePeriod, err := strconv.ParseUint(data[consts.GatewayProbePeriod], 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	if probePath == "" {
+		return nil, errors.New("probe path is empty")
+	}
+
+	return &ProbeConfig{
+		path:            probePath,
+		port:            uint32(probePort),
+		periodInSeconds: uint32(probePeriod),
+	}, nil
+}
+
 func (rcsw *RemoteClusterServiceWatcher) extractGatewaySpec(gateway *corev1.Service) (*GatewaySpec, error) {
 	if len(gateway.Status.LoadBalancer.Ingress) == 0 {
-		return nil, errors.New("expected gateway to have at lest 1 external Ip address but it has none")
+		return nil, fmt.Errorf("expected gateway %s/%s to have at lest 1 external Ip address but it has none", gateway.Namespace, gateway.Name)
 	}
 
 	var foundPort = false
@@ -991,22 +1008,10 @@ func (rcsw *RemoteClusterServiceWatcher) extractGatewaySpec(gateway *corev1.Serv
 	}
 
 	gatewayIdentity := gateway.Annotations[consts.GatewayIdentity]
+	probeConfig, err := parseProbeConfig(gateway.Annotations)
 
-	var probeCfg *ProbeConfig
-
-	probePath := gateway.Annotations[consts.GatewayProbePath]
-	probePort, err := strconv.ParseUint(gateway.Annotations[consts.GatewayProbePort], 10, 32)
-	if err == nil {
-		probePeriod, err := strconv.ParseUint(gateway.Annotations[consts.GatewayProbePeriod], 10, 32)
-		if err == nil {
-			if probePath != "" {
-				probeCfg = &ProbeConfig{
-					path:            probePath,
-					port:            uint32(probePort),
-					periodInSeconds: uint32(probePeriod),
-				}
-			}
-		}
+	if err != nil {
+		rcsw.log.Debugf("could not parse probe config for gateway: %s/%s: %s", gateway.Namespace, gateway.Name, err)
 	}
 
 	return &GatewaySpec{
@@ -1017,6 +1022,6 @@ func (rcsw *RemoteClusterServiceWatcher) extractGatewaySpec(gateway *corev1.Serv
 		incomingPort:     port,
 		resourceVersion:  gateway.ResourceVersion,
 		identity:         gatewayIdentity,
-		ProbeConfig:      probeCfg,
+		ProbeConfig:      probeConfig,
 	}, nil
 }
