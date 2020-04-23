@@ -65,4 +65,8 @@ linkerd-data-plane
 √ data plane is up-to-date
 √ data plane and cli versions match
 
+linkerd-addons
+--------------
+√ linkerd add-on configmap exists
+
 Status check results are √

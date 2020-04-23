@@ -58,4 +58,8 @@ control-plane-version
 √ control plane is up-to-date
 √ control plane and cli versions match
 
+linkerd-addons
+--------------
+√ linkerd add-on configmap exists
+
 Status check results are √

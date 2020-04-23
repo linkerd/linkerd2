@@ -10,9 +10,10 @@ import (
 )
 
 var (
-	// LinkerdAddOnChecls adds checks to validate the add-on components
+	// LinkerdAddOnChecks adds checks to validate the add-on components
 	LinkerdAddOnChecks CategoryID = "linkerd-addons"
 
+	// AddOnCategories is the list of add-on category checks
 	AddOnCategories = []CategoryID{LinkerdAddOnChecks}
 )
 
