@@ -163,6 +163,22 @@ func (h *KubernetesHelper) GetConfigUID(namespace string) (string, error) {
 	return string(cm.GetUID()), nil
 }
 
+// GetResources returns the resource limits and requests set on a deployment
+// of the set name in the given namespace
+func (h *KubernetesHelper) GetResources(containerName, deploymentName, namespace string) (corev1.ResourceRequirements, error) {
+	dep, err := h.clientset.AppsV1().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return corev1.ResourceRequirements{}, err
+	}
+
+	for _, container := range dep.Spec.Template.Spec.Containers {
+		if container.Name == containerName {
+			return container.Resources, nil
+		}
+	}
+	return corev1.ResourceRequirements{}, fmt.Errorf("container %s not found in deployment %s in namespace %s", containerName, deploymentName, namespace)
+}
+
 // CheckPods checks that a deployment in a namespace contains the expected
 // number of pods in the Running state, and that no pods have been restarted.
 func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, replicas int) error {

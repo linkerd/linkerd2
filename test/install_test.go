@@ -436,7 +436,9 @@ func TestUpgradeHelm(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	args := []string{
-		"--reset-values",
+		// implicit as at least on value is set manually: "--reset-values",
+		"--set", "prometheusProxyResources.CPU.limit=1",
+		"--set", "controllerProxyResources.CPU.limit=2",
 		"--atomic",
 		"--wait",
 	}
@@ -459,6 +461,29 @@ func TestRetrieveUidPostUpgrade(t *testing.T) {
 			)
 		}
 	}
+}
+
+func TestComponentProxyResources(t *testing.T) {
+	controllerResourceReqs, err := TestHelper.GetResources("linkerd-proxy", "linkerd-controller", TestHelper.GetLinkerdNamespace())
+	if err != nil {
+		t.Fatalf("Error retrieving resource requirements for linkerd controller %s", err)
+	}
+
+	cpuLimitStr := controllerResourceReqs.Limits.Cpu().String()
+	if cpuLimitStr != "4" {
+		t.Fatalf("unexpected controller CPU limit: expected %s, was %s", "2", cpuLimitStr)
+	}
+
+	prometheusResourceReqs, err2 := TestHelper.GetResources("linkerd-proxy", "linkerd-prometheus", TestHelper.GetLinkerdNamespace())
+	if err2 != nil {
+		t.Fatalf("Error retrieving resource requirements for linkerd controller %s", err)
+	}
+
+	cpuLimitStr = prometheusResourceReqs.Limits.Cpu().String()
+	if cpuLimitStr != "4" {
+		t.Fatalf("unexpected controller CPU limit: expected %s, was %s", "1", cpuLimitStr)
+	}
+
 }
 
 func TestVersionPostInstall(t *testing.T) {
