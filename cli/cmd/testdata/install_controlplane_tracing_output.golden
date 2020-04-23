@@ -911,6 +911,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-identity
     spec:
       nodeSelector:
@@ -966,6 +967,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1035,6 +1038,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - mountPath: var/run/linkerd/podinfo
+          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1078,6 +1083,12 @@ spec:
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1134,6 +1145,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: controller
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-controller
     spec:
       nodeSelector:
@@ -1190,6 +1202,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1259,6 +1273,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - mountPath: var/run/linkerd/podinfo
+          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1299,6 +1315,12 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1355,6 +1377,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-destination
     spec:
       nodeSelector:
@@ -1411,6 +1434,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1480,6 +1505,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - mountPath: var/run/linkerd/podinfo
+          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1520,6 +1547,12 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1550,6 +1583,7 @@ spec:
         metadata:
           labels:
             linkerd.io/control-plane-component: heartbeat
+            linkerd.io/workload-ns: linkerd
           annotations:
             linkerd.io/created-by: linkerd/cli dev-undefined
         spec:
@@ -1624,6 +1658,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: web
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-web
     spec:
       nodeSelector:
@@ -1680,6 +1715,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1749,6 +1786,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - mountPath: var/run/linkerd/podinfo
+          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1789,6 +1828,12 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1975,6 +2020,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: prometheus
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-prometheus
     spec:
       nodeSelector:
@@ -2032,6 +2078,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2103,6 +2151,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - mountPath: var/run/linkerd/podinfo
+          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2145,6 +2195,12 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -2180,7 +2236,8 @@ spec:
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-proxy-injector
+        linkerd.io/workload-ns: linkerd
+        linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2235,6 +2292,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2304,6 +2363,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - mountPath: var/run/linkerd/podinfo
+          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2342,11 +2403,21 @@ spec:
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
-          name: linkerd-config
-        name: config
-      - name: tls
-        secret:
-          secretName: linkerd-proxy-injector-tls
+          items:
+          - key: grafana.ini
+            path: grafana.ini
+          - key: datasources.yaml
+            path: provisioning/datasources/datasources.yaml
+          - key: dashboards.yaml
+            path: provisioning/dashboards/dashboards.yaml
+          name: linkerd-grafana-config
+        name: grafana-config
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -2420,7 +2491,8 @@ spec:
       labels:
         linkerd.io/control-plane-component: sp-validator
         linkerd.io/control-plane-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-sp-validator
+        linkerd.io/workload-ns: linkerd
+        linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2473,6 +2545,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2542,6 +2616,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - mountPath: var/run/linkerd/podinfo
+          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2581,7 +2657,13 @@ spec:
       volumes:
       - name: tls
         secret:
-          secretName: linkerd-sp-validator-tls
+          secretName: linkerd-proxy-injector-tls
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -2641,7 +2723,8 @@ spec:
       labels:
         linkerd.io/control-plane-component: tap
         linkerd.io/control-plane-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-tap
+        linkerd.io/workload-ns: linkerd
+        linkerd.io/proxy-deployment: linkerd-sp-validator
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2700,6 +2783,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2769,6 +2854,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - mountPath: var/run/linkerd/podinfo
+          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2806,9 +2893,15 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-tap
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
+      - name: tls
+        secret:
+          secretName: linkerd-sp-validator-tls
+      - downwardAPI:
+          items:
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -2942,7 +3035,8 @@ spec:
       labels:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-grafana
+        linkerd.io/workload-ns: linkerd
+        linkerd.io/proxy-deployment: linkerd-tap
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2994,6 +3088,8 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
+        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -3063,6 +3159,8 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
+        - mountPath: var/run/linkerd/podinfo
+          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -3103,15 +3201,14 @@ spec:
       - emptyDir: {}
         name: data
       - configMap:
+          name: linkerd-config
+        name: config
+      - downwardAPI:
           items:
-          - key: grafana.ini
-            path: grafana.ini
-          - key: datasources.yaml
-            path: provisioning/datasources/datasources.yaml
-          - key: dashboards.yaml
-            path: provisioning/dashboards/dashboards.yaml
-          name: linkerd-grafana-config
-        name: grafana-config
+          - fieldRef:
+              fieldPath: metadata.labels
+            path: "labels"
+        name: podinfo
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity

@@ -70,6 +70,7 @@ type (
 		CliVersion               string `json:"cliVersion"`
 		ControllerComponentLabel string `json:"controllerComponentLabel"`
 		ControllerNamespaceLabel string `json:"controllerNamespaceLabel"`
+		WorkloadNamespaceLabel   string `json:"workloadNamespaceLabel"`
 		CreatedByAnnotation      string `json:"createdByAnnotation"`
 		ProxyInjectAnnotation    string `json:"proxyInjectAnnotation"`
 		ProxyInjectDisabled      string `json:"proxyInjectDisabled"`

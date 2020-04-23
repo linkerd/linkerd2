@@ -35,6 +35,7 @@ spec:
         linkerd.io/control-plane-component: tap
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-tap
+        linkerd.io/workload-ns: linkerd
     spec:
       containers:
       - args:

@@ -2,7 +2,7 @@
 
 set -eu
 
-kindversion=v0.6.1
+kindversion=v0.7.0
 
 bindir=$( cd "${0%/*}" && pwd )
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin

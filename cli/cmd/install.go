@@ -787,7 +787,8 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 				Request: options.proxyMemoryRequest,
 			},
 		},
-		UID: options.proxyUID,
+		UID:   options.proxyUID,
+		Trace: installValues.Global.Proxy.Trace,
 	}
 
 	installValues.Global.ProxyInit.Image.Name = registryOverride(options.initImage, options.dockerRegistry)

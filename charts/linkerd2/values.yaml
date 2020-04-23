@@ -74,6 +74,7 @@ global:
   controllerComponentLabel: linkerd.io/control-plane-component
   controllerNamespaceLabel: linkerd.io/control-plane-ns
   linkerdNamespaceLabel: linkerd.io/is-control-plane
+  workloadNamespaceLabel: linkerd.io/workload-ns
 
 # enforced host validation regular expression
 enforcedHostRegexp: ""

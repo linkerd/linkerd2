@@ -38,6 +38,7 @@ func TestNewValues(t *testing.T) {
 			CliVersion:               "linkerd/cli dev-undefined",
 			ControllerComponentLabel: "linkerd.io/control-plane-component",
 			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
+			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
 			CreatedByAnnotation:      "linkerd.io/created-by",
 			ProxyInjectAnnotation:    "linkerd.io/inject",
 			ProxyInjectDisabled:      "disabled",

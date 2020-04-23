@@ -74,6 +74,7 @@ func TestRender(t *testing.T) {
 			CliVersion:               "CliVersion",
 			ControllerComponentLabel: "ControllerComponentLabel",
 			ControllerNamespaceLabel: "ControllerNamespaceLabel",
+			WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
 			CreatedByAnnotation:      "CreatedByAnnotation",
 			ProxyInjectAnnotation:    "ProxyInjectAnnotation",
 			ProxyInjectDisabled:      "ProxyInjectDisabled",
@@ -95,7 +96,8 @@ func TestRender(t *testing.T) {
 					Inbound:  4143,
 					Outbound: 4140,
 				},
-				UID: 2102,
+				UID:   2102,
+				Trace: &charts.Trace{},
 			},
 			ProxyInit: &charts.ProxyInit{
 				Image: &charts.Image{
