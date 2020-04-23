@@ -2317,7 +2317,7 @@ spec:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-grafana
+        linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2592,7 +2592,7 @@ spec:
         linkerd.io/control-plane-component: sp-validator
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-proxy-injector
+        linkerd.io/proxy-deployment: linkerd-sp-validator
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2848,7 +2848,7 @@ spec:
         linkerd.io/control-plane-component: tap
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-sp-validator
+        linkerd.io/proxy-deployment: linkerd-tap
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -3180,7 +3180,7 @@ spec:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-tap
+        linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux

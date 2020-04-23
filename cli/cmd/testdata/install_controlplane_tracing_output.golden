@@ -2237,7 +2237,7 @@ spec:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-grafana
+        linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2403,15 +2403,11 @@ spec:
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
-          items:
-          - key: grafana.ini
-            path: grafana.ini
-          - key: datasources.yaml
-            path: provisioning/datasources/datasources.yaml
-          - key: dashboards.yaml
-            path: provisioning/dashboards/dashboards.yaml
-          name: linkerd-grafana-config
-        name: grafana-config
+          name: linkerd-config
+        name: config
+      - name: tls
+        secret:
+          secretName: linkerd-proxy-injector-tls
       - downwardAPI:
           items:
           - fieldRef:
@@ -2492,7 +2488,7 @@ spec:
         linkerd.io/control-plane-component: sp-validator
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-proxy-injector
+        linkerd.io/proxy-deployment: linkerd-sp-validator
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2657,7 +2653,7 @@ spec:
       volumes:
       - name: tls
         secret:
-          secretName: linkerd-proxy-injector-tls
+          secretName: linkerd-sp-validator-tls
       - downwardAPI:
           items:
           - fieldRef:
@@ -2724,7 +2720,7 @@ spec:
         linkerd.io/control-plane-component: tap
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-sp-validator
+        linkerd.io/proxy-deployment: linkerd-tap
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2893,9 +2889,9 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-tap
       volumes:
-      - name: tls
-        secret:
-          secretName: linkerd-sp-validator-tls
+      - configMap:
+          name: linkerd-config
+        name: config
       - downwardAPI:
           items:
           - fieldRef:
@@ -3036,7 +3032,7 @@ spec:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-tap
+        linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -3201,8 +3197,15 @@ spec:
       - emptyDir: {}
         name: data
       - configMap:
-          name: linkerd-config
-        name: config
+          items:
+          - key: grafana.ini
+            path: grafana.ini
+          - key: datasources.yaml
+            path: provisioning/datasources/datasources.yaml
+          - key: dashboards.yaml
+            path: provisioning/dashboards/dashboards.yaml
+          name: linkerd-grafana-config
+        name: grafana-config
       - downwardAPI:
           items:
           - fieldRef:

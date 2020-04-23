@@ -2158,7 +2158,7 @@ spec:
         ControllerComponentLabel: proxy-injector
         ControllerNamespaceLabel: Namespace
         WorkloadNamespaceLabel: Namespace
-        linkerd.io/proxy-deployment: linkerd-grafana
+        linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2394,7 +2394,7 @@ spec:
         ControllerComponentLabel: sp-validator
         ControllerNamespaceLabel: Namespace
         WorkloadNamespaceLabel: Namespace
-        linkerd.io/proxy-deployment: linkerd-proxy-injector
+        linkerd.io/proxy-deployment: linkerd-sp-validator
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2611,7 +2611,7 @@ spec:
         ControllerComponentLabel: tap
         ControllerNamespaceLabel: Namespace
         WorkloadNamespaceLabel: Namespace
-        linkerd.io/proxy-deployment: linkerd-sp-validator
+        linkerd.io/proxy-deployment: linkerd-tap
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2907,7 +2907,7 @@ spec:
         ControllerComponentLabel: grafana
         ControllerNamespaceLabel: Namespace
         WorkloadNamespaceLabel: Namespace
-        linkerd.io/proxy-deployment: linkerd-tap
+        linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
