@@ -2523,6 +2523,26 @@ spec:
 
 ---
 ###
+### linkerd values
+###
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-values
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+data:
+  values: |-
+    grafana:
+      enabled: true
+      name: linkerd-grafana
+      image: gcr.io/linkerd-io/grafana
+---
+###
 ### Grafana RBAC
 ###
 ---

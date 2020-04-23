@@ -3079,6 +3079,33 @@ spec:
 ---
 # Source: linkerd2/templates/linkerd-values.yaml
 ---
+###
+### linkerd values
+###
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-values
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+data:
+  values: |-
+    grafana:
+      enabled: true
+      name: linkerd-grafana
+      image: gcr.io/linkerd-io/grafana
+      resources:
+      cpu:
+        limit: "1"
+        request: 100m
+      memory:
+        limit: 1024Mi
+        request: 50Mi
+---
 # Source: linkerd2/charts/grafana/templates/grafana-rbac.yaml
 ---
 ###

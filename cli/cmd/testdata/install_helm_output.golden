@@ -2830,6 +2830,26 @@ spec:
 ---
 # Source: linkerd2/templates/linkerd-values.yaml
 ---
+###
+### linkerd values
+###
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-values
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+data:
+  values: |-
+    grafana:
+      enabled: true
+      name: linkerd-grafana
+      image: gcr.io/linkerd-io/grafana
+---
 # Source: linkerd2/charts/grafana/templates/grafana-rbac.yaml
 ---
 ###

@@ -2782,6 +2782,26 @@ spec:
 
 ---
 ###
+### linkerd values
+###
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-values
+  namespace: Namespace
+  labels:
+    ControllerNamespaceLabel: Namespace
+  annotations:
+    CreatedByAnnotation: CliVersion
+data:
+  values: |-
+    grafana:
+      enabled: true
+      name: linkerd-grafana
+      image: GrafanaImage
+---
+###
 ### Grafana RBAC
 ###
 ---

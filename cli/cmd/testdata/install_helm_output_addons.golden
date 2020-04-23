@@ -2855,6 +2855,10 @@ data:
         image: jaegertracing/all-in-one:1.17.1
         name: linkerd-jaeger
         resources: null
+    grafana:
+      enabled: true
+      name: linkerd-grafana
+      image: gcr.io/linkerd-io/grafana
 ---
 # Source: linkerd2/charts/grafana/templates/grafana-rbac.yaml
 ---
