@@ -9,12 +9,12 @@
       id && (js.id = id);
       fjs.parentNode.insertBefore(js, fjs);
     };
-<% for (let chunk in htmlWebpackPlugin.files.chunks) { %>
+<% for (let chunk in htmlWebpackPlugin.files.js) { %>
   <% if (compilation.compiler.outputFileSystem.constructor.name === 'MemoryFileSystem') { %>
-    add('http://localhost:8080/<%= htmlWebpackPlugin.files.chunks[chunk].entry %>');
+    add('http://localhost:8080/<%= htmlWebpackPlugin.files.js[chunk] %>');
   <% } else { %>
     let root = fjs.src.substring(0, fjs.src.indexOf("dist"));
-    add(root+'<%= htmlWebpackPlugin.files.chunks[chunk].entry %>');
+    add(root+'<%= htmlWebpackPlugin.files.js[chunk] %>');
   <% } %>
 <% } %>
 }(document, 'script'));

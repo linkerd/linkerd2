@@ -1,4 +1,4 @@
-import { distanceInWordsToNow, subSeconds } from 'date-fns';
+import { formatDistanceToNow, subSeconds } from 'date-fns';
 import { handlePageVisibility, withPageVisibility } from './util/PageVisibility.jsx';
 import BaseTable from './BaseTable.jsx';
 import CallToAction from './CallToAction.jsx';
@@ -122,7 +122,7 @@ class ServiceMesh extends React.Component {
         name: component,
         pods: _map(byDeployName[deployName], p => {
           const uptimeSec = !p.uptime ? 0 : parseInt(p.uptime.split('.')[0], 10);
-          const uptime = distanceInWordsToNow(subSeconds(Date.now(), uptimeSec));
+          const uptime = formatDistanceToNow(subSeconds(Date.now(), uptimeSec));
 
           return {
             name: p.name,
