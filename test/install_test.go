@@ -437,8 +437,8 @@ func TestUpgradeHelm(t *testing.T) {
 
 	args := []string{
 		// implicit as at least on value is set manually: "--reset-values",
-		"--set", "prometheusProxyResources.CPU.limit=1",
-		"--set", "controllerProxyResources.CPU.limit=2",
+		"--set", "prometheusProxyResources.cpu.limit=1",
+		"--set", "controllerProxyResources.cpu.limit=2",
 		"--atomic",
 		"--wait",
 	}
