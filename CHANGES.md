@@ -13,18 +13,21 @@ with a rolling strategy
   * Added a `--proxy` flag to the `linkerd version` command which lists all
     proxy versions running in the cluster and the number of pods running
     each version
-  * Added MeshedPodCount field to TrafficSplit resource rows
+  * Lifted requirement of using --unmeshed for linkerd stat when querying
+    TrafficSplit resources
+  * Added support for multi-stage installs with Add-Ons
 * Controller
   * Added a rolling update strategy to Linkerd deployments that have
     multiple replicas during HA deployments to ensure that at most
     one pod begins terminating before a new pod ready is ready
+  * Added a new label for the proxy injector to write to the template,
+    `linkerd.io/workload-ns` which indicates the namespace of the workload/pod
 * Internal
   * Added a [security policy](https://help.github.com/en/github/managing-security-vulnerabilities/adding-a-security-policy-to-your-repository)
     to facilitate conversations around security
 * Helm
   * Changed charts to use downwardAPI to mount labels to the proxy container
     making them easier to identify
-  * Added support for multi-stage installs with Add-Ons
 * Proxy
   * Changed the Linkerd proxy endpoint for liveness to use the new `/live` admin
     endpoint instead of the `/metrics` endpoint, because the `/live` endpoint
