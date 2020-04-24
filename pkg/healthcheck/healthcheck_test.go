@@ -13,6 +13,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/testutil"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
@@ -2254,7 +2255,8 @@ func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 			"pre-linkerd-global-resources no PodSecurityPolicies exist",
 		}
 		if !reflect.DeepEqual(observer.results, expected) {
-			t.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
+			t.Error(testutil.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results).
+				WithAnn("Mismatch result"))
 		}
 	})
 
@@ -2302,12 +2304,12 @@ metadata:
 		hc.kubeAPI, err = k8s.NewFakeAPI(resources...)
 		hc.ControlPlaneNamespace = "test-ns"
 		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
+			t.Fatal(testutil.Errorf("Unexpected error: %s", err).WithAnn("Unexpected error"))
 		}
 
 		observer := newObserver()
 		if hc.RunChecks(observer.resultFn) {
-			t.Errorf("Expect RunChecks to return false")
+			t.Error(testutil.Error("Expect RunChecks to return false"))
 		}
 
 		expected := []string{

@@ -8,6 +8,7 @@ import (
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
+	"github.com/linkerd/linkerd2/testutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -300,7 +301,7 @@ func TestConfigAccessors(t *testing.T) {
 			t.Run("identityContext", func(t *testing.T) {
 				expected := testCase.expected.identityContext
 				if actual := resourceConfig.identityContext(); !reflect.DeepEqual(expected, actual) {
-					t.Errorf("Expected: %+v Actual: %+v", expected, actual)
+					t.Error(testutil.Errorf("Expected: %+v Actual: %+v", expected, actual))
 				}
 			})
 
