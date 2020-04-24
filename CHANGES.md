@@ -1,3 +1,37 @@
+## edge-20.4.3
+
+This edge release adds functionality to the CLI to output more detail and
+includes changes which support the multi-cluster functionality. Also, the helm
+support has been expanded to make installation more configurable. Finally, the
+HA reliability is improved by ensuring that control plane pods are restarted
+with a rolling strategy
+
+* CLI
+  * Added output to the `linkerd check --proxy` command to list all data
+    plane pods which are not up-to-date rather than just printing the first
+    one it encounters
+  * Added a `--proxy` flag to the `linkerd version` command which lists all
+    proxy versions running in the cluster and the number of pods running
+    each version
+  * Added MeshedPodCount field to TrafficSplit resource rows
+* Controller
+  * Added a rolling update strategy to Linkerd deployments that have
+    multiple replicas during HA deployments to ensure that at most
+    one pod begins terminating before a new pod ready is ready
+* Internal
+  * Added a [security policy](https://help.github.com/en/github/managing-security-vulnerabilities/adding-a-security-policy-to-your-repository)
+    to facilitate conversations around security
+* Helm
+  * Changed charts to use downwardAPI to mount labels to the proxy container
+    making them easier to identify
+  * Added support for multi-stage installs with Add-Ons
+* Proxy
+  * Changed the Linkerd proxy endpoint for liveness to use the new `/live` admin
+    endpoint instead of the `/metrics` endpoint, because the `/live` endpoint
+    returns a smaller payload
+  * Added a per-endpoint authority-override feature to support
+    mutli-cluster gateways
+
 ## edge-20.4.2
 
 This release brings a number of CLI fixes and Controller improvements.
@@ -19,7 +53,7 @@ This release brings a number of CLI fixes and Controller improvements.
   * Improved endpoints change detection in the `linkerd-destination` service, enabling
     mirrored remote services to change cluster gateways
   * Added `operationID` field to tap OpenAPI response to prevent issues during
-    upgrade from 2.6 to 2.7 
+    upgrade from 2.6 to 2.7
 * Proxy
   * Added a new protocol detection timeout to prevent clients from consuming
     resources indefinitely when not sending any data
@@ -87,7 +121,7 @@ new observability and security functionality.
 
 * CLI
   * Added the `linkerd alpha stat` command, which uses the smi-metrics
-    API; the latter enables access to metrics to be controlled with RBAC 
+    API; the latter enables access to metrics to be controlled with RBAC
 * Controller
   * Added support for configuring service profile timeouts
     `(x-linkerd-timeout)` via OpenAPI spec (thanks @lewiscowper!)
@@ -122,7 +156,7 @@ experimenting with this feature, please join us in
 * Proxy
   * Fixed a bug that could cause the proxy's load balancer to stop processing
     updates from service discovery.
-    
+
 ## edge-20.2.3
 
 This release introduces the first optional add-on `tracing`, added through the
