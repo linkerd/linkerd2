@@ -464,6 +464,9 @@ func TestRetrieveUidPostUpgrade(t *testing.T) {
 }
 
 func TestComponentProxyResources(t *testing.T) {
+	if TestHelper.UpgradeHelmFromVersion() == "" {
+		t.Skip("Skipping as this is not a helm upgrade test")
+	}
 	controllerResourceReqs, err := TestHelper.GetResources("linkerd-proxy", "linkerd-controller", TestHelper.GetLinkerdNamespace())
 	if err != nil {
 		t.Fatalf("Error retrieving resource requirements for linkerd controller %s", err)
