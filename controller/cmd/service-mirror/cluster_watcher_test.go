@@ -27,6 +27,10 @@ type testCase struct {
 	expectedEventsInQueue  []interface{}
 }
 
+type NoOpProbeEventSink struct{}
+
+func (s *NoOpProbeEventSink) send(event interface{}) {}
+
 func runTestCase(tc *testCase, t *testing.T) {
 	t.Run(tc.testDescription, func(t *testing.T) {
 		remoteAPI, err := k8s.NewFakeAPI(tc.remoteResources...)
@@ -45,15 +49,15 @@ func runTestCase(tc *testCase, t *testing.T) {
 		q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 		watcher := RemoteClusterServiceWatcher{
-			clusterName:       clusterName,
-			clusterDomain:     clusterDomain,
-			remoteAPIClient:   remoteAPI,
-			localAPIClient:    localAPI,
-			stopper:           nil,
-			log:               logging.WithFields(logging.Fields{"cluster": clusterName}),
-			eventsQueue:       q,
-			requeueLimit:      0,
-			enqueueProbeEvent: func(event interface{}) {},
+			clusterName:     clusterName,
+			clusterDomain:   clusterDomain,
+			remoteAPIClient: remoteAPI,
+			localAPIClient:  localAPI,
+			stopper:         nil,
+			log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
+			eventsQueue:     q,
+			requeueLimit:    0,
+			probeEventsSink: &NoOpProbeEventSink{},
 		}
 
 		for _, ev := range tc.events {

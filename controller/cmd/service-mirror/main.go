@@ -12,6 +12,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type chanProbeEventSink struct{ sender func(event interface{}) }
+
+func (s *chanProbeEventSink) send(event interface{}) {
+	s.sender(event)
+}
+
 // Main executes the tap service-mirror
 func Main(args []string) {
 	cmd := flag.NewFlagSet("service-mirror", flag.ExitOnError)
@@ -42,7 +48,7 @@ func Main(args []string) {
 	probeManager.Start()
 
 	k8sAPI.Sync(nil)
-	watcher := NewRemoteClusterConfigWatcher(k8sAPI, *requeueLimit, probeManager.enqueueEvent)
+	watcher := NewRemoteClusterConfigWatcher(k8sAPI, *requeueLimit, &chanProbeEventSink{probeManager.enqueueEvent})
 	log.Info("Started cluster config watcher")
 
 	go admin.StartServer(*metricsAddr)

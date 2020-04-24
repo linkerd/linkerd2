@@ -13,6 +13,11 @@ import (
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
+// ProbeEventSink is an interface for a type that can send events to the probe manager
+type ProbeEventSink interface {
+	send(event interface{})
+}
+
 // RemoteClusterConfigWatcher watches for secrets of type MirrorSecretType
 // and upon the detection of such secret created starts a RemoteClusterServiceWatcher
 type RemoteClusterConfigWatcher struct {
@@ -20,16 +25,16 @@ type RemoteClusterConfigWatcher struct {
 	clusterWatchers map[string]*RemoteClusterServiceWatcher
 	requeueLimit    int
 	sync.RWMutex
-	enqueueProbeEvent func(event interface{})
+	probeEventsSink ProbeEventSink
 }
 
 // NewRemoteClusterConfigWatcher Creates a new config watcher
-func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int, enqueueProbeEvent func(event interface{})) *RemoteClusterConfigWatcher {
+func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int, probeEventsSink ProbeEventSink) *RemoteClusterConfigWatcher {
 	rcw := &RemoteClusterConfigWatcher{
-		k8sAPI:            k8sAPI,
-		clusterWatchers:   map[string]*RemoteClusterServiceWatcher{},
-		requeueLimit:      requeueLimit,
-		enqueueProbeEvent: enqueueProbeEvent,
+		k8sAPI:          k8sAPI,
+		clusterWatchers: map[string]*RemoteClusterServiceWatcher{},
+		requeueLimit:    requeueLimit,
+		probeEventsSink: probeEventsSink,
 	}
 	k8sAPI.Secret().Informer().AddEventHandler(
 		cache.FilteringResourceEventHandler{
@@ -124,7 +129,7 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", config.clusterName)
 	}
 
-	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, config.clusterName, rcw.requeueLimit, config.clusterDomain, rcw.enqueueProbeEvent)
+	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, config.clusterName, rcw.requeueLimit, config.clusterDomain, rcw.probeEventsSink)
 	if err != nil {
 		return err
 	}
