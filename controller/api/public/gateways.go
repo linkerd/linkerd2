@@ -12,7 +12,7 @@ import (
 const (
 	gatewayAliveQuery           = "sum(gateway_alive%s) by (%s)"
 	numMirroredServicesQuery    = "sum(num_mirrored_services%s) by (%s)"
-	gatewayLatencyQuantileQuery = "histogram_quantile(%s, sum(irate(gateway_request_latency_ms_bucket%s[%s])) by (le, %s))"
+	gatewayLatencyQuantileQuery = "histogram_quantile(%s, sum(irate(gateway_probe_latency_ms%s[%s])) by (le, %s))"
 )
 
 func (s *grpcServer) Gateways(ctx context.Context, req *pb.GatewaysRequest) (*pb.GatewaysResponse, error) {
