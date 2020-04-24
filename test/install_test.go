@@ -463,30 +463,50 @@ func TestRetrieveUidPostUpgrade(t *testing.T) {
 	}
 }
 
+type expectedData struct {
+	pod        string
+	cpuLimit   string
+	cpuRequest string
+	memLimit   string
+	memRequest string
+}
+
+var expectedResources = []expectedData{
+	{
+		pod:        "linkerd-controller",
+		cpuLimit:   "2",
+		cpuRequest: "100m",
+		memLimit:   "200Mi",
+		memRequest: "100Mi",
+	},
+	{
+		pod:        "linkerd-prometheus",
+		cpuLimit:   "1",
+		cpuRequest: "100m",
+		memLimit:   "200Mi",
+		memRequest: "100Mi",
+	},
+}
+
 func TestComponentProxyResources(t *testing.T) {
 	if TestHelper.UpgradeHelmFromVersion() == "" {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
-	controllerResourceReqs, err := TestHelper.GetResources("linkerd-proxy", "linkerd-controller", TestHelper.GetLinkerdNamespace())
-	if err != nil {
-		t.Fatalf("Error retrieving resource requirements for linkerd controller %s", err)
-	}
 
-	cpuLimitStr := controllerResourceReqs.Limits.Cpu().String()
-	if cpuLimitStr != "4" {
-		t.Fatalf("unexpected controller CPU limit: expected %s, was %s", "2", cpuLimitStr)
+	for _, expected := range expectedResources {
+		resourceReqs, err := TestHelper.GetResources("linkerd-proxy", expected.pod, TestHelper.GetLinkerdNamespace())
+		if err != nil {
+			t.Fatalf("Error retrieving resource requirements for linkerd controller %s", err)
+		}
+		cpuLimitStr := resourceReqs.Limits.Cpu().String()
+		if cpuLimitStr != expected.cpuLimit {
+			t.Fatalf("unexpected controller CPU limit: expected %s, was %s", expected.cpuLimit, cpuLimitStr)
+		}
+		cpuRequestStr := resourceReqs.Requests.Cpu().String()
+		if cpuRequestStr != expected.cpuRequest {
+			t.Fatalf("unexpected controller CPU limit: expected %s, was %s", expected.cpuRequest, cpuRequestStr)
+		}
 	}
-
-	prometheusResourceReqs, err2 := TestHelper.GetResources("linkerd-proxy", "linkerd-prometheus", TestHelper.GetLinkerdNamespace())
-	if err2 != nil {
-		t.Fatalf("Error retrieving resource requirements for linkerd controller %s", err)
-	}
-
-	cpuLimitStr = prometheusResourceReqs.Limits.Cpu().String()
-	if cpuLimitStr != "4" {
-		t.Fatalf("unexpected controller CPU limit: expected %s, was %s", "1", cpuLimitStr)
-	}
-
 }
 
 func TestVersionPostInstall(t *testing.T) {
