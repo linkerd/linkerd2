@@ -1,4 +1,8 @@
-## edge-20.4.3
+## edge-20.4.4
+
+This edge release fixes a packaging issue in `edge-20.4.3`.
+
+_From `edge.20.4.3` release notes_:
 
 This edge release adds functionality to the CLI to output more detail and
 includes changes which support the multi-cluster functionality. Also, the helm
@@ -33,7 +37,46 @@ with a rolling strategy
     endpoint instead of the `/metrics` endpoint, because the `/live` endpoint
     returns a smaller payload
   * Added a per-endpoint authority-override feature to support
-    mutli-cluster gateways
+    multi-cluster gateways
+
+## edge-20.4.3
+
+**This release is superseded by `edge-20.4.4`**
+
+This edge release adds functionality to the CLI to output more detail and
+includes changes which support the multi-cluster functionality. Also, the helm
+support has been expanded to make installation more configurable. Finally, the
+HA reliability is improved by ensuring that control plane pods are restarted
+with a rolling strategy
+
+* CLI
+  * Added output to the `linkerd check --proxy` command to list all data
+    plane pods which are not up-to-date rather than just printing the first
+    one it encounters
+  * Added a `--proxy` flag to the `linkerd version` command which lists all
+    proxy versions running in the cluster and the number of pods running
+    each version
+  * Lifted requirement of using --unmeshed for linkerd stat when querying
+    TrafficSplit resources
+  * Added support for multi-stage installs with Add-Ons
+* Controller
+  * Added a rolling update strategy to Linkerd deployments that have
+    multiple replicas during HA deployments to ensure that at most
+    one pod begins terminating before a new pod ready is ready
+  * Added a new label for the proxy injector to write to the template,
+    `linkerd.io/workload-ns` which indicates the namespace of the workload/pod
+* Internal
+  * Added a [security policy](https://help.github.com/en/github/managing-security-vulnerabilities/adding-a-security-policy-to-your-repository)
+    to facilitate conversations around security
+* Helm
+  * Changed charts to use downwardAPI to mount labels to the proxy container
+    making them easier to identify
+* Proxy
+  * Changed the Linkerd proxy endpoint for liveness to use the new `/live` admin
+    endpoint instead of the `/metrics` endpoint, because the `/live` endpoint
+    returns a smaller payload
+  * Added a per-endpoint authority-override feature to support
+    multi-cluster gateways
 
 ## edge-20.4.2
 
