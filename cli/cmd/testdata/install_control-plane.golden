@@ -1983,19 +1983,6 @@ data:
       image: gcr.io/linkerd-io/grafana
 ---
 ###
-### Grafana RBAC
-###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-grafana
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: grafana
-    linkerd.io/control-plane-ns: linkerd
----
-###
 ### Grafana
 ###
 ---

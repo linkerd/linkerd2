@@ -26,11 +26,16 @@ func (g Grafana) Values() []byte {
 	return values
 }
 
-// Templates returns the template files specific to this add-on
-func (g Grafana) Templates() []*chartutil.BufferedFile {
+// ConfigStageTemplates returns the template files that are part of the config stage
+func (g Grafana) ConfigStageTemplates() []*chartutil.BufferedFile {
 	return []*chartutil.BufferedFile{
-		{Name: chartutil.ChartfileName},
 		{Name: "templates/grafana-rbac.yaml"},
+	}
+}
+
+// ControlPlaneStageTemplates returns the template files that are part of the Control Plane Stage.
+func (g Grafana) ControlPlaneStageTemplates() []*chartutil.BufferedFile {
+	return []*chartutil.BufferedFile{
 		{Name: "templates/grafana.yaml"},
 	}
 }
