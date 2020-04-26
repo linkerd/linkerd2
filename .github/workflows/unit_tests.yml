@@ -28,7 +28,7 @@ jobs:
     name: JS unit tests
     runs-on: ubuntu-18.04
     container:
-      image: node:10.16.0-stretch
+      image: node:14-stretch
     steps:
     - name: Checkout code
       # actions/checkout@v2
