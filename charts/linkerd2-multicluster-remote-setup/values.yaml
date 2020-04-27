@@ -12,3 +12,4 @@ linkerdVersion: {version}
 createdByAnnotation: linkerd.io/created-by
 nginxImageVersion: 1.17
 nginxImage: nginx
+proxyOutboundPort: 4140

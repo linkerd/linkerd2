@@ -1,5 +1,5 @@
 
-# Linkerd2-multicluster-remote-sertup Helm Chart
+# Linkerd2-multicluster-remote-setup Helm Chart
 
 Linkerd is a *service mesh*, designed to give platform-wide observability,
 reliability, and security without requiring configuration or code changes.
@@ -9,7 +9,7 @@ communication and service discovery
 
 ## Configuration
 
-The following table lists the configurable parameters of the linkerd2-multicluster-remote-sertup chart and their default values.
+The following table lists the configurable parameters of the linkerd2-multicluster-remote-setup chart and their default values.
 
 | Parameter                | Description                                                                                                     | Default                |
 |--------------------------|-----------------------------------------------------------------------------------------------------------------|------------------------|
@@ -20,7 +20,7 @@ The following table lists the configurable parameters of the linkerd2-multiclust
 |`linkerdNamespace`        | The namespace of the existing Linkerd installation                                                              |`linkerd`               |
 |`nginxImage`              | The Nginx image                                                                                                 |`nginx`                 |
 |`nginxImageVersion`       | The version of the Nginx image                                                                                  |`1.17`                  |
-|`probePath`               | The path tha that will be used by remote clusters for determining whether the gateway is alive                  |`/health`               |
+|`probePath`               | The path that will be used by remote clusters for determining whether the gateway is alive                  |`/health`               |
 |`probePeriodSeconds`      | The interval (in seconds) between liveness probes                                                               |`3`                     |
 |`probePort`               | The port used for liveliness probing                                                                            |`81`                    |
 |`serviceAccountName`      | The name of the service account that will be created and used by remote clusters, attempting to mirror services |`linkerd-service-mirror`|

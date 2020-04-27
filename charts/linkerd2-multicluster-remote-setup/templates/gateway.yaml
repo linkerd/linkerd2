@@ -90,8 +90,8 @@ metadata:
   namespace: {{.Values.gatewayNamespace}}
   annotations: 
     mirror.linkerd.io/gateway-identity: {{.Values.gatewayName}}.{{.Values.gatewayNamespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain}}
-    mirror.linkerd.io/probe-port: {{.Values.probePort}}
-    mirror.linkerd.io/probe-period: {{.Values.probePeriodSeconds}}
+    mirror.linkerd.io/probe-port: "{{.Values.probePort}}"
+    mirror.linkerd.io/probe-period: "{{.Values.probePeriodSeconds}}"
     mirror.linkerd.io/probe-path: {{.Values.probePath}}
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:

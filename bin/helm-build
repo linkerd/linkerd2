@@ -6,6 +6,7 @@ setValues() {
     sed -i "s/$1/$2/" charts/linkerd2/values.yaml
     sed -i "s/$1/$2/" charts/linkerd2-cni/values.yaml
     sed -i "s/$1/$2/" charts/linkerd2-service-mirror/values.yaml
+    sed -i "s/$1/$2/" charts/linkerd2-multicluster-remote-setup/values.yaml
 }
 
 showErr() {
@@ -21,7 +22,6 @@ rootdir=$( cd "$bindir"/.. && pwd )
 
 "$bindir"/helm init --client-only
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-multicluster-remote-setup
-"$bindir"/helm init --client-only
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-service-mirror
 "$bindir"/helm lint "$rootdir"/charts/partials
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2-cni

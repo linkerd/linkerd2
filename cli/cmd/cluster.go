@@ -117,7 +117,7 @@ func buildMulticlusterSetupValues(opts *setupRemoteClusterOptions) (*multicluste
 	defaults.LinkerdNamespace = controlPlaneNamespace
 	defaults.ProbePath = opts.probePath
 	defaults.ProbePeriodSeconds = opts.probePeriodSeconds
-	defaults.ProbePort = opts.probePort
+	defaults.ProbePort = global.Proxy.OutboundPort.Port
 	defaults.ProxyOutboundPort = global.Proxy.OutboundPort.Port
 	defaults.ServiceAccountName = opts.serviceAccountName
 	defaults.ServiceAccountNamespace = opts.serviceAccountNamespace
@@ -200,7 +200,7 @@ func newSetupRemoteCommand() *cobra.Command {
 				RawValues: rawValues,
 				Files:     files,
 			}
-			buf, err := chart.RenderRemoteClusterSetup()
+			buf, err := chart.RenderNoPartials()
 			if err != nil {
 				return err
 			}

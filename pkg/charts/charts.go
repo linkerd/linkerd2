@@ -99,13 +99,8 @@ func (chart *Chart) RenderCNI() (bytes.Buffer, error) {
 	return chart.render(cniPartials)
 }
 
-// RenderServiceMirror returns a bytes buffer with the result of rendering a Helm chart
-func (chart *Chart) RenderServiceMirror() (bytes.Buffer, error) {
-	return chart.render([]*chartutil.BufferedFile{})
-}
-
-// RenderRemoteClusterSetup returns a bytes buffer with the result of rendering a Helm chart
-func (chart *Chart) RenderRemoteClusterSetup() (bytes.Buffer, error) {
+// RenderNoPartials returns a bytes buffer with the result of rendering a Helm chart with no partials
+func (chart *Chart) RenderNoPartials() (bytes.Buffer, error) {
 	return chart.render([]*chartutil.BufferedFile{})
 }
 
