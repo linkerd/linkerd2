@@ -21,6 +21,7 @@ import (
 type checkOptions struct {
 	versionOverride    string
 	preInstallOnly     bool
+	multicluster       bool
 	dataPlaneOnly      bool
 	wait               time.Duration
 	namespace          string
@@ -31,6 +32,7 @@ type checkOptions struct {
 
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
+		multicluster:       false,
 		versionOverride:    "",
 		preInstallOnly:     false,
 		dataPlaneOnly:      false,
@@ -50,6 +52,7 @@ func (options *checkOptions) nonConfigFlagSet() *pflag.FlagSet {
 	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
 	flags.BoolVar(&options.preInstallOnly, "pre", options.preInstallOnly, "Only run pre-installation checks, to determine if the control plane can be installed")
 	flags.BoolVar(&options.dataPlaneOnly, "proxy", options.dataPlaneOnly, "Only run data-plane checks, to determine if the data plane is healthy")
+	flags.BoolVar(&options.multicluster, "multicluster", options.multicluster, "Run multicluster checks")
 
 	return flags
 }
@@ -185,6 +188,9 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 			}
 			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 			checks = append(checks, healthcheck.LinkerdHAChecks)
+			if options.multicluster {
+				checks = append(checks, healthcheck.LinkerdMulticlusterChecks)
+			}
 		}
 	}
 
