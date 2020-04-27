@@ -30,9 +30,9 @@ subjects:
   name: linkerd-smi-metrics
   namespace: {{.Values.global.namespace}}
 ---
-{{ if (not .Values.smiMetrics.externalSecret) -}}
-{{- $cn := printf "linkerd-smi-metrics.%s.svc" .Values.global.namespace -}}
-{{- $cert := genCA $cn 365 -}}
+{{- $cn := printf "linkerd-smi-metrics.%s.svc" .Values.global.namespace }}
+{{- $cert := genCA $cn 365 }}
+{{- if (not .Values.smiMetrics.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:

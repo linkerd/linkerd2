@@ -91,8 +91,8 @@ subjects:
   name: linkerd-tap
   namespace: {{.Values.global.namespace}}
 ---
-{{ if (not .Values.tap.externalSecret) -}}
-{{-  $ca := genCA (printf "linkerd-tap.%s.svc" .Values.global.namespace) 365 -}}
+{{-  $ca := genCA (printf "linkerd-tap.%s.svc" .Values.global.namespace) 365 }}
+{{- if (not .Values.tap.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:
