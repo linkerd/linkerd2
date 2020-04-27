@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"strings"
 
+	"github.com/linkerd/linkerd2/cli/table"
 	v1 "k8s.io/api/rbac/v1"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -14,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
@@ -44,6 +48,12 @@ type (
 		gatewayNamespace string
 		gatewayName      string
 	}
+
+	gatewaysOptions struct {
+		gatewayNamespace string
+		clusterName      string
+		timeWindow       string
+	}
 )
 
 func newCmdCluster() *cobra.Command {
@@ -51,6 +61,8 @@ func newCmdCluster() *cobra.Command {
 	getOpts := getCredentialsOptions{}
 	createOpts := createOptions{}
 	exportOpts := exportServiceOptions{}
+	gatewaysOptions := gatewaysOptions{}
+
 	clusterCmd := &cobra.Command{
 
 		Hidden: true,
@@ -70,7 +82,10 @@ available across clusters.`,
   linkerd --context=cluster-a cluster get-credentials --cluster-name=remote | kubectl apply --context=cluster-b -f -
 
   # Export service from cluster A to be available to other clusters
-  linkerd --context=cluster-a cluster export-service --service-name=backend-svc --service-namespace=default --gateway-name=linkerd-gateway --gateway-ns=default`,
+  linkerd --context=cluster-a cluster export-service --service-name=backend-svc --service-namespace=default --gateway-name=linkerd-gateway --gateway-ns=default
+
+  # Display latency and health status about the remote gateways
+  linkerd --context=cluster-b cluster gateways`,
 	}
 
 	createCredentialsCommand := &cobra.Command{
@@ -277,6 +292,29 @@ available across clusters.`,
 			return nil
 		},
 	}
+
+	gatewaysCmd := &cobra.Command{
+		Hidden: false,
+		Use:    "gateways",
+		Short:  "Display stats information about the remote gateways",
+		Args:   cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			req := &pb.GatewaysRequest{
+				RemoteClusterName: gatewaysOptions.clusterName,
+				GatewayNamespace:  gatewaysOptions.gatewayNamespace,
+				TimeWindow:        gatewaysOptions.timeWindow,
+			}
+
+			client := checkPublicAPIClientOrExit()
+			resp, err := requestGatewaysFromAPI(client, req)
+			if err != nil {
+				return err
+			}
+			renderGateways(resp.GetOk().GatewaysTable.Rows, stdout)
+			return nil
+		},
+	}
+
 	getCredentialsCmd.Flags().StringVar(&getOpts.serviceAccount, "service-account-name", defaultServiceAccountName, "the name of the service account")
 	getCredentialsCmd.Flags().StringVar(&getOpts.namespace, "service-account-namespace", defaultServiceAccountNs, "the namespace in which the service account will be created")
 	getCredentialsCmd.Flags().StringVar(&getOpts.clusterName, "cluster-name", defaultClusterName, "cluster name")
@@ -285,14 +323,125 @@ available across clusters.`,
 	createCredentialsCommand.Flags().StringVar(&createOpts.serviceAccount, "service-account-name", defaultServiceAccountName, "the name of the service account used")
 	createCredentialsCommand.Flags().StringVar(&createOpts.namespace, "service-account-namespace", defaultServiceAccountNs, "the namespace in which the service account can be found")
 
+	gatewaysCmd.Flags().StringVar(&gatewaysOptions.clusterName, "cluster-name", "", "the name of the remote cluster")
+	gatewaysCmd.Flags().StringVar(&gatewaysOptions.gatewayNamespace, "gateway-namespace", "", "the namespace in which the gateway resides on the remote cluster")
+	gatewaysCmd.Flags().StringVarP(&gatewaysOptions.timeWindow, "time-window", "t", "1m", "Time window (for example: \"15s\", \"1m\", \"10m\", \"1h\"). Needs to be at least 15s.")
+
 	exportServiceCmd.Flags().StringVar(&exportOpts.service, "service-name", "", "the name of the service to be exported")
 	exportServiceCmd.Flags().StringVar(&exportOpts.namespace, "service-namespace", "", "the namespace in which the service to be exported resides")
 	exportServiceCmd.Flags().StringVar(&exportOpts.gatewayName, "gateway-name", "", "the name of the gateway")
-	exportServiceCmd.Flags().StringVar(&exportOpts.gatewayNamespace, "gateway-ns", "", "the ns of the gateway")
+	exportServiceCmd.Flags().StringVar(&exportOpts.gatewayNamespace, "gateway-namespace", "", "the ns of the gateway")
 
 	clusterCmd.AddCommand(getCredentialsCmd)
 	clusterCmd.AddCommand(createCredentialsCommand)
 	clusterCmd.AddCommand(exportServiceCmd)
+	clusterCmd.AddCommand(gatewaysCmd)
 
 	return clusterCmd
+}
+
+func requestGatewaysFromAPI(client pb.ApiClient, req *pb.GatewaysRequest) (*pb.GatewaysResponse, error) {
+	resp, err := client.Gateways(context.Background(), req)
+	if err != nil {
+		return nil, fmt.Errorf("Gateways API error: %v", err)
+	}
+	if e := resp.GetError(); e != nil {
+		return nil, fmt.Errorf("Gateways API response error: %v", e.Error)
+	}
+	return resp, nil
+}
+
+func renderGateways(rows []*pb.GatewaysTable_Row, w io.Writer) {
+	t := buildGatewaysTable()
+	t.Data = []table.Row{}
+	for _, row := range rows {
+		row := row // Copy to satisfy golint.
+		t.Data = append(t.Data, gatewaysRowToTableRow(row))
+	}
+	t.Render(w)
+}
+
+var (
+	gatewayNameHeader      = "NAME"
+	gatewayNamespaceHeader = "NAMESPACE"
+	clusterNameHeader      = "CLUSTER"
+	aliveHeader            = "ALIVE"
+	pairedServicesHeader   = "NUM_SVC"
+	latencyP50Header       = "LATENCY_P50"
+	latencyP95Header       = "LATENCY_P95"
+	latencyP99Header       = "LATENCY_P99"
+)
+
+func buildGatewaysTable() table.Table {
+	columns := []table.Column{
+		table.Column{
+			Header:    clusterNameHeader,
+			Width:     7,
+			Flexible:  true,
+			LeftAlign: true,
+		},
+		table.Column{
+			Header:    gatewayNamespaceHeader,
+			Width:     9,
+			Flexible:  true,
+			LeftAlign: true,
+		},
+		table.Column{
+			Header:    gatewayNameHeader,
+			Width:     4,
+			Flexible:  true,
+			LeftAlign: true,
+		},
+		table.Column{
+			Header:    aliveHeader,
+			Width:     5,
+			Flexible:  true,
+			LeftAlign: true,
+		},
+		table.Column{
+			Header: pairedServicesHeader,
+			Width:  9,
+		},
+		table.Column{
+			Header: latencyP50Header,
+			Width:  11,
+		},
+		table.Column{
+			Header: latencyP95Header,
+			Width:  11,
+		},
+		table.Column{
+			Header: latencyP99Header,
+			Width:  11,
+		},
+	}
+	t := table.NewTable(columns, []table.Row{})
+	t.Sort = []int{0, 1} // Sort by namespace, then name.
+	return t
+}
+
+func gatewaysRowToTableRow(row *pb.GatewaysTable_Row) []string {
+	valueOrPlaceholder := func(value string) string {
+		if row.Alive {
+			return value
+		}
+		return "-"
+	}
+
+	alive := "False"
+
+	if row.Alive {
+		alive = "True"
+	}
+	return []string{
+		row.ClusterName,
+		row.Namespace,
+		row.Name,
+		alive,
+		fmt.Sprint(row.PairedServices),
+		valueOrPlaceholder(fmt.Sprintf("%dms", row.LatencyMsP50)),
+		valueOrPlaceholder(fmt.Sprintf("%dms", row.LatencyMsP95)),
+		valueOrPlaceholder(fmt.Sprintf("%dms", row.LatencyMsP99)),
+	}
+
 }

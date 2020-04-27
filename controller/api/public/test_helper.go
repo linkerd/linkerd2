@@ -29,6 +29,7 @@ type MockAPIClient struct {
 	ListPodsResponseToReturn       *pb.ListPodsResponse
 	ListServicesResponseToReturn   *pb.ListServicesResponse
 	StatSummaryResponseToReturn    *pb.StatSummaryResponse
+	GatewaysResponseToReturn       *pb.GatewaysResponse
 	TopRoutesResponseToReturn      *pb.TopRoutesResponse
 	EdgesResponseToReturn          *pb.EdgesResponse
 	SelfCheckResponseToReturn      *healthcheckPb.SelfCheckResponse
@@ -41,6 +42,11 @@ type MockAPIClient struct {
 // StatSummary provides a mock of a Public API method.
 func (c *MockAPIClient) StatSummary(ctx context.Context, in *pb.StatSummaryRequest, opts ...grpc.CallOption) (*pb.StatSummaryResponse, error) {
 	return c.StatSummaryResponseToReturn, c.ErrorToReturn
+}
+
+// Gateways provides a mock of a Public API method.
+func (c *MockAPIClient) Gateways(ctx context.Context, in *pb.GatewaysRequest, opts ...grpc.CallOption) (*pb.GatewaysResponse, error) {
+	return c.GatewaysResponseToReturn, c.ErrorToReturn
 }
 
 // TopRoutes provides a mock of a Public API method.
