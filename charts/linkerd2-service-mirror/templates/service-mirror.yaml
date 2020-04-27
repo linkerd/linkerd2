@@ -4,7 +4,7 @@ metadata:
   name: linkerd-service-mirror
   namespace: {{.Values.namespace}}
   labels:
-    ControllerComponentLabel: service-mirror
+    {{.Values.controllerComponentLabel}}: linkerd-service-mirror
 rules:
 - apiGroups: [""]
   resources: ["endpoints", "services", "secrets", "namespaces"]
@@ -16,7 +16,7 @@ metadata:
   name: linkerd-service-mirror
   namespace: {{.Values.namespace}}
   labels:
-    ControllerComponentLabel: service-mirror
+    {{.Values.controllerComponentLabel}}: linkerd-service-mirror
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -32,24 +32,24 @@ metadata:
   name: linkerd-service-mirror
   namespace: {{.Values.namespace}}
   labels:
-    ControllerComponentLabel: service-mirror
+    {{.Values.controllerComponentLabel}}: linkerd-service-mirror
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    ControllerComponentLabel: service-mirror
+    {{.Values.controllerComponentLabel}}: linkerd-service-mirror
   name: linkerd-service-mirror
   namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      ControllerComponentLabel: service-mirror
+      {{.Values.controllerComponentLabel}}: linkerd-service-mirror
   template:
     metadata:
       labels:
-        ControllerComponentLabel: service-mirror
+        {{.Values.controllerComponentLabel}}: linkerd-service-mirror
     spec:
       containers:
       - args:
@@ -60,4 +60,7 @@ spec:
         name: service-mirror
         securityContext:
           runAsUser: {{.Values.serviceMirrorUID}}
+        ports:
+        - containerPort: 9999
+          name: admin-http
       serviceAccountName: linkerd-service-mirror

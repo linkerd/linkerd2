@@ -4,3 +4,4 @@ logLevel: info
 eventRequeueLimit: 3
 controllerImage: gcr.io/linkerd-io/controller
 controllerImageVersion: {version}
+controllerComponentLabel: linkerd.io/control-plane-component

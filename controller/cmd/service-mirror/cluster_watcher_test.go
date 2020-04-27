@@ -27,6 +27,10 @@ type testCase struct {
 	expectedEventsInQueue  []interface{}
 }
 
+type NoOpProbeEventSink struct{}
+
+func (s *NoOpProbeEventSink) send(event interface{}) {}
+
 func runTestCase(tc *testCase, t *testing.T) {
 	t.Run(tc.testDescription, func(t *testing.T) {
 		remoteAPI, err := k8s.NewFakeAPI(tc.remoteResources...)
@@ -53,6 +57,7 @@ func runTestCase(tc *testCase, t *testing.T) {
 			log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
 			eventsQueue:     q,
 			requeueLimit:    0,
+			probeEventsSink: &NoOpProbeEventSink{},
 		}
 
 		for _, ev := range tc.events {
@@ -270,6 +275,10 @@ func TestRemoteServiceDeleted(t *testing.T) {
 				&RemoteServiceDeleted{
 					Name:      "test-service-remote-to-delete",
 					Namespace: "test-namespace-to-delete",
+					GatewayData: gatewayMetadata{
+						Name:      "gateway",
+						Namespace: "gateway-ns",
+					},
 				},
 			},
 
@@ -326,7 +335,7 @@ func TestRemoteServiceUpdated(t *testing.T) {
 							Protocol: "TCP",
 						},
 					}),
-					gatewayData: &gatewayMetadata{
+					gatewayData: gatewayMetadata{
 						Name:      "gateway-new",
 						Namespace: "gateway-ns",
 					},
@@ -437,7 +446,7 @@ func TestRemoteServiceUpdated(t *testing.T) {
 							Protocol: "TCP",
 						},
 					}),
-					gatewayData: &gatewayMetadata{
+					gatewayData: gatewayMetadata{
 						Name:      "gateway",
 						Namespace: "gateway-ns",
 					},
@@ -525,13 +534,16 @@ func TestRemoteGatewayUpdated(t *testing.T) {
 			testDescription: "endpoints ports are updated on gateway change",
 			events: []interface{}{
 				&RemoteGatewayUpdated{
-					newPort:              999,
-					newEndpointAddresses: []corev1.EndpointAddress{{IP: "0.0.0.0"}},
-					gatewayData: &gatewayMetadata{
-						Name:      "gateway",
-						Namespace: "gateway-ns",
+
+					gatewaySpec: GatewaySpec{
+						gatewayName:      "gateway",
+						gatewayNamespace: "gateway-ns",
+						clusterName:      "remote",
+						addresses:        []corev1.EndpointAddress{{IP: "0.0.0.0"}},
+						incomingPort:     999,
+						resourceVersion:  "currentGatewayResVersion",
+						ProbeConfig:      nil,
 					},
-					newResourceVersion: "currentGatewayResVersion",
 					affectedServices: []*corev1.Service{
 						mirroredService("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
 							[]corev1.ServicePort{
@@ -624,13 +636,14 @@ func TestRemoteGatewayUpdated(t *testing.T) {
 			testDescription: "endpoints addresses are updated on gateway change",
 			events: []interface{}{
 				&RemoteGatewayUpdated{
-					newPort:              888,
-					newEndpointAddresses: []corev1.EndpointAddress{{IP: "0.0.0.1"}},
-					gatewayData: &gatewayMetadata{
-						Name:      "gateway",
-						Namespace: "gateway-ns",
+					gatewaySpec: GatewaySpec{
+						gatewayName:      "gateway",
+						gatewayNamespace: "gateway-ns",
+						clusterName:      "remote",
+						addresses:        []corev1.EndpointAddress{{IP: "0.0.0.1"}},
+						incomingPort:     888,
+						resourceVersion:  "currentGatewayResVersion",
 					},
-					newResourceVersion: "currentGatewayResVersion",
 					affectedServices: []*corev1.Service{
 						mirroredService("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
 							[]corev1.ServicePort{
@@ -721,14 +734,16 @@ func TestRemoteGatewayUpdated(t *testing.T) {
 			testDescription: "identity is updated on gateway change",
 			events: []interface{}{
 				&RemoteGatewayUpdated{
-					identity:             "new-identity",
-					newPort:              888,
-					newEndpointAddresses: []corev1.EndpointAddress{{IP: "0.0.0.0"}},
-					gatewayData: &gatewayMetadata{
-						Name:      "gateway",
-						Namespace: "gateway-ns",
+					gatewaySpec: GatewaySpec{
+						gatewayName:      "gateway",
+						gatewayNamespace: "gateway-ns",
+						clusterName:      "",
+						addresses:        []corev1.EndpointAddress{{IP: "0.0.0.0"}},
+						incomingPort:     888,
+						resourceVersion:  "currentGatewayResVersion",
+						identity:         "new-identity",
+						ProbeConfig:      nil,
 					},
-					newResourceVersion: "currentGatewayResVersion",
 					affectedServices: []*corev1.Service{
 						mirroredService("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
 							[]corev1.ServicePort{
@@ -825,7 +840,7 @@ func TestRemoteGatewayDeleted(t *testing.T) {
 			testDescription: "removes endpoint subsets when gateway is deleted",
 			events: []interface{}{
 				&RemoteGatewayDeleted{
-					gatewayData: &gatewayMetadata{
+					gatewayData: gatewayMetadata{
 						Name:      "gateway",
 						Namespace: "gateway-ns",
 					},
@@ -995,7 +1010,7 @@ func onAddOrUpdateTestCases(t *testing.T, isAdd bool) []testCase {
 				localService:   mirroredService("test-service-remote", "test-namespace", "gateway", "gateway-ns", "pastResourceVersion", "gatewayResVersion", nil),
 				localEndpoints: endpoints("test-service-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "", nil),
 				remoteUpdate:   remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "currentResVersion", nil),
-				gatewayData: &gatewayMetadata{
+				gatewayData: gatewayMetadata{
 					Name:      "gateway",
 					Namespace: "gateway-ns",
 				},
@@ -1075,6 +1090,10 @@ func TestOnDelete(t *testing.T) {
 				&RemoteServiceDeleted{
 					Name:      "test-service",
 					Namespace: "test-namespace",
+					GatewayData: gatewayMetadata{
+						Name:      "gateway",
+						Namespace: "gateway-ns",
+					},
 				},
 			},
 		},
@@ -1087,7 +1106,7 @@ func TestOnDelete(t *testing.T) {
 			},
 			expectedEventsInQueue: []interface{}{
 				&RemoteGatewayDeleted{
-					gatewayData: &gatewayMetadata{
+					gatewayData: gatewayMetadata{
 						Name:      "gateway",
 						Namespace: "test-namespace",
 					},
