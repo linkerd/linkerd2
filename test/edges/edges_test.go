@@ -1,6 +1,7 @@
 package edges
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -54,10 +55,7 @@ func TestEdges(t *testing.T) {
 */
 
 // TestDirectEdges deploys a terminus and then generates a load generator which
-// sends traffic directly to the pod ip of the terminus pod. Traffic which is
-// addressed this way (as opposed to using the service name) does not show up
-// in the `linkerd edges` command. This test should be updated once
-// `linkerd edges` is updated to support this kind of traffic.
+// sends traffic directly to the pod ip of the terminus pod.
 func TestDirectEdges(t *testing.T) {
 
 	// setup
@@ -98,12 +96,12 @@ func TestDirectEdges(t *testing.T) {
 	}
 	ip = strings.Trim(ip, "\"") // strip quotes
 
-	bytes, err := ioutil.ReadFile("testdata/slow-cooker.yaml")
+	b, err := ioutil.ReadFile("testdata/slow-cooker.yaml")
 	if err != nil {
 		t.Error(err)
 	}
 
-	slowcooker := string(bytes)
+	slowcooker := string(b)
 	slowcooker = strings.ReplaceAll(slowcooker, "___TERMINUS_POD_IP___", ip)
 
 	// inject slow cooker
@@ -136,14 +134,14 @@ func TestDirectEdges(t *testing.T) {
 	}
 
 	tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
-	vars := struct{ Ns string }{ns}
-	var b bytes.Buffer
-	if err := tpl.Execute(&b, vars); err != nil {
+	vars := struct{ Ns string }{testNamespace}
+	var buf bytes.Buffer
+	if err := tpl.Execute(&buf, vars); err != nil {
 		t.Fatalf("failed to parse direct_edges.golden template: %s", err)
 	}
 
-	r := regexp.MustCompile(b.String())
+	r := regexp.MustCompile(buf.String())
 	if !r.MatchString(out) {
-		t.Errorf("Expected output:\n%s\nactual:\n%s", b.String(), out)
+		t.Errorf("Expected output:\n%s\nactual:\n%s", buf.String(), out)
 	}
 }
