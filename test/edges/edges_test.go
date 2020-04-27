@@ -3,8 +3,10 @@ package edges
 import (
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -128,12 +130,20 @@ func TestDirectEdges(t *testing.T) {
 
 	// check edges
 
-	_, stderr, err = TestHelper.LinkerdRun("-n", testNamespace, "edges", "pods")
+	out, stderr, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "edges", "pods")
 	if err != nil {
 		t.Fatalf("'linkerd %s' command failed with %s: %s\n", "edges", err.Error(), stderr)
 	}
-	stderr = strings.TrimSpace(stderr)
-	if stderr != "No edges found." {
-		t.Fatalf("Expected: \"%s\" Got: \"%s\"", "No edges found.", stderr)
+
+	tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
+	vars := struct{ Ns string }{ns}
+	var b bytes.Buffer
+	if err := tpl.Execute(&b, vars); err != nil {
+		t.Fatalf("failed to parse direct_edges.golden template: %s", err)
+	}
+
+	r := regexp.MustCompile(b.String())
+	if !r.MatchString(out) {
+		t.Errorf("Expected output:\n%s\nactual:\n%s", b.String(), out)
 	}
 }
