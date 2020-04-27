@@ -224,7 +224,8 @@ spec:
         - mountPath: /etc/prometheus
           name: prometheus-config
           readOnly: true
-      {{- $_ := set .Values.global.proxy "resources" (default .Values.global.proxy.resources .Values.prometheusProxyResources) }}                  
+      {{- $r := mergeOverwrite (deepCopy .Values.global.proxy.resources) .Values.prometheusProxyResources }}
+      {{- $_ := set .Values.global.proxy "resources" $r }}        
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
