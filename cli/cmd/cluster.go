@@ -345,6 +345,23 @@ func newExportServiceCommand() *cobra.Command {
 		Short:  "Exposes a remote service to be mirrored",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			if opts.service == "" {
+				return errors.New("The --service-name flag needs to be set")
+			}
+
+			if opts.namespace == "" {
+				return errors.New("The --service-name flag needs to be set")
+			}
+
+			if opts.gatewayName == "" {
+				return errors.New("The --gateway-name flag needs to be set")
+			}
+
+			if opts.gatewayNamespace == "" {
+				return errors.New("The --gateway-namespace flag needs to be set")
+			}
+
 			rules := clientcmd.NewDefaultClientConfigLoadingRules()
 			rules.ExplicitPath = kubeconfigPath
 			loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, &clientcmd.ConfigOverrides{})
@@ -389,8 +406,8 @@ func newExportServiceCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.service, "service-name", "", "the name of the service to be exported")
 	cmd.Flags().StringVar(&opts.namespace, "service-namespace", "", "the namespace in which the service to be exported resides")
-	cmd.Flags().StringVar(&opts.gatewayName, "gateway-name", "", "the name of the gateway")
-	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "", "the namespace of the gateway")
+	cmd.Flags().StringVar(&opts.gatewayName, "gateway-name", "linkerd-gateway", "the name of the gateway")
+	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "linkerd-gateway", "the namespace of the gateway")
 
 	return cmd
 }
