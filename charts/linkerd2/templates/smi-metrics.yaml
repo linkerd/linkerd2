@@ -82,8 +82,10 @@ spec:
         {{- include "partials.resources" .Values.prometheusResources | nindent 8 }}
         {{- end }}
 
-      {{- $r := mergeOverwrite (deepCopy .Values.global.proxy.resources) .Values.smiMetricsProxyResources }}
+      {{- if not (empty .Values.smiMetricsProxyResources) }}
+      {{- $r := merge .Values.smiMetricsProxyResources  .Values.global.proxy.resources}}
       {{- $_ := set .Values.global.proxy "resources" $r }}        
+      {{- end }}
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
