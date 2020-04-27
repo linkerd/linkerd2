@@ -1,0 +1,11 @@
+\[
+  \{
+    "src": "slow-cooker",
+    "src_namespace": "{{.Ns}}",
+    "dst": "terminus",
+    "dst_namespace": "{{.Ns}}",
+    "client_id": "default.{{.Ns}}",
+    "server_id": "default.{{.Ns}}",
+    "no_tls_reason": ""
+  \}
+\]
