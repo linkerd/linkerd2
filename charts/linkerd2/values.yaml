@@ -141,7 +141,7 @@ identity:
 
 # grafana configuration
 grafanaImage: gcr.io/linkerd-io/grafana
-# set resources for grafana linkerd proxy
+# set resources for grafana and its linkerd proxy respectively
 # see global.proxy.resources for details.
 #grafanaResources:
 #grafanaProxyResources:
