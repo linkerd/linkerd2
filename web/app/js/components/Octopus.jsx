@@ -100,11 +100,10 @@ class Octopus extends React.Component {
   }
 
   linkedResourceTitle = (resource, display) => {
+    const { api: { ResourceLink } } = this.props;
     // trafficsplit leaf resources cannot be linked
     return _isNil(resource.namespace) || resource.isLeafService ? display :
-    <this.props.api.ResourceLink
-      resource={resource}
-      linkText={display} />;
+    <ResourceLink resource={resource} linkText={display} />;
   }
 
   renderResourceCard(resource, type, index, isOutbound) {
@@ -355,6 +354,9 @@ class Octopus extends React.Component {
 }
 
 Octopus.propTypes = {
+  api: PropTypes.shape({
+    ResourceLink: PropTypes.func.isRequired,
+  }).isRequired,
   neighbors: PropTypes.shape({}),
   resource: PropTypes.shape({}),
   unmeshedSources: PropTypes.arrayOf(PropTypes.shape({})),

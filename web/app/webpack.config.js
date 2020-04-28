@@ -76,6 +76,7 @@ module.exports = {
     }),
     // compile the bundle with hashed filename into index_bundle.js
     new HtmlWebpackPlugin({
+      cache: false,
       inject: false,
       filename: 'index_bundle.js',
       template: 'index_bundle.js.lodash.tmpl',
