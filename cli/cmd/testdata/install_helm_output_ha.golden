@@ -3109,15 +3109,18 @@ data:
   values: |-
     grafana:
       enabled: true
-      name: linkerd-grafana
       image: gcr.io/linkerd-io/grafana
+      name: linkerd-grafana
       resources:
-      cpu:
-        limit: "1"
-        request: 100m
-      memory:
-        limit: 1024Mi
-        request: 50Mi
+        cpu:
+          limit: "1"
+          request: 100m
+        memory:
+          limit: 1024Mi
+          request: 50Mi
+    tracing:
+      enabled: false
+
 ---
 # Source: linkerd2/charts/grafana/templates/grafana-rbac.yaml
 ---

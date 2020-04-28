@@ -181,15 +181,15 @@ tracing:
   collector:
     name: linkerd-collector
     image: omnition/opencensus-collector:0.1.11
-    resources:
+    # resources:
   jaeger:
     name: linkerd-jaeger
     image: jaegertracing/all-in-one:1.17.1
-    resources:
+    # resources:
 
 grafana:
   enabled: true
   name: linkerd-grafana
   image: gcr.io/linkerd-io/grafana
-  resources:
+  # resources:
     

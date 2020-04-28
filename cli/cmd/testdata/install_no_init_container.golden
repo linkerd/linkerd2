@@ -2552,8 +2552,11 @@ data:
   values: |-
     grafana:
       enabled: true
-      name: linkerd-grafana
       image: gcr.io/linkerd-io/grafana
+      name: linkerd-grafana
+    tracing:
+      enabled: false
+
 ---
 ###
 ### Grafana RBAC

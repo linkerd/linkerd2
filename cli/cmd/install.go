@@ -138,6 +138,7 @@ var (
 	}
 
 	templatesControlPlaneStage = []string{
+		"templates/_addons.tpl",
 		"templates/_config.tpl",
 		"templates/_helpers.tpl",
 		"templates/config.yaml",

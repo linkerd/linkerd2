@@ -239,6 +239,14 @@ func TestRender(t *testing.T) {
 	withAddOnControlPlaneStageValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withAddOnControlPlaneStageValues)
 
+	withGrafanaAddOnDisabled, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withGrafanaAddOnDisabledValues, _, _ := withGrafanaAddOnDisabled.validateAndBuild(controlPlaneStage, nil)
+	withGrafanaAddOnDisabledValues.Grafana["enabled"] = false
+	addFakeTLSSecrets(withGrafanaAddOnDisabledValues)
+
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
@@ -257,6 +265,7 @@ func TestRender(t *testing.T) {
 		{withCustomRegistryValues, "install_custom_registry.golden"},
 		{withAddOnConfigStageValues, "install_addon_config.golden"},
 		{withAddOnControlPlaneStageValues, "install_addon_control-plane.golden"},
+		{withGrafanaAddOnDisabledValues, "install_grafana_disabled.golden"},
 	}
 
 	for i, tc := range testCases {

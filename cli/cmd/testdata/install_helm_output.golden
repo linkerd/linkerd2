@@ -2860,8 +2860,11 @@ data:
   values: |-
     grafana:
       enabled: true
-      name: linkerd-grafana
       image: gcr.io/linkerd-io/grafana
+      name: linkerd-grafana
+    tracing:
+      enabled: false
+
 ---
 # Source: linkerd2/charts/grafana/templates/grafana-rbac.yaml
 ---

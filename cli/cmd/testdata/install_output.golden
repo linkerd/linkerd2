@@ -2811,8 +2811,11 @@ data:
   values: |-
     grafana:
       enabled: true
-      name: linkerd-grafana
       image: GrafanaImage
+      name: linkerd-grafana
+    tracing:
+      enabled: false
+
 ---
 ###
 ### Grafana RBAC

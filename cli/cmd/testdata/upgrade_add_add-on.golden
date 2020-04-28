@@ -2833,20 +2833,19 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   values: |-
-    tracing:
+    grafana:
       enabled: true
+      image: gcr.io/linkerd-io/grafana
+      name: linkerd-grafana
+    tracing:
       collector:
         image: omnition/opencensus-collector:0.1.11
         name: linkerd-collector
-        resources: null
+      enabled: true
       jaeger:
         image: jaegertracing/all-in-one:1.17.1
         name: linkerd-jaeger
-        resources: null
-    grafana:
-      enabled: true
-      name: linkerd-grafana
-      image: gcr.io/linkerd-io/grafana
+
 ---
 ###
 ### linkerd-collector RBAC
