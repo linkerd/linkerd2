@@ -19,9 +19,10 @@ import (
 
 type routesOptions struct {
 	statOptionsBase
-	toResource   string
-	toNamespace  string
-	dstIsService bool
+	toResource    string
+	toNamespace   string
+	dstIsService  bool
+	labelSelector string
 }
 
 type routeRowStats struct {
@@ -36,6 +37,7 @@ func newRoutesOptions() *routesOptions {
 		statOptionsBase: *newStatOptionsBase(),
 		toResource:      "",
 		toNamespace:     "",
+		labelSelector:   "",
 	}
 }
 
@@ -77,6 +79,7 @@ This command will only display traffic which is sent to a service that has a Ser
 	cmd.PersistentFlags().StringVar(&options.toResource, "to", options.toResource, "If present, shows outbound stats to the specified resource")
 	cmd.PersistentFlags().StringVar(&options.toNamespace, "to-namespace", options.toNamespace, "Sets the namespace used to lookup the \"--to\" resource; by default the current \"--namespace\" is used")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, fmt.Sprintf("Output format; one of: \"%s\", \"%s\", or \"%s\"", tableOutput, wideOutput, jsonOutput))
+	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector, "Selector (label query) to filter on, supports '=', '==', and '!='")
 
 	return cmd
 }
@@ -202,7 +205,13 @@ func printRouteTable(stats []*routeRowStats, w *tabwriter.Writer, options *route
 	// p50, p95, p99
 	templateString = templateString + "%dms\t%dms\t%dms\t\n"
 
-	emptyTemplateString := routeTemplate + "\t%s\t-\t-\t-\t-\t-\t\n"
+	var emptyTemplateString string
+	if outputActual {
+		emptyTemplateString = routeTemplate + "\t%s\t-\t-\t-\t-\t-\t-\t-\t\n"
+	} else {
+		emptyTemplateString = routeTemplate + "\t%s\t-\t-\t-\t-\t-\t\n"
+	}
+
 	for _, row := range stats {
 
 		values := []interface{}{
@@ -318,6 +327,7 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 			ResourceType: target.Type,
 			Namespace:    options.namespace,
 		},
+		LabelSelector: options.labelSelector,
 	}
 
 	options.dstIsService = !(target.GetType() == k8s.Authority)

@@ -25,6 +25,8 @@ const (
 	jsonOutput  = "json"
 	tableOutput = "table"
 	wideOutput  = "wide"
+
+	maxRps = 100.0
 )
 
 var (
@@ -125,6 +127,8 @@ func init() {
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
 	RootCmd.AddCommand(newCmdInstallServiceMirror())
+	RootCmd.AddCommand(newCmdCluster())
+	RootCmd.AddCommand(newCmdUninstall())
 }
 
 type statOptionsBase struct {
@@ -157,7 +161,10 @@ func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
 		out = buffer.String()
 	default:
 		// strip left padding on the first column
-		out = string(buffer.Bytes()[padding:])
+		b := buffer.Bytes()
+		if len(b) > padding {
+			out = string(b[padding:])
+		}
 		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
 	}
 

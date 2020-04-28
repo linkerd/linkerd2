@@ -1,5 +1,5 @@
 ## bundle web assets
-FROM node:10 as webpack-bundle
+FROM node:14-stretch as webpack-bundle
 RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
 
 ENV PATH /root/.yarn/bin:$PATH
@@ -21,7 +21,7 @@ COPY web/app ./web/app
 RUN ./bin/web build
 
 ## compile go server
-FROM gcr.io/linkerd-io/go-deps:93ea34a8 as golang
+FROM gcr.io/linkerd-io/go-deps:8c47576d as golang
 WORKDIR /linkerd-build
 RUN mkdir -p web
 COPY web/main.go web

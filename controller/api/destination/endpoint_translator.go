@@ -49,12 +49,20 @@ func (et *endpointTranslator) Add(set watcher.AddressSet) {
 		if address.Pod != nil {
 			wa, err = et.toWeightedAddr(address)
 		} else {
+			var authOverride *pb.AuthorityOverride
+			if address.AuthorityOverride != "" {
+				authOverride = &pb.AuthorityOverride{
+					AuthorityOverride: address.AuthorityOverride,
+				}
+			}
+
 			// handling address with no associated pod
 			var addr *net.TcpAddress
 			addr, err = et.toAddr(address)
 			wa = &pb.WeightedAddr{
-				Addr:   addr,
-				Weight: defaultWeight,
+				Addr:              addr,
+				Weight:            defaultWeight,
+				AuthorityOverride: authOverride,
 			}
 
 			if address.Identity != "" {
@@ -65,7 +73,7 @@ func (et *endpointTranslator) Add(set watcher.AddressSet) {
 						},
 					},
 				}
-				// in this case we most likely have a proxy on the side, so set protocol hint as well.
+				// in this case we most likely have a proxy on the other side, so set protocol hint as well.
 				if et.enableH2Upgrade {
 					wa.ProtocolHint = &pb.ProtocolHint{
 						Protocol: &pb.ProtocolHint_H2_{

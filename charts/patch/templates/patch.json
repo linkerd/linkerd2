@@ -1,5 +1,12 @@
 {{ $prefix := .Values.pathPrefix -}}
 [
+  {{- if .Values.addRootMetadata }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/metadata",
+    "value": {}
+  },
+  {{- end }}
   {{- if .Values.addRootAnnotations }}
   {
     "op": "add",
@@ -57,6 +64,14 @@
     "op": "add",
     "path": "{{$prefix}}/spec/volumes",
     "value": []
+  },
+  {{- end }}
+  {{- if (.Values.global.proxy.trace.collectorSvcAddr) }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes/-",
+    "value":
+      {{- include "partials.proxy.volumes.labels" . | fromYaml | toPrettyJson | nindent 6 }}
   },
   {{- end }}
   {{- if not .Values.global.proxy.disableIdentity -}}

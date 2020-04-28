@@ -34,17 +34,17 @@ func TestConfigureAndRunVersion(t *testing.T) {
 			fmt.Sprintf("Client version: %s\nServer version: %s\n", version.Version, "server-version"),
 		},
 		{
-			&versionOptions{false, true},
+			&versionOptions{false, true, false, ""},
 			mkMockClient("", nil, nil),
 			fmt.Sprintf("Client version: %s\n", version.Version),
 		},
 		{
-			&versionOptions{true, true},
+			&versionOptions{true, true, false, ""},
 			mkMockClient("", nil, nil),
 			fmt.Sprintf("%s\n", version.Version),
 		},
 		{
-			&versionOptions{true, false},
+			&versionOptions{true, false, false, ""},
 			mkMockClient("server-version", nil, nil),
 			fmt.Sprintf("%s\n%s\n", version.Version, "server-version"),
 		},

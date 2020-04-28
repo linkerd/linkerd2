@@ -20,6 +20,7 @@ spec:
         app: inject-test-terminus
         linkerd.io/control-plane-ns: fake-ns
         linkerd.io/proxy-deployment: inject-test-terminus
+        linkerd.io/workload-ns: ""
     spec:
       containers:
       - args:
@@ -65,7 +66,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy

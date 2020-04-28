@@ -20,6 +20,7 @@ items:
           app: web-svc
           linkerd.io/control-plane-ns: linkerd
           linkerd.io/proxy-deployment: web
+          linkerd.io/workload-ns: emojivoto
       spec:
         containers:
         - env:
@@ -101,7 +102,7 @@ items:
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
-              path: /metrics
+              path: /live
               port: 4191
             initialDelaySeconds: 10
           name: linkerd-proxy
@@ -133,7 +134,7 @@ items:
           - "2102"
           - --inbound-ports-to-ignore
           - 4190,4191
-          image: gcr.io/linkerd-io/proxy-init:v1.3.1
+          image: gcr.io/linkerd-io/proxy-init:v1.3.2
           imagePullPolicy: IfNotPresent
           name: linkerd-init
           resources:
@@ -178,6 +179,7 @@ items:
           app: emoji-svc
           linkerd.io/control-plane-ns: linkerd
           linkerd.io/proxy-deployment: emoji
+          linkerd.io/workload-ns: emojivoto
       spec:
         containers:
         - env:
@@ -254,7 +256,7 @@ items:
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
-              path: /metrics
+              path: /live
               port: 4191
             initialDelaySeconds: 10
           name: linkerd-proxy
@@ -286,7 +288,7 @@ items:
           - "2102"
           - --inbound-ports-to-ignore
           - 4190,4191
-          image: gcr.io/linkerd-io/proxy-init:v1.3.1
+          image: gcr.io/linkerd-io/proxy-init:v1.3.2
           imagePullPolicy: IfNotPresent
           name: linkerd-init
           resources:

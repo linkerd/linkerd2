@@ -31,12 +31,13 @@ type (
 	// case that this endpoint is not associated with a pod and maps
 	// to some other IP (i.e. a remote service gateway)
 	Address struct {
-		IP        string
-		Port      Port
-		Pod       *corev1.Pod
-		OwnerName string
-		OwnerKind string
-		Identity  string
+		IP                string
+		Port              Port
+		Pod               *corev1.Pod
+		OwnerName         string
+		OwnerKind         string
+		Identity          string
+		AuthorityOverride string
 	}
 
 	// AddressSet is a set of Address, indexed by ID.
@@ -90,6 +91,7 @@ type (
 	portPublisher struct {
 		id         ServiceID
 		targetPort namedPort
+		srcPort    Port
 		hostname   string
 		log        *logging.Entry
 		k8sAPI     *k8s.API
@@ -392,6 +394,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 	port := &portPublisher{
 		listeners:  []EndpointUpdateListener{},
 		targetPort: targetPort,
+		srcPort:    srcPort,
 		hostname:   hostname,
 		exists:     exists,
 		k8sAPI:     sp.k8sAPI,
@@ -465,10 +468,16 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					Namespace: endpoints.ObjectMeta.Namespace,
 				}
 
+				var authorityOverride string
+				if fqName, ok := endpoints.Annotations[consts.RemoteServiceFqName]; ok {
+					authorityOverride = fmt.Sprintf("%s:%d", fqName, pp.srcPort)
+				}
+
 				addresses[id] = Address{
-					IP:       endpoint.IP,
-					Port:     resolvedPort,
-					Identity: endpoints.Annotations[consts.RemoteGatewayIdentity],
+					IP:                endpoint.IP,
+					Port:              resolvedPort,
+					Identity:          endpoints.Annotations[consts.RemoteGatewayIdentity],
+					AuthorityOverride: authorityOverride,
 				}
 				continue
 			}
@@ -570,9 +579,9 @@ func (pp *portPublisher) unsubscribe(listener EndpointUpdateListener) {
 
 // getTargetPort returns the port specified as an argument if no service is
 // present. If the service is present and it has a port spec matching the
-// specified port and a target port configured, it returns the name of the
-// service's port (not the name of the target pod port), so that it can be
-// looked up in the endpoints API response, which uses service port names.
+// specified port, it returns the name of the service's port (not the name
+// of the target pod port), so that it can be looked up in the endpoints API
+// response, which uses service port names.
 func getTargetPort(service *corev1.Service, port Port) namedPort {
 	// Use the specified port as the target port by default
 	targetPort := intstr.FromInt(int(port))
@@ -581,15 +590,32 @@ func getTargetPort(service *corev1.Service, port Port) namedPort {
 		return targetPort
 	}
 
-	// If a port spec exists with a port matching the specified port and a target
-	// port configured, use that port spec's name as the target port
+	// If a port spec exists with a port matching the specified port use that
+	// port spec's name as the target port
 	for _, portSpec := range service.Spec.Ports {
-		if portSpec.Port == int32(port) && portSpec.TargetPort != intstr.FromInt(0) {
+		if portSpec.Port == int32(port) {
 			return intstr.FromString(portSpec.Name)
 		}
 	}
 
 	return targetPort
+}
+
+func addressChanged(oldAddress Address, newAddress Address) bool {
+
+	if oldAddress.Identity != newAddress.Identity {
+		// in this case the identity could have changed; this can happen when for
+		// example a mirrored service is reassigned to a new gateway with a different
+		// identity and the service mirroring controller picks that and updates the
+		// identity
+		return true
+	}
+
+	if oldAddress.Pod != nil && newAddress.Pod != nil {
+		// if these addresses are owned by pods we can check the resource versions
+		return oldAddress.Pod.ResourceVersion != newAddress.Pod.ResourceVersion
+	}
+	return false
 }
 
 func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSet) {
@@ -598,9 +624,14 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 	// an add of the new version.
 	addAddesses := make(map[ID]Address)
 	removeAddresses := make(map[ID]Address)
-	for id, address := range newAddresses.Addresses {
-		if _, ok := oldAddresses.Addresses[id]; !ok {
-			addAddesses[id] = address
+	for id, newAddress := range newAddresses.Addresses {
+		if oldAddress, ok := oldAddresses.Addresses[id]; ok {
+			if addressChanged(oldAddress, newAddress) {
+				addAddesses[id] = newAddress
+			}
+		} else {
+			// this is a new address, we need to add it
+			addAddesses[id] = newAddress
 		}
 	}
 	for id, address := range oldAddresses.Addresses {

@@ -23,15 +23,16 @@ import (
 type renderTapEventFunc func(*pb.TapEvent, string) string
 
 type tapOptions struct {
-	namespace   string
-	toResource  string
-	toNamespace string
-	maxRps      float32
-	scheme      string
-	method      string
-	authority   string
-	path        string
-	output      string
+	namespace     string
+	toResource    string
+	toNamespace   string
+	maxRps        float32
+	scheme        string
+	method        string
+	authority     string
+	path          string
+	output        string
+	labelSelector string
 }
 
 type endpoint struct {
@@ -102,15 +103,16 @@ type tapEvent struct {
 
 func newTapOptions() *tapOptions {
 	return &tapOptions{
-		namespace:   "default",
-		toResource:  "",
-		toNamespace: "",
-		maxRps:      100.0,
-		scheme:      "",
-		method:      "",
-		authority:   "",
-		path:        "",
-		output:      "",
+		namespace:     "default",
+		toResource:    "",
+		toNamespace:   "",
+		maxRps:        maxRps,
+		scheme:        "",
+		method:        "",
+		authority:     "",
+		path:          "",
+		output:        "",
+		labelSelector: "",
 	}
 }
 
@@ -169,16 +171,17 @@ func newCmdTap() *cobra.Command {
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			requestParams := util.TapRequestParams{
-				Resource:    strings.Join(args, "/"),
-				Namespace:   options.namespace,
-				ToResource:  options.toResource,
-				ToNamespace: options.toNamespace,
-				MaxRps:      options.maxRps,
-				Scheme:      options.scheme,
-				Method:      options.method,
-				Authority:   options.authority,
-				Path:        options.path,
-				Extract:     options.output == jsonOutput,
+				Resource:      strings.Join(args, "/"),
+				Namespace:     options.namespace,
+				ToResource:    options.toResource,
+				ToNamespace:   options.toNamespace,
+				MaxRps:        options.maxRps,
+				Scheme:        options.scheme,
+				Method:        options.method,
+				Authority:     options.authority,
+				Path:          options.path,
+				Extract:       options.output == jsonOutput,
+				LabelSelector: options.labelSelector,
 			}
 
 			err := options.validate()
@@ -218,6 +221,8 @@ func newCmdTap() *cobra.Command {
 		"Display requests with paths that start with this prefix")
 	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output,
 		fmt.Sprintf("Output format. One of: \"%s\", \"%s\"", wideOutput, jsonOutput))
+	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector,
+		"Selector (label query) to filter on, supports '=', '==', and '!='")
 
 	return cmd
 }

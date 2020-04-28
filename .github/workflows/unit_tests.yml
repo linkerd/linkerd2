@@ -28,7 +28,7 @@ jobs:
     name: JS unit tests
     runs-on: ubuntu-18.04
     container:
-      image: node:10.16.0-stretch
+      image: node:14-stretch
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -40,4 +40,4 @@ jobs:
         export PATH="$HOME/.yarn/bin:$PATH"
         export NODE_ENV=test
         bin/web
-        bin/web test --reporters=jest-dot-reporter
+        bin/web test --reporters="jest-dot-reporter" --reporters="./gh_ann_reporter.js"

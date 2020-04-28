@@ -2,10 +2,10 @@
 
 set -eu
 
-GO111MODULE=on go mod vendor
-git clone https://github.com/kubernetes/code-generator.git vendor/k8s.io/code-generator
-# check out code-generator at the revision Gopkg.lock had previously referenced
-git -C vendor/k8s.io/code-generator checkout aae79feb89bdded3679da91fd8c19b6dfcbdb79a
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+gen_ver=$( awk '/k8s.io\/code-generator/ { print $2 }' "$rootdir/go.mod" )
+codegen_pkg=${GOPATH}/pkg/mod/k8s.io/code-generator@${gen_ver}
 
 # ROOT_PACKAGE :: the package that is the target for code generation
 ROOT_PACKAGE=github.com/linkerd/linkerd2
@@ -14,8 +14,18 @@ CUSTOM_RESOURCE_NAME=serviceprofile
 # CUSTOM_RESOURCE_VERSION :: the version of the resource
 CUSTOM_RESOURCE_VERSION=v1alpha2
 
-bindir=$( cd "${0%/*}" && pwd )
-rootdir=$( cd "$bindir"/.. && pwd )
+rm -f "${rootdir}/controller/gen/apis/${CUSTOM_RESOURCE_NAME}/${CUSTOM_RESOURCE_VERSION}/zz_generated.deepcopy.go"
+rm -rf "${rootdir}/controller/gen/client"
+rm -rf "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen"
+
+chmod +x "${codegen_pkg}/generate-groups.sh"
 
 # run the code-generator entrypoint script
-"$rootdir"/vendor/k8s.io/code-generator/generate-groups.sh all "$ROOT_PACKAGE/controller/gen/client" "$ROOT_PACKAGE/controller/gen/apis" "$CUSTOM_RESOURCE_NAME:$CUSTOM_RESOURCE_VERSION"
+GO111MODULE="on" "${codegen_pkg}/generate-groups.sh" \
+  "deepcopy,client,informer,lister" \
+  "${ROOT_PACKAGE}/controller/gen/client" \
+  "${ROOT_PACKAGE}/controller/gen/apis" \
+  "${CUSTOM_RESOURCE_NAME}:${CUSTOM_RESOURCE_VERSION}"
+
+# copy generated code out of GOPATH
+cp -R "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen" "controller/"

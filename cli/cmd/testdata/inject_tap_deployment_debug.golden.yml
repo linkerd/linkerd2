@@ -35,6 +35,7 @@ spec:
         linkerd.io/control-plane-component: tap
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-tap
+        linkerd.io/workload-ns: linkerd
     spec:
       containers:
       - args:
@@ -152,7 +153,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -187,7 +188,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.1
+        image: gcr.io/linkerd-io/proxy-init:v1.3.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

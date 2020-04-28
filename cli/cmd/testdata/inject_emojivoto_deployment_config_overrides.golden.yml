@@ -27,6 +27,7 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web
+        linkerd.io/workload-ns: emojivoto
     spec:
       containers:
       - env:
@@ -108,7 +109,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 9998
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -149,7 +150,7 @@ spec:
         - 4190,9998,7777,8888
         - --outbound-ports-to-ignore
         - "9999"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.1
+        image: gcr.io/linkerd-io/proxy-init:v1.3.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

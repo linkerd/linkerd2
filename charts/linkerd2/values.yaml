@@ -56,7 +56,7 @@ global:
     image:
       name: gcr.io/linkerd-io/proxy-init
       pullPolicy: *image_pull_policy
-      version: v1.3.1
+      version: v1.3.2
     resources:
       cpu:
         limit: 100m
@@ -74,6 +74,7 @@ global:
   controllerComponentLabel: linkerd.io/control-plane-component
   controllerNamespaceLabel: linkerd.io/control-plane-ns
   linkerdNamespaceLabel: linkerd.io/is-control-plane
+  workloadNamespaceLabel: linkerd.io/workload-ns
 
 # enforced host validation regular expression
 enforcedHostRegexp: ""
@@ -170,7 +171,8 @@ nodeSelector:
   beta.kubernetes.io/os: linux
 
 smiMetrics:
-  image: deislabs/smi-metrics:v0.2.0
+  enabled: false
+  image: deislabs/smi-metrics:v0.2.1
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
@@ -181,15 +183,9 @@ tracing:
   enabled: false
   collector:
     name: linkerd-collector
-    image: omnition/opencensus-collector:0.1.10
+    image: omnition/opencensus-collector:0.1.11
     resources:
-      cpu:
-        limit: 1
-        request: 200m
-      memory:
-        limit: 2Gi
-        request: 400Mi
   jaeger:
     name: linkerd-jaeger
-    image: jaegertracing/all-in-one:1.8
+    image: jaegertracing/all-in-one:1.17.1
     resources:

@@ -15,7 +15,7 @@ fi
 release_channel="$1"
 
 # Verify the release channel.
-release_channel_regex="(edge|stable)"
+release_channel_regex="^(edge|stable)$"
 if [[ ! $release_channel =~ $release_channel_regex ]]; then
     echo "Error: valid release channels: edge, stable"
     echo "Usage:"

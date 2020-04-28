@@ -112,7 +112,7 @@ jobs:
         export PATH="`pwd`/bin:$PATH"
         echo "$GITCOOKIE_SH" | bash
         version="$($HOME/.linkerd version --client --short | tr -cd '[:alnum:]-')"
-        bin/test-run $HOME/.linkerd linkerd-$version
+        bin/test-run $HOME/.linkerd
     - name: CNI tests
       run: |
         export TAG="$($HOME/.linkerd version --client --short)"

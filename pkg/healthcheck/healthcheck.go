@@ -160,11 +160,11 @@ const HintBaseURL = "https://linkerd.io/checks/#"
 
 // AllowedClockSkew sets the allowed skew in clock synchronization
 // between the system running inject command and the node(s), being
-// based on assumed node's heartbeat interval (<= 60 seconds) plus default TLS
+// based on assumed node's heartbeat interval (5 minutes) plus default TLS
 // clock skew allowance.
 //
 // TODO: Make this default value overridiable, e.g. by CLI flag
-const AllowedClockSkew = time.Minute + tls.DefaultClockSkewAllowance
+const AllowedClockSkew = 5*time.Minute + tls.DefaultClockSkewAllowance
 
 var linkerdHAControlPlaneComponents = []string{
 	"linkerd-controller",
@@ -175,20 +175,24 @@ var linkerdHAControlPlaneComponents = []string{
 	"linkerd-tap",
 }
 
+// ExpectedServiceAccountNames is a list of the service accounts that a healthy
+// Linkerd installation should have. Note that linkerd-heartbeat is optional,
+// so it doesn't appear here.
+var ExpectedServiceAccountNames = []string{
+	"linkerd-controller",
+	"linkerd-destination",
+	"linkerd-grafana",
+	"linkerd-identity",
+	"linkerd-prometheus",
+	"linkerd-proxy-injector",
+	"linkerd-sp-validator",
+	"linkerd-web",
+	"linkerd-tap",
+}
+
 var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
-
-	expectedServiceAccountNames = []string{
-		"linkerd-controller",
-		"linkerd-grafana",
-		"linkerd-identity",
-		"linkerd-prometheus",
-		"linkerd-proxy-injector",
-		"linkerd-sp-validator",
-		"linkerd-web",
-		"linkerd-tap",
-	}
 )
 
 // Resource provides a way to describe a Kubernetes object, kind, and name.
@@ -499,6 +503,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "no clock skew detected",
 					hintAnchor:  "pre-k8s-clock-skew",
+					warning:     true,
 					check: func(context.Context) error {
 						return hc.checkClockSkew()
 					},
@@ -600,9 +605,10 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "control plane replica sets are ready",
-					hintAnchor:  "l5d-existence-replicasets",
-					fatal:       true,
+					description:   "control plane replica sets are ready",
+					hintAnchor:    "l5d-existence-replicasets",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
 					check: func(context.Context) error {
 						controlPlaneReplicaSet, err := hc.kubeAPI.GetReplicaSets(hc.ControlPlaneNamespace)
 						if err != nil {
@@ -612,9 +618,10 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "no unschedulable pods",
-					hintAnchor:  "l5d-existence-unschedulable-pods",
-					fatal:       true,
+					description:   "no unschedulable pods",
+					hintAnchor:    "l5d-existence-unschedulable-pods",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
 					check: func(context.Context) error {
 						// do not save this into hc.controlPlanePods, as this check may
 						// succeed prior to all expected control plane pods being up
@@ -700,7 +707,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-sa",
 					fatal:       true,
 					check: func(context.Context) error {
-						return hc.checkServiceAccounts(expectedServiceAccountNames)
+						return hc.checkServiceAccounts(ExpectedServiceAccountNames)
 					},
 				},
 				{
@@ -1140,11 +1147,16 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
+						outdatedPods := []string{}
 						for _, pod := range pods {
 							err = hc.latestVersions.Match(pod.ProxyVersion)
 							if err != nil {
-								return fmt.Errorf("%s: %s", pod.Name, err)
+								outdatedPods = append(outdatedPods, fmt.Sprintf("\t* %s (%s)", pod.Name, pod.ProxyVersion))
 							}
+						}
+						if len(outdatedPods) > 0 {
+							podList := strings.Join(outdatedPods, "\n")
+							return fmt.Errorf("Some data plane pods are not running the current version:\n%s", podList)
 						}
 						return nil
 					},

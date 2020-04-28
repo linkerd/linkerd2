@@ -56,7 +56,7 @@ func (conf *ResourceConfig) uninjectPodSpec(report *Report) {
 
 	volumes := []v1.Volume{}
 	for _, volume := range t.Volumes {
-		if volume.Name != k8s.IdentityEndEntityVolumeName {
+		if volume.Name != k8s.IdentityEndEntityVolumeName && volume.Name != k8s.PodInfoVolumeName {
 			volumes = append(volumes, volume)
 		}
 	}

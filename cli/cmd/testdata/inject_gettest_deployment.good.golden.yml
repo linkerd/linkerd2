@@ -14,6 +14,7 @@ spec:
         app: get-test
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: get-test-deploy-injected-1
+        linkerd.io/workload-ns: ""
     spec:
       containers:
       - args:
@@ -101,7 +102,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -133,7 +134,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.3.1
+        image: gcr.io/linkerd-io/proxy-init:v1.3.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -175,6 +176,7 @@ spec:
         app: get-test
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: get-test-deploy-injected-2
+        linkerd.io/workload-ns: ""
     spec:
       containers:
       - args:
@@ -262,7 +264,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -294,7 +296,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.3.1
+        image: gcr.io/linkerd-io/proxy-init:v1.3.2
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

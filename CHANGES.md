@@ -1,3 +1,165 @@
+## edge-20.4.4
+
+This edge release fixes a packaging issue in `edge-20.4.3`.
+
+_From `edge.20.4.3` release notes_:
+
+This edge release adds functionality to the CLI to output more detail and
+includes changes which support the multi-cluster functionality. Also, the helm
+support has been expanded to make installation more configurable. Finally, the
+HA reliability is improved by ensuring that control plane pods are restarted
+with a rolling strategy
+
+* CLI
+  * Added output to the `linkerd check --proxy` command to list all data
+    plane pods which are not up-to-date rather than just printing the first
+    one it encounters
+  * Added a `--proxy` flag to the `linkerd version` command which lists all
+    proxy versions running in the cluster and the number of pods running
+    each version
+  * Lifted requirement of using --unmeshed for linkerd stat when querying
+    TrafficSplit resources
+  * Added support for multi-stage installs with Add-Ons
+* Controller
+  * Added a rolling update strategy to Linkerd deployments that have
+    multiple replicas during HA deployments to ensure that at most
+    one pod begins terminating before a new pod ready is ready
+  * Added a new label for the proxy injector to write to the template,
+    `linkerd.io/workload-ns` which indicates the namespace of the workload/pod
+* Internal
+  * Added a [security policy](https://help.github.com/en/github/managing-security-vulnerabilities/adding-a-security-policy-to-your-repository)
+    to facilitate conversations around security
+* Helm
+  * Changed charts to use downwardAPI to mount labels to the proxy container
+    making them easier to identify
+* Proxy
+  * Changed the Linkerd proxy endpoint for liveness to use the new `/live` admin
+    endpoint instead of the `/metrics` endpoint, because the `/live` endpoint
+    returns a smaller payload
+  * Added a per-endpoint authority-override feature to support
+    multi-cluster gateways
+
+## edge-20.4.3
+
+**This release is superseded by `edge-20.4.4`**
+
+This edge release adds functionality to the CLI to output more detail and
+includes changes which support the multi-cluster functionality. Also, the helm
+support has been expanded to make installation more configurable. Finally, the
+HA reliability is improved by ensuring that control plane pods are restarted
+with a rolling strategy
+
+* CLI
+  * Added output to the `linkerd check --proxy` command to list all data
+    plane pods which are not up-to-date rather than just printing the first
+    one it encounters
+  * Added a `--proxy` flag to the `linkerd version` command which lists all
+    proxy versions running in the cluster and the number of pods running
+    each version
+  * Lifted requirement of using --unmeshed for linkerd stat when querying
+    TrafficSplit resources
+  * Added support for multi-stage installs with Add-Ons
+* Controller
+  * Added a rolling update strategy to Linkerd deployments that have
+    multiple replicas during HA deployments to ensure that at most
+    one pod begins terminating before a new pod ready is ready
+  * Added a new label for the proxy injector to write to the template,
+    `linkerd.io/workload-ns` which indicates the namespace of the workload/pod
+* Internal
+  * Added a [security policy](https://help.github.com/en/github/managing-security-vulnerabilities/adding-a-security-policy-to-your-repository)
+    to facilitate conversations around security
+* Helm
+  * Changed charts to use downwardAPI to mount labels to the proxy container
+    making them easier to identify
+* Proxy
+  * Changed the Linkerd proxy endpoint for liveness to use the new `/live` admin
+    endpoint instead of the `/metrics` endpoint, because the `/live` endpoint
+    returns a smaller payload
+  * Added a per-endpoint authority-override feature to support
+    multi-cluster gateways
+
+## edge-20.4.2
+
+This release brings a number of CLI fixes and Controller improvements.
+
+* CLI
+  * Fixed a bug that caused pods to crash after upgrade if
+    `--skip-outbound-ports` or `--skip-inbound-ports` were used
+  * Added `unmeshed` flag to the `stat` command, such that unmeshed resources
+    are only displayed if the user opts-in
+  * Added a `--smi-metrics` flag to `install`, to allow installation of the
+    experimental `linkerd-smi-metrics` component
+  * Fixed a bug in `linkerd stat`, causing incorrect output formatting when using
+    the `--o wide` flag
+  * Fixed a bug, causing `linkerd uninstall` to fail when attempting to delete
+    PSPs
+* Controller
+  * Improved the anti-affinity of `linkerd-smi-metrics` deployment to avoid
+    pod scheduling problems during `upgrade`
+  * Improved endpoints change detection in the `linkerd-destination` service, enabling
+    mirrored remote services to change cluster gateways
+  * Added `operationID` field to tap OpenAPI response to prevent issues during
+    upgrade from 2.6 to 2.7
+* Proxy
+  * Added a new protocol detection timeout to prevent clients from consuming
+    resources indefinitely when not sending any data
+
+## edge-20.4.1
+
+This release introduces some cool new functionalities, all provided by our
+awesome community of contributors! Also two bugs were fixed that were introduced
+since edge-20.3.2.
+
+* CLI
+  * Added `linkerd uninstall` command to uninstall the control plane (thanks
+    @Matei207!)
+  * Fixed a bug causing `linkerd routes -o wide` to not show the proper actual
+    success rate
+* Controller
+  * Fail proxy injection if the pod spec has `automountServiceAccountToken`
+    disabled (thanks @mayankshah1607!)
+* Web UI
+  * Added a route dashboard to Grafana (thanks @lundbird!)
+* Proxy
+  * Fixed a bug causing the proxy's inbound to spuriously return 503 timeouts
+
+## edge-20.3.4
+
+This release introduces several fixes and improvements to the CLI.
+
+* CLI
+  * Added support for kubectl-style label selectors in many CLI commands (thanks
+    @mayankshah1607!)
+  * Fixed the path regex in service profiles generated from proto files without
+    a package name (thanks @amariampolskiy!)
+  * Fixed an error when injecting Cronjobs that have no metadata
+  * Relaxed the clock skew check to match the default node heartbeat interval
+    on Kubernetes 1.17 and made this check a warning
+  * Fixed a bug where the linkerd-smi-metrics pod could not be created on
+    clusters with pod security policy enabled
+* Internal
+  * Upgraded tracing components to more recent versions and improved resource
+    defaults (thanks @Pothulapati!)
+
+## edge-20.3.3
+
+This release introduces new experimental CLI commands for querying metrics using
+the Service Mesh Interface (SMI) and for multi-cluster support via service
+mirroring.
+
+If you would like to learn more about service mirroring or SMI, or are
+interested in experimenting with these features, please join us in
+[Linkerd Slack](https://slack.linkerd.io) for help and feedback.
+
+* CLI
+  * Added experimental `linkerd cluster` commands for managing multi-cluster
+    service mirroring
+  * Added the experimental `linkerd alpha clients` command, which uses the
+    smi-metrics API to display client-side metrics from each of a resource's
+    clients
+  * Added retries to some `linkerd check` checks to prevent spurious failures
+    when run immediately after cluster creation or Linkerd installation
+
 ## edge-20.3.2
 
 This release introduces substantial proxy improvements as well as
@@ -5,7 +167,7 @@ new observability and security functionality.
 
 * CLI
   * Added the `linkerd alpha stat` command, which uses the smi-metrics
-    API; the latter enables access to metrics to be controlled with RBAC 
+    API; the latter enables access to metrics to be controlled with RBAC
 * Controller
   * Added support for configuring service profile timeouts
     `(x-linkerd-timeout)` via OpenAPI spec (thanks @lewiscowper!)
@@ -40,7 +202,7 @@ experimenting with this feature, please join us in
 * Proxy
   * Fixed a bug that could cause the proxy's load balancer to stop processing
     updates from service discovery.
-    
+
 ## edge-20.2.3
 
 This release introduces the first optional add-on `tracing`, added through the

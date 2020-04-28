@@ -25,16 +25,17 @@ import (
 )
 
 type topOptions struct {
-	namespace   string
-	toResource  string
-	toNamespace string
-	maxRps      float32
-	scheme      string
-	method      string
-	authority   string
-	path        string
-	hideSources bool
-	routes      bool
+	namespace     string
+	toResource    string
+	toNamespace   string
+	maxRps        float32
+	scheme        string
+	method        string
+	authority     string
+	path          string
+	hideSources   bool
+	routes        bool
+	labelSelector string
 }
 
 type topRequest struct {
@@ -258,16 +259,17 @@ const (
 
 func newTopOptions() *topOptions {
 	return &topOptions{
-		namespace:   "default",
-		toResource:  "",
-		toNamespace: "",
-		maxRps:      100.0,
-		scheme:      "",
-		method:      "",
-		authority:   "",
-		path:        "",
-		hideSources: false,
-		routes:      false,
+		namespace:     "default",
+		toResource:    "",
+		toNamespace:   "",
+		maxRps:        maxRps,
+		scheme:        "",
+		method:        "",
+		authority:     "",
+		path:          "",
+		hideSources:   false,
+		routes:        false,
+		labelSelector: "",
 	}
 }
 
@@ -317,15 +319,16 @@ func newCmdTop() *cobra.Command {
 		ValidArgs: util.ValidTargets,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			requestParams := util.TapRequestParams{
-				Resource:    strings.Join(args, "/"),
-				Namespace:   options.namespace,
-				ToResource:  options.toResource,
-				ToNamespace: options.toNamespace,
-				MaxRps:      options.maxRps,
-				Scheme:      options.scheme,
-				Method:      options.method,
-				Authority:   options.authority,
-				Path:        options.path,
+				Resource:      strings.Join(args, "/"),
+				Namespace:     options.namespace,
+				ToResource:    options.toResource,
+				ToNamespace:   options.toNamespace,
+				MaxRps:        options.maxRps,
+				Scheme:        options.scheme,
+				Method:        options.method,
+				Authority:     options.authority,
+				Path:          options.path,
+				LabelSelector: options.labelSelector,
 			}
 
 			if options.hideSources {
@@ -374,6 +377,7 @@ func newCmdTop() *cobra.Command {
 		"Display requests with paths that start with this prefix")
 	cmd.PersistentFlags().BoolVar(&options.hideSources, "hide-sources", options.hideSources, "Hide the source column")
 	cmd.PersistentFlags().BoolVar(&options.routes, "routes", options.routes, "Display data per route instead of per path")
+	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector, "Selector (label query) to filter on, supports '=', '==', and '!='")
 
 	return cmd
 }

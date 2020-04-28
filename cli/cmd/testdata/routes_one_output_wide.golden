@@ -1,0 +1,6 @@
+ROUTE       SERVICE   EFFECTIVE_SUCCESS   EFFECTIVE_RPS   ACTUAL_SUCCESS   ACTUAL_RPS   LATENCY_P50   LATENCY_P95   LATENCY_P99
+/a           foobar             100.00%          1.5rps          100.00%       1.5rps         123ms         123ms         123ms
+/b           foobar             100.00%          1.0rps          100.00%       1.0rps         123ms         123ms         123ms
+/c           foobar                   -               -                -            -             -             -             -
+[DEFAULT]    foobar             100.00%          0.5rps          100.00%       0.5rps         123ms         123ms         123ms
+

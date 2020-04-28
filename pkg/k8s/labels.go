@@ -70,6 +70,10 @@ const (
 	// CronJob that this proxy belongs to.
 	ProxyCronJobLabel = Prefix + "/proxy-cronjob"
 
+	// WorkloadNamespaceLabel is injected into mesh-enabled apps, identifying the
+	// Namespace that this proxy belongs to.
+	WorkloadNamespaceLabel = Prefix + "/workload-ns"
+
 	/*
 	 * Annotations
 	 */
@@ -242,6 +246,10 @@ const (
 	// volume mounted into each proxy to store identity credentials.
 	IdentityEndEntityVolumeName = "linkerd-identity-end-entity"
 
+	// PodInfoVolumeName is the name assigned to the
+	// volume mounted into each proxy to store pod labels.
+	PodInfoVolumeName = "podinfo"
+
 	// IdentityIssuerSecretName is the name of the Secret that stores issuer credentials.
 	IdentityIssuerSecretName = "linkerd-identity-issuer"
 
@@ -377,12 +385,27 @@ const (
 	// RemoteGatewayIdentity follows the same kind of logic as RemoteGatewayNameLabel
 	RemoteGatewayIdentity = SvcMirrorPrefix + "/remote-gateway-identity"
 
+	// GatewayIdentity can be found on the remote gateway service
+	GatewayIdentity = SvcMirrorPrefix + "/gateway-identity"
+
+	// GatewayProbePort the port on which the gateway can be probed
+	GatewayProbePort = SvcMirrorPrefix + "/probe-port"
+
+	// GatewayProbePeriod the interval at which the health of the gateway should be probed
+	GatewayProbePeriod = SvcMirrorPrefix + "/probe-period"
+
+	// GatewayProbePath the path at which the health of the gateway should be probed
+	GatewayProbePath = SvcMirrorPrefix + "/probe-path"
+
 	// ConfigKeyName is the key in the secret that stores the kubeconfig needed to connect
 	// to a remote cluster
 	ConfigKeyName = "kubeconfig"
 
 	// GatewayPortName is the name of the incoming port of the gateway
 	GatewayPortName = "incoming-port"
+
+	// ServiceMirrorLabel is the value used in the controller component label
+	ServiceMirrorLabel = "servicemirror"
 )
 
 // CreatedByAnnotationValue returns the value associated with

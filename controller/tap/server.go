@@ -59,6 +59,10 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 		return status.Error(codes.InvalidArgument, "TapByResource received nil target ResourceSelection")
 	}
 	res := req.GetTarget().GetResource()
+	labelSelector, err := getLabelSelector(req)
+	if err != nil {
+		return err
+	}
 	if res == nil {
 		return status.Error(codes.InvalidArgument, "TapByResource received nil target Resource")
 	}
@@ -66,7 +70,7 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 		req.MaxRps = defaultMaxRps
 	}
 
-	objects, err := s.k8sAPI.GetObjects(res.GetNamespace(), res.GetType(), res.GetName(), labels.Everything())
+	objects, err := s.k8sAPI.GetObjects(res.GetNamespace(), res.GetType(), res.GetName(), labelSelector)
 	if err != nil {
 		return apiUtil.GRPCError(err)
 	}
@@ -650,4 +654,16 @@ func (s *GRPCTapServer) resourceForIP(ip *public.IPAddress) (runtime.Object, err
 	}
 
 	return singleRunningPod, nil
+}
+
+func getLabelSelector(req *public.TapByResourceRequest) (labels.Selector, error) {
+	labelSelector := labels.Everything()
+	if s := req.GetTarget().GetLabelSelector(); s != "" {
+		var err error
+		labelSelector, err = labels.Parse(s)
+		if err != nil {
+			return nil, fmt.Errorf("invalid label selector \"%s\": %s", s, err)
+		}
+	}
+	return labelSelector, nil
 }

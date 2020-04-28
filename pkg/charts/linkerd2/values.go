@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/charts"
-
 	"github.com/imdario/mergo"
+	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
@@ -61,7 +60,7 @@ type (
 		WebResources           *Resources `json:"webResources"`
 
 		// Addon Structures
-		Tracing map[string]interface{} `json:"tracing"`
+		Tracing Tracing `json:"tracing"`
 	}
 
 	// Global values common across all charts
@@ -72,6 +71,7 @@ type (
 		CliVersion               string `json:"cliVersion"`
 		ControllerComponentLabel string `json:"controllerComponentLabel"`
 		ControllerNamespaceLabel string `json:"controllerNamespaceLabel"`
+		WorkloadNamespaceLabel   string `json:"workloadNamespaceLabel"`
 		CreatedByAnnotation      string `json:"createdByAnnotation"`
 		ProxyInjectAnnotation    string `json:"proxyInjectAnnotation"`
 		ProxyInjectDisabled      string `json:"proxyInjectDisabled"`
@@ -206,7 +206,8 @@ type (
 	// SMIMetrics has all the SMIMetrics's Helm variables
 	SMIMetrics struct {
 		*TLS
-		Image string `json:"image"`
+		Enabled bool   `json:"enabled"`
+		Image   string `json:"image"`
 	}
 
 	// TLS has a pair of PEM-encoded key and certificate variables used in the

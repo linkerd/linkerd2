@@ -1,9 +1,9 @@
 package k8s
 
 import (
-	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	spclient "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
+	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	"k8s.io/client-go/rest"
 
 	// Load all the auth plugins for the cloud providers.

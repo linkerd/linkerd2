@@ -16,6 +16,8 @@ MAINTAINERS.md @klingerf @olix0r
 
 /pkg @adleong @alpeb
 
+Dockerfile* @adleong @alpeb @klingerf @olix0r @siggy
+
 # These do not have clear owners today
 # /grafana
 # /proto

@@ -39,6 +39,7 @@ func TestNewValues(t *testing.T) {
 			CliVersion:               "linkerd/cli dev-undefined",
 			ControllerComponentLabel: "linkerd.io/control-plane-component",
 			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
+			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
 			CreatedByAnnotation:      "linkerd.io/created-by",
 			ProxyInjectAnnotation:    "linkerd.io/inject",
 			ProxyInjectDisabled:      "disabled",
@@ -125,7 +126,7 @@ func TestNewValues(t *testing.T) {
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
 		Tap:              &Tap{TLS: &TLS{}},
 		SMIMetrics: &SMIMetrics{
-			Image: "deislabs/smi-metrics:v0.2.0",
+			Image: "deislabs/smi-metrics:v0.2.1",
 			TLS:   &TLS{},
 		},
 	}

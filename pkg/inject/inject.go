@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -117,6 +118,7 @@ type ResourceConfig struct {
 type patch struct {
 	l5dcharts.Values
 	PathPrefix            string                    `json:"pathPrefix"`
+	AddRootMetadata       bool                      `json:"addRootMetadata"`
 	AddRootAnnotations    bool                      `json:"addRootAnnotations"`
 	Annotations           map[string]string         `json:"annotations"`
 	AddRootLabels         bool                      `json:"addRootLabels"`
@@ -340,6 +342,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyDeploymentLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *corev1.ReplicationController:
@@ -350,6 +353,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyReplicationControllerLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(v.Spec.Template)
 
 	case *appsv1.ReplicaSet:
@@ -360,6 +364,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyReplicaSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *batchv1.Job:
@@ -370,6 +375,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyJobLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *appsv1.DaemonSet:
@@ -380,6 +386,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyDaemonSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *appsv1.StatefulSet:
@@ -390,6 +397,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyStatefulSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *corev1.Namespace:
@@ -411,6 +419,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyCronJobLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.JobTemplate.Spec.Template)
 
 	case *corev1.Pod:
@@ -440,7 +449,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
 			}
 		}
-
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 	default:
 		// unmarshal the metadata of other resource kinds like namespace, secret,
 		// config map etc. to be used in the report struct
@@ -534,6 +543,14 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		conf.injectProxyInit(values)
 	}
 
+	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
+
+	values.Global.Proxy.Trace = &l5dcharts.Trace{}
+	if trace := conf.trace(); trace != nil {
+		log.Infof("tracing enabled: remote service=%s, service account=%s", trace.CollectorSvcAddr, trace.CollectorSvcAccount)
+		values.Global.Proxy.Trace = trace
+	}
+
 	idctx := conf.identityContext()
 	if idctx == nil {
 		values.Global.Proxy.DisableIdentity = true
@@ -543,12 +560,6 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	values.Global.IdentityTrustDomain = idctx.GetTrustDomain()
 	values.Identity = &l5dcharts.Identity{}
 
-	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
-
-	if trace := conf.trace(); trace != nil {
-		log.Infof("tracing enabled: remote service=%s, service account=%s", trace.CollectorSvcAddr, trace.CollectorSvcAccount)
-		values.Global.Proxy.Trace = trace
-	}
 }
 
 func (conf *ResourceConfig) injectProxyInit(values *patch) {
@@ -641,6 +652,12 @@ func (conf *ResourceConfig) injectObjectMeta(values *patch) {
 }
 
 func (conf *ResourceConfig) injectPodAnnotations(values *patch) {
+	// ObjectMetaAnnotations.Annotations is nil for new empty structs, but we always initialize
+	// it to an empty map in parse() above, so we follow suit here.
+	emptyMeta := &metav1.ObjectMeta{Annotations: map[string]string{}}
+	// Cronjobs in batch/v1beta1 might have an empty `spec.jobTemplate.spec.template.metadata`
+	// field so we make sure to create it if needed, before attempting adding annotations
+	values.AddRootMetadata = reflect.DeepEqual(conf.pod.meta, emptyMeta)
 	values.AddRootAnnotations = len(conf.pod.meta.Annotations) == 0
 
 	for _, k := range sortedKeys(conf.pod.annotations) {

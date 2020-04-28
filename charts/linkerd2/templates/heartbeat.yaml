@@ -26,6 +26,7 @@ spec:
         metadata:
           labels:
             {{.Values.global.controllerComponentLabel}}: heartbeat
+            {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
           annotations:
             {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
         spec:

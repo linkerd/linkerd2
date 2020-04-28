@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	tsclient "github.com/deislabs/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
+	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -220,4 +220,14 @@ func GetPodStatus(pod corev1.Pod) string {
 	}
 
 	return reason
+}
+
+// GetAddOnsConfigMap returns the data in the add-ons configmap
+func GetAddOnsConfigMap(kubeAPI kubernetes.Interface, namespace string) (map[string]string, error) {
+	cm, err := kubeAPI.CoreV1().ConfigMaps(namespace).Get(ValuesConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return cm.Data, nil
 }
