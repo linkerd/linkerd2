@@ -2,12 +2,14 @@ package edges
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -127,21 +129,33 @@ func TestDirectEdges(t *testing.T) {
 	}
 
 	// check edges
+	err = TestHelper.RetryFor(20*time.Second, func() error {
+		out, stderr, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "edges", "deploy")
+		if err != nil {
+			return fmt.Errorf("'linkerd %s' command failed with %s: %s\n", "edges", err.Error(), stderr)
+		}
 
-	out, stderr, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "edges", "pods")
+		tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
+		vars := struct {
+			Ns        string
+			ControlNs string
+		}{
+			testNamespace,
+			TestHelper.GetLinkerdNamespace(),
+		}
+		var buf bytes.Buffer
+		if err := tpl.Execute(&buf, vars); err != nil {
+			return fmt.Errorf("failed to parse direct_edges.golden template: %s", err)
+		}
+
+		r := regexp.MustCompile(buf.String())
+		if !r.MatchString(out) {
+			return fmt.Errorf("Expected output:\n%s\nactual:\n%s", buf.String(), out)
+		}
+		return nil
+	})
+
 	if err != nil {
-		t.Fatalf("'linkerd %s' command failed with %s: %s\n", "edges", err.Error(), stderr)
-	}
-
-	tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
-	vars := struct{ Ns string }{testNamespace}
-	var buf bytes.Buffer
-	if err := tpl.Execute(&buf, vars); err != nil {
-		t.Fatalf("failed to parse direct_edges.golden template: %s", err)
-	}
-
-	r := regexp.MustCompile(buf.String())
-	if !r.MatchString(out) {
-		t.Errorf("Expected output:\n%s\nactual:\n%s", buf.String(), out)
+		t.Error(err)
 	}
 }
