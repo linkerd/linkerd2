@@ -219,7 +219,7 @@ smiMetrics:
 
   keyPEM: |
 
-# set resources for smi-metrics linkerd proxy
+# set resources for smi-metrics and its linkerd proxy respectively
 # see global.proxy.resources for details.
 #smiMetricsResources:
 #smiMetricsProxyResources:
