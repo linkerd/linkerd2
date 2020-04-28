@@ -104,7 +104,7 @@ spec:
         - mountPath: /var/run/linkerd/config
           name: config
       {{- if not (empty .Values.tapProxyResources) }}
-      {{- $r := merge .Values.tapProxyResources  .Values.global.proxy.resources}}
+      {{- $r := merge .Values.tapProxyResources  .Values.global.proxy.resources }}
       {{- $_ := set .Values.global.proxy "resources" $r }}        
       {{- end }}
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
