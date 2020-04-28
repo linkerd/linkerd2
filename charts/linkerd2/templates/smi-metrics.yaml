@@ -79,7 +79,7 @@ spec:
           readOnly: true
 
         {{- if .Values.smiMetricsResources -}}
-        {{- include "partials.resources" .Values.prometheusResources | nindent 8 }}
+        {{- include "partials.resources" .Values.smiMetricsResources | nindent 8 }}
         {{- end }}
 
       {{- if not (empty .Values.smiMetricsProxyResources) }}
