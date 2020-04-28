@@ -437,8 +437,30 @@ func TestUpgradeHelm(t *testing.T) {
 
 	args := []string{
 		// implicit as at least on value is set manually: "--reset-values",
-		"--set", "prometheusProxyResources.cpu.limit=1",
-		"--set", "controllerProxyResources.cpu.limit=2",
+		"--set", "global.proxy.resources.cpu.limit=200m",
+		"--set", "global.proxy.resources.cpu.request=100m",
+		"--set", "global.proxy.resources.memory.limit=200Mi",
+		"--set", "global.proxy.resources.memory.request=100Mi",
+		"--set", "controllerProxyResources.cpu.limit=1",
+		"--set", "controllerProxyResources.memory.request=101Mi",
+		"--set", "destinationProxyResources.cpu.limit=2",
+		"--set", "destinationProxyResources.memory.request=102Mi",
+		"--set", "grafanaProxyResources.cpu.limit=3",
+		"--set", "grafanaProxyResources.memory.request=103Mi",
+		"--set", "identityProxyResources.cpu.limit=4",
+		"--set", "identityProxyResources.memory.request=104Mi",
+		"--set", "prometheusProxyResources.cpu.limit=5",
+		"--set", "prometheusProxyResources.memory.request=105Mi",
+		"--set", "proxyInjectorProxyResources.cpu.limit=6",
+		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
+		"--set", "smiMetricsProxyResources.cpu.limit=7",
+		"--set", "smiMetricsProxyResources.memory.request=107Mi",
+		"--set", "spValidatorProxyResources.cpu.limit=8",
+		"--set", "spValidatorProxyResources.memory.request=108Mi",
+		"--set", "tapProxyResources.cpu.limit=9",
+		"--set", "tapProxyResources.memory.request=109Mi",
+		"--set", "webProxyResources.cpu.limit=10",
+		"--set", "webProxyResources.memory.request=110Mi",
 		"--atomic",
 		"--wait",
 	}
@@ -474,17 +496,75 @@ type expectedData struct {
 var expectedResources = []expectedData{
 	{
 		pod:        "linkerd-controller",
-		cpuLimit:   "2",
-		cpuRequest: "100m",
-		memLimit:   "200Mi",
-		memRequest: "100Mi",
-	},
-	{
-		pod:        "linkerd-prometheus",
 		cpuLimit:   "1",
 		cpuRequest: "100m",
 		memLimit:   "200Mi",
-		memRequest: "100Mi",
+		memRequest: "101Mi",
+	},
+	{
+		pod:        "linkerd-destination",
+		cpuLimit:   "2",
+		cpuRequest: "100m",
+		memLimit:   "200Mi",
+		memRequest: "102Mi",
+	},
+	{
+		pod:        "linkerd-grafana",
+		cpuLimit:   "3",
+		cpuRequest: "100m",
+		memLimit:   "200Mi",
+		memRequest: "103Mi",
+	},
+	{
+		pod:        "linkerd-identity",
+		cpuLimit:   "4",
+		cpuRequest: "100m",
+		memLimit:   "200Mi",
+		memRequest: "104Mi",
+	},
+	{
+		pod:        "linkerd-prometheus",
+		cpuLimit:   "5",
+		cpuRequest: "100m",
+		memLimit:   "200Mi",
+		memRequest: "105Mi",
+	},
+	{
+		pod:        "linkerd-proxy-injector",
+		cpuLimit:   "6",
+		cpuRequest: "100m",
+		memLimit:   "200Mi",
+		memRequest: "106Mi",
+	},
+	/*	 not used in default case
+	{
+		pod:        "linkerd-smi-metrics",
+		cpuLimit:   "7",
+		cpuRequest: "100m",
+		memLimit:   "200Mi",
+		memRequest: "1007i",
+	},
+	*/
+	{
+		pod:        "linkerd-sp-validator",
+		cpuLimit:   "8",
+		cpuRequest: "100m",
+		memLimit:   "200Mi",
+		memRequest: "108Mi",
+	},
+	{
+		pod:        "linkerd-tap",
+		cpuLimit:   "9",
+		cpuRequest: "100m",
+		memLimit:   "200Mi",
+		memRequest: "109Mi",
+	},
+	{
+		pod:        "linkerd-web",
+		cpuLimit:   "10",
+		cpuRequest: "100m",
+		memLimit:   "200Mi",
+		memRequest: "110Mi",
 	},
 }
 
@@ -496,15 +576,16 @@ func TestComponentProxyResources(t *testing.T) {
 	for _, expected := range expectedResources {
 		resourceReqs, err := TestHelper.GetResources("linkerd-proxy", expected.pod, TestHelper.GetLinkerdNamespace())
 		if err != nil {
-			t.Fatalf("Error retrieving resource requirements for linkerd controller %s", err)
+			t.Fatalf("Error retrieving resource requirements for %s: %s", expected.pod, err)
 		}
+
 		cpuLimitStr := resourceReqs.Limits.Cpu().String()
 		if cpuLimitStr != expected.cpuLimit {
-			t.Fatalf("unexpected controller CPU limit: expected %s, was %s", expected.cpuLimit, cpuLimitStr)
+			t.Fatalf("unexpected %s CPU limit: expected %s, was %s", expected.pod, expected.cpuLimit, cpuLimitStr)
 		}
 		cpuRequestStr := resourceReqs.Requests.Cpu().String()
 		if cpuRequestStr != expected.cpuRequest {
-			t.Fatalf("unexpected controller CPU limit: expected %s, was %s", expected.cpuRequest, cpuRequestStr)
+			t.Fatalf("unexpected %s CPU limit: expected %s, was %s", expected.pod, expected.cpuRequest, cpuRequestStr)
 		}
 	}
 }

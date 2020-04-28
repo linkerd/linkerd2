@@ -148,7 +148,9 @@ spec:
           readOnly: true
       {{- if not (empty .Values.grafanaProxyResources) }}
       {{- $r := merge .Values.grafanaProxyResources  .Values.global.proxy.resources}}
-      {{- $_ := set .Values.global.proxy "resources" $r }}        
+      {{- $_ := set .Values.global.proxy "actualResources" $r }}
+      {{- else }}
+      {{- $_ := set .Values.global.proxy "actualResources" .Values.global.proxy.resources }}
       {{- end }}
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
