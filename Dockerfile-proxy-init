@@ -1,0 +1,60 @@
+ARG ARCH=amd64
+ARG GO_VERSION=1.12.9
+ARG DEBIAN_VERSION=buster-20200514-slim
+
+## compile proxy-init utility
+FROM golang:$GO_VERSION as golang-amd64
+ENV GOARCH=amd64
+
+FROM golang:$GO_VERSION as golang-arm32v7
+ENV GOARCH=arm
+ENV GOARM=7
+
+FROM golang:$GO_VERSION as golang-arm64v8
+ENV GOARCH=arm64
+
+FROM golang-$ARCH as golang
+ARG SOURCE_PATH=/source/linkerd2-proxy-init
+
+WORKDIR $SOURCE_PATH
+COPY .proxy-init-version ../
+RUN git clone --branch $(cat ../.proxy-init-version) https://github.com/linkerd/linkerd2-proxy-init.git .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/linkerd2-proxy-init -mod=readonly -ldflags '-s -w' -v
+
+FROM $ARCH/debian:$DEBIAN_VERSION as runtime
+
+FROM debian:$DEBIAN_VERSION AS libs-amd64
+ENV DEB_ARCH=amd64
+
+FROM debian:$DEBIAN_VERSION AS libs-arm32v7
+ENV DEB_ARCH=armhf
+
+FROM debian:$DEBIAN_VERSION AS libs-arm64v8
+ENV DEB_ARCH=arm64
+
+FROM libs-$ARCH AS libs
+ARG DEBIAN_FRONTEND=noninteractive
+ARG IMAGE_ROOT=/out
+ARG DEB_CACHE=/tmp/cache
+
+COPY --from=runtime /var/lib/dpkg /var/lib/dpkg
+WORKDIR $DEB_CACHE
+RUN dpkg --add-architecture $DEB_ARCH
+
+RUN apt-get update \
+ && apt-get --fix-broken install -o=APT::Architecture=$DEB_ARCH -y --allow-remove-essential \
+ && apt-get install --download-only -o=dir::cache=$DEB_CACHE -o=APT::Architecture=$DEB_ARCH -y --no-install-recommends \
+       iptables \
+ && apt-get clean
+
+WORKDIR $IMAGE_ROOT
+RUN for f in $DEB_CACHE/archives/*.deb; do dpkg -x $f $IMAGE_ROOT; done
+RUN install -d sbin \
+ && ln -sr usr/sbin/iptables-nft sbin/iptables
+
+## package runtime
+FROM runtime
+COPY --from=libs /out/. /
+COPY --from=golang /source/linkerd2-proxy-init/LICENSE /linkerd/LICENSE
+COPY --from=golang /out/linkerd2-proxy-init /usr/local/bin/proxy-init
+ENTRYPOINT ["/usr/local/bin/proxy-init"]
