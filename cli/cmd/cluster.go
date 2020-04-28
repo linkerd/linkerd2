@@ -117,7 +117,7 @@ func buildMulticlusterSetupValues(opts *setupRemoteClusterOptions) (*multicluste
 	defaults.LinkerdNamespace = controlPlaneNamespace
 	defaults.ProbePath = opts.probePath
 	defaults.ProbePeriodSeconds = opts.probePeriodSeconds
-	defaults.ProbePort = global.Proxy.OutboundPort.Port
+	defaults.ProbePort = opts.probePort
 	defaults.ProxyOutboundPort = global.Proxy.OutboundPort.Port
 	defaults.ServiceAccountName = opts.serviceAccountName
 	defaults.ServiceAccountNamespace = opts.serviceAccountNamespace
