@@ -26,7 +26,7 @@ describe('Tests for <MetricsTable>', () => {
 
     expect(table).toBeDefined();
     expect(table.props().tableRows).toHaveLength(1);
-    expect(table.props().tableColumns).toHaveLength(8);
+    expect(table.props().tableColumns).toHaveLength(9);
   });
 
   it('if enableFilter is true, user can filter rows by search term', () => {
@@ -67,7 +67,7 @@ describe('Tests for <MetricsTable>', () => {
     const table = component.find("BaseTable");
 
     expect(table).toBeDefined();
-    expect(table.props().tableColumns).toHaveLength(8);
+    expect(table.props().tableColumns).toHaveLength(9);
   });
 
   it('omits the namespace column when showNamespaceColumn is false', () => {
@@ -81,7 +81,7 @@ describe('Tests for <MetricsTable>', () => {
     const table = component.find("BaseTable");
 
     expect(table).toBeDefined();
-    expect(table.props().tableColumns).toHaveLength(8);
+    expect(table.props().tableColumns).toHaveLength(9);
   });
 
   it('adds apex, leaf and weight columns, and omits meshed and grafana column, for a trafficsplit resource', () => {
