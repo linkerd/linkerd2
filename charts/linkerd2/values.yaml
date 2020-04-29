@@ -88,9 +88,6 @@ controllerImage: gcr.io/linkerd-io/controller
 controllerLogLevel: &controller_log_level info
 controllerReplicas: 1
 controllerUID: 2103
-# set resources for controller linkerd proxy
-# see global.proxy.resources for details.
-#controllerProxyResources:
 
 
 # destination configuration
@@ -178,6 +175,12 @@ profileValidator:
   crtPEM: |
 
   keyPEM: |
+
+
+# set resources for controllers public API and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#publicAPIResources:
+#publicAPIProxyResources:
 
 # tap configuration
 tap:
