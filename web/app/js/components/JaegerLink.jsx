@@ -6,11 +6,11 @@ import { jaegerIcon } from './util/SvgWrappers.jsx';
 const JaegerLink = ({ PrefixedLink, name, namespace, resource }) => {
   let link = '/jaeger/search?service=linkerd-proxy&tags=';
   if (_isEmpty(namespace)) {
-    link += `{"namespace"%3A"${name}"}`;
+    link += `{"linkerd.io/workload-ns"%3A"${name}"}`;
   } else if (resource === 'pod') {
-    link += `{"hostname"%3A"${name}"%2C"namespace"%3A"${namespace}"}`;
+    link += `{"hostname"%3A"${name}"%2C"linkerd.io/workload-ns"%3A"${namespace}"}`;
   } else {
-    link += `{"linkerd.io%2Fproxy-${resource}"%3A"${name}"%2C"namespace"%3A"${namespace}"}`;
+    link += `{"linkerd.io%2Fproxy-${resource}"%3A"${name}"%2C"linkerd.io/workload-ns"%3A"${namespace}"}`;
   }
 
   return (
