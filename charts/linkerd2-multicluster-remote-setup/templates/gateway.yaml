@@ -1,0 +1,114 @@
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: {{ .Values.gatewayNamespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-configuration
+  annotations:
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+  namespace: {{.Values.gatewayNamespace}}
+data:
+  nginx.conf: |-
+    events {
+    }
+    stream {
+      server {
+          listen     {{.Values.incomingPort}};
+          proxy_pass 127.0.0.1:{{.Values.proxyOutboundPort}};
+      }
+    }
+    http {
+      server {
+          listen     {{.Values.probePort}};
+          location {{.Values.probePath}} {
+            access_log off;
+            return 200 "healthy\n";
+          }
+      }
+    }
+---    
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+  labels:
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{.Values.linkerdVersion}}
+    app: {{.Values.gatewayName}}
+  name: {{.Values.gatewayName}}
+  namespace: {{.Values.gatewayNamespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{.Values.gatewayName}}
+  template:
+    metadata:
+      annotations:
+        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}        
+        linkerd.io/inject: enabled
+      labels:
+        app: {{.Values.gatewayName}}
+    spec:
+      volumes:
+        - name: config
+          configMap:
+            name: nginx-configuration   
+      containers:
+        - name: nginx
+          readinessProbe:
+            failureThreshold: 7
+            httpGet:
+              path: {{.Values.probePath}}
+              port: {{.Values.probePort}}
+          livenessProbe:
+            httpGet:
+              path: {{.Values.probePath}}
+              port: {{.Values.probePort}}
+            initialDelaySeconds: 10  
+          image: {{.Values.nginxImage}}:{{.Values.nginxImageVersion}}
+          ports:
+            - name: incoming-port
+              containerPort: {{.Values.incomingPort}}
+            - name: probe-port
+              containerPort: {{.Values.probePort}}             
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx
+      serviceAccountName: {{.Values.gatewayName}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Values.gatewayName}}
+  namespace: {{.Values.gatewayNamespace}}
+  annotations: 
+    mirror.linkerd.io/gateway-identity: {{.Values.gatewayName}}.{{.Values.gatewayNamespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain}}
+    mirror.linkerd.io/probe-port: "{{.Values.probePort}}"
+    mirror.linkerd.io/probe-period: "{{.Values.probePeriodSeconds}}"
+    mirror.linkerd.io/probe-path: {{.Values.probePath}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+spec:
+  ports:
+  - name: incoming-port
+    port: {{.Values.incomingPort}}    
+    protocol: TCP
+  - name: probe-port
+    port: {{.Values.probePort}}    
+    protocol: TCP
+  selector:
+    app: {{.Values.gatewayName}}
+  type: LoadBalancer
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: {{.Values.gatewayName}}
+  namespace: {{.Values.gatewayNamespace}}
+  

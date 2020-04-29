@@ -103,7 +103,7 @@ setup() {
 
 function test {
   cd "$ROOT"/web/app
-  yarn jest "$*"
+  yarn jest $*
 }
 
 integration() {
