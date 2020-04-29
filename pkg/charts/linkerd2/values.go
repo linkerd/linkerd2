@@ -60,6 +60,16 @@ type (
 		TapResources           *Resources `json:"tapResources"`
 		WebResources           *Resources `json:"webResources"`
 
+		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
+		GrafanaProxyResources       *Resources `json:"grafanaProxyResources"`
+		IdentityProxyResources      *Resources `json:"identityProxyResources"`
+		PrometheusProxyResources    *Resources `json:"prometheusProxyResources"`
+		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
+		PublicAPIPRoxyResources     *Resources `json:"publicAPIProxyResources"`
+		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
+		TapProxyResources           *Resources `json:"tapProxyResources"`
+		WebProxyResources           *Resources `json:"webProxyResources"`
+
 		// Addon Structures
 		Tracing map[string]interface{} `json:"tracing"`
 	}
