@@ -27,6 +27,7 @@ type (
 		uuid                string
 		controllerNamespace string
 		clusterDomain       string
+		jaeger              string
 		grafanaProxy        *reverseProxy
 		jaegerProxy         *reverseProxy
 		hc                  healthChecker
@@ -45,6 +46,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 		UUID:                h.uuid,
 		ControllerNamespace: h.controllerNamespace,
 		PathPrefix:          pathPfx,
+		Jaeger:              h.jaeger,
 	}
 
 	version, err := h.apiClient.Version(req.Context(), &pb.Empty{}) // TODO: remove and call /api/version from web app

@@ -111,7 +111,7 @@ const trafficSplitDetailColumns = [
   },
 ];
 
-const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable) => {
+const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, jaeger) => {
   const isAuthorityTable = resource === 'authority';
   const isTrafficSplitTable = resource === 'trafficsplit';
   const isMultiResourceTable = resource === 'multi_resource';
@@ -223,7 +223,9 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
 
   if (!isTrafficSplitTable) {
     columns = columns.concat(grafanaColumn);
-    columns = columns.concat(jaegerColumn);
+    if (jaeger !== '') {
+      columns = columns.concat(jaegerColumn);
+    }
   }
 
   if (!showNamespaceColumn) {
@@ -246,12 +248,12 @@ const preprocessMetrics = metrics => {
   return tableData;
 };
 
-const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace }) => {
+const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace, jaeger }) => {
   const showNsColumn = resource === 'namespace' || selectedNamespace !== '_all' ? false : showNamespaceColumn;
   const showNameColumn = resource !== 'trafficsplit' ? true : showName;
   let orderBy = 'name';
   if (resource === 'trafficsplit' && !showNameColumn) { orderBy = 'leaf'; }
-  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable);
+  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, jaeger);
   const rows = preprocessMetrics(metrics);
   return (
     <BaseTable
@@ -273,6 +275,7 @@ MetricsTable.propTypes = {
   metrics: PropTypes.arrayOf(processedMetricsPropType),
   resource: PropTypes.string.isRequired,
   selectedNamespace: PropTypes.string.isRequired,
+  jaeger: PropTypes.string.isRequired,
   showName: PropTypes.bool,
   showNamespaceColumn: PropTypes.bool,
   title: PropTypes.string,
