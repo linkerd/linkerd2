@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	grafanaAddOn = "grafana"
+	GrafanaAddOn = "grafana"
 )
 
 // Grafana is an add-on that consists of the grafana components
@@ -14,7 +14,7 @@ type Grafana map[string]interface{}
 
 // Name returns the name of the Grafana add-on
 func (g Grafana) Name() string {
-	return grafanaAddOn
+	return GrafanaAddOn
 }
 
 // Values returns the configuration values that were assigned for this add-on

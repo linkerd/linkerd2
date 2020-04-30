@@ -15,7 +15,6 @@ import (
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
-	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
@@ -348,7 +347,7 @@ type HealthChecker struct {
 	issuerCert       *tls.Cred
 	trustAnchors     []*x509.Certificate
 	cniDaemonSet     *appsv1.DaemonSet
-	addOns           map[string]l5dcharts.AddOn
+	addOns           map[string]interface{}
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -647,7 +646,7 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
-						return checkControllerRunning(hc.controlPlanePods)
+						return checkContainerRunning(hc.controlPlanePods, "controller")
 					},
 				},
 				{
@@ -2044,9 +2043,9 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 	return nil
 }
 
-func checkControllerRunning(pods []corev1.Pod) error {
+func checkContainerRunning(pods []corev1.Pod, name string) error {
 	statuses := getPodStatuses(pods)
-	if _, ok := statuses["controller"]; !ok {
+	if _, ok := statuses[name]; !ok {
 		for _, pod := range pods {
 			podStatus := k8s.GetPodStatus(pod)
 			if podStatus != running {
