@@ -103,7 +103,7 @@ func TestNewValues(t *testing.T) {
 				ClockSkewAllowance:  "20s",
 				IssuanceLifetime:    "86400s",
 				CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
-				TLS:                 &TLS{},
+				TLS:                 &IssuerTLS{},
 				Scheme:              "linkerd.io/tls",
 			},
 		},

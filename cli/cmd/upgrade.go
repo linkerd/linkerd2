@@ -414,6 +414,49 @@ func repairConfigs(configs *pb.All) {
 	}
 }
 
+func injectCABundle(k kubernetes.Interface, webhook string, options *upgradeOptions, value *charts.TLS) error {
+
+	switch webhook {
+	case "proxy-injector":
+		return injectCABundleFromMutatingWebhook(k, "linkerd-proxy-injector-webhook-config", options, value)
+	case "profileValidator":
+		return injectCABundleFromValidatingWebhook(k, "linkerd-sp-validator.linkerd.io", options, value)
+	case "tap":
+		return injectCABundleFromAPIService(k, "v1alpha1.tap.linkerd.io", options, value)
+	case "smi-metrics":
+		return injectCABundleFromAPIService(k, "v1alpha1.metrics.smi-spec.io", options, value)
+	}
+
+	return nil
+}
+
+func injectCABundleFromMutatingWebhook(k kubernetes.Interface, resource string, options *upgradeOptions, value *charts.TLS) error {
+	webhookConf, err := k.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(resource, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	// note: this assumes that there will ever only be one service defined per webhook configuration
+	value.CaBundle = string(webhookConf.Webhooks[0].ClientConfig.CABundle)
+
+	return nil
+}
+
+func injectCABundleFromValidatingWebhook(k kubernetes.Interface, resource string, options *upgradeOptions, value *charts.TLS) error {
+	webhookConf, err := k.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(resource, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	value.CaBundle = string(webhookConf.Webhooks[0].ClientConfig.CABundle)
+	return nil
+}
+
+// TODO: this must be fixed, but getting the info from the cluster is difficult due to the cluster config not being available in "k"
+func injectCABundleFromAPIService(k kubernetes.Interface, resource string, options *upgradeOptions, value *charts.TLS) error {
+	return fmt.Errorf("Currently cannot read caBundle from API service specification")
+}
+
 func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
@@ -425,6 +468,10 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 	value := &charts.TLS{
 		KeyPEM: string(secret.Data["key.pem"]),
 		CrtPEM: string(secret.Data["crt.pem"]),
+	}
+
+	if err := injectCABundle(k, webhook, options, value); err != nil {
+		return nil, err
 	}
 
 	if err := options.verifyTLS(value, webhook); err != nil {
@@ -545,7 +592,7 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 				IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
 				CrtExpiry:           *issuerData.Expiry,
 				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-				TLS: &charts.TLS{
+				TLS: &charts.IssuerTLS{
 					KeyPEM: issuerData.IssuerKey,
 					CrtPEM: issuerData.IssuerCrt,
 				},

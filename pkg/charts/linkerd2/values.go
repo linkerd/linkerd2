@@ -180,12 +180,12 @@ type (
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		Scheme              string    `json:"scheme"`
-		ClockSkewAllowance  string    `json:"clockSkewAllowance"`
-		IssuanceLifetime    string    `json:"issuanceLifetime"`
-		CrtExpiryAnnotation string    `json:"crtExpiryAnnotation"`
-		CrtExpiry           time.Time `json:"crtExpiry"`
-		TLS                 *TLS      `json:"tls"`
+		Scheme              string     `json:"scheme"`
+		ClockSkewAllowance  string     `json:"clockSkewAllowance"`
+		IssuanceLifetime    string     `json:"issuanceLifetime"`
+		CrtExpiryAnnotation string     `json:"crtExpiryAnnotation"`
+		CrtExpiry           time.Time  `json:"crtExpiry"`
+		TLS                 *IssuerTLS `json:"tls"`
 	}
 
 	// ProxyInjector has all the proxy injector's Helm variables
@@ -213,6 +213,14 @@ type (
 	// TLS has a pair of PEM-encoded key and certificate variables used in the
 	// Helm templates
 	TLS struct {
+		KeyPEM   string `json:"keyPEM"`
+		CrtPEM   string `json:"crtPEM"`
+		CaBundle string `json:"caBundle"`
+	}
+
+	// IssuerTLS is a stripped down version of TLS that lacks the integral caBundle.
+	// It is tracked separately in the field 'global.IdentityTrustAnchorsPEM'
+	IssuerTLS struct {
 		KeyPEM string `json:"keyPEM"`
 		CrtPEM string `json:"crtPEM"`
 	}
