@@ -1,3 +1,29 @@
+## edge-20.4.5
+
+This edge release includes several new CLI commands for use with multi-cluster
+gateways, and adds liveness checks and metrics for gateways. Additionally, it
+makes the proxy's gRPC error-handling behavior more consistent with other
+implementations, and includes a fix for a bug in the web UI.
+
+* CLI
+  * Added `linkerd cluster setup-remote` command for setting up a multi-cluster
+    gateway
+  * Added `linkerd cluster gateways` command to display stats for multi-cluster
+    gateways
+  * Changed `linkerd cluster export-service` to modify a provided YAML file and
+    output it, rather than mutating the cluster
+* Controller
+  * Added liveness checks and Prometheus metrics for multi-cluster gateways
+  * Changed the proxy injector to configure proxies to do destination lookups
+    for IPs in the private IP range
+* Web UI
+  * Fixed errors when viewing resource detail pages
+* Internal
+  * Published a Chocolatey package for the Linkerd CLI
+* Proxy
+  * Changed the proxy to set a `grpc-status: UNAVAILABLE` trailer when a gRPC
+    response stream is interrupted by a transport error
+
 ## edge-20.4.4
 
 This edge release fixes a packaging issue in `edge-20.4.3`.
