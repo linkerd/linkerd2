@@ -5,7 +5,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var (
+const (
 	grafanaAddOn = "grafana"
 )
 

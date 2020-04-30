@@ -176,6 +176,13 @@ smiMetrics:
   keyPEM: |
 
 # Configuration for Add-ons
+
+grafana:
+  enabled: true
+  name: linkerd-grafana
+  image: gcr.io/linkerd-io/grafana
+  # resources:
+
 tracing:
   enabled: false
   collector:
@@ -186,10 +193,3 @@ tracing:
     name: linkerd-jaeger
     image: jaegertracing/all-in-one:1.17.1
     # resources:
-
-grafana:
-  enabled: true
-  name: linkerd-grafana
-  image: gcr.io/linkerd-io/grafana
-  # resources:
-    
