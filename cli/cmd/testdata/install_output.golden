@@ -2808,6 +2808,8 @@ metadata:
     CreatedByAnnotation: CliVersion
 data:
   values: |-
+    global:
+      grafanaUrl: 
     grafana:
       enabled: true
       image: GrafanaImage

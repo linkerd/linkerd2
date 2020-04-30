@@ -63,7 +63,9 @@ spec:
       containers:
       - args:
         - -api-addr=linkerd-controller-api.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8085
-        {{- if .Values.grafana.enabled }}
+        {{- if .Values.global.grafanaUrl}}
+        - -grafana-addr={{.Values.global.grafanaUrl}}
+        {{- else if .Values.grafana.enabled }}
         - -grafana-addr={{.Values.grafana.name}}.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:3000
         {{- end}}
         - -controller-namespace={{.Values.global.namespace}}

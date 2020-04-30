@@ -2802,6 +2802,8 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   values: |-
+    global:
+      grafanaUrl: 
     grafana:
       enabled: true
       image: gcr.io/linkerd-io/grafana

@@ -81,6 +81,7 @@ type (
 		ControlPlaneTracing      bool   `json:"controlPlaneTracing"`
 		IdentityTrustAnchorsPEM  string `json:"identityTrustAnchorsPEM"`
 		IdentityTrustDomain      string `json:"identityTrustDomain"`
+		GrafanaUrl               string `json:"grafanaUrl"`
 
 		Proxy     *Proxy     `json:"proxy"`
 		ProxyInit *ProxyInit `json:"proxyInit"`
