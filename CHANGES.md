@@ -19,7 +19,9 @@ implementations, and includes a fix for a bug in the web UI.
 * Web UI
   * Fixed errors when viewing resource detail pages
 * Internal
-  * Published a Chocolatey package for the Linkerd CLI
+  * Created script and config to build a Linkerd CLI Chocolatey package for
+    Windows users, which will be published with stable releases (thanks to
+    @drholmie!)
 * Proxy
   * Changed the proxy to set a `grpc-status: UNAVAILABLE` trailer when a gRPC
     response stream is interrupted by a transport error
