@@ -192,6 +192,7 @@ jobs:
         cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
         gcp_project: ${{ secrets.GCP_PROJECT }}
         gcp_zone: ${{ secrets.GCP_ZONE }}
+        preemptible: false
         create: true
         name: testing-${{ steps.install_cli.outputs.tag }}-${{ github.run_id }}
     - name: Run integration tests
