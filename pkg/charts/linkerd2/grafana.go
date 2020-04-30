@@ -6,6 +6,7 @@ import (
 )
 
 const (
+	// GrafanaAddOn is the name of the grafana add-on
 	GrafanaAddOn = "grafana"
 )
 
