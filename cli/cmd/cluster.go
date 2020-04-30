@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -20,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/helm/pkg/chartutil"
@@ -56,8 +59,6 @@ type (
 	}
 
 	exportServiceOptions struct {
-		namespace        string
-		service          string
 		gatewayNamespace string
 		gatewayName      string
 	}
@@ -154,8 +155,8 @@ func newGatewaysCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "the name of the remote cluster")
-	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "", "the namespace in which the gateway resides on the remote cluster")
+	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "remote", "the name of the remote cluster")
+	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "linkerd-gateway", "the namespace in which the gateway resides on the remote cluster")
 	cmd.Flags().StringVarP(&opts.timeWindow, "time-window", "t", "1m", "Time window (for example: \"15s\", \"1m\", \"10m\", \"1h\"). Needs to be at least 15s.")
 
 	return cmd
@@ -336,6 +337,140 @@ func newGetCredentialsCommand() *cobra.Command {
 	return cmd
 }
 
+type exportReport struct {
+	resourceKind string
+	resourceName string
+	exported     bool
+}
+
+func transform(bytes []byte, gatewayName, gatewayNamespace string) ([]byte, *exportReport, error) {
+	var metaType metav1.TypeMeta
+
+	if err := yaml.Unmarshal(bytes, &metaType); err != nil {
+		return nil, nil, err
+	}
+
+	if metaType.Kind == "Service" {
+		var service corev1.Service
+		if err := yaml.Unmarshal(bytes, &service); err != nil {
+			return nil, nil, err
+		}
+
+		if service.Annotations == nil {
+			service.Annotations = map[string]string{}
+		}
+
+		service.Annotations[k8s.GatewayNameAnnotation] = gatewayName
+		service.Annotations[k8s.GatewayNsAnnotation] = gatewayNamespace
+
+		transformed, err := yaml.Marshal(service)
+
+		if err != nil {
+			return nil, nil, err
+		}
+		report := &exportReport{
+			resourceKind: strings.ToLower(metaType.Kind),
+			resourceName: service.Name,
+			exported:     true,
+		}
+		return transformed, report, nil
+	}
+
+	report := &exportReport{
+		resourceKind: strings.ToLower(metaType.Kind),
+		exported:     false,
+	}
+
+	return bytes, report, nil
+}
+
+func generateReport(reports []*exportReport, reportsOut io.Writer) error {
+	unexportedResources := map[string]int{}
+
+	for _, r := range reports {
+		if r.exported {
+			if _, err := reportsOut.Write([]byte(fmt.Sprintf("%s \"%s\" exported\n", r.resourceKind, r.resourceName))); err != nil {
+				return err
+			}
+		} else {
+			if val, ok := unexportedResources[r.resourceKind]; ok {
+				unexportedResources[r.resourceKind] = val + 1
+			} else {
+				unexportedResources[r.resourceKind] = 1
+			}
+		}
+	}
+
+	if len(unexportedResources) > 0 {
+		reportsOut.Write([]byte("\n"))
+		reportsOut.Write([]byte("Number of skipped resources:\n"))
+	}
+
+	for res, num := range unexportedResources {
+		reportsOut.Write([]byte(fmt.Sprintf("%ss: %d\n", res, num)))
+	}
+
+	return nil
+}
+
+func processExportYaml(in io.Reader, out io.Writer, gatewayName, gatewayNamespace string) ([]*exportReport, error) {
+	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
+	var reports []*exportReport
+	// Iterate over all YAML objects in the input
+	for {
+		// Read a single YAML object
+		bytes, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		result, report, err := transform(bytes, gatewayName, gatewayNamespace)
+		reports = append(reports, report)
+		if err != nil {
+			return nil, err
+		}
+
+		out.Write(result)
+		out.Write([]byte("---\n"))
+	}
+
+	return reports, nil
+}
+
+func transformExportInput(inputs []io.Reader, errWriter, outWriter io.Writer, gatewayName, gatewayNamespace string) int {
+	postTransformBuf := &bytes.Buffer{}
+	reportBuf := &bytes.Buffer{}
+	var finalReports []*exportReport
+	for _, input := range inputs {
+		reports, err := processExportYaml(input, postTransformBuf, gatewayName, gatewayNamespace)
+		if err != nil {
+			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", err)
+			return 1
+		}
+		_, err = io.Copy(outWriter, postTransformBuf)
+
+		if err != nil {
+			fmt.Fprintf(errWriter, "Error printing YAML: %v\n", err)
+			return 1
+		}
+
+		finalReports = append(finalReports, reports...)
+	}
+
+	// print error report after yaml output, for better visibility
+	if err := generateReport(finalReports, reportBuf); err != nil {
+		fmt.Fprintf(errWriter, "Error generating reports: %v\n", err)
+		return 1
+	}
+	errWriter.Write([]byte("\n"))
+	io.Copy(errWriter, reportBuf)
+	errWriter.Write([]byte("\n"))
+	return 0
+}
+
 func newExportServiceCommand() *cobra.Command {
 	opts := exportServiceOptions{}
 
@@ -343,15 +478,10 @@ func newExportServiceCommand() *cobra.Command {
 		Hidden: false,
 		Use:    "export-service",
 		Short:  "Exposes a remote service to be mirrored",
-		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			if opts.service == "" {
-				return errors.New("The --service-name flag needs to be set")
-			}
-
-			if opts.namespace == "" {
-				return errors.New("The --service-name flag needs to be set")
+			if len(args) < 1 {
+				return fmt.Errorf("please specify a kubernetes resource file")
 			}
 
 			if opts.gatewayName == "" {
@@ -362,50 +492,16 @@ func newExportServiceCommand() *cobra.Command {
 				return errors.New("The --gateway-namespace flag needs to be set")
 			}
 
-			rules := clientcmd.NewDefaultClientConfigLoadingRules()
-			rules.ExplicitPath = kubeconfigPath
-			loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, &clientcmd.ConfigOverrides{})
-			config, err := loader.RawConfig()
+			in, err := read(args[0])
 			if err != nil {
 				return err
 			}
-
-			if kubeContext != "" {
-				config.CurrentContext = kubeContext
-			}
-
-			k, err := k8s.NewAPI(kubeconfigPath, config.CurrentContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				return err
-			}
-
-			svc, err := k.CoreV1().Services(opts.namespace).Get(opts.service, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-
-			_, hasGatewayName := svc.Annotations[k8s.GatewayNameAnnotation]
-			_, hasGatewayNs := svc.Annotations[k8s.GatewayNsAnnotation]
-
-			if hasGatewayName || hasGatewayNs {
-				return fmt.Errorf("service %s/%s has already been exported", svc.Namespace, svc.Name)
-			}
-
-			svc.Annotations[k8s.GatewayNameAnnotation] = opts.gatewayName
-			svc.Annotations[k8s.GatewayNsAnnotation] = opts.gatewayNamespace
-
-			_, err = k.CoreV1().Services(svc.Namespace).Update(svc)
-			if err != nil {
-				return err
-			}
-
-			fmt.Println(fmt.Sprintf("Service %s/%s is now exported", svc.Namespace, svc.Name))
+			exitCode := transformExportInput(in, stderr, stdout, opts.gatewayName, opts.gatewayNamespace)
+			os.Exit(exitCode)
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&opts.service, "service-name", "", "the name of the service to be exported")
-	cmd.Flags().StringVar(&opts.namespace, "service-namespace", "", "the namespace in which the service to be exported resides")
 	cmd.Flags().StringVar(&opts.gatewayName, "gateway-name", "linkerd-gateway", "the name of the gateway")
 	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "linkerd-gateway", "the namespace of the gateway")
 
@@ -432,8 +528,14 @@ available across clusters.`,
   # Extract mirroring cluster credentials from cluster A and install them on cluster B
   linkerd --context=cluster-a cluster get-credentials --cluster-name=remote | kubectl apply --context=cluster-b -f -
 
-  # Export service from cluster A to be available to other clusters
-  linkerd --context=cluster-a cluster export-service --service-name=backend-svc --service-namespace=default --gateway-name=linkerd-gateway --gateway-ns=default`,
+  # Export services from cluster to be available to other clusters
+  kubectl get svc -o yaml | linkerd export-service - | kubectl apply -f -
+
+  # Exporting a file from a remote URL
+  linkerd export-service http://url.to/yml | kubectl apply -f -
+
+  # Exporting all the resources inside a folder and its sub-folders.
+  linkerd export-service  <folder> | kubectl apply -f -`,
 	}
 
 	clusterCmd.AddCommand(newGetCredentialsCommand())
