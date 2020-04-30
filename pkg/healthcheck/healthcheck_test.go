@@ -2255,8 +2255,7 @@ func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 			"pre-linkerd-global-resources no PodSecurityPolicies exist",
 		}
 		if !reflect.DeepEqual(observer.results, expected) {
-			t.Error(testutil.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results).
-				WithAnn("Mismatch result"))
+			testutil.AnnotatedErrorf(t, "Mistmatch result", "Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
 		}
 	})
 
@@ -2304,12 +2303,12 @@ metadata:
 		hc.kubeAPI, err = k8s.NewFakeAPI(resources...)
 		hc.ControlPlaneNamespace = "test-ns"
 		if err != nil {
-			t.Fatal(testutil.Errorf("Unexpected error: %s", err).WithAnn("Unexpected error"))
+			testutil.AnnotatedFatalf(t, "Unexpected error", "Unexpected error: %s", err)
 		}
 
 		observer := newObserver()
 		if hc.RunChecks(observer.resultFn) {
-			t.Error(testutil.Error("Expect RunChecks to return false"))
+			testutil.Error(t, "Expect RunChecks to return false")
 		}
 
 		expected := []string{

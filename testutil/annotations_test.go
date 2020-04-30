@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -41,38 +40,30 @@ func restoreStdout(outC chan string, origStdout *os.File) string {
 	return out
 }
 
-func TestExtError(t *testing.T) {
+func TestError(t *testing.T) {
 	msg := "This is an error"
 
 	// redirect stdout temporarily to catch the Github annotation output
 	origStdout, outC := redirectStdout(t)
-	err := Error(msg)
-	errStr := err.Error()
+	Error(&testing.T{}, msg)
 	out := restoreStdout(outC, origStdout)
 
-	if errStr != msg {
-		t.Fatalf("unexpected error message: %s", errStr)
-	}
-	if strings.TrimSpace(out) != "::error file=testutil/ext_err_test.go,line=49::This is an error" {
+	if strings.TrimSpace(out) != "::error file=testutil/annotations_test.go,line=48::This is an error" {
 		t.Fatalf("unexpected stdout content: %s", out)
 	}
 }
 
-func TestExtErrorfWithAnn(t *testing.T) {
+func TestAnnotatedErrorf(t *testing.T) {
 	msgFormat := "This is a detailed error: %s"
 	str := "foobar"
 	msgDesc := "This is a generic error"
 
 	// redirect stdout temporarily to catch the Github annotation output
 	origStdout, outC := redirectStdout(t)
-	err := Errorf(msgFormat, str).WithAnn(msgDesc)
-	errStr := err.Error()
+	AnnotatedErrorf(&testing.T{}, msgDesc, msgFormat, str)
 	out := restoreStdout(outC, origStdout)
 
-	if errStr != fmt.Sprintf(msgFormat, str) {
-		t.Fatalf("unexpected error message: %s", errStr)
-	}
-	if strings.TrimSpace(out) != "::error file=testutil/ext_err_test.go,line=68::This is a generic error" {
+	if strings.TrimSpace(out) != "::error file=testutil/annotations_test.go,line=63::This is a generic error" {
 		t.Fatalf("unexpected stdout content: %s", out)
 	}
 }

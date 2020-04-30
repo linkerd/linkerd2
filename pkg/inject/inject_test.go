@@ -301,7 +301,7 @@ func TestConfigAccessors(t *testing.T) {
 			t.Run("identityContext", func(t *testing.T) {
 				expected := testCase.expected.identityContext
 				if actual := resourceConfig.identityContext(); !reflect.DeepEqual(expected, actual) {
-					t.Error(testutil.Errorf("Expected: %+v Actual: %+v", expected, actual))
+					testutil.Errorf(t, "Expected: %+v Actual: %+v", expected, actual)
 				}
 			})
 
