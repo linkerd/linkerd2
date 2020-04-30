@@ -1998,7 +1998,6 @@ data:
     - job_name: 'prometheus'
       static_configs:
       - targets: ['localhost:9090']
-
     - job_name: 'grafana'
       kubernetes_sd_configs:
       - role: pod
@@ -3090,7 +3089,7 @@ spec:
 # Source: linkerd2/templates/smi-metrics.yaml
 
 ---
-# Source: linkerd2/templates/linkerd-values.yaml
+# Source: linkerd2/templates/linkerd-config-addons.yaml
 ---
 ###
 ### linkerd values
@@ -3099,7 +3098,7 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-values
+  name: linkerd-config-addons
   namespace: linkerd
   labels:
     linkerd.io/control-plane-ns: linkerd
@@ -3120,7 +3119,6 @@ data:
           request: 50Mi
     tracing:
       enabled: false
-
 ---
 # Source: linkerd2/charts/grafana/templates/grafana-rbac.yaml
 ---

@@ -1806,7 +1806,6 @@ data:
     - job_name: 'prometheus'
       static_configs:
       - targets: ['localhost:9090']
-
     - job_name: 'grafana'
       kubernetes_sd_configs:
       - role: pod
@@ -2809,7 +2808,7 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-values
+  name: linkerd-config-addons
   namespace: linkerd
   labels:
     linkerd.io/control-plane-ns: linkerd
@@ -2829,7 +2828,6 @@ data:
       jaeger:
         image: jaegertracing/all-in-one:1.17.1
         name: linkerd-jaeger
-
 ---
 ###
 ### linkerd-collector RBAC

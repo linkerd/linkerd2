@@ -1,4 +1,4 @@
-{{- define "removeEmpty" -}}
+{{- define "linkerd.addons.sanitize-config" -}}
 {{- if .enabled -}}
 {{- $dupValues := . -}}
 {{- if kindIs "map" $dupValues -}}

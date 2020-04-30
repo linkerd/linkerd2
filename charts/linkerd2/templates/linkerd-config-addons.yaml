@@ -11,7 +11,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-values
+  name: linkerd-config-addons
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
@@ -20,7 +20,6 @@ metadata:
 data:
   values: |-
     grafana:
-      {{- include "removeEmpty" .Values.grafana}}
+      {{- include "linkerd.addons.sanitize-config" .Values.grafana}}
     tracing:
-      {{- include "removeEmpty" .Values.tracing}}
-
+      {{- include "linkerd.addons.sanitize-config" .Values.tracing}}

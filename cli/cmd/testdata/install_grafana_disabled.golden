@@ -979,17 +979,6 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
-    - job_name: 'grafana'
-      kubernetes_sd_configs:
-      - role: pod
-        namespaces:
-          names: ['linkerd']
-      relabel_configs:
-      - source_labels:
-        - __meta_kubernetes_pod_container_name
-        action: keep
-        regex: ^grafana$
-
     #  Required for: https://grafana.com/grafana/dashboards/315
     - job_name: 'kubernetes-nodes-cadvisor'
       scheme: https
@@ -1981,7 +1970,7 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-values
+  name: linkerd-config-addons
   namespace: linkerd
   labels:
     linkerd.io/control-plane-ns: linkerd
@@ -1993,4 +1982,3 @@ data:
       enabled: false
     tracing:
       enabled: false
-
