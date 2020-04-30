@@ -27,3 +27,13 @@ func parseChannelVersion(cv string) (channelVersion, error) {
 	}
 	return channelVersion{}, fmt.Errorf("unsupported version format: %s", cv)
 }
+
+// IsReleaseChannel returns true if the channel of the version is "edge" or
+// "stable".
+func IsReleaseChannel(version string) (bool, error) {
+	cv, err := parseChannelVersion(version)
+	if err != nil {
+		return false, err
+	}
+	return cv.channel == "edge" || cv.channel == "stable", nil
+}
