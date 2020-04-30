@@ -32,7 +32,7 @@ metadata:
   name: linkerd-service-mirror
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: linkerd-service-mirrors
+    {{.Values.controllerComponentLabel}}: linkerd-service-mirror
 ---
 apiVersion: apps/v1
 kind: Deployment

@@ -207,6 +207,12 @@ var expectedServiceMirrorPolicyResources = []string{
 	"endpoints", "services", "secrets", "namespaces",
 }
 
+var expectedServiceMirrorRemoteClusterPolicyVerbs = []string{
+	"get",
+	"list",
+	"watch",
+}
+
 var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
@@ -1576,20 +1582,22 @@ func (hc *HealthChecker) checkServiceMirrorController() error {
 	return nil
 }
 
-func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
-	compare := func(expected, actual []string) error {
-		sort.Strings(expected)
-		sort.Strings(actual)
+func comparePermissions(expected, actual []string) error {
+	sort.Strings(expected)
+	sort.Strings(actual)
 
-		expectedStr := strings.Join(expected, ",")
-		actualStr := strings.Join(actual, ",")
+	expectedStr := strings.Join(expected, ",")
+	actualStr := strings.Join(actual, ",")
 
-		if expectedStr != actualStr {
-			return fmt.Errorf("expected %s, got %s", expectedStr, actualStr)
-		}
-
-		return nil
+	if expectedStr != actualStr {
+		return fmt.Errorf("expected %s, got %s", expectedStr, actualStr)
 	}
+
+	return nil
+}
+
+func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
+	var errors []string
 
 	cr, err := hc.kubeAPI.RbacV1().ClusterRoles().Get(linkerdServiceMirrorComponentName, metav1.GetOptions{})
 	if err != nil {
@@ -1609,12 +1617,16 @@ func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 		return fmt.Errorf("Service mirror ClusterRole is missing expected policy rule")
 	}
 
-	if err := compare(expectedServiceMirrorPolicyVerbs, policyRule.Verbs); err != nil {
-		return fmt.Errorf("Service mirror ClusterRole is missing verbs: %s", err)
+	if err := comparePermissions(expectedServiceMirrorPolicyVerbs, policyRule.Verbs); err != nil {
+		errors = append(errors, fmt.Sprintf("Service mirror ClusterRole is missing verbs: %s", err))
 	}
 
-	if err := compare(expectedServiceMirrorPolicyResources, policyRule.Resources); err != nil {
-		return fmt.Errorf("Service mirror ClusterRole is missing required resources: %s", err)
+	if err := comparePermissions(expectedServiceMirrorPolicyResources, policyRule.Resources); err != nil {
+		errors = append(errors, fmt.Sprintf("Service mirror ClusterRole is missing required resources: %s", err))
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf(strings.Join(errors, "\n\t"))
 	}
 
 	return nil
@@ -1654,24 +1666,23 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 			continue
 		}
 
-		canGet := false
-		canList := false
-		canWatch := false
+		var verbs []string
 		if err := hc.checkCanPerformAction(remoteAPI, "get", corev1.NamespaceAll, "", "v1", "services"); err == nil {
-			canGet = true
+			verbs = append(verbs, "get")
 		}
 
 		if err := hc.checkCanPerformAction(remoteAPI, "list", corev1.NamespaceAll, "", "v1", "services"); err == nil {
-			canList = true
+			verbs = append(verbs, "list")
 		}
 
 		if err := hc.checkCanPerformAction(remoteAPI, "watch", corev1.NamespaceAll, "", "v1", "services"); err == nil {
-			canWatch = true
+			verbs = append(verbs, "watch")
 		}
 
-		if !canGet || !canList || !canWatch {
-			errors = append(errors, fmt.Sprintf("* cluster: [%s]: Insufficient permissions GET: %v, LIST: %v, WATCH: %v", config.ClusterName, canGet, canList, canWatch))
+		if err := comparePermissions(expectedServiceMirrorRemoteClusterPolicyVerbs, verbs); err != nil {
+			errors = append(errors, fmt.Sprintf("* cluster: [%s]: Insufficient Service permissions: %s", config.ClusterName, err))
 		}
+
 	}
 
 	if len(errors) > 0 {
