@@ -123,9 +123,6 @@ identity:
       # PEM-encoded ECDSA private key
       keyPEM: |
 
-# grafana configuration
-grafanaImage: gcr.io/linkerd-io/grafana
-
 # heartbeat configuration
 disableHeartBeat: false
 heartbeatSchedule: "0 0 * * *"
