@@ -52,6 +52,7 @@ type (
 		Error               bool
 		ErrorMessage        string
 		PathPrefix          string
+		Grafana             string
 	}
 
 	healthChecker interface {
@@ -114,6 +115,7 @@ func NewServer(
 		uuid:                uuid,
 		controllerNamespace: controllerNamespace,
 		clusterDomain:       clusterDomain,
+		grafana:             grafanaAddr,
 		grafanaProxy:        newGrafanaProxy(grafanaAddr),
 		hc:                  hc,
 		statCache:           cache.New(statExpiration, statCleanupInterval),

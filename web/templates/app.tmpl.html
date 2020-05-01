@@ -3,7 +3,8 @@
     data-release-version="{{.Data.ReleaseVersion}}"
     data-go-version="{{.Data.GoVersion}}"
     data-controller-namespace="{{.ControllerNamespace}}"
-    data-uuid="{{.UUID}}">
+    data-uuid="{{.UUID}}"
+    data-grafana="{{.Grafana}}">
     {{ if .Error }}
       <p>Failed to call public API: {{ .ErrorMessage }}</p>
     {{ end }}
