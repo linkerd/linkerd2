@@ -1,12 +1,10 @@
-{{- /*
+{- /*
   This config-map is used to store the configuration of add-ons, which is useful during upgrades.
-  As fields like global, etc are added by helm and we would not want them in the data, second level fields should be used
-  instead of directly specifying the add-on field.
+  Some add-ons are enabled by default.
 */ -}}
-{{ if or (.Values.tracing.enabled) -}}
 ---
 ###
-### linkerd values
+### linkerd add-ons configuration
 ###
 ---
 kind: ConfigMap
@@ -21,9 +19,4 @@ metadata:
 data:
   values: |-
     tracing:
-      enabled: {{.Values.tracing.enabled}}
-      collector:
-  {{- toYaml .Values.tracing.collector | trim | nindent 8}}
-      jaeger:
-  {{- toYaml .Values.tracing.jaeger | trim | nindent 8}}
-{{ end -}}
+      {{- include "linkerd.addons.sanitize-config" .Values.tracing}}

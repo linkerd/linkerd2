@@ -3133,9 +3133,13 @@ spec:
         secret:
           secretName: linkerd-tap-tls
 
+{- /*
+  This config-map is used to store the configuration of add-ons, which is useful during upgrades.
+  Some add-ons are enabled by default.
+*/ -}}
 ---
 ###
-### linkerd values
+### linkerd add-ons configuration
 ###
 ---
 kind: ConfigMap
@@ -3150,11 +3154,11 @@ metadata:
 data:
   values: |-
     tracing:
-      enabled: true
       collector:
         image: overwrite-collector-image
         name: overwrite-collector
         resources: null
+      enabled: true
       jaeger:
         image: jaegertracing/all-in-one:1.17.1
         name: linkerd-jaeger
