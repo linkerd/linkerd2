@@ -1,11 +1,16 @@
+{- /*
+  This function does the following functions for add-on fields:
+
+  - when an add-on is enabled, it removes the `partials` and `global` sub-fields which are automatically added
+    by helm to pass configuration to sub-charts, and returns the add-on fields.
+
+  - When the add-on is disabled, only the `enabled` flag is returned as we don't need to store the other configuration
+    when an add-on is disabled.
+*/ -}}
 {{- define "linkerd.addons.sanitize-config" -}}
 {{- if .enabled -}}
 {{- $dupValues := . -}}
 {{- if kindIs "map" $dupValues -}}
-  {{/*
-  Remove "global" and "partial" keys from the add-on structs as they are added by helm
-  to propogate values.
-  */}}
   {{- if (hasKey $dupValues "global") -}}
       {{- $dupValues := unset $dupValues "global" -}}
   {{- end -}}

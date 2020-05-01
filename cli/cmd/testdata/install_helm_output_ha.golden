@@ -3413,10 +3413,6 @@ spec:
 
 ---
 # Source: linkerd2/templates/linkerd-config-addons.yaml
-{- /*
-  This config-map is used to store the configuration of add-ons, which is useful during upgrades.
-  Some add-ons are enabled by default.
-*/ -}}
 ---
 ###
 ### linkerd add-ons configuration

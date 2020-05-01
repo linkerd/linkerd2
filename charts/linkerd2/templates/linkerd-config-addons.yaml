@@ -1,6 +1,8 @@
-{- /*
+{{- /*
   This config-map is used to store the configuration of add-ons, which is useful during upgrades.
-  Some add-ons are enabled by default.
+  This is required, as some add-ons can be enabled by default.
+  Whenever an add-on is disabled, we just store the enabled flag for it and remove any extra configuration
+  passed for the add-on.
 */ -}}
 ---
 ###
