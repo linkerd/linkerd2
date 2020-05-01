@@ -9,14 +9,8 @@
 {{- define "linkerd.addons.sanitize-config" -}}
 {{- if .enabled -}}
 {{- $dupValues := . -}}
-{{- if kindIs "map" $dupValues -}}
-  {{- if (hasKey $dupValues "global") -}}
-      {{- $dupValues := unset $dupValues "global" -}}
-  {{- end -}}
-  {{- if (hasKey $dupValues "partials") -}}
-      {{- $dupValues := unset $dupValues "partials" -}}
-  {{- end -}}
-{{- end -}}
+  {{- $dupValues := unset $dupValues "global" -}}
+  {{- $dupValues := unset $dupValues "partials" -}}
 {{- toYaml . | trim | nindent 6 }}
 {{- else }}
       enabled: false
