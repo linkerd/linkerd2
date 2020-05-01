@@ -11,14 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/issuercerts"
-
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -181,7 +180,6 @@ var linkerdHAControlPlaneComponents = []string{
 var ExpectedServiceAccountNames = []string{
 	"linkerd-controller",
 	"linkerd-destination",
-	"linkerd-grafana",
 	"linkerd-identity",
 	"linkerd-prometheus",
 	"linkerd-proxy-injector",
@@ -349,6 +347,7 @@ type HealthChecker struct {
 	issuerCert       *tls.Cred
 	trustAnchors     []*x509.Certificate
 	cniDaemonSet     *appsv1.DaemonSet
+	addOns           map[string]interface{}
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -357,7 +356,7 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 		Options: options,
 	}
 
-	hc.categories = hc.allCategories()
+	hc.categories = append(hc.allCategories(), hc.addOnCategories()...)
 
 	checkMap := map[CategoryID]struct{}{}
 	for _, category := range categoryIDs {
@@ -647,7 +646,7 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
-						return checkControllerRunning(hc.controlPlanePods)
+						return checkControllerRunning(hc.controlPlanePods, "controller")
 					},
 				},
 				{
@@ -2004,7 +2003,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web", "tap"}
+	names := []string{"controller", "identity", "prometheus", "sp-validator", "web", "tap"}
 	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")
@@ -2044,9 +2043,9 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 	return nil
 }
 
-func checkControllerRunning(pods []corev1.Pod) error {
+func checkControllerRunning(pods []corev1.Pod, container string) error {
 	statuses := getPodStatuses(pods)
-	if _, ok := statuses["controller"]; !ok {
+	if _, ok := statuses[container]; !ok {
 		for _, pod := range pods {
 			podStatus := k8s.GetPodStatus(pod)
 			if podStatus != running {
