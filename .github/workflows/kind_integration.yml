@@ -162,3 +162,10 @@ jobs:
 
         init_test_run $HOME/.linkerd
         ${{ matrix.integration_test }}_integration_tests
+    - name: Trigger CI reports
+      # peter-evans/repository-dispatch@v1
+      uses: peter-evans/repository-dispatch@0ae1c4b
+      with:
+        token: ${{ secrets.RELEASE_TOKEN }}
+        repository: linkerd/linkerd2-ci-metrics
+        event-type: trigger-report
