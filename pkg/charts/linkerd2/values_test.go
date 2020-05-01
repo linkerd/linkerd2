@@ -228,6 +228,7 @@ func TestNewValues(t *testing.T) {
 
 		// Make Add-On Values nil to not have to check for their defaults
 		actual.Tracing = nil
+		actual.Grafana = nil
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)

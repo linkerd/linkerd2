@@ -61,6 +61,7 @@ type (
 
 		// Addon Structures
 		Tracing Tracing `json:"tracing"`
+		Grafana Grafana `json:"grafana"`
 	}
 
 	// Global values common across all charts
