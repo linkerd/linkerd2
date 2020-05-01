@@ -1,6 +1,6 @@
 {{- /*
-  This config-map is used to store the configuration of add-ons, which is useful during upgrades.  
-  As fields like global, etc are added by helm and we would not want them in the data, second level fields should be used 
+  This config-map is used to store the configuration of add-ons, which is useful during upgrades.
+  As fields like global, etc are added by helm and we would not want them in the data, second level fields should be used
   instead of directly specifying the add-on field.
 */ -}}
 {{ if or (.Values.tracing.enabled) -}}
@@ -12,7 +12,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-values
+  name: linkerd-config-addons
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}

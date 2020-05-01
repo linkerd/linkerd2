@@ -3150,7 +3150,7 @@ spec:
 # Source: linkerd2/templates/smi-metrics.yaml
 
 ---
-# Source: linkerd2/templates/linkerd-values.yaml
+# Source: linkerd2/templates/linkerd-config-addons.yaml
 ---
 ###
 ### linkerd values
@@ -3159,7 +3159,7 @@ spec:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-values
+  name: linkerd-config-addons
   namespace: linkerd
   labels:
     linkerd.io/control-plane-ns: linkerd
