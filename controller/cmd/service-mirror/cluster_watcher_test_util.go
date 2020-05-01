@@ -324,7 +324,11 @@ var remoteGatewayUpdated = &testEnvironment{
 				addresses:        []corev1.EndpointAddress{{IP: "0.0.0.0"}},
 				incomingPort:     999,
 				resourceVersion:  "currentGatewayResVersion",
-				ProbeConfig:      nil,
+				ProbeConfig: &ProbeConfig{
+					path:            defaultProbePath,
+					port:            defaultProbePort,
+					periodInSeconds: defaultProbePeriod,
+				},
 			},
 			affectedServices: []*corev1.Service{
 				mirroredService("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
@@ -385,10 +389,15 @@ var gatewayAddressChanged = &testEnvironment{
 			gatewaySpec: GatewaySpec{
 				gatewayName:      "gateway",
 				gatewayNamespace: "gateway-ns",
-				clusterName:      "remote",
+				clusterName:      "some-cluster",
 				addresses:        []corev1.EndpointAddress{{IP: "0.0.0.1"}},
 				incomingPort:     888,
 				resourceVersion:  "currentGatewayResVersion",
+				ProbeConfig: &ProbeConfig{
+					path:            "/p",
+					port:            1,
+					periodInSeconds: 222,
+				},
 			},
 			affectedServices: []*corev1.Service{
 				mirroredService("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
@@ -448,12 +457,16 @@ var gatewayIdentityChanged = &testEnvironment{
 			gatewaySpec: GatewaySpec{
 				gatewayName:      "gateway",
 				gatewayNamespace: "gateway-ns",
-				clusterName:      "",
+				clusterName:      clusterName,
 				addresses:        []corev1.EndpointAddress{{IP: "0.0.0.0"}},
 				incomingPort:     888,
 				resourceVersion:  "currentGatewayResVersion",
 				identity:         "new-identity",
-				ProbeConfig:      nil,
+				ProbeConfig: &ProbeConfig{
+					path:            defaultProbePath,
+					port:            defaultProbePort,
+					periodInSeconds: defaultProbePeriod,
+				},
 			},
 			affectedServices: []*corev1.Service{
 				mirroredService("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
@@ -501,6 +514,54 @@ var gatewayIdentityChanged = &testEnvironment{
 			[]corev1.EndpointPort{
 				{
 					Name:     "svc-2-port",
+					Port:     888,
+					Protocol: "TCP",
+				}}),
+	},
+}
+
+var gatewayProbeConfigChanged = &testEnvironment{
+	events: []interface{}{
+		&RemoteGatewayUpdated{
+			gatewaySpec: GatewaySpec{
+				gatewayName:      "gateway",
+				gatewayNamespace: "gateway-ns",
+				clusterName:      clusterName,
+				addresses:        []corev1.EndpointAddress{{IP: "0.0.0.0"}},
+				incomingPort:     888,
+				resourceVersion:  "currentGatewayResVersion",
+				identity:         "identity",
+				ProbeConfig: &ProbeConfig{
+					path:            "/new-path",
+					port:            defaultProbePort,
+					periodInSeconds: defaultProbePeriod,
+				},
+			},
+			affectedServices: []*corev1.Service{
+				mirroredService("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
+					[]corev1.ServicePort{
+						{
+							Name:     "svc-1-port",
+							Protocol: "TCP",
+							Port:     8081,
+						},
+					}),
+			},
+		},
+	},
+	localResources: []string{
+		mirroredServiceAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
+			[]corev1.ServicePort{
+				{
+					Name:     "svc-1-port",
+					Protocol: "TCP",
+					Port:     8081,
+				},
+			}),
+		endpointsAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "",
+			[]corev1.EndpointPort{
+				{
+					Name:     "svc-1-port",
 					Port:     888,
 					Protocol: "TCP",
 				}}),

@@ -148,3 +148,67 @@ func TestRemoteServiceUpdatedProbeEvents(t *testing.T) {
 		tc.run(t)
 	}
 }
+
+func TestRemoteGatewayUpdatedProbeEvents(t *testing.T) {
+	for _, tt := range []probeEventsTestCase{
+		{
+			description: "sends gateway updated when endpoints ports",
+			environment: remoteGatewayUpdated,
+			expectedEventsSentToProbeManager: []interface{}{
+				&GatewayUpdated{
+					GatewaySpec: gatewaySpec("gateway", "gateway-ns", clusterName, "0.0.0.0", "currentGatewayResVersion", "", 999, defaultProbePort, defaultProbePath, defaultProbePeriod),
+				},
+			},
+		},
+
+		{
+			description: "sends gateway updated when address changes",
+			environment: gatewayAddressChanged,
+			expectedEventsSentToProbeManager: []interface{}{
+				&GatewayUpdated{
+					GatewaySpec: gatewaySpec("gateway", "gateway-ns", "some-cluster", "0.0.0.1", "currentGatewayResVersion", "", 888, 1, "/p", 222),
+				},
+			},
+		},
+		{
+			description: "sends gateway updated when identity changes",
+			environment: gatewayIdentityChanged,
+			expectedEventsSentToProbeManager: []interface{}{
+				&GatewayUpdated{
+					GatewaySpec: gatewaySpec("gateway", "gateway-ns", clusterName, "0.0.0.0", "currentGatewayResVersion", "new-identity", 888, defaultProbePort, defaultProbePath, defaultProbePeriod),
+				},
+			},
+		},
+		{
+			description: "sends gateway updated when probe changes",
+			environment: gatewayProbeConfigChanged,
+			expectedEventsSentToProbeManager: []interface{}{
+				&GatewayUpdated{
+					GatewaySpec: gatewaySpec("gateway", "gateway-ns", clusterName, "0.0.0.0", "currentGatewayResVersion", "identity", 888, defaultProbePort, "/new-path", defaultProbePeriod),
+				},
+			},
+		},
+	} {
+		tc := tt // pin
+		tc.run(t)
+	}
+}
+
+func TestRemoteGatewayDeletedProbeEvents(t *testing.T) {
+	for _, tt := range []probeEventsTestCase{
+		{
+			description: "sends a gateway deleted event to the probe manager",
+			environment: gatewayDeleted,
+			expectedEventsSentToProbeManager: []interface{}{
+				&GatewayDeleted{
+					gatewayName: "gateway",
+					gatewayNs:   "gateway-ns",
+					clusterName: clusterName,
+				},
+			},
+		},
+	} {
+		tc := tt // pin
+		tc.run(t)
+	}
+}
