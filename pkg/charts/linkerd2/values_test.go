@@ -19,7 +19,6 @@ func TestNewValues(t *testing.T) {
 		ControllerImageVersion:      testVersion,
 		WebImage:                    "gcr.io/linkerd-io/web",
 		PrometheusImage:             "prom/prometheus:v2.15.2",
-		GrafanaImage:                "gcr.io/linkerd-io/grafana",
 		ControllerReplicas:          1,
 		ControllerLogLevel:          "info",
 		PrometheusLogLevel:          "info",
@@ -174,14 +173,18 @@ func TestNewValues(t *testing.T) {
 		expected.WebResources = controllerResources
 		expected.HeartbeatResources = controllerResources
 
-		expected.GrafanaResources = &Resources{
-			CPU: Constraints{
-				Limit:   controllerResources.CPU.Limit,
-				Request: controllerResources.CPU.Request,
+		expected.Grafana = make(map[string]interface{})
+		expected.Grafana["enabled"] = true
+		expected.Grafana["name"] = "linkerd-grafana"
+		expected.Grafana["image"] = "gcr.io/linkerd-io/grafana"
+		expected.Grafana["resources"] = map[string]interface{}{
+			"cpu": map[string]interface{}{
+				"limit":   controllerResources.CPU.Limit,
+				"request": controllerResources.CPU.Request,
 			},
-			Memory: Constraints{
-				Limit:   "1024Mi",
-				Request: "50Mi",
+			"memory": map[string]interface{}{
+				"limit":   "1024Mi",
+				"request": "50Mi",
 			},
 		}
 

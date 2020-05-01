@@ -57,7 +57,6 @@ func TestRender(t *testing.T) {
 		ControllerImageVersion:      "ControllerImageVersion",
 		WebImage:                    "WebImage",
 		PrometheusImage:             "PrometheusImage",
-		GrafanaImage:                "GrafanaImage",
 		ControllerLogLevel:          "ControllerLogLevel",
 		PrometheusLogLevel:          "PrometheusLogLevel",
 		ControllerUID:               2103,
