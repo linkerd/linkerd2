@@ -8,10 +8,8 @@
 */ -}}
 {{- define "linkerd.addons.sanitize-config" -}}
 {{- if .enabled -}}
-{{- $dupValues := . -}}
-  {{- $dupValues := unset $dupValues "global" -}}
-  {{- $dupValues := unset $dupValues "partials" -}}
-{{- toYaml . | trim | nindent 6 }}
+{{ $dup := omit . "global" "partials" }}
+{{- toYaml $dup | trim | nindent 6 }}
 {{- else }}
       enabled: false
 {{- end -}}
