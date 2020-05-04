@@ -48,7 +48,7 @@ type (
 		controllerUID               int64
 		disableH2Upgrade            bool
 		disableHeartbeat            bool
-		heartbeatScheduleOverride   string
+		heartbeatScheduleStringVal  string
 		cniEnabled                  bool
 		skipChecks                  bool
 		omitWebhookSideEffects      bool
@@ -484,7 +484,7 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		"Disables the heartbeat cronjob (default false)",
 	)
 	flags.StringVar(
-		&options.heartbeatScheduleOverride, "heartbeat-schedule", options.heartbeatScheduleOverride,
+		&options.heartbeatScheduleStringVal, "heartbeat-schedule", options.heartbeatSchedule(),
 		"A cron scheduling string (https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) for running the heartbeat job, e.g. '0 0 * * *'. The job should run once daily. (default: daily starting at now+10 minutes)",
 	)
 	flags.DurationVar(
@@ -779,7 +779,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.CNIEnabled = options.cniEnabled
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
 	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
-	installValues.HeartbeatSchedule = options.heartbeatSchedule()
+	installValues.HeartbeatSchedule = options.heartbeatScheduleStringVal
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)

@@ -191,6 +191,15 @@ func TestRender(t *testing.T) {
 	withHeartBeatDisabledValues, _, _ := withHeartBeatDisabled.validateAndBuild("", nil)
 	addFakeTLSSecrets(withHeartBeatDisabledValues)
 
+	// FIXME: test heartbeat override here
+	withOverrideHeartBeatSchedule, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withOverrideHeartBeatSchedule.heartbeatScheduleStringVal = "5 4 3 2 1"
+	withOverrideHeartBeatScheduleValues, _, _ := withOverrideHeartBeatSchedule.validateAndBuild("", nil)
+	addFakeTLSSecrets(withOverrideHeartBeatScheduleValues)
+
 	withRestrictedDashboardPriviliges, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
@@ -248,6 +257,7 @@ func TestRender(t *testing.T) {
 		{cniEnabledValues, "install_no_init_container.golden"},
 		{withProxyIgnoresValues, "install_proxy_ignores.golden"},
 		{withHeartBeatDisabledValues, "install_heartbeat_disabled_output.golden"},
+		{withOverrideHeartBeatScheduleValues, "install_heartbeat_override_schedule_output.golden"},
 		{withRestrictedDashboardPriviligesValues, "install_restricted_dashboard.golden"},
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
 		{withCustomRegistryValues, "install_custom_registry.golden"},
