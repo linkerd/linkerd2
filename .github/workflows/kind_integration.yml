@@ -165,8 +165,10 @@ jobs:
 
   trigger-reports:
     name: Trigger CI reports
+    runs-on: ubuntu-18.04
     needs: [kind_integration_tests]
     if: always()
+    steps:
     - name: Trigger CI reports
       # peter-evans/repository-dispatch@v1
       uses: peter-evans/repository-dispatch@0ae1c4b
