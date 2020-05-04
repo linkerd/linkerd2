@@ -99,8 +99,8 @@ readinessProbe:
     path: /ready
     port: {{.Values.global.proxy.ports.admin}}
   initialDelaySeconds: 2
-{{- if .Values.global.proxy.actualResources }}
-{{ include "partials.resources" .Values.global.proxy.actualResources }}
+{{- if .Values.global.proxy.resources }}
+{{ include "partials.resources" .Values.global.proxy.resources }}
 {{- end }}
 securityContext:
   allowPrivilegeEscalation: false

@@ -93,12 +93,14 @@ spec:
           name: tls
           readOnly: true
       {{- if not (empty .Values.spValidatorProxyResources) }}
-      {{- $r := merge .Values.spValidatorProxyResources  .Values.global.proxy.resources}}
-      {{- $_ := set .Values.global.proxy "actualResources" $r }}
-      {{- else }}
-      {{- $_ := set .Values.global.proxy "actualResources" .Values.global.proxy.resources }}
-      {{- end }}
+      {{- $orig := .Values.global.proxy.resources }}
+      {{- $r := merge .Values.spValidatorProxyResources .Values.global.proxy.resources }}
+      {{- $_ := set .Values.global.proxy "resources" $r }}
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- $_ := set .Values.global.proxy "resources" $orig }}
+      {{- else }}
+      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- end }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
