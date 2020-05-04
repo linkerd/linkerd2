@@ -154,7 +154,7 @@ prometheusLogLevel: *controller_log_level
 # set resources for prometheus and prometheus linkerd proxy respectively
 # see global.proxy.resources for details.
 #prometheusResources:
-#prometeheusProxyResources:
+#prometheusProxyResources:
 
 # proxy injector configuration
 proxyInjector:
