@@ -30,7 +30,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 			id: LinkerdAddOnChecks,
 			checkers: []checker{
 				{
-					description: "linkerd add-on configmap exists",
+					description: fmt.Sprintf("%s config map exists", k8s.ValuesConfigMapName),
 					warning:     true,
 					check: func(context.Context) error {
 						return hc.checkIfAddOnsConfigMapExists()
@@ -53,7 +53,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 					},
 				},
 				{
-					description: "grafana add-on configmap exists",
+					description: "grafana add-on config map exists",
 					warning:     false,
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
