@@ -149,6 +149,10 @@ func (iw *IPWatcher) addPod(obj interface{}) {
 		// Pod has not yet been assigned an IP address.
 		return
 	}
+	if pod.Spec.HostNetwork {
+		// Don't trigger updates for watches on host IP addresses.
+		return
+	}
 	ss := iw.getOrNewServiceSubscriptions(pod.Status.PodIP)
 	ss.updatePod(iw.podToAddressSet(pod))
 }
@@ -245,10 +249,6 @@ func (iw *IPWatcher) getServiceSubscriptions(clusterIP string) (ss *serviceSubsc
 }
 
 func (iw *IPWatcher) podToAddressSet(pod *corev1.Pod) AddressSet {
-	if pod.Spec.HostNetwork {
-		return AddressSet{}
-	}
-
 	ownerKind, ownerName := iw.k8sAPI.GetOwnerKindAndName(pod, true)
 	return AddressSet{
 		Addresses: map[PodID]Address{
