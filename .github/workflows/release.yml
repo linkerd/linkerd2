@@ -207,8 +207,10 @@ jobs:
       run: |
         export TAG="$($HOME/.linkerd version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
+  trigger-reports:
+    needs: [cloud_integration_tests]
+    if: always()
     - name: Trigger CI reports
-      if: always()
       # peter-evans/repository-dispatch@v1
       uses: peter-evans/repository-dispatch@0ae1c4b
       with:
