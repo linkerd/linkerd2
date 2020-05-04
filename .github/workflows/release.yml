@@ -208,6 +208,7 @@ jobs:
         export TAG="$($HOME/.linkerd version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
   trigger-reports:
+    name: Trigger CI reports
     needs: [cloud_integration_tests]
     if: always()
     - name: Trigger CI reports

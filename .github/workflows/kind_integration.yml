@@ -164,6 +164,7 @@ jobs:
         ${{ matrix.integration_test }}_integration_tests
 
   trigger-reports:
+    name: Trigger CI reports
     needs: [kind_integration_tests]
     if: always()
     - name: Trigger CI reports
