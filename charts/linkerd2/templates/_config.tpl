@@ -3,6 +3,7 @@
   "linkerdNamespace": "{{.Values.global.namespace}}",
   "cniEnabled": {{ default false .Values.global.cniEnabled }},
   "version": "{{.Values.global.linkerdVersion}}",
+  "tlsManager": "{{.Values.global.tlsManager}}",
   "identityContext":{
     "trustDomain": "{{.Values.global.identityTrustDomain}}",
     "trustAnchorsPem": "{{required "Please provide the identity trust anchors" .Values.global.identityTrustAnchorsPEM | trim | replace "\n" "\\n"}}",

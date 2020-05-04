@@ -12,6 +12,9 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/identity"
+	"github.com/linkerd/linkerd2/pkg/config"
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -35,13 +38,13 @@ const (
 type (
 	// Service implements the gRPC service in terms of a Validator and Issuer.
 	Service struct {
-		validator                                  Validator
-		trustAnchors                               *x509.CertPool
-		issuer                                     *tls.Issuer
-		issuerMutex                                *sync.RWMutex
-		validity                                   *tls.Validity
-		recordEvent                                func(eventType, reason, message string)
-		expectedName, issuerPathCrt, issuerPathKey string
+		validator                                                  Validator
+		trustAnchors                                               *x509.CertPool
+		issuer                                                     *tls.Issuer
+		issuerMutex                                                *sync.RWMutex
+		validity                                                   *tls.Validity
+		recordEvent                                                func(eventType, reason, message string)
+		expectedName, issuerPathCrt, issuerPathKey, anchorsPathCrt string
 	}
 
 	// Validator implementors accept a bearer token, validates it, and returns a
@@ -73,8 +76,32 @@ func (svc *Service) Initialize() error {
 	if err != nil {
 		return err
 	}
+
+	cfg, err := config.Global(consts.MountPathGlobalConfig)
+	if err != nil {
+		return err
+	}
+
+	if cfg.GetTlsManager() != consts.TLSManagerInternal {
+		if newAnchorsPEM, err := issuercerts.LoadTrustAnchorsFromFile(svc.anchorsPathCrt); err == nil {
+			newTrustAnchors, err := tls.DecodePEMCertPool(newAnchorsPEM)
+			if err != nil {
+				return err
+			}
+			svc.updateAnchors(newTrustAnchors)
+		} else {
+			return err
+		}
+	}
 	svc.updateIssuer(credentials)
 	return nil
+}
+
+func (svc *Service) updateAnchors(newAnchors *x509.CertPool) {
+	svc.issuerMutex.Lock()
+	svc.trustAnchors = newAnchors
+	log.Debug("Trust anchors have been updated")
+	svc.issuerMutex.Unlock()
 }
 
 func (svc *Service) updateIssuer(newIssuer tls.Issuer) {
@@ -123,7 +150,7 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 }
 
 // NewService creates a new identity service.
-func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey string) *Service {
+func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.Validity, recordEvent func(eventType, reason, message string), expectedName, issuerPathCrt, issuerPathKey, anchorsPathCrt string) *Service {
 	return &Service{
 		validator,
 		trustAnchors,
@@ -134,6 +161,7 @@ func NewService(validator Validator, trustAnchors *x509.CertPool, validity *tls.
 		expectedName,
 		issuerPathCrt,
 		issuerPathKey,
+		anchorsPathCrt,
 	}
 }
 

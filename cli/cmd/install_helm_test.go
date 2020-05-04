@@ -57,6 +57,7 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
    "linkerdVersion":"linkerd-version",
    "identityTrustAnchorsPEM":"test-trust-anchor",
    "identityTrustDomain":"test.trust.domain",
+   "tlsManager": "internal",
    "proxy":{
     "image":{
      "version":"test-proxy-version"

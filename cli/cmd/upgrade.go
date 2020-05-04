@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
@@ -250,7 +251,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 
 	if options.identityOptions.crtPEMFile != "" || options.identityOptions.keyPEMFile != "" {
 
-		if configs.Global.IdentityContext.Scheme == string(corev1.SecretTypeTLS) {
+		if configs.Global.IdentityContext.Scheme == string(corev1.SecretTypeTLS) || configs.Global.TlsManager != consts.TLSManagerInternal {
 			return nil, nil, errors.New("cannot update issuer certificates if you are using external cert management solution")
 		}
 
@@ -266,6 +267,10 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 
 	if options.identityOptions.trustPEMFile != "" {
+		if configs.Global.TlsManager != consts.TLSManagerInternal {
+			return nil, nil, errors.New("cannot update trust anchors while using an external certificate management solution")
+		}
+
 		if err := checkFilesExist([]string{options.identityOptions.trustPEMFile}); err != nil {
 			return nil, nil, err
 		}
@@ -295,6 +300,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
 	values.Identity = identity.Identity
+	values.Global.TLSManager = configs.GetGlobal().GetTlsManager()
 	values.Global.IdentityTrustAnchorsPEM = identity.TrustAnchorsPEM
 	values.Global.IdentityTrustDomain = identity.TrustDomain
 	// we need to do that if we have updated the anchors as the config map json has already been generated
@@ -308,7 +314,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 
 	// if exist, re-use the proxy injector, profile validator and tap TLS secrets.
 	// otherwise, let Helm generate them by creating an empty charts.TLS struct here.
-	proxyInjectorTLS, err := fetchTLSSecret(k, k8s.ProxyInjectorWebhookServiceName, options)
+	proxyInjectorTLS, err := fetchK8sTLSSecret(k, k8s.ProxyInjectorWebhookServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
@@ -317,7 +323,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 	values.ProxyInjector = &charts.ProxyInjector{TLS: proxyInjectorTLS}
 
-	profileValidatorTLS, err := fetchTLSSecret(k, k8s.SPValidatorWebhookServiceName, options)
+	profileValidatorTLS, err := fetchK8sTLSSecret(k, k8s.SPValidatorWebhookServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
@@ -326,7 +332,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	}
 	values.ProfileValidator = &charts.ProfileValidator{TLS: profileValidatorTLS}
 
-	tapTLS, err := fetchTLSSecret(k, k8s.TapServiceName, options)
+	tapTLS, err := fetchK8sTLSSecret(k, k8s.TapServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, nil, fmt.Errorf("could not fetch existing tap secret: %s", err)
@@ -412,26 +418,6 @@ func repairConfigs(configs *pb.All) {
 	if configs.Proxy.DebugImage == nil {
 		configs.Proxy.DebugImage = &pb.Image{}
 	}
-}
-
-func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
-	secret, err := k.CoreV1().
-		Secrets(controlPlaneNamespace).
-		Get(webhookSecretName(webhook), metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	value := &charts.TLS{
-		KeyPEM: string(secret.Data["key.pem"]),
-		CrtPEM: string(secret.Data["crt.pem"]),
-	}
-
-	if err := options.verifyTLS(value, webhook); err != nil {
-		return nil, err
-	}
-
-	return value, nil
 }
 
 func fetchK8sTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {

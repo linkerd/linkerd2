@@ -83,8 +83,9 @@ type (
 		IdentityTrustAnchorsPEM  string `json:"identityTrustAnchorsPEM"`
 		IdentityTrustDomain      string `json:"identityTrustDomain"`
 
-		Proxy     *Proxy     `json:"proxy"`
-		ProxyInit *ProxyInit `json:"proxyInit"`
+		Proxy      *Proxy     `json:"proxy"`
+		ProxyInit  *ProxyInit `json:"proxyInit"`
+		TLSManager string     `json:"tlsManager"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration

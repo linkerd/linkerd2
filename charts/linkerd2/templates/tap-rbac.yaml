@@ -90,6 +90,8 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-tap
   namespace: {{.Values.global.namespace}}
+{{ $ca := genCA (printf "linkerd-tap.%s.svc" .Values.global.namespace) 365 -}}
+{{ if and (eq .Values.global.tlsManager "internal") (.Values.tap) -}}
 ---
 kind: Secret
 apiVersion: v1
@@ -101,11 +103,11 @@ metadata:
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-type: Opaque
+type: kubernetes.io/tls
 data:
-  {{ $ca := genCA (printf "linkerd-tap.%s.svc" .Values.global.namespace) 365 -}}
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.tap.keyPEM)) (empty .Values.tap.keyPEM) }}
+  tls.crt: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
+  tls.key: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.tap.keyPEM)) (empty .Values.tap.keyPEM) }}
+{{- end}}
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
@@ -122,4 +124,6 @@ spec:
   service:
     name: linkerd-tap
     namespace: {{.Values.global.namespace}}
+{{- if and (eq .Values.global.tlsManager "internal") (.Values.tap) }}
   caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
+{{- end}}

@@ -57,6 +57,7 @@ type (
 		identityOptions             *installIdentityOptions
 		smiMetricsEnabled           bool
 		smiMetricsImage             string
+		tlsManager                  string
 		*proxyConfigOptions
 
 		recordedFlags []*pb.Install_Flag
@@ -196,6 +197,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		controlPlaneTracing:         defaults.Global.ControlPlaneTracing,
 		smiMetricsEnabled:           defaults.SMIMetrics.Enabled,
 		smiMetricsImage:             defaults.SMIMetrics.Image,
+		tlsManager:                  defaults.Global.TLSManager,
 		proxyConfigOptions: &proxyConfigOptions{
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
@@ -416,6 +418,10 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 		return nil, nil, err
 	}
 
+	if options.tlsManager != consts.TLSManagerInternal {
+		options.identityOptions.identityExternalIssuer = true
+	}
+
 	options.recordFlags(flags)
 
 	identityValues, err := options.identityOptions.validateAndBuild()
@@ -565,6 +571,10 @@ func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 	flags.BoolVar(
 		&options.identityOptions.identityExternalIssuer, "identity-external-issuer", options.identityOptions.identityExternalIssuer,
 		"Whether to use an external identity issuer (default false)",
+	)
+	flags.StringVar(
+		&options.tlsManager, "tls-manager", options.tlsManager,
+		"TLS Manager string. Set to external to manage tls externally",
 	)
 	return flags
 }
@@ -765,6 +775,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
 	installValues.SMIMetrics.Image = options.smiMetricsImage
 	installValues.SMIMetrics.Enabled = options.smiMetricsEnabled
+	installValues.Global.TLSManager = options.tlsManager
 
 	installValues.Global.Proxy = &l5dcharts.Proxy{
 		EnableExternalProfiles: options.enableExternalProfiles,
@@ -918,6 +929,7 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 		IdentityContext:        identity,
 		OmitWebhookSideEffects: options.omitWebhookSideEffects,
 		ClusterDomain:          options.clusterDomain,
+		TlsManager:             options.tlsManager,
 	}
 }
 

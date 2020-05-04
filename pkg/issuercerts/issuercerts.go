@@ -33,14 +33,14 @@ func FetchIssuerData(api kubernetes.Interface, trustAnchors, controlPlaneNamespa
 		return nil, err
 	}
 
-	crt, ok := secret.Data[k8s.IdentityIssuerCrtName]
+	crt, ok := secret.Data[corev1.TLSCertKey]
 	if !ok {
-		return nil, fmt.Errorf(keyMissingError, k8s.IdentityIssuerCrtName, "issuer certificate", k8s.IdentityIssuerSecretName, false)
+		return nil, fmt.Errorf(keyMissingError, corev1.TLSCertKey, "issuer certificate", k8s.IdentityIssuerSecretName, false)
 	}
 
-	key, ok := secret.Data[k8s.IdentityIssuerKeyName]
+	key, ok := secret.Data[corev1.TLSPrivateKeyKey]
 	if !ok {
-		return nil, fmt.Errorf(keyMissingError, k8s.IdentityIssuerKeyName, "issuer key", k8s.IdentityIssuerSecretName, true)
+		return nil, fmt.Errorf(keyMissingError, corev1.TLSPrivateKeyKey, "issuer key", k8s.IdentityIssuerSecretName, true)
 	}
 
 	return &IssuerCertData{trustAnchors, string(crt), string(key), nil}, nil
@@ -86,6 +86,12 @@ func LoadIssuerCrtAndKeyFromFiles(keyPEMFile, crtPEMFile string) (string, string
 	return string(key), string(crt), nil
 }
 
+// LoadTrustAnchorFromFile loads trust anchor data from file storedon disk
+func LoadTrustAnchorsFromFile(trustPEMFile string) (string, error) {
+	anchors, err := ioutil.ReadFile(trustPEMFile)
+	return string(anchors), err
+}
+
 // LoadIssuerDataFromFiles loads the issuer data from file stored on disk
 func LoadIssuerDataFromFiles(keyPEMFile, crtPEMFile, trustPEMFile string) (*IssuerCertData, error) {
 	key, crt, err := LoadIssuerCrtAndKeyFromFiles(keyPEMFile, crtPEMFile)
@@ -93,12 +99,12 @@ func LoadIssuerDataFromFiles(keyPEMFile, crtPEMFile, trustPEMFile string) (*Issu
 		return nil, err
 	}
 
-	anchors, err := ioutil.ReadFile(trustPEMFile)
+	anchors, err := LoadTrustAnchorsFromFile(trustPEMFile)
 	if err != nil {
 		return nil, err
 	}
 
-	return &IssuerCertData{string(anchors), crt, key, nil}, nil
+	return &IssuerCertData{anchors, crt, key, nil}, nil
 }
 
 // CheckCertValidityPeriod ensures the certificate is valid time - wise

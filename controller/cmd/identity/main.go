@@ -20,6 +20,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/identity"
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
@@ -46,10 +47,11 @@ func Main(args []string) {
 		"/var/run/linkerd/identity/issuer",
 		"path to directory containing issuer credentials")
 
-	var issuerPathCrt string
-	var issuerPathKey string
 	traceCollector := flags.AddTraceFlags(cmd)
 	componentName := "linkerd-identity"
+	issuerPathCrt := filepath.Join(*issuerPath, corev1.TLSCertKey)
+	issuerPathKey := filepath.Join(*issuerPath, corev1.TLSPrivateKeyKey)
+	trustAnchorsPath := filepath.Join(*issuerPath, k8s.IdentityIssuerTrustAnchorsNameExternal)
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -70,23 +72,24 @@ func Main(args []string) {
 		os.Exit(0)
 	}
 
-	if idctx.Scheme == k8s.IdentityIssuerSchemeLinkerd {
-		issuerPathCrt = filepath.Join(*issuerPath, k8s.IdentityIssuerCrtName)
-		issuerPathKey = filepath.Join(*issuerPath, k8s.IdentityIssuerKeyName)
-	} else {
-		issuerPathCrt = filepath.Join(*issuerPath, corev1.TLSCertKey)
-		issuerPathKey = filepath.Join(*issuerPath, corev1.TLSPrivateKeyKey)
-	}
-
 	trustDomain := idctx.GetTrustDomain()
 	dom, err := idctl.NewTrustDomain(controllerNS, trustDomain)
 	if err != nil {
 		log.Fatalf("Invalid trust domain: %s", err.Error())
 	}
 
-	trustAnchors, err := tls.DecodePEMCertPool(idctx.GetTrustAnchorsPem())
+	var anchorsPEM string
+	if tlsManager := cfg.GetTlsManager(); tlsManager != k8s.TLSManagerInternal {
+		anchorsPEM, err = issuercerts.LoadTrustAnchorsFromFile(trustAnchorsPath)
+		if err != nil {
+			log.Fatalf("Failed to read trust anchors: %s", err)
+		}
+	} else {
+		anchorsPEM = idctx.GetTrustAnchorsPem()
+	}
+	trustAnchors, err := tls.DecodePEMCertPool(anchorsPEM)
 	if err != nil {
-		log.Fatalf("Failed to read trust anchors: %s", err)
+		log.Fatalf("Failed to decode trust anchors: %s", err)
 	}
 
 	validity := tls.Validity{
@@ -155,7 +158,7 @@ func Main(args []string) {
 	//
 	// Create, initialize and run service
 	//
-	svc := identity.NewService(v, trustAnchors, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey)
+	svc := identity.NewService(v, trustAnchors, &validity, recordEventFunc, expectedName, issuerPathCrt, issuerPathKey, trustAnchorsPath)
 	if err = svc.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}

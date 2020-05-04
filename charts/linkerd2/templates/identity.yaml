@@ -4,6 +4,7 @@
 ### Identity Controller Service
 ###
 {{ if and (.Values.identity.issuer) (eq .Values.identity.issuer.scheme "linkerd.io/tls") -}}
+{{ if (eq .Values.global.tlsManager "internal") }}
 ---
 kind: Secret
 apiVersion: v1
@@ -18,9 +19,12 @@ metadata:
     {{- if .Values.identity.issuer.crtExpiryAnnotation}}
     {{.Values.identity.issuer.crtExpiryAnnotation}}: {{required "Please provide the identity issuer certificate expiry date" .Values.identity.issuer.crtExpiry}}
     {{- end}}
+type: kubernetes.io/tls
 data:
-  crt.pem: {{b64enc (required "Please provide the identity issuer certificate" .Values.identity.issuer.tls.crtPEM | trim)}}
-  key.pem: {{b64enc (required "Please provide the identity issue private key" .Values.identity.issuer.tls.keyPEM | trim)}}
+  ca.crt: {{b64enc (required "Please provide the identity trust anchors" .Values.global.identityTrustAnchorsPEM | trim )}}
+  tls.crt: {{b64enc (required "Please provide the identity issuer certificate" .Values.identity.issuer.tls.crtPEM | trim)}}
+  tls.key: {{b64enc (required "Please provide the identity issue private key" .Values.identity.issuer.tls.keyPEM | trim)}}
+{{- end}}
 {{- end}}
 ---
 kind: Service

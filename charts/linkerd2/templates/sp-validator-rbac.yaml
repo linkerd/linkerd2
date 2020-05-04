@@ -40,6 +40,8 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: sp-validator
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{ $ca := genCA (printf "linkerd-sp-validator.%s.svc" .Values.global.namespace) 365 -}}
+{{ if and (eq .Values.global.tlsManager "internal") -}}
 ---
 kind: Secret
 apiVersion: v1
@@ -51,11 +53,11 @@ metadata:
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-type: Opaque
+type: kubernetes.io/tls
 data:
-  {{ $ca := genCA (printf "linkerd-sp-validator.%s.svc" .Values.global.namespace) 365 -}}
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.profileValidator.keyPEM)) (empty .Values.profileValidator.keyPEM) }}
+  tls.crt: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
+  tls.key: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.profileValidator.keyPEM)) (empty .Values.profileValidator.keyPEM) }}
+{{- end}}
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -77,7 +79,9 @@ webhooks:
       name: linkerd-sp-validator
       namespace: {{ .Values.global.namespace }}
       path: "/"
+{{- if and (eq .Values.global.tlsManager "internal") }}
     caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
+{{- end}}
   failurePolicy: {{.Values.webhookFailurePolicy}}
   rules:
   - operations: [ "CREATE" , "UPDATE" ]

@@ -19,6 +19,8 @@ global:
 
   identityTrustDomain: *cluster_domain
 
+  tlsManager: internal
+
   # proxy configuration
   proxy:
     enableExternalProfiles: false

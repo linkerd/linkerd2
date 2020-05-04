@@ -84,6 +84,7 @@ func TestRender(t *testing.T) {
 			CNIEnabled:               false,
 			IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
 			IdentityTrustAnchorsPEM:  defaultValues.Global.IdentityTrustAnchorsPEM,
+			TLSManager:               defaultValues.Global.TLSManager,
 			Proxy: &charts.Proxy{
 				Image: &charts.Image{
 					Name:       "ProxyImageName",

@@ -29,6 +29,8 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-smi-metrics
   namespace: {{.Values.global.namespace}}
+{{ $cert := genCA (printf "linkerd-smi-metrics.%s.svc" .Values.global.namespace) 365 -}}
+{{ if and (eq .Values.global.tlsManager "internal") -}}
 ---
 kind: Secret
 apiVersion: v1
@@ -42,10 +44,9 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 type: kubernetes.io/tls
 data:
-  {{ $cn := printf "linkerd-smi-metrics.%s.svc" .Values.global.namespace -}}
-  {{ $cert := genCA $cn 365 -}}
   tls.crt: {{ ternary (b64enc $cert.Cert) (b64enc (trim .Values.smiMetrics.crtPEM)) (empty .Values.smiMetrics.crtPEM) }}
   tls.key: {{ ternary (b64enc $cert.Key) (b64enc (trim .Values.smiMetrics.keyPEM)) (empty .Values.smiMetrics.keyPEM) }}
+{{- end}}
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
@@ -63,5 +64,6 @@ spec:
   service:
     name: linkerd-smi-metrics
     namespace: {{.Values.global.namespace}}
+{{- if (eq .Values.global.tlsManager "internal") }}
   caBundle: {{ ternary (b64enc $cert.Cert) (b64enc (trim .Values.smiMetrics.crtPEM)) (empty .Values.smiMetrics.crtPEM) }}
 {{- end }}
