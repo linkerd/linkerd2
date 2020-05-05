@@ -173,6 +173,7 @@ func chartControlPlane(t *testing.T, ha bool, addOnConfig string, ignoreOutbound
 		"templates/_trace.tpl",
 		"templates/_capabilities.tpl",
 		"templates/_affinity.tpl",
+		"templates/_addons.tpl",
 		"templates/_nodeselector.tpl",
 		"templates/_validate.tpl",
 	}
