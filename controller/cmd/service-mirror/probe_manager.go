@@ -40,6 +40,13 @@ type MirroredServicePaired struct {
 	GatewaySpec
 }
 
+// GatewayDeleted is emitted when a gateway is deleted
+type GatewayDeleted struct {
+	gatewayName string
+	gatewayNs   string
+	clusterName string
+}
+
 // ClusterNotRegistered is is emitted when the cluster is not monitored anymore
 type ClusterNotRegistered struct {
 	clusterName string
@@ -94,6 +101,8 @@ func (m *ProbeManager) handleEvent(ev interface{}) {
 		m.handleMirroredServiceUnpaired(ev)
 	case *GatewayUpdated:
 		m.handleGatewayUpdated(ev)
+	case *GatewayDeleted:
+		m.handleGatewayDeleted(ev)
 	case *ClusterNotRegistered:
 		m.handleClusterNotRegistered(ev)
 	default:
@@ -189,6 +198,11 @@ func (m *ProbeManager) stopProbe(key string) {
 	}
 }
 
+func (m *ProbeManager) handleGatewayDeleted(event *GatewayDeleted) {
+	probeKey := probeKey(event.gatewayNs, event.gatewayName, event.clusterName)
+	m.stopProbe(probeKey)
+}
+
 func (m *ProbeManager) handleClusterNotRegistered(event *ClusterNotRegistered) {
 	matchLabels := map[string]string{
 		consts.MirroredResourceLabel:  "true",
@@ -202,7 +216,7 @@ func (m *ProbeManager) handleClusterNotRegistered(event *ClusterNotRegistered) {
 
 	stopped := make(map[string]bool)
 	for _, svc := range services {
-		probeKey := probeKey(svc.Labels[consts.RemoteGatewayNameLabel], svc.Labels[consts.RemoteGatewayNameLabel], event.clusterName)
+		probeKey := probeKey(svc.Labels[consts.RemoteGatewayNsLabel], svc.Labels[consts.RemoteGatewayNameLabel], event.clusterName)
 
 		if _, ok := stopped[probeKey]; !ok {
 			m.stopProbe(probeKey)
