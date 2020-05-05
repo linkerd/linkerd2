@@ -48,7 +48,7 @@ func TestError(t *testing.T) {
 	Error(&testing.T{}, msg)
 	out := restoreStdout(outC, origStdout)
 
-	if strings.TrimSpace(out) != "::error file=testutil/annotations_test.go,line=48::This is an error" {
+	if strings.TrimSpace(out) != "::error file=testutil/annotations_test.go,line=48:: - This is an error" {
 		t.Fatalf("unexpected stdout content: %s", out)
 	}
 }
@@ -63,7 +63,7 @@ func TestAnnotatedErrorf(t *testing.T) {
 	AnnotatedErrorf(&testing.T{}, msgDesc, msgFormat, str)
 	out := restoreStdout(outC, origStdout)
 
-	if strings.TrimSpace(out) != "::error file=testutil/annotations_test.go,line=63::This is a generic error" {
+	if strings.TrimSpace(out) != "::error file=testutil/annotations_test.go,line=63:: - This is a generic error" {
 		t.Fatalf("unexpected stdout content: %s", out)
 	}
 }
