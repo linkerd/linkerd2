@@ -2032,12 +2032,10 @@ data:
       collector:
         image: omnition/opencensus-collector:0.1.11
         name: linkerd-collector
-        resources: null
       enabled: true
       jaeger:
         image: jaegertracing/all-in-one:1.17.1
         name: linkerd-jaeger
-        resources: null
 ---
 ###
 ### Tracing Collector Service
