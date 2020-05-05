@@ -9,9 +9,10 @@ import (
 
 // WatchedClusterConfig contains the needed data to identify a remote cluster
 type WatchedClusterConfig struct {
-	APIConfig     []byte
-	ClusterName   string
-	ClusterDomain string
+	APIConfig        []byte
+	ClusterName      string
+	ClusterDomain    string
+	LinkerdNamespace string
 }
 
 // ParseRemoteClusterSecret extracts the credentials used to access the remote cluster
@@ -19,6 +20,8 @@ func ParseRemoteClusterSecret(secret *corev1.Secret) (*WatchedClusterConfig, err
 	clusterName, hasClusterName := secret.Annotations[consts.RemoteClusterNameLabel]
 	config, hasConfig := secret.Data[consts.ConfigKeyName]
 	domain, hasDomain := secret.Annotations[consts.RemoteClusterDomainAnnotation]
+	ld5Namespace, hasLd5Namespace := secret.Annotations[consts.RemoteClusterLinkerdNamespaceAnnotation]
+
 	if !hasClusterName {
 		return nil, fmt.Errorf("secret of type %s should contain key %s", consts.MirrorSecretType, consts.ConfigKeyName)
 	}
@@ -29,9 +32,14 @@ func ParseRemoteClusterSecret(secret *corev1.Secret) (*WatchedClusterConfig, err
 		return nil, fmt.Errorf("secret should contain remote cluster domain as annotation %s", consts.RemoteClusterDomainAnnotation)
 	}
 
+	if !hasLd5Namespace {
+		return nil, fmt.Errorf("secret should contain remote linkerd installation namespace as annotation %s", consts.RemoteClusterLinkerdNamespaceAnnotation)
+	}
+
 	return &WatchedClusterConfig{
-		APIConfig:     config,
-		ClusterName:   clusterName,
-		ClusterDomain: domain,
+		APIConfig:        config,
+		ClusterName:      clusterName,
+		ClusterDomain:    domain,
+		LinkerdNamespace: ld5Namespace,
 	}, nil
 }

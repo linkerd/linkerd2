@@ -14,12 +14,8 @@ metadata:
 rules:
 - apiGroups:
   - ""
-  resources:
-  - services
-  verbs:
-  - list
-  - get
-  - watch
+  resources: ["services", "configmaps"]
+  verbs: ["list", "get", "watch"]
 ---
 apiVersion: v1
 kind: ServiceAccount
