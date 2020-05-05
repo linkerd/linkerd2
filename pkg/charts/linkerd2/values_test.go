@@ -131,6 +131,11 @@ func TestNewValues(t *testing.T) {
 			Image: "deislabs/smi-metrics:v0.2.1",
 			TLS:   &TLS{},
 		},
+		Grafana: map[string]interface{}{
+			"enabled": true,
+			"name":    "linkerd-grafana",
+			"image":   "gcr.io/linkerd-io/grafana",
+		},
 	}
 
 	// pin the versions to ensure consistent test result.
@@ -240,7 +245,6 @@ func TestNewValues(t *testing.T) {
 
 		// Make Add-On Values nil to not have to check for their defaults
 		actual.Tracing = nil
-		actual.Grafana = nil
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)

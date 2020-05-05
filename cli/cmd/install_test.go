@@ -133,6 +133,7 @@ func TestRender(t *testing.T) {
 		Tracing: map[string]interface{}{
 			"enabled": false,
 		},
+		Grafana: defaultValues.Grafana,
 	}
 
 	haOptions, err := testInstallOptions()
