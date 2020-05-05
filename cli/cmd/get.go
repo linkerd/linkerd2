@@ -18,7 +18,7 @@ type getOptions struct {
 
 func newGetOptions() *getOptions {
 	return &getOptions{
-		namespace:     "default",
+		namespace:     getDefaultNamespace(),
 		allNamespaces: false,
 	}
 }
