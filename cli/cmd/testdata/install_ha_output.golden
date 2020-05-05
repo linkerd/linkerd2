@@ -3084,6 +3084,17 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   values: |-
+    grafana:
+      enabled: true
+      image: gcr.io/linkerd-io/grafana
+      name: linkerd-grafana
+      resources:
+        cpu:
+          limit: "1"
+          request: 100m
+        memory:
+          limit: 1024Mi
+          request: 50Mi
     tracing:
       enabled: false
 ---

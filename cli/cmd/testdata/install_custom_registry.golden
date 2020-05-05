@@ -2835,6 +2835,10 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   values: |-
+    grafana:
+      enabled: true
+      image: my.custom.registry/linkerd-io/grafana
+      name: linkerd-grafana
     tracing:
       enabled: false
 ---

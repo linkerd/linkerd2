@@ -2838,5 +2838,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   values: |-
+    grafana:
+      enabled: false
     tracing:
       enabled: false

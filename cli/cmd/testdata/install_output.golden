@@ -2827,6 +2827,10 @@ metadata:
     CreatedByAnnotation: CliVersion
 data:
   values: |-
+    grafana:
+      enabled: true
+      image: gcr.io/linkerd-io/grafana
+      name: linkerd-grafana
     tracing:
       enabled: false
 ---

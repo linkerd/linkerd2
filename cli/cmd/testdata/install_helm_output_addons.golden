@@ -2876,6 +2876,10 @@ metadata:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
   values: |-
+    grafana:
+      enabled: true
+      image: gcr.io/linkerd-io/grafana
+      name: linkerd-grafana
     tracing:
       collector:
         image: omnition/opencensus-collector:0.1.11
