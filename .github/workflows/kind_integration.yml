@@ -162,7 +162,6 @@ jobs:
 
         init_test_run $HOME/.linkerd
         ${{ matrix.integration_test }}_integration_tests
-
   trigger-reports:
     name: Trigger CI reports
     runs-on: ubuntu-18.04
