@@ -153,7 +153,7 @@ var (
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
 		"templates/smi-metrics.yaml",
-		"templates/linkerd-values.yaml",
+		"templates/linkerd-config-addons.yaml",
 	}
 )
 

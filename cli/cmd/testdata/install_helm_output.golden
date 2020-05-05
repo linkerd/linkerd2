@@ -3152,4 +3152,22 @@ spec:
 # Source: linkerd2/templates/smi-metrics.yaml
 
 ---
-# Source: linkerd2/templates/linkerd-values.yaml
+# Source: linkerd2/templates/linkerd-config-addons.yaml
+---
+###
+### linkerd add-ons configuration
+###
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config-addons
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+data:
+  values: |-
+    tracing:
+      enabled: false

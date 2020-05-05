@@ -3152,16 +3152,16 @@ spec:
 # Source: linkerd2/templates/smi-metrics.yaml
 
 ---
-# Source: linkerd2/templates/linkerd-values.yaml
+# Source: linkerd2/templates/linkerd-config-addons.yaml
 ---
 ###
-### linkerd values
+### linkerd add-ons configuration
 ###
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-values
+  name: linkerd-config-addons
   namespace: linkerd
   labels:
     linkerd.io/control-plane-ns: linkerd
@@ -3170,11 +3170,11 @@ metadata:
 data:
   values: |-
     tracing:
-      enabled: true
       collector:
         image: omnition/opencensus-collector:0.1.11
         name: linkerd-collector
         resources: null
+      enabled: true
       jaeger:
         image: jaegertracing/all-in-one:1.17.1
         name: linkerd-jaeger

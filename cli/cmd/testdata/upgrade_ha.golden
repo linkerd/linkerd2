@@ -3397,3 +3397,21 @@ spec:
         secret:
           secretName: linkerd-tap-tls
 
+---
+###
+### linkerd add-ons configuration
+###
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config-addons
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+data:
+  values: |-
+    tracing:
+      enabled: false
