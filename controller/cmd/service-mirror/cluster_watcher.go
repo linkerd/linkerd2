@@ -433,21 +433,22 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 	}
 
 	gatewaySpec, err := rcsw.resolveGateway(&ev.gatewayData)
+	copiedEndpoints := ev.localEndpoints.DeepCopy()
 	if err == nil {
-		ev.localEndpoints.Subsets = []corev1.EndpointSubset{
+		copiedEndpoints.Subsets = []corev1.EndpointSubset{
 			{
 				Addresses: gatewaySpec.addresses,
 				Ports:     rcsw.getEndpointsPorts(ev.remoteUpdate, int32(gatewaySpec.incomingPort)),
 			},
 		}
 
-		ev.localEndpoints.Labels[consts.RemoteGatewayNameLabel] = ev.gatewayData.Name
-		ev.localEndpoints.Labels[consts.RemoteGatewayNsLabel] = ev.gatewayData.Namespace
+		copiedEndpoints.Labels[consts.RemoteGatewayNameLabel] = ev.gatewayData.Name
+		copiedEndpoints.Labels[consts.RemoteGatewayNsLabel] = ev.gatewayData.Namespace
 
 		if gatewaySpec.identity != "" {
-			ev.localEndpoints.Annotations[consts.RemoteGatewayIdentity] = gatewaySpec.identity
+			copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = gatewaySpec.identity
 		} else {
-			delete(ev.localEndpoints.Annotations, consts.RemoteGatewayIdentity)
+			delete(copiedEndpoints.Annotations, consts.RemoteGatewayIdentity)
 		}
 
 		if gatewayChanged {
@@ -463,7 +464,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 		ev.localEndpoints.Subsets = nil
 	}
 
-	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.localEndpoints.Namespace).Update(ev.localEndpoints); err != nil {
+	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(copiedEndpoints.Namespace).Update(copiedEndpoints); err != nil {
 		return RetryableError{[]error{err}}
 	}
 
@@ -576,6 +577,11 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 }
 
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGatewayDeleted) error {
+	rcsw.probeEventsSink.send(&GatewayDeleted{
+		gatewayName: ev.gatewayData.Name,
+		gatewayNs:   ev.gatewayData.Namespace,
+		clusterName: rcsw.clusterName,
+	})
 	affectedEndpoints, err := rcsw.endpointsForGateway(&ev.gatewayData)
 	if err != nil {
 		// if we cannot find the endpoints, we can give up

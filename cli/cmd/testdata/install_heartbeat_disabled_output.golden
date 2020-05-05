@@ -1720,6 +1720,7 @@ data:
 
     rule_files:
     - /etc/prometheus/*_rules.yml
+    - /etc/prometheus/*_rules.yaml
 
     scrape_configs:
     - job_name: 'prometheus'
@@ -1926,8 +1927,9 @@ spec:
         volumeMounts:
         - mountPath: /data
           name: data
-        - mountPath: /etc/prometheus
+        - mountPath: /etc/prometheus/prometheus.yml
           name: prometheus-config
+          subPath: prometheus.yml
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
@@ -2728,6 +2730,24 @@ spec:
         secret:
           secretName: linkerd-tap-tls
 
+---
+###
+### linkerd add-ons configuration
+###
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config-addons
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+data:
+  values: |-
+    tracing:
+      enabled: false
 ---
 ###
 ### Grafana RBAC

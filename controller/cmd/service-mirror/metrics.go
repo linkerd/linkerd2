@@ -3,6 +3,7 @@ package servicemirror
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	logging "github.com/sirupsen/logrus"
 )
 
 const (
@@ -23,10 +24,11 @@ type probeMetricVecs struct {
 }
 
 type probeMetrics struct {
-	services  prometheus.Gauge
-	alive     prometheus.Gauge
-	latencies prometheus.Observer
-	probes    *prometheus.CounterVec
+	services   prometheus.Gauge
+	alive      prometheus.Gauge
+	latencies  prometheus.Observer
+	probes     *prometheus.CounterVec
+	unregister func()
 }
 
 func newProbeMetricVecs() probeMetricVecs {
@@ -112,5 +114,26 @@ func (mv probeMetricVecs) newWorkerMetrics(gatewayNamespace, gatewayName, remote
 		alive:     mv.alive.With(labels),
 		latencies: mv.latencies.With(labels),
 		probes:    curriedProbes,
+		unregister: func() {
+			mv.unregister(gatewayNamespace, gatewayName, remoteClusterName)
+		},
 	}, nil
+}
+
+func (mv probeMetricVecs) unregister(gatewayNamespace, gatewayName, remoteClusterName string) {
+	labels := prometheus.Labels{
+		gatewayNameLabel:      gatewayName,
+		gatewayNamespaceLabel: gatewayNamespace,
+		gatewayClusterName:    remoteClusterName,
+	}
+
+	if !mv.services.Delete(labels) {
+		logging.Warnf("unable to delete num_mirrored_services metric with labels %s", labels)
+	}
+	if !mv.alive.Delete(labels) {
+		logging.Warnf("unable to delete gateway_alive metric with labels %s", labels)
+	}
+	if !mv.latencies.Delete(labels) {
+		logging.Warnf("unable to delete gateway_probe_latency_ms metric with labels %s", labels)
+	}
 }

@@ -14,23 +14,26 @@ func TestNewValues(t *testing.T) {
 	testVersion := "linkerd-dev"
 
 	expected := &Values{
-		Stage:                       "",
-		ControllerImage:             "gcr.io/linkerd-io/controller",
-		ControllerImageVersion:      testVersion,
-		WebImage:                    "gcr.io/linkerd-io/web",
-		PrometheusImage:             "prom/prometheus:v2.15.2",
-		ControllerReplicas:          1,
-		ControllerLogLevel:          "info",
-		PrometheusLogLevel:          "info",
-		ControllerUID:               2103,
-		EnableH2Upgrade:             true,
-		EnablePodAntiAffinity:       false,
-		WebhookFailurePolicy:        "Ignore",
-		OmitWebhookSideEffects:      false,
-		RestrictDashboardPrivileges: false,
-		DisableHeartBeat:            false,
-		HeartbeatSchedule:           "0 0 * * *",
-		InstallNamespace:            true,
+		Stage:                         "",
+		ControllerImage:               "gcr.io/linkerd-io/controller",
+		ControllerImageVersion:        testVersion,
+		WebImage:                      "gcr.io/linkerd-io/web",
+		PrometheusImage:               "prom/prometheus:v2.15.2",
+		ControllerReplicas:            1,
+		ControllerLogLevel:            "info",
+		PrometheusLogLevel:            "info",
+		PrometheusExtraArgs:           map[string]string{},
+		PrometheusAlertmanagers:       []interface{}{},
+		PrometheusRuleConfigMapMounts: []PrometheusRuleConfigMapMount{},
+		ControllerUID:                 2103,
+		EnableH2Upgrade:               true,
+		EnablePodAntiAffinity:         false,
+		WebhookFailurePolicy:          "Ignore",
+		OmitWebhookSideEffects:        false,
+		RestrictDashboardPrivileges:   false,
+		DisableHeartBeat:              false,
+		HeartbeatSchedule:             "0 0 * * *",
+		InstallNamespace:              true,
 		Global: &Global{
 			Namespace:                "linkerd",
 			ClusterDomain:            "cluster.local",
@@ -147,6 +150,12 @@ func TestNewValues(t *testing.T) {
 
 	t.Run("HA", func(t *testing.T) {
 		actual, err := NewValues(true)
+
+		// workaround for mergo, which resets these to []interface{}(nil)
+		// and []PrometheusRuleConfigMapMount(nil)
+		actual.PrometheusAlertmanagers = []interface{}{}
+		actual.PrometheusRuleConfigMapMounts = []PrometheusRuleConfigMapMount{}
+
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
