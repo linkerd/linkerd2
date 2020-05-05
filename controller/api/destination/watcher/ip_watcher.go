@@ -314,7 +314,9 @@ func (ss *serviceSubscriptions) updatePod(podSet AddressSet) {
 	defer ss.Unlock()
 
 	for listener, port := range ss.listeners {
-		listener.NoEndpoints(true) // Clear out previous endpoints.
+		// Pod IP addresses never change. Therefore, we don't need to send a
+		// NoEndpoints update to clear our the previous address; sending an
+		// Add with the same address will replace the previous one.
 		if len(podSet.Addresses) != 0 {
 			podSetWithPort := withPort(podSet, port)
 			listener.Add(podSetWithPort)

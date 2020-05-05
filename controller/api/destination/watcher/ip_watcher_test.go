@@ -593,3 +593,44 @@ status:
 		})
 	}
 }
+
+func TestIPWatcherUpdate(t *testing.T) {
+	podK8sConfig := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.12`
+
+	k8sAPI, err := k8s.NewFakeAPI(podK8sConfig)
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+
+	endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+	watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
+
+	k8sAPI.Sync(nil)
+
+	listener := newBufferingEndpointListener()
+
+	err = watcher.Subscribe("172.17.0.12", 12345, listener)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	watcher.addPod(&corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "name1-1", Namespace: "ns"},
+		Status:     corev1.PodStatus{PodIP: "172.17.0.12"},
+	})
+
+	if listener.noEndpointsCalled {
+		t.Fatal("NoEndpoints was called but should not have been")
+	}
+}
