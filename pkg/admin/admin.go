@@ -28,6 +28,7 @@ func StartServer(addr string) {
 		Handler:      h,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  1 * time.Minute,
 	}
 
 	log.Fatal(s.ListenAndServe())
