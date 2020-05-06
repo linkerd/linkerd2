@@ -13,123 +13,127 @@ import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
 import { processedMetricsPropType } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { withTranslation } from 'react-i18next';
 
-const tcpStatColumns = [
-  {
-    title: 'Connections',
-    dataIndex: 'tcp.openConnections',
-    isNumeric: true,
-    render: d => metricToFormatter.NO_UNIT(d.tcp.openConnections),
-    sorter: d => d.tcp.openConnections,
-  },
-  {
-    title: 'Read Bytes / sec',
-    dataIndex: 'tcp.readRate',
-    isNumeric: true,
-    render: d => metricToFormatter.BYTES(d.tcp.readRate),
-    sorter: d => d.tcp.readRate,
-  },
-  {
-    title: 'Write Bytes / sec',
-    dataIndex: 'tcp.writeRate',
-    isNumeric: true,
-    render: d => metricToFormatter.BYTES(d.tcp.writeRate),
-    sorter: d => d.tcp.writeRate,
-  },
-];
-
-const httpStatColumns = [
-  {
-    title: 'Success Rate',
-    dataIndex: 'successRate',
-    isNumeric: true,
-    render: d => <SuccessRateMiniChart sr={d.successRate} />,
-    sorter: d => d.successRate,
-  },
-  {
-    title: 'RPS',
-    dataIndex: 'requestRate',
-    isNumeric: true,
-    render: d => metricToFormatter.NO_UNIT(d.requestRate),
-    sorter: d => d.requestRate,
-  },
-  {
-    title: 'P50 Latency',
-    dataIndex: 'P50',
-    isNumeric: true,
-    render: d => metricToFormatter.LATENCY(d.P50),
-    sorter: d => d.P50,
-  },
-  {
-    title: 'P95 Latency',
-    dataIndex: 'P95',
-    isNumeric: true,
-    render: d => metricToFormatter.LATENCY(d.P95),
-    sorter: d => d.P95,
-  },
-  {
-    title: 'P99 Latency',
-    dataIndex: 'P99',
-    isNumeric: true,
-    render: d => metricToFormatter.LATENCY(d.P99),
-    sorter: d => d.P99,
-  },
-
-];
-
-const trafficSplitDetailColumns = [
-  {
-    title: 'Apex Service',
-    dataIndex: 'apex',
-    isNumeric: false,
-    filter: d => !d.tsStats ? null : d.tsStats.apex,
-    render: d => !d.tsStats ? null : d.tsStats.apex,
-    sorter: d => !d.tsStats ? null : d.tsStats.apex,
-  },
-  {
-    title: 'Leaf Service',
-    dataIndex: 'leaf',
-    isNumeric: false,
-    filter: d => !d.tsStats ? null : d.tsStats.leaf,
-    render: d => !d.tsStats ? null : d.tsStats.leaf,
-    sorter: d => !d.tsStats ? null : d.tsStats.leaf,
-  },
-  {
-    title: 'Weight',
-    dataIndex: 'weight',
-    isNumeric: true,
-    filter: d => !d.tsStats ? null : d.tsStats.weight,
-    render: d => !d.tsStats ? null : d.tsStats.weight,
-    sorter: d => {
-      if (!d.tsStats) { return -1; }
-      if (parseInt(d.tsStats.weight, 10)) {
-        return parseInt(d.tsStats.weight, 10);
-      } else {
-        return d.tsStats.weight;
-      }
+const tcpStatColumns = t => {
+  return [
+    {
+      title: t('Connections'),
+      dataIndex: 'tcp.openConnections',
+      isNumeric: true,
+      render: d => metricToFormatter.NO_UNIT(d.tcp.openConnections),
+      sorter: d => d.tcp.openConnections,
     },
-  },
-];
+    {
+      title: t('Read Bytes / sec'),
+      dataIndex: 'tcp.readRate',
+      isNumeric: true,
+      render: d => metricToFormatter.BYTES(d.tcp.readRate),
+      sorter: d => d.tcp.readRate,
+    },
+    {
+      title: t('Write Bytes / sec'),
+      dataIndex: 'tcp.writeRate',
+      isNumeric: true,
+      render: d => metricToFormatter.BYTES(d.tcp.writeRate),
+      sorter: d => d.tcp.writeRate,
+    },
+  ];
+};
 
-const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, grafana, jaeger) => {
+const httpStatColumns = t => {
+  return [
+    {
+      title: t('Success Rate'),
+      dataIndex: 'successRate',
+      isNumeric: true,
+      render: d => <SuccessRateMiniChart sr={d.successRate} />,
+      sorter: d => d.successRate,
+    },
+    {
+      title: t('RPS'),
+      dataIndex: 'requestRate',
+      isNumeric: true,
+      render: d => metricToFormatter.NO_UNIT(d.requestRate),
+      sorter: d => d.requestRate,
+    },
+    {
+      title: t('P50 Latency'),
+      dataIndex: 'P50',
+      isNumeric: true,
+      render: d => metricToFormatter.LATENCY(d.P50),
+      sorter: d => d.P50,
+    },
+    {
+      title: t('P95 Latency'),
+      dataIndex: 'P95',
+      isNumeric: true,
+      render: d => metricToFormatter.LATENCY(d.P95),
+      sorter: d => d.P95,
+    },
+    {
+      title: t('P99 Latency'),
+      dataIndex: 'P99',
+      isNumeric: true,
+      render: d => metricToFormatter.LATENCY(d.P99),
+      sorter: d => d.P99,
+    },
+  ];
+};
+
+const trafficSplitDetailColumns = t => {
+  return [
+    {
+      title: t('Apex Service'),
+      dataIndex: 'apex',
+      isNumeric: false,
+      filter: d => !d.tsStats ? null : d.tsStats.apex,
+      render: d => !d.tsStats ? null : d.tsStats.apex,
+      sorter: d => !d.tsStats ? null : d.tsStats.apex,
+    },
+    {
+      title: t('Leaf Service'),
+      dataIndex: 'leaf',
+      isNumeric: false,
+      filter: d => !d.tsStats ? null : d.tsStats.leaf,
+      render: d => !d.tsStats ? null : d.tsStats.leaf,
+      sorter: d => !d.tsStats ? null : d.tsStats.leaf,
+    },
+    {
+      title: t('Weight'),
+      dataIndex: 'weight',
+      isNumeric: true,
+      filter: d => !d.tsStats ? null : d.tsStats.weight,
+      render: d => !d.tsStats ? null : d.tsStats.weight,
+      sorter: d => {
+        if (!d.tsStats) { return -1; }
+        if (parseInt(d.tsStats.weight, 10)) {
+          return parseInt(d.tsStats.weight, 10);
+        } else {
+          return d.tsStats.weight;
+        }
+      },
+    },
+  ];
+};
+
+const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, grafana, jaeger, t) => {
   const isAuthorityTable = resource === 'authority';
   const isTrafficSplitTable = resource === 'trafficsplit';
   const isMultiResourceTable = resource === 'multi_resource';
   const getResourceDisplayName = isMultiResourceTable ? displayName : d => d.name;
 
-  const nsColumn = [
-    {
-      title: 'Namespace',
-      dataIndex: 'namespace',
-      filter: d => d.namespace,
-      isNumeric: false,
-      render: d => !d.namespace ? '---' : <PrefixedLink to={`/namespaces/${d.namespace}`}>{d.namespace}</PrefixedLink>,
-      sorter: d => !d.namespace ? '---' : d.namespace,
-    },
-  ];
+  const nsColumn = {
+    title: t('Namespace'),
+    dataIndex: 'namespace',
+    filter: d => d.namespace,
+    isNumeric: false,
+    render: d => !d.namespace ? '---' : <PrefixedLink to={`/namespaces/${d.namespace}`}>{d.namespace}</PrefixedLink>,
+    sorter: d => !d.namespace ? '---' : d.namespace,
+  };
 
   const meshedColumn = {
-    title: 'Meshed',
+    title: t('Meshed'),
     dataIndex: 'pods.totalPods',
     isNumeric: true,
     render: d => !d.pods ? null : `${d.pods.meshedPods}/${d.pods.totalPods}`,
@@ -209,12 +213,12 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     columns = [nameColumn];
   }
   if (isTrafficSplitTable) {
-    columns = columns.concat(trafficSplitDetailColumns);
+    columns = columns.concat(trafficSplitDetailColumns(t));
   }
   if (isTcpTable) {
-    columns = columns.concat(tcpStatColumns);
+    columns = columns.concat(tcpStatColumns(t));
   } else {
-    columns = columns.concat(httpStatColumns);
+    columns = columns.concat(httpStatColumns(t));
   }
 
   if (!isAuthorityTable && !isTrafficSplitTable) {
@@ -250,12 +254,12 @@ const preprocessMetrics = metrics => {
   return tableData;
 };
 
-const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace, grafana, jaeger }) => {
+const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace, grafana, jaeger, t }) => {
   const showNsColumn = resource === 'namespace' || selectedNamespace !== '_all' ? false : showNamespaceColumn;
   const showNameColumn = resource !== 'trafficsplit' ? true : showName;
   let orderBy = 'name';
   if (resource === 'trafficsplit' && !showNameColumn) { orderBy = 'leaf'; }
-  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, grafana, jaeger);
+  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, grafana, jaeger, t);
   const rows = preprocessMetrics(metrics);
   return (
     <BaseTable
@@ -282,6 +286,7 @@ MetricsTable.propTypes = {
   showNamespaceColumn: PropTypes.bool,
   title: PropTypes.string,
   grafana: PropTypes.string.isRequired,
+  t: PropTypes.func.isRequired,
 };
 
 MetricsTable.defaultProps = {
@@ -293,4 +298,4 @@ MetricsTable.defaultProps = {
   metrics: [],
 };
 
-export default withContext(MetricsTable);
+export default withTranslation(['Shared'])(withContext(MetricsTable));

@@ -5,6 +5,7 @@ import Typography from '@material-ui/core/Typography';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   version: {
@@ -34,39 +35,46 @@ class Version extends React.Component {
   }
 
   renderVersionCheck = () => {
-    const { classes, latestVersion, error, isLatest } = this.props;
+    const { classes, latestVersion, error, isLatest, t } = this.props;
 
     if (!latestVersion) {
       return (
         <Typography className={classes.versionMsg}>
-          Version check failed{error ? `: ${error.statusText}` : ''}.
+          {t('Version check failed{error}',
+            { error: error ? `: ${error.statusText}` : '' })}
         </Typography>
       );
     }
 
     if (isLatest) {
-      return <Typography className={classes.versionMsg}>Linkerd is up to date.</Typography>;
+      return (
+        <Typography className={classes.versionMsg}>
+          {t('Linkerd is up to date.')}
+        </Typography>
+      );
     }
 
     return (
       <div>
-        <Typography className={classes.versionMsg}>A new version ({this.numericVersion(latestVersion)}) is available.</Typography>
+        <Typography className={classes.versionMsg}>
+          {t('A new version {latestVersion} is available', { latestVersion: this.numericVersion(latestVersion) })}
+        </Typography>
         <Button
           className={classes.updateBtn}
           variant="contained"
           color="primary"
           target="_blank"
           href="https://versioncheck.linkerd.io/update">
-          Update Now
+          {t('Update Now')}
         </Button>
       </div>
     );
   }
 
   render() {
-    const { classes, releaseVersion, productName } = this.props;
+    const { classes, releaseVersion, productName, t } = this.props;
     const channel = this.versionChannel(releaseVersion);
-    let message = `Running ${productName || 'controller'}`;
+    let message = t('Running {name}', { name: productName || 'controller' });
     message += ` ${this.numericVersion(releaseVersion)}`;
     if (channel) {
       message += ` (${channel})`;
@@ -88,6 +96,7 @@ Version.propTypes = {
   latestVersion: PropTypes.string,
   productName: PropTypes.string,
   releaseVersion: PropTypes.string.isRequired,
+  t: PropTypes.func.isRequired,
 };
 
 Version.defaultProps = {
@@ -96,4 +105,4 @@ Version.defaultProps = {
   productName: 'controller',
 };
 
-export default withStyles(styles, { withTheme: true })(withContext(Version));
+export default withTranslation(['Shared'])(withStyles(styles, { withTheme: true })(withContext(Version)));

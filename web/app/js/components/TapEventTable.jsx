@@ -18,6 +18,7 @@ import _isNull from 'lodash/isNull';
 import { headersDisplay } from './TapEventHeadersTable.jsx';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 // https://godoc.org/google.golang.org/grpc/codes#Code
 const grpcStatusCodes = {
@@ -99,14 +100,14 @@ const methodCol = {
   },
 };
 
-const topLevelColumns = (resourceType, ResourceLink) => [
+const topLevelColumns = (resourceType, ResourceLink, t) => [
   {
-    title: 'Direction',
+    title: t('Direction'),
     key: 'direction',
-    render: d => directionColumn(d.base.proxyDirection),
+    render: d => directionColumn(d.base.proxyDirection, t),
   },
   {
-    title: 'Name',
+    title: t('Name'),
     key: 'src-dst',
     render: d => {
       const datum = {
@@ -121,8 +122,8 @@ const topLevelColumns = (resourceType, ResourceLink) => [
   },
 ];
 
-const tapColumns = (resourceType, ResourceLink) => {
-  return topLevelColumns(resourceType, ResourceLink).concat(
+const tapColumns = (resourceType, ResourceLink, t) => {
+  return topLevelColumns(resourceType, ResourceLink, t).concat(
     [methodCol, pathCol, responseInitLatencyCol, httpStatusCol, grpcStatusCol],
   );
 };
@@ -198,9 +199,9 @@ const expandedRowRender = (d, expandedWrapStyle) => {
   );
 };
 
-const TapEventTable = ({ tableRows, resource, api }) => {
+const TapEventTable = ({ tableRows, resource, api, t }) => {
   const resourceType = resource.split('/')[0];
-  const columns = tapColumns(resourceType, api.ResourceLink);
+  const columns = tapColumns(resourceType, api.ResourceLink, t);
 
   return (
     <ExpandableTable
@@ -217,6 +218,7 @@ TapEventTable.propTypes = {
   }).isRequired,
   resource: PropTypes.string,
   tableRows: PropTypes.arrayOf(PropTypes.shape({})),
+  t: PropTypes.func.isRequired,
 };
 
 TapEventTable.defaultProps = {
@@ -224,4 +226,4 @@ TapEventTable.defaultProps = {
   tableRows: [],
 };
 
-export default withContext(TapEventTable);
+export default withTranslation(['Shared'])(withContext(TapEventTable));

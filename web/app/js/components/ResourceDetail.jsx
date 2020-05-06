@@ -25,6 +25,7 @@ import _merge from 'lodash/merge';
 import _reduce from 'lodash/reduce';
 import { processEdges } from './util/EdgesUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
+import { withTranslation } from 'react-i18next';
 
 // if there has been no traffic for some time, show a warning
 const showNoTrafficMsgDelayMs = 6000;
@@ -323,7 +324,7 @@ export class ResourceDetailBase extends React.Component {
       downstreamMetrics,
       podMetrics,
     } = this.state;
-    const { pathPrefix } = this.props;
+    const { pathPrefix, t } = this.props;
 
     if (!loaded && !error) {
       return <Spinner />;
@@ -366,11 +367,11 @@ export class ResourceDetailBase extends React.Component {
           <Grid item><Typography variant="h5">{resourceType}/{resourceName}</Typography></Grid>
           <Grid item>
             <Grid container spacing={1}>
-              {showNoTrafficMsg ? <Grid item><SimpleChip label="no traffic" type="warning" /></Grid> : null}
+              {showNoTrafficMsg ? <Grid item><SimpleChip label={t('no traffic')} type="warning" /></Grid> : null}
               <Grid item>
                 {resourceIsMeshed ?
-                  <SimpleChip label="meshed" type="good" /> :
-                  <SimpleChip label="unmeshed" type="bad" />
+                  <SimpleChip label={t('meshed')} type="good" /> :
+                  <SimpleChip label={t('unmeshed')} type="bad" />
                 }
               </Grid>
             </Grid>
@@ -402,14 +403,14 @@ export class ResourceDetailBase extends React.Component {
         {_isEmpty(upstreams) ? null :
         <MetricsTable
           resource="multi_resource"
-          title="Inbound"
+          title={t('Inbound')}
           metrics={upstreamDisplayMetrics} />
         }
 
         {_isEmpty(downstreamDisplayMetrics) ? null :
         <MetricsTable
           resource="multi_resource"
-          title="Outbound"
+          title={t('Outbound')}
           metrics={downstreamDisplayMetrics} />
         }
 
@@ -417,13 +418,13 @@ export class ResourceDetailBase extends React.Component {
           resourceType === 'pod' || isTcpOnly ? null :
           <MetricsTable
             resource="pod"
-            title="Pods"
+            title={t('Pods')}
             metrics={podMetrics} />
         }
 
         <MetricsTable
           resource="pod"
-          title="TCP"
+          title={t('TCP')}
           isTcpTable
           metrics={podMetrics} />
 
@@ -458,6 +459,7 @@ ResourceDetailBase.propTypes = {
     url: PropTypes.string.isRequired,
   }).isRequired,
   pathPrefix: PropTypes.string.isRequired,
+  t: PropTypes.func.isRequired,
 };
 
-export default withPageVisibility(withContext(ResourceDetailBase));
+export default withTranslation(['Shared'])(withPageVisibility(withContext(ResourceDetailBase)));

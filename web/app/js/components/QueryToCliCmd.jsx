@@ -6,6 +6,7 @@ import _isEmpty from 'lodash/isEmpty';
 import _startCase from 'lodash/startCase';
 import { displayOrder } from './util/CliQueryUtils.js';
 import { withContext } from './util/AppContext.jsx';
+import { withTranslation } from 'react-i18next';
 
 const toCliParam = {
   namespace: '--namespace',
@@ -30,13 +31,13 @@ class QueryToCliCmd extends React.Component {
   }
 
   render = () => {
-    const { cmdName, query, resource, controllerNamespace } = this.props;
+    const { cmdName, query, resource, controllerNamespace, t } = this.props;
 
     return (
       _isEmpty(resource) ? null :
       <CardContent>
         <Typography variant="caption" gutterBottom>
-          Current {_startCase(cmdName)} query
+          {t('Current')} {_startCase(cmdName)} {t('query')}
         </Typography>
 
         <br />
@@ -58,6 +59,7 @@ QueryToCliCmd.propTypes = {
   controllerNamespace: PropTypes.string.isRequired,
   query: PropTypes.shape({}).isRequired,
   resource: PropTypes.string.isRequired,
+  t: PropTypes.func.isRequired,
 };
 
-export default withContext(QueryToCliCmd);
+export default withTranslation(['Shared'])(withContext(QueryToCliCmd));

@@ -38,6 +38,7 @@ import { processSingleResourceRollup } from './util/MetricUtils.jsx';
 import { regexFilterString } from './util/Utils.js';
 import { withContext } from './util/AppContext.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 import yellow from '@material-ui/core/colors/yellow';
 
 const jsonFeedUrl = 'https://linkerd.io/dashboard/index.json';
@@ -402,7 +403,7 @@ class NavigationBase extends React.Component {
   }
 
   menuItem(path, title, icon, onClick) {
-    const { classes, location, pathPrefix } = this.props;
+    const { classes, location, pathPrefix, t } = this.props;
     const normalizedPath = location.pathname.replace(pathPrefix, '');
 
     return (
@@ -413,7 +414,7 @@ class NavigationBase extends React.Component {
         className={classes.navMenuItem}
         selected={path === normalizedPath}>
         <ListItemIcon>{icon}</ListItemIcon>
-        <ListItemText primary={title} />
+        <ListItemText primary={t(title)} />
       </MenuItem>
     );
   }
@@ -426,7 +427,7 @@ class NavigationBase extends React.Component {
   }
 
   render() {
-    const { api, classes, selectedNamespace, ChildComponent, uuid, releaseVersion, ...otherProps } = this.props;
+    const { api, classes, selectedNamespace, ChildComponent, uuid, releaseVersion, t, ...otherProps } = this.props;
     const { namespaces, formattedNamespaceFilter, hideUpdateBadge, isLatest, latestVersion,
       showNamespaceChangeDialog, newNamespace, mobileSidebarOpen, error } = this.state;
     const filteredNamespaces = namespaces.filter(ns => {
@@ -449,7 +450,7 @@ class NavigationBase extends React.Component {
         <Divider />
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            Cluster
+            {t('Cluster')}
           </Typography>
           { this.menuItem('/namespaces', 'Namespaces', namespaceIcon) }
 
@@ -496,7 +497,7 @@ class NavigationBase extends React.Component {
 
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            Workloads
+            {t('Workloads')}
           </Typography>
 
           { this.menuItem(`/namespaces/${selectedNamespace}/cronjobs`, 'Cron Jobs', cronJobIcon) }
@@ -518,7 +519,7 @@ class NavigationBase extends React.Component {
 
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            Configuration
+            {t('Configuration')}
           </Typography>
 
           { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, 'Traffic Splits', <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
@@ -527,7 +528,7 @@ class NavigationBase extends React.Component {
         <Divider />
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            Tools
+            {t('Tools')}
           </Typography>
 
           { this.menuItem('/tap', 'Tap', <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
@@ -547,25 +548,25 @@ class NavigationBase extends React.Component {
 
           <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
-            <ListItemText primary="Documentation" />
+            <ListItemText primary={t('Documentation')} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
           <MenuItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon>{githubIcon}</ListItemIcon>
-            <ListItemText primary="GitHub" />
+            <ListItemText primary={t('GitHub')} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
           <MenuItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon><EmailIcon className={classes.shrinkIcon} /></ListItemIcon>
-            <ListItemText primary="Mailing List" />
+            <ListItemText primary={t('Mailing List')} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
           <MenuItem component="a" href="https://slack.linkerd.io" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon>{slackIcon}</ListItemIcon>
-            <ListItemText primary="Slack" />
+            <ListItemText primary={t('Slack')} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
@@ -653,6 +654,7 @@ NavigationBase.propTypes = {
   theme: PropTypes.shape({}).isRequired,
   updateNamespaceInContext: PropTypes.func.isRequired,
   uuid: PropTypes.string.isRequired,
+  t: PropTypes.func.isRequired,
 };
 
-export default withPageVisibility(withContext(withStyles(styles, { withTheme: true })(NavigationBase)));
+export default withTranslation(['Dashboard'])(withPageVisibility(withContext(withStyles(styles, { withTheme: true })(NavigationBase))));

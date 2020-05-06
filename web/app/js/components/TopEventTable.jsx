@@ -8,15 +8,16 @@ import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
 import _isEmpty from 'lodash/isEmpty';
 import _isNil from 'lodash/isNil';
 import { withContext } from './util/AppContext.jsx';
+import { withTranslation } from 'react-i18next';
 
-const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
+const topColumns = (resourceType, ResourceLink, PrefixedLink, t) => [
   {
     title: ' ',
     dataIndex: 'direction',
-    render: d => directionColumn(d.direction),
+    render: d => directionColumn(d.direction, t),
   },
   {
-    title: 'Name',
+    title: t('Name'),
     filter: d => {
       const [labels, display] = extractDisplayName(d);
       return _isEmpty(labels[resourceType]) ?
@@ -27,33 +28,33 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     render: d => srcDstColumn(d, resourceType, ResourceLink),
   },
   {
-    title: 'Method',
+    title: t('Method'),
     dataIndex: 'httpMethod',
     filter: d => d.httpMethod,
     sorter: d => d.httpMethod,
   },
   {
-    title: 'Path',
+    title: t('Path'),
     dataIndex: 'path',
     filter: d => d.path,
     sorter: d => d.path,
   },
   {
-    title: 'Count',
+    title: t('Count'),
     dataIndex: 'count',
     isNumeric: true,
     defaultSortOrder: 'desc',
     sorter: d => d.count,
   },
   {
-    title: 'Best',
+    title: t('Best'),
     dataIndex: 'best',
     isNumeric: true,
     render: d => formatLatencySec(d.best),
     sorter: d => d.best,
   },
   {
-    title: 'Worst',
+    title: t('Worst'),
     dataIndex: 'worst',
     isNumeric: true,
     defaultSortOrder: 'desc',
@@ -61,14 +62,14 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     sorter: d => d.worst,
   },
   {
-    title: 'Last',
+    title: t('Last'),
     dataIndex: 'last',
     isNumeric: true,
     render: d => formatLatencySec(d.last),
     sorter: d => d.last,
   },
   {
-    title: 'Success Rate',
+    title: t('Success Rate'),
     dataIndex: 'successRate',
     isNumeric: true,
     render: d => _isNil(d) || _isNil(d.successRate) ? '---' :
@@ -76,15 +77,15 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     sorter: d => d.successRate.get(),
   },
   {
-    title: 'Tap',
+    title: t('Tap'),
     key: 'tap',
     isNumeric: true,
     render: d => tapLink(d, resourceType, PrefixedLink),
   },
 ];
 
-const TopEventTable = ({ tableRows, resourceType, api }) => {
-  const columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink);
+const TopEventTable = ({ tableRows, resourceType, api, t }) => {
+  const columns = topColumns(resourceType, api.ResourceLink, api.PrefixedLink, t);
 
   return (
     <BaseTable
@@ -105,10 +106,11 @@ TopEventTable.propTypes = {
   }).isRequired,
   resourceType: PropTypes.string.isRequired,
   tableRows: PropTypes.arrayOf(PropTypes.shape({})),
+  t: PropTypes.func.isRequired,
 };
 
 TopEventTable.defaultProps = {
   tableRows: [],
 };
 
-export default withContext(TopEventTable);
+export default withTranslation(['Shared'])(withContext(TopEventTable));

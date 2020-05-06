@@ -11,6 +11,7 @@ import TopRoutesModule from './TopRoutesModule.jsx';
 import _isEmpty from 'lodash/isEmpty';
 import _noop from 'lodash/noop';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   root: {
@@ -79,7 +80,7 @@ class TopRoutesTabs extends React.Component {
   }
 
   render() {
-    const { classes } = this.props;
+    const { classes, t } = this.props;
     const { value } = this.state;
 
     return (
@@ -91,8 +92,8 @@ class TopRoutesTabs extends React.Component {
             onChange={this.handleChange}
             indicatorColor="primary"
             textColor="primary">
-            <Tab label="Live Calls" />
-            <Tab label="Route Metrics" />
+            <Tab label={t('Live Calls')} />
+            <Tab label={t('Route Metrics')} />
           </Tabs>
         </AppBar>
         {value === 0 && this.renderTopComponent()}
@@ -112,6 +113,7 @@ TopRoutesTabs.propTypes = {
   }),
   theme: PropTypes.shape({}).isRequired,
   updateUnmeshedSources: PropTypes.func,
+  t: PropTypes.func.isRequired,
 };
 
 TopRoutesTabs.defaultProps = {
@@ -120,4 +122,4 @@ TopRoutesTabs.defaultProps = {
   updateUnmeshedSources: _noop,
 };
 
-export default withStyles(styles, { withTheme: true })(TopRoutesTabs);
+export default withTranslation(['Shared'])(withStyles(styles, { withTheme: true })(TopRoutesTabs));

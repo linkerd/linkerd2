@@ -7,6 +7,7 @@ import WarningIcon from '@material-ui/icons/Warning';
 import { directionColumn } from './util/TapUtils.jsx';
 import { processedEdgesPropType } from './util/EdgesUtils.jsx';
 import { withStyles } from '@material-ui/core/styles';
+import { withTranslation } from 'react-i18next';
 
 const styles = theme => ({
   secure: {
@@ -17,15 +18,15 @@ const styles = theme => ({
   },
 });
 
-const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
+const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes, t) => {
   return [
     {
       title: ' ',
       dataIndex: 'direction',
-      render: d => directionColumn(d.direction),
+      render: d => directionColumn(d.direction, t),
     },
     {
-      title: 'Namespace',
+      title: t('Namespace'),
       dataIndex: 'namespace',
       isNumeric: false,
       filter: d => d.namespace,
@@ -37,7 +38,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       sorter: d => d.namespace,
     },
     {
-      title: 'Name',
+      title: t('Name'),
       dataIndex: 'name',
       isNumeric: false,
       filter: d => d.name,
@@ -56,7 +57,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       sorter: d => d.name,
     },
     {
-      title: 'Identity',
+      title: t('Identity'),
       dataIndex: 'identity',
       isNumeric: false,
       filter: d => d.identity,
@@ -64,7 +65,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       sorter: d => d.identity,
     },
     {
-      title: 'Secured',
+      title: t('Secured'),
       dataIndex: 'message',
       isNumeric: true,
       render: d => {
@@ -82,21 +83,21 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
   ];
 };
 
-const generateEdgesTableTitle = edges => {
+const generateEdgesTableTitle = (edges, t) => {
   let title = 'Edges';
   if (edges.length > 0) {
     let identity = edges[0].direction === 'INBOUND' ? edges[0].serverId : edges[0].clientId;
     if (identity) {
       identity = `${identity.split('.')[0]}.${identity.split('.')[1]}`;
-      title = `${title} (Identity: ${identity})`;
+      title = `${title} (${t('Identity')}: ${identity})`;
     }
   }
   return title;
 };
 
-const EdgesTable = ({ edges, api, namespace, type, classes }) => {
-  const edgesColumns = edgesColumnDefinitions(api.PrefixedLink, namespace, type, classes);
-  const edgesTableTitle = generateEdgesTableTitle(edges);
+const EdgesTable = ({ edges, api, namespace, type, classes, t }) => {
+  const edgesColumns = edgesColumnDefinitions(api.PrefixedLink, namespace, type, classes, t);
+  const edgesTableTitle = generateEdgesTableTitle(edges, t);
 
   return (
     <BaseTable
@@ -117,10 +118,11 @@ EdgesTable.propTypes = {
   edges: PropTypes.arrayOf(processedEdgesPropType),
   namespace: PropTypes.string.isRequired,
   type: PropTypes.string.isRequired,
+  t: PropTypes.func.isRequired,
 };
 
 EdgesTable.defaultProps = {
   edges: [],
 };
 
-export default withStyles(styles)(EdgesTable);
+export default withTranslation(['Shared'])(withStyles(styles)(EdgesTable));
