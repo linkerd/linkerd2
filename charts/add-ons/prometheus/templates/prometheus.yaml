@@ -6,7 +6,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-prometheus-config
+  name: {{.Values.name}}-config
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: prometheus
@@ -15,10 +15,10 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   prometheus.yml: |-
-    {{- if .Values.prometheusAlertmanagers }}
+    {{- if .Values.alertmanagers }}
     alerting:
       alertmanagers:
-        {{- toYaml .Values.prometheusAlertmanagers | trim | nindent 8 }}
+        {{- toYaml .Values.alertmanagers | trim | nindent 8 }}
     {{- end }}
     global:
       scrape_interval: 10s
@@ -155,7 +155,7 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-prometheus
+  name: {{.Values.name}}
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: prometheus
@@ -175,7 +175,7 @@ spec:
 {{ $_ := set .Values.global.proxy.image "Version" .Values.global.linkerdVersion -}}
 {{ end -}}
 {{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set .Values.global.proxy "component" "linkerd-prometheus" -}}
+{{ $_ := set .Values.global.proxy "component" ".Values.name" -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -188,7 +188,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: prometheus
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-  name: linkerd-prometheus
+  name: {{.Values.name}}
   namespace: {{.Values.global.namespace}}
 spec:
   replicas: 1
@@ -214,11 +214,11 @@ spec:
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
         - --config.file=/etc/prometheus/prometheus.yml
-        - --log.level={{lower .Values.prometheusLogLevel}}
-        {{- range $key, $value := .Values.prometheusExtraArgs}}
+        - --log.level={{lower .Values.prometheus.logLevel}}
+        {{- range $key, $value := .Values.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}
-        image: {{.Values.prometheusImage}}
+        image: {{.Values.image}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -236,13 +236,13 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        {{- if .Values.prometheusResources -}}
-        {{- include "partials.resources" .Values.prometheusResources | nindent 8 }}
+        {{- if .Values.resources -}}
+        {{- include "partials.resources" .Values.resources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsUser: 65534
         volumeMounts:
-      {{- range .Values.prometheusRuleConfigMapMounts }}
+      {{- range .Values.ruleCofigMapMounts }}
         - name: {{ .name }}
           mountPath: /etc/prometheus/{{ .subPath }}
           subPath: {{ .subPath }}
@@ -259,9 +259,9 @@ spec:
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
-      serviceAccountName: linkerd-prometheus
+      serviceAccountName: {{.Values.name}}
       volumes:
-    {{- range .Values.prometheusRuleConfigMapMounts }}
+    {{- range .Values.ruleCofigMapMounts }}
       - name: {{ .name }}
         configMap:
           name: {{ .configMap }}
@@ -269,7 +269,7 @@ spec:
       - emptyDir: {}
         name: data
       - configMap:
-          name: linkerd-prometheus-config
+          name: {{.Values.name}}-config
         name: prometheus-config
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}

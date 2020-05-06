@@ -130,24 +130,6 @@ grafanaImage: gcr.io/linkerd-io/grafana
 disableHeartBeat: false
 heartbeatSchedule: "0 0 * * *"
 
-# prometheus configuration
-prometheusImage: prom/prometheus:v2.15.2
-prometheusLogLevel: *controller_log_level
-prometheusExtraArgs: {}
-  # log.format: json
-prometheusAlertmanagers: []
-  # - scheme: http
-  #   static_configs:
-  #   - targets:
-  #     - "alertmanager.linkerd.svc:9093"
-prometheusRuleConfigMapMounts: []
-  # - name: alerting-rules
-  #   subPath: alerting_rules.yml
-  #   configMap: linkerd-prometheus-rules
-  # - name: recording-rules
-  #   subPath: recording_rules.yml
-  #   configMap: linkerd-prometheus-rules
-
 # proxy injector configuration
 proxyInjector:
   # if empty, Helm will auto-generate these fields
@@ -193,6 +175,27 @@ smiMetrics:
   keyPEM: |
 
 # Configuration for Add-ons
+
+prometheus:
+  enabled: true
+  name: linkerd-prometheus
+  image: prom/prometheus:v2.15.2
+  prometheusLogLevel: *controller_log_level
+  # args:
+  # - log.format: json
+  # alertManagers:
+  # - scheme: http
+  #   static_configs:
+  #   - targets:
+  #     - "alertmanager.linkerd.svc:9093"
+  # ruleConfigMapMounts:
+  # - name: alerting-rules
+  #   subPath: alerting_rules.yml
+  #   configMap: linkerd-prometheus-rules
+  # - name: recording-rules
+  #   subPath: recording_rules.yml
+  #   configMap: linkerd-prometheus-rules
+
 tracing:
   enabled: false
   collector:

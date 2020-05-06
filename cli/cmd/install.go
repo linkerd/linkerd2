@@ -185,7 +185,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		controlPlaneVersion:         version.Version,
 		controllerReplicas:          defaults.ControllerReplicas,
 		controllerLogLevel:          defaults.ControllerLogLevel,
-		prometheusImage:             defaults.PrometheusImage,
+		prometheusImage:             defaults.Prometheus["image"].(string),
 		highAvailability:            defaults.Global.HighAvailability,
 		controllerUID:               defaults.ControllerUID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
@@ -767,7 +767,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	if options.prometheusImage != "" {
-		installValues.PrometheusImage = options.prometheusImage
+		installValues.Prometheus["image"] = options.prometheusImage
 	}
 	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.Global.CNIEnabled = options.cniEnabled

@@ -27,5 +27,13 @@ func ParseAddOnValues(values *Values) ([]AddOn, error) {
 		}
 	}
 
+	if values.Prometheus != nil {
+		if enabled, ok := values.Prometheus["enabled"].(bool); !ok {
+			return nil, fmt.Errorf("invalid value for 'prometheus.enabled' (should be boolean): %s", values.Prometheus["enabled"])
+		} else if enabled {
+			addOns = append(addOns, values.Prometheus)
+		}
+	}
+
 	return addOns, nil
 }

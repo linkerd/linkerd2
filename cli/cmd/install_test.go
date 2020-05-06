@@ -56,7 +56,6 @@ func TestRender(t *testing.T) {
 		ControllerImage:             "ControllerImage",
 		ControllerImageVersion:      "ControllerImageVersion",
 		WebImage:                    "WebImage",
-		PrometheusImage:             "PrometheusImage",
 		GrafanaImage:                "GrafanaImage",
 		ControllerLogLevel:          "ControllerLogLevel",
 		PrometheusLogLevel:          "PrometheusLogLevel",
@@ -68,6 +67,9 @@ func TestRender(t *testing.T) {
 		InstallNamespace:            true,
 		Identity:                    defaultValues.Identity,
 		NodeSelector:                defaultValues.NodeSelector,
+		Prometheus: charts.Prometheus{
+			"image": "PrometheusImage",
+		},
 		Global: &charts.Global{
 			Namespace:                "Namespace",
 			ClusterDomain:            "cluster.local",

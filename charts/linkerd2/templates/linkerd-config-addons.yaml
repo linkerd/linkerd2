@@ -20,5 +20,7 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   values: |-
+    prometheus:
+      {{- include "linkerd.addons.sanitize-config" .Values.prometheus}}
     tracing:
       {{- include "linkerd.addons.sanitize-config" .Values.tracing}}
