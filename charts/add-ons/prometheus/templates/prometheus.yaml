@@ -214,7 +214,7 @@ spec:
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
         - --config.file=/etc/prometheus/prometheus.yml
-        - --log.level={{lower .Values.prometheus.logLevel}}
+        - --log.level={{lower .Values.logLevel}}
         {{- range $key, $value := .Values.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}

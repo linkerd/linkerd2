@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	prometheusAddOn = "tracing"
+	prometheusAddOn = "prometheus"
 )
 
 // Prometheus is an add-on that installs the prometheus component

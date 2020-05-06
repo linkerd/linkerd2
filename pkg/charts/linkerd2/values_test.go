@@ -31,9 +31,10 @@ func TestNewValues(t *testing.T) {
 		HeartbeatSchedule:           "0 0 * * *",
 		InstallNamespace:            true,
 		Prometheus: Prometheus{
-			"enabled": true,
-			"name":    "linkerd-prometheus",
-			"image":   "prom/prometheus:v2.15.2",
+			"enabled":  true,
+			"name":     "linkerd-prometheus",
+			"image":    "prom/prometheus:v2.15.2",
+			"logLevel": "info",
 		},
 		Global: &Global{
 			Namespace:                "linkerd",
@@ -201,9 +202,10 @@ func TestNewValues(t *testing.T) {
 		}
 
 		expected.Prometheus = Prometheus{
-			"enabled": true,
-			"name":    "linkerd-prometheus",
-			"image":   "prom/prometheus:v2.15.2",
+			"enabled":  true,
+			"logLevel": "info",
+			"name":     "linkerd-prometheus",
+			"image":    "prom/prometheus:v2.15.2",
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
 					"limit":   "4",

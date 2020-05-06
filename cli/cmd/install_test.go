@@ -58,7 +58,6 @@ func TestRender(t *testing.T) {
 		WebImage:                    "WebImage",
 		GrafanaImage:                "GrafanaImage",
 		ControllerLogLevel:          "ControllerLogLevel",
-		PrometheusLogLevel:          "PrometheusLogLevel",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
@@ -362,8 +361,8 @@ func TestValidate(t *testing.T) {
 			t.Fatalf("Unexpected error occurred %s", err)
 		}
 
-		if actual.PrometheusLogLevel != expected {
-			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, actual.PrometheusLogLevel)
+		if actual.Prometheus["logLevel"] != expected {
+			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, actual.Prometheus["logLevel"])
 		}
 	})
 

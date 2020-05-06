@@ -129,7 +129,6 @@ var (
 		"templates/web-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
-		"templates/prometheus-rbac.yaml",
 		"templates/grafana-rbac.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
@@ -147,7 +146,6 @@ var (
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
 		"templates/web.yaml",
-		"templates/prometheus.yaml",
 		"templates/grafana.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
@@ -772,7 +770,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.Global.CNIEnabled = options.cniEnabled
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
-	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
+	installValues.Prometheus["logLevel"] = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat

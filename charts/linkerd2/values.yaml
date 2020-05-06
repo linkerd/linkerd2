@@ -180,7 +180,7 @@ prometheus:
   enabled: true
   name: linkerd-prometheus
   image: prom/prometheus:v2.15.2
-  prometheusLogLevel: *controller_log_level
+  logLevel: *controller_log_level
   # args:
   # - log.format: json
   # alertManagers:
