@@ -131,7 +131,7 @@ func TestNewValues(t *testing.T) {
 			Image: "deislabs/smi-metrics:v0.2.1",
 			TLS:   &TLS{},
 		},
-		Grafana: map[string]interface{}{
+		Grafana: Grafana{
 			"enabled": true,
 			"name":    "linkerd-grafana",
 			"image":   "gcr.io/linkerd-io/grafana",
@@ -187,18 +187,19 @@ func TestNewValues(t *testing.T) {
 		expected.WebResources = controllerResources
 		expected.HeartbeatResources = controllerResources
 
-		expected.Grafana = make(map[string]interface{})
-		expected.Grafana["enabled"] = true
-		expected.Grafana["name"] = "linkerd-grafana"
-		expected.Grafana["image"] = "gcr.io/linkerd-io/grafana"
-		expected.Grafana["resources"] = map[string]interface{}{
-			"cpu": map[string]interface{}{
-				"limit":   controllerResources.CPU.Limit,
-				"request": controllerResources.CPU.Request,
-			},
-			"memory": map[string]interface{}{
-				"limit":   "1024Mi",
-				"request": "50Mi",
+		expected.Grafana = Grafana{
+			"enabled": true,
+			"name":    "linkerd-grafana",
+			"image":   "gcr.io/linkerd-io/grafana",
+			"resources": map[string]interface{}{
+				"cpu": map[string]interface{}{
+					"limit":   controllerResources.CPU.Limit,
+					"request": controllerResources.CPU.Request,
+				},
+				"memory": map[string]interface{}{
+					"limit":   "1024Mi",
+					"request": "50Mi",
+				},
 			},
 		}
 
