@@ -72,7 +72,7 @@ func TestDirectEdges(t *testing.T) {
 
 	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/terminus.yaml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd injectl' command failed", "'linkerd inject' command failed with %s: %s\n", err, stderr)
+		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "'linkerd inject' command failed with %s: %s\n", err, stderr)
 	}
 
 	// deploy terminus

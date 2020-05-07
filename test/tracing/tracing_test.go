@@ -138,7 +138,7 @@ func TestTracing(t *testing.T) {
 
 		url, err := TestHelper.URLFor(tracingNs, "jaeger", 16686)
 		if err != nil {
-			testutil.AnnotatedFatal(t, "errror building URL", err)
+			testutil.AnnotatedFatal(t, "error building URL", err)
 		}
 		timeout := 120 * time.Second
 		err = TestHelper.RetryFor(timeout, func() error {

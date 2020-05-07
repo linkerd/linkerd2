@@ -523,7 +523,7 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		return nil
 	})
 	if err != nil {
-		testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out in check command (%s)", timeout), err)
+		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd check' command timed-out (%s)", timeout), err)
 	}
 }
 
@@ -746,7 +746,7 @@ func TestLogs(t *testing.T) {
 				)
 				if err != nil {
 					testutil.AnnotatedErrorf(t, "error running command",
-						"rrror running command:\n%s", err)
+						"error running command:\n%s", err)
 				}
 				defer outputStream.Stop()
 				// Ignore the error returned, since ReadUntil will return an error if it
