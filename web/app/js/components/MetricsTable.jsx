@@ -275,7 +275,7 @@ MetricsTable.propTypes = {
   metrics: PropTypes.arrayOf(processedMetricsPropType),
   resource: PropTypes.string.isRequired,
   selectedNamespace: PropTypes.string.isRequired,
-  jaeger: PropTypes.string.isRequired,
+  jaeger: PropTypes.string,
   showName: PropTypes.bool,
   showNamespaceColumn: PropTypes.bool,
   title: PropTypes.string,
@@ -285,6 +285,7 @@ MetricsTable.defaultProps = {
   showNamespaceColumn: true,
   showName: true,
   title: '',
+  jaeger: '',
   isTcpTable: false,
   metrics: [],
 };
