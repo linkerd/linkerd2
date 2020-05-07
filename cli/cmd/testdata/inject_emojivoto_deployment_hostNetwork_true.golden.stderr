@@ -1,1 +1,7 @@
-Error transforming resources: failed to inject deployment/web : pods use host networking
+Error transforming resources: failed to inject deployment/web - pods use host networking
+
+‼ "hostNetwork: true" detected in deployment/web
+‼ no supported objects found
+
+deployment "web" skipped
+
