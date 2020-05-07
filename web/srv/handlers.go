@@ -28,7 +28,9 @@ type (
 		controllerNamespace string
 		clusterDomain       string
 		grafana             string
-		grafanaProxy        *grafanaProxy
+		jaeger              string
+		grafanaProxy        *reverseProxy
+		jaegerProxy         *reverseProxy
 		hc                  healthChecker
 		statCache           *cache.Cache
 	}
@@ -46,6 +48,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 		ControllerNamespace: h.controllerNamespace,
 		PathPrefix:          pathPfx,
 		Grafana:             h.grafana,
+		Jaeger:              h.jaeger,
 	}
 
 	version, err := h.apiClient.Version(req.Context(), &pb.Empty{}) // TODO: remove and call /api/version from web app
@@ -94,4 +97,8 @@ func (h *handler) handleProfileDownload(w http.ResponseWriter, req *http.Request
 
 func (h *handler) handleGrafana(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
 	h.grafanaProxy.ServeHTTP(w, req)
+}
+
+func (h *handler) handleJaeger(w http.ResponseWriter, req *http.Request, p httprouter.Params) {
+	h.jaegerProxy.ServeHTTP(w, req)
 }
