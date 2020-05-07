@@ -24,13 +24,13 @@ import (
 
 const (
 	// for inject reports
-	hostNetworkDesc    = "pods do not use host networking"
-	sidecarDesc        = "pods do not have a 3rd party proxy or initContainer already injected"
-	injectDisabledDesc = "pods are not annotated to disable injection"
-	unsupportedDesc    = "at least one resource injected"
-	udpDesc            = "pod specs do not include UDP ports"
+	hostNetworkDesc                  = "pods do not use host networking"
+	sidecarDesc                      = "pods do not have a 3rd party proxy or initContainer already injected"
+	injectDisabledDesc               = "pods are not annotated to disable injection"
+	unsupportedDesc                  = "at least one resource injected"
+	udpDesc                          = "pod specs do not include UDP ports"
 	automountServiceAccountTokenDesc = "pods do not have automountServiceAccountToken set to \"false\""
-	slash              = "/"
+	slash                            = "/"
 
 	// for throwing inject error
 	hostNetworkError                  = "pods use host networking"
