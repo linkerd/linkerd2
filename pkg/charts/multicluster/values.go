@@ -29,6 +29,8 @@ type Values struct {
 	NginxImage              string `json:"nginxImage"`
 	LinkerdVersion          string `json:"linkerdVersion"`
 	CreatedByAnnotation     string `json:"createdByAnnotation"`
+	LocalProbePath          string `json:"localProbePath"`
+	LocalProbePort          uint32 `json:"localProbePort"`
 }
 
 // NewValues returns a new instance of the Values type.

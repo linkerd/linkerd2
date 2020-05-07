@@ -13,12 +13,14 @@ import (
 )
 
 const httpGatewayTimeoutMillis = 50000
+const requireIDHeader = "l5d-require-id"
 
 type probeSpec struct {
 	ips             []string
 	path            string
 	port            uint32
 	periodInSeconds uint32
+	gatewayIdentity string
 }
 
 // ProbeWorker is responsible for monitoring gateways using a probe specification
@@ -128,8 +130,16 @@ func (pw *ProbeWorker) doProbe() {
 		client := http.Client{
 			Timeout: httpGatewayTimeoutMillis * time.Millisecond,
 		}
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/%s", ipToTry, pw.probeSpec.port, pw.probeSpec.path), nil)
+		if err != nil {
+			pw.log.Debugf("Could not create a GET request to gateway: %s", err)
+			return
+		}
+
+		req.Header.Set(requireIDHeader, pw.probeSpec.gatewayIdentity)
 		start := time.Now()
-		resp, err := client.Get(fmt.Sprintf("http://%s:%d/%s", ipToTry, pw.probeSpec.port, pw.probeSpec.path))
+		resp, err := client.Do(req)
 		end := time.Since(start)
 		if err != nil {
 			pw.log.Errorf("Problem connecting with gateway. Marking as unhealthy %s", err)

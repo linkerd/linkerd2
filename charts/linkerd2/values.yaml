@@ -48,6 +48,7 @@ global:
     # See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
     # for more info on container lifecycle hooks.
     waitBeforeExitSeconds: 0
+    requireIdentityOnInboundPorts: ""
 
   # proxy-init configuration
   proxyInit:

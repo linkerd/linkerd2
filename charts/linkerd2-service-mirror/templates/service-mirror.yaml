@@ -48,6 +48,8 @@ spec:
       {{.Values.controllerComponentLabel}}: linkerd-service-mirror
   template:
     metadata:
+      annotations:
+        linkerd.io/inject: enabled
       labels:
         {{.Values.controllerComponentLabel}}: linkerd-service-mirror
     spec:

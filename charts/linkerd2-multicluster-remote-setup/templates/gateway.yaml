@@ -29,6 +29,13 @@ data:
             return 200 "healthy\n";
           }
       }
+      server {
+          listen     {{.Values.localProbePort}};
+          location {{.Values.localProbePath}} {
+            access_log off;
+            return 200 "healthy\n";
+          }
+      }    
     }
 ---    
 apiVersion: apps/v1
@@ -53,6 +60,7 @@ spec:
       annotations:
         {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}        
         linkerd.io/inject: enabled
+        config.linkerd.io/proxy-require-identity-inbound-ports: "{{.Values.probePort}},{{.Values.incomingPort}}"
       labels:
         app: {{.Values.gatewayName}}
     spec:
@@ -65,19 +73,21 @@ spec:
           readinessProbe:
             failureThreshold: 7
             httpGet:
-              path: {{.Values.probePath}}
-              port: {{.Values.probePort}}
+              path: {{.Values.localProbePath}}
+              port: {{.Values.localProbePort}}
           livenessProbe:
             httpGet:
-              path: {{.Values.probePath}}
-              port: {{.Values.probePort}}
-            initialDelaySeconds: 10  
+              path: {{.Values.localProbePath}}
+              port: {{.Values.localProbePort}}
+            initialDelaySeconds: 10
           image: {{.Values.nginxImage}}:{{.Values.nginxImageVersion}}
           ports:
             - name: incoming-port
               containerPort: {{.Values.incomingPort}}
             - name: probe-port
-              containerPort: {{.Values.probePort}}             
+              containerPort: {{.Values.probePort}}
+            - name: local-probe
+              containerPort: {{.Values.localProbePort}}              
           volumeMounts:
             - name: config
               mountPath: /etc/nginx

@@ -111,6 +111,10 @@ func buildMulticlusterSetupValues(opts *setupRemoteClusterOptions) (*multicluste
 		return nil, err
 	}
 
+	if opts.probePort == defaults.LocalProbePort {
+		return nil, fmt.Errorf("The probe port needs to be different from %d which is the local probe port", defaults.LocalProbePort)
+	}
+
 	defaults.GatewayName = opts.gatewayName
 	defaults.GatewayNamespace = opts.gatewayNamespace
 	defaults.IdentityTrustDomain = global.Global.IdentityContext.TrustDomain
