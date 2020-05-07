@@ -1,3 +1,21 @@
+## edge-20.5.1
+
+* CLI
+  * Fixed all commands to use kubeconfig's default namespace if specified
+    (thanks @Matei207!)
+  * Added multicluster checks to the `linkerd check` command
+  * Hid development flags in the `linkerd install` command for release builds
+* Controller
+  * Added ability to configure Prometheus Alertmanager (more documentation and
+    changes to come for this!) (thanks naseemkullah!)
+* Web UI
+  * Fixed TrafficSplit detail page not loading
+  * Added Jaeger links to the dashboard when the tracing addon is enabled
+* Proxy
+  * Modified internal buffering to avoid idling out services as a request
+    arrives, fixing failures for requests that are sent exactly once per
+    minute--such as Prometheus scrapes
+
 ## edge-20.4.5
 
 This edge release includes several new CLI commands for use with multi-cluster
