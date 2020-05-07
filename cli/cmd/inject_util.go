@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/inject"
 	corev1 "k8s.io/api/core/v1"
@@ -29,12 +30,14 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 	reportBuf := &bytes.Buffer{}
 
 	for _, input := range inputs {
-		err := processYAML(input, postInjectBuf, reportBuf, rt)
-		if err != nil {
-			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", err)
+		errMsgs := processYAML(input, postInjectBuf, reportBuf, rt)
+		if len(errMsgs) > 0 {
+			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", strings.Join(errMsgs, ", \n"))
+			io.Copy(errWriter, reportBuf)
 			return 1
 		}
-		_, err = io.Copy(outWriter, postInjectBuf)
+
+		_, err := io.Copy(outWriter, postInjectBuf)
 
 		// print error report after yaml output, for better visibility
 		io.Copy(errWriter, reportBuf)
@@ -48,10 +51,12 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 }
 
 // processYAML takes an input stream of YAML, outputting injected/uninjected YAML to out.
-func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) error {
+func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) []string {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 
 	reports := []inject.Report{}
+
+	errorMessages := []string{}
 
 	// Iterate over all YAML objects in the input
 	for {
@@ -61,7 +66,7 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 			break
 		}
 		if err != nil {
-			return err
+			return []string{err.Error()}
 		}
 
 		var result []byte
@@ -69,7 +74,7 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 
 		isList, err := kindIsList(bytes)
 		if err != nil {
-			return err
+			return []string{err.Error()}
 		}
 		if isList {
 			result, irs, err = processList(bytes, rt)
@@ -77,16 +82,19 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 			result, irs, err = rt.transform(bytes)
 		}
 		if err != nil {
-			return err
+			errorMessages = append(errorMessages, err.Error())
 		}
 		reports = append(reports, irs...)
-		out.Write(result)
-		out.Write([]byte("---\n"))
+
+		if len(errorMessages) == 0 {
+			out.Write(result)
+			out.Write([]byte("---\n"))
+		}
 	}
 
 	rt.generateReport(reports, report)
 
-	return nil
+	return errorMessages
 }
 
 func kindIsList(bytes []byte) (bool, error) {

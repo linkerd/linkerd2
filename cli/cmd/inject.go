@@ -189,7 +189,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 	if b, _ := report.Injectable(); !b {
 		if e, err := shouldInjectThrowError(report); e {
-			return bytes, reports, fmt.Errorf("failed to inject %s%s%s : %s",report.Kind,slash,report.Name, err)
+			return bytes, reports, fmt.Errorf("failed to inject %s%s%s - %s",report.Kind,slash,report.Name, err)
 		}
 		return bytes, reports, nil
 	}
