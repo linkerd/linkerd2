@@ -193,22 +193,10 @@ func NewServer(
 	server.router.GET("/api/resource-definition", handler.handleAPIResourceDefinition)
 
 	// grafana proxy
-	server.router.DELETE("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.GET("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.HEAD("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.OPTIONS("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.PATCH("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.POST("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.PUT("/grafana/*grafanapath", handler.handleGrafana)
+	server.handleAllOperationsForPath("/grafana/*grafanapath", handler.handleGrafana)
 
 	// jaeger proxy
-	server.router.DELETE("/jaeger/*jaegerpath", handler.handleJaeger)
-	server.router.GET("/jaeger/*jaegerpath", handler.handleJaeger)
-	server.router.HEAD("/jaeger/*jaegerpath", handler.handleJaeger)
-	server.router.OPTIONS("/jaeger/*jaegerpath", handler.handleJaeger)
-	server.router.PATCH("/jaeger/*jaegerpath", handler.handleJaeger)
-	server.router.POST("/jaeger/*jaegerpath", handler.handleJaeger)
-	server.router.PUT("/jaeger/*jaegerpath", handler.handleJaeger)
+	server.handleAllOperationsForPath("/jaeger/*jaegerpath", handler.handleJaeger)
 
 	return httpServer
 }
@@ -252,6 +240,16 @@ func (s *Server) loadTemplate(templateFile string) (template *template.Template,
 		}
 	}
 	return template, err
+}
+
+func (s *Server) handleAllOperationsForPath(path string, handle httprouter.Handle) {
+	s.router.DELETE(path, handle)
+	s.router.GET(path, handle)
+	s.router.HEAD(path, handle)
+	s.router.OPTIONS(path, handle)
+	s.router.PATCH(path, handle)
+	s.router.POST(path, handle)
+	s.router.PUT(path, handle)
 }
 
 func safelyJoinPath(rootPath, userPath string) string {
