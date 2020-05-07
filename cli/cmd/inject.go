@@ -24,13 +24,18 @@ import (
 
 const (
 	// for inject reports
-	hostNetworkDesc                  = "pods do not use host networking"
-	sidecarDesc                      = "pods do not have a 3rd party proxy or initContainer already injected"
-	injectDisabledDesc               = "pods are not annotated to disable injection"
-	unsupportedDesc                  = "at least one resource injected"
-	udpDesc                          = "pod specs do not include UDP ports"
-	slash                            = "/"
-	automountServiceAccountTokenDesc = "cannot enable mTLS when automountServiceAccountToken set to \"false\""
+	hostNetworkDesc    = "pods do not use host networking"
+	sidecarDesc        = "pods do not have a 3rd party proxy or initContainer already injected"
+	injectDisabledDesc = "pods are not annotated to disable injection"
+	unsupportedDesc    = "at least one resource injected"
+	udpDesc            = "pod specs do not include UDP ports"
+	slash              = "/"
+
+	// for throwing inject error
+	hostNetworkError                  = "pods use host networking"
+	sidecarError                      = "pods have a 3rd party proxy or initContainer already injected"
+	udpError                          = "pod specs include UDP ports"
+	automountServiceAccountTokenError = "pods have automountServiceAccountToken set to \"false\""
 )
 
 type resourceTransformerInject struct {
@@ -182,8 +187,8 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return b, reports, err
 	}
 	if b, _ := report.Injectable(); !b {
-		if !report.AutomountServiceAccountToken {
-			return bytes, reports, errors.New(automountServiceAccountTokenDesc)
+		if e, err := shouldInjectThrowError(report); e {
+			return bytes, reports, err
 		}
 		return bytes, reports, nil
 	}
@@ -521,4 +526,24 @@ func overwriteRegistry(image, newRegistry string) string {
 		imageName = image[strings.LastIndex(image, slash)+1:]
 	}
 	return registry + imageName
+}
+
+func shouldInjectThrowError(report *inject.Report) (bool, error) {
+	if !report.AutomountServiceAccountToken {
+		return true, errors.New(automountServiceAccountTokenError)
+	}
+
+	if report.HostNetwork {
+		return true, errors.New(hostNetworkError)
+	}
+
+	if report.Sidecar {
+		return true, errors.New(sidecarError)
+	}
+
+	if report.UDP {
+		return true, errors.New(udpError)
+	}
+
+	return false, nil
 }
