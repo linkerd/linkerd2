@@ -33,7 +33,6 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 		errMsgs := processYAML(input, postInjectBuf, reportBuf, rt)
 		if len(errMsgs) > 0 {
 			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", strings.Join(errMsgs, ", \n"))
-			io.Copy(errWriter, reportBuf)
 			return 1
 		}
 

@@ -1,7 +1,1 @@
 Error transforming resources: failed to inject deployment/web - pods have a 3rd party proxy or initContainer already injected
-
-‼ known 3rd party sidecar detected in deployment/web
-‼ no supported objects found
-
-deployment "web" skipped
-

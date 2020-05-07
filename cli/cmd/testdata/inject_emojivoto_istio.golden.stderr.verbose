@@ -1,11 +1,1 @@
 Error transforming resources: failed to inject deployment/web - pods have a 3rd party proxy or initContainer already injected
-
-√ pods do not use host networking
-‼ known 3rd party sidecar detected in deployment/web
-√ pods are not annotated to disable injection
-‼ no supported objects found
-√ pod specs do not include UDP ports
-√ pods do not have automountServiceAccountToken set to "false"
-
-deployment "web" skipped
-
