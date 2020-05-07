@@ -1,0 +1,1 @@
+Error transforming resources: pods have a 3rd party proxy or initContainer already injected
