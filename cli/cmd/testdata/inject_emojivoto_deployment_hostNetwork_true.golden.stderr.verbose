@@ -1,1 +1,1 @@
-Error transforming resources: pods use host networking
+Error transforming resources: failed to inject deployment/web : pods use host networking
