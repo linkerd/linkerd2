@@ -4,6 +4,7 @@
     data-go-version="{{.Data.GoVersion}}"
     data-controller-namespace="{{.ControllerNamespace}}"
     data-uuid="{{.UUID}}"
+    data-grafana="{{.Grafana}}"
     data-jaeger="{{.Jaeger}}">
     {{ if .Error }}
       <p>Failed to call public API: {{ .ErrorMessage }}</p>

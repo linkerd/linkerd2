@@ -963,6 +963,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1185,6 +1187,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1404,6 +1408,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: localhost.:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1673,6 +1679,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1823,6 +1831,7 @@ data:
 
     rule_files:
     - /etc/prometheus/*_rules.yml
+    - /etc/prometheus/*_rules.yaml
 
     scrape_configs:
     - job_name: 'prometheus'
@@ -2029,14 +2038,17 @@ spec:
         volumeMounts:
         - mountPath: /data
           name: data
-        - mountPath: /etc/prometheus
+        - mountPath: /etc/prometheus/prometheus.yml
           name: prometheus-config
+          subPath: prometheus.yml
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2317,6 +2329,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2524,6 +2538,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2761,6 +2777,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2986,6 +3004,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -3118,13 +3138,13 @@ spec:
 
 ---
 ###
-### linkerd values
+### linkerd add-ons configuration
 ###
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-values
+  name: linkerd-config-addons
   namespace: linkerd
   labels:
     linkerd.io/control-plane-ns: linkerd
@@ -3133,11 +3153,11 @@ metadata:
 data:
   values: |-
     tracing:
-      enabled: true
       collector:
         image: omnition/opencensus-collector:0.1.11
         name: linkerd-collector
         resources: null
+      enabled: true
       jaeger:
         image: jaegertracing/all-in-one:1.17.1
         name: linkerd-jaeger
@@ -3290,6 +3310,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -3495,6 +3517,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR

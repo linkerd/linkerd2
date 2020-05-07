@@ -105,6 +105,28 @@ func TestCliGet(t *testing.T) {
 			t.Fatalf("Pod output check failed:\n%s\nCommand output:\n%s", err, out)
 		}
 	})
+
+	t.Run("get pods from the default namespace of current context", func(t *testing.T) {
+		out, err := TestHelper.Kubectl("", "config", "set-context", "--namespace="+TestHelper.GetLinkerdNamespace(), "--current")
+		if err != nil {
+			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
+		}
+
+		out, stderr, err = TestHelper.LinkerdRun("get", "pods")
+		if err != nil {
+			t.Fatalf("Unexpected error: %v output:\n%s\n%s", err, out, stderr)
+		}
+
+		err = checkPodOutput(out, linkerdPods, "linkerd-heartbeat", TestHelper.GetLinkerdNamespace())
+		if err != nil {
+			t.Fatalf("Pod output check failed:\n%s\nCommand output:\n%s", err, out)
+		}
+
+		out, err = TestHelper.Kubectl("", "config", "set-context", "--namespace=default", "--current")
+		if err != nil {
+			t.Fatalf("Unexpected error: %v output:\n%s", err, out)
+		}
+	})
 }
 
 func checkPodOutput(cmdOutput string, expectedPodCounts map[string]int, optionalPod string, namespace string) error {

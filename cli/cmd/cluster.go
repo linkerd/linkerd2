@@ -1,50 +1,64 @@
 package cmd
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/linkerd/linkerd2/cli/table"
-	v1 "k8s.io/api/rbac/v1"
-
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/pkg/charts/multicluster"
+	mccharts "github.com/linkerd/linkerd2/pkg/charts/multicluster"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
-
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/yaml"
-
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	"k8s.io/helm/pkg/chartutil"
+	"sigs.k8s.io/yaml"
 )
 
 const (
-	tokenKey                  = "token"
-	defaultServiceAccountName = "linkerd-service-mirror"
-	defaultServiceAccountNs   = "default"
-	defaultClusterName        = "remote"
+	helmMulticlusterRemoteSetuprDefaultChartName = "linkerd2-multicluster-remote-setup"
+	tokenKey                                     = "token"
+	defaultServiceAccountName                    = "linkerd-service-mirror"
+	defaultServiceAccountNs                      = "linkerd-service-mirror"
+	defaultClusterName                           = "remote"
 )
 
 type (
 	getCredentialsOptions struct {
-		namespace           string
-		serviceAccount      string
-		clusterName         string
-		remoteClusterDomain string
+		serviceAccountName      string
+		serviceAccountNamespace string
+		clusterName             string
+		remoteClusterDomain     string
 	}
 
-	createOptions struct {
-		namespace      string
-		serviceAccount string
+	setupRemoteClusterOptions struct {
+		serviceAccountName      string
+		serviceAccountNamespace string
+		gatewayNamespace        string
+		gatewayName             string
+		probePort               uint32
+		incomingPort            uint32
+		probePeriodSeconds      uint32
+		probePath               string
+		nginxImageVersion       string
+		nginxImage              string
 	}
 
 	exportServiceOptions struct {
-		namespace        string
-		service          string
 		gatewayNamespace string
 		gatewayName      string
 	}
@@ -56,96 +70,166 @@ type (
 	}
 )
 
-func newCmdCluster() *cobra.Command {
-
-	getOpts := getCredentialsOptions{}
-	createOpts := createOptions{}
-	exportOpts := exportServiceOptions{}
-	gatewaysOptions := gatewaysOptions{}
-
-	clusterCmd := &cobra.Command{
-
-		Hidden: true,
-		Use:    "cluster [flags]",
-		Args:   cobra.NoArgs,
-		Short:  "Manages the multicluster setup for Linkerd",
-		Long: `Manages the multicluster setup for Linkerd.
-
-This command provides subcommands to manage the multicluster support
-functionality of Linkerd. You can use it to deploy credentials to
-remote clusters, extract them as well as export remote services to be
-available across clusters.`,
-		Example: `  # Create remote cluster credentials.
-  linkerd --context=cluster-a cluster create-credentials | kubectl --context=cluster-a apply -f -
-
-  # Extract mirroring cluster credentials from cluster A and install them on cluster B
-  linkerd --context=cluster-a cluster get-credentials --cluster-name=remote | kubectl apply --context=cluster-b -f -
-
-  # Export service from cluster A to be available to other clusters
-  linkerd --context=cluster-a cluster export-service --service-name=backend-svc --service-namespace=default --gateway-name=linkerd-gateway --gateway-ns=default
-
-  # Display latency and health status about the remote gateways
-  linkerd --context=cluster-b cluster gateways`,
+func newSetupRemoteClusterOptionsWithDefault() (*setupRemoteClusterOptions, error) {
+	defaults, err := mccharts.NewValues()
+	if err != nil {
+		return nil, err
 	}
 
-	createCredentialsCommand := &cobra.Command{
+	return &setupRemoteClusterOptions{
+		serviceAccountName:      defaults.ServiceAccountName,
+		serviceAccountNamespace: defaults.ServiceAccountNamespace,
+		gatewayNamespace:        defaults.GatewayNamespace,
+		gatewayName:             defaults.GatewayName,
+		probePort:               defaults.ProbePort,
+		incomingPort:            defaults.IncomingPort,
+		probePeriodSeconds:      defaults.ProbePeriodSeconds,
+		probePath:               defaults.ProbePath,
+		nginxImageVersion:       defaults.NginxImageVersion,
+		nginxImage:              defaults.NginxImage,
+	}, nil
+
+}
+
+func buildMulticlusterSetupValues(opts *setupRemoteClusterOptions) (*multicluster.Values, error) {
+
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	_, global, err := healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return nil, errors.New("you need Linkerd to be installed in order to setup a remote cluster")
+		}
+		return nil, err
+	}
+
+	defaults, err := mccharts.NewValues()
+	if err != nil {
+		return nil, err
+	}
+
+	defaults.GatewayName = opts.gatewayName
+	defaults.GatewayNamespace = opts.gatewayNamespace
+	defaults.IdentityTrustDomain = global.Global.IdentityContext.TrustDomain
+	defaults.IncomingPort = opts.incomingPort
+	defaults.LinkerdNamespace = controlPlaneNamespace
+	defaults.ProbePath = opts.probePath
+	defaults.ProbePeriodSeconds = opts.probePeriodSeconds
+	defaults.ProbePort = opts.probePort
+	defaults.ProxyOutboundPort = global.Proxy.OutboundPort.Port
+	defaults.ServiceAccountName = opts.serviceAccountName
+	defaults.ServiceAccountNamespace = opts.serviceAccountNamespace
+	defaults.NginxImageVersion = opts.nginxImageVersion
+	defaults.NginxImage = opts.nginxImage
+	defaults.LinkerdVersion = version.Version
+
+	return defaults, nil
+}
+
+func newGatewaysCommand() *cobra.Command {
+
+	opts := gatewaysOptions{}
+
+	cmd := &cobra.Command{
 		Hidden: false,
-		Use:    "create-credentials",
-		Short:  "Create the necessary credentials for service mirroring",
+		Use:    "gateways",
+		Short:  "Display stats information about the remote gateways",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			labels := map[string]string{
-				k8s.ControllerComponentLabel: k8s.ServiceMirrorLabel,
-				k8s.ControllerNSLabel:        controlPlaneNamespace,
+			req := &pb.GatewaysRequest{
+				RemoteClusterName: opts.clusterName,
+				GatewayNamespace:  opts.gatewayNamespace,
+				TimeWindow:        opts.timeWindow,
 			}
 
-			clusterRole := v1.ClusterRole{
-				ObjectMeta: metav1.ObjectMeta{Name: createOpts.serviceAccount, Namespace: createOpts.namespace, Labels: labels},
-				TypeMeta:   metav1.TypeMeta{Kind: "ClusterRole", APIVersion: "rbac.authorization.k8s.io/v1"},
-				Rules: []rbacv1.PolicyRule{
-					{
-						APIGroups: []string{""},
-						Resources: []string{"services"},
-						Verbs:     []string{"list", "get", "watch"},
-					},
-				},
-			}
-
-			svcAccount := corev1.ServiceAccount{
-				ObjectMeta: metav1.ObjectMeta{Name: createOpts.serviceAccount, Namespace: createOpts.namespace, Labels: labels},
-				TypeMeta:   metav1.TypeMeta{Kind: v1.ServiceAccountKind, APIVersion: "v1"},
-			}
-
-			clusterRoleBinding := v1.ClusterRoleBinding{
-				TypeMeta:   metav1.TypeMeta{Kind: "ClusterRoleBinding", APIVersion: "rbac.authorization.k8s.io/v1"},
-				ObjectMeta: metav1.ObjectMeta{Name: createOpts.serviceAccount, Namespace: createOpts.namespace, Labels: labels},
-
-				Subjects: []v1.Subject{
-					v1.Subject{Kind: v1.ServiceAccountKind, Name: createOpts.serviceAccount, Namespace: createOpts.namespace},
-				},
-				RoleRef: rbacv1.RoleRef{Kind: "ClusterRole", APIGroup: "rbac.authorization.k8s.io", Name: createOpts.serviceAccount},
-			}
-
-			crOut, err := yaml.Marshal(clusterRole)
+			client := checkPublicAPIClientOrExit()
+			resp, err := requestGatewaysFromAPI(client, req)
 			if err != nil {
 				return err
 			}
-
-			saOut, err := yaml.Marshal(svcAccount)
-			if err != nil {
-				return err
-			}
-			crbOut, err := yaml.Marshal(clusterRoleBinding)
-			if err != nil {
-				return err
-			}
-			fmt.Println(fmt.Sprintf("---\n%s---\n%s---\n%s", crOut, saOut, crbOut))
+			renderGateways(resp.GetOk().GatewaysTable.Rows, stdout)
 			return nil
 		},
 	}
 
-	getCredentialsCmd := &cobra.Command{
+	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "remote", "the name of the remote cluster")
+	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "linkerd-gateway", "the namespace in which the gateway resides on the remote cluster")
+	cmd.Flags().StringVarP(&opts.timeWindow, "time-window", "t", "1m", "Time window (for example: \"15s\", \"1m\", \"10m\", \"1h\"). Needs to be at least 15s.")
+
+	return cmd
+}
+
+func newSetupRemoteCommand() *cobra.Command {
+	options, err := newSetupRemoteClusterOptionsWithDefault()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		os.Exit(1)
+	}
+
+	cmd := &cobra.Command{
+		Hidden: false,
+		Use:    "setup-remote",
+		Short:  "Sets up the remote cluster by creating the gateway and necessary credentials",
+		Args:   cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+
+			values, err := buildMulticlusterSetupValues(options)
+
+			if err != nil {
+				return err
+			}
+
+			// Render raw values and create chart config
+			rawValues, err := yaml.Marshal(values)
+			if err != nil {
+				return err
+			}
+
+			files := []*chartutil.BufferedFile{
+				{Name: chartutil.ChartfileName},
+				{Name: "templates/gateway.yaml"},
+				{Name: "templates/service-mirror-rbac.yaml"},
+			}
+
+			chart := &charts.Chart{
+				Name:      helmMulticlusterRemoteSetuprDefaultChartName,
+				Dir:       helmMulticlusterRemoteSetuprDefaultChartName,
+				Namespace: controlPlaneNamespace,
+				RawValues: rawValues,
+				Files:     files,
+			}
+			buf, err := chart.RenderNoPartials()
+			if err != nil {
+				return err
+			}
+			stdout.Write(buf.Bytes())
+			stdout.Write([]byte("---\n"))
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&options.gatewayName, "gateway-name", options.gatewayName, "the name of the gateway")
+	cmd.Flags().StringVar(&options.gatewayNamespace, "gateway-namespace", options.gatewayNamespace, "the namespace in which the gateway will be installed")
+	cmd.Flags().Uint32Var(&options.probePort, "probe-port", options.probePort, "the liveness check port of the gateway")
+	cmd.Flags().Uint32Var(&options.incomingPort, "incoming-port", options.incomingPort, "the port on the gateway used for all incomming traffic")
+	cmd.Flags().StringVar(&options.probePath, "probe-path", options.probePath, "the path that will be exercised by the liveness checks")
+	cmd.Flags().Uint32Var(&options.probePeriodSeconds, "probe-period", options.probePeriodSeconds, "the interval at which the gateway will be checked for being alive in seconds")
+	cmd.Flags().StringVar(&options.serviceAccountName, "service-account-name", options.serviceAccountName, "the name of the service account")
+	cmd.Flags().StringVar(&options.serviceAccountNamespace, "service-account-namespace", options.serviceAccountNamespace, "the namespace in which the service account will be created")
+	cmd.Flags().StringVar(&options.nginxImageVersion, "nginx-image-version", options.nginxImageVersion, "the version of nginx to be used")
+	cmd.Flags().StringVar(&options.nginxImage, "nginx-image", options.nginxImage, "the nginx image to be used")
+
+	return cmd
+}
+
+func newGetCredentialsCommand() *cobra.Command {
+	opts := getCredentialsOptions{}
+
+	cmd := &cobra.Command{
 		Hidden: false,
 		Use:    "get-credentials",
 		Short:  "Get cluster credentials as a secret",
@@ -168,7 +252,7 @@ available across clusters.`,
 				return err
 			}
 
-			sa, err := k.CoreV1().ServiceAccounts(getOpts.namespace).Get(getOpts.serviceAccount, metav1.GetOptions{})
+			sa, err := k.CoreV1().ServiceAccounts(opts.serviceAccountNamespace).Get(opts.serviceAccountName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -184,7 +268,7 @@ available across clusters.`,
 				return fmt.Errorf("could not find service account token secret for %s", sa.Name)
 			}
 
-			secret, err := k.CoreV1().Secrets(getOpts.namespace).Get(secretName, metav1.GetOptions{})
+			secret, err := k.CoreV1().Secrets(opts.serviceAccountNamespace).Get(secretName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -199,12 +283,12 @@ available across clusters.`,
 				return fmt.Errorf("could not extract current context from config")
 			}
 
-			context.AuthInfo = getOpts.serviceAccount
+			context.AuthInfo = opts.serviceAccountName
 			config.Contexts = map[string]*api.Context{
 				config.CurrentContext: context,
 			}
 			config.AuthInfos = map[string]*api.AuthInfo{
-				getOpts.serviceAccount: {
+				opts.serviceAccountName: {
 					Token: string(token),
 				},
 			}
@@ -224,10 +308,10 @@ available across clusters.`,
 				Type:     k8s.MirrorSecretType,
 				TypeMeta: metav1.TypeMeta{Kind: "Secret", APIVersion: "v1"},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: fmt.Sprintf("cluster-credentials-%s", getOpts.clusterName),
+					Name: fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
 					Annotations: map[string]string{
-						k8s.RemoteClusterNameLabel:        getOpts.clusterName,
-						k8s.RemoteClusterDomainAnnotation: getOpts.remoteClusterDomain,
+						k8s.RemoteClusterNameLabel:        opts.clusterName,
+						k8s.RemoteClusterDomainAnnotation: opts.remoteClusterDomain,
 					},
 				},
 				Data: map[string][]byte{
@@ -245,97 +329,219 @@ available across clusters.`,
 		},
 	}
 
-	exportServiceCmd := &cobra.Command{
+	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", defaultServiceAccountName, "the name of the service account")
+	cmd.Flags().StringVar(&opts.serviceAccountNamespace, "service-account-namespace", defaultServiceAccountNs, "the namespace in which the service account will be created")
+	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", defaultClusterName, "cluster name")
+	cmd.Flags().StringVar(&opts.remoteClusterDomain, "remote-cluster-domain", defaultClusterDomain, "custom remote cluster domain")
+
+	return cmd
+}
+
+type exportReport struct {
+	resourceKind string
+	resourceName string
+	exported     bool
+}
+
+func transform(bytes []byte, gatewayName, gatewayNamespace string) ([]byte, *exportReport, error) {
+	var metaType metav1.TypeMeta
+
+	if err := yaml.Unmarshal(bytes, &metaType); err != nil {
+		return nil, nil, err
+	}
+
+	if metaType.Kind == "Service" {
+		var service corev1.Service
+		if err := yaml.Unmarshal(bytes, &service); err != nil {
+			return nil, nil, err
+		}
+
+		if service.Annotations == nil {
+			service.Annotations = map[string]string{}
+		}
+
+		service.Annotations[k8s.GatewayNameAnnotation] = gatewayName
+		service.Annotations[k8s.GatewayNsAnnotation] = gatewayNamespace
+
+		transformed, err := yaml.Marshal(service)
+
+		if err != nil {
+			return nil, nil, err
+		}
+		report := &exportReport{
+			resourceKind: strings.ToLower(metaType.Kind),
+			resourceName: service.Name,
+			exported:     true,
+		}
+		return transformed, report, nil
+	}
+
+	report := &exportReport{
+		resourceKind: strings.ToLower(metaType.Kind),
+		exported:     false,
+	}
+
+	return bytes, report, nil
+}
+
+func generateReport(reports []*exportReport, reportsOut io.Writer) error {
+	unexportedResources := map[string]int{}
+
+	for _, r := range reports {
+		if r.exported {
+			if _, err := reportsOut.Write([]byte(fmt.Sprintf("%s \"%s\" exported\n", r.resourceKind, r.resourceName))); err != nil {
+				return err
+			}
+		} else {
+			if val, ok := unexportedResources[r.resourceKind]; ok {
+				unexportedResources[r.resourceKind] = val + 1
+			} else {
+				unexportedResources[r.resourceKind] = 1
+			}
+		}
+	}
+
+	if len(unexportedResources) > 0 {
+		reportsOut.Write([]byte("\n"))
+		reportsOut.Write([]byte("Number of skipped resources:\n"))
+	}
+
+	for res, num := range unexportedResources {
+		reportsOut.Write([]byte(fmt.Sprintf("%ss: %d\n", res, num)))
+	}
+
+	return nil
+}
+
+func processExportYaml(in io.Reader, out io.Writer, gatewayName, gatewayNamespace string) ([]*exportReport, error) {
+	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
+	var reports []*exportReport
+	// Iterate over all YAML objects in the input
+	for {
+		// Read a single YAML object
+		bytes, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		result, report, err := transform(bytes, gatewayName, gatewayNamespace)
+		reports = append(reports, report)
+		if err != nil {
+			return nil, err
+		}
+
+		out.Write(result)
+		out.Write([]byte("---\n"))
+	}
+
+	return reports, nil
+}
+
+func transformExportInput(inputs []io.Reader, errWriter, outWriter io.Writer, gatewayName, gatewayNamespace string) int {
+	postTransformBuf := &bytes.Buffer{}
+	reportBuf := &bytes.Buffer{}
+	var finalReports []*exportReport
+	for _, input := range inputs {
+		reports, err := processExportYaml(input, postTransformBuf, gatewayName, gatewayNamespace)
+		if err != nil {
+			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", err)
+			return 1
+		}
+		_, err = io.Copy(outWriter, postTransformBuf)
+
+		if err != nil {
+			fmt.Fprintf(errWriter, "Error printing YAML: %v\n", err)
+			return 1
+		}
+
+		finalReports = append(finalReports, reports...)
+	}
+
+	// print error report after yaml output, for better visibility
+	if err := generateReport(finalReports, reportBuf); err != nil {
+		fmt.Fprintf(errWriter, "Error generating reports: %v\n", err)
+		return 1
+	}
+	errWriter.Write([]byte("\n"))
+	io.Copy(errWriter, reportBuf)
+	errWriter.Write([]byte("\n"))
+	return 0
+}
+
+func newExportServiceCommand() *cobra.Command {
+	opts := exportServiceOptions{}
+
+	cmd := &cobra.Command{
 		Hidden: false,
 		Use:    "export-service",
 		Short:  "Exposes a remote service to be mirrored",
-		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			rules := clientcmd.NewDefaultClientConfigLoadingRules()
-			rules.ExplicitPath = kubeconfigPath
-			loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, &clientcmd.ConfigOverrides{})
-			config, err := loader.RawConfig()
+
+			if len(args) < 1 {
+				return fmt.Errorf("please specify a kubernetes resource file")
+			}
+
+			if opts.gatewayName == "" {
+				return errors.New("The --gateway-name flag needs to be set")
+			}
+
+			if opts.gatewayNamespace == "" {
+				return errors.New("The --gateway-namespace flag needs to be set")
+			}
+
+			in, err := read(args[0])
 			if err != nil {
 				return err
 			}
-
-			if kubeContext != "" {
-				config.CurrentContext = kubeContext
-			}
-
-			k, err := k8s.NewAPI(kubeconfigPath, config.CurrentContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				return err
-			}
-
-			svc, err := k.CoreV1().Services(exportOpts.namespace).Get(exportOpts.service, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-
-			_, hasGatewayName := svc.Annotations[k8s.GatewayNameAnnotation]
-			_, hasGatewayNs := svc.Annotations[k8s.GatewayNsAnnotation]
-
-			if hasGatewayName || hasGatewayNs {
-				return fmt.Errorf("service %s/%s has already been exported", svc.Namespace, svc.Name)
-			}
-
-			svc.Annotations[k8s.GatewayNameAnnotation] = exportOpts.gatewayName
-			svc.Annotations[k8s.GatewayNsAnnotation] = exportOpts.gatewayNamespace
-
-			_, err = k.CoreV1().Services(svc.Namespace).Update(svc)
-			if err != nil {
-				return err
-			}
-
-			fmt.Println(fmt.Sprintf("Service %s/%s is now exported", svc.Namespace, svc.Name))
+			exitCode := transformExportInput(in, stderr, stdout, opts.gatewayName, opts.gatewayNamespace)
+			os.Exit(exitCode)
 			return nil
 		},
 	}
 
-	gatewaysCmd := &cobra.Command{
-		Hidden: false,
-		Use:    "gateways",
-		Short:  "Display stats information about the remote gateways",
-		Args:   cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			req := &pb.GatewaysRequest{
-				RemoteClusterName: gatewaysOptions.clusterName,
-				GatewayNamespace:  gatewaysOptions.gatewayNamespace,
-				TimeWindow:        gatewaysOptions.timeWindow,
-			}
+	cmd.Flags().StringVar(&opts.gatewayName, "gateway-name", "linkerd-gateway", "the name of the gateway")
+	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "linkerd-gateway", "the namespace of the gateway")
 
-			client := checkPublicAPIClientOrExit()
-			resp, err := requestGatewaysFromAPI(client, req)
-			if err != nil {
-				return err
-			}
-			renderGateways(resp.GetOk().GatewaysTable.Rows, stdout)
-			return nil
-		},
+	return cmd
+}
+
+func newCmdCluster() *cobra.Command {
+
+	clusterCmd := &cobra.Command{
+
+		Hidden: true,
+		Use:    "cluster [flags]",
+		Args:   cobra.NoArgs,
+		Short:  "Manages the multicluster setup for Linkerd",
+		Long: `Manages the multicluster setup for Linkerd.
+
+This command provides subcommands to manage the multicluster support
+functionality of Linkerd. You can use it to deploy credentials to
+remote clusters, extract them as well as export remote services to be
+available across clusters.`,
+		Example: `  # Setup remote cluster.
+  linkerd --context=cluster-a cluster setup-remote | kubectl --context=cluster-a apply -f -
+
+  # Extract mirroring cluster credentials from cluster A and install them on cluster B
+  linkerd --context=cluster-a cluster get-credentials --cluster-name=remote | kubectl apply --context=cluster-b -f -
+
+  # Export services from cluster to be available to other clusters
+  kubectl get svc -o yaml | linkerd export-service - | kubectl apply -f -
+
+  # Exporting a file from a remote URL
+  linkerd export-service http://url.to/yml | kubectl apply -f -
+
+  # Exporting all the resources inside a folder and its sub-folders.
+  linkerd export-service  <folder> | kubectl apply -f -`,
 	}
 
-	getCredentialsCmd.Flags().StringVar(&getOpts.serviceAccount, "service-account-name", defaultServiceAccountName, "the name of the service account")
-	getCredentialsCmd.Flags().StringVar(&getOpts.namespace, "service-account-namespace", defaultServiceAccountNs, "the namespace in which the service account will be created")
-	getCredentialsCmd.Flags().StringVar(&getOpts.clusterName, "cluster-name", defaultClusterName, "cluster name")
-	getCredentialsCmd.Flags().StringVar(&getOpts.remoteClusterDomain, "remote-cluster-domain", defaultClusterDomain, "custom remote cluster domain")
-
-	createCredentialsCommand.Flags().StringVar(&createOpts.serviceAccount, "service-account-name", defaultServiceAccountName, "the name of the service account used")
-	createCredentialsCommand.Flags().StringVar(&createOpts.namespace, "service-account-namespace", defaultServiceAccountNs, "the namespace in which the service account can be found")
-
-	gatewaysCmd.Flags().StringVar(&gatewaysOptions.clusterName, "cluster-name", "", "the name of the remote cluster")
-	gatewaysCmd.Flags().StringVar(&gatewaysOptions.gatewayNamespace, "gateway-namespace", "", "the namespace in which the gateway resides on the remote cluster")
-	gatewaysCmd.Flags().StringVarP(&gatewaysOptions.timeWindow, "time-window", "t", "1m", "Time window (for example: \"15s\", \"1m\", \"10m\", \"1h\"). Needs to be at least 15s.")
-
-	exportServiceCmd.Flags().StringVar(&exportOpts.service, "service-name", "", "the name of the service to be exported")
-	exportServiceCmd.Flags().StringVar(&exportOpts.namespace, "service-namespace", "", "the namespace in which the service to be exported resides")
-	exportServiceCmd.Flags().StringVar(&exportOpts.gatewayName, "gateway-name", "", "the name of the gateway")
-	exportServiceCmd.Flags().StringVar(&exportOpts.gatewayNamespace, "gateway-namespace", "", "the ns of the gateway")
-
-	clusterCmd.AddCommand(getCredentialsCmd)
-	clusterCmd.AddCommand(createCredentialsCommand)
-	clusterCmd.AddCommand(exportServiceCmd)
-	clusterCmd.AddCommand(gatewaysCmd)
+	clusterCmd.AddCommand(newGetCredentialsCommand())
+	clusterCmd.AddCommand(newSetupRemoteCommand())
+	clusterCmd.AddCommand(newExportServiceCommand())
+	clusterCmd.AddCommand(newGatewaysCommand())
 
 	return clusterCmd
 }

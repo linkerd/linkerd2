@@ -1,10 +1,15 @@
 package edges
 
 import (
+	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
+	"text/template"
+	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -52,10 +57,7 @@ func TestEdges(t *testing.T) {
 */
 
 // TestDirectEdges deploys a terminus and then generates a load generator which
-// sends traffic directly to the pod ip of the terminus pod. Traffic which is
-// addressed this way (as opposed to using the service name) does not show up
-// in the `linkerd edges` command. This test should be updated once
-// `linkerd edges` is updated to support this kind of traffic.
+// sends traffic directly to the pod ip of the terminus pod.
 func TestDirectEdges(t *testing.T) {
 
 	// setup
@@ -96,12 +98,12 @@ func TestDirectEdges(t *testing.T) {
 	}
 	ip = strings.Trim(ip, "\"") // strip quotes
 
-	bytes, err := ioutil.ReadFile("testdata/slow-cooker.yaml")
+	b, err := ioutil.ReadFile("testdata/slow-cooker.yaml")
 	if err != nil {
 		t.Error(err)
 	}
 
-	slowcooker := string(bytes)
+	slowcooker := string(b)
 	slowcooker = strings.ReplaceAll(slowcooker, "___TERMINUS_POD_IP___", ip)
 
 	// inject slow cooker
@@ -127,13 +129,33 @@ func TestDirectEdges(t *testing.T) {
 	}
 
 	// check edges
+	err = TestHelper.RetryFor(20*time.Second, func() error {
+		out, stderr, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "edges", "deploy")
+		if err != nil {
+			return fmt.Errorf("linkerd %s command failed with %s: %s", "edges", err.Error(), stderr)
+		}
 
-	_, stderr, err = TestHelper.LinkerdRun("-n", testNamespace, "edges", "pods")
+		tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
+		vars := struct {
+			Ns        string
+			ControlNs string
+		}{
+			testNamespace,
+			TestHelper.GetLinkerdNamespace(),
+		}
+		var buf bytes.Buffer
+		if err := tpl.Execute(&buf, vars); err != nil {
+			return fmt.Errorf("failed to parse direct_edges.golden template: %s", err)
+		}
+
+		r := regexp.MustCompile(buf.String())
+		if !r.MatchString(out) {
+			return fmt.Errorf("Expected output:\n%s\nactual:\n%s", buf.String(), out)
+		}
+		return nil
+	})
+
 	if err != nil {
-		t.Fatalf("'linkerd %s' command failed with %s: %s\n", "edges", err.Error(), stderr)
-	}
-	stderr = strings.TrimSpace(stderr)
-	if stderr != "No edges found." {
-		t.Fatalf("Expected: \"%s\" Got: \"%s\"", "No edges found.", stderr)
+		t.Error(err)
 	}
 }

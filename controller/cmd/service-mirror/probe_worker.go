@@ -77,6 +77,7 @@ func (pw *ProbeWorker) UpdateProbeSpec(spec *probeSpec) {
 
 // Stop this probe worker
 func (pw *ProbeWorker) Stop() {
+	pw.metrics.unregister()
 	pw.log.Debug("Stopping probe worker")
 	close(pw.stopCh)
 }

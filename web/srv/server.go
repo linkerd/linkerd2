@@ -53,6 +53,7 @@ type (
 		ErrorMessage        string
 		PathPrefix          string
 		Jaeger              string
+		Grafana             string
 	}
 
 	healthChecker interface {
@@ -118,6 +119,7 @@ func NewServer(
 		clusterDomain:       clusterDomain,
 		grafanaProxy:        newReverseProxy(grafanaAddr, "/grafana"),
 		jaegerProxy:         newReverseProxy(jaegerAddr, ""),
+		grafana:             grafanaAddr,
 		jaeger:              jaegerAddr,
 		hc:                  hc,
 		statCache:           cache.New(statExpiration, statCleanupInterval),

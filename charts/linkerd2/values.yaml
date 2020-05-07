@@ -7,7 +7,7 @@ global:
   clusterDomain: &cluster_domain cluster.local
   imagePullPolicy: &image_pull_policy IfNotPresent
 
- # control plane trace configuration
+  # control plane trace configuration
   controlPlaneTracing: false
 
   # control plane version. See Proxy section for proxy version
@@ -133,6 +133,20 @@ heartbeatSchedule: "0 0 * * *"
 # prometheus configuration
 prometheusImage: prom/prometheus:v2.15.2
 prometheusLogLevel: *controller_log_level
+prometheusExtraArgs: {}
+  # log.format: json
+prometheusAlertmanagers: []
+  # - scheme: http
+  #   static_configs:
+  #   - targets:
+  #     - "alertmanager.linkerd.svc:9093"
+prometheusRuleConfigMapMounts: []
+  # - name: alerting-rules
+  #   subPath: alerting_rules.yml
+  #   configMap: linkerd-prometheus-rules
+  # - name: recording-rules
+  #   subPath: recording_rules.yml
+  #   configMap: linkerd-prometheus-rules
 
 # proxy injector configuration
 proxyInjector:

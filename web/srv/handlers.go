@@ -27,6 +27,7 @@ type (
 		uuid                string
 		controllerNamespace string
 		clusterDomain       string
+		grafana             string
 		jaeger              string
 		grafanaProxy        *reverseProxy
 		jaegerProxy         *reverseProxy
@@ -46,6 +47,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 		UUID:                h.uuid,
 		ControllerNamespace: h.controllerNamespace,
 		PathPrefix:          pathPfx,
+		Grafana:             h.grafana,
 		Jaeger:              h.jaeger,
 	}
 
