@@ -608,29 +608,75 @@ status:
   phase: Running
   podIP: 172.17.0.12`
 
-	k8sAPI, err := k8s.NewFakeAPI(podK8sConfig)
-	if err != nil {
-		t.Fatalf("NewFakeAPI returned an error: %s", err)
-	}
+	hostNetworkPodConifg := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+spec:
+  hostNetwork: true
+status:
+  phase: Running
+  podIP: 172.17.0.12`
 
-	endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
-	watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
+	for _, tt := range []struct {
+		description    string
+		k8sConfigs     string
+		host           string
+		port           Port
+		objectToUpdate interface{}
+	}{
+		{
+			description: "pod update",
+			k8sConfigs:  podK8sConfig,
+			host:        "172.17.0.12",
+			port:        12345,
+			objectToUpdate: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "name1-1", Namespace: "ns"},
+				Status:     corev1.PodStatus{PodIP: "172.17.0.12"},
+			},
+		},
+		{
+			description: "host network pod update",
+			k8sConfigs:  hostNetworkPodConifg,
+			host:        "172.17.0.12",
+			port:        12345,
+			objectToUpdate: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "name1-1", Namespace: "ns"},
+				Spec:       corev1.PodSpec{HostNetwork: true},
+				Status:     corev1.PodStatus{PodIP: "172.17.0.12"},
+			},
+		},
+	} {
+		tt := tt // pin
 
-	k8sAPI.Sync(nil)
+		t.Run("ip watch for "+tt.description, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
 
-	listener := newBufferingEndpointListener()
+			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
 
-	err = watcher.Subscribe("172.17.0.12", 12345, listener)
-	if err != nil {
-		t.Fatal(err)
-	}
+			k8sAPI.Sync(nil)
 
-	watcher.addPod(&corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "name1-1", Namespace: "ns"},
-		Status:     corev1.PodStatus{PodIP: "172.17.0.12"},
-	})
+			listener := newBufferingEndpointListener()
 
-	if listener.noEndpointsCalled {
-		t.Fatal("NoEndpoints was called but should not have been")
+			err = watcher.Subscribe(tt.host, tt.port, listener)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			watcher.addPod(tt.objectToUpdate)
+
+			if listener.noEndpointsCalled {
+				t.Fatal("NoEndpoints was called but should not have been")
+			}
+		})
 	}
 }
