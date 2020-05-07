@@ -6,8 +6,10 @@
   * Added multicluster checks to the `linkerd check` command
   * Hid development flags in the `linkerd install` command for release builds
 * Controller
-  * Added ability to configure Prometheus Alertmanager (more documentation and
-    changes to come for this!) (thanks @naseemkullah!)
+  * Added ability to configure Prometheus Altermanager as well as recording
+    and alerting rules on the Linkerd Prometheus (thanks @naseemkullah!)
+  * Added ability to add more commandline flags to the Prometheus command
+    (thanks @naseemkullah!)
 * Web UI
   * Fixed TrafficSplit detail page not loading
   * Added Jaeger links to the dashboard when the tracing addon is enabled
