@@ -52,6 +52,7 @@ type (
 		Error               bool
 		ErrorMessage        string
 		PathPrefix          string
+		Jaeger              string
 		Grafana             string
 	}
 
@@ -84,6 +85,7 @@ Please see https://linkerd.io/dns-rebinding for an explanation of what is happen
 func NewServer(
 	addr string,
 	grafanaAddr string,
+	jaegerAddr string,
 	templateDir string,
 	staticDir string,
 	uuid string,
@@ -115,8 +117,10 @@ func NewServer(
 		uuid:                uuid,
 		controllerNamespace: controllerNamespace,
 		clusterDomain:       clusterDomain,
+		grafanaProxy:        newReverseProxy(grafanaAddr, "/grafana"),
+		jaegerProxy:         newReverseProxy(jaegerAddr, ""),
 		grafana:             grafanaAddr,
-		grafanaProxy:        newGrafanaProxy(grafanaAddr),
+		jaeger:              jaegerAddr,
 		hc:                  hc,
 		statCache:           cache.New(statExpiration, statCleanupInterval),
 	}
@@ -191,13 +195,10 @@ func NewServer(
 	server.router.GET("/api/resource-definition", handler.handleAPIResourceDefinition)
 
 	// grafana proxy
-	server.router.DELETE("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.GET("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.HEAD("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.OPTIONS("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.PATCH("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.POST("/grafana/*grafanapath", handler.handleGrafana)
-	server.router.PUT("/grafana/*grafanapath", handler.handleGrafana)
+	server.handleAllOperationsForPath("/grafana/*grafanapath", handler.handleGrafana)
+
+	// jaeger proxy
+	server.handleAllOperationsForPath("/jaeger/*jaegerpath", handler.handleJaeger)
 
 	return httpServer
 }
@@ -241,6 +242,16 @@ func (s *Server) loadTemplate(templateFile string) (template *template.Template,
 		}
 	}
 	return template, err
+}
+
+func (s *Server) handleAllOperationsForPath(path string, handle httprouter.Handle) {
+	s.router.DELETE(path, handle)
+	s.router.GET(path, handle)
+	s.router.HEAD(path, handle)
+	s.router.OPTIONS(path, handle)
+	s.router.PATCH(path, handle)
+	s.router.POST(path, handle)
+	s.router.PUT(path, handle)
 }
 
 func safelyJoinPath(rootPath, userPath string) string {

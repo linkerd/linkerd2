@@ -84,6 +84,20 @@ describe('Tests for <MetricsTable>', () => {
     expect(table.props().tableColumns).toHaveLength(8);
   });
 
+  it('render table with all columens including jaeger', () => {
+    let extraProps = _merge({}, defaultProps, {
+      metrics: [],
+      resource: "deployment",
+      showNamespaceColumn: false,
+      jaeger: 'jaeger.xyz'
+    });
+    const component = mount(routerWrap(MetricsTable, extraProps));
+    const table = component.find("BaseTable");
+
+    expect(table).toBeDefined();
+    expect(table.props().tableColumns).toHaveLength(9);
+  });
+
   it('adds apex, leaf and weight columns, and omits meshed and grafana column, for a trafficsplit resource', () => {
     let extraProps = _merge({}, defaultProps, { metrics: [], resource: "trafficsplit"});
     const component = mount(routerWrap(MetricsTable, extraProps));
