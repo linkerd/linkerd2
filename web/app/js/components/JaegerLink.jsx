@@ -3,15 +3,18 @@ import React from 'react';
 import _isEmpty from 'lodash/isEmpty';
 import { jaegerIcon } from './util/SvgWrappers.jsx';
 
-const JaegerLink = ({ PrefixedLink, name, namespace, resource }) => {
-  let link = '/jaeger/search?service=linkerd-proxy&tags=';
+function jaegerQuery(name, namespace, resource) {
   if (_isEmpty(namespace)) {
-    link += `{"linkerd.io/workload-ns"%3A"${name}"}`;
+    return `{"linkerd.io/workload-ns"%3A"${name}"}`;
   } else if (resource === 'pod') {
-    link += `{"hostname"%3A"${name}"%2C"linkerd.io/workload-ns"%3A"${namespace}"}`;
+    return `{"hostname"%3A"${name}"%2C"linkerd.io/workload-ns"%3A"${namespace}"}`;
   } else {
-    link += `{"linkerd.io%2Fproxy-${resource}"%3A"${name}"%2C"linkerd.io/workload-ns"%3A"${namespace}"}`;
+    return `{"linkerd.io%2Fproxy-${resource}"%3A"${name}"%2C"linkerd.io/workload-ns"%3A"${namespace}"}`;
   }
+}
+
+const JaegerLink = ({ PrefixedLink, name, namespace, resource }) => {
+  const link = `/jaeger/search?service=linkerd-proxy&tags=${jaegerQuery(name, namespace, resource)}`;
 
   return (
     <PrefixedLink
@@ -22,6 +25,7 @@ const JaegerLink = ({ PrefixedLink, name, namespace, resource }) => {
     </PrefixedLink>
   );
 };
+
 
 JaegerLink.propTypes = {
   name: PropTypes.string.isRequired,
