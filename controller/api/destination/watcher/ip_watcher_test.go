@@ -458,7 +458,7 @@ status:
 			}
 
 			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
-				t.Fatalf("Expected noEndpointsExists to be [%t], got [%t]",
+				t.Fatalf("Expected noEndpointsExist to be [%t], got [%t]",
 					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
 			}
 		})

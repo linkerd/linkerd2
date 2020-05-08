@@ -18,7 +18,7 @@ type bufferingEndpointListener struct {
 	added             []string
 	removed           []string
 	noEndpointsCalled bool
-	noEndpointsExists bool
+	noEndpointsExist  bool
 	sync.Mutex
 }
 
@@ -62,7 +62,7 @@ func (bel *bufferingEndpointListener) endpointsAreNotCalled() bool {
 func (bel *bufferingEndpointListener) endpointsDoNotExist() bool {
 	bel.Lock()
 	defer bel.Unlock()
-	return bel.noEndpointsExists
+	return bel.noEndpointsExist
 }
 
 func (bel *bufferingEndpointListener) Add(set AddressSet) {
@@ -85,7 +85,7 @@ func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
 	bel.Lock()
 	defer bel.Unlock()
 	bel.noEndpointsCalled = true
-	bel.noEndpointsExists = exists
+	bel.noEndpointsExist = exists
 }
 
 type bufferingEndpointListenerWithResVersion struct {
@@ -585,7 +585,7 @@ status:
 			}
 
 			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
-				t.Fatalf("Expected noEndpointsExists to be [%t], got [%t]",
+				t.Fatalf("Expected noEndpointsExist to be [%t], got [%t]",
 					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
 			}
 		})
@@ -897,7 +897,7 @@ subsets:
 			}
 
 			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
-				t.Fatalf("Expected noEndpointsExists to be [%t], got [%t]",
+				t.Fatalf("Expected noEndpointsExist to be [%t], got [%t]",
 					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
 			}
 		})
