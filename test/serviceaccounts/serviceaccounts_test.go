@@ -44,7 +44,8 @@ func TestServiceAccountsMatch(t *testing.T) {
 		"--output", "name",
 	)
 	if err != nil {
-		t.Fatalf("Error retrieving list of service accounts: %s", err)
+		testutil.AnnotatedFatalf(t, "Error retrieving list of service accounts",
+			"error retrieving list of service accounts: %s", err)
 	}
 	names := strings.Split(strings.TrimSpace(res), "\n")
 	var saNames []string
@@ -53,7 +54,7 @@ func TestServiceAccountsMatch(t *testing.T) {
 	}
 	// disregard `default` and `linkerd-heartbeat`
 	if len(saNames)-2 != len(expectedNames) || !namesMatch(saNames) {
-		t.Fatalf("The service account list doesn't match the expected list: %s", expectedNames)
+		testutil.Fatalf(t, "the service account list doesn't match the expected list: %s", expectedNames)
 	}
 
 	res, err = TestHelper.Kubectl("",
@@ -62,7 +63,8 @@ func TestServiceAccountsMatch(t *testing.T) {
 		"--output", "jsonpath={.subjects[*].name}",
 	)
 	if err != nil {
-		t.Fatalf("Error retrieving list of linkerd-psp rolebindings: %s", err)
+		testutil.AnnotatedFatalf(t, "error retrieving list of linkerd-psp rolebindings",
+			"error retrieving list of linkerd-psp rolebindings: %s", err)
 	}
 	saNamesPSP := strings.Split(res, " ")
 	// disregard `linkerd-heartbeat`
