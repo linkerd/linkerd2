@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	apiregistration "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 
 	// Load all the auth plugins for the cloud providers.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -31,9 +32,10 @@ var minAPIVersion = [3]int{1, 13, 0}
 type KubernetesAPI struct {
 	*rest.Config
 	kubernetes.Interface
-	Apiextensions apiextensionsclient.Interface // for CRDs
-	TsClient      tsclient.Interface
-	DynamicClient dynamic.Interface
+	Apiextensions   apiextensionsclient.Interface // for CRDs
+	Apiregistration apiregistration.Interface     // for access to APIService
+	TsClient        tsclient.Interface
+	DynamicClient   dynamic.Interface
 }
 
 // NewAPI validates a Kubernetes config and returns a client for accessing the
@@ -72,6 +74,10 @@ func NewAPIForConfig(config *rest.Config, impersonate string, impersonateGroup [
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API Extensions clientset: %v", err)
 	}
+	aggregatorClient, err := apiregistration.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("error configuring Kubernetes API server aggregator: %v", err)
+	}
 	tsClient, err := tsclient.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Traffic Split clientset: %v", err)
@@ -82,11 +88,12 @@ func NewAPIForConfig(config *rest.Config, impersonate string, impersonateGroup [
 	}
 
 	return &KubernetesAPI{
-		Config:        config,
-		Interface:     clientset,
-		Apiextensions: apiextensions,
-		TsClient:      tsClient,
-		DynamicClient: dynamicClient,
+		Config:          config,
+		Interface:       clientset,
+		Apiextensions:   apiextensions,
+		Apiregistration: aggregatorClient,
+		TsClient:        tsClient,
+		DynamicClient:   dynamicClient,
 	}, nil
 }
 

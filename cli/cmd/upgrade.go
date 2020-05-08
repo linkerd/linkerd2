@@ -161,7 +161,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	}
 
 	// We need a Kubernetes client to fetch configs and issuer secrets.
-	var k kubernetes.Interface
+	var k *k8s.KubernetesAPI
 	var err error
 	if options.manifests != "" {
 		readers, err := read(options.manifests)
@@ -205,7 +205,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	return nil
 }
 
-func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Interface, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
+func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesAPI, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
@@ -414,17 +414,19 @@ func repairConfigs(configs *pb.All) {
 	}
 }
 
-func injectCABundle(k kubernetes.Interface, webhook string, options *upgradeOptions, value *charts.TLS) error {
+func injectCABundle(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions, value *charts.TLS) error {
 
 	switch webhook {
-	case "proxy-injector":
-		return injectCABundleFromMutatingWebhook(k, "linkerd-proxy-injector-webhook-config", options, value)
-	case "profileValidator":
-		return injectCABundleFromValidatingWebhook(k, "linkerd-sp-validator.linkerd.io", options, value)
-	case "tap":
-		return injectCABundleFromAPIService(k, "v1alpha1.tap.linkerd.io", options, value)
-	case "smi-metrics":
-		return injectCABundleFromAPIService(k, "v1alpha1.metrics.smi-spec.io", options, value)
+	case k8s.ProxyInjectorWebhookServiceName:
+		return injectCABundleFromMutatingWebhook(k, k8s.ProxyInjectorWebhookConfigName, options, value)
+	case k8s.SPValidatorWebhookServiceName:
+		return injectCABundleFromValidatingWebhook(k, k8s.SPValidatorWebhookConfigName, options, value)
+	case k8s.TapServiceName:
+		return injectCABundleFromAPIService(k, k8s.TapAPIRegistrationServiceName, options, value)
+	case k8s.SmiMetricsServiceName:
+		return injectCABundleFromAPIService(k, k8s.SmiMetricsAPIRegistrationServiceName, options, value)
+	default:
+		return fmt.Errorf("unknown webhook for retrieving CA bundle: %s", webhook)
 	}
 
 	return nil
@@ -452,12 +454,17 @@ func injectCABundleFromValidatingWebhook(k kubernetes.Interface, resource string
 	return nil
 }
 
-// TODO: this must be fixed, but getting the info from the cluster is difficult due to the cluster config not being available in "k"
-func injectCABundleFromAPIService(k kubernetes.Interface, resource string, options *upgradeOptions, value *charts.TLS) error {
-	return fmt.Errorf("Currently cannot read caBundle from API service specification")
+func injectCABundleFromAPIService(k *k8s.KubernetesAPI, resource string, options *upgradeOptions, value *charts.TLS) error {
+	apiService, err := k.Apiregistration.ApiregistrationV1().APIServices().Get(resource, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	value.CaBundle = string(apiService.Spec.CABundle)
+	return nil
 }
 
-func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(webhookSecretName(webhook), metav1.GetOptions{})
@@ -481,7 +488,7 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 	return value, nil
 }
 
-func fetchK8sTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+func fetchK8sTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(webhookSecretName(webhook), metav1.GetOptions{})
@@ -492,6 +499,10 @@ func fetchK8sTLSSecret(k kubernetes.Interface, webhook string, options *upgradeO
 	value := &charts.TLS{
 		KeyPEM: string(secret.Data["tls.key"]),
 		CrtPEM: string(secret.Data["tls.crt"]),
+	}
+
+	if err := injectCABundle(k, webhook, options, value); err != nil {
+		return nil, err
 	}
 
 	if err := options.verifyTLS(value, webhook); err != nil {
