@@ -29,12 +29,14 @@ func TestInstall(t *testing.T) {
 
 	out, stderr, err := TestHelper.LinkerdRun(args...)
 	if err != nil {
-		t.Fatalf("linkerd install command failed: \n%s\n%s", out, stderr)
+		testutil.AnnotatedFatalf(t, "'linkerd install' command failed",
+			"'linkerd install' command failed: \n%s\n%s", out, stderr)
 	}
 
 	out, err = TestHelper.KubectlApply(out, "")
 	if err != nil {
-		t.Fatalf("kubectl apply command failed\n%s", out)
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
 	}
 }
 
@@ -42,16 +44,18 @@ func TestResourcesPostInstall(t *testing.T) {
 	// Tests Namespace
 	err := TestHelper.CheckIfNamespaceExists(TestHelper.GetLinkerdNamespace())
 	if err != nil {
-		t.Fatalf("Received unexpected output\n%s", err.Error())
+		testutil.AnnotatedFatalf(t, "received unexpected output",
+			"received unexpected output\n%s", err.Error())
 	}
 
 	// Tests Pods and Deployments
 	for deploy, spec := range testutil.LinkerdDeployReplicas {
 		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
-			t.Fatal(fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err))
+			testutil.AnnotatedFatal(t, "CheckPods timed-out",
+				fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err))
 		}
 		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
-			t.Fatal(fmt.Errorf("Error validating deploy [%s]:\n%s", deploy, err))
+			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}
 }
@@ -60,13 +64,15 @@ func TestUninstall(t *testing.T) {
 	args := []string{"uninstall"}
 	out, stderr, err := TestHelper.LinkerdRun(args...)
 	if err != nil {
-		t.Fatalf("linkerd install command failed: \n%s\n%s", out, stderr)
+		testutil.AnnotatedFatalf(t, "'linkerd install' command failed",
+			"'linkerd install' command failed: \n%s\n%s", out, stderr)
 	}
 
 	args = []string{"delete", "-f", "-"}
 	out, err = TestHelper.Kubectl(out, args...)
 	if err != nil {
-		t.Fatalf("kubectl apply command failed\n%s", out)
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
 	}
 }
 
@@ -75,11 +81,13 @@ func TestCheckPostUninstall(t *testing.T) {
 	golden := "check.pre.golden"
 	out, stderr, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		t.Fatalf("Check command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatalf(t, "check command failed",
+			"check command failed\n%s\n%s", out, stderr)
 	}
 
 	err = TestHelper.ValidateOutput(out, golden)
 	if err != nil {
-		t.Fatalf("Received unexpected output\n%s", err.Error())
+		testutil.AnnotatedFatalf(t, "received unexpected output",
+			"received unexpected output\n%s", err.Error())
 	}
 }
