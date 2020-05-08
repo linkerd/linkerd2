@@ -135,7 +135,7 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "failed to create deployment", "failed to create deploy/%s in namespace %s for  %s: %s", deployName, ns, err, o)
 	}
 
-	o, err = TestHelper.Kubectl("", "--namespace", ns, "wait", "--for=condition=available", "--timeout=30s", "deploy/"+deployName)
+	o, err = TestHelper.Kubectl("", "--namespace", ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+deployName)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", deployName, ns),
 			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", deployName, ns, err, o)
@@ -227,7 +227,7 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 				name = fmt.Sprintf("%s-%s", name, podAnnotation)
 			}
 
-			o, err := TestHelper.Kubectl("", "--namespace", ns, "wait", "--for=condition=available", "--timeout=30s", "deploy/"+name)
+			o, err := TestHelper.Kubectl("", "--namespace", ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
 					"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
@@ -316,7 +316,7 @@ func TestInjectAutoPod(t *testing.T) {
 			"failed to create pod/%s in namespace %s for %s: %s", podName, ns, err, o)
 	}
 
-	o, err = TestHelper.Kubectl("", "--namespace", ns, "wait", "--for=condition=initialized", "--timeout=30s", "pod/"+podName)
+	o, err = TestHelper.Kubectl("", "--namespace", ns, "wait", "--for=condition=initialized", "--timeout=120s", "pod/"+podName)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to wait for condition=initialized",
 			"failed to wait for condition=initialized for pod/%s in namespace %s: %s: %s", podName, ns, err, o)

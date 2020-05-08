@@ -129,7 +129,7 @@ func TestDirectEdges(t *testing.T) {
 	}
 
 	// check edges
-	timeout := 20 * time.Second
+	timeout := 50 * time.Second
 	err = TestHelper.RetryFor(timeout, func() error {
 		out, stderr, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "edges", "deploy")
 		if err != nil {
