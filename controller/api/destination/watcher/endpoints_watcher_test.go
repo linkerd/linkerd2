@@ -3,6 +3,7 @@ package watcher
 import (
 	"fmt"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -18,12 +19,14 @@ type bufferingEndpointListener struct {
 	removed           []string
 	noEndpointsCalled bool
 	noEndpointsExists bool
+	sync.Mutex
 }
 
 func newBufferingEndpointListener() *bufferingEndpointListener {
 	return &bufferingEndpointListener{
 		added:   []string{},
 		removed: []string{},
+		Mutex:   sync.Mutex{},
 	}
 }
 
@@ -38,19 +41,49 @@ func addressString(address Address) string {
 	return addressString
 }
 
+func (bel *bufferingEndpointListener) Added() []string {
+	bel.Lock()
+	defer bel.Unlock()
+	return bel.added
+}
+
+func (bel *bufferingEndpointListener) Removed() []string {
+	bel.Lock()
+	defer bel.Unlock()
+	return bel.removed
+}
+
+func (bel *bufferingEndpointListener) endpointsAreNotCalled() bool {
+	bel.Lock()
+	defer bel.Unlock()
+	return bel.noEndpointsCalled
+}
+
+func (bel *bufferingEndpointListener) endpointsDoNotExist() bool {
+	bel.Lock()
+	defer bel.Unlock()
+	return bel.noEndpointsExists
+}
+
 func (bel *bufferingEndpointListener) Add(set AddressSet) {
+	bel.Lock()
+	defer bel.Unlock()
 	for _, address := range set.Addresses {
 		bel.added = append(bel.added, addressString(address))
 	}
 }
 
 func (bel *bufferingEndpointListener) Remove(set AddressSet) {
+	bel.Lock()
+	defer bel.Unlock()
 	for _, address := range set.Addresses {
 		bel.removed = append(bel.removed, addressString(address))
 	}
 }
 
 func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
+	bel.Lock()
+	defer bel.Unlock()
 	bel.noEndpointsCalled = true
 	bel.noEndpointsExists = exists
 }
@@ -58,12 +91,14 @@ func (bel *bufferingEndpointListener) NoEndpoints(exists bool) {
 type bufferingEndpointListenerWithResVersion struct {
 	added   []string
 	removed []string
+	sync.Mutex
 }
 
 func newBufferingEndpointListenerWithResVersion() *bufferingEndpointListenerWithResVersion {
 	return &bufferingEndpointListenerWithResVersion{
 		added:   []string{},
 		removed: []string{},
+		Mutex:   sync.Mutex{},
 	}
 }
 
@@ -71,13 +106,29 @@ func addressStringWithResVerson(address Address) string {
 	return fmt.Sprintf("%s:%d:%s", address.IP, address.Port, address.Pod.ResourceVersion)
 }
 
+func (bel *bufferingEndpointListenerWithResVersion) Added() []string {
+	bel.Lock()
+	defer bel.Unlock()
+	return bel.added
+}
+
+func (bel *bufferingEndpointListenerWithResVersion) Removed() []string {
+	bel.Lock()
+	defer bel.Unlock()
+	return bel.removed
+}
+
 func (bel *bufferingEndpointListenerWithResVersion) Add(set AddressSet) {
+	bel.Lock()
+	defer bel.Unlock()
 	for _, address := range set.Addresses {
 		bel.added = append(bel.added, addressStringWithResVerson(address))
 	}
 }
 
 func (bel *bufferingEndpointListenerWithResVersion) Remove(set AddressSet) {
+	bel.Lock()
+	defer bel.Unlock()
 	for _, address := range set.Addresses {
 		bel.removed = append(bel.removed, addressStringWithResVerson(address))
 	}
@@ -523,19 +574,19 @@ status:
 			}
 
 			actualAddresses := make([]string, 0)
-			actualAddresses = append(actualAddresses, listener.added...)
+			actualAddresses = append(actualAddresses, listener.Added()...)
 			sort.Strings(actualAddresses)
 
 			testCompare(t, tt.expectedAddresses, actualAddresses)
 
-			if listener.noEndpointsCalled != tt.expectedNoEndpoints {
+			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
-					tt.expectedNoEndpoints, listener.noEndpointsCalled)
+					tt.expectedNoEndpoints, listener.endpointsAreNotCalled())
 			}
 
-			if listener.noEndpointsExists != tt.expectedNoEndpointsServiceExists {
+			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
 				t.Fatalf("Expected noEndpointsExists to be [%t], got [%t]",
-					tt.expectedNoEndpointsServiceExists, listener.noEndpointsExists)
+					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
 			}
 		})
 	}
@@ -647,7 +698,7 @@ status:
 				watcher.deleteEndpoints(tt.objectToDelete)
 			}
 
-			if !listener.noEndpointsCalled {
+			if !listener.endpointsAreNotCalled() {
 				t.Fatal("Expected NoEndpoints to be Called")
 			}
 		})
@@ -835,19 +886,19 @@ subsets:
 			}
 
 			actualAddresses := make([]string, 0)
-			actualAddresses = append(actualAddresses, listener.added...)
+			actualAddresses = append(actualAddresses, listener.Added()...)
 			sort.Strings(actualAddresses)
 
 			testCompare(t, tt.expectedAddresses, actualAddresses)
 
-			if listener.noEndpointsCalled != tt.expectedNoEndpoints {
+			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
-					tt.expectedNoEndpoints, listener.noEndpointsCalled)
+					tt.expectedNoEndpoints, listener.endpointsAreNotCalled())
 			}
 
-			if listener.noEndpointsExists != tt.expectedNoEndpointsServiceExists {
+			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
 				t.Fatalf("Expected noEndpointsExists to be [%t], got [%t]",
-					tt.expectedNoEndpointsServiceExists, listener.noEndpointsExists)
+					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
 			}
 		})
 	}
@@ -982,7 +1033,7 @@ subsets:
 			watcher.addEndpoints(tt.newEndpoints)
 
 			actualAddresses := make([]string, 0)
-			actualAddresses = append(actualAddresses, listener.added...)
+			actualAddresses = append(actualAddresses, listener.Added()...)
 			sort.Strings(actualAddresses)
 
 			testCompare(t, tt.expectedAddresses, actualAddresses)
@@ -1113,7 +1164,7 @@ status:
 			watcher.addEndpoints(endpoints)
 
 			actualAddresses := make([]string, 0)
-			actualAddresses = append(actualAddresses, listener.added...)
+			actualAddresses = append(actualAddresses, listener.Added()...)
 			sort.Strings(actualAddresses)
 
 			testCompare(t, tt.expectedAddresses, actualAddresses)
