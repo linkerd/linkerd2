@@ -1,9 +1,12 @@
 dependencies:
+- name: prometheus
+  repository: file://../add-ons/prometheus
+  version: 0.1.0
 - name: partials
   repository: file://../partials
   version: 0.1.0
 - name: tracing
   repository: file://../add-ons/tracing
   version: 0.1.0
-digest: sha256:e33d9505af13cd9a047d9a2d6094af4b4d62cdc9ee64970dc3d2bba6809066d0
-generated: "2020-01-30T00:02:25.011181273+05:30"
+digest: sha256:b650dc0a30d65e4bbbff0c41e5b643fb96d0660cae658f185a1df5414602e306
+generated: "2020-05-08T13:09:25.498949694+05:30"

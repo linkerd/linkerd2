@@ -1,4 +1,8 @@
 dependencies:
+- name: prometheus
+  version: 0.1.0
+  repository: file://../add-ons/prometheus
+  condition: prometheus.enabled
 - name: partials
   version: 0.1.0
   repository: file://../partials
