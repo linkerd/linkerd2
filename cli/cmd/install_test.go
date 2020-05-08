@@ -66,9 +66,6 @@ func TestRender(t *testing.T) {
 		InstallNamespace:            true,
 		Identity:                    defaultValues.Identity,
 		NodeSelector:                defaultValues.NodeSelector,
-		Prometheus: charts.Prometheus{
-			"image": "PrometheusImage",
-		},
 		Global: &charts.Global{
 			Namespace:                "Namespace",
 			ClusterDomain:            "cluster.local",
@@ -131,6 +128,12 @@ func TestRender(t *testing.T) {
 		SMIMetrics:         defaultValues.SMIMetrics,
 		Dashboard: &charts.Dashboard{
 			Replicas: 1,
+		},
+		Prometheus: charts.Prometheus{
+			"enabled":  true,
+			"image":    "PrometheusImage",
+			"name":     "linkerd-prometheus",
+			"logLevel": "info",
 		},
 		Tracing: map[string]interface{}{
 			"enabled": false,
