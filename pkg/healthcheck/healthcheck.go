@@ -1701,13 +1701,18 @@ func (hc *HealthChecker) checkRemoteClusterAnchors() error {
 			continue
 		}
 
-		for i := 0; i < len(remoteAnchors); i++ {
-			if !remoteAnchors[i].Equal(localAnchors[i]) {
+		localAnchorsMap := make(map[string]*x509.Certificate)
+		for _, c := range localAnchors {
+			localAnchorsMap[string(c.Signature)] = c
+		}
+
+		for _, remote := range remoteAnchors {
+			local, ok := localAnchorsMap[string(remote.Signature)]
+			if !ok || !local.Equal(remote) {
 				offendingClusters = append(offendingClusters, fmt.Sprintf("* %s", cfg.ClusterName))
 				break
 			}
 		}
-
 	}
 
 	if len(offendingClusters) > 0 {

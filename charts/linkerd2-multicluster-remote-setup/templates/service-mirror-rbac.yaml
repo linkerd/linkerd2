@@ -12,10 +12,13 @@ metadata:
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 rules:
-- apiGroups:
-  - ""
-  resources: ["services", "configmaps"]
+- apiGroups: [""]
+  resources: ["services"]
   verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]  
 ---
 apiVersion: v1
 kind: ServiceAccount
