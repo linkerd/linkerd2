@@ -851,7 +851,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 			Name:      addOn.Name(),
 			Dir:       filepath.Join(addOnChartsPath, addOn.Name()),
 			Namespace: controlPlaneNamespace,
-			RawValues: append(rawValues, addOn.Values()...),
+			RawValues: append(addOn.Values(), rawValues...),
 			Files: []*chartutil.BufferedFile{&chartutil.BufferedFile{
 				Name: chartutil.ChartfileName,
 			}},
