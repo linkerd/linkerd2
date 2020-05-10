@@ -26,6 +26,7 @@ const (
 	hostNetworkDesc                  = "pods do not use host networking"
 	sidecarDesc                      = "pods do not have a 3rd party proxy or initContainer already injected"
 	injectDisabledDesc               = "pods are not annotated to disable injection"
+	uncompatbleNodeOSDesc				 = "pods do not run on a windows node"
 	unsupportedDesc                  = "at least one resource injected"
 	udpDesc                          = "pod specs do not include UDP ports"
 	slash                            = "/"
@@ -218,6 +219,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	sidecar := []string{}
 	udp := []string{}
 	injectDisabled := []string{}
+	uncompatbleNodeOS := []string{}
 	warningsPrinted := verbose
 
 	for _, r := range reports {
@@ -244,6 +246,12 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 			injectDisabled = append(injectDisabled, r.ResName())
 			warningsPrinted = true
 		}
+
+		if r.NodeOS {
+			uncompatbleNodeOS = append(uncompatbleNodeOS, r.ResName())
+			warningsPrinted = true
+		}
+
 	}
 
 	//
@@ -270,6 +278,12 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 			warnStatus, k8s.ProxyInjectAnnotation, k8s.ProxyInjectDisabled, strings.Join(injectDisabled, ", "))))
 	} else if verbose {
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, injectDisabledDesc)))
+	}
+
+	if len(uncompatbleNodeOS) > 0 {
+		output.Write([]byte(fmt.Sprintf("%s node image is Windows%s\n", warnStatus, strings.Join(uncompatbleNodeOS, ", "))))
+	} else if verbose {
+		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, uncompatbleNodeOSDesc)))
 	}
 
 	if len(injected) == 0 {

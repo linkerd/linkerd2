@@ -7,6 +7,9 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	v1 "k8s.io/api/core/v1"
+
+	log "github.com/sirupsen/logrus"
+
 )
 
 const (
@@ -20,6 +23,7 @@ const (
 	invalidInjectAnnotationWorkload      = "invalid_inject_annotation_at_workload"
 	invalidInjectAnnotationNamespace     = "invalid_inject_annotation_at_ns"
 	disabledAutomountServiceAccountToken = "disabled_automount_service_account_token_account"
+	UncompatbleNodeOS					 = "node_os_is_windows"
 )
 
 var (
@@ -33,6 +37,7 @@ var (
 		invalidInjectAnnotationWorkload:      fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
 		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
 		disabledAutomountServiceAccountToken: fmt.Sprintf("automountServiceAccountToken set to \"false\""),
+		UncompatbleNodeOS:					  fmt.Sprintf("unsupported node image\"%s\"",k8s.Pod),
 	}
 )
 
@@ -50,6 +55,7 @@ type Report struct {
 	InjectAnnotationAt           string
 	TracingEnabled               bool
 	AutomountServiceAccountToken bool
+	NodeOS						 bool
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
 	// proxy-init containers have been uninjected in this report
@@ -86,6 +92,7 @@ func newReport(conf *ResourceConfig) *Report {
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
+		report.NodeOS = checkNodeOS(conf.pod.spec)
 		report.TracingEnabled = conf.pod.meta.Annotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != "" || conf.nsAnnotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != ""
 		if conf.pod.spec.AutomountServiceAccountToken != nil {
 			report.AutomountServiceAccountToken = *conf.pod.spec.AutomountServiceAccountToken
@@ -124,6 +131,10 @@ func (r *Report) Injectable() (bool, []string) {
 		reasons = append(reasons, disabledAutomountServiceAccountToken)
 	}
 
+	if r.NodeOS{
+		reasons = append(reasons, UncompatbleNodeOS)
+	}
+
 	if len(reasons) > 0 {
 		return false, reasons
 	}
@@ -140,6 +151,26 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 		}
 	}
 	return false
+}
+
+func checkNodeOS(t *v1.PodSpec) bool {
+	// Check any pods run a windows image, which is currently unsupported
+	//check the NodeSelector 
+	osimage := t.NodeSelector["kubernetes.io/os"]
+	log.Debugf(osimage)
+	if strings.Contains(strings.ToLower(osimage),"windows") == true {
+		log.Debugf("in loop w ")
+		return false
+	}
+	//check if Node has been tainted
+	for _, toleration := range t.Tolerations {
+		if strings.ToLower(toleration.Key) == "os" {
+			if toleration.Operator == "Equal" && toleration.Value == "Windows"{
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // disabledByAnnotation checks annotations for both workload, namespace and returns
