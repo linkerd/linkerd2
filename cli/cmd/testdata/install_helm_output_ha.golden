@@ -3258,7 +3258,7 @@ spec:
     matchLabels:
       linkerd.io/control-plane-component: prometheus
       linkerd.io/control-plane-ns: linkerd
-      linkerd.io/proxy-deployment: .Values.name
+      linkerd.io/proxy-deployment: linkerd-prometheus
   template:
     metadata:
       annotations:
@@ -3269,7 +3269,7 @@ spec:
         linkerd.io/control-plane-component: prometheus
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: .Values.name
+        linkerd.io/proxy-deployment: linkerd-prometheus
     spec:
       nodeSelector:
         null
@@ -3342,6 +3342,8 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
+          value: "10000"
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -3411,7 +3413,7 @@ spec:
         - --inbound-ports-to-ignore
         - 4190,4191,222
         - --outbound-ports-to-ignore
-        - "111"
+        - 443,111
         image: gcr.io/linkerd-io/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
