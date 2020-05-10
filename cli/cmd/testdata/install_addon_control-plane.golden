@@ -2333,7 +2333,9 @@ spec:
         linkerd.io/proxy-deployment: linkerd-jaeger
     spec:
       containers:
-      - image: jaegertracing/all-in-one:1.17.1
+      - args:
+        - --query.base-path=/jaeger
+        image: jaegertracing/all-in-one:1.17.1
         imagePullPolicy: IfNotPresent
         name: jaeger
         ports:
