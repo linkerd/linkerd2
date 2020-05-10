@@ -13,15 +13,20 @@ const (
 	rootPath = "/linkerd2/"
 )
 
-func echoAnnotation(args ...interface{}) {
+func echoAnnotation(t *testing.T, args ...interface{}) {
 	if _, ok := os.LookupEnv(envFlag); ok {
 		_, fileName, fileLine, ok := runtime.Caller(2)
 		if !ok {
 			panic("Couldn't recover runtime info")
 		}
 		fileName = fileName[strings.LastIndex(fileName, rootPath)+len(rootPath):]
+		// In case of coming from `t.Run(testName, ...)`, only take the first part
+		// of the name; the following parts might not be as generic
+		parts := strings.Split(t.Name(), "/")
+		testName := parts[0]
 		for _, arg := range args {
-			fmt.Printf("::error file=%s,line=%d::%s\n", fileName, fileLine, arg)
+			msg := fmt.Sprintf("%s - %s", testName, arg)
+			fmt.Printf("::error file=%s,line=%d::%s\n", fileName, fileLine, msg)
 		}
 	}
 }
@@ -31,7 +36,7 @@ func echoAnnotation(args ...interface{}) {
 // as a Github annotation when the envFlag environment variable is set
 func Error(t *testing.T, args ...interface{}) {
 	t.Helper()
-	echoAnnotation(args...)
+	echoAnnotation(t, args...)
 	t.Error(args...)
 }
 
@@ -39,7 +44,7 @@ func Error(t *testing.T, args ...interface{}) {
 // will be used as the Github annotation
 func AnnotatedError(t *testing.T, msg string, args ...interface{}) {
 	t.Helper()
-	echoAnnotation(msg)
+	echoAnnotation(t, msg)
 	t.Error(args...)
 }
 
@@ -49,7 +54,7 @@ func AnnotatedError(t *testing.T, msg string, args ...interface{}) {
 // environment variable is set
 func Errorf(t *testing.T, format string, args ...interface{}) {
 	t.Helper()
-	echoAnnotation(fmt.Sprintf(format, args...))
+	echoAnnotation(t, fmt.Sprintf(format, args...))
 	t.Errorf(format, args...)
 }
 
@@ -57,7 +62,7 @@ func Errorf(t *testing.T, format string, args ...interface{}) {
 // will be used as the Github annotation
 func AnnotatedErrorf(t *testing.T, msg, format string, args ...interface{}) {
 	t.Helper()
-	echoAnnotation(msg)
+	echoAnnotation(t, msg)
 	t.Errorf(format, args...)
 }
 
@@ -66,15 +71,15 @@ func AnnotatedErrorf(t *testing.T, msg, format string, args ...interface{}) {
 // as a Github annotation when the envFlag environment variable is set
 func Fatal(t *testing.T, args ...interface{}) {
 	t.Helper()
-	echoAnnotation(args)
+	echoAnnotation(t, args)
 	t.Fatal(args...)
 }
 
 // AnnotatedFatal is similar to Fatal() but it also admits a msg string that
 // will be used as the Github annotation
-func AnnotatedFatal(t *testing.T, msg, format string, args ...interface{}) {
+func AnnotatedFatal(t *testing.T, msg string, args ...interface{}) {
 	t.Helper()
-	echoAnnotation(msg)
+	echoAnnotation(t, msg)
 	t.Fatal(args...)
 }
 
@@ -84,7 +89,7 @@ func AnnotatedFatal(t *testing.T, msg, format string, args ...interface{}) {
 // environment variable is set
 func Fatalf(t *testing.T, format string, args ...interface{}) {
 	t.Helper()
-	echoAnnotation(fmt.Sprintf(format, args...))
+	echoAnnotation(t, fmt.Sprintf(format, args...))
 	t.Fatalf(format, args...)
 }
 
@@ -92,6 +97,6 @@ func Fatalf(t *testing.T, format string, args ...interface{}) {
 // will be used as the Github annotation
 func AnnotatedFatalf(t *testing.T, msg, format string, args ...interface{}) {
 	t.Helper()
-	echoAnnotation(msg)
+	echoAnnotation(t, msg)
 	t.Fatalf(format, args...)
 }
