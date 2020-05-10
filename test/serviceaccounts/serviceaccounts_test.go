@@ -16,14 +16,13 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// namesMatch checks if all the expectedServiceAccountNames are present in the given list,
+// The passed argument list is allowed to contain extra members.
 func namesMatch(names []string) bool {
-	for _, name := range names {
-		if name == "default" || name == "linkerd-heartbeat" {
-			continue
-		}
+	for _, expectedname := range healthcheck.ExpectedServiceAccountNames {
 		found := false
-		for _, expectedName := range healthcheck.ExpectedServiceAccountNames {
-			if name == expectedName {
+		for _, name := range names {
+			if expectedname == name {
 				found = true
 				break
 			}
@@ -53,7 +52,7 @@ func TestServiceAccountsMatch(t *testing.T) {
 		saNames = append(saNames, strings.TrimPrefix(name, "serviceaccount/"))
 	}
 	// disregard `default` and `linkerd-heartbeat`
-	if len(saNames)-2 != len(expectedNames) || !namesMatch(saNames) {
+	if len(saNames) < len(expectedNames) || !namesMatch(saNames) {
 		testutil.Fatalf(t, "the service account list doesn't match the expected list: %s", expectedNames)
 	}
 
@@ -68,7 +67,7 @@ func TestServiceAccountsMatch(t *testing.T) {
 	}
 	saNamesPSP := strings.Split(res, " ")
 	// disregard `linkerd-heartbeat`
-	if len(saNamesPSP)-1 != len(expectedNames) || !namesMatch(saNamesPSP) {
+	if len(saNamesPSP) < len(expectedNames) || !namesMatch(saNamesPSP) {
 		t.Fatalf(
 			"The service accounts in the linkerd-psp rolebindings don't match the expected list: %s",
 			expectedNames)

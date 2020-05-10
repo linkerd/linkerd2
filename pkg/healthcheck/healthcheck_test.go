@@ -423,7 +423,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
- name: extension-apiserver-authentication 
+ name: extension-apiserver-authentication
  namespace: kube-system
 data:
   %s : 'bar'
@@ -570,7 +570,7 @@ metadata:
 			},
 			[]string{
 				"linkerd-config control plane Namespace exists",
-				"linkerd-config control plane ClusterRoles exist: missing ClusterRoles: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-prometheus, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
+				"linkerd-config control plane ClusterRoles exist: missing ClusterRoles: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
 			},
 		},
 		{
@@ -593,14 +593,6 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-test-ns-prometheus
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -632,7 +624,7 @@ metadata:
 			[]string{
 				"linkerd-config control plane Namespace exists",
 				"linkerd-config control plane ClusterRoles exist",
-				"linkerd-config control plane ClusterRoleBindings exist: missing ClusterRoleBindings: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-prometheus, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
+				"linkerd-config control plane ClusterRoleBindings exist: missing ClusterRoleBindings: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
 			},
 		},
 		{
@@ -655,14 +647,6 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-test-ns-prometheus
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -703,14 +687,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-test-ns-prometheus
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -761,15 +737,6 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -873,14 +840,6 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-test-ns-prometheus
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -914,14 +873,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-test-ns-prometheus
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -972,15 +923,6 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1093,14 +1035,6 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-test-ns-prometheus
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1134,14 +1068,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-test-ns-prometheus
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -1192,15 +1118,6 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1322,14 +1239,6 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-test-ns-prometheus
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1363,14 +1272,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-test-ns-prometheus
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -1421,15 +1322,6 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1560,14 +1452,6 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-test-ns-prometheus
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
   name: linkerd-test-ns-proxy-injector
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1601,14 +1485,6 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-test-ns-identity
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-test-ns-prometheus
   labels:
     linkerd.io/control-plane-ns: test-ns
 `,
@@ -1659,15 +1535,6 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-identity
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns

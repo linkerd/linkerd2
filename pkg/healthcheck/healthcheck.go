@@ -192,7 +192,6 @@ var ExpectedServiceAccountNames = []string{
 	"linkerd-destination",
 	"linkerd-grafana",
 	"linkerd-identity",
-	"linkerd-prometheus",
 	"linkerd-proxy-injector",
 	"linkerd-sp-validator",
 	"linkerd-web",
@@ -1764,7 +1763,6 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 	return []string{
 		fmt.Sprintf("linkerd-%s-controller", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-identity", hc.ControlPlaneNamespace),
-		fmt.Sprintf("linkerd-%s-prometheus", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-proxy-injector", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-sp-validator", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-tap", hc.ControlPlaneNamespace),
