@@ -8,8 +8,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	v1 "k8s.io/api/core/v1"
 
-	log "github.com/sirupsen/logrus"
-
 )
 
 const (
@@ -157,9 +155,7 @@ func checkNodeOS(t *v1.PodSpec) bool {
 	// Check any pods run a windows image, which is currently unsupported
 	//check the NodeSelector 
 	osimage := t.NodeSelector["kubernetes.io/os"]
-	log.Debugf(osimage)
 	if strings.Contains(strings.ToLower(osimage),"windows") == true {
-		log.Debugf("in loop w ")
 		return false
 	}
 	//check if Node has been tainted
