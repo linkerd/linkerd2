@@ -190,7 +190,6 @@ var linkerdHAControlPlaneComponents = []string{
 var ExpectedServiceAccountNames = []string{
 	"linkerd-controller",
 	"linkerd-destination",
-	"linkerd-grafana",
 	"linkerd-identity",
 	"linkerd-proxy-injector",
 	"linkerd-sp-validator",
@@ -361,18 +360,19 @@ type HealthChecker struct {
 	*Options
 
 	// these fields are set in the process of running checks
-	kubeAPI          *k8s.KubernetesAPI
-	kubeVersion      *k8sVersion.Info
-	controlPlanePods []corev1.Pod
-	apiClient        public.APIClient
-	latestVersions   version.Channels
-	serverVersion    string
-	linkerdConfig    *configPb.All
-	uuid             string
-	issuerCert       *tls.Cred
-	trustAnchors     []*x509.Certificate
-	cniDaemonSet     *appsv1.DaemonSet
-	serviceMirrorNs  string
+	kubeAPI              *k8s.KubernetesAPI
+	kubeVersion          *k8sVersion.Info
+	controlPlanePods     []corev1.Pod
+	apiClient            public.APIClient
+	latestVersions       version.Channels
+	serverVersion        string
+	linkerdConfig        *configPb.All
+	uuid                 string
+	issuerCert           *tls.Cred
+	trustAnchors         []*x509.Certificate
+	cniDaemonSet         *appsv1.DaemonSet
+	serviceMirrorNs      string
+	remoteClusterConfigs []*sm.WatchedClusterConfig
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -1301,6 +1301,14 @@ func (hc *HealthChecker) allCategories() []category {
 						return hc.checkRemoteClusterGatewaysHealth(ctx)
 					},
 				},
+				{
+					description: "clusters share trust anchors",
+					hintAnchor:  "l5d-clusters-share-anchors",
+					fatal:       true,
+					check: func(ctx context.Context) error {
+						return hc.checkRemoteClusterAnchors()
+					},
+				},
 			},
 		},
 	}
@@ -1650,6 +1658,71 @@ func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 	return &SkipError{Reason: "not checking muticluster"}
 }
 
+func (hc *HealthChecker) checkRemoteClusterAnchors() error {
+	if len(hc.remoteClusterConfigs) == 0 {
+		return &SkipError{Reason: "no remote cluster configs"}
+	}
+
+	localAnchors, err := tls.DecodePEMCertificates(hc.linkerdConfig.Global.IdentityContext.TrustAnchorsPem)
+	if err != nil {
+		return fmt.Errorf("Cannot parse local trust anchors: %s", err)
+	}
+
+	var offendingClusters []string
+	for _, cfg := range hc.remoteClusterConfigs {
+
+		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(cfg.APIConfig)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to parse api config", cfg.ClusterName))
+			continue
+		}
+
+		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to instantiate api", cfg.ClusterName))
+			continue
+		}
+
+		_, cfMap, err := FetchLinkerdConfigMap(remoteAPI, cfg.LinkerdNamespace)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to fetch anchors: %s", cfg.ClusterName, err))
+			continue
+		}
+		remoteAnchors, err := tls.DecodePEMCertificates(cfMap.Global.IdentityContext.TrustAnchorsPem)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: cannot parse trust anchors", cfg.ClusterName))
+			continue
+		}
+
+		// we fail early if the lens are not the same. If they are the
+		// same, we can only compare certs one way and be sure we have
+		// identical anchors
+		if len(remoteAnchors) != len(localAnchors) {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s", cfg.ClusterName))
+			continue
+		}
+
+		localAnchorsMap := make(map[string]*x509.Certificate)
+		for _, c := range localAnchors {
+			localAnchorsMap[string(c.Signature)] = c
+		}
+
+		for _, remote := range remoteAnchors {
+			local, ok := localAnchorsMap[string(remote.Signature)]
+			if !ok || !local.Equal(remote) {
+				offendingClusters = append(offendingClusters, fmt.Sprintf("* %s", cfg.ClusterName))
+				break
+			}
+		}
+	}
+
+	if len(offendingClusters) > 0 {
+		return fmt.Errorf("Problematic clusters:\n\t%s", strings.Join(offendingClusters, "\n\t"))
+	}
+
+	return nil
+}
+
 func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 	if hc.Options.ShouldCheckMulticluster {
 		options := metav1.ListOptions{
@@ -1701,6 +1774,8 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 			if err := comparePermissions(expectedServiceMirrorRemoteClusterPolicyVerbs, verbs); err != nil {
 				errors = append(errors, fmt.Sprintf("* cluster: [%s]: Insufficient Service permissions: %s", config.ClusterName, err))
 			}
+
+			hc.remoteClusterConfigs = append(hc.remoteClusterConfigs, config)
 
 		}
 
@@ -2283,7 +2358,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "grafana", "identity", "prometheus", "sp-validator", "web", "tap"}
+	names := []string{"controller", "identity", "prometheus", "sp-validator", "web", "tap"}
 	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")

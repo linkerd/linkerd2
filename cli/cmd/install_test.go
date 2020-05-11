@@ -56,7 +56,6 @@ func TestRender(t *testing.T) {
 		ControllerImage:             "ControllerImage",
 		ControllerImageVersion:      "ControllerImageVersion",
 		WebImage:                    "WebImage",
-		GrafanaImage:                "GrafanaImage",
 		ControllerLogLevel:          "ControllerLogLevel",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
@@ -137,6 +136,7 @@ func TestRender(t *testing.T) {
 		Tracing: map[string]interface{}{
 			"enabled": false,
 		},
+		Grafana: defaultValues.Grafana,
 	}
 
 	haOptions, err := testInstallOptions()

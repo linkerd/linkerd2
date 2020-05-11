@@ -848,6 +848,14 @@ func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service)
 
 func (rcsw *RemoteClusterServiceWatcher) processNextEvent() (bool, interface{}, error) {
 	event, done := rcsw.eventsQueue.Get()
+	if event != nil {
+		rcsw.log.Debugf("Received: %s", event)
+	} else {
+		if done {
+			rcsw.log.Debug("Received: Stop")
+		}
+	}
+
 	var err error
 	switch ev := event.(type) {
 	case *OnAddCalled:

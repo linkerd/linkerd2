@@ -19,11 +19,11 @@ type AddOn interface {
 func ParseAddOnValues(values *Values) ([]AddOn, error) {
 	var addOns []AddOn
 
-	if values.Tracing != nil {
-		if enabled, ok := values.Tracing["enabled"].(bool); !ok {
-			return nil, fmt.Errorf("invalid value for 'tracing.enabled' (should be boolean): %s", values.Tracing["enabled"])
+	if values.Grafana != nil {
+		if enabled, ok := values.Grafana["enabled"].(bool); !ok {
+			return nil, fmt.Errorf("invalid value for 'grafana.enabled' (should be boolean): %s", values.Grafana["enabled"])
 		} else if enabled {
-			addOns = append(addOns, values.Tracing)
+			addOns = append(addOns, values.Grafana)
 		}
 	}
 
@@ -32,6 +32,14 @@ func ParseAddOnValues(values *Values) ([]AddOn, error) {
 			return nil, fmt.Errorf("invalid value for 'prometheus.enabled' (should be boolean): %s", values.Prometheus["enabled"])
 		} else if enabled {
 			addOns = append(addOns, values.Prometheus)
+		}
+	}
+
+	if values.Tracing != nil {
+		if enabled, ok := values.Tracing["enabled"].(bool); !ok {
+			return nil, fmt.Errorf("invalid value for 'tracing.enabled' (should be boolean): %s", values.Tracing["enabled"])
+		} else if enabled {
+			addOns = append(addOns, values.Tracing)
 		}
 	}
 

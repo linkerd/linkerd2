@@ -129,7 +129,6 @@ var (
 		"templates/web-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
-		"templates/grafana-rbac.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
 		"templates/tap-rbac.yaml",
@@ -146,7 +145,6 @@ var (
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
 		"templates/web.yaml",
-		"templates/grafana.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
@@ -763,7 +761,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.EnablePodAntiAffinity = options.highAvailability
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
-	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+	installValues.Grafana["image"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	if options.prometheusImage != "" {
 		installValues.Prometheus["image"] = options.prometheusImage
 	}

@@ -162,6 +162,20 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 
 ## Add-Ons Configuration
 
+### Grafana Add-On
+
+The following table lists the configurable parameters for the Grafana Add-On.
+
+| Parameter                             | Description                                                                                                                                                                           | Default                              |
+|:--------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------|
+| `grafana.enabled`                     | Flag to enable grafana instance to be installed                                                                                                                                                | `true`
+| `grafana.name`                | Name of the grafana instance Service                                                                                                                                                 | `linkerd-grafana`                             |
+| `grafana.image`                | Docker image for the grafana instance                                                                                                                                                 | `gcr.io/linkerd-io/grafana`                             |
+| `grafana.resources.cpu.limit`       | Maximum amount of CPU units that the grafana container can use                                                                                                                     ||
+| `grafana.resources.cpu.request`     | Amount of CPU units that the gafana container requests                                                                                                                            ||
+| `grafana.resources.memory.limit`    | Maximum amount of memory that grafana container can use                                                                                                                        ||
+| `grafana.resources.memory.request`  | Amount of memory that the grafana container requests                                                                                                                               ||
+
 ### Tracing Add-On
 
 The following table lists the configurable parameters for the Tracing Add-On.

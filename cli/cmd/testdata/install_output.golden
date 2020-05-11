@@ -377,16 +377,44 @@ spec:
     JSONPath: .spec.service
 ---
 ###
-### Grafana RBAC
+### Prometheus RBAC
 ###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-Namespace-prometheus
+  labels:
+    ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "nodes/proxy", "pods"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-Namespace-prometheus
+  labels:
+    ControllerComponentLabel: prometheus
+    ControllerNamespaceLabel: Namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-Namespace-prometheus
+subjects:
+- kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: Namespace
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-grafana
+  name: linkerd-prometheus
   namespace: Namespace
   labels:
-    ControllerComponentLabel: grafana
+    ControllerComponentLabel: prometheus
     ControllerNamespaceLabel: Namespace
 ---
 ###
@@ -2714,16 +2742,89 @@ metadata:
     CreatedByAnnotation: CliVersion
 data:
   values: |-
-    prometheus:
+    grafana:
       enabled: true
-      image: PrometheusImage
-      name: linkerd-prometheus
+      image: gcr.io/linkerd-io/grafana
+      name: linkerd-grafana
     tracing:
       enabled: false
 ---
 ###
-### Prometheus RBAC
+### Grafana RBAC
 ###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: grafana
+    ControllerNamespaceLabel: Namespace
+---
+###
+### Grafana
+###
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-grafana-config
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: grafana
+    ControllerNamespaceLabel: Namespace
+  annotations:
+    CreatedByAnnotation: CliVersion
+data:
+  grafana.ini: |-
+    instance_name = linkerd-grafana
+
+    [server]
+    root_url = %(protocol)s://%(domain)s:/grafana/
+
+    [auth]
+    disable_login_form = true
+
+    [auth.anonymous]
+    enabled = true
+    org_role = Editor
+
+    [auth.basic]
+    enabled = false
+
+    [analytics]
+    check_for_updates = false
+
+    [panels]
+    disable_sanitize_html = true
+
+  datasources.yaml: |-
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      orgId: 1
+      url: http://linkerd-prometheus.Namespace.svc.cluster.local:9090
+      isDefault: true
+      jsonData:
+        timeInterval: "5s"
+      version: 1
+      editable: true
+
+  dashboards.yaml: |-
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: true
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+        homeDashboardId: linkerd-top-line
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -2910,21 +3011,21 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-prometheus
+  name: linkerd-grafana
   namespace: Namespace
   labels:
-    ControllerComponentLabel: prometheus
+    ControllerComponentLabel: grafana
     ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
 spec:
   type: ClusterIP
   selector:
-    ControllerComponentLabel: prometheus
+    ControllerComponentLabel: grafana
   ports:
-  - name: admin-http
-    port: 9090
-    targetPort: 9090
+  - name: http
+    port: 3000
+    targetPort: 3000
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -2932,20 +3033,20 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
   labels:
-    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: ControllerImageVersion
-    ControllerComponentLabel: prometheus
+    ControllerComponentLabel: grafana
     ControllerNamespaceLabel: Namespace
-  name: linkerd-prometheus
+  name: linkerd-grafana
   namespace: Namespace
 spec:
   replicas: 1
   selector:
     matchLabels:
-      ControllerComponentLabel: prometheus
+      ControllerComponentLabel: grafana
       ControllerNamespaceLabel: Namespace
-      linkerd.io/proxy-deployment: linkerd-prometheus
+      linkerd.io/proxy-deployment: linkerd-grafana
   template:
     metadata:
       annotations:
@@ -2953,41 +3054,39 @@ spec:
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: ProxyVersion
       labels:
-        ControllerComponentLabel: prometheus
+        ControllerComponentLabel: grafana
         ControllerNamespaceLabel: Namespace
         WorkloadNamespaceLabel: Namespace
-        linkerd.io/proxy-deployment: linkerd-prometheus
+        linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
       containers:
-      - args:
-        image: PrometheusImage
+      - env:
+        - name: GF_PATHS_DATA
+          value: /data
+        image: gcr.io/linkerd-io/grafana:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
-            path: /-/healthy
-            port: 9090
+            path: /api/health
+            port: 3000
           initialDelaySeconds: 30
-          timeoutSeconds: 30
-        name: prometheus
+        name: grafana
         ports:
-        - containerPort: 9090
-          name: admin-http
+        - containerPort: 3000
+          name: http
         readinessProbe:
           httpGet:
-            path: /-/ready
-            port: 9090
-          initialDelaySeconds: 30
-          timeoutSeconds: 30
+            path: /api/health
+            port: 3000
         securityContext:
-          runAsUser: 65534
+          runAsUser: 472
         volumeMounts:
         - mountPath: /data
           name: data
-        - mountPath: /etc/prometheus/prometheus.yml
-          name: prometheus-config
-          subPath: prometheus.yml
+        - mountPath: /etc/grafana
+          name: grafana-config
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
@@ -3113,13 +3212,20 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
-      serviceAccountName: linkerd-prometheus
+      serviceAccountName: linkerd-grafana
       volumes:
       - emptyDir: {}
         name: data
       - configMap:
-          name: linkerd-prometheus-config
-        name: prometheus-config
+          items:
+          - key: grafana.ini
+            path: grafana.ini
+          - key: datasources.yaml
+            path: provisioning/datasources/datasources.yaml
+          - key: dashboards.yaml
+            path: provisioning/dashboards/dashboards.yaml
+          name: linkerd-grafana-config
+        name: grafana-config
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
