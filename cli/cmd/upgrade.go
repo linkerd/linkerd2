@@ -416,19 +416,28 @@ func repairConfigs(configs *pb.All) {
 
 func injectCABundle(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions, value *charts.TLS) error {
 
+	var err error
+
 	switch webhook {
 	case k8s.ProxyInjectorWebhookServiceName:
-		return injectCABundleFromMutatingWebhook(k, k8s.ProxyInjectorWebhookConfigName, options, value)
+		err = injectCABundleFromMutatingWebhook(k, k8s.ProxyInjectorWebhookConfigName, options, value)
 	case k8s.SPValidatorWebhookServiceName:
-		return injectCABundleFromValidatingWebhook(k, k8s.SPValidatorWebhookConfigName, options, value)
+		err = injectCABundleFromValidatingWebhook(k, k8s.SPValidatorWebhookConfigName, options, value)
 	case k8s.TapServiceName:
-		return injectCABundleFromAPIService(k, k8s.TapAPIRegistrationServiceName, options, value)
+		err = injectCABundleFromAPIService(k, k8s.TapAPIRegistrationServiceName, options, value)
 	case k8s.SmiMetricsServiceName:
-		return injectCABundleFromAPIService(k, k8s.SmiMetricsAPIRegistrationServiceName, options, value)
+		err = injectCABundleFromAPIService(k, k8s.SmiMetricsAPIRegistrationServiceName, options, value)
 	default:
-		return fmt.Errorf("unknown webhook for retrieving CA bundle: %s", webhook)
+		err = fmt.Errorf("unknown webhook for retrieving CA bundle: %s", webhook)
 	}
 
+	// anything other than the resource not being found: propagate error back up the stack.
+	if !kerrors.IsNotFound(err) {
+		return err
+	}
+
+	// if the resource is missing, simply use the existing cert.
+	value.CaBundle = value.CrtPEM
 	return nil
 }
 
