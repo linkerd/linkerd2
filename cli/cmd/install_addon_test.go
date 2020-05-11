@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -20,11 +21,20 @@ func TestAddOnRender(t *testing.T) {
 	withTracingAddonValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withTracingAddonValues)
 
+	withGrafanaAddOnOverwrite, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withGrafanaAddOnOverwrite.addOnConfig = filepath.Join("testdata", "prom-config.yaml")
+	withGrafanaAddOnOverwriteValues, _, _ := withGrafanaAddOnOverwrite.validateAndBuild("", nil)
+	addFakeTLSSecrets(withGrafanaAddOnOverwriteValues)
+
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
 	}{
 		{withTracingAddonValues, "install_tracing.golden"},
+		{withGrafanaAddOnOverwriteValues, "install_prometheus_overwrite.golden"},
 	}
 
 	for i, tc := range testCases {

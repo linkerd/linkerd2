@@ -363,8 +363,8 @@ func TestValidate(t *testing.T) {
 			t.Fatalf("Unexpected error occurred %s", err)
 		}
 
-		if actual.Prometheus["logLevel"] != expected {
-			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, actual.Prometheus["logLevel"])
+		if actual.Prometheus["args"].(map[string]interface{})["log.level"] != expected {
+			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, actual.Prometheus["args"].(map[string]interface{})["log.level"])
 		}
 	})
 
