@@ -19,7 +19,6 @@ func TestNewValues(t *testing.T) {
 		ControllerImageVersion:        testVersion,
 		WebImage:                      "gcr.io/linkerd-io/web",
 		PrometheusImage:               "prom/prometheus:v2.15.2",
-		GrafanaImage:                  "gcr.io/linkerd-io/grafana",
 		ControllerReplicas:            1,
 		ControllerLogLevel:            "info",
 		PrometheusLogLevel:            "info",
@@ -132,6 +131,11 @@ func TestNewValues(t *testing.T) {
 			Image: "deislabs/smi-metrics:v0.2.1",
 			TLS:   &TLS{},
 		},
+		Grafana: Grafana{
+			"enabled": true,
+			"name":    "linkerd-grafana",
+			"image":   "gcr.io/linkerd-io/grafana",
+		},
 	}
 
 	// pin the versions to ensure consistent test result.
@@ -183,14 +187,19 @@ func TestNewValues(t *testing.T) {
 		expected.WebResources = controllerResources
 		expected.HeartbeatResources = controllerResources
 
-		expected.GrafanaResources = &Resources{
-			CPU: Constraints{
-				Limit:   controllerResources.CPU.Limit,
-				Request: controllerResources.CPU.Request,
-			},
-			Memory: Constraints{
-				Limit:   "1024Mi",
-				Request: "50Mi",
+		expected.Grafana = Grafana{
+			"enabled": true,
+			"name":    "linkerd-grafana",
+			"image":   "gcr.io/linkerd-io/grafana",
+			"resources": map[string]interface{}{
+				"cpu": map[string]interface{}{
+					"limit":   controllerResources.CPU.Limit,
+					"request": controllerResources.CPU.Request,
+				},
+				"memory": map[string]interface{}{
+					"limit":   "1024Mi",
+					"request": "50Mi",
+				},
 			},
 		}
 

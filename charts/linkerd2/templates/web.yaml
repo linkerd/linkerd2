@@ -63,7 +63,9 @@ spec:
       containers:
       - args:
         - -api-addr=linkerd-controller-api.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8085
-        - -grafana-addr=linkerd-grafana.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:3000
+        {{- if .Values.grafana.enabled }}
+        - -grafana-addr={{.Values.grafana.name}}.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:3000
+        {{- end}}
         {{- if .Values.tracing.enabled }}
         - -jaeger-addr={{.Values.tracing.jaeger.name}}.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:16686
         {{- end}}
