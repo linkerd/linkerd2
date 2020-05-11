@@ -2408,7 +2408,7 @@ func checkContainerRunning(pods []corev1.Pod, container string) error {
 				return fmt.Errorf("%s status is %s", pod.Name, podStatus)
 			}
 		}
-		return errors.New(fmt.Sprintf("No running pods for \"%s\"", container))
+		return fmt.Errorf("No running pods for \"%s\"", container)
 	}
 	return nil
 }
