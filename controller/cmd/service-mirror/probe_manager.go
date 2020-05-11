@@ -131,6 +131,7 @@ func gatewayToProbeSpec(gatewaySpec GatewaySpec) *probeSpec {
 		path:            gatewaySpec.path,
 		port:            gatewaySpec.port,
 		periodInSeconds: gatewaySpec.periodInSeconds,
+		gatewayIdentity: gatewaySpec.identity,
 	}
 }
 

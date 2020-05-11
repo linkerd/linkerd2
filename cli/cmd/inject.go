@@ -131,6 +131,9 @@ sub-folders, or coming from stdin.`,
 	flags.StringVar(&options.traceCollectorSvcAccount, "trace-collector-svc-account", options.traceCollectorSvcAccount,
 		"Service account associated with the Trace collector instance")
 
+	flags.StringSliceVar(&options.requireIdentityOnInboundPorts, "require-identity-on-inbound-ports", options.requireIdentityOnInboundPorts,
+		"Inbound ports on which the proxy should require identity")
+
 	cmd.PersistentFlags().AddFlagSet(flags)
 
 	return cmd
@@ -416,6 +419,10 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	if options.disableIdentity {
 		configs.Global.IdentityContext = nil
 		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = strconv.FormatBool(true)
+	}
+
+	if len(options.requireIdentityOnInboundPorts) > 0 {
+		overrideAnnotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation] = strings.Join(options.requireIdentityOnInboundPorts, ",")
 	}
 
 	if options.disableTap {

@@ -29,7 +29,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-const requireIDHeader = "l5d-require-id"
 const ipIndex = "ip"
 const defaultMaxRps = 100.0
 
@@ -139,7 +138,7 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 
 		// pass the header metadata into the request context
 		ctx := stream.Context()
-		ctx = metadata.AppendToOutgoingContext(ctx, requireIDHeader, name)
+		ctx = metadata.AppendToOutgoingContext(ctx, pkgK8s.RequireIDHeader, name)
 
 		// initiate a tap on the pod
 		go s.tapProxy(ctx, rpsPerPod, match, extract, pod.Status.PodIP, events)
