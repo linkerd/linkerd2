@@ -38,7 +38,6 @@ type helm struct {
 	chart              string
 	stableChart        string
 	releaseName        string
-	tillerNs           string
 	upgradeFromVersion string
 }
 
@@ -76,7 +75,6 @@ func NewTestHelper() *TestHelper {
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
 	helmStableChart := flag.String("helm-stable-chart", "linkerd/linkerd2", "path to linkerd2's stable Helm chart")
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
-	tillerNs := flag.String("tiller-ns", "kube-system", "namespace under which Tiller will be installed")
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
 	clusterDomain := flag.String("cluster-domain", "cluster.local", "when specified, the install test uses a custom cluster domain")
 	externalIssuer := flag.Bool("external-issuer", false, "when specified, the install test uses it to install linkerd with --identity-external-issuer=true")
@@ -118,7 +116,6 @@ func NewTestHelper() *TestHelper {
 			chart:              *helmChart,
 			stableChart:        *helmStableChart,
 			releaseName:        *helmReleaseName,
-			tillerNs:           *tillerNs,
 			upgradeFromVersion: *upgradeHelmFromVersion,
 		},
 		clusterDomain:  *clusterDomain,
@@ -266,7 +263,6 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 		"upgrade",
 		h.helm.releaseName,
 		"--kube-context", h.k8sContext,
-		"--tiller-namespace", h.helm.tillerNs,
 		"--set", "global.namespace=" + h.namespace,
 		chart,
 	}, arg...)
@@ -277,11 +273,10 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, error) {
 	withParams := append([]string{
 		"install",
-		"--kube-context", h.k8sContext,
-		"--tiller-namespace", h.helm.tillerNs,
-		"--name", h.helm.releaseName,
-		"--set", "global.namespace=" + h.namespace,
+		h.helm.releaseName,
 		chart,
+		"--kube-context", h.k8sContext,
+		"--set", "global.namespace=" + h.namespace,
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
 }

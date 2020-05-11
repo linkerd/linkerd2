@@ -367,14 +367,14 @@ func TestInstallHelm(t *testing.T) {
 	}
 
 	var chartToInstall string
-	args := []string{"--name", TestHelper.GetHelmReleaseName()}
+	var args []string
 
 	if TestHelper.UpgradeHelmFromVersion() != "" {
 		chartToInstall = TestHelper.GetHelmStableChart()
-		args = append(args, helmOverridesStable(helmTLSCerts)...)
+		args = helmOverridesStable(helmTLSCerts)
 	} else {
 		chartToInstall = TestHelper.GetHelmChart()
-		args = append(args, helmOverridesEdge(helmTLSCerts)...)
+		args = helmOverridesEdge(helmTLSCerts)
 	}
 
 	if stdout, stderr, err := TestHelper.HelmInstall(chartToInstall, args...); err != nil {

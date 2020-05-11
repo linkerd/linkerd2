@@ -8,7 +8,7 @@ probePeriodSeconds: 3
 probePort: 81
 serviceAccountName: linkerd-service-mirror
 serviceAccountNamespace: linkerd-service-mirror
-linkerdVersion: {version}
+linkerdVersion: linkerdVersionValue
 createdByAnnotation: linkerd.io/created-by
 nginxImageVersion: 1.17
 nginxImage: nginx
