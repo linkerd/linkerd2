@@ -15,15 +15,10 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   prometheus.yml: |-
-    {{- if .Values.alertmanagers }}
-    alerting:
-      alertmanagers:
-        {{- toYaml .Values.alertmanagers | trim | nindent 8 }}
-    {{- end }}
+    {{ if .Values.globalConfig -}}
     global:
-      scrape_interval: 10s
-      scrape_timeout: 10s
-      evaluation_interval: 10s
+      {{- toYaml .Values.globalConfig | trim | nindent 6 }}
+    {{- end}}
 
     rule_files:
     - /etc/prometheus/*_rules.yml
@@ -151,6 +146,21 @@ data:
       # Copy tmp labels into real labels
       - action: labelmap
         regex: __tmp_pod_label_(.+)
+
+    {{- if .Values.scrapeConfigs }}
+    {{ toYaml .Values.scrapeConfigs | trim | nindent 4 }}
+    {{ end }}
+
+    {{- if .Values.alertManagers }}
+    alerting:
+      alertmanagers:
+        {{- toYaml .Values.alertManagers | trim | nindent 6 }}
+    {{- end }}
+
+    {{- if .Values.remoteWrite }}
+    remote_write:
+      {{- toYaml .Values.remoteWrite | trim | nindent 4 }}
+    {{- end }}
 ---
 kind: Service
 apiVersion: v1
@@ -211,10 +221,6 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
       - args:
-        - --storage.tsdb.path=/data
-        - --storage.tsdb.retention.time=6h
-        - --config.file=/etc/prometheus/prometheus.yml
-        - --log.level={{lower .Values.logLevel}}
         {{- range $key, $value := .Values.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}

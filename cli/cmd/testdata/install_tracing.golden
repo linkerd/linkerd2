@@ -2724,9 +2724,17 @@ metadata:
 data:
   values: |-
     prometheus:
+      args:
+        config.file: /etc/prometheus/prometheus.yml
+        log.level: info
+        storage.tsdb.path: /data
+        storage.tsdb.retention.time: 6h
       enabled: true
+      globalConfig:
+        evaluation_interval: 10s
+        scrape_interval: 10s
+        scrape_timeout: 10s
       image: prom/prometheus:v2.15.2
-      logLevel: info
       name: linkerd-prometheus
     tracing:
       collector:
@@ -3274,9 +3282,9 @@ metadata:
 data:
   prometheus.yml: |-
     global:
+      evaluation_interval: 10s
       scrape_interval: 10s
       scrape_timeout: 10s
-      evaluation_interval: 10s
 
     rule_files:
     - /etc/prometheus/*_rules.yml
@@ -3460,10 +3468,10 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - args:
-        - --storage.tsdb.path=/data
-        - --storage.tsdb.retention.time=6h
         - --config.file=/etc/prometheus/prometheus.yml
         - --log.level=info
+        - --storage.tsdb.path=/data
+        - --storage.tsdb.retention.time=6h
         image: prom/prometheus:v2.15.2
         imagePullPolicy: IfNotPresent
         livenessProbe:

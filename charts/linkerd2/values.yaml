@@ -175,26 +175,21 @@ smiMetrics:
   keyPEM: |
 
 # Configuration for Add-ons
+# Full configuration fields https://github.com/linkerd/linkerd2/tree/master/charts/linkerd2#add-ons-configuration
 
 prometheus:
   enabled: true
   name: linkerd-prometheus
   image: prom/prometheus:v2.15.2
-  logLevel: *controller_log_level
-  # args:
-  # - log.format: json
-  # alertManagers:
-  # - scheme: http
-  #   static_configs:
-  #   - targets:
-  #     - "alertmanager.linkerd.svc:9093"
-  # ruleConfigMapMounts:
-  # - name: alerting-rules
-  #   subPath: alerting_rules.yml
-  #   configMap: linkerd-prometheus-rules
-  # - name: recording-rules
-  #   subPath: recording_rules.yml
-  #   configMap: linkerd-prometheus-rules
+  args:
+    storage.tsdb.path: /data
+    storage.tsdb.retention.time: 6h
+    config.file: /etc/prometheus/prometheus.yml
+    log.level: *controller_log_level
+  globalConfig:
+    scrape_interval: 10s
+    scrape_timeout: 10s
+    evaluation_interval: 10s
 
 tracing:
   enabled: false

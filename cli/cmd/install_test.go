@@ -130,10 +130,9 @@ func TestRender(t *testing.T) {
 			Replicas: 1,
 		},
 		Prometheus: charts.Prometheus{
-			"enabled":  true,
-			"image":    "PrometheusImage",
-			"name":     "linkerd-prometheus",
-			"logLevel": "info",
+			"enabled": true,
+			"image":   "PrometheusImage",
+			"name":    "linkerd-prometheus",
 		},
 		Tracing: map[string]interface{}{
 			"enabled": false,

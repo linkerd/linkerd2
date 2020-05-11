@@ -770,7 +770,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.Global.CNIEnabled = options.cniEnabled
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
-	installValues.Prometheus["logLevel"] = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
+	installValues.Prometheus["args"].(map[string]interface{})["log.level"] = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat
