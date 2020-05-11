@@ -30,7 +30,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 			id: LinkerdAddOnChecks,
 			checkers: []checker{
 				{
-					description: fmt.Sprintf("%s config map exists", k8s.ValuesConfigMapName),
+					description: fmt.Sprintf("%s config map exists", k8s.AddOnsConfigMapName),
 					warning:     true,
 					check: func(context.Context) error {
 						return hc.checkIfAddOnsConfigMapExists()
@@ -47,7 +47,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							// check for the grafana service account
-							return hc.checkServiceAccounts([]string{grafana.(map[string]interface{})["name"].(string)})
+							return hc.checkServiceAccounts([]string{grafana.(map[string]interface{})["name"].(string)}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
 					},

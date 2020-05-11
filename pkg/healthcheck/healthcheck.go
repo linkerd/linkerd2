@@ -671,7 +671,7 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
-						return checkControllerRunning(hc.controlPlanePods, "controller")
+						return checkContainerRunning(hc.controlPlanePods, "controller")
 					},
 				},
 				{
@@ -2399,7 +2399,7 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 	return nil
 }
 
-func checkControllerRunning(pods []corev1.Pod, container string) error {
+func checkContainerRunning(pods []corev1.Pod, container string) error {
 	statuses := getPodStatuses(pods)
 	if _, ok := statuses[container]; !ok {
 		for _, pod := range pods {
@@ -2408,7 +2408,7 @@ func checkControllerRunning(pods []corev1.Pod, container string) error {
 				return fmt.Errorf("%s status is %s", pod.Name, podStatus)
 			}
 		}
-		return errors.New("No running pods for \"linkerd-controller\"")
+		return errors.New(fmt.Sprintf("No running pods for \"%s\"", container))
 	}
 	return nil
 }
