@@ -164,7 +164,7 @@ func (h *KubernetesHelper) GetConfigUID(namespace string) (string, error) {
 }
 
 // CheckPods checks that a deployment in a namespace contains the expected
-// number of pods in the Running state, and that no pods have been restarted.
+// number of pods in the Running state, and that pods have not been restarted more than once
 func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, replicas int) error {
 	var checkedPods []corev1.Pod
 
@@ -208,7 +208,9 @@ func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, re
 
 	for _, pod := range checkedPods {
 		for _, status := range append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) {
-			if status.RestartCount != 0 {
+			// restarts can happen for reasons beyond linkerd's responsibility
+			// we allow up to one restart
+			if status.RestartCount > 1 {
 				return fmt.Errorf("Container [%s] in pod [%s] in namespace [%s] has restart count [%d]",
 					status.Name, pod.Name, pod.Namespace, status.RestartCount)
 			}
