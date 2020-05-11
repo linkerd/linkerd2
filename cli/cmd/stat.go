@@ -26,6 +26,7 @@ type statOptions struct {
 	fromResource  string
 	allNamespaces bool
 	labelSelector string
+	unmeshed      bool
 }
 
 type indexedResults struct {
@@ -43,6 +44,7 @@ func newStatOptions() *statOptions {
 		fromResource:    "",
 		allNamespaces:   false,
 		labelSelector:   "",
+		unmeshed:        false,
 	}
 }
 
@@ -184,6 +186,7 @@ If no resource name is specified, displays stats about all resources of the spec
 	cmd.PersistentFlags().BoolVarP(&options.allNamespaces, "all-namespaces", "A", options.allNamespaces, "If present, returns stats across all namespaces, ignoring the \"--namespace\" flag")
 	cmd.PersistentFlags().StringVarP(&options.outputFormat, "output", "o", options.outputFormat, "Output format; one of: \"table\" or \"json\" or \"wide\"")
 	cmd.PersistentFlags().StringVarP(&options.labelSelector, "selector", "l", options.labelSelector, "Selector (label query) to filter on, supports '=', '==', and '!='")
+	cmd.PersistentFlags().BoolVar(&options.unmeshed, "unmeshed", options.unmeshed, "If present, include unmeshed resources in the output")
 	return cmd
 }
 
@@ -258,6 +261,10 @@ func statHasRequestData(stat *pb.BasicStats) bool {
 	return stat.GetSuccessCount() != 0 || stat.GetFailureCount() != 0 || stat.GetActualSuccessCount() != 0 || stat.GetActualFailureCount() != 0
 }
 
+func isPodOwnerResource(typ string) bool {
+	return typ != k8s.TrafficSplit && typ != k8s.Authority
+}
+
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
 	maxNamespaceLength := len(namespaceHeader)
@@ -277,6 +284,10 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	}
 
 	for _, r := range rows {
+		if isPodOwnerResource(r.Resource.Type) && !options.unmeshed && r.GetMeshedPodCount() == 0 {
+			continue
+		}
+
 		name := r.Resource.Name
 		nameWithPrefix := name
 		if usePrefix {
@@ -352,7 +363,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	case tableOutput, wideOutput:
 		if len(statTables) == 0 {
 			fmt.Fprintln(os.Stderr, "No traffic found.")
-			os.Exit(0)
+			return
 		}
 		printStatTables(statTables, w, maxNameLength, maxNamespaceLength, maxLeafLength, maxApexLength, maxWeightLength, options)
 	case jsonOutput:

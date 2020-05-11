@@ -23,17 +23,22 @@ type promResult struct {
 }
 
 const (
-	promRequests       = promType("QUERY_REQUESTS")
-	promActualRequests = promType("QUERY_ACTUAL_REQUESTS")
-	promTCPConnections = promType("QUERY_TCP_CONNECTIONS")
-	promTCPReadBytes   = promType("QUERY_TCP_READ_BYTES")
-	promTCPWriteBytes  = promType("QUERY_TCP_WRITE_BYTES")
-	promLatencyP50     = promType("0.5")
-	promLatencyP95     = promType("0.95")
-	promLatencyP99     = promType("0.99")
+	promGatewayAlive        = promType("QUERY_GATEWAY_ALIVE")
+	promNumMirroredServices = promType("QUERY_NUM_MIRRORED_SERVICES")
+	promRequests            = promType("QUERY_REQUESTS")
+	promActualRequests      = promType("QUERY_ACTUAL_REQUESTS")
+	promTCPConnections      = promType("QUERY_TCP_CONNECTIONS")
+	promTCPReadBytes        = promType("QUERY_TCP_READ_BYTES")
+	promTCPWriteBytes       = promType("QUERY_TCP_WRITE_BYTES")
+	promLatencyP50          = promType("0.5")
+	promLatencyP95          = promType("0.95")
+	promLatencyP99          = promType("0.99")
 
-	namespaceLabel    = model.LabelName("namespace")
-	dstNamespaceLabel = model.LabelName("dst_namespace")
+	namespaceLabel         = model.LabelName("namespace")
+	dstNamespaceLabel      = model.LabelName("dst_namespace")
+	gatewayNameLabel       = model.LabelName("gateway_name")
+	gatewayNamespaceLabel  = model.LabelName("gateway_namespace")
+	remoteClusterNameLabel = model.LabelName("remote_cluster_name")
 )
 
 func extractSampleValue(sample *model.Sample) uint64 {
@@ -176,7 +181,7 @@ func (s *grpcServer) getPrometheusMetrics(ctx context.Context, requestQueryTempl
 	// kick off asynchronous queries: request count queries + 3 latency queries
 	for pt, requestQueryTemplate := range requestQueryTemplates {
 		var query string
-		if pt == promTCPConnections {
+		if pt == promTCPConnections || pt == promGatewayAlive || pt == promNumMirroredServices {
 			query = fmt.Sprintf(requestQueryTemplate, labels, groupBy)
 		} else {
 			query = fmt.Sprintf(requestQueryTemplate, labels, timeWindow, groupBy)

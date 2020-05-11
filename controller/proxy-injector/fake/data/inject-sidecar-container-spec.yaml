@@ -31,7 +31,7 @@ image: gcr.io/linkerd-io/proxy:v18.8.4
 imagePullPolicy: IfNotPresent
 livenessProbe:
     httpGet:
-        path: /metrics
+        path: /live
         port: 4191
     initialDelaySeconds: 10
 name: linkerd-proxy
@@ -42,9 +42,9 @@ ports:
       name: linkerd-admin
 readinessProbe:
     httpGet:
-        path: /metrics
+        path: /ready
         port: 4191
-    initialDelaySeconds: 10
+    initialDelaySeconds: 2
 resources: {}
 securityContext:
     runAsUser: 2102

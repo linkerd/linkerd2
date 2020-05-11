@@ -48,6 +48,11 @@ spec:
       {{.Values.global.controllerComponentLabel}}: tap
       {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
       {{- include "partials.proxy.labels" .Values.global.proxy | nindent 6}}
+  {{- if .Values.enablePodAntiAffinity }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  {{- end }}
   template:
     metadata:
       annotations:
@@ -59,6 +64,7 @@ spec:
       labels:
         {{.Values.global.controllerComponentLabel}}: tap
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+        {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
@@ -121,6 +127,9 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      {{ if .Values.global.controlPlaneTracing -}}
+      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
       - name: tls
         secret:

@@ -26,22 +26,22 @@ func TestMain(m *testing.M) {
 func TestEgressHttp(t *testing.T) {
 	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/proxy.yaml")
 	if err != nil {
-		t.Fatalf("Unexpected error: %v\n%s", err, stderr)
+		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\n%s", err, stderr)
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace("egress-test")
 	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(prefixedNs, nil)
 	if err != nil {
-		t.Fatalf("failed to create %s namespace: %s", prefixedNs, err)
+		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", prefixedNs, err)
 	}
 	out, err = TestHelper.KubectlApply(out, prefixedNs)
 	if err != nil {
-		t.Fatalf("Unexpected error: %v output:\n%s", err, out)
+		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
 	}
 
 	err = TestHelper.CheckPods(prefixedNs, "egress-test", 1)
 	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+		testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
 	}
 
 	testCase := func(url, methodToUse string) {
@@ -53,17 +53,17 @@ func TestEgressHttp(t *testing.T) {
 			}
 			out, err := TestHelper.Kubectl("", cmd...)
 			if err != nil {
-				t.Fatalf("Failed to exec %s: %s (%s)", cmd, err, out)
+				testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to exec %s", cmd), "failed to exec %s: %s (%s)", cmd, err, out)
 			}
 
 			var status int
 			_, err = fmt.Sscanf(out, "%d", &status)
 			if err != nil {
-				t.Fatalf("Failed to parse status code (%s): %s", out, err)
+				testutil.AnnotatedFatalf(t, "failed to parse status code", "failed to parse status code (%s): %s", out, err)
 			}
 
 			if status < 100 || status >= 500 {
-				t.Fatalf("Got HTTP error code: %d\n", status)
+				testutil.Fatalf(t, "got HTTP error code: %d\n", status)
 			}
 		})
 	}

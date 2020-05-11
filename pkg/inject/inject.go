@@ -61,6 +61,7 @@ var (
 		k8s.ProxyMemoryRequestAnnotation,
 		k8s.ProxyUIDAnnotation,
 		k8s.ProxyVersionOverrideAnnotation,
+		k8s.ProxyRequireIdentityOnInboundPortsAnnotation,
 		k8s.ProxyIgnoreInboundPortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
 		k8s.ProxyTraceCollectorSvcAddrAnnotation,
@@ -200,6 +201,11 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
 func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
+
+	if conf.requireIdentityOnInboundPorts() != "" && conf.identityContext() == nil {
+		return nil, fmt.Errorf("%s cannot be set when identity is disabled", k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
+	}
+
 	clusterDomain := conf.configs.GetGlobal().GetClusterDomain()
 	if clusterDomain == "" {
 		clusterDomain = "cluster.local"
@@ -342,6 +348,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyDeploymentLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *corev1.ReplicationController:
@@ -352,6 +359,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyReplicationControllerLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(v.Spec.Template)
 
 	case *appsv1.ReplicaSet:
@@ -362,6 +370,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyReplicaSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *batchv1.Job:
@@ -372,6 +381,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyJobLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *appsv1.DaemonSet:
@@ -382,6 +392,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyDaemonSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *appsv1.StatefulSet:
@@ -392,6 +403,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyStatefulSetLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.Template)
 
 	case *corev1.Namespace:
@@ -413,6 +425,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 		conf.workload.obj = v
 		conf.workload.Meta = &v.ObjectMeta
 		conf.pod.labels[k8s.ProxyCronJobLabel] = v.Name
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 		conf.complete(&v.Spec.JobTemplate.Spec.Template)
 
 	case *corev1.Pod:
@@ -442,7 +455,7 @@ func (conf *ResourceConfig) parse(bytes []byte) error {
 				conf.pod.labels[k8s.ProxyStatefulSetLabel] = name
 			}
 		}
-
+		conf.pod.labels[k8s.WorkloadNamespaceLabel] = v.Namespace
 	default:
 		// unmarshal the metadata of other resource kinds like namespace, secret,
 		// config map etc. to be used in the report struct
@@ -481,9 +494,10 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 			Inbound:  conf.proxyInboundPort(),
 			Outbound: conf.proxyOutboundPort(),
 		},
-		UID:                   conf.proxyUID(),
-		Resources:             conf.proxyResourceRequirements(),
-		WaitBeforeExitSeconds: conf.proxyWaitBeforeExitSeconds(),
+		UID:                           conf.proxyUID(),
+		Resources:                     conf.proxyResourceRequirements(),
+		WaitBeforeExitSeconds:         conf.proxyWaitBeforeExitSeconds(),
+		RequireIdentityOnInboundPorts: conf.requireIdentityOnInboundPorts(),
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -536,6 +550,14 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		conf.injectProxyInit(values)
 	}
 
+	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
+
+	values.Global.Proxy.Trace = &l5dcharts.Trace{}
+	if trace := conf.trace(); trace != nil {
+		log.Infof("tracing enabled: remote service=%s, service account=%s", trace.CollectorSvcAddr, trace.CollectorSvcAccount)
+		values.Global.Proxy.Trace = trace
+	}
+
 	idctx := conf.identityContext()
 	if idctx == nil {
 		values.Global.Proxy.DisableIdentity = true
@@ -545,12 +567,6 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	values.Global.IdentityTrustDomain = idctx.GetTrustDomain()
 	values.Identity = &l5dcharts.Identity{}
 
-	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
-
-	if trace := conf.trace(); trace != nil {
-		log.Infof("tracing enabled: remote service=%s, service account=%s", trace.CollectorSvcAddr, trace.CollectorSvcAccount)
-		values.Global.Proxy.Trace = trace
-	}
 }
 
 func (conf *ResourceConfig) injectProxyInit(values *patch) {
@@ -774,6 +790,10 @@ func (conf *ResourceConfig) tapDisabled() bool {
 		}
 	}
 	return false
+}
+
+func (conf *ResourceConfig) requireIdentityOnInboundPorts() string {
+	return conf.getOverride(k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
 }
 
 func (conf *ResourceConfig) proxyWaitBeforeExitSeconds() uint64 {

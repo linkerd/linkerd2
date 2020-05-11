@@ -15,6 +15,11 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   prometheus.yml: |-
+    {{- if .Values.prometheusAlertmanagers }}
+    alerting:
+      alertmanagers:
+        {{- toYaml .Values.prometheusAlertmanagers | trim | nindent 8 }}
+    {{- end }}
     global:
       scrape_interval: 10s
       scrape_timeout: 10s
@@ -22,6 +27,7 @@ data:
 
     rule_files:
     - /etc/prometheus/*_rules.yml
+    - /etc/prometheus/*_rules.yaml
 
     scrape_configs:
     - job_name: 'prometheus'
@@ -77,6 +83,19 @@ data:
         - __meta_kubernetes_pod_container_port_name
         action: keep
         regex: (.*);admin-http$
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        action: replace
+        target_label: component
+
+    - job_name: 'linkerd-service-mirror'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
+        - __meta_kubernetes_pod_container_port_name
+        action: keep
+        regex: linkerd-service-mirror;admin-http$
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component
@@ -186,6 +205,7 @@ spec:
       labels:
         {{.Values.global.controllerComponentLabel}}: prometheus
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+        {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
@@ -195,6 +215,9 @@ spec:
         - --storage.tsdb.retention.time=6h
         - --config.file=/etc/prometheus/prometheus.yml
         - --log.level={{lower .Values.prometheusLogLevel}}
+        {{- range $key, $value := .Values.prometheusExtraArgs}}
+        - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
+        {{- end }}
         image: {{.Values.prometheusImage}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
@@ -219,10 +242,17 @@ spec:
         securityContext:
           runAsUser: 65534
         volumeMounts:
+      {{- range .Values.prometheusRuleConfigMapMounts }}
+        - name: {{ .name }}
+          mountPath: /etc/prometheus/{{ .subPath }}
+          subPath: {{ .subPath }}
+          readOnly: true
+      {{- end }}
         - mountPath: /data
           name: data
-        - mountPath: /etc/prometheus
+        - mountPath: /etc/prometheus/prometheus.yml
           name: prometheus-config
+          subPath: prometheus.yml
           readOnly: true
       {{- if not (empty .Values.prometheusProxyResources) }}
       {{- $orig := .Values.global.proxy.resources }}
@@ -239,9 +269,17 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-prometheus
       volumes:
+    {{- range .Values.prometheusRuleConfigMapMounts }}
+      - name: {{ .name }}
+        configMap:
+          name: {{ .configMap }}
+    {{- end }}
       - emptyDir: {}
         name: data
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
+      {{ if .Values.global.controlPlaneTracing -}}
+      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}

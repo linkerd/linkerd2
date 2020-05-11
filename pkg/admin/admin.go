@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"strings"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -23,14 +22,7 @@ func StartServer(addr string) {
 		promHandler: promhttp.Handler(),
 	}
 
-	s := &http.Server{
-		Addr:         addr,
-		Handler:      h,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-	}
-
-	log.Fatal(s.ListenAndServe())
+	log.Fatal(http.ListenAndServe(addr, h))
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {

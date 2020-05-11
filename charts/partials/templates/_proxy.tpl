@@ -1,9 +1,15 @@
 {{ define "partials.proxy" -}}
 env:
+{{ if .Values.global.proxy.requireIdentityOnInboundPorts -}}
+- name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_IDENTITY
+  value: "{{.Values.global.proxy.requireIdentityOnInboundPorts}}"
+{{ end -}}  
 - name: LINKERD2_PROXY_LOG
   value: {{.Values.global.proxy.logLevel}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
   value: {{ternary "localhost.:8086" (printf "linkerd-dst.%s.svc.%s:8086" .Values.global.namespace .Values.global.clusterDomain) (eq .Values.global.proxy.component "linkerd-destination")}}
+- name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+  value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.global.proxy.ports.control}}
 - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -22,6 +28,10 @@ env:
   value: 10000ms
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
   value: 10000ms
+{{ if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing) -}}
+- name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
+  value: /var/run/linkerd/podinfo/labels
+{{ end -}}
 - name: _pod_ns
   valueFrom:
     fieldRef:
@@ -73,19 +83,17 @@ env:
   value: linkerd-collector.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:55678
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
   value: linkerd-collector.{{.Values.global.namespace}}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-{{ else if .Values.global.proxy.trace -}}
-{{ if .Values.global.proxy.trace.collectorSvcAddr -}}
+{{ else if .Values.global.proxy.trace.collectorSvcAddr -}}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
   value: {{ .Values.global.proxy.trace.collectorSvcAddr }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
   value: {{ .Values.global.proxy.trace.collectorSvcAccount }}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
 {{ end -}}
-{{ end -}}
 image: {{.Values.global.proxy.image.name}}:{{.Values.global.proxy.image.version}}
 imagePullPolicy: {{.Values.global.proxy.image.pullPolicy}}
 livenessProbe:
   httpGet:
-    path: /metrics
+    path: /live
     port: {{.Values.global.proxy.ports.admin}}
   initialDelaySeconds: 10
 name: linkerd-proxy
@@ -119,8 +127,12 @@ lifecycle:
         - -c
         - sleep {{.Values.global.proxy.waitBeforeExitSeconds}}
 {{- end }}
-{{- if or (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) }}
+{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing)  (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) }}
 volumeMounts:
+{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing) }}
+- mountPath: var/run/linkerd/podinfo
+  name: podinfo
+{{- end -}}
 {{- if not .Values.global.proxy.disableIdentity }}
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity

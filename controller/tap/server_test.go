@@ -392,8 +392,8 @@ status:
 					t.Fatalf("FromIncomingContext failed given: %+v", mockProxyTapServer.ctx)
 				}
 
-				if !reflect.DeepEqual(md.Get(requireIDHeader), []string{exp.requireID}) {
-					t.Fatalf("Unexpected l5d-require-id header [%+v] expected [%+v]", md.Get(requireIDHeader), []string{exp.requireID})
+				if !reflect.DeepEqual(md.Get(pkgK8s.RequireIDHeader), []string{exp.requireID}) {
+					t.Fatalf("Unexpected l5d-require-id header [%+v] expected [%+v]", md.Get(pkgK8s.RequireIDHeader), []string{exp.requireID})
 				}
 			}
 

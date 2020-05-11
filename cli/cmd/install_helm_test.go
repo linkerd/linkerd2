@@ -23,14 +23,24 @@ func TestRenderHelm(t *testing.T) {
 
 	t.Run("Non-HA mode", func(t *testing.T) {
 		ha := false
-		chartControlPlane := chartControlPlane(t, ha, "111", "222")
+		chartControlPlane := chartControlPlane(t, ha, "", "111", "222")
 		testRenderHelm(t, chartControlPlane, "install_helm_output.golden")
 	})
 
 	t.Run("HA mode", func(t *testing.T) {
 		ha := true
-		chartControlPlane := chartControlPlane(t, ha, "111", "222")
+		chartControlPlane := chartControlPlane(t, ha, "", "111", "222")
 		testRenderHelm(t, chartControlPlane, "install_helm_output_ha.golden")
+	})
+
+	t.Run("Non-HA with add-ons mode", func(t *testing.T) {
+		ha := false
+		addOnConfig := `
+tracing:
+  enabled: true
+`
+		chartControlPlane := chartControlPlane(t, ha, addOnConfig, "111", "222")
+		testRenderHelm(t, chartControlPlane, "install_helm_output_addons.golden")
 	})
 }
 
@@ -91,6 +101,7 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 	  "crtPEM":"test-smi-metrics-crt-pem",
   }
 }`
+
 	overrideConfig := &pb.Config{
 		Raw: fmt.Sprintf(overrideJSON, k8s.IdentityIssuerExpiryAnnotation),
 	}
@@ -121,13 +132,34 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 		buf.WriteString(v)
 	}
 
+	for _, dep := range chart.Dependencies {
+		for _, template := range dep.Templates {
+			source := "linkerd2/charts" + "/" + dep.Metadata.Name + "/" + template.Name
+			v, exists := rendered[source]
+			if !exists {
+				// skip partial templates
+				continue
+			}
+			buf.WriteString("---\n# Source: " + source + "\n")
+			buf.WriteString(v)
+		}
+	}
+
 	diffTestdata(t, goldenFileName, buf.String())
 }
 
-func chartControlPlane(t *testing.T, ha bool, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
-	values, err := readTestValues(t, ha, ignoreOutboundPorts, ignoreInboundPorts)
+func chartControlPlane(t *testing.T, ha bool, addOnConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
+	rawValues, err := readTestValues(t, ha, ignoreOutboundPorts, ignoreInboundPorts)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
+	}
+
+	if addOnConfig != "" {
+		mergedConfig, err := mergeRaw(rawValues, []byte(addOnConfig))
+		if err != nil {
+			t.Fatal("Unexpected error", err)
+		}
+		rawValues = mergedConfig
 	}
 
 	partialPaths := []string{
@@ -141,6 +173,7 @@ func chartControlPlane(t *testing.T, ha bool, ignoreOutboundPorts string, ignore
 		"templates/_trace.tpl",
 		"templates/_capabilities.tpl",
 		"templates/_affinity.tpl",
+		"templates/_addons.tpl",
 		"templates/_nodeselector.tpl",
 		"templates/_validate.tpl",
 	}
@@ -158,8 +191,23 @@ func chartControlPlane(t *testing.T, ha bool, ignoreOutboundPorts string, ignore
 			chartPartials,
 		},
 		Values: &pb.Config{
-			Raw: string(values),
+			Raw: string(rawValues),
 		},
+	}
+
+	var values l5dcharts.Values
+	err = yaml.Unmarshal(rawValues, &values)
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
+	addons, err := l5dcharts.ParseAddOnValues(&values)
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
+	for _, addon := range addons {
+		chart.Dependencies = append(chart.Dependencies, buildAddOnChart(t, addon, chartPartials))
 	}
 
 	for _, filepath := range append(templatesConfigStage, templatesControlPlaneStage...) {
@@ -174,6 +222,33 @@ func chartControlPlane(t *testing.T, ha bool, ignoreOutboundPorts string, ignore
 	}
 
 	return chart
+}
+
+func buildAddOnChart(t *testing.T, addon l5dcharts.AddOn, chartPartials *pb.Chart) *pb.Chart {
+	addOnChart := pb.Chart{
+		Metadata: &pb.Metadata{
+			Name: addon.Name(),
+			Sources: []string{
+				filepath.Join("..", "..", "..", "charts", "add-ons", addon.Name()),
+			},
+		},
+		Dependencies: []*pb.Chart{
+			chartPartials,
+		},
+	}
+
+	for _, filepath := range append(addon.ConfigStageTemplates(), addon.ControlPlaneStageTemplates()...) {
+		addOnChart.Templates = append(addOnChart.Templates, &pb.Template{
+			Name: filepath.Name,
+		})
+	}
+
+	for _, template := range addOnChart.Templates {
+		filepath := filepath.Join(addOnChart.Metadata.Sources[0], template.Name)
+		template.Data = []byte(readTestdata(t, filepath))
+	}
+
+	return &addOnChart
 }
 
 func chartPartials(t *testing.T, paths []string) *pb.Chart {

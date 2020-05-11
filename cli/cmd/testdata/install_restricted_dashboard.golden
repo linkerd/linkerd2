@@ -859,6 +859,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: identity
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-identity
     spec:
       nodeSelector:
@@ -897,6 +898,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -957,7 +960,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -1077,6 +1080,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: controller
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-controller
     spec:
       nodeSelector:
@@ -1116,6 +1120,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1176,7 +1182,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -1293,6 +1299,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: destination
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-destination
     spec:
       nodeSelector:
@@ -1332,6 +1339,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: localhost.:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1392,7 +1401,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -1483,6 +1492,7 @@ spec:
         metadata:
           labels:
             linkerd.io/control-plane-component: heartbeat
+            linkerd.io/workload-ns: linkerd
           annotations:
             linkerd.io/created-by: linkerd/cli dev-undefined
         spec:
@@ -1557,6 +1567,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: web
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-web
     spec:
       nodeSelector:
@@ -1596,6 +1607,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1656,7 +1669,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -1744,6 +1757,7 @@ data:
 
     rule_files:
     - /etc/prometheus/*_rules.yml
+    - /etc/prometheus/*_rules.yaml
 
     scrape_configs:
     - job_name: 'prometheus'
@@ -1799,6 +1813,19 @@ data:
         - __meta_kubernetes_pod_container_port_name
         action: keep
         regex: (.*);admin-http$
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        action: replace
+        target_label: component
+
+    - job_name: 'linkerd-service-mirror'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
+        - __meta_kubernetes_pod_container_port_name
+        action: keep
+        regex: linkerd-service-mirror;admin-http$
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component
@@ -1903,6 +1930,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: prometheus
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-prometheus
     spec:
       nodeSelector:
@@ -1936,14 +1964,17 @@ spec:
         volumeMounts:
         - mountPath: /data
           name: data
-        - mountPath: /etc/prometheus
+        - mountPath: /etc/prometheus/prometheus.yml
           name: prometheus-config
+          subPath: prometheus.yml
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2006,7 +2037,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2185,6 +2216,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
@@ -2221,6 +2253,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2281,7 +2315,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2386,6 +2420,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: proxy-injector
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-proxy-injector
     spec:
       nodeSelector:
@@ -2425,6 +2460,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2485,7 +2522,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2622,6 +2659,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: sp-validator
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-sp-validator
     spec:
       nodeSelector:
@@ -2659,6 +2697,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2719,7 +2759,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -2839,6 +2879,7 @@ spec:
       labels:
         linkerd.io/control-plane-component: tap
         linkerd.io/control-plane-ns: linkerd
+        linkerd.io/workload-ns: linkerd
         linkerd.io/proxy-deployment: linkerd-tap
     spec:
       nodeSelector:
@@ -2881,6 +2922,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2941,7 +2984,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -3009,3 +3052,21 @@ spec:
         secret:
           secretName: linkerd-tap-tls
 
+---
+###
+### linkerd add-ons configuration
+###
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config-addons
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli dev-undefined
+data:
+  values: |-
+    tracing:
+      enabled: false

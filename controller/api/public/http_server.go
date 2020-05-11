@@ -19,6 +19,7 @@ import (
 )
 
 var (
+	gatewaysPath     = fullURLPathFor("Gateways")
 	statSummaryPath  = fullURLPathFor("StatSummary")
 	topRoutesPath    = fullURLPathFor("TopRoutes")
 	versionPath      = fullURLPathFor("Version")
@@ -46,6 +47,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Serve request
 	switch req.URL.Path {
+	case gatewaysPath:
+		h.handleGateways(w, req)
 	case statSummaryPath:
 		h.handleStatSummary(w, req)
 	case topRoutesPath:
@@ -68,6 +71,27 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.NotFound(w, req)
 	}
 
+}
+
+func (h *handler) handleGateways(w http.ResponseWriter, req *http.Request) {
+	var protoRequest pb.GatewaysRequest
+
+	err := protohttp.HTTPRequestToProto(req, &protoRequest)
+	if err != nil {
+		protohttp.WriteErrorToHTTPResponse(w, err)
+		return
+	}
+
+	rsp, err := h.grpcServer.Gateways(req.Context(), &protoRequest)
+	if err != nil {
+		protohttp.WriteErrorToHTTPResponse(w, err)
+		return
+	}
+	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
+	if err != nil {
+		protohttp.WriteErrorToHTTPResponse(w, err)
+		return
+	}
 }
 
 func (h *handler) handleStatSummary(w http.ResponseWriter, req *http.Request) {

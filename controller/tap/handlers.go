@@ -330,6 +330,7 @@ func mkPathItem(desc string) spec.PathItem {
 							},
 						},
 					},
+					ID: "tapResourceV0",
 				},
 			},
 		},

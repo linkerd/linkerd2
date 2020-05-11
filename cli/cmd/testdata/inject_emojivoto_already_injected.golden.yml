@@ -18,6 +18,7 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web1
+        linkerd.io/workload-ns: emojivoto
     spec:
       containers:
       - env:
@@ -39,6 +40,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -99,7 +102,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -177,6 +180,7 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web2
+        linkerd.io/workload-ns: emojivoto
     spec:
       containers:
       - env:
@@ -198,6 +202,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -258,7 +264,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -336,6 +342,7 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web3
+        linkerd.io/workload-ns: emojivoto
     spec:
       containers:
       - env:
@@ -357,6 +364,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -417,7 +426,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
@@ -495,6 +504,7 @@ spec:
         app: web-svc
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/proxy-deployment: web4
+        linkerd.io/workload-ns: emojivoto
     spec:
       containers:
       - env:
@@ -516,6 +526,8 @@ spec:
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
+        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -576,7 +588,7 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
-            path: /metrics
+            path: /live
             port: 4191
           initialDelaySeconds: 10
         name: linkerd-proxy
