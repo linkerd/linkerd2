@@ -67,13 +67,12 @@ linkerd-data-plane
 
 linkerd-addons
 --------------
-√ linkerd-values config map exists
+√ linkerd-config-addons config map exists
 
 linkerd-grafana
 ---------------
 √ grafana add-on service account exists
 √ grafana add-on config map exists
 √ grafana pod is running
-
 
 Status check results are √

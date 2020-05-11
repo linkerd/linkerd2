@@ -60,7 +60,7 @@ control-plane-version
 
 linkerd-addons
 --------------
-√ linkerd-values config map exists
+√ linkerd-config-addons config map exists
 
 linkerd-grafana
 ---------------
