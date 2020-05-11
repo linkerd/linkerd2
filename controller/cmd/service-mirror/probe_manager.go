@@ -230,7 +230,7 @@ func (m *ProbeManager) run() {
 	for {
 		select {
 		case event := <-m.events:
-			log.Debugf("Received event: %v", event)
+			log.Debugf("Probe Manager: received event: %s", event)
 			m.metricVecs.dequeues.With(prometheus.Labels{eventTypeLabelName: eventTypeString(event)}).Inc()
 			m.handleEvent(event)
 		case <-m.done:
