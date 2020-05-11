@@ -1,7 +1,6 @@
 prometheus:
   globalConfig:
     evaluation_interval: 2m
-    query_log_file: /queries.log
     external_labels:
       cluster: cluster-1
 
