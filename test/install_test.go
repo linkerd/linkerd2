@@ -77,6 +77,8 @@ var (
 		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled .*\(Client\.Timeout exceeded while awaiting headers\)`,
 		`Failed to update endpoint .*/linkerd-.*: Operation cannot be fulfilled on endpoints "linkerd-.*": the object has been modified; please apply your changes to the latest version and try again`,
 		`error killing pod: failed to "KillPodSandbox" for ".*" with KillPodSandboxError: "rpc error: code = Unknown desc`,
+		// this is being tracked upstream: https://github.com/kubernetes/kubernetes/issues/89064
+		`Error: failed to create containerd task: failed to start io pipe copy: unable to copy pipes: containerd-shim: opening w/o fifo "/run/containerd/io.containerd.grpc.v1.cri/containers/.*: context deadline exceeded`,
 	}, "|"))
 
 	injectionCases = []struct {
