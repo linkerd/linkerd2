@@ -10,6 +10,8 @@ import (
 	"os"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"github.com/linkerd/linkerd2/cli/table"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -367,7 +369,7 @@ type exportReport struct {
 	exported     bool
 }
 
-func transform(bytes []byte, gatewayName, gatewayNamespace string) ([]byte, *exportReport, error) {
+func transform(bytes []byte, gatewayName, gatewayNamespace string) ([]byte, []*exportReport, error) {
 	var metaType metav1.TypeMeta
 
 	if err := yaml.Unmarshal(bytes, &metaType); err != nil {
@@ -397,7 +399,7 @@ func transform(bytes []byte, gatewayName, gatewayNamespace string) ([]byte, *exp
 			resourceName: service.Name,
 			exported:     true,
 		}
-		return transformed, report, nil
+		return transformed, []*exportReport{report}, nil
 	}
 
 	report := &exportReport{
@@ -405,7 +407,7 @@ func transform(bytes []byte, gatewayName, gatewayNamespace string) ([]byte, *exp
 		exported:     false,
 	}
 
-	return bytes, report, nil
+	return bytes, []*exportReport{report}, nil
 }
 
 func generateReport(reports []*exportReport, reportsOut io.Writer) error {
@@ -437,6 +439,38 @@ func generateReport(reports []*exportReport, reportsOut io.Writer) error {
 	return nil
 }
 
+func transformList(bytes []byte, gatewayName, gatewayNamespace string) ([]byte, []*exportReport, error) {
+	var sourceList corev1.List
+	if err := yaml.Unmarshal(bytes, &sourceList); err != nil {
+		return nil, nil, err
+	}
+
+	reports := []*exportReport{}
+	items := []runtime.RawExtension{}
+
+	for _, item := range sourceList.Items {
+		result, report, err := transform(item.Raw, gatewayName, gatewayNamespace)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		exported, err := yaml.YAMLToJSON(result)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		items = append(items, runtime.RawExtension{Raw: exported})
+		reports = append(reports, report...)
+	}
+
+	sourceList.Items = items
+	result, err := yaml.Marshal(sourceList)
+	if err != nil {
+		return nil, nil, err
+	}
+	return result, reports, nil
+}
+
 func processExportYaml(in io.Reader, out io.Writer, gatewayName, gatewayNamespace string) ([]*exportReport, error) {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 	var reports []*exportReport
@@ -451,12 +485,26 @@ func processExportYaml(in io.Reader, out io.Writer, gatewayName, gatewayNamespac
 			return nil, err
 		}
 
-		result, report, err := transform(bytes, gatewayName, gatewayNamespace)
-		reports = append(reports, report)
+		isList, err := kindIsList(bytes)
 		if err != nil {
 			return nil, err
 		}
 
+		var result []byte
+		var currentReports []*exportReport
+
+		if isList {
+			result, currentReports, err = transformList(bytes, gatewayName, gatewayNamespace)
+
+		} else {
+			result, currentReports, err = transform(bytes, gatewayName, gatewayNamespace)
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		reports = append(reports, currentReports...)
 		out.Write(result)
 		out.Write([]byte("---\n"))
 	}
