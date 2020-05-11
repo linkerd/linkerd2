@@ -2,7 +2,7 @@
 env:
 {{ if .Values.global.proxy.requireIdentityOnInboundPorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_IDENTITY
-  value: {{.Values.global.proxy.requireIdentityOnInboundPorts}}
+  value: "{{.Values.global.proxy.requireIdentityOnInboundPorts}}"
 {{ end -}}  
 - name: LINKERD2_PROXY_LOG
   value: {{.Values.global.proxy.logLevel}}

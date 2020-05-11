@@ -7,13 +7,12 @@ import (
 	"sync"
 	"time"
 
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
-
 	logging "github.com/sirupsen/logrus"
 )
 
 const httpGatewayTimeoutMillis = 50000
-const requireIDHeader = "l5d-require-id"
 
 type probeSpec struct {
 	ips             []string
@@ -137,7 +136,7 @@ func (pw *ProbeWorker) doProbe() {
 			return
 		}
 
-		req.Header.Set(requireIDHeader, pw.probeSpec.gatewayIdentity)
+		req.Header.Set(consts.RequireIDHeader, pw.probeSpec.gatewayIdentity)
 		start := time.Now()
 		resp, err := client.Do(req)
 		end := time.Since(start)
