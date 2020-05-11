@@ -1667,7 +1667,7 @@ func (hc *HealthChecker) checkRemoteClusterAnchors() error {
 
 	localAnchors, err := tls.DecodePEMCertificates(hc.linkerdConfig.Global.IdentityContext.TrustAnchorsPem)
 	if err != nil {
-		return fmt.Errorf("Cannot parse local trust acnhors: %s", err)
+		return fmt.Errorf("Cannot parse local trust anchors: %s", err)
 	}
 
 	var offendingClusters []string
@@ -1696,6 +1696,9 @@ func (hc *HealthChecker) checkRemoteClusterAnchors() error {
 			continue
 		}
 
+		// we fail early if the lens are not the same. If they are the
+		// same, we can only compare certs one way and be sure we have
+		// identical anchors
 		if len(remoteAnchors) != len(localAnchors) {
 			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s", cfg.ClusterName))
 			continue

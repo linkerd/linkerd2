@@ -371,7 +371,7 @@ const (
 
 	// RemoteClusterLinkerdNamespaceAnnotation is present on the secret
 	// carrying the config of the remote cluster
-	RemoteClusterLinkerdNamespaceAnnotation = SvcMirrorPrefix + "/remote-cluster-ld5-ns"
+	RemoteClusterLinkerdNamespaceAnnotation = SvcMirrorPrefix + "/remote-cluster-l5d-ns"
 
 	// RemoteResourceVersionAnnotation is the last observed remote resource
 	// version of a mirrored resource. Useful when doing updates
