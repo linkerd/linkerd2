@@ -24,7 +24,6 @@ type (
 		ControllerImageVersion        string                         `json:"controllerImageVersion"`
 		WebImage                      string                         `json:"webImage"`
 		PrometheusImage               string                         `json:"prometheusImage"`
-		GrafanaImage                  string                         `json:"grafanaImage"`
 		ControllerReplicas            uint                           `json:"controllerReplicas"`
 		ControllerLogLevel            string                         `json:"controllerLogLevel"`
 		PrometheusLogLevel            string                         `json:"prometheusLogLevel"`
@@ -52,7 +51,6 @@ type (
 		SMIMetrics                    *SMIMetrics                    `json:"smiMetrics"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
-		GrafanaResources       *Resources `json:"grafanaResources"`
 		HeartbeatResources     *Resources `json:"heartbeatResources"`
 		IdentityResources      *Resources `json:"identityResources"`
 		PrometheusResources    *Resources `json:"prometheusResources"`
@@ -64,6 +62,7 @@ type (
 
 		// Addon Structures
 		Tracing Tracing `json:"tracing"`
+		Grafana Grafana `json:"grafana"`
 	}
 
 	// Global values common across all charts
@@ -99,19 +98,20 @@ type (
 
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
-		Capabilities           *Capabilities `json:"capabilities"`
-		Component              string        `json:"component"`
-		DisableIdentity        bool          `json:"disableIdentity"`
-		DisableTap             bool          `json:"disableTap"`
-		EnableExternalProfiles bool          `json:"enableExternalProfiles"`
-		Image                  *Image        `json:"image"`
-		LogLevel               string        `json:"logLevel"`
-		SAMountPath            *SAMountPath  `json:"saMountPath"`
-		Ports                  *Ports        `json:"ports"`
-		Resources              *Resources    `json:"resources"`
-		Trace                  *Trace        `json:"trace"`
-		UID                    int64         `json:"uid"`
-		WaitBeforeExitSeconds  uint64        `json:"waitBeforeExitSeconds"`
+		Capabilities                  *Capabilities `json:"capabilities"`
+		Component                     string        `json:"component"`
+		DisableIdentity               bool          `json:"disableIdentity"`
+		DisableTap                    bool          `json:"disableTap"`
+		EnableExternalProfiles        bool          `json:"enableExternalProfiles"`
+		Image                         *Image        `json:"image"`
+		LogLevel                      string        `json:"logLevel"`
+		SAMountPath                   *SAMountPath  `json:"saMountPath"`
+		Ports                         *Ports        `json:"ports"`
+		Resources                     *Resources    `json:"resources"`
+		Trace                         *Trace        `json:"trace"`
+		UID                           int64         `json:"uid"`
+		WaitBeforeExitSeconds         uint64        `json:"waitBeforeExitSeconds"`
+		RequireIdentityOnInboundPorts string        `json:"requireIdentityOnInboundPorts"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

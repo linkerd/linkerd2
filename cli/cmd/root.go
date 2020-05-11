@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -216,36 +217,42 @@ func getDefaultNamespace() string {
 // install and inject commands. All fields in this struct should have
 // corresponding flags added in the addProxyConfigFlags func later in this file.
 type proxyConfigOptions struct {
-	proxyVersion             string
-	proxyImage               string
-	initImage                string
-	initImageVersion         string
-	debugImage               string
-	debugImageVersion        string
-	dockerRegistry           string
-	imagePullPolicy          string
-	ignoreInboundPorts       []string
-	ignoreOutboundPorts      []string
-	proxyUID                 int64
-	proxyLogLevel            string
-	proxyInboundPort         uint
-	proxyOutboundPort        uint
-	proxyControlPort         uint
-	proxyAdminPort           uint
-	proxyCPURequest          string
-	proxyMemoryRequest       string
-	proxyCPULimit            string
-	proxyMemoryLimit         string
-	enableExternalProfiles   bool
-	traceCollector           string
-	traceCollectorSvcAccount string
-	waitBeforeExitSeconds    uint64
-	ignoreCluster            bool // not validated by validate()
-	disableIdentity          bool
-	disableTap               bool
+	proxyVersion                  string
+	proxyImage                    string
+	initImage                     string
+	initImageVersion              string
+	debugImage                    string
+	debugImageVersion             string
+	dockerRegistry                string
+	imagePullPolicy               string
+	ignoreInboundPorts            []string
+	ignoreOutboundPorts           []string
+	proxyUID                      int64
+	proxyLogLevel                 string
+	proxyInboundPort              uint
+	proxyOutboundPort             uint
+	proxyControlPort              uint
+	proxyAdminPort                uint
+	proxyCPURequest               string
+	proxyMemoryRequest            string
+	proxyCPULimit                 string
+	proxyMemoryLimit              string
+	enableExternalProfiles        bool
+	traceCollector                string
+	traceCollectorSvcAccount      string
+	waitBeforeExitSeconds         uint64
+	ignoreCluster                 bool // not validated by validate()
+	disableIdentity               bool
+	requireIdentityOnInboundPorts []string
+	disableTap                    bool
 }
 
 func (options *proxyConfigOptions) validate() error {
+
+	if options.disableIdentity && len(options.requireIdentityOnInboundPorts) > 0 {
+		return errors.New("Identity must be enabled when  --require-identity-on-inbound-ports is specified")
+	}
+
 	if options.proxyVersion != "" && !alphaNumDashDot.MatchString(options.proxyVersion) {
 		return fmt.Errorf("%s is not a valid version", options.proxyVersion)
 	}

@@ -48,6 +48,7 @@ global:
     # See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
     # for more info on container lifecycle hooks.
     waitBeforeExitSeconds: 0
+    requireIdentityOnInboundPorts: ""
 
   # proxy-init configuration
   proxyInit:
@@ -123,9 +124,6 @@ identity:
       # PEM-encoded ECDSA private key
       keyPEM: |
 
-# grafana configuration
-grafanaImage: gcr.io/linkerd-io/grafana
-
 # heartbeat configuration
 disableHeartBeat: false
 heartbeatSchedule: "0 0 * * *"
@@ -193,13 +191,20 @@ smiMetrics:
   keyPEM: |
 
 # Configuration for Add-ons
+
+grafana:
+  enabled: true
+  name: linkerd-grafana
+  image: gcr.io/linkerd-io/grafana
+  # resources:
+
 tracing:
   enabled: false
   collector:
     name: linkerd-collector
     image: omnition/opencensus-collector:0.1.11
-    resources:
+    # resources:
   jaeger:
     name: linkerd-jaeger
     image: jaegertracing/all-in-one:1.17.1
-    resources:
+    # resources:

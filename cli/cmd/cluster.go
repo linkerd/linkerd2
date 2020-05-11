@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/cli/table"
+	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/multicluster"
@@ -91,14 +92,23 @@ func newSetupRemoteClusterOptionsWithDefault() (*setupRemoteClusterOptions, erro
 
 }
 
-func buildMulticlusterSetupValues(opts *setupRemoteClusterOptions) (*multicluster.Values, error) {
-
+func getLinkerdConfigMap() (*configPb.All, error) {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return nil, err
 	}
 
 	_, global, err := healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	return global, nil
+}
+
+func buildMulticlusterSetupValues(opts *setupRemoteClusterOptions) (*multicluster.Values, error) {
+
+	global, err := getLinkerdConfigMap()
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil, errors.New("you need Linkerd to be installed in order to setup a remote cluster")
@@ -109,6 +119,10 @@ func buildMulticlusterSetupValues(opts *setupRemoteClusterOptions) (*multicluste
 	defaults, err := mccharts.NewValues()
 	if err != nil {
 		return nil, err
+	}
+
+	if opts.probePort == defaults.LocalProbePort {
+		return nil, fmt.Errorf("The probe port needs to be different from %d which is the local probe port", defaults.LocalProbePort)
 	}
 
 	defaults.GatewayName = opts.gatewayName
@@ -235,6 +249,15 @@ func newGetCredentialsCommand() *cobra.Command {
 		Short:  "Get cluster credentials as a secret",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			_, err := getLinkerdConfigMap()
+			if err != nil {
+				if kerrors.IsNotFound(err) {
+					return errors.New("you need Linkerd to be installed on a cluster in order to get its credentials")
+				}
+				return err
+			}
+
 			rules := clientcmd.NewDefaultClientConfigLoadingRules()
 			rules.ExplicitPath = kubeconfigPath
 			loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, &clientcmd.ConfigOverrides{})
@@ -310,8 +333,9 @@ func newGetCredentialsCommand() *cobra.Command {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
 					Annotations: map[string]string{
-						k8s.RemoteClusterNameLabel:        opts.clusterName,
-						k8s.RemoteClusterDomainAnnotation: opts.remoteClusterDomain,
+						k8s.RemoteClusterNameLabel:                  opts.clusterName,
+						k8s.RemoteClusterDomainAnnotation:           opts.remoteClusterDomain,
+						k8s.RemoteClusterLinkerdNamespaceAnnotation: controlPlaneNamespace,
 					},
 				},
 				Data: map[string][]byte{

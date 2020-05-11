@@ -38,6 +38,10 @@ const (
 	// contains the value of the "--requestheader-client-ca-file" flag.
 	ExtensionAPIServerAuthenticationRequestHeaderClientCAFileKey = "requestheader-client-ca-file"
 
+	// RequireIDHeader signals to the proxy that a certain identity should be expected
+	// of the remote peer
+	RequireIDHeader = "l5d-require-id"
+
 	// ControllerNSLabel is injected into mesh-enabled apps, identifying the
 	// namespace of the Linkerd control plane.
 	ControllerNSLabel = Prefix + "/control-plane-ns"
@@ -186,6 +190,10 @@ const (
 
 	// ProxyVersionOverrideAnnotation can be used to override the proxy version config.
 	ProxyVersionOverrideAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-version"
+
+	// ProxyRequireIdentityOnInboundPortsAnnotation can be used to configure the proxy
+	// to always require identity on inbound ports
+	ProxyRequireIdentityOnInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-require-identity-inbound-ports"
 
 	// ProxyDisableIdentityAnnotation can be used to disable identity on the injected proxy.
 	ProxyDisableIdentityAnnotation = ProxyConfigAnnotationsPrefix + "/disable-identity"
@@ -368,6 +376,10 @@ const (
 	// carrying the config of the remote cluster, to allow for
 	// using custom cluster domains
 	RemoteClusterDomainAnnotation = SvcMirrorPrefix + "/remote-cluster-domain"
+
+	// RemoteClusterLinkerdNamespaceAnnotation is present on the secret
+	// carrying the config of the remote cluster
+	RemoteClusterLinkerdNamespaceAnnotation = SvcMirrorPrefix + "/remote-cluster-l5d-ns"
 
 	// RemoteResourceVersionAnnotation is the last observed remote resource
 	// version of a mirrored resource. Useful when doing updates
