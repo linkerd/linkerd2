@@ -281,7 +281,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	}
 
 	if len(uncompatbleNodeOS) > 0 {
-		output.Write([]byte(fmt.Sprintf("%s node image is Windows%s\n", warnStatus, strings.Join(uncompatbleNodeOS, ", "))))
+		output.Write([]byte(fmt.Sprintf("%sfollowing node image(s) is Windows %s\n", warnStatus, strings.Join(uncompatbleNodeOS, ", "))))
 	} else if verbose {
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, uncompatbleNodeOSDesc)))
 	}

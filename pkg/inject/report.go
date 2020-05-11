@@ -156,17 +156,17 @@ func checkNodeOS(t *v1.PodSpec) bool {
 	//check the NodeSelector 
 	osimage := t.NodeSelector["kubernetes.io/os"]
 	if strings.Contains(strings.ToLower(osimage),"windows") == true {
-		return false
+		return true
 	}
 	//check if Node has been tainted
 	for _, toleration := range t.Tolerations {
 		if strings.ToLower(toleration.Key) == "os" {
 			if toleration.Operator == "Equal" && toleration.Value == "Windows"{
-				return false
+				return true
 			}
 		}
 	}
-	return true
+	return false
 }
 
 // disabledByAnnotation checks annotations for both workload, namespace and returns
