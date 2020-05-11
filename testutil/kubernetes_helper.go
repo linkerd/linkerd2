@@ -184,7 +184,7 @@ func (h *KubernetesHelper) GetResources(containerName, deploymentName, namespace
 func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, replicas int) error {
 	var checkedPods []corev1.Pod
 
-	err := h.retryFor(3*time.Minute, func() error {
+	err := h.retryFor(6*time.Minute, func() error {
 		checkedPods = []corev1.Pod{}
 		pods, err := h.clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 		if err != nil {
