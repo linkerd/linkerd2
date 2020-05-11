@@ -41,16 +41,18 @@ func addressString(address Address) string {
 	return addressString
 }
 
-func (bel *bufferingEndpointListener) Added() []string {
+func (bel *bufferingEndpointListener) ExpectAdded(expected []string, t *testing.T) {
 	bel.Lock()
 	defer bel.Unlock()
-	return bel.added
+	sort.Strings(bel.added)
+	testCompare(t, expected, bel.added)
 }
 
-func (bel *bufferingEndpointListener) Removed() []string {
+func (bel *bufferingEndpointListener) ExpectRemoved(expected []string, t *testing.T) {
 	bel.Lock()
 	defer bel.Unlock()
-	return bel.removed
+	sort.Strings(bel.removed)
+	testCompare(t, expected, bel.removed)
 }
 
 func (bel *bufferingEndpointListener) endpointsAreNotCalled() bool {
@@ -106,16 +108,18 @@ func addressStringWithResVerson(address Address) string {
 	return fmt.Sprintf("%s:%d:%s", address.IP, address.Port, address.Pod.ResourceVersion)
 }
 
-func (bel *bufferingEndpointListenerWithResVersion) Added() []string {
+func (bel *bufferingEndpointListenerWithResVersion) ExpectAdded(expected []string, t *testing.T) {
 	bel.Lock()
 	defer bel.Unlock()
-	return bel.added
+	sort.Strings(bel.added)
+	testCompare(t, expected, bel.added)
 }
 
-func (bel *bufferingEndpointListenerWithResVersion) Removed() []string {
+func (bel *bufferingEndpointListenerWithResVersion) ExpectRemoved(expected []string, t *testing.T) {
 	bel.Lock()
 	defer bel.Unlock()
-	return bel.removed
+	sort.Strings(bel.removed)
+	testCompare(t, expected, bel.removed)
 }
 
 func (bel *bufferingEndpointListenerWithResVersion) Add(set AddressSet) {
@@ -573,11 +577,7 @@ status:
 				t.Fatalf("Expected no error, got [%s]", err)
 			}
 
-			actualAddresses := make([]string, 0)
-			actualAddresses = append(actualAddresses, listener.Added()...)
-			sort.Strings(actualAddresses)
-
-			testCompare(t, tt.expectedAddresses, actualAddresses)
+			listener.ExpectAdded(tt.expectedAddresses, t)
 
 			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
@@ -885,11 +885,7 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			actualAddresses := make([]string, 0)
-			actualAddresses = append(actualAddresses, listener.Added()...)
-			sort.Strings(actualAddresses)
-
-			testCompare(t, tt.expectedAddresses, actualAddresses)
+			listener.ExpectAdded(tt.expectedAddresses, t)
 
 			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
@@ -1032,11 +1028,7 @@ subsets:
 
 			watcher.addEndpoints(tt.newEndpoints)
 
-			actualAddresses := make([]string, 0)
-			actualAddresses = append(actualAddresses, listener.Added()...)
-			sort.Strings(actualAddresses)
-
-			testCompare(t, tt.expectedAddresses, actualAddresses)
+			listener.ExpectAdded(tt.expectedAddresses, t)
 		})
 	}
 }
@@ -1162,12 +1154,7 @@ status:
 			k8sAPI.Sync(nil)
 
 			watcher.addEndpoints(endpoints)
-
-			actualAddresses := make([]string, 0)
-			actualAddresses = append(actualAddresses, listener.Added()...)
-			sort.Strings(actualAddresses)
-
-			testCompare(t, tt.expectedAddresses, actualAddresses)
+			listener.ExpectAdded(tt.expectedAddresses, t)
 		})
 	}
 }

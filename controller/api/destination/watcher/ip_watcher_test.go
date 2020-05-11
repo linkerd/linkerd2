@@ -1,7 +1,6 @@
 package watcher
 
 import (
-	"sort"
 	"testing"
 
 	"k8s.io/client-go/tools/cache"
@@ -446,11 +445,7 @@ status:
 				t.Fatalf("Expected no error, got [%s]", err)
 			}
 
-			actualAddresses := make([]string, 0)
-			actualAddresses = append(actualAddresses, listener.Added()...)
-			sort.Strings(actualAddresses)
-
-			testCompare(t, tt.expectedAddresses, actualAddresses)
+			listener.ExpectAdded(tt.expectedAddresses, t)
 
 			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
