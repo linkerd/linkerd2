@@ -1,3 +1,28 @@
+## edge-20.5.2
+
+This edge introduces a number of new features that provide diagnostic
+information for multicluster setups as well as proxy performance
+improvements.
+
+* CLI
+  * Added a section to the `linkerd check` that validates that all
+    clusters part of a multicluster setup have compatible trust anchors
+  * Modified the `export-service` command to work by transforming yaml
+    instead of modifying cluster state
+  * Added functionality that allows the `export-service` command to
+    operate on lists of services   
+* Controller
+  * Changed the multicluster gateway to always require TLS on connections
+    originating from outside the cluster
+  * Removed admin server timeouts from control plane components, thereby
+    fixing a bug that can cause liveness checks to fail
+* Helm
+  * Moved Grafana templates into a separate add-on chart    
+* Proxy
+  * Added configurable middleware that rejects connections with no identity
+    targeting specific ports
+  * Improved latency under high-concurrency use cases.  
+
 ## edge-20.5.1
 
 * CLI
