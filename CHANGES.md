@@ -1,8 +1,8 @@
 ## edge-20.5.2
 
-This edge introduces a number of new features that provide diagnostic
-information for multicluster setups as well as proxy performance
-improvements.
+This edge release contains everything required to get up and running with
+multicluster. For a tutorial on how to do that, check out the
+[documentation](https://linkerd.io/2/features/multicluster_support/).
 
 * CLI
   * Added a section to the `linkerd check` that validates that all
