@@ -593,10 +593,6 @@ func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 		"Whether to use an external identity issuer (default false)",
 	)
 
-	flags.StringVar(
-		&options.addOnConfig, "addon-config", options.addOnConfig,
-		"A path to a configuration file of add-ons",
-	)
 	return flags
 }
 
