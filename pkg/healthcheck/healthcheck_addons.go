@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
-
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/yaml"
 )
 
@@ -78,8 +75,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 					check: func(context.Context) error {
 						if _, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							// Get grafana pod with match labels
-							grafanaPods := getPodsWithLabels(hc.controlPlanePods, labels.Set{k8s.ControllerComponentLabel: l5dcharts.GrafanaAddOn})
-							return checkContainerRunning(grafanaPods, "grafana")
+							return checkContainerRunning(hc.controlPlanePods, "grafana")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
 					},
@@ -133,15 +129,4 @@ func (hc *HealthChecker) checkForAddOnCM() (string, error) {
 	}
 
 	return cm["values"], nil
-}
-
-func getPodsWithLabels(pods []corev1.Pod, matchLabels map[string]string) []corev1.Pod {
-	var matchedPods []corev1.Pod
-	for _, pod := range pods {
-		if labels.AreLabelsInWhiteList(matchLabels, pod.Labels) {
-			matchedPods = append(matchedPods, pod)
-		}
-	}
-
-	return matchedPods
 }
