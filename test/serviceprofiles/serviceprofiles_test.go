@@ -175,8 +175,8 @@ func TestServiceProfileMetrics(t *testing.T) {
 	}
 
 	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
-		if *stat.ActualSuccess == 100.00 {
-			return fmt.Errorf("expected Actual Success to be less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
+		if *stat.ActualSuccess == 0.00 || *stat.ActualSuccess == 100.00 {
+			return fmt.Errorf("expected Actual Success to be greater than 0%% and less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
 		}
 		return nil
 	})
@@ -212,7 +212,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 
 	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
 		if *stat.EffectiveSuccess < 0.95 {
-			return fmt.Errorf("expected Effective Success to be at least 95%% with retries enabled. But got %.2f", *stat.ActualSuccess)
+			return fmt.Errorf("expected Effective Success to be at least 95%% with retries enabled. But got %.2f", *stat.EffectiveSuccess)
 		}
 		return nil
 	})
