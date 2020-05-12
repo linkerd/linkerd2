@@ -84,8 +84,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 
 func (hc *HealthChecker) checkIfAddOnsConfigMapExists() error {
 
-	// Check if linkerd-config-addons ConfigMap present, If no skip the next checks
-	// If present update the add-on values for the next category to directly use
+	// Check if linkerd-config-addons ConfigMap present, If not skip the next checks
 	cm, err := hc.checkForAddOnCM()
 	if err != nil {
 		return err
