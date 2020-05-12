@@ -443,6 +443,7 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	}
 	if options.proxyCPULimit != "" {
 		configs.Proxy.Resource.LimitCpu = options.proxyCPULimit
+
 		overrideAnnotations[k8s.ProxyCPULimitAnnotation] = options.proxyCPULimit
 	}
 	if options.proxyMemoryRequest != "" {

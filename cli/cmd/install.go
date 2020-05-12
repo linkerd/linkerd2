@@ -282,7 +282,7 @@ resources for the Linkerd control plane. This command should be followed by
 	}
 
 	cmd.Flags().AddFlagSet(options.allStageFlagSet())
-
+	cmd.Flags().AddFlagSet(options.allStageFlagSetButNotRecordable())
 	return cmd
 }
 
@@ -291,6 +291,7 @@ func newCmdInstallControlPlane(options *installOptions) *cobra.Command {
 	// The base flags are recorded separately so that they can be serialized into
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
+	flags.AddFlagSet(options.allStageFlagSetButNotRecordable())
 	installOnlyFlags := options.installOnlyFlagSet()
 
 	cmd := &cobra.Command{
@@ -393,7 +394,7 @@ control plane.`,
 	// Some flags are not available during upgrade, etc.
 	cmd.Flags().AddFlagSet(installOnlyFlags)
 	cmd.PersistentFlags().AddFlagSet(installPersistentFlags)
-
+	cmd.Flags().AddFlagSet(options.allStageFlagSetButNotRecordable())
 	cmd.AddCommand(newCmdInstallConfig(options, flags))
 	cmd.AddCommand(newCmdInstallControlPlane(options))
 
@@ -553,6 +554,19 @@ func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
 		"Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check",
 	)
 
+	return flags
+}
+
+// allStageFlagSetButNotRecordable returns flags usable for single and multi-stage  installs and
+// upgrades but which are not recordable. For multi-stage installs, users must set these flags consistently
+// across commands.
+func (options *installOptions) allStageFlagSetButNotRecordable() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("all-stage", pflag.ExitOnError)
+
+	// addon-config is present here, instead of allStageFlagSet to prevent this from being recorded
+	// and thus for upgrades the filename will be returned, and if the file is present locally
+	// configuration will be applied automatically, without user passing the flag explicitly
+	// which is not desired behaviour.
 	flags.StringVar(
 		&options.addOnConfig, "addon-config", options.addOnConfig,
 		"A path to a configuration file of add-ons",
@@ -577,6 +591,11 @@ func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 	flags.BoolVar(
 		&options.identityOptions.identityExternalIssuer, "identity-external-issuer", options.identityOptions.identityExternalIssuer,
 		"Whether to use an external identity issuer (default false)",
+	)
+
+	flags.StringVar(
+		&options.addOnConfig, "addon-config", options.addOnConfig,
+		"A path to a configuration file of add-ons",
 	)
 	return flags
 }

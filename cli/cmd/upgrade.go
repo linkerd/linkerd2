@@ -33,8 +33,9 @@ const (
 )
 
 type upgradeOptions struct {
-	manifests string
-	force     bool
+	addOnOverwrite bool
+	manifests      string
+	force          bool
 	*installOptions
 
 	verifyTLS func(tls *charts.TLS, service string) error
@@ -67,7 +68,10 @@ func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
 		&options.force, "force", options.force,
 		"Force upgrade operation even when issuer certificate does not work with the trust anchors of all proxies",
 	)
-
+	flags.BoolVar(
+		&options.addOnOverwrite, "addon-overwrite", options.addOnOverwrite,
+		"Skip add-on config from linkerd-config-addons, and overwrite with the default or passed addon-config",
+	)
 	return flags
 }
 
@@ -88,6 +92,7 @@ Note that this command should be followed by "linkerd upgrade control-plane".`,
 	}
 
 	cmd.Flags().AddFlagSet(options.allStageFlagSet())
+	cmd.Flags().AddFlagSet(options.allStageFlagSetButNotRecordable())
 
 	return cmd
 }
@@ -113,6 +118,7 @@ install command. It should be run after "linkerd upgrade config".`,
 	}
 
 	cmd.PersistentFlags().AddFlagSet(flags)
+	cmd.Flags().AddFlagSet(options.allStageFlagSetButNotRecordable())
 
 	return cmd
 }
@@ -147,6 +153,7 @@ install command.`,
 	}
 
 	cmd.Flags().AddFlagSet(flags)
+	cmd.Flags().AddFlagSet(options.allStageFlagSetButNotRecordable())
 	cmd.PersistentFlags().AddFlagSet(upgradeOnlyFlags)
 
 	cmd.AddCommand(newCmdUpgradeConfig(options))
@@ -346,25 +353,27 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 
 	values.Stage = stage
 
-	// Update Add-Ons Configuration from the linkerd-value cm
-	cmRawValues, _ := k8s.GetAddOnsConfigMap(k, controlPlaneNamespace)
+	if !options.addOnOverwrite {
+		// Update Add-Ons Configuration from the linkerd-value cm
+		cmRawValues, _ := k8s.GetAddOnsConfigMap(k, controlPlaneNamespace)
+		fmt.Println("HI BRO")
+		if cmRawValues != nil {
+			//Cm is present now get the data
+			cmData := cmRawValues["values"]
+			rawValues, err := yaml.Marshal(values)
+			if err != nil {
+				return nil, nil, err
+			}
 
-	if cmRawValues != nil {
-		//Cm is present now get the data
-		cmData := cmRawValues["values"]
-		rawValues, err := yaml.Marshal(values)
-		if err != nil {
-			return nil, nil, err
-		}
+			// over-write add-on values with cmValues
+			// Merge Add-On Values with Values
+			if rawValues, err = mergeRaw(rawValues, []byte(cmData)); err != nil {
+				return nil, nil, err
+			}
 
-		// over-write add-on values with cmValues
-		// Merge Add-On Values with Values
-		if rawValues, err = mergeRaw(rawValues, []byte(cmData)); err != nil {
-			return nil, nil, err
-		}
-
-		if err = yaml.Unmarshal(rawValues, &values); err != nil {
-			return nil, nil, err
+			if err = yaml.Unmarshal(rawValues, &values); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 
