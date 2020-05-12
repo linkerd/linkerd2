@@ -48,7 +48,6 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-							// check for the grafana service account
 							return hc.checkServiceAccounts([]string{grafana.(map[string]interface{})["name"].(string)}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
@@ -59,7 +58,6 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-							// check for the grafana config-map
 							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", grafana.(map[string]interface{})["name"].(string)), metav1.GetOptions{})
 							if err != nil {
 								return err
@@ -74,7 +72,6 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if _, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-							// Get grafana pod with match labels
 							return checkContainerRunning(hc.controlPlanePods, "grafana")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
