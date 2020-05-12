@@ -1,3 +1,26 @@
+## edge-20.5.2
+
+This edge release contains everything required to get up and running with
+multicluster. For a tutorial on how to do that, check out the
+[documentation](https://linkerd.io/2/features/multicluster_support/).
+
+* CLI
+  * Added a section to the `linkerd check` that validates that all
+    clusters part of a multicluster setup have compatible trust anchors
+  * Modified the `inkerd cluster export-service` command to work by
+    transforming yaml instead of modifying cluster state
+  * Added functionality that allows the `linkerd cluster export-service`
+    command to operate on lists of services   
+* Controller
+  * Changed the multicluster gateway to always require TLS on connections
+    originating from outside the cluster
+  * Removed admin server timeouts from control plane components, thereby
+    fixing a bug that can cause liveness checks to fail
+* Helm
+  * Moved Grafana templates into a separate add-on chart    
+* Proxy
+  * Improved latency under high-concurrency use cases.  
+
 ## edge-20.5.1
 
 * CLI
