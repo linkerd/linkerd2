@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,6 +26,9 @@ var (
 	AddOnCategories = []CategoryID{LinkerdAddOnChecks, LinkerdGrafanaAddOnChecks}
 )
 
+// addOnCategories contain all the checks w.r.t add-ons. It is strongly advised to
+// have warning as true, to not make the check fail for add-on failures as most of them are
+// not hard requirements unless otherwise.
 func (hc *HealthChecker) addOnCategories() []category {
 	return []category{
 		{
@@ -43,7 +48,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 			checkers: []checker{
 				{
 					description: "grafana add-on service account exists",
-					warning:     false,
+					warning:     true,
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							// check for the grafana service account
@@ -54,7 +59,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 				},
 				{
 					description: "grafana add-on config map exists",
-					warning:     false,
+					warning:     true,
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							// check for the grafana config-map
@@ -69,22 +74,12 @@ func (hc *HealthChecker) addOnCategories() []category {
 				},
 				{
 					description: "grafana pod is running",
-					warning:     false,
+					warning:     true,
 					check: func(context.Context) error {
-						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-
-							// Get grafana add-on deployment
-							deployment, err := hc.kubeAPI.AppsV1().Deployments(hc.ControlPlaneNamespace).Get(grafana.(map[string]interface{})["name"].(string), metav1.GetOptions{})
-							if err != nil {
-								return err
-							}
+						if _, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							// Get grafana pod with match labels
-							grafanaPods, err := hc.kubeAPI.CoreV1().Pods(hc.ControlPlaneNamespace).List(metav1.ListOptions{LabelSelector: labels.SelectorFromSet(deployment.Spec.Template.Labels).String()})
-							if err != nil {
-								return err
-							}
-
-							return checkContainerRunning(grafanaPods.Items, "grafana")
+							grafanaPods := getPodsWithLabels(hc.controlPlanePods, labels.Set{k8s.ControllerComponentLabel: l5dcharts.GrafanaAddOn})
+							return checkContainerRunning(grafanaPods, "grafana")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
 					},
@@ -138,4 +133,15 @@ func (hc *HealthChecker) checkForAddOnCM() (string, error) {
 	}
 
 	return cm["values"], nil
+}
+
+func getPodsWithLabels(pods []corev1.Pod, matchLabels map[string]string) []corev1.Pod {
+	var matchedPods []corev1.Pod
+	for _, pod := range pods {
+		if labels.AreLabelsInWhiteList(matchLabels, pod.Labels) {
+			matchedPods = append(matchedPods, pod)
+		}
+	}
+
+	return matchedPods
 }
