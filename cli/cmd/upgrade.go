@@ -356,7 +356,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 	if !options.addOnOverwrite {
 		// Update Add-Ons Configuration from the linkerd-value cm
 		cmRawValues, _ := k8s.GetAddOnsConfigMap(k, controlPlaneNamespace)
-		fmt.Println("HI BRO")
 		if cmRawValues != nil {
 			//Cm is present now get the data
 			cmData := cmRawValues["values"]
