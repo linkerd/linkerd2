@@ -69,7 +69,11 @@ spec:
       containers:
       - args:
         - public-api
-        - -prometheus-url=http://linkerd-prometheus.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090
+        {{- if .Values.global.prometheusUrl }}
+        - -prometheus-url={{.Values.global.prometheusUrl}}
+        {{- else if .Values.prometheus.enabled }}
+        - -prometheus-url=http://{{.Values.prometheus.name}}.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090
+        {{- end }}
         - -destination-addr=linkerd-dst.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8086
         - -controller-namespace={{.Values.global.namespace}}
         - -log-level={{.Values.controllerLogLevel}}

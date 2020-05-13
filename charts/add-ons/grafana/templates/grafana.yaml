@@ -43,7 +43,11 @@ data:
       type: prometheus
       access: proxy
       orgId: 1
+      {{- if .Values.global.prometheusUrl }}
+      url: {{.Values.global.prometheusUrl}}
+      {{- else if .Values.prometheus.enabled }}
       url: http://linkerd-prometheus.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090
+      {{- end }}
       isDefault: true
       jsonData:
         timeInterval: "5s"
