@@ -1,0 +1,4 @@
+global:
+  grafanaUrl: "somegrafana.xyz"
+grafana:
+  enabled: false
