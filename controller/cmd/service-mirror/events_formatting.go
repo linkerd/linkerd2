@@ -84,7 +84,7 @@ func (rgu RemoteGatewayUpdated) String() string {
 	var services []string
 
 	for _, s := range rgu.affectedServices {
-		services = append(services, fmt.Sprint(s))
+		services = append(services, formatService(s))
 	}
 	return fmt.Sprintf("RemoteGatewayUpdated: {gatewaySpec: %s, affectedServices: [%s]}", rgu.gatewaySpec, strings.Join(services, ","))
 }
