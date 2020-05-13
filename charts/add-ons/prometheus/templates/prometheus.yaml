@@ -151,10 +151,16 @@ data:
     {{ toYaml .Values.scrapeConfigs | trim | nindent 4 }}
     {{ end }}
 
-    {{- if .Values.alertManagers }}
+    {{-  if (or .Values.alertManagers .Values.alertRelabelConfigs) }}
     alerting:
+      alert_relabel_configs:
+        {{- if .Values.alertRelabelConfigs }}
+        {{- toYaml .Values.alertRelabelConfigs | trim | nindent 6 }}
+        {{- end }}
       alertmanagers:
+        {{- if .Values.alertManagers }}
         {{- toYaml .Values.alertManagers | trim | nindent 6 }}
+        {{- end }}
     {{- end }}
 
     {{- if .Values.remoteWrite }}

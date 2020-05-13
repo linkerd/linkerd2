@@ -1,25 +1,39 @@
+global:
+  prometheusUrl: http://cortex-service.default:9009/api/prom
+
 prometheus:
+  args:
+    log.format: json
   globalConfig:
     evaluation_interval: 2m
     external_labels:
       cluster: cluster-1
 
   scrapeConfigs:
-  - job_name: service-azure
-    azure_sd_configs:
-    - environment: AzurePublicCloud
-      authentication_method: OAuth
-      subscription_id: 11AAAA11-A11A-111A-A111-1111A1111A11
-      tenant_id: BBBB222B-B2B2-2B22-B222-2BB2222BB2B2
-      client_id: 333333CC-3C33-3333-CCC3-33C3CCCCC33C
-      client_secret: mysecret
-      port: 9100
-
+  - job_name: 'kubernetes-nodes'
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    kubernetes_sd_configs:
+    - role: node
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
   alertManagers:
   - scheme: http
     static_configs:
     - targets:
       - "alertmanager.linkerd.svc:9093"
-
+  alertRelabelConfigs:
+  - action: labeldrop
+    regex: prometheus_replica
+  ruleConfigMapMounts:
+  - name: alerting-rules
+    subPath: alerting_rules.yml
+    configMap: linkerd-prometheus-rules
+  - name: recording-rules
+    subPath: recording_rules.yml
+    configMap: linkerd-prometheus-rules
   remoteWrite:
   - url: http://cortex-service.default:9009/api/prom/push

@@ -2434,8 +2434,12 @@ data:
         static_configs:
         - targets:
           - alertmanager.linkerd.svc:9093
+      alertRelabelConfigs:
+      - action: labeldrop
+        regex: prometheus_replica
       args:
         config.file: /etc/prometheus/prometheus.yml
+        log.format: json
         log.level: info
         storage.tsdb.path: /data
         storage.tsdb.retention.time: 6h
@@ -2450,16 +2454,24 @@ data:
       name: linkerd-prometheus
       remoteWrite:
       - url: http://cortex-service.default:9009/api/prom/push
+      ruleConfigMapMounts:
+      - configMap: linkerd-prometheus-rules
+        name: alerting-rules
+        subPath: alerting_rules.yml
+      - configMap: linkerd-prometheus-rules
+        name: recording-rules
+        subPath: recording_rules.yml
       scrapeConfigs:
-      - azure_sd_configs:
-        - authentication_method: OAuth
-          client_id: 333333CC-3C33-3333-CCC3-33C3CCCCC33C
-          client_secret: mysecret
-          environment: AzurePublicCloud
-          port: 9100
-          subscription_id: 11AAAA11-A11A-111A-A111-1111A1111A11
-          tenant_id: BBBB222B-B2B2-2B22-B222-2BB2222BB2B2
-        job_name: service-azure
+      - bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        job_name: kubernetes-nodes
+        kubernetes_sd_configs:
+        - role: node
+        relabel_configs:
+        - action: labelmap
+          regex: __meta_kubernetes_node_label_(.+)
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
     tracing:
       enabled: false
 ---
@@ -2952,17 +2964,21 @@ data:
       - action: labelmap
         regex: __tmp_pod_label_(.+)
     
-    - azure_sd_configs:
-      - authentication_method: OAuth
-        client_id: 333333CC-3C33-3333-CCC3-33C3CCCCC33C
-        client_secret: mysecret
-        environment: AzurePublicCloud
-        port: 9100
-        subscription_id: 11AAAA11-A11A-111A-A111-1111A1111A11
-        tenant_id: BBBB222B-B2B2-2B22-B222-2BB2222BB2B2
-      job_name: service-azure
+    - bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      job_name: kubernetes-nodes
+      kubernetes_sd_configs:
+      - role: node
+      relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
     
     alerting:
+      alert_relabel_configs:
+      - action: labeldrop
+        regex: prometheus_replica
       alertmanagers:
       - scheme: http
         static_configs:
@@ -3027,6 +3043,7 @@ spec:
       containers:
       - args:
         - --config.file=/etc/prometheus/prometheus.yml
+        - --log.format=json
         - --log.level=info
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h

@@ -194,6 +194,32 @@ prometheus:
     scrape_interval: 10s
     scrape_timeout: 10s
     evaluation_interval: 10s
+  # scrapeConfigs:
+  # - job_name: 'kubernetes-nodes'
+  #   scheme: https
+  #   tls_config:
+  #     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  #   bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+  #   kubernetes_sd_configs:
+  #   - role: node
+  #   relabel_configs:
+  #   - action: labelmap
+  #     regex: __meta_kubernetes_node_label_(.+)
+  # alertManagers:
+  # - scheme: http
+  #   static_configs:
+  #   - targets:
+  #     - "alertmanager.linkerd.svc:9093"
+  # alertRelabelConfigs:
+  # - action: labeldrop
+  #   regex: prometheus_replica
+  # ruleConfigMapMounts:
+  # - name: alerting-rules
+  #   subPath: alerting_rules.yml
+  #   configMap: linkerd-prometheus-rules
+  # - name: recording-rules
+  #   subPath: recording_rules.yml
+  #   configMap: linkerd-prometheus-rules
 
 tracing:
   enabled: false
