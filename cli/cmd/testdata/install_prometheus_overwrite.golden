@@ -3068,6 +3068,14 @@ spec:
         securityContext:
           runAsUser: 65534
         volumeMounts:
+        - name: alerting-rules
+          mountPath: /etc/prometheus/alerting_rules.yml
+          subPath: alerting_rules.yml
+          readOnly: true
+        - name: recording-rules
+          mountPath: /etc/prometheus/recording_rules.yml
+          subPath: recording_rules.yml
+          readOnly: true
         - mountPath: /data
           name: data
         - mountPath: /etc/prometheus/prometheus.yml
@@ -3201,6 +3209,12 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-prometheus
       volumes:
+      - name: alerting-rules
+        configMap:
+          name: linkerd-prometheus-rules
+      - name: recording-rules
+        configMap:
+          name: linkerd-prometheus-rules
       - emptyDir: {}
         name: data
       - configMap:

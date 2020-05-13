@@ -254,7 +254,7 @@ spec:
         securityContext:
           runAsUser: 65534
         volumeMounts:
-      {{- range .Values.ruleCofigMapMounts }}
+      {{- range .Values.ruleConfigMapMounts }}
         - name: {{ .name }}
           mountPath: /etc/prometheus/{{ .subPath }}
           subPath: {{ .subPath }}
@@ -273,7 +273,7 @@ spec:
       {{ end -}}
       serviceAccountName: {{.Values.name}}
       volumes:
-    {{- range .Values.ruleCofigMapMounts }}
+    {{- range .Values.ruleConfigMapMounts }}
       - name: {{ .name }}
         configMap:
           name: {{ .configMap }}
