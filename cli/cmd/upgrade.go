@@ -92,7 +92,7 @@ Note that this command should be followed by "linkerd upgrade control-plane".`,
 	}
 
 	cmd.Flags().AddFlagSet(options.allStageFlagSet())
-	cmd.Flags().AddFlagSet(options.allStageFlagSetButNotRecordable())
+	cmd.Flags().AddFlagSet(options.allStageFlagSetNoRecord())
 
 	return cmd
 }
@@ -118,7 +118,7 @@ install command. It should be run after "linkerd upgrade config".`,
 	}
 
 	cmd.PersistentFlags().AddFlagSet(flags)
-	cmd.Flags().AddFlagSet(options.allStageFlagSetButNotRecordable())
+	cmd.Flags().AddFlagSet(options.allStageFlagSetNoRecord())
 
 	return cmd
 }
@@ -153,7 +153,7 @@ install command.`,
 	}
 
 	cmd.Flags().AddFlagSet(flags)
-	cmd.Flags().AddFlagSet(options.allStageFlagSetButNotRecordable())
+	cmd.Flags().AddFlagSet(options.allStageFlagSetNoRecord())
 	cmd.PersistentFlags().AddFlagSet(upgradeOnlyFlags)
 
 	cmd.AddCommand(newCmdUpgradeConfig(options))
