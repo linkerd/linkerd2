@@ -358,7 +358,10 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 		cmRawValues, _ := k8s.GetAddOnsConfigMap(k, controlPlaneNamespace)
 		if cmRawValues != nil {
 			//Cm is present now get the data
-			cmData := cmRawValues["values"]
+			cmData, ok := cmRawValues["values"]
+			if !ok {
+				return nil, nil, fmt.Errorf("values subpath not found in %s configmap", k8s.AddOnsConfigMapName)
+			}
 			rawValues, err := yaml.Marshal(values)
 			if err != nil {
 				return nil, nil, err
