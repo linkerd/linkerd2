@@ -21,7 +21,7 @@ const (
 	invalidInjectAnnotationWorkload      = "invalid_inject_annotation_at_workload"
 	invalidInjectAnnotationNamespace     = "invalid_inject_annotation_at_ns"
 	disabledAutomountServiceAccountToken = "disabled_automount_service_account_token_account"
-	UncompatbleNodeOS					 = "node_os_is_windows"
+	uncompatbleNodeOS					 = "node_os_is_windows"
 )
 
 var (
@@ -35,7 +35,7 @@ var (
 		invalidInjectAnnotationWorkload:      fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
 		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
 		disabledAutomountServiceAccountToken: fmt.Sprintf("automountServiceAccountToken set to \"false\""),
-		UncompatbleNodeOS:					  fmt.Sprintf("unsupported node image\"%s\"",k8s.Pod),
+		uncompatbleNodeOS:					  fmt.Sprintf("unsupported node image\"%s\"",k8s.Pod),
 	}
 )
 
@@ -130,7 +130,7 @@ func (r *Report) Injectable() (bool, []string) {
 	}
 
 	if r.NodeOS{
-		reasons = append(reasons, UncompatbleNodeOS)
+		reasons = append(reasons, uncompatbleNodeOS)
 	}
 
 	if len(reasons) > 0 {
@@ -155,7 +155,7 @@ func checkNodeOS(t *v1.PodSpec) bool {
 	// Check any pods run a windows image, which is currently unsupported
 	//check the NodeSelector 
 	osimage := t.NodeSelector["kubernetes.io/os"]
-	if strings.Contains(strings.ToLower(osimage),"windows") == true {
+	if strings.Contains(strings.ToLower(osimage),"windows"){
 		return true
 	}
 	//check if Node has been tainted
