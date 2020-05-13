@@ -145,11 +145,6 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | `identity.issuer.tls.keyPEM`                | Key for the issuer certificate (ECDSA). It must be provided during install.                                                                                                           |                                      |
 | `installNamespace`                          | Set to false when installing Linkerd in a custom namespace. See the [Linkerd documentation](https://linkerd.io/2/tasks/install-helm/#customizing-the-namespace) for more information. | `true`                               |
 | `omitWebhookSideEffects`                    | Omit the `sideEffects` flag in the webhook manifests                                                                                                                                  | `false`                              |
-| `prometheusAlertmanagers`                   | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter.                                                                             | `[]`                                 |
-| `prometheusExtraArgs`                       | Extra command line options for Prometheus                                                                                                                                             | `{}`                                 |
-| `prometheusImage`                           | Docker image for the Prometheus container                                                                                                                                             | `prom/prometheus:v2.15.2`            |
-| `prometheusLogLevel`                        | Log level for Prometheus                                                                                                                                                              | `info`                               |
-| `prometheusRuleConfigMapMounts`             | Alerting/recording rule ConfigMap mounts (sub-path names must end in `_rules.yml` or `_rules.yaml`)                                                                                   | `[]`                                 |
 | `proxyInjector.crtPEM`                      | Certificate for the proxy injector. If not provided then Helm will generate one.                                                                                                      |                                      |
 | `proxyInjector.keyPEM`                      | Certificate key for the proxy injector. If not provided then Helm will generate one.                                                                                                  |                                      |
 | `profileValidator.crtPEM`                   | Certificate for the service profile validator. If not provided then Helm will generate one.                                                                                           |                                      |
@@ -175,6 +170,29 @@ The following table lists the configurable parameters for the Grafana Add-On.
 | `grafana.resources.cpu.request`     | Amount of CPU units that the gafana container requests                                                                                                                            ||
 | `grafana.resources.memory.limit`    | Maximum amount of memory that grafana container can use                                                                                                                        ||
 | `grafana.resources.memory.request`  | Amount of memory that the grafana container requests                                                                                                                               ||
+
+### Prometheus Add-On
+
+The following table lists the configurable parameters for the Prometheus Add-On.
+
+| Parameter                             | Description                                                                                                                                                                           | Default                              |
+|:--------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------|
+| `prometheus.alert_relabel_configs`                   | Alert relabeling is applied to alerts before they are sent to the Alertmanager.                                                                            | `[]`                                 |
+| `prometheus.alertManagers`                   | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter.                                                                             | `[]`                                 |
+| `prometheus.args`                       |  Command line options for Prometheus binary                                                                                                                                             | `storage.tsdb.path: /data, storage.tsdb.retention.time: 6h, config.file: /etc/prometheus/prometheus.yml, log.level: *controller_log_level`                                 |
+| `prometheus.enabled`                     | Flag to enable prometheus instance to be installed                                                                                                                                                | `true`
+| `prometheus.globalConfig`             | The global configuration specifies parameters that are valid in all other configuration contexts.                                                                 | `scrape_interval: 10s, scrape_timeout: 10s, evaluation_interval: 10s`                                 |
+| `prometheus.image`                | Docker image for the grafana instance                                                                                                                                                 | `prom/prometheus:v2.15.2`                             |
+| `prometheus.name`                | Name of the prometheus instance Service                                                                                                                                                 | `linkerd-prometheus`                             |
+| `prometheus.resources.cpu.limit`       | Maximum amount of CPU units that the prometheus container can use                                                                                                                     ||
+| `prometheus.resources.cpu.request`     | Amount of CPU units that the prometheus container requests                                                                                                                            ||
+| `prometheus.resources.memory.limit`    | Maximum amount of memory that prometheus container can use                                                                                                                        ||
+| `prometheus.resources.memory.request`  | Amount of memory that the prometheus container requests                                                                                                                               ||
+| `prometheus.ruleConfigMapMounts`             | Alerting/recording rule ConfigMap mounts (sub-path names must end in `_rules.yml` or `_rules.yaml`)                                                                                   | `[]`                                 |
+| `prometheus.scrapeConfigs`             | A scrape_config section specifies a set of targets and parameters describing how to scrape them.                                                        | `[]`                                 |
+
+Most of the above configuration match directly with the official Prometheus
+configuration which can be found [here](https://prometheus.io/docs/prometheus/latest/configuration/configuration)
 
 ### Tracing Add-On
 
