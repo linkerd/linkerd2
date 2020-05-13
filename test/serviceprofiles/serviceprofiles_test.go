@@ -175,7 +175,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 	}
 
 	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
-		if *stat.ActualSuccess == 0.00 || *stat.ActualSuccess == 100.00 {
+		if !(*stat.ActualSuccess > 0.00 && *stat.ActualSuccess < 100.00) {
 			return fmt.Errorf("expected Actual Success to be greater than 0%% and less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
 		}
 		return nil
