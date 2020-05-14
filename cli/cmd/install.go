@@ -282,6 +282,7 @@ resources for the Linkerd control plane. This command should be followed by
 	}
 
 	cmd.Flags().AddFlagSet(options.allStageFlagSet())
+
 	return cmd
 }
 
@@ -392,6 +393,7 @@ control plane.`,
 	// Some flags are not available during upgrade, etc.
 	cmd.Flags().AddFlagSet(installOnlyFlags)
 	cmd.PersistentFlags().AddFlagSet(installPersistentFlags)
+
 	cmd.AddCommand(newCmdInstallConfig(options, flags))
 	cmd.AddCommand(newCmdInstallControlPlane(options))
 
@@ -576,7 +578,6 @@ func (options *installOptions) installOnlyFlagSet() *pflag.FlagSet {
 		&options.identityOptions.identityExternalIssuer, "identity-external-issuer", options.identityOptions.identityExternalIssuer,
 		"Whether to use an external identity issuer (default false)",
 	)
-
 	return flags
 }
 
