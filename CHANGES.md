@@ -1,3 +1,18 @@
+## edge-20.5.3
+
+* Controller
+  * Added a Grafana dashboard for tracking multi-cluster traffic metrics
+  * Added health checks for the Grafana add-on, under a separate section
+  * Fixed issues when updating a remote multi-cluster gateway
+
+* Proxy
+  * Added special special handling for I/O errors in HTTP responses so that an
+    `errno` label is included to describe the underlying errors in the proxy's
+    metrics
+
+* Internal
+  * Started gathering stats of CI runs for aggregating CI health metrics
+
 ## edge-20.5.2
 
 This edge release contains everything required to get up and running with
