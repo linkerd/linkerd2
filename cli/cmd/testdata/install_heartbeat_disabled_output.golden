@@ -2750,6 +2750,7 @@ data:
       enabled: true
       image: gcr.io/linkerd-io/grafana
       name: linkerd-grafana
+      tag: dev-undefined
     tracing:
       enabled: false
 ---
@@ -2857,7 +2858,7 @@ metadata:
   labels:
     app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: install-control-plane-version
+    app.kubernetes.io/version: 
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-grafana
@@ -2887,7 +2888,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:install-control-plane-version
+        image: gcr.io/linkerd-io/grafana:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

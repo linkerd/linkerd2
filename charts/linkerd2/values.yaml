@@ -196,6 +196,7 @@ grafana:
   enabled: true
   name: linkerd-grafana
   image: gcr.io/linkerd-io/grafana
+  tag: *linkerd_version
   # resources:
 
 tracing:

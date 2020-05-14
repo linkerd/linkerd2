@@ -2856,6 +2856,7 @@ data:
       enabled: true
       image: gcr.io/linkerd-io/grafana
       name: linkerd-grafana
+      tag: dev-undefined
     tracing:
       collector:
         image: omnition/opencensus-collector:0.1.11
@@ -3450,7 +3451,7 @@ metadata:
   labels:
     app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: UPGRADE-CONTROL-PLANE-VERSION
+    app.kubernetes.io/version: 
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-grafana
@@ -3480,7 +3481,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:UPGRADE-CONTROL-PLANE-VERSION
+        image: gcr.io/linkerd-io/grafana:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

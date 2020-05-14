@@ -2880,6 +2880,7 @@ data:
       enabled: true
       image: gcr.io/linkerd-io/grafana
       name: linkerd-grafana
+      tag: dev-undefined
     tracing:
       enabled: false
 ---
@@ -3021,7 +3022,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:linkerd-version
+        image: gcr.io/linkerd-io/grafana:dev-undefined
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
