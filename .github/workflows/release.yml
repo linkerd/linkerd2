@@ -11,6 +11,8 @@ on:
   push:
     tags:
     - "*"
+env:
+  GH_ANNOTATION: true
 jobs:
   # todo: Keep in sync with `cloud_integration.yml`
   docker_build:
