@@ -282,7 +282,6 @@ resources for the Linkerd control plane. This command should be followed by
 	}
 
 	cmd.Flags().AddFlagSet(options.allStageFlagSet())
-	cmd.Flags().AddFlagSet(options.allStageFlagSetNoRecord())
 	return cmd
 }
 
@@ -291,7 +290,6 @@ func newCmdInstallControlPlane(options *installOptions) *cobra.Command {
 	// The base flags are recorded separately so that they can be serialized into
 	// the configuration in validateAndBuild.
 	flags := options.recordableFlagSet()
-	flags.AddFlagSet(options.allStageFlagSetNoRecord())
 	installOnlyFlags := options.installOnlyFlagSet()
 
 	cmd := &cobra.Command{
@@ -394,7 +392,6 @@ control plane.`,
 	// Some flags are not available during upgrade, etc.
 	cmd.Flags().AddFlagSet(installOnlyFlags)
 	cmd.PersistentFlags().AddFlagSet(installPersistentFlags)
-	cmd.Flags().AddFlagSet(options.allStageFlagSetNoRecord())
 	cmd.AddCommand(newCmdInstallConfig(options, flags))
 	cmd.AddCommand(newCmdInstallControlPlane(options))
 
@@ -554,18 +551,6 @@ func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
 		"Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check",
 	)
 
-	return flags
-}
-
-// allStageFlagSetNoRecord returns flags usable for single and multi-stage  installs and
-// upgrades but which are not recordable. For multi-stage installs, users must set these flags consistently
-// across commands.
-func (options *installOptions) allStageFlagSetNoRecord() *pflag.FlagSet {
-	flags := pflag.NewFlagSet("all-stage-no-record", pflag.ExitOnError)
-
-	// addon-config is present here as, if the flag is recorded and a file with same name
-	// is present locally, the configuration in the file will be applied automatically,
-	//  without user passing the flag explicitly which is not desired behaviour.
 	flags.StringVar(
 		&options.addOnConfig, "addon-config", options.addOnConfig,
 		"A path to a configuration file of add-ons",
@@ -662,7 +647,7 @@ func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
 	flags.VisitAll(func(f *pflag.Flag) {
 		if f.Changed {
 			switch f.Name {
-			case "ignore-cluster", "control-plane-version", "proxy-version", "identity-issuer-certificate-file", "identity-issuer-key-file", "identity-trust-anchors-file":
+			case "ignore-cluster", "control-plane-version", "proxy-version", "identity-issuer-certificate-file", "identity-issuer-key-file", "identity-trust-anchors-file", "addon-config":
 				// These flags don't make sense to record.
 			default:
 				options.recordedFlags = append(options.recordedFlags, &pb.Install_Flag{
