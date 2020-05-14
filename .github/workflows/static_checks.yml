@@ -123,7 +123,7 @@ jobs:
     - name: Checkout code
       # actions/checkout@v2
       uses: actions/checkout@722adc6
-    - name: Chocolatey: lint
+    - name: Chocolatey - lint
       # devblackops/github-action-psscriptanalyzer@v2.0.0
       uses: devblackops/github-action-psscriptanalyzer@889a059
       env:
