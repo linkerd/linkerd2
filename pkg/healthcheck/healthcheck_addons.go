@@ -133,5 +133,10 @@ func (hc *HealthChecker) checkForAddOnCM() (string, error) {
 		return "", err
 	}
 
-	return cm["values"], nil
+	values, ok := cm["values"]
+	if !ok {
+		return "", fmt.Errorf("values subpath not found in %s configmap", k8s.AddOnsConfigMapName)
+	}
+
+	return values, nil
 }
