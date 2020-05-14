@@ -130,7 +130,6 @@ var (
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
 		"templates/prometheus-rbac.yaml",
-		"templates/grafana-rbac.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
 		"templates/tap-rbac.yaml",
@@ -148,7 +147,6 @@ var (
 		"templates/heartbeat.yaml",
 		"templates/web.yaml",
 		"templates/prometheus.yaml",
-		"templates/grafana.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
@@ -765,7 +763,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.EnablePodAntiAffinity = options.highAvailability
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
-	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+	installValues.Grafana["image"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	if options.prometheusImage != "" {
 		installValues.PrometheusImage = options.prometheusImage
 	}
@@ -853,7 +851,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 			Name:      addOn.Name(),
 			Dir:       filepath.Join(addOnChartsPath, addOn.Name()),
 			Namespace: controlPlaneNamespace,
-			RawValues: append(rawValues, addOn.Values()...),
+			RawValues: append(addOn.Values(), rawValues...),
 			Files: []*chartutil.BufferedFile{&chartutil.BufferedFile{
 				Name: chartutil.ChartfileName,
 			}},

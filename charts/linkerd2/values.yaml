@@ -244,16 +244,23 @@ smiMetrics:
 #smiMetricsProxyResources:
 
 # Configuration for Add-ons
+
+grafana:
+  enabled: true
+  name: linkerd-grafana
+  image: gcr.io/linkerd-io/grafana
+  # resources:
+
 tracing:
   enabled: false
   collector:
     name: linkerd-collector
     image: omnition/opencensus-collector:0.1.11
-    resources:
+    # resources:
   jaeger:
     name: linkerd-jaeger
     image: jaegertracing/all-in-one:1.17.1
-    resources:
+    # resources:
 
 
 # set resources for the sp-validator and its linkerd proxy respectively
