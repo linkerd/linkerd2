@@ -2947,7 +2947,7 @@ metadata:
   labels:
     app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: 
+    app.kubernetes.io/version: dev-undefined
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
   name: linkerd-grafana
