@@ -1,4 +1,3 @@
---- 
 default: true
 line_length: 
   code_blocks: false
