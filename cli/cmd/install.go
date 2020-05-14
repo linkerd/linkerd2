@@ -555,7 +555,7 @@ func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
 
 	flags.StringVar(
 		&options.addOnConfig, "addon-config", options.addOnConfig,
-		"A path to a configuration file of add-ons",
+		"A path to a configuration file of add-ons. If add-on config already exists, this new config gets merged with the existing one (unless --addon-overwrite is used)",
 	)
 
 	return flags

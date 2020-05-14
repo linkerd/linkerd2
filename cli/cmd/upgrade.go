@@ -70,7 +70,7 @@ func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
 	)
 	flags.BoolVar(
 		&options.addOnOverwrite, "addon-overwrite", options.addOnOverwrite,
-		"Skip add-on config from linkerd-config-addons, and overwrite with the default or passed addon-config",
+		"Overwrite (instead of merge) existing add-ons config with file in --addon-config (or reset to defaults if no new config is passed)",
 	)
 	return flags
 }
