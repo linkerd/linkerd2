@@ -348,6 +348,20 @@ func TestUninjectAndInject(t *testing.T) {
 				k8s.ProxyTraceCollectorSvcAccountAnnotation: "linkerd-collector.linkerd",
 			},
 		},
+		{
+			inputFileName:    "inject_emojivoto_windowstainted.input.yml",
+			goldenFileName:   "inject_emojivoto_windowstainted.golden.yml",
+			reportFileName:   "inject_emojivoto_windowstainted.report",
+			injectProxy:      true,
+			testInjectConfig: defaultConfig,
+		},
+		{
+			inputFileName:    "inject_emojivoto_windowsnodeselector.input.yml",
+			goldenFileName:   "inject_emojivoto_windowsnodeselector.golden.yml",
+			reportFileName:   "inject_emojivoto_windowsnodeselector.report",
+			injectProxy:      true,
+			testInjectConfig: defaultConfig,
+		},
 	}
 
 	for i, tc := range testCases {

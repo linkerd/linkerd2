@@ -1,0 +1,20 @@
+
+√ pods do not use host networking
+√ pods do not have a 3rd party proxy or initContainer already injected
+√ pods are not annotated to disable injection
+‼Windows is currently unsupported deployment/web
+√ at least one resource injected
+√ pod specs do not include UDP ports
+
+namespace "emojivoto" injected
+serviceaccount "emoji" skipped
+serviceaccount "voting" skipped
+serviceaccount "web" skipped
+service "emoji-svc" skipped
+service "voting-svc" skipped
+service "web-svc" skipped
+deployment "emoji" injected
+deployment "vote-bot" injected
+deployment "voting" injected
+deployment "web" skipped
+

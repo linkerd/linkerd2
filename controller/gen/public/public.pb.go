@@ -1290,8 +1290,10 @@ type TapByResourceRequest_Extract_Http_Headers struct {
 func (m *TapByResourceRequest_Extract_Http_Headers) Reset() {
 	*m = TapByResourceRequest_Extract_Http_Headers{}
 }
-func (m *TapByResourceRequest_Extract_Http_Headers) String() string { return proto.CompactTextString(m) }
-func (*TapByResourceRequest_Extract_Http_Headers) ProtoMessage()    {}
+func (m *TapByResourceRequest_Extract_Http_Headers) String() string {
+	return proto.CompactTextString(m)
+}
+func (*TapByResourceRequest_Extract_Http_Headers) ProtoMessage() {}
 func (*TapByResourceRequest_Extract_Http_Headers) Descriptor() ([]byte, []int) {
 	return fileDescriptor_413a91106d7bcce8, []int{9, 1, 0, 0}
 }

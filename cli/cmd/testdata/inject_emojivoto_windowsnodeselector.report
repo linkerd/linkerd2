@@ -1,0 +1,15 @@
+
+‼Windows is currently unsupported deployment/web
+
+namespace "emojivoto" injected
+serviceaccount "emoji" skipped
+serviceaccount "voting" skipped
+serviceaccount "web" skipped
+service "emoji-svc" skipped
+service "voting-svc" skipped
+service "web-svc" skipped
+deployment "emoji" injected
+deployment "vote-bot" injected
+deployment "voting" injected
+deployment "web" skipped
+

@@ -7,7 +7,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	v1 "k8s.io/api/core/v1"
-
 )
 
 const (
@@ -21,7 +20,7 @@ const (
 	invalidInjectAnnotationWorkload      = "invalid_inject_annotation_at_workload"
 	invalidInjectAnnotationNamespace     = "invalid_inject_annotation_at_ns"
 	disabledAutomountServiceAccountToken = "disabled_automount_service_account_token_account"
-	uncompatbleNodeOS					 = "node_os_is_windows"
+	uncompatbleNodeOS                    = "node_os_is_windows"
 )
 
 var (
@@ -35,7 +34,7 @@ var (
 		invalidInjectAnnotationWorkload:      fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
 		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
 		disabledAutomountServiceAccountToken: fmt.Sprintf("automountServiceAccountToken set to \"false\""),
-		uncompatbleNodeOS:					  fmt.Sprintf("unsupported node image\"%s\"",k8s.Pod),
+		uncompatbleNodeOS:                    fmt.Sprintf("unsupported node image\"%s\"", k8s.Pod),
 	}
 )
 
@@ -53,7 +52,7 @@ type Report struct {
 	InjectAnnotationAt           string
 	TracingEnabled               bool
 	AutomountServiceAccountToken bool
-	NodeOS						 bool
+	NodeOS                       bool
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
 	// proxy-init containers have been uninjected in this report
@@ -129,7 +128,7 @@ func (r *Report) Injectable() (bool, []string) {
 		reasons = append(reasons, disabledAutomountServiceAccountToken)
 	}
 
-	if r.NodeOS{
+	if r.NodeOS {
 		reasons = append(reasons, uncompatbleNodeOS)
 	}
 
@@ -153,15 +152,15 @@ func checkUDPPorts(t *v1.PodSpec) bool {
 
 func checkNodeOS(t *v1.PodSpec) bool {
 	// Check any pods run a windows image, which is currently unsupported
-	//check the NodeSelector 
+	//check the NodeSelector
 	osimage := t.NodeSelector["kubernetes.io/os"]
-	if strings.Contains(strings.ToLower(osimage),"windows"){
+	if strings.Contains(strings.ToLower(osimage), "windows") {
 		return true
 	}
 	//check if Node has been tainted
 	for _, toleration := range t.Tolerations {
 		if strings.ToLower(toleration.Key) == "os" {
-			if toleration.Operator == "Equal" && toleration.Value == "Windows"{
+			if toleration.Operator == "Equal" && toleration.Value == "Windows" {
 				return true
 			}
 		}
