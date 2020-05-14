@@ -114,3 +114,14 @@ jobs:
         ! -name update-go-deps-shas \
         ! -name web \
         | xargs -I {} bin/shellcheck -x {}
+  markdown_lint:
+    name: Markdown lint
+    # nosborn/github-action-markdown-cli@v1.1.1
+    uses: nosborn/github-action-markdown-cli@v1.1.1
+    with:
+      files:
+      - '*.md'
+      - '**/*.md'
+      config_file: ".markdownlint.yaml"
+      ignore_files: "node_modules/"
+
