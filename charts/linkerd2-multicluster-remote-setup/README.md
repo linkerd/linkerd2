@@ -2,14 +2,15 @@
 # Linkerd2-multicluster-remote-setup Helm Chart
 
 Linkerd is a *service mesh*, designed to give platform-wide observability,
-reliability, and security without requiring configuration or code changes.
-This chart provides a reference cluster gateway implementation, which coupled
-with Linkerd and the Service Mirror component can enable multicluster 
-communication and service discovery
+reliability, and security without requiring configuration or code changes. This
+chart provides a reference cluster gateway implementation, which coupled with
+Linkerd and the Service Mirror component can enable multicluster communication
+and service discovery
 
 ## Configuration
 
-The following table lists the configurable parameters of the linkerd2-multicluster-remote-setup chart and their default values.
+The following table lists the configurable parameters of the
+linkerd2-multicluster-remote-setup chart and their default values.
 
 | Parameter                | Description                                                                                                     | Default                |
 |--------------------------|-----------------------------------------------------------------------------------------------------------------|------------------------|

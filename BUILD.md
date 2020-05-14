@@ -105,7 +105,7 @@ bin/linkerd -n emojivoto stat deployments
 bin/linkerd -n emojivoto tap deploy voting
 ```
 
-### Deploying Control Plane components with Tracing
+#### Deploying Control Plane components with Tracing
 
 Control Plane components have the `trace-collector` flag used to enable
 [Distributed Tracing](https://opentracing.io/docs/overview/what-is-tracing/) for
