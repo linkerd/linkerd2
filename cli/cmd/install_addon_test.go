@@ -17,7 +17,7 @@ func TestAddOnRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	withTracingAddonValues, _, _ := withTracingAddon.validateAndBuild("", nil)
+	withTracingAddonValues, _, _ := withTracingAddon.validateAndBuild("", withTracingAddon.recordableFlagSet())
 	withTracingAddonValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withTracingAddonValues)
 

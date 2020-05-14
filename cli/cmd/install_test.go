@@ -17,7 +17,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	defaultValues, _, err := defaultOptions.validateAndBuild("", nil)
+	defaultValues, _, err := defaultOptions.validateAndBuild("", defaultOptions.recordableFlagSet())
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestRender(t *testing.T) {
 
 	haOptions.recordedFlags = []*config.Install_Flag{{Name: "ha", Value: "true"}}
 	haOptions.highAvailability = true
-	haValues, _, _ := haOptions.validateAndBuild("", nil)
+	haValues, _, _ := haOptions.validateAndBuild("", haOptions.recordableFlagSet())
 	addFakeTLSSecrets(haValues)
 
 	haWithOverridesOptions, err := testInstallOptions()
@@ -161,7 +161,7 @@ func TestRender(t *testing.T) {
 	haWithOverridesOptions.controllerReplicas = 2
 	haWithOverridesOptions.proxyCPURequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
-	haWithOverridesValues, _, _ := haWithOverridesOptions.validateAndBuild("", nil)
+	haWithOverridesValues, _, _ := haWithOverridesOptions.validateAndBuild("", haWithOverridesOptions.recordableFlagSet())
 	addFakeTLSSecrets(haWithOverridesValues)
 
 	cniEnabledOptions, err := testInstallOptions()
@@ -171,7 +171,7 @@ func TestRender(t *testing.T) {
 
 	cniEnabledOptions.recordedFlags = []*config.Install_Flag{{Name: "linkerd-cni-enabled", Value: "true"}}
 	cniEnabledOptions.cniEnabled = true
-	cniEnabledValues, _, _ := cniEnabledOptions.validateAndBuild("", nil)
+	cniEnabledValues, _, _ := cniEnabledOptions.validateAndBuild("", cniEnabledOptions.recordableFlagSet())
 	addFakeTLSSecrets(cniEnabledValues)
 
 	withProxyIgnoresOptions, err := testInstallOptions()
@@ -180,7 +180,7 @@ func TestRender(t *testing.T) {
 	}
 	withProxyIgnoresOptions.ignoreInboundPorts = []string{"22", "8100-8102"}
 	withProxyIgnoresOptions.ignoreOutboundPorts = []string{"5432"}
-	withProxyIgnoresValues, _, _ := withProxyIgnoresOptions.validateAndBuild("", nil)
+	withProxyIgnoresValues, _, _ := withProxyIgnoresOptions.validateAndBuild("", withProxyIgnoresOptions.recordableFlagSet())
 	addFakeTLSSecrets(withProxyIgnoresValues)
 
 	withHeartBeatDisabled, err := testInstallOptions()
@@ -188,7 +188,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withHeartBeatDisabled.disableHeartbeat = true
-	withHeartBeatDisabledValues, _, _ := withHeartBeatDisabled.validateAndBuild("", nil)
+	withHeartBeatDisabledValues, _, _ := withHeartBeatDisabled.validateAndBuild("", withHeartBeatDisabled.recordableFlagSet())
 	addFakeTLSSecrets(withHeartBeatDisabledValues)
 
 	// FIXME: test heartbeat override here
@@ -196,8 +196,8 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withOverrideHeartBeatSchedule.heartbeatScheduleStringVal = "5 4 3 2 1"
-	withOverrideHeartBeatScheduleValues, _, _ := withOverrideHeartBeatSchedule.validateAndBuild("", nil)
+	withOverrideHeartBeatSchedule.heartbeatSchedule = overrideHeartbeatSchedule
+	withOverrideHeartBeatScheduleValues, _, _ := withOverrideHeartBeatSchedule.validateAndBuild("", withOverrideHeartBeatSchedule.recordableFlagSet())
 	addFakeTLSSecrets(withOverrideHeartBeatScheduleValues)
 
 	withRestrictedDashboardPriviliges, err := testInstallOptions()
@@ -205,7 +205,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withRestrictedDashboardPriviliges.restrictDashboardPrivileges = true
-	withRestrictedDashboardPriviligesValues, _, _ := withRestrictedDashboardPriviliges.validateAndBuild("", nil)
+	withRestrictedDashboardPriviligesValues, _, _ := withRestrictedDashboardPriviliges.validateAndBuild("", withRestrictedDashboardPriviliges.recordableFlagSet())
 	addFakeTLSSecrets(withRestrictedDashboardPriviligesValues)
 
 	withControlPlaneTracing, err := testInstallOptions()
@@ -213,7 +213,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withControlPlaneTracing.controlPlaneTracing = true
-	withControlPlaneTracingValues, _, _ := withControlPlaneTracing.validateAndBuild("", nil)
+	withControlPlaneTracingValues, _, _ := withControlPlaneTracing.validateAndBuild("", withControlPlaneTracing.recordableFlagSet())
 	addFakeTLSSecrets(withControlPlaneTracingValues)
 
 	customRegistryOverride := "my.custom.registry/linkerd-io"
@@ -225,14 +225,14 @@ func TestRender(t *testing.T) {
 	withCustomRegistryOptions.recordedFlags = []*config.Install_Flag{
 		{Name: "registry", Value: customRegistryOverride},
 	}
-	withCustomRegistryValues, _, _ := withCustomRegistryOptions.validateAndBuild("", nil)
+	withCustomRegistryValues, _, _ := withCustomRegistryOptions.validateAndBuild("", withCustomRegistryOptions.recordableFlagSet())
 	addFakeTLSSecrets(withCustomRegistryValues)
 
 	withAddOnConfigStage, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withAddOnConfigStageValues, _, _ := withAddOnConfigStage.validateAndBuild(configStage, nil)
+	withAddOnConfigStageValues, _, _ := withAddOnConfigStage.validateAndBuild(configStage, withAddOnConfigStage.recordableFlagSet())
 	withAddOnConfigStageValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withAddOnConfigStageValues)
 
@@ -240,7 +240,7 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withAddOnControlPlaneStageValues, _, _ := withAddOnControlPlaneStage.validateAndBuild(controlPlaneStage, nil)
+	withAddOnControlPlaneStageValues, _, _ := withAddOnControlPlaneStage.validateAndBuild(controlPlaneStage, withAddOnControlPlaneStage.recordableFlagSet())
 	withAddOnControlPlaneStageValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withAddOnControlPlaneStageValues)
 
@@ -508,6 +508,10 @@ func TestValidate(t *testing.T) {
 
 func fakeHeartbeatSchedule() string {
 	return "1 2 3 4 5"
+}
+
+func overrideHeartbeatSchedule() string {
+	return "5 4 3 2 1"
 }
 
 func addFakeTLSSecrets(values *charts.Values) {
