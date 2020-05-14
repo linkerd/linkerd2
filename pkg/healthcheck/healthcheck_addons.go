@@ -68,10 +68,19 @@ func (hc *HealthChecker) addOnCategories() []category {
 					},
 				},
 				{
-					description: "grafana pod is running",
-					warning:     true,
+					description:         "grafana pod is running",
+					warning:             true,
+					retryDeadline:       hc.RetryDeadline,
+					surfaceErrorOnRetry: true,
 					check: func(context.Context) error {
 						if _, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
+							// populate controlPlanePods to get the latest status, during retries
+							var err error
+							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+							if err != nil {
+								return err
+							}
+
 							return checkContainerRunning(hc.controlPlanePods, "grafana")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
