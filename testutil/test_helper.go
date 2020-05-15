@@ -26,6 +26,7 @@ type TestHelper struct {
 	namespace          string
 	upgradeFromVersion string
 	clusterDomain      string
+	run                string
 	externalIssuer     bool
 	uninstall          bool
 	httpClient         http.Client
@@ -82,6 +83,7 @@ func NewTestHelper() *TestHelper {
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	upgradeHelmFromVersion := flag.String("upgrade-helm-from-version", "", "Indicate a version of the Linkerd helm chart from which the helm installation is being upgraded")
 	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
+	run := flag.String("run", "", "specific test to run")
 	flag.Parse()
 
 	if !*runTests {
@@ -119,6 +121,7 @@ func NewTestHelper() *TestHelper {
 			upgradeFromVersion: *upgradeHelmFromVersion,
 		},
 		clusterDomain:  *clusterDomain,
+		run:            *run,
 		externalIssuer: *externalIssuer,
 		uninstall:      *uninstall,
 	}
@@ -364,6 +367,33 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	})
 
 	return body, err
+}
+
+// RunLogsAndEventTests runs the TestLogs and TestEvents tests in a separate
+// process
+func (h *TestHelper) RunLogsAndEventTests() {
+	// don't run for tests that were singled out
+	if h.run != "" {
+		return
+	}
+	args := []string{"test", "-v", ".",
+		"-integration-tests",
+		"-linkerd", h.linkerd,
+		"-run",
+	}
+	out, err := exec.Command("go", append(args, "TestLogs")...).Output()
+	if err != nil {
+		fmt.Println(string(out))
+	} else {
+		fmt.Println("No unexpected log entries were found")
+	}
+
+	out, err = exec.Command("go", append(args, "TestEvents")...).Output()
+	if err != nil {
+		fmt.Println(string(out))
+	} else {
+		fmt.Println("No unexpected warning events were found")
+	}
 }
 
 // ReadFile reads a file from disk and returns the contents as a string.

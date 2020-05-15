@@ -19,11 +19,22 @@ import (
 ///   TEST SETUP   ///
 //////////////////////
 
-var TestHelper *testutil.TestHelper
+var (
+	TestHelper *testutil.TestHelper
+
+	// fetchLogsEvents delimits the tests for which a failure triggers running
+	// the Testlogs and TestEvents tests
+	fetchLogsEvents = false
+)
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(m.Run())
+	code := m.Run()
+	// if the test failed, show logs and events that can potentially explain cause
+	if code != 0 && fetchLogsEvents {
+		TestHelper.RunLogsAndEventTests()
+	}
+	os.Exit(code)
 }
 
 var (
@@ -195,6 +206,8 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.GetHelmReleaseName() != "" {
 		return
 	}
+	// as of this point, fetch logs and events if any test fails
+	fetchLogsEvents = true
 
 	var (
 		cmd  = "install"
@@ -357,6 +370,8 @@ func TestInstallHelm(t *testing.T) {
 	if TestHelper.GetHelmReleaseName() == "" {
 		return
 	}
+	// as of this point, fetch logs and events if any test fails
+	fetchLogsEvents = true
 
 	cn := fmt.Sprintf("identity.%s.cluster.local", TestHelper.GetLinkerdNamespace())
 	var err error
@@ -721,6 +736,9 @@ func TestCheckProxy(t *testing.T) {
 }
 
 func TestLogs(t *testing.T) {
+	// as of this point, don't fetch logs nor events if any test fails
+	fetchLogsEvents = false
+
 	controllerRegex := regexp.MustCompile("level=(panic|fatal|error|warn)")
 	proxyRegex := regexp.MustCompile(fmt.Sprintf("%s (ERR|WARN)", k8s.ProxyContainerName))
 	clientGoRegex := regexp.MustCompile("client-go@")

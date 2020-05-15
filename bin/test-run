@@ -4,8 +4,9 @@
 # 1. upgrade_integration_tests
 # 2. helm_integration_tests
 # 3. helm_upgrade_integration_tests
-# 4. deep_integration_tests
-# 5. external_issuer_integration_tests
+# 4. uninstall_integration_tests
+# 5. deep_integration_tests
+# 6. external_issuer_integration_tests
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
