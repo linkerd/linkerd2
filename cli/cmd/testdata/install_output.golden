@@ -2939,7 +2939,7 @@ metadata:
   labels:
     app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: dev-undefined
+    app.kubernetes.io/version: ControllerImageVersion
     ControllerComponentLabel: grafana
     ControllerNamespaceLabel: Namespace
   name: linkerd-grafana
