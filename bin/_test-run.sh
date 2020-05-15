@@ -139,12 +139,13 @@ check_if_k8s_reachable(){
 check_if_l5d_exists() {
     printf 'Checking if Linkerd resources exist on cluster...'
     resources=$(kubectl --context=$k8s_context get all,clusterrole,clusterrolebinding,mutatingwebhookconfigurations,validatingwebhookconfigurations,psp,crd -l linkerd.io/control-plane-ns --all-namespaces -oname)
-    if [ ! -z "$resources" ]; then
-        printf '\nLinkerd resources exist on cluster:\n\n'
-        printf '%s\n' "$resources"
-        printf '\nHelp:\n'
-        printf "    Run: [%s/test-cleanup]\n" "$bindir"
-        printf "    Specify a cluster context: [%s/test-run %s [%s] [context]]\n" "$bindir" "$linkerd_path" "$linkerd_namespace"
+    if [ -n "$resources" ]; then
+        printf '
+Linkerd resources exist on cluster:
+\n%s\n
+Help:
+    Run: [%s/test-cleanup]
+    Specify a cluster context: [%s/test-run %s [%s] [context]]\n' "$resources" "$bindir" "$bindir" "$linkerd_path" "$linkerd_namespace"
         exit 1
     fi
     printf '[ok]\n'
