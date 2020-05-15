@@ -22,4 +22,4 @@ The Linkerd2 maintainers are:
 * Invite maintainer to
   https://github.com/orgs/linkerd/teams/linkerd2-maintainers/members
 * Invite maintainer to https://github.com/orgs/linkerd/people
-  -->
+-->
