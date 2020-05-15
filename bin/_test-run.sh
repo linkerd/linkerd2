@@ -54,7 +54,6 @@ helm_upgrade_integration_tests() {
     helm_path=$bindir/helm
     helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2
     helm_release_name=$linkerd_namespace-test
-    tiller_namespace=$linkerd_namespace-tiller
 
     run_helm_upgrade_test
     exit_on_err 'error testing Helm upgrade'
@@ -68,7 +67,6 @@ helm_integration_tests() {
     helm_path=$bindir/helm
     helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2
     helm_release_name=$linkerd_namespace-test
-    tiller_namespace=$linkerd_namespace-tiller
 
     run_helm_test
     exit_on_err 'error testing Helm'
@@ -195,13 +193,8 @@ run_upgrade_test() {
 setup_helm() {
       (
         set -e
-        kubectl --context=$k8s_context create ns $tiller_namespace
-        kubectl --context=$k8s_context label ns $tiller_namespace linkerd.io/is-test-helm=true
-        kubectl --context=$k8s_context create clusterrolebinding ${tiller_namespace}:tiller-cluster-admin --clusterrole=cluster-admin --serviceaccount=${tiller_namespace}:default
-        kubectl --context=$k8s_context label clusterrolebinding ${tiller_namespace}:tiller-cluster-admin linkerd.io/is-test-helm=true
         "$bindir"/helm-build
-        "$helm_path" --kube-context=$k8s_context --tiller-namespace=$tiller_namespace init --wait
-        "$helm_path" --kube-context=$k8s_context --tiller-namespace=$tiller_namespace repo add linkerd https://helm.linkerd.io/stable
+        "$helm_path" --kube-context=$k8s_context repo add linkerd https://helm.linkerd.io/stable
     )
     exit_on_err 'error setting up Helm'
 }
@@ -210,30 +203,25 @@ run_helm_upgrade_test() {
     setup_helm
     local stable_version=$(latest_stable)
     run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace-helm \
-        --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-stable-chart="linkerd/linkerd2" --helm-release=$helm_release_name --tiller-ns=$tiller_namespace --upgrade-helm-from-version="$stable_version"
+        --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-stable-chart="linkerd/linkerd2" --helm-release=$helm_release_name --upgrade-helm-from-version="$stable_version"
 }
 
 run_helm_test() {
     setup_helm
     run_test "$test_directory/install_test.go" --linkerd-namespace=$linkerd_namespace-helm \
-        --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-release=$helm_release_name --tiller-ns=$tiller_namespace
+        --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-release=$helm_release_name
 }
 
 helm_cleanup() {
     (
         set -e
         # `helm delete` deletes $linkerd_namespace-helm
-        "$helm_path" --kube-context=$k8s_context --tiller-namespace=$tiller_namespace delete --purge $helm_release_name
+        "$helm_path" --kube-context=$k8s_context delete $helm_release_name
         # `helm delete` doesn't wait for resources to be deleted, so we wait explicitly.
         # We wait for the namespace to be gone so the following call to `cleanup` doesn't fail when it attempts to delete
         # the same namespace that is already being deleted here (error thrown by the NamespaceLifecycle controller).
         # We don't have that problem with global resources, so no need to wait for them to be gone.
         kubectl wait --for=delete ns/$linkerd_namespace-helm --timeout=120s
-        # `helm reset` deletes the tiller pod in $tiller_namespace
-        "$helm_path" --kube-context=$k8s_context --tiller-namespace=$tiller_namespace reset
-        kubectl --context=$k8s_context delete clusterrolebinding ${tiller_namespace}:tiller-cluster-admin
-        echo $tiller_namespace
-        kubectl --context=$k8s_context delete ns $tiller_namespace
     )
 }
 
