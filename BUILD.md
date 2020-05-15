@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-file code-block-style -->
 # Linkerd2 Development Guide
 
 :balloon: Welcome to the Linkerd2 development guide! :wave:
@@ -57,6 +58,47 @@ written in Go. The dashboard UI is a React application.
 
 ![Linkerd2 Components](https://g.gravizo.com/source/svg/linkerd2_components?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
 
+<!-- markdownlint-disable no-inline-html -->
+<details>
+<summary></summary>
+linkerd2_components
+  digraph G {
+    rankdir=LR;
+
+    node [style=filled, shape=rect];
+
+    "cli" [color=lightblue];
+    "destination" [color=lightblue];
+    "public-api" [color=lightblue];
+    "tap" [color=lightblue];
+    "web" [color=lightblue];
+
+    "proxy" [color=orange];
+
+    "cli" -> "public-api";
+
+    "web" -> "public-api";
+    "web" -> "grafana";
+
+    "public-api" -> "tap";
+    "public-api" -> "kubernetes api";
+    "public-api" -> "prometheus";
+
+    "tap" -> "kubernetes api";
+    "tap" -> "proxy";
+
+    "proxy" -> "destination";
+
+    "destination" -> "kubernetes api";
+
+    "grafana" -> "prometheus";
+    "prometheus" -> "kubernetes api";
+    "prometheus" -> "proxy";
+  }
+linkerd2_components
+</details>
+<!-- markdownlint-enable no-inline-html -->
+
 ## Development configurations
 
 Depending on use case, there are several configurations with which to develop
@@ -70,7 +112,8 @@ and run Linkerd2:
 
 This configuration builds all Linkerd2 components in Docker images, and deploys
 them onto Minikube. This setup most closely parallels our recommended production
-installation, documented at <https://linkerd.io/2/getting-started/.>
+installation, documented in [Getting
+Started](https://linkerd.io/2/getting-started/)
 
 These commands assume a working
 [Minikube](https://github.com/kubernetes/minikube) environment.
@@ -389,5 +432,123 @@ the templates.
 
 ## Build Architecture
 
-![Build
-Architecture](https://g.gravizo.com/source/svg/build_architecture?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
+![Build Architecture](https://g.gravizo.com/source/svg/build_architecture?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
+
+<!-- markdownlint-disable no-inline-html -->
+<details>
+<summary></summary>
+build_architecture
+  digraph G {
+    rankdir=LR;
+
+    "Dockerfile-base" [color=lightblue, style=filled, shape=rect];
+    "Dockerfile-go-deps" [color=lightblue, style=filled, shape=rect];
+    "Dockerfile-proxy" [color=lightblue, style=filled, shape=rect];
+    "controller/Dockerfile" [color=lightblue, style=filled, shape=rect];
+    "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
+    "grafana/Dockerfile" [color=lightblue, style=filled, shape=rect];
+    "web/Dockerfile" [color=lightblue, style=filled, shape=rect];
+
+    "_docker.sh" -> "_log.sh";
+    "_gcp.sh";
+    "_log.sh";
+    "_tag.sh" -> "Dockerfile-go-deps";
+
+    "build-cli-bin" -> "_tag.sh";
+    "build-cli-bin" -> "root-tag";
+
+    "docker-build" -> "build-cli-bin";
+    "docker-build" -> "docker-build-cli-bin";
+    "docker-build" -> "docker-build-controller";
+    "docker-build" -> "docker-build-grafana";
+    "docker-build" -> "docker-build-proxy";
+    "docker-build" -> "docker-build-web";
+
+    "docker-build-base" -> "_docker.sh";
+    "docker-build-base" -> "Dockerfile-base";
+
+    "docker-build-cli-bin" -> "_docker.sh";
+    "docker-build-cli-bin" -> "_tag.sh";
+    "docker-build-cli-bin" -> "docker-build-base";
+    "docker-build-cli-bin" -> "docker-build-go-deps";
+    "docker-build-cli-bin" -> "cli/Dockerfile-bin";
+
+    "docker-build-controller" -> "_docker.sh";
+    "docker-build-controller" -> "_tag.sh";
+    "docker-build-controller" -> "docker-build-base";
+    "docker-build-controller" -> "docker-build-go-deps";
+    "docker-build-controller" -> "controller/Dockerfile";
+
+    "docker-build-go-deps" -> "_docker.sh";
+    "docker-build-go-deps" -> "_tag.sh";
+    "docker-build-go-deps" -> "Dockerfile-go-deps";
+
+    "docker-build-grafana" -> "_docker.sh";
+    "docker-build-grafana" -> "_tag.sh";
+    "docker-build-grafana" -> "grafana/Dockerfile";
+
+    "docker-build-proxy" -> "_docker.sh";
+    "docker-build-proxy" -> "_tag.sh";
+    "docker-build-proxy" -> "Dockerfile-proxy";
+
+    "docker-build-web" -> "_docker.sh";
+    "docker-build-web" -> "_tag.sh";
+    "docker-build-web" -> "docker-build-base";
+    "docker-build-web" -> "docker-build-go-deps";
+    "docker-build-web" -> "web/Dockerfile";
+
+    "docker-images" -> "_docker.sh";
+    "docker-images" -> "_tag.sh";
+
+    "docker-pull" -> "_docker.sh";
+
+    "docker-pull-deps" -> "_docker.sh";
+    "docker-pull-deps" -> "_tag.sh";
+
+    "docker-push" -> "_docker.sh";
+
+    "docker-push-deps" -> "_docker.sh";
+    "docker-push-deps" -> "_tag.sh";
+
+    "docker-retag-all" -> "_docker.sh";
+
+    "go-run" -> ".gorun";
+    "go-run" -> "root-tag";
+
+    "linkerd" -> "build-cli-bin";
+
+    "lint";
+
+    "minikube-start-hyperv.bat";
+
+    "mkube";
+
+    "protoc" -> ".protoc";
+
+    "protoc-go.sh" -> "protoc";
+
+    "root-tag" -> "_tag.sh";
+
+    "test-cleanup";
+
+    "test-run";
+
+    "workflow.yml" -> "_gcp.sh";
+    "workflow.yml" -> "_tag.sh";
+    "workflow.yml" -> "docker-build";
+    "workflow.yml" -> "docker-push";
+    "workflow.yml" -> "docker-push-deps";
+    "workflow.yml" -> "docker-retag-all";
+    "workflow.yml" -> "lint";
+
+    "update-go-deps-shas" -> "_tag.sh";
+    "update-go-deps-shas" -> "cli/Dockerfile-bin";
+    "update-go-deps-shas" -> "controller/Dockerfile";
+    "update-go-deps-shas" -> "grafana/Dockerfile";
+    "update-go-deps-shas" -> "web/Dockerfile";
+
+    "web" -> "go-run";
+  }
+build_architecture
+</details>
+<!-- markdownlint-enable no-inline-html -->
