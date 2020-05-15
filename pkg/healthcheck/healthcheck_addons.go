@@ -14,13 +14,16 @@ const (
 	// LinkerdAddOnChecks adds checks to validate the add-on components
 	LinkerdAddOnChecks CategoryID = "linkerd-addons"
 
-	// LinkerdGrafanaAddOnChecks adds checks to validate the add-on components
+	// LinkerdGrafanaAddOnChecks adds checks related to grafana add-on components
 	LinkerdGrafanaAddOnChecks CategoryID = "linkerd-grafana"
+
+	// LinkerdTracingAddOnChecks adds checks related to tracing add-on components
+	LinkerdTracingAddOnChecks CategoryID = "linkerd-tracing"
 )
 
 var (
 	// AddOnCategories is the list of add-on category checks
-	AddOnCategories = []CategoryID{LinkerdAddOnChecks, LinkerdGrafanaAddOnChecks}
+	AddOnCategories = []CategoryID{LinkerdAddOnChecks, LinkerdGrafanaAddOnChecks, LinkerdTracingAddOnChecks}
 )
 
 // addOnCategories contain all the checks w.r.t add-ons. It is strongly advised to
@@ -84,6 +87,83 @@ func (hc *HealthChecker) addOnCategories() []category {
 							return checkContainerRunning(hc.controlPlanePods, "grafana")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
+					},
+				},
+			},
+		},
+		{
+			id: LinkerdTracingAddOnChecks,
+			checkers: []checker{
+				{
+					description: "collector service account exists",
+					warning:     true,
+					check: func(context.Context) error {
+						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
+							return hc.checkServiceAccounts([]string{tracing.(map[string]interface{})["collector"].(map[string]interface{})["name"].(string)}, hc.ControlPlaneNamespace, "")
+						}
+						return &SkipError{Reason: "tracing add-on not enabled"}
+					},
+				},
+				{
+					description: "jaeger service account exists",
+					warning:     true,
+					check: func(context.Context) error {
+						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
+							return hc.checkServiceAccounts([]string{tracing.(map[string]interface{})["jaeger"].(map[string]interface{})["name"].(string)}, hc.ControlPlaneNamespace, "")
+						}
+						return &SkipError{Reason: "tracing add-on not enabled"}
+					},
+				},
+				{
+					description: "collector config map exists",
+					warning:     true,
+					check: func(context.Context) error {
+						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
+							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", tracing.(map[string]interface{})["collector"].(map[string]interface{})["name"].(string)), metav1.GetOptions{})
+							if err != nil {
+								return err
+							}
+							return nil
+						}
+						return &SkipError{Reason: "tracing add-on not enabled"}
+					},
+				},
+				{
+					description:         "collector pod is running",
+					warning:             true,
+					retryDeadline:       hc.RetryDeadline,
+					surfaceErrorOnRetry: true,
+					check: func(context.Context) error {
+						if _, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
+							// populate controlPlanePods to get the latest status, during retries
+							var err error
+							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+							if err != nil {
+								return err
+							}
+
+							return checkContainerRunning(hc.controlPlanePods, "collector")
+						}
+						return &SkipError{Reason: "tracing add-on not enabled"}
+					},
+				},
+				{
+					description:         "jaeger pod is running",
+					warning:             true,
+					retryDeadline:       hc.RetryDeadline,
+					surfaceErrorOnRetry: true,
+					check: func(context.Context) error {
+						if _, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
+							// populate controlPlanePods to get the latest status, during retries
+							var err error
+							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+							if err != nil {
+								return err
+							}
+
+							return checkContainerRunning(hc.controlPlanePods, "jaeger")
+						}
+						return &SkipError{Reason: "tracing add-on not enabled"}
 					},
 				},
 			},
