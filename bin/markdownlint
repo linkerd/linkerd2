@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -eu
+
+markdownlint_version=0.23.0
+
+if ! [ -x "$(command -v markdownlint)" ]; then
+    if ! [ -x "$(command -v npm)" ]; then
+        echo "Error: npm required to install markdownlint command"
+        exit 1
+    fi
+    npm install markdownlint-cli@$markdownlint_version
+fi
+
+markdownlint ./*.md
+markdownlint ./**/*.md --ignore node_modules/
