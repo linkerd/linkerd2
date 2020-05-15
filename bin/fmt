@@ -10,7 +10,7 @@ dirs=$(go list -f \{\{.Dir\}\} ./... | grep -v controller/gen)
 # dedup them.
 files=$(bin/goimports -l $dirs | sort | uniq)
 
-if [ ! -z "$files" ]; then
+if [ -n "$files" ]; then
   for file in $files; do
     bin/goimports -d "$@" "$file"
   done
