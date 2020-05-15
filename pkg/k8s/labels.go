@@ -205,6 +205,9 @@ const (
 	// injected.
 	ProxyEnableDebugAnnotation = ProxyConfigAnnotationsPrefix + "/enable-debug-sidecar"
 
+	// CloseWaitTimeoutAnnotation configures nf_conntrack_tcp_timeout_close_wait.
+	CloseWaitTimeoutAnnotation = ProxyConfigAnnotationsPrefix + "/close-wait-timeout"
+
 	// ProxyTraceCollectorSvcAddrAnnotation can be used to enable tracing on a proxy.
 	// It takes the collector service name (e.g. oc-collector.tracing:55678) as
 	// its value.

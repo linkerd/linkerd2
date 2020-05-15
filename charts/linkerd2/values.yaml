@@ -65,6 +65,7 @@ global:
       memory:
         limit: 50Mi
         request: 10Mi
+    closeWaitTimeoutSecs: 0
 
   # control plane annotations - do not edit
   createdByAnnotation: linkerd.io/created-by

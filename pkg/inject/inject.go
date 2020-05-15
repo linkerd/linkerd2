@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	jsonfilter "github.com/clarketm/json"
 	"github.com/linkerd/linkerd2/controller/gen/config"
@@ -590,6 +591,15 @@ func (conf *ResourceConfig) injectProxyInit(values *patch) {
 		},
 		Capabilities: values.Global.Proxy.Capabilities,
 		SAMountPath:  values.Global.Proxy.SAMountPath,
+	}
+
+	if v := conf.pod.meta.Annotations[k8s.CloseWaitTimeoutAnnotation]; v != "" {
+		closeWait, err := time.ParseDuration(v)
+		if err != nil {
+			log.Warnf("invalid duration value used for the %s annotation: %s", k8s.CloseWaitTimeoutAnnotation, v)
+		} else {
+			values.Global.ProxyInit.CloseWaitTimeoutSecs = int64(closeWait.Seconds())
+		}
 	}
 
 	values.AddRootInitContainers = len(conf.pod.spec.InitContainers) == 0
