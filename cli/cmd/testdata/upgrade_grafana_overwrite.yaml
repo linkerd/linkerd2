@@ -2855,7 +2855,7 @@ data:
       enabled: true
       image: linkerd-image-overwrite
       name: linkerd-grafana-overwrite
-      tag: dev-undefined
+      tag: linkerdVersionValue
     tracing:
       enabled: false
 ---
@@ -2993,7 +2993,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: linkerd-image-overwrite:dev-undefined
+        image: linkerd-image-overwrite:linkerdVersionValue
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

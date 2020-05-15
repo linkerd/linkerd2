@@ -2839,7 +2839,7 @@ data:
       enabled: true
       image: my.custom.registry/linkerd-io/grafana
       name: linkerd-grafana
-      tag: dev-undefined
+      tag: linkerdVersionValue
     tracing:
       enabled: false
 ---
@@ -2977,7 +2977,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: my.custom.registry/linkerd-io/grafana:dev-undefined
+        image: my.custom.registry/linkerd-io/grafana:linkerdVersionValue
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

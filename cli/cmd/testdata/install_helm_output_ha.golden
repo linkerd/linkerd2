@@ -3136,7 +3136,7 @@ data:
         memory:
           limit: 1024Mi
           request: 50Mi
-      tag: dev-undefined
+      tag: linkerdVersionValue
     tracing:
       enabled: false
 ---
@@ -3278,7 +3278,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:dev-undefined
+        image: gcr.io/linkerd-io/grafana:linkerdVersionValue
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
