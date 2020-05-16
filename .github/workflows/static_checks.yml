@@ -122,10 +122,4 @@ jobs:
       # actions/checkout@v2
       uses: actions/checkout@722adc6
     - name: Markdown lint
-      # nosborn/github-action-markdown-cli@v1.1.1
-      uses: nosborn/github-action-markdown-cli@v1.1.1
-      with:
-        files: .
-        config_file: ".markdownlint.yaml"
-        ignore_files: "node_modules/"
-
+      run: bin/markdownlint
