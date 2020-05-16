@@ -289,7 +289,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 
 	var errors []error
 	for _, srv := range servicesOnLocalCluster {
-		_, err := rcsw.remoteAPIClient.Svc().Lister().Services(srv.Namespace).Get(rcsw.originalResourceName(srv.Name))
+		remoteSvc, err := rcsw.remoteAPIClient.Svc().Lister().Services(srv.Namespace).Get(rcsw.originalResourceName(srv.Name))
 		if err != nil {
 			if kerrors.IsNotFound(err) {
 				// service does not exist anymore. Need to delete
@@ -304,7 +304,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 				errors = append(errors, err)
 			}
 		} else {
-			if gtwData := getGatewayMetadata(srv.Annotations); gtwData != nil {
+			if gtwData := getGatewayMetadata(remoteSvc.Annotations); gtwData != nil {
 				gatewaySpec, err := rcsw.resolveGateway(gtwData)
 				if gatewaySpec != nil && err == nil {
 					rcsw.probeEventsSink.send(&MirroredServicePaired{
@@ -442,9 +442,6 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 			},
 		}
 
-		copiedEndpoints.Labels[consts.RemoteGatewayNameLabel] = ev.gatewayData.Name
-		copiedEndpoints.Labels[consts.RemoteGatewayNsLabel] = ev.gatewayData.Namespace
-
 		if gatewaySpec.identity != "" {
 			copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = gatewaySpec.identity
 		} else {
@@ -461,8 +458,11 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 
 	} else {
 		rcsw.log.Warnf("Could not resolve gateway for %s: %s, nulling endpoints", serviceInfo, err)
-		ev.localEndpoints.Subsets = nil
+		copiedEndpoints.Subsets = nil
 	}
+	// we need to set the new name and ns data no matter whether they are valid or not
+	copiedEndpoints.Labels[consts.RemoteGatewayNameLabel] = ev.gatewayData.Name
+	copiedEndpoints.Labels[consts.RemoteGatewayNsLabel] = ev.gatewayData.Namespace
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(copiedEndpoints.Namespace).Update(copiedEndpoints); err != nil {
 		return RetryableError{[]error{err}}
@@ -470,8 +470,11 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 
 	ev.localService.Labels = rcsw.getMirroredServiceLabels(&ev.gatewayData)
 	ev.localService.Annotations = rcsw.getMirroredServiceAnnotations(ev.remoteUpdate)
-	ev.localService.Annotations[consts.RemoteGatewayResourceVersionAnnotation] = gatewaySpec.resourceVersion
 	ev.localService.Spec.Ports = remapRemoteServicePorts(ev.remoteUpdate.Spec.Ports)
+
+	if gatewaySpec != nil {
+		ev.localService.Annotations[consts.RemoteGatewayResourceVersionAnnotation] = gatewaySpec.resourceVersion
+	}
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(ev.localService.Namespace).Update(ev.localService); err != nil {
 		return RetryableError{[]error{err}}
@@ -613,10 +616,6 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGa
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayUpdated(ev *RemoteGatewayUpdated) error {
 	rcsw.log.Debugf("Updating %d services due to remote gateway [%s/%s] update", len(ev.affectedServices), ev.gatewaySpec.gatewayNamespace, ev.gatewaySpec.gatewayName)
 
-	rcsw.probeEventsSink.send(&GatewayUpdated{
-		GatewaySpec: ev.gatewaySpec,
-	})
-
 	var errors []error
 	for _, svc := range ev.affectedServices {
 		updatedService := svc.DeepCopy()
@@ -654,7 +653,19 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayUpdated(ev *RemoteGa
 			rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Delete(updatedService.Name, &metav1.DeleteOptions{})
 			errors = append(errors, err)
 		}
+
+		// we need to repair as this gateway might have been deleted
+		// due to being updated to a state that is not valid anymore
+		rcsw.probeEventsSink.send(&MirroredServicePaired{
+			serviceName:      updatedService.Name,
+			serviceNamespace: updatedService.Namespace,
+			GatewaySpec:      ev.gatewaySpec,
+		})
 	}
+
+	rcsw.probeEventsSink.send(&GatewayUpdated{
+		GatewaySpec: ev.gatewaySpec,
+	})
 
 	if len(errors) > 0 {
 		return RetryableError{errors}
@@ -777,9 +788,17 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 			// service we can dispatch a RemoteServiceDeleted event
 			// because at some point in time we mirrored this service,
 			// however it is not mirrorable anymore
+
+			// try to extract the gateway metadata, so we have a well
+			// formed event that we can use to dispatch a service unpaired
+			// event to the probe manager
 			rcsw.eventsQueue.Add(&RemoteServiceDeleted{
 				Name:      service.Name,
 				Namespace: service.Namespace,
+				GatewayData: gatewayMetadata{
+					Name:      localService.Labels[consts.RemoteGatewayNameLabel],
+					Namespace: localService.Labels[consts.RemoteGatewayNsLabel],
+				},
 			})
 		}
 	}
@@ -894,7 +913,6 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent() (bool, interface{}, 
 // and deal with retries
 func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 	for {
-
 		done, event, err := rcsw.processNextEvent()
 		// the logic here is that there might have been an API
 		// connectivity glitch or something. So its not a bad idea to requeue

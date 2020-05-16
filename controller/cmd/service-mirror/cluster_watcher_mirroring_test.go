@@ -512,6 +512,10 @@ func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
 			expectedEventsInQueue: []interface{}{&RemoteServiceDeleted{
 				Name:      "test-service",
 				Namespace: "test-namespace",
+				GatewayData: gatewayMetadata{
+					Name:      "gateway",
+					Namespace: "gateway-ns",
+				},
 			}},
 
 			expectedLocalServices: []*corev1.Service{

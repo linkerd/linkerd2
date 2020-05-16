@@ -1,7 +1,6 @@
 package watcher
 
 import (
-	"sort"
 	"testing"
 
 	"k8s.io/client-go/tools/cache"
@@ -446,20 +445,16 @@ status:
 				t.Fatalf("Expected no error, got [%s]", err)
 			}
 
-			actualAddresses := make([]string, 0)
-			actualAddresses = append(actualAddresses, listener.added...)
-			sort.Strings(actualAddresses)
+			listener.ExpectAdded(tt.expectedAddresses, t)
 
-			testCompare(t, tt.expectedAddresses, actualAddresses)
-
-			if listener.noEndpointsCalled != tt.expectedNoEndpoints {
+			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
-					tt.expectedNoEndpoints, listener.noEndpointsCalled)
+					tt.expectedNoEndpoints, listener.endpointsAreNotCalled())
 			}
 
-			if listener.noEndpointsExists != tt.expectedNoEndpointsServiceExists {
-				t.Fatalf("Expected noEndpointsExists to be [%t], got [%t]",
-					tt.expectedNoEndpointsServiceExists, listener.noEndpointsExists)
+			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
+				t.Fatalf("Expected noEndpointsExist to be [%t], got [%t]",
+					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
 			}
 		})
 	}
@@ -587,7 +582,7 @@ status:
 				watcher.deleteService(tt.objectToDelete)
 			}
 
-			if !listener.noEndpointsCalled {
+			if !listener.endpointsAreNotCalled() {
 				t.Fatal("Expected NoEndpoints to be Called")
 			}
 		})
@@ -674,7 +669,7 @@ status:
 
 			watcher.addPod(tt.objectToUpdate)
 
-			if listener.noEndpointsCalled {
+			if listener.endpointsAreNotCalled() {
 				t.Fatal("NoEndpoints was called but should not have been")
 			}
 		})

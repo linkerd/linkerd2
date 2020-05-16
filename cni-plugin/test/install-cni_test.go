@@ -27,6 +27,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/linkerd/linkerd2/testutil"
 )
 
 const (
@@ -50,14 +52,16 @@ func env(key, fallback string) string {
 func setEnv(key, value string, t *testing.T) {
 	err := os.Setenv(key, value)
 	if err != nil {
-		t.Fatalf("Couldn't set environment variable, err: %v", err)
+		testutil.AnnotatedFatalf(t, "couldn't set environment variable",
+			"couldn't set environment variable: %v", err)
 	}
 }
 
 func mktemp(dir, prefix string, t *testing.T) string {
 	tempDir, err := ioutil.TempDir(dir, prefix)
 	if err != nil {
-		t.Fatalf("Couldn't get current working directory, err: %v", err)
+		testutil.AnnotatedFatalf(t, "couldn't get current working directory",
+			"couldn't get current working directory: %v", err)
 	}
 	t.Logf("Created temporary dir: %v", tempDir)
 	return tempDir
@@ -66,7 +70,8 @@ func mktemp(dir, prefix string, t *testing.T) string {
 func pwd(t *testing.T) string {
 	wd, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("Couldn't get current working directory, err: %v", err)
+		testutil.AnnotatedFatalf(t, "couldn't get current working directory",
+			"couldn't get current working directory: %v", err)
 	}
 	return wd + "/"
 }
@@ -74,7 +79,8 @@ func pwd(t *testing.T) string {
 func ls(dir string, t *testing.T) []string {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		t.Fatalf("Failed to list files, err: %v", err)
+		testutil.AnnotatedFatalf(t, "failed to list files",
+			"failed to list files: %v", err)
 	}
 	fileNames := make([]string, len(files))
 	for i, f := range files {
@@ -86,17 +92,20 @@ func ls(dir string, t *testing.T) []string {
 func cp(src, dest string, t *testing.T) {
 	data, err := ioutil.ReadFile(src)
 	if err != nil {
-		t.Fatalf("Failed to read file %v, err: %v", src, err)
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to read file %v", src),
+			"failed to read file %v: %v", src, err)
 	}
 	if err = ioutil.WriteFile(dest, data, 0644); err != nil {
-		t.Fatalf("Failed to write file %v, err: %v", dest, err)
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to write file %v", dest),
+			"failed to write file %v: %v", dest, err)
 	}
 }
 
 func rm(dir string, t *testing.T) {
 	err := os.RemoveAll(dir)
 	if err != nil {
-		t.Fatalf("Failed to remove dir %v, err: %v", dir, err)
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to remove dir %v", dir),
+			"failed to remove dir %v: %v", dir, err)
 	}
 }
 
@@ -145,12 +154,14 @@ func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir s
 	// Create a temporary log file to write docker command error log.
 	errFile, err := os.Create(errFileName)
 	if err != nil {
-		t.Fatalf("Couldn't create docker stderr file, err: %v", err)
+		testutil.AnnotatedFatalf(t, "couldn't create docker stderr file",
+			"couldn't create docker stderr file: %v", err)
 	}
 	defer func() {
 		errClose := errFile.Close()
 		if errClose != nil {
-			t.Fatalf("Couldn't close docker stderr file, err: %v", errClose)
+			testutil.AnnotatedFatalf(t, "couldn't close docker stderr file",
+				"couldn't close docker stderr file: %v", errClose)
 		}
 	}()
 
@@ -162,7 +173,8 @@ func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir s
 	if err != nil {
 		errFileContents, _ := ioutil.ReadFile(errFileName)
 		t.Logf("%v contents:\n\n%v\n\n", errFileName, string(errFileContents))
-		t.Fatalf("Test %v ERROR: failed to start docker container '%v', see %v", testNum, dockerImage, errFileName)
+		testutil.Fatalf(t,
+			"test %v ERROR: failed to start docker container '%v', see %v", testNum, dockerImage, errFileName)
 	}
 	t.Logf("Container ID: %s", containerID)
 	return strings.Trim(string(containerID), "\n")
@@ -172,7 +184,8 @@ func startDocker(testNum int, wd string, testWorkRootDir string, tempCNINetDir s
 func docker(cmd, containerID string, t *testing.T) {
 	out, err := exec.Command("docker", cmd, containerID).CombinedOutput()
 	if err != nil {
-		t.Fatalf("Failed to execute 'docker %s %s', err: %v", cmd, containerID, err)
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to execute 'docker %s %s'", cmd, containerID),
+			"failed to execute 'docker %s %s': %v", cmd, containerID, err)
 	}
 	t.Logf("docker %s %s - out: %s", cmd, containerID, out)
 }
@@ -182,21 +195,23 @@ func compareConfResult(testWorkRootDir string, tempCNINetDir string, result stri
 	tempResult := tempCNINetDir + "/" + result
 	resultFile, err := ioutil.ReadFile(tempResult)
 	if err != nil {
-		t.Fatalf("Failed to read file %v, err: %v", tempResult, err)
+		testutil.AnnotatedFatalf(t, "failed to read file",
+			"failed to read file %v: %v", tempResult, err)
 	}
 
 	expectedFile, err := ioutil.ReadFile(expected)
 	if err != nil {
-		t.Fatalf("Failed to read file %v, err: %v", expected, err)
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to read file %v", expected),
+			"failed to read file %v, err: %v", expected, err)
 	}
 
 	if bytes.Equal(resultFile, expectedFile) {
 		t.Logf("PASS: result matches expected: %v v. %v", tempResult, expected)
 	} else {
 		tempFail := mktemp(testWorkRootDir, result+".fail.XXXX", t)
-		t.Errorf("FAIL: result doesn't match expected: %v v. %v", tempResult, expected)
 		cp(tempResult, tempFail+"/"+result, t)
-		t.Fatalf("Check %v for diff contents", tempFail)
+		testutil.AnnotatedErrorf(t, "FAIL: result doesn't match expected",
+			"FAIL: result doesn't match expected: %v v. %v\nCheck %v for diff contents", tempResult, expected, tempFail)
 	}
 }
 
@@ -207,11 +222,13 @@ func checkBinDir(t *testing.T, tempCNIBinDir string, op string, files ...string)
 			if op == "add" {
 				t.Logf("PASS: File %v was added to %v", f, tempCNIBinDir)
 			} else if op == "del" {
-				t.Fatalf("FAIL: File %v was not removed from %v", f, tempCNIBinDir)
+				testutil.AnnotatedFatalf(t, fmt.Sprintf("FAIL: File %v was not removed", f),
+					"FAIL: File %v was not removed from %v", f, tempCNIBinDir)
 			}
 		} else {
 			if op == "add" {
-				t.Fatalf("FAIL: File %v was not added to %v", f, tempCNIBinDir)
+				testutil.AnnotatedFatalf(t, fmt.Sprintf("FAIL: File %v was not added", f),
+					"FAIL: File %v was not added to %v", f, tempCNIBinDir)
 			} else if op == "del" {
 				t.Logf("PASS: File %v was removed from %v", f, tempCNIBinDir)
 			}
@@ -229,7 +246,8 @@ func doTest(testNum int, wd string, initialNetConfFile string, finalNetConfFile 
 	}
 	defaultData, err := ioutil.ReadFile(wd + "../deployment/linkerd-cni.conf.default")
 	if err != nil {
-		t.Fatalf("Failed to read file %v, err: %v", wd+"../deployment/linkerd-cni.conf.default", err)
+		testutil.AnnotatedFatalf(t, "failed to read file linkerd-cni.conf.default",
+			"failed to read file %v, err: %v", wd+"../deployment/linkerd-cni.conf.default", err)
 	}
 	setEnv(cniNetworkConfigName, string(defaultData), t)
 
@@ -249,7 +267,8 @@ func doTest(testNum int, wd string, initialNetConfFile string, finalNetConfFile 
 	} else {
 		files := ls(tempCNINetDir, t)
 		if len(files) > 0 {
-			t.Fatalf("FAIL: CNI_CONF_DIR is not empty: %v", files)
+			testutil.AnnotatedFatalf(t, "FAIL: CNI_CONF_DIR is not empty",
+				"FAIL: CNI_CONF_DIR is not empty: %v", files)
 		} else {
 			t.Log("PASS: CNI_CONF_DIR is empty")
 		}
