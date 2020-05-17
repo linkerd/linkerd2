@@ -12,7 +12,7 @@ metadata:
     {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 imagePullSecrets:
-{{toYaml .Values.global.imagePullSecrets | indent:2 }}
+{{toYaml .Values.global.imagePullSecrets | indent 2 }}
 ---
 ###
 ### linkerd-jaeger RBAC
