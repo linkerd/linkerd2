@@ -6,6 +6,7 @@
 global:
   clusterDomain: &cluster_domain cluster.local
   imagePullPolicy: &image_pull_policy IfNotPresent
+  imagePullSecrets: []
 
   # control plane trace configuration
   controlPlaneTracing: false

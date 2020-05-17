@@ -11,6 +11,8 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+imagePullSecrets:
+{{toYaml .Values.global.imagePullSecrets | indent:2 }}
 ---
 ###
 ### linkerd-jaeger RBAC
@@ -24,3 +26,5 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: {{.Values.jaeger.name}}
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+imagePullSecrets:
+{{toYaml .Values.global.imagePullSecrets | indent 2 }}

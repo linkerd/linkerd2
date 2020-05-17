@@ -41,4 +41,6 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: heartbeat
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+imagePullSecrets:
+{{toYaml .Values.global.imagePullSecrets | indent 2 }}
 {{- end }}
