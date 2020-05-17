@@ -62,7 +62,6 @@ type (
 		WebResources           *Resources `json:"webResources"`
 
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
-		GrafanaProxyResources       *Resources `json:"grafanaProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		PrometheusProxyResources    *Resources `json:"prometheusProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`

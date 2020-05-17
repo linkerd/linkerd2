@@ -147,9 +147,9 @@ spec:
         - mountPath: /etc/grafana
           name: grafana-config
           readOnly: true
-      {{- if not (empty .Values.grafanaProxyResources) }}
+      {{- if not (empty .Values.proxyResources) }}
       {{- $orig := .Values.global.proxy.resources }}
-      {{- $r := merge .Values.grafanaProxyResources .Values.global.proxy.resources }}
+      {{- $r := merge .Values.proxyResources .Values.global.proxy.resources }}
       {{- $_ := set .Values.global.proxy "resources" $r }}
       - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{- $_ := set .Values.global.proxy "resources" $orig }}

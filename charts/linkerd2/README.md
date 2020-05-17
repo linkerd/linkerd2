@@ -138,7 +138,6 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | `global.proxyInjectDisabled`                | Annotation value to disable injection. Do not edit.                                                                                                                                   | `disabled`                           |
 | `grafanaImage`                              | Docker image for the Grafana container                                                                                                                                                | `gcr.io/linkerd-io/grafana`          |
 | `grafanaResources`                          | CPU and Memory resources required by grafana (see `global.proxy.resources` for sub-fields)             |   |
-| `grafanaProxyResources`                     | CPU and Memory resources required by proxy injected into grafana pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
 | `heartbeatSchedule`                         | Config for the heartbeat cronjob                                                                                                                                                      | `0 0 * * *`                          |
 | `identity.issuer.clockSkewAllowance`        | Amount of time to allow for clock skew within a Linkerd cluster                                                                                                                       | `20s`                                |
 | `identity.issuer.crtExpiry`                 | Expiration timestamp for the issuer certificate. It must be provided during install                                                                                                   |                                      |
@@ -196,6 +195,8 @@ The following table lists the configurable parameters for the Grafana Add-On.
 | `grafana.resources.cpu.request`     | Amount of CPU units that the gafana container requests                                                                                                                            ||
 | `grafana.resources.memory.limit`    | Maximum amount of memory that grafana container can use                                                                                                                        ||
 | `grafana.resources.memory.request`  | Amount of memory that the grafana container requests                                                                                                                               ||
+| `proxyResources`                    | Structure analog to the `resources` fields above, but overriding the resources of the linkerd proxy injected into the grafana pod.   | values in `global.proxy.resources` |
+
 
 ### Tracing Add-On
 
