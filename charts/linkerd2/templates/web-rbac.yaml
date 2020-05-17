@@ -101,8 +101,8 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-web
   namespace: {{.Values.global.namespace}}
----
 {{- end}}
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -111,3 +111,5 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: web
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+imagePullSecrets:
+{{toYaml .Values.global.imagePullSecrets | indent 2 }}
