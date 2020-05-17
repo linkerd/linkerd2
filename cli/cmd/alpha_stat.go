@@ -30,12 +30,17 @@ var allowedKinds = map[string]struct{}{
 	k8s.StatefulSet:           struct{}{},
 }
 
+// alphaStatOptions holds values for command line flags that apply to the alpha
+// stat command. All fields in this struct should have corresponding flags added in
+// the newCmdAlphaStat func later in this file.
 type alphaStatOptions struct {
 	namespace     string
 	toResource    string
 	allNamespaces bool
 }
 
+// newCmdAlphaStat creates a new cobra command for the `alpha stat` subcommand which
+// display traffic stats about one or many resources. [Experimental]
 func newCmdAlphaStat() *cobra.Command {
 	options := alphaStatOptions{
 		namespace: "default",
@@ -45,7 +50,7 @@ func newCmdAlphaStat() *cobra.Command {
 		Use:   "stat [flags] (RESOURCE)",
 		Short: "Display traffic stats about one or many resources",
 		Long: `Display traffic stats about one or many resources
-		
+
 (RESOURCE) can be a resource kind; one of:
   * cronjobs
   * daemonsets
@@ -149,6 +154,8 @@ Examples:
 	return statCmd
 }
 
+// buildToResource builds a *public.Resource that represents the destination which
+// outbounds will be restricted to.
 func buildToResource(namespace, to string) *public.Resource {
 	toResource, err := util.BuildResource(namespace, to)
 	if err != nil {
@@ -160,12 +167,17 @@ func buildToResource(namespace, to string) *public.Resource {
 	return &toResource
 }
 
+
+// renderTrafficMetrics will render a table with a single row to the given Writer.
+// It will render or hide columns according to the outbound restrictions requested via flags.
 func renderTrafficMetrics(metrics *v1alpha1.TrafficMetrics, allNamespaces bool, w io.Writer) {
 	t := buildTable(false, allNamespaces)
 	t.Data = []table.Row{metricsToRow(metrics, "")}
 	t.Render(w)
 }
 
+// renderTrafficMetricsList will render a table to the given Writer.
+// It will render or hide columns according to the outbound restrictions requested via flags.
 func renderTrafficMetricsList(metrics *v1alpha1.TrafficMetricsList, allNamespaces bool, w io.Writer) {
 	t := buildTable(false, allNamespaces)
 	t.Data = []table.Row{}
@@ -176,6 +188,8 @@ func renderTrafficMetricsList(metrics *v1alpha1.TrafficMetricsList, allNamespace
 	t.Render(w)
 }
 
+// renderTrafficMetricsEdgesList will render a table to the given Writer.
+// Rows will be filtered to make sure that only traffic directed to the resource requested by the `--to` flag
 func renderTrafficMetricsEdgesList(metrics *v1alpha1.TrafficMetricsList, w io.Writer, toResource *public.Resource, direction string) {
 	t := buildTable(true, false)
 	t.Data = []table.Row{}
@@ -195,6 +209,7 @@ func renderTrafficMetricsEdgesList(metrics *v1alpha1.TrafficMetricsList, w io.Wr
 	t.Render(w)
 }
 
+// getNumericMetric will return a numerical representation of a metric as decimal
 func getNumericMetric(metrics *v1alpha1.TrafficMetrics, name string) *resource.Quantity {
 	for _, m := range metrics.Metrics {
 		if m.Name == name {
@@ -204,6 +219,7 @@ func getNumericMetric(metrics *v1alpha1.TrafficMetrics, name string) *resource.Q
 	return resource.NewQuantity(0, resource.DecimalSI)
 }
 
+// getNumericMetricWithUnit will return a numerical representation of a metric concatenated with its unit
 func getNumericMetricWithUnit(metrics *v1alpha1.TrafficMetrics, name string) string {
 	for _, m := range metrics.Metrics {
 		if m.Name == name {
@@ -214,6 +230,8 @@ func getNumericMetricWithUnit(metrics *v1alpha1.TrafficMetrics, name string) str
 	return ""
 }
 
+// metricsToRow will receive traffic metrics and transform them to a slice of strings
+// that represents a human readable row.
 func metricsToRow(metrics *v1alpha1.TrafficMetrics, direction string) []string {
 	success := getNumericMetric(metrics, "success_count").MilliValue()
 	failure := getNumericMetric(metrics, "failure_count").MilliValue()
@@ -248,6 +266,8 @@ func metricsToRow(metrics *v1alpha1.TrafficMetrics, direction string) []string {
 	}
 }
 
+
+// buildTable will build a table.Table according to the outbound restrictions requested.
 func buildTable(outbound, allNamespaces bool) table.Table {
 	columns := []table.Column{
 		table.Column{
