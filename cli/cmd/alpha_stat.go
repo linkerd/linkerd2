@@ -167,7 +167,6 @@ func buildToResource(namespace, to string) *public.Resource {
 	return &toResource
 }
 
-
 // renderTrafficMetrics will render a table with a single row to the given Writer.
 // It will render or hide columns according to the outbound restrictions requested via flags.
 func renderTrafficMetrics(metrics *v1alpha1.TrafficMetrics, allNamespaces bool, w io.Writer) {
@@ -266,8 +265,7 @@ func metricsToRow(metrics *v1alpha1.TrafficMetrics, direction string) []string {
 	}
 }
 
-
-// buildTable will build a table.Table according to the outbound restrictions requested.
+// buildTable will build a table.Table according to the outbound restrictions requested .
 func buildTable(outbound, allNamespaces bool) table.Table {
 	columns := []table.Column{
 		table.Column{
