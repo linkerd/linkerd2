@@ -51,7 +51,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-							return hc.checkServiceAccounts([]string{grafana.(map[string]interface{})["name"].(string)}, hc.ControlPlaneNamespace, "")
+							name, ok := grafana.(map[string]interface{})["name"].(string)
+							if !ok {
+								return fmt.Errorf("couldn't find %s in grafana", "name")
+							}
+							return hc.checkServiceAccounts([]string{name}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
 					},
@@ -61,7 +65,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", grafana.(map[string]interface{})["name"].(string)), metav1.GetOptions{})
+							name, ok := grafana.(map[string]interface{})["name"].(string)
+							if !ok {
+								return fmt.Errorf("couldn't find %s in grafana", "name")
+							}
+							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", name), metav1.GetOptions{})
 							if err != nil {
 								return err
 							}
@@ -99,7 +107,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
-							return hc.checkServiceAccounts([]string{tracing.(map[string]interface{})["collector"].(map[string]interface{})["name"].(string)}, hc.ControlPlaneNamespace, "")
+							collectorName, ok := tracing.(map[string]interface{})["collector"].(map[string]interface{})["name"].(string)
+							if !ok {
+								return fmt.Errorf("couldn't find %s in tracing", "collector.name")
+							}
+							return hc.checkServiceAccounts([]string{collectorName}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "tracing add-on not enabled"}
 					},
@@ -109,7 +121,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
-							return hc.checkServiceAccounts([]string{tracing.(map[string]interface{})["jaeger"].(map[string]interface{})["name"].(string)}, hc.ControlPlaneNamespace, "")
+							jaegerName, ok := tracing.(map[string]interface{})["jaeger"].(map[string]interface{})["name"].(string)
+							if !ok {
+								return fmt.Errorf("couldn't find %s in tracing", "jaeger.name")
+							}
+							return hc.checkServiceAccounts([]string{jaegerName}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "tracing add-on not enabled"}
 					},
@@ -119,7 +135,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
-							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", tracing.(map[string]interface{})["collector"].(map[string]interface{})["name"].(string)), metav1.GetOptions{})
+							collectorName, ok := tracing.(map[string]interface{})["collector"].(map[string]interface{})["name"].(string)
+							if !ok {
+								return fmt.Errorf("couldn't find %s in tracing", "collector.name")
+							}
+							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", collectorName), metav1.GetOptions{})
 							if err != nil {
 								return err
 							}
