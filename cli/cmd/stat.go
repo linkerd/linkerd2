@@ -261,6 +261,10 @@ func statHasRequestData(stat *pb.BasicStats) bool {
 	return stat.GetSuccessCount() != 0 || stat.GetFailureCount() != 0 || stat.GetActualSuccessCount() != 0 || stat.GetActualFailureCount() != 0
 }
 
+func isPodOwnerResource(typ string) bool {
+	return typ != k8s.TrafficSplit && typ != k8s.Authority
+}
+
 func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, options *statOptions) {
 	maxNameLength := len(nameHeader)
 	maxNamespaceLength := len(namespaceHeader)
@@ -280,7 +284,7 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	}
 
 	for _, r := range rows {
-		if r.Resource.Type != k8s.TrafficSplit && !options.unmeshed && r.GetMeshedPodCount() == 0 {
+		if isPodOwnerResource(r.Resource.Type) && !options.unmeshed && r.GetMeshedPodCount() == 0 {
 			continue
 		}
 

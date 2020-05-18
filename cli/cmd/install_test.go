@@ -57,7 +57,6 @@ func TestRender(t *testing.T) {
 		ControllerImageVersion:      "ControllerImageVersion",
 		WebImage:                    "WebImage",
 		PrometheusImage:             "PrometheusImage",
-		GrafanaImage:                "GrafanaImage",
 		ControllerLogLevel:          "ControllerLogLevel",
 		PrometheusLogLevel:          "PrometheusLogLevel",
 		ControllerUID:               2103,
@@ -134,6 +133,7 @@ func TestRender(t *testing.T) {
 		Tracing: map[string]interface{}{
 			"enabled": false,
 		},
+		Grafana: defaultValues.Grafana,
 	}
 
 	haOptions, err := testInstallOptions()
@@ -219,6 +219,22 @@ func TestRender(t *testing.T) {
 	withCustomRegistryValues, _, _ := withCustomRegistryOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(withCustomRegistryValues)
 
+	withAddOnConfigStage, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withAddOnConfigStageValues, _, _ := withAddOnConfigStage.validateAndBuild(configStage, nil)
+	withAddOnConfigStageValues.Tracing["enabled"] = true
+	addFakeTLSSecrets(withAddOnConfigStageValues)
+
+	withAddOnControlPlaneStage, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withAddOnControlPlaneStageValues, _, _ := withAddOnControlPlaneStage.validateAndBuild(controlPlaneStage, nil)
+	withAddOnControlPlaneStageValues.Tracing["enabled"] = true
+	addFakeTLSSecrets(withAddOnControlPlaneStageValues)
+
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
@@ -235,6 +251,8 @@ func TestRender(t *testing.T) {
 		{withRestrictedDashboardPriviligesValues, "install_restricted_dashboard.golden"},
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
 		{withCustomRegistryValues, "install_custom_registry.golden"},
+		{withAddOnConfigStageValues, "install_addon_config.golden"},
+		{withAddOnControlPlaneStageValues, "install_addon_control-plane.golden"},
 	}
 
 	for i, tc := range testCases {

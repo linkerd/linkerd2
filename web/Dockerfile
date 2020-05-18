@@ -1,5 +1,5 @@
 ## bundle web assets
-FROM node:10 as webpack-bundle
+FROM node:14-stretch as webpack-bundle
 RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
 
 ENV PATH /root/.yarn/bin:$PATH

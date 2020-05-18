@@ -10,7 +10,8 @@ import (
 // a common abstraction for install, etc
 type AddOn interface {
 	Name() string
-	Templates() []*chartutil.BufferedFile
+	ConfigStageTemplates() []*chartutil.BufferedFile
+	ControlPlaneStageTemplates() []*chartutil.BufferedFile
 	Values() []byte
 }
 
@@ -23,6 +24,14 @@ func ParseAddOnValues(values *Values) ([]AddOn, error) {
 			return nil, fmt.Errorf("invalid value for 'tracing.enabled' (should be boolean): %s", values.Tracing["enabled"])
 		} else if enabled {
 			addOns = append(addOns, values.Tracing)
+		}
+	}
+
+	if values.Grafana != nil {
+		if enabled, ok := values.Grafana["enabled"].(bool); !ok {
+			return nil, fmt.Errorf("invalid value for 'grafana.enabled' (should be boolean): %s", values.Grafana["enabled"])
+		} else if enabled {
+			addOns = append(addOns, values.Grafana)
 		}
 	}
 

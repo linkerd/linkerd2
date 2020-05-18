@@ -61,6 +61,7 @@ var (
 		k8s.ProxyMemoryRequestAnnotation,
 		k8s.ProxyUIDAnnotation,
 		k8s.ProxyVersionOverrideAnnotation,
+		k8s.ProxyRequireIdentityOnInboundPortsAnnotation,
 		k8s.ProxyIgnoreInboundPortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
 		k8s.ProxyTraceCollectorSvcAddrAnnotation,
@@ -200,6 +201,11 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 // GetPatch returns the JSON patch containing the proxy and init containers specs, if any.
 // If injectProxy is false, only the config.linkerd.io annotations are set.
 func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
+
+	if conf.requireIdentityOnInboundPorts() != "" && conf.identityContext() == nil {
+		return nil, fmt.Errorf("%s cannot be set when identity is disabled", k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
+	}
+
 	clusterDomain := conf.configs.GetGlobal().GetClusterDomain()
 	if clusterDomain == "" {
 		clusterDomain = "cluster.local"
@@ -488,9 +494,10 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 			Inbound:  conf.proxyInboundPort(),
 			Outbound: conf.proxyOutboundPort(),
 		},
-		UID:                   conf.proxyUID(),
-		Resources:             conf.proxyResourceRequirements(),
-		WaitBeforeExitSeconds: conf.proxyWaitBeforeExitSeconds(),
+		UID:                           conf.proxyUID(),
+		Resources:                     conf.proxyResourceRequirements(),
+		WaitBeforeExitSeconds:         conf.proxyWaitBeforeExitSeconds(),
+		RequireIdentityOnInboundPorts: conf.requireIdentityOnInboundPorts(),
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -783,6 +790,10 @@ func (conf *ResourceConfig) tapDisabled() bool {
 		}
 	}
 	return false
+}
+
+func (conf *ResourceConfig) requireIdentityOnInboundPorts() string {
+	return conf.getOverride(k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
 }
 
 func (conf *ResourceConfig) proxyWaitBeforeExitSeconds() uint64 {

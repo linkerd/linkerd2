@@ -19,37 +19,38 @@ const (
 type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
-		Stage                       string            `json:"stage"`
-		ControllerImage             string            `json:"controllerImage"`
-		ControllerImageVersion      string            `json:"controllerImageVersion"`
-		WebImage                    string            `json:"webImage"`
-		PrometheusImage             string            `json:"prometheusImage"`
-		GrafanaImage                string            `json:"grafanaImage"`
-		ControllerReplicas          uint              `json:"controllerReplicas"`
-		ControllerLogLevel          string            `json:"controllerLogLevel"`
-		PrometheusLogLevel          string            `json:"prometheusLogLevel"`
-		ControllerUID               int64             `json:"controllerUID"`
-		EnableH2Upgrade             bool              `json:"enableH2Upgrade"`
-		EnablePodAntiAffinity       bool              `json:"enablePodAntiAffinity"`
-		WebhookFailurePolicy        string            `json:"webhookFailurePolicy"`
-		OmitWebhookSideEffects      bool              `json:"omitWebhookSideEffects"`
-		RestrictDashboardPrivileges bool              `json:"restrictDashboardPrivileges"`
-		DisableHeartBeat            bool              `json:"disableHeartBeat"`
-		HeartbeatSchedule           string            `json:"heartbeatSchedule"`
-		InstallNamespace            bool              `json:"installNamespace"`
-		Configs                     ConfigJSONs       `json:"configs"`
-		Global                      *Global           `json:"global"`
-		Identity                    *Identity         `json:"identity"`
-		Dashboard                   *Dashboard        `json:"dashboard"`
-		DebugContainer              *DebugContainer   `json:"debugContainer"`
-		ProxyInjector               *ProxyInjector    `json:"proxyInjector"`
-		ProfileValidator            *ProfileValidator `json:"profileValidator"`
-		Tap                         *Tap              `json:"tap"`
-		NodeSelector                map[string]string `json:"nodeSelector"`
-		SMIMetrics                  *SMIMetrics       `json:"smiMetrics"`
+		Stage                         string                         `json:"stage"`
+		ControllerImage               string                         `json:"controllerImage"`
+		ControllerImageVersion        string                         `json:"controllerImageVersion"`
+		WebImage                      string                         `json:"webImage"`
+		PrometheusImage               string                         `json:"prometheusImage"`
+		ControllerReplicas            uint                           `json:"controllerReplicas"`
+		ControllerLogLevel            string                         `json:"controllerLogLevel"`
+		PrometheusLogLevel            string                         `json:"prometheusLogLevel"`
+		PrometheusExtraArgs           map[string]string              `json:"prometheusExtraArgs"`
+		PrometheusAlertmanagers       []interface{}                  `json:"prometheusAlertmanagers"`
+		PrometheusRuleConfigMapMounts []PrometheusRuleConfigMapMount `json:"prometheusRuleConfigMapMounts"`
+		ControllerUID                 int64                          `json:"controllerUID"`
+		EnableH2Upgrade               bool                           `json:"enableH2Upgrade"`
+		EnablePodAntiAffinity         bool                           `json:"enablePodAntiAffinity"`
+		WebhookFailurePolicy          string                         `json:"webhookFailurePolicy"`
+		OmitWebhookSideEffects        bool                           `json:"omitWebhookSideEffects"`
+		RestrictDashboardPrivileges   bool                           `json:"restrictDashboardPrivileges"`
+		DisableHeartBeat              bool                           `json:"disableHeartBeat"`
+		HeartbeatSchedule             string                         `json:"heartbeatSchedule"`
+		InstallNamespace              bool                           `json:"installNamespace"`
+		Configs                       ConfigJSONs                    `json:"configs"`
+		Global                        *Global                        `json:"global"`
+		Identity                      *Identity                      `json:"identity"`
+		Dashboard                     *Dashboard                     `json:"dashboard"`
+		DebugContainer                *DebugContainer                `json:"debugContainer"`
+		ProxyInjector                 *ProxyInjector                 `json:"proxyInjector"`
+		ProfileValidator              *ProfileValidator              `json:"profileValidator"`
+		Tap                           *Tap                           `json:"tap"`
+		NodeSelector                  map[string]string              `json:"nodeSelector"`
+		SMIMetrics                    *SMIMetrics                    `json:"smiMetrics"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
-		GrafanaResources       *Resources `json:"grafanaResources"`
 		HeartbeatResources     *Resources `json:"heartbeatResources"`
 		IdentityResources      *Resources `json:"identityResources"`
 		PrometheusResources    *Resources `json:"prometheusResources"`
@@ -61,6 +62,7 @@ type (
 
 		// Addon Structures
 		Tracing Tracing `json:"tracing"`
+		Grafana Grafana `json:"grafana"`
 	}
 
 	// Global values common across all charts
@@ -96,19 +98,20 @@ type (
 
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
-		Capabilities           *Capabilities `json:"capabilities"`
-		Component              string        `json:"component"`
-		DisableIdentity        bool          `json:"disableIdentity"`
-		DisableTap             bool          `json:"disableTap"`
-		EnableExternalProfiles bool          `json:"enableExternalProfiles"`
-		Image                  *Image        `json:"image"`
-		LogLevel               string        `json:"logLevel"`
-		SAMountPath            *SAMountPath  `json:"saMountPath"`
-		Ports                  *Ports        `json:"ports"`
-		Resources              *Resources    `json:"resources"`
-		Trace                  *Trace        `json:"trace"`
-		UID                    int64         `json:"uid"`
-		WaitBeforeExitSeconds  uint64        `json:"waitBeforeExitSeconds"`
+		Capabilities                  *Capabilities `json:"capabilities"`
+		Component                     string        `json:"component"`
+		DisableIdentity               bool          `json:"disableIdentity"`
+		DisableTap                    bool          `json:"disableTap"`
+		EnableExternalProfiles        bool          `json:"enableExternalProfiles"`
+		Image                         *Image        `json:"image"`
+		LogLevel                      string        `json:"logLevel"`
+		SAMountPath                   *SAMountPath  `json:"saMountPath"`
+		Ports                         *Ports        `json:"ports"`
+		Resources                     *Resources    `json:"resources"`
+		Trace                         *Trace        `json:"trace"`
+		UID                           int64         `json:"uid"`
+		WaitBeforeExitSeconds         uint64        `json:"waitBeforeExitSeconds"`
+		RequireIdentityOnInboundPorts string        `json:"requireIdentityOnInboundPorts"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
@@ -186,6 +189,13 @@ type (
 		CrtExpiryAnnotation string    `json:"crtExpiryAnnotation"`
 		CrtExpiry           time.Time `json:"crtExpiry"`
 		TLS                 *TLS      `json:"tls"`
+	}
+
+	// PrometheusRuleConfigMapMount is a user supplied prometheus rule config maps.
+	PrometheusRuleConfigMapMount struct {
+		Name      string `json:"name"`
+		SubPath   string `json:"subPath"`
+		ConfigMap string `json:"configMap"`
 	}
 
 	// ProxyInjector has all the proxy injector's Helm variables

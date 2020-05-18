@@ -27,7 +27,7 @@ type profileOptions struct {
 func newProfileOptions() *profileOptions {
 	return &profileOptions{
 		name:          "",
-		namespace:     "default",
+		namespace:     getDefaultNamespace(),
 		template:      false,
 		openAPI:       "",
 		proto:         "",

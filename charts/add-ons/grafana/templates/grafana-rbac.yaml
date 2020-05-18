@@ -6,7 +6,7 @@
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-grafana
+  name: {{.Values.name}}
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: grafana

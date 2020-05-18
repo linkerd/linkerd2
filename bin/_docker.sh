@@ -2,6 +2,7 @@ set -eu
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
+# shellcheck source=_log.sh
 . "$bindir"/_log.sh
 
 # TODO this should be set to the canonical public docker registry; we can override this

@@ -13,6 +13,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/testutil"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
@@ -422,7 +423,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
- name: extension-apiserver-authentication 
+ name: extension-apiserver-authentication
  namespace: kube-system
 data:
   %s : 'bar'
@@ -2012,19 +2013,18 @@ func TestValidateControlPlanePods(t *testing.T) {
 	t.Run("Returns an error if not all containers are ready", func(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
-			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, false),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
 			pod("linkerd-tap-6c878df6c8-2hmtd", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
-			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
+			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, false),
 		}
 
 		err := validateControlPlanePods(pods)
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "pod/linkerd-grafana-5b7d796646-hh46d container grafana is not ready" {
+		if err.Error() != "pod/linkerd-web-98c9ddbcd-7b5lh container web is not ready" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})
@@ -2254,7 +2254,7 @@ func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 			"pre-linkerd-global-resources no PodSecurityPolicies exist",
 		}
 		if !reflect.DeepEqual(observer.results, expected) {
-			t.Errorf("Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
+			testutil.AnnotatedErrorf(t, "Mistmatch result", "Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
 		}
 	})
 
@@ -2302,12 +2302,12 @@ metadata:
 		hc.kubeAPI, err = k8s.NewFakeAPI(resources...)
 		hc.ControlPlaneNamespace = "test-ns"
 		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
+			testutil.AnnotatedFatalf(t, "Unexpected error", "Unexpected error: %s", err)
 		}
 
 		observer := newObserver()
 		if hc.RunChecks(observer.resultFn) {
-			t.Errorf("Expect RunChecks to return false")
+			testutil.Error(t, "Expect RunChecks to return false")
 		}
 
 		expected := []string{

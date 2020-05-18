@@ -1,7 +1,6 @@
 package watcher
 
 import (
-	"sort"
 	"testing"
 
 	"k8s.io/client-go/tools/cache"
@@ -446,20 +445,16 @@ status:
 				t.Fatalf("Expected no error, got [%s]", err)
 			}
 
-			actualAddresses := make([]string, 0)
-			actualAddresses = append(actualAddresses, listener.added...)
-			sort.Strings(actualAddresses)
+			listener.ExpectAdded(tt.expectedAddresses, t)
 
-			testCompare(t, tt.expectedAddresses, actualAddresses)
-
-			if listener.noEndpointsCalled != tt.expectedNoEndpoints {
+			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
 				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
-					tt.expectedNoEndpoints, listener.noEndpointsCalled)
+					tt.expectedNoEndpoints, listener.endpointsAreNotCalled())
 			}
 
-			if listener.noEndpointsExists != tt.expectedNoEndpointsServiceExists {
-				t.Fatalf("Expected noEndpointsExists to be [%t], got [%t]",
-					tt.expectedNoEndpointsServiceExists, listener.noEndpointsExists)
+			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
+				t.Fatalf("Expected noEndpointsExist to be [%t], got [%t]",
+					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
 			}
 		})
 	}
@@ -587,8 +582,95 @@ status:
 				watcher.deleteService(tt.objectToDelete)
 			}
 
-			if !listener.noEndpointsCalled {
+			if !listener.endpointsAreNotCalled() {
 				t.Fatal("Expected NoEndpoints to be Called")
+			}
+		})
+	}
+}
+
+func TestIPWatcherUpdate(t *testing.T) {
+	podK8sConfig := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.12`
+
+	hostNetworkPodConifg := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+spec:
+  hostNetwork: true
+status:
+  phase: Running
+  podIP: 172.17.0.12`
+
+	for _, tt := range []struct {
+		description    string
+		k8sConfigs     string
+		host           string
+		port           Port
+		objectToUpdate interface{}
+	}{
+		{
+			description: "pod update",
+			k8sConfigs:  podK8sConfig,
+			host:        "172.17.0.12",
+			port:        12345,
+			objectToUpdate: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "name1-1", Namespace: "ns"},
+				Status:     corev1.PodStatus{PodIP: "172.17.0.12"},
+			},
+		},
+		{
+			description: "host network pod update",
+			k8sConfigs:  hostNetworkPodConifg,
+			host:        "172.17.0.12",
+			port:        12345,
+			objectToUpdate: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "name1-1", Namespace: "ns"},
+				Spec:       corev1.PodSpec{HostNetwork: true},
+				Status:     corev1.PodStatus{PodIP: "172.17.0.12"},
+			},
+		},
+	} {
+		tt := tt // pin
+
+		t.Run("ip watch for "+tt.description, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
+
+			k8sAPI.Sync(nil)
+
+			listener := newBufferingEndpointListener()
+
+			err = watcher.Subscribe(tt.host, tt.port, listener)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			watcher.addPod(tt.objectToUpdate)
+
+			if listener.endpointsAreNotCalled() {
+				t.Fatal("NoEndpoints was called but should not have been")
 			}
 		})
 	}
