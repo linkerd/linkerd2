@@ -38,13 +38,35 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// APIResource is an enum for Kubernetes API resource types, for use when
+// APIResource represents a namespaces k8s api resource
+type APIResource struct {
+	ResourceType
+	namespace string
+}
+
+// WithNamespace modifies the namespace of the APIResource
+func (ar APIResource) WithNamespace(ns string) APIResource {
+	return APIResource{
+		ResourceType: ar.ResourceType,
+		namespace:    ns,
+	}
+}
+
+// RT creates a new APIResource with default namespace set to ALL
+func RT(rt ResourceType) APIResource {
+	return APIResource{
+		ResourceType: rt,
+		namespace:    corev1.NamespaceAll,
+	}
+}
+
+// ResourceType is an enum for Kubernetes API resource types, for use when
 // initializing a K8s API, to describe which resource types to interact with.
-type APIResource int
+type ResourceType int
 
 // These constants enumerate Kubernetes resource types.
 const (
-	CJ APIResource = iota
+	CJ ResourceType = iota
 	CM
 	Deploy
 	DS
@@ -86,9 +108,9 @@ type API struct {
 	secret   coreinformers.SecretInformer
 
 	syncChecks        []cache.InformerSynced
-	sharedInformers   informers.SharedInformerFactory
-	spSharedInformers sp.SharedInformerFactory
-	tsSharedInformers ts.SharedInformerFactory
+	sharedInformers   map[string]informers.SharedInformerFactory
+	spSharedInformers map[string]sp.SharedInformerFactory
+	tsSharedInformers map[string]ts.SharedInformerFactory
 }
 
 // InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
@@ -130,7 +152,7 @@ func initAPI(k8sClient *k8s.KubernetesAPI, kubeConfig *rest.Config, ensureCluste
 	// check for need and access to ServiceProfiles
 	var spClient *spclient.Clientset
 	for _, res := range resources {
-		if res == SP {
+		if res.ResourceType == SP {
 			err := k8s.ServiceProfilesAccess(k8sClient)
 			if err != nil {
 				return nil, err
@@ -148,7 +170,7 @@ func initAPI(k8sClient *k8s.KubernetesAPI, kubeConfig *rest.Config, ensureCluste
 	// TrafficSplits
 	var tsClient *tsclient.Clientset
 	for _, res := range resources {
-		if res == TS {
+		if res.ResourceType == TS {
 			tsClient, err = NewTsClientSet(kubeConfig)
 			if err != nil {
 				return nil, err
@@ -167,89 +189,122 @@ func NewAPI(
 	tsClient tsclient.Interface,
 	resources ...APIResource,
 ) *API {
-	sharedInformers := informers.NewSharedInformerFactory(k8sClient, 10*time.Minute)
 
-	var spSharedInformers sp.SharedInformerFactory
-	if spClient != nil {
-		spSharedInformers = sp.NewSharedInformerFactory(spClient, 10*time.Minute)
+	k8sSharedInformers := make(map[string]informers.SharedInformerFactory)
+	tsSharedInformers := make(map[string]ts.SharedInformerFactory)
+	spSharedInformers := make(map[string]sp.SharedInformerFactory)
+
+	getK8sSharedInformer := func(res APIResource) informers.SharedInformerFactory {
+		inf, ok := k8sSharedInformers[res.namespace]
+		if ok {
+			return inf
+		}
+		newInf := informers.NewSharedInformerFactoryWithOptions(k8sClient, 10*time.Minute, informers.WithNamespace(res.namespace))
+		k8sSharedInformers[res.namespace] = newInf
+		return newInf
 	}
 
-	var tsSharedInformers ts.SharedInformerFactory
-	if tsClient != nil {
-		tsSharedInformers = ts.NewSharedInformerFactory(tsClient, 10*time.Minute)
+	getTsSharedInformer := func(res APIResource) ts.SharedInformerFactory {
+		inf, ok := tsSharedInformers[res.namespace]
+		if ok {
+			return inf
+		}
+		newInf := ts.NewSharedInformerFactoryWithOptions(tsClient, 10*time.Minute, ts.WithNamespace(res.namespace))
+		tsSharedInformers[res.namespace] = newInf
+		return newInf
+	}
+
+	getSpSharedInformer := func(res APIResource) sp.SharedInformerFactory {
+		inf, ok := spSharedInformers[res.namespace]
+		if ok {
+			return inf
+		}
+		newInf := sp.NewSharedInformerFactoryWithOptions(spClient, 10*time.Minute, sp.WithNamespace(res.namespace))
+		spSharedInformers[res.namespace] = newInf
+		return newInf
 	}
 
 	api := &API{
-		Client:            k8sClient,
-		syncChecks:        make([]cache.InformerSynced, 0),
-		sharedInformers:   sharedInformers,
-		spSharedInformers: spSharedInformers,
-		tsSharedInformers: tsSharedInformers,
+		Client:     k8sClient,
+		syncChecks: make([]cache.InformerSynced, 0),
 	}
 
 	for _, resource := range resources {
-		switch resource {
+
+		switch resource.ResourceType {
 		case CJ:
-			api.cj = sharedInformers.Batch().V1beta1().CronJobs()
+			api.cj = getK8sSharedInformer(resource).Batch().V1beta1().CronJobs()
 			api.syncChecks = append(api.syncChecks, api.cj.Informer().HasSynced)
 		case CM:
-			api.cm = sharedInformers.Core().V1().ConfigMaps()
+			api.cm = getK8sSharedInformer(resource).Core().V1().ConfigMaps()
 			api.syncChecks = append(api.syncChecks, api.cm.Informer().HasSynced)
 		case Deploy:
-			api.deploy = sharedInformers.Apps().V1().Deployments()
+			api.deploy = getK8sSharedInformer(resource).Apps().V1().Deployments()
 			api.syncChecks = append(api.syncChecks, api.deploy.Informer().HasSynced)
 		case DS:
-			api.ds = sharedInformers.Apps().V1().DaemonSets()
+			api.ds = getK8sSharedInformer(resource).Apps().V1().DaemonSets()
 			api.syncChecks = append(api.syncChecks, api.ds.Informer().HasSynced)
 		case Endpoint:
-			api.endpoint = sharedInformers.Core().V1().Endpoints()
+			api.endpoint = getK8sSharedInformer(resource).Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
 		case Job:
-			api.job = sharedInformers.Batch().V1().Jobs()
+			api.job = getK8sSharedInformer(resource).Batch().V1().Jobs()
 			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
 		case MWC:
-			api.mwc = sharedInformers.Admissionregistration().V1beta1().MutatingWebhookConfigurations()
+			api.mwc = getK8sSharedInformer(resource).Admissionregistration().V1beta1().MutatingWebhookConfigurations()
 			api.syncChecks = append(api.syncChecks, api.mwc.Informer().HasSynced)
 		case NS:
-			api.ns = sharedInformers.Core().V1().Namespaces()
+			api.ns = getK8sSharedInformer(resource).Core().V1().Namespaces()
 			api.syncChecks = append(api.syncChecks, api.ns.Informer().HasSynced)
 		case Pod:
-			api.pod = sharedInformers.Core().V1().Pods()
+			api.pod = getK8sSharedInformer(resource).Core().V1().Pods()
 			api.syncChecks = append(api.syncChecks, api.pod.Informer().HasSynced)
 		case RC:
-			api.rc = sharedInformers.Core().V1().ReplicationControllers()
+			api.rc = getK8sSharedInformer(resource).Core().V1().ReplicationControllers()
 			api.syncChecks = append(api.syncChecks, api.rc.Informer().HasSynced)
 		case RS:
-			api.rs = sharedInformers.Apps().V1().ReplicaSets()
+			api.rs = getK8sSharedInformer(resource).Apps().V1().ReplicaSets()
 			api.syncChecks = append(api.syncChecks, api.rs.Informer().HasSynced)
 		case SP:
-			api.sp = spSharedInformers.Linkerd().V1alpha2().ServiceProfiles()
+			api.sp = getSpSharedInformer(resource).Linkerd().V1alpha2().ServiceProfiles()
 			api.syncChecks = append(api.syncChecks, api.sp.Informer().HasSynced)
 		case SS:
-			api.ss = sharedInformers.Apps().V1().StatefulSets()
+			api.ss = getK8sSharedInformer(resource).Apps().V1().StatefulSets()
 			api.syncChecks = append(api.syncChecks, api.ss.Informer().HasSynced)
 		case Svc:
-			api.svc = sharedInformers.Core().V1().Services()
+			api.svc = getK8sSharedInformer(resource).Core().V1().Services()
 			api.syncChecks = append(api.syncChecks, api.svc.Informer().HasSynced)
 		case TS:
-			api.ts = tsSharedInformers.Split().V1alpha1().TrafficSplits()
+			api.ts = getTsSharedInformer(resource).Split().V1alpha1().TrafficSplits()
 			api.syncChecks = append(api.syncChecks, api.ts.Informer().HasSynced)
 		case Node:
-			api.node = sharedInformers.Core().V1().Nodes()
+			api.node = getK8sSharedInformer(resource).Core().V1().Nodes()
 			api.syncChecks = append(api.syncChecks, api.node.Informer().HasSynced)
 		case Secret:
-			api.secret = sharedInformers.Core().V1().Secrets()
+			api.secret = getK8sSharedInformer(resource).Core().V1().Secrets()
 			api.syncChecks = append(api.syncChecks, api.secret.Informer().HasSynced)
 		}
 	}
+	api.sharedInformers = k8sSharedInformers
+	api.tsSharedInformers = tsSharedInformers
+	api.spSharedInformers = spSharedInformers
 	return api
 }
 
 // Sync waits for all informers to be synced.
 func (api *API) Sync(stopCh <-chan struct{}) {
-	api.sharedInformers.Start(stopCh)
-	api.spSharedInformers.Start(stopCh)
-	api.tsSharedInformers.Start(stopCh)
+
+	for _, inf := range api.sharedInformers {
+		inf.Start(stopCh)
+	}
+
+	for _, inf := range api.tsSharedInformers {
+		inf.Start(stopCh)
+	}
+
+	for _, inf := range api.spSharedInformers {
+		inf.Start(stopCh)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()

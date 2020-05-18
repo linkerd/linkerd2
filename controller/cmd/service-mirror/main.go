@@ -34,10 +34,10 @@ func Main(args []string) {
 	k8sAPI, err := k8s.InitializeAPI(
 		*kubeConfigPath,
 		false,
-		k8s.Secret,
-		k8s.Svc,
-		k8s.NS,
-		k8s.Endpoint,
+		k8s.RT(k8s.Secret).WithNamespace("linkerd-multicluster"),
+		k8s.RT(k8s.Svc),
+		k8s.RT(k8s.NS),
+		k8s.RT(k8s.Endpoint),
 	)
 
 	if err != nil {

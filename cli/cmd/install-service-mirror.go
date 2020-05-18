@@ -92,6 +92,10 @@ func (options *installServiceMirrorOptions) validate() error {
 		return errors.New("you need to specify a namespace")
 	}
 
+	if options.namespace == controlPlaneNamespace {
+		return errors.New("you need to install the service mirror component in a namespace different than the Linkerd one")
+	}
+
 	if _, err := log.ParseLevel(options.logLevel); err != nil {
 		return fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
