@@ -85,7 +85,6 @@ jobs:
         ! -name lint \
         ! -name _log.sh \
         ! -name minikube-start-hyperv.bat \
-        ! -name protoc-go.sh \
         ! -name _tag.sh \
         ! -name test-cleanup \
         ! -name test-clouds-cleanup \
