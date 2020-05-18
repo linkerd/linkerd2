@@ -16,7 +16,6 @@ func TestNewValues(t *testing.T) {
 	expected := &Values{
 		Stage:                         "",
 		ControllerImage:               "gcr.io/linkerd-io/controller",
-		ControllerImageVersion:        testVersion,
 		WebImage:                      "gcr.io/linkerd-io/web",
 		PrometheusImage:               "prom/prometheus:v2.15.2",
 		ControllerReplicas:            1,
@@ -40,6 +39,7 @@ func TestNewValues(t *testing.T) {
 			ImagePullPolicy:          "IfNotPresent",
 			CliVersion:               "linkerd/cli dev-undefined",
 			ControllerComponentLabel: "linkerd.io/control-plane-component",
+			ControllerImageVersion:   testVersion,
 			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
 			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
 			CreatedByAnnotation:      "linkerd.io/created-by",
@@ -144,7 +144,7 @@ func TestNewValues(t *testing.T) {
 	// pin the versions to ensure consistent test result.
 	// in non-test environment, the default versions are read from the
 	// values.yaml.
-	actual.ControllerImageVersion = testVersion
+	actual.Global.ControllerImageVersion = testVersion
 	actual.Global.Proxy.Image.Version = testVersion
 	actual.Global.ProxyInit.Image.Version = testVersion
 	actual.DebugContainer.Image.Version = testVersion
@@ -246,7 +246,7 @@ func TestNewValues(t *testing.T) {
 		// pin the versions to ensure consistent test result.
 		// in non-test environment, the default versions are read from the
 		// values.yaml.
-		actual.ControllerImageVersion = testVersion
+		actual.Global.ControllerImageVersion = testVersion
 		actual.Global.Proxy.Image.Version = testVersion
 		actual.Global.ProxyInit.Image.Version = testVersion
 		actual.DebugContainer.Image.Version = testVersion

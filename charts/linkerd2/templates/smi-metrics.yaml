@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: smi-metrics
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: smi-metrics
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   name: linkerd-smi-metrics
@@ -24,7 +24,7 @@ metadata:
   labels:
     app.kubernetes.io/name: smi-metrics
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: smi-metrics
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 spec:
