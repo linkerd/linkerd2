@@ -12,6 +12,7 @@ fi
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 
+# shellcheck source=_docker.sh
 . "$bindir"/_docker.sh
 
 tag=2019-09-04.01
