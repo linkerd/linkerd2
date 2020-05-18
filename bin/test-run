@@ -9,6 +9,7 @@
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
+# shellcheck source=_test-run.sh
 . "$bindir"/_test-run.sh
 
 init_test_run "$@"

@@ -13,7 +13,7 @@
 
 set -e
 
-for CLUSTER in AKS DO EKS GKE; do
+for CLUSTER in 'AKS' 'DO' 'EKS' 'GKE'; do
   if [ -z "${!CLUSTER}" ]; then
     echo "\$$CLUSTER not set" >&2
     exit 64
@@ -23,5 +23,5 @@ done
 for CLUSTER in $AKS $DO $EKS $GKE
 do
   printf '\n%s\n' "$CLUSTER"
-  bin/test-cleanup $CLUSTER
+  bin/test-cleanup "$CLUSTER"
 done

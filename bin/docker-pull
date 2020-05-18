@@ -11,6 +11,7 @@ fi
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
+# shellcheck source=_docker.sh
 . "$bindir"/_docker.sh
 
 for img in cli-bin cni-plugin controller debug grafana proxy web ; do

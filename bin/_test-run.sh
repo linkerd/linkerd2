@@ -136,7 +136,7 @@ check_if_k8s_reachable(){
 
 remove_l5d_if_exists() {
   resources=$(kubectl --context=$k8s_context get all,clusterrole,clusterrolebinding,mutatingwebhookconfigurations,validatingwebhookconfigurations,psp,crd -l linkerd.io/control-plane-ns --all-namespaces -oname)
-  if [ ! -z "$resources" ]; then
+  if [ -n "$resources" ]; then
     printf 'Removing existing l5d installation...'
     cleanup
     printf '[ok]\n'

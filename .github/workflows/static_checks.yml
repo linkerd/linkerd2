@@ -79,40 +79,16 @@ jobs:
       # https://github.com/koalaman/shellcheck/wiki/Checks
       run: |
         find ./bin -type f \
-        ! -name build-cli-bin \
-        ! -name docker-build-base \
-        ! -name docker-build-cli-bin \
-        ! -name docker-build-cni-plugin \
-        ! -name docker-build-controller \
-        ! -name docker-build-debug \
-        ! -name docker-build-go-deps \
-        ! -name docker-build-grafana \
         ! -name docker-build-proxy \
-        ! -name docker-build-web \
-        ! -name docker-images \
-        ! -name docker-pull \
-        ! -name docker-pull-binaries \
-        ! -name docker-pull-deps \
-        ! -name docker-push \
-        ! -name docker-push-deps \
-        ! -name docker-retag-all \
         ! -name _docker.sh \
         ! -name fmt \
         ! -name lint \
         ! -name _log.sh \
         ! -name minikube-start-hyperv.bat \
-        ! -name mkube \
-        ! -name protoc-go.sh \
-        ! -name root-tag \
         ! -name _tag.sh \
         ! -name test-cleanup \
-        ! -name test-clouds-cleanup \
-        ! -name test-clouds \
-        ! -name test-run \
         ! -name _test-run.sh \
-        ! -name test-scale \
         ! -name update-go-deps-shas \
-        ! -name web \
         ! -name *.nuspec \
         ! -name *.ps1 \
-        | xargs -I {} bin/shellcheck -x {}
+        | xargs -I {} bin/shellcheck -x -P ./bin {}

@@ -8,9 +8,9 @@ dirs=$(go list -f \{\{.Dir\}\} ./... | grep -v controller/gen)
 # go list will list all subdirectories and goimports acts recursively.  This
 # results in certain files being reported multiple time.  Therefore, we must
 # dedup them.
-files=$(bin/goimports -l $dirs | sort | uniq)
+files=$(bin/goimports -l $dirs | sort -u)
 
-if [ ! -z "$files" ]; then
+if [ -n "$files" ]; then
   for file in $files; do
     bin/goimports -d "$@" "$file"
   done
