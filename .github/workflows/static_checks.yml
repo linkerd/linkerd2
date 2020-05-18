@@ -109,7 +109,6 @@ jobs:
         ! -name test-clouds \
         ! -name test-run \
         ! -name _test-run.sh \
-        ! -name test-scale \
         ! -name update-go-deps-shas \
         ! -name web \
         ! -name *.nuspec \
