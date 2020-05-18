@@ -101,7 +101,6 @@ jobs:
         ! -name lint \
         ! -name _log.sh \
         ! -name minikube-start-hyperv.bat \
-        ! -name mkube \
         ! -name protoc-go.sh \
         ! -name root-tag \
         ! -name _tag.sh \
