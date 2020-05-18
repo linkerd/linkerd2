@@ -106,7 +106,6 @@ jobs:
         ! -name root-tag \
         ! -name _tag.sh \
         ! -name test-cleanup \
-        ! -name test-clouds-cleanup \
         ! -name test-clouds \
         ! -name test-run \
         ! -name _test-run.sh \
