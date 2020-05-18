@@ -414,19 +414,19 @@ func repairConfigs(configs *pb.All) {
 	}
 }
 
-func injectCABundle(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions, value *charts.TLS) error {
+func injectCABundle(k *k8s.KubernetesAPI, webhook string, value *charts.TLS) error {
 
 	var err error
 
 	switch webhook {
 	case k8s.ProxyInjectorWebhookServiceName:
-		err = injectCABundleFromMutatingWebhook(k, k8s.ProxyInjectorWebhookConfigName, options, value)
+		err = injectCABundleFromMutatingWebhook(k, k8s.ProxyInjectorWebhookConfigName, value)
 	case k8s.SPValidatorWebhookServiceName:
-		err = injectCABundleFromValidatingWebhook(k, k8s.SPValidatorWebhookConfigName, options, value)
+		err = injectCABundleFromValidatingWebhook(k, k8s.SPValidatorWebhookConfigName, value)
 	case k8s.TapServiceName:
-		err = injectCABundleFromAPIService(k, k8s.TapAPIRegistrationServiceName, options, value)
+		err = injectCABundleFromAPIService(k, k8s.TapAPIRegistrationServiceName, value)
 	case k8s.SmiMetricsServiceName:
-		err = injectCABundleFromAPIService(k, k8s.SmiMetricsAPIRegistrationServiceName, options, value)
+		err = injectCABundleFromAPIService(k, k8s.SmiMetricsAPIRegistrationServiceName, value)
 	default:
 		err = fmt.Errorf("unknown webhook for retrieving CA bundle: %s", webhook)
 	}
@@ -441,7 +441,7 @@ func injectCABundle(k *k8s.KubernetesAPI, webhook string, options *upgradeOption
 	return nil
 }
 
-func injectCABundleFromMutatingWebhook(k kubernetes.Interface, resource string, options *upgradeOptions, value *charts.TLS) error {
+func injectCABundleFromMutatingWebhook(k kubernetes.Interface, resource string, value *charts.TLS) error {
 	webhookConf, err := k.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(resource, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -453,7 +453,7 @@ func injectCABundleFromMutatingWebhook(k kubernetes.Interface, resource string, 
 	return nil
 }
 
-func injectCABundleFromValidatingWebhook(k kubernetes.Interface, resource string, options *upgradeOptions, value *charts.TLS) error {
+func injectCABundleFromValidatingWebhook(k kubernetes.Interface, resource string, value *charts.TLS) error {
 	webhookConf, err := k.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(resource, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -463,7 +463,7 @@ func injectCABundleFromValidatingWebhook(k kubernetes.Interface, resource string
 	return nil
 }
 
-func injectCABundleFromAPIService(k *k8s.KubernetesAPI, resource string, options *upgradeOptions, value *charts.TLS) error {
+func injectCABundleFromAPIService(k *k8s.KubernetesAPI, resource string, value *charts.TLS) error {
 	apiService, err := k.Apiregistration.ApiregistrationV1().APIServices().Get(resource, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -486,7 +486,7 @@ func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOption
 		CrtPEM: string(secret.Data["crt.pem"]),
 	}
 
-	if err := injectCABundle(k, webhook, options, value); err != nil {
+	if err := injectCABundle(k, webhook, value); err != nil {
 		return nil, err
 	}
 
@@ -510,7 +510,7 @@ func fetchK8sTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOpt
 		CrtPEM: string(secret.Data["tls.crt"]),
 	}
 
-	if err := injectCABundle(k, webhook, options, value); err != nil {
+	if err := injectCABundle(k, webhook, value); err != nil {
 		return nil, err
 	}
 

@@ -223,7 +223,7 @@ type (
 	// TLS has a pair of PEM-encoded key and certificate variables used in the
 	// Helm templates
 	TLS struct {
-		externalSecret bool   `json:"externalSecret"`
+		ExternalSecret bool   `json:"externalSecret"`
 		KeyPEM         string `json:"keyPEM"`
 		CrtPEM         string `json:"crtPEM"`
 		CaBundle       string `json:"caBundle"`
