@@ -134,8 +134,10 @@ func TestNewValues(t *testing.T) {
 		Grafana: Grafana{
 			"enabled": true,
 			"name":    "linkerd-grafana",
-			"image":   "gcr.io/linkerd-io/grafana",
-			"tag":     testVersion,
+			"image": map[string]interface{}{
+				"name":    "gcr.io/linkerd-io/grafana",
+				"version": testVersion,
+			},
 		},
 	}
 
@@ -146,7 +148,7 @@ func TestNewValues(t *testing.T) {
 	actual.Global.Proxy.Image.Version = testVersion
 	actual.Global.ProxyInit.Image.Version = testVersion
 	actual.DebugContainer.Image.Version = testVersion
-	actual.Grafana["tag"] = testVersion
+	actual.Grafana["image"].(map[string]interface{})["version"] = testVersion
 
 	// Make Add-On Values nil to not have to check for their defaults
 	actual.Tracing = nil
@@ -192,8 +194,10 @@ func TestNewValues(t *testing.T) {
 		expected.Grafana = Grafana{
 			"enabled": true,
 			"name":    "linkerd-grafana",
-			"image":   "gcr.io/linkerd-io/grafana",
-			"tag":     testVersion,
+			"image": map[string]interface{}{
+				"name":    "gcr.io/linkerd-io/grafana",
+				"version": testVersion,
+			},
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
 					"limit":   controllerResources.CPU.Limit,
@@ -246,7 +250,7 @@ func TestNewValues(t *testing.T) {
 		actual.Global.Proxy.Image.Version = testVersion
 		actual.Global.ProxyInit.Image.Version = testVersion
 		actual.DebugContainer.Image.Version = testVersion
-		actual.Grafana["tag"] = testVersion
+		actual.Grafana["image"].(map[string]interface{})["version"] = testVersion
 		// Make Add-On Values nil to not have to check for their defaults
 		actual.Tracing = nil
 

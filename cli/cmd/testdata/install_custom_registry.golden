@@ -2841,7 +2841,6 @@ data:
         name: my.custom.registry/linkerd-io/grafana
         version: linkerdVersionValue
       name: linkerd-grafana
-      tag: linkerdVersionValue
     tracing:
       enabled: false
 ---

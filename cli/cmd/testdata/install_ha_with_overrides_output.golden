@@ -3097,7 +3097,6 @@ data:
         memory:
           limit: 1024Mi
           request: 50Mi
-      tag: linkerdVersionValue
     tracing:
       enabled: false
 ---

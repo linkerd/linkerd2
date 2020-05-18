@@ -2853,9 +2853,10 @@ data:
   values: |-
     grafana:
       enabled: true
-      image: linkerd-image-overwrite
+      image:
+        name: linkerd-image-overwrite
+        version: linkerdVersionValue
       name: linkerd-grafana-overwrite
-      tag: linkerdVersionValue
     tracing:
       enabled: false
 ---

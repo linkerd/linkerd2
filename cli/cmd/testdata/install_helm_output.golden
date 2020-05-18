@@ -2882,7 +2882,6 @@ data:
         name: gcr.io/linkerd-io/grafana
         version: linkerdVersionValue
       name: linkerd-grafana
-      tag: linkerdVersionValue
     tracing:
       enabled: false
 ---

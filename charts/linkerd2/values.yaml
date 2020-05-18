@@ -198,7 +198,6 @@ grafana:
   image:
     name: gcr.io/linkerd-io/grafana
     version: *linkerd_version
-  tag: *linkerd_version
   # resources:
 
 tracing:
