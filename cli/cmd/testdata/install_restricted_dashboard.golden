@@ -2774,7 +2774,7 @@ data:
       enabled: true
       image:
         name: gcr.io/linkerd-io/grafana
-        version: linkerdVersionValue
+        version: install-control-plane-version
       name: linkerd-grafana
     tracing:
       enabled: false
@@ -2913,7 +2913,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:linkerdVersionValue
+        image: gcr.io/linkerd-io/grafana:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
