@@ -1239,7 +1239,6 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "service mirror controller exists",
 					hintAnchor:  "l5d-smc-existence",
-					fatal:       true,
 					check: func(context.Context) error {
 						return hc.checkServiceMirrorController()
 					},
@@ -1247,7 +1246,6 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "service mirror controller ClusterRoles exist",
 					hintAnchor:  "l5d-smc-existence-cr",
-					fatal:       true,
 					check: func(context.Context) error {
 						if hc.Options.ShouldCheckMulticluster {
 							return hc.checkClusterRoles(true, []string{linkerdServiceMirrorComponentName}, hc.serviceMirrorComponentsSelector())
@@ -1258,7 +1256,6 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "service mirror controller ClusterRoleBindings exist",
 					hintAnchor:  "l5d-smc-existence-crb",
-					fatal:       true,
 					check: func(context.Context) error {
 						if hc.Options.ShouldCheckMulticluster {
 							return hc.checkClusterRoleBindings(true, []string{linkerdServiceMirrorComponentName}, hc.serviceMirrorComponentsSelector())
@@ -1269,7 +1266,6 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "service mirror controller ServiceAccounts exist",
 					hintAnchor:  "l5d-smc-existence-sa",
-					fatal:       true,
 					check: func(context.Context) error {
 						if hc.Options.ShouldCheckMulticluster {
 							return hc.checkServiceAccounts([]string{linkerdServiceMirrorComponentName}, hc.serviceMirrorNs, hc.serviceMirrorComponentsSelector())
@@ -1280,7 +1276,6 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "service mirror controller has required permissions",
 					hintAnchor:  "l5d-smc-local-rbac-existence",
-					fatal:       true,
 					check: func(context.Context) error {
 						return hc.checkServiceMirrorLocalRBAC()
 					},
@@ -1288,7 +1283,6 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "service mirror controller can access remote clusters",
 					hintAnchor:  "l5d-smc-remote-remote-clusters-access",
-					fatal:       true,
 					check: func(context.Context) error {
 						return hc.checkRemoteClusterConnectivity()
 					},
@@ -1296,7 +1290,6 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "all remote cluster gateways are alive",
 					hintAnchor:  "l5d-remote-gateways-alive",
-					fatal:       true,
 					check: func(ctx context.Context) error {
 						return hc.checkRemoteClusterGatewaysHealth(ctx)
 					},
@@ -1304,7 +1297,6 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "clusters share trust anchors",
 					hintAnchor:  "l5d-clusters-share-anchors",
-					fatal:       true,
 					check: func(ctx context.Context) error {
 						return hc.checkRemoteClusterAnchors()
 					},
