@@ -64,6 +64,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: identity
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 # Source: linkerd2/templates/controller-rbac.yaml
 ---
@@ -119,6 +122,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: controller
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 # Source: linkerd2/templates/destination-rbac.yaml
 ---
@@ -174,6 +180,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: destination
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 # Source: linkerd2/templates/heartbeat-rbac.yaml
 ---
@@ -218,6 +227,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: heartbeat
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 # Source: linkerd2/templates/web-rbac.yaml
 ---
@@ -329,6 +341,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: web
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 # Source: linkerd2/templates/serviceprofile-crd.yaml
 ---
@@ -434,6 +449,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: prometheus
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 # Source: linkerd2/templates/proxy-injector-rbac.yaml
 ---
@@ -490,6 +508,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 kind: Secret
 apiVersion: v1
@@ -578,6 +599,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: sp-validator
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 kind: Secret
 apiVersion: v1
@@ -699,6 +723,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: tap
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -2904,6 +2931,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: linkerd-collector
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 ###
 ### linkerd-jaeger RBAC
@@ -2917,6 +2947,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: linkerd-jaeger
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 # Source: linkerd2/charts/tracing/templates/tracing.yaml
 ---
@@ -3367,6 +3400,9 @@ metadata:
   labels:
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
+imagePullSecrets:
+  null
+  
 ---
 # Source: linkerd2/charts/grafana/templates/grafana.yaml
 ---
