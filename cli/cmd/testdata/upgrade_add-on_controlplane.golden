@@ -2027,7 +2027,9 @@ data:
   values: |-
     grafana:
       enabled: true
-      image: gcr.io/linkerd-io/grafana
+      image:
+        name: gcr.io/linkerd-io/grafana
+        version: linkerdVersionValue
       name: linkerd-grafana
       tag: linkerdVersionValue
     tracing:
