@@ -25,6 +25,7 @@ func Main(args []string) {
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to the local kube config")
 	requeueLimit := cmd.Int("event-requeue-limit", 3, "requeue limit for events")
 	metricsAddr := cmd.String("metrics-addr", ":9999", "address to serve scrapable metrics on")
+	namespace := cmd.String("namespace", "", "address to serve scrapable metrics on")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -34,7 +35,7 @@ func Main(args []string) {
 	k8sAPI, err := k8s.InitializeAPI(
 		*kubeConfigPath,
 		false,
-		k8s.RT(k8s.Secret).WithNamespace("linkerd-multicluster"),
+		k8s.RT(k8s.Secret).WithNamespace(*namespace),
 		k8s.RT(k8s.Svc),
 		k8s.RT(k8s.NS),
 		k8s.RT(k8s.Endpoint),

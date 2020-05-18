@@ -90,6 +90,7 @@ spec:
         - service-mirror
         - -log-level={{.Values.logLevel}}
         - -event-requeue-limit={{.Values.eventRequeueLimit}}
+        - -namespace={{.Values.namespace}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
         name: service-mirror
         securityContext:
