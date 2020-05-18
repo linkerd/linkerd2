@@ -137,7 +137,9 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 	}
 
 	rcw.clusterWatchers[config.ClusterName] = watcher
-	watcher.Start()
+	if err := watcher.Start(); err != nil {
+		return err
+	}
 	return nil
 
 }

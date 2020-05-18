@@ -945,8 +945,10 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 }
 
 // Start starts watching the remote cluster
-func (rcsw *RemoteClusterServiceWatcher) Start() {
-	rcsw.remoteAPIClient.Sync(rcsw.stopper)
+func (rcsw *RemoteClusterServiceWatcher) Start() error {
+	if err := rcsw.remoteAPIClient.Sync(rcsw.stopper); err != nil {
+		return fmt.Errorf("Failed to sync caches api caches for remote cluster %s, %s. Check your remote cluster RBACs and/or API connectivity", rcsw.clusterName, err)
+	}
 	rcsw.eventsQueue.Add(&OprhanedServicesGcTriggered{})
 	rcsw.remoteAPIClient.Svc().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -975,6 +977,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start() {
 		},
 	)
 	go rcsw.processEvents()
+	return nil
 }
 
 // Stop stops watching the cluster and cleans up all mirrored resources
