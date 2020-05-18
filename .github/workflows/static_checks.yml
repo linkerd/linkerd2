@@ -112,7 +112,6 @@ jobs:
         ! -name _test-run.sh \
         ! -name test-scale \
         ! -name update-go-deps-shas \
-        ! -name web \
         ! -name *.nuspec \
         ! -name *.ps1 \
         | xargs -I {} bin/shellcheck -x {}
