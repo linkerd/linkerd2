@@ -87,7 +87,6 @@ jobs:
         ! -name minikube-start-hyperv.bat \
         ! -name _tag.sh \
         ! -name test-cleanup \
-        ! -name test-clouds \
         ! -name _test-run.sh \
         ! -name update-go-deps-shas \
         ! -name *.nuspec \
