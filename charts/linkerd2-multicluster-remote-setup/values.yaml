@@ -1,0 +1,17 @@
+gatewayName: linkerd-gateway
+gatewayNamespace: linkerd-gateway
+identityTrustDomain: cluster.local
+incomingPort: 80
+linkerdNamespace: linkerd
+probePath: /health
+probePeriodSeconds: 3
+probePort: 81
+serviceAccountName: linkerd-service-mirror
+serviceAccountNamespace: linkerd-service-mirror
+linkerdVersion: linkerdVersionValue
+createdByAnnotation: linkerd.io/created-by
+nginxImageVersion: 1.17
+nginxImage: nginx
+proxyOutboundPort: 4140
+localProbePath: /health-local
+localProbePort: 8888

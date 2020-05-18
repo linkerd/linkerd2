@@ -1,3 +1,169 @@
+## edge-20.5.3
+
+* Controller
+  * Added a Grafana dashboard for tracking multi-cluster traffic metrics
+  * Added health checks for the Grafana add-on, under a separate section
+  * Fixed issues when updating a remote multi-cluster gateway
+
+* Proxy
+  * Added special special handling for I/O errors in HTTP responses so that an
+    `errno` label is included to describe the underlying errors in the proxy's
+    metrics
+
+* Internal
+  * Started gathering stats of CI runs for aggregating CI health metrics
+
+## edge-20.5.2
+
+This edge release contains everything required to get up and running with
+multicluster. For a tutorial on how to do that, check out the
+[documentation](https://linkerd.io/2/features/multicluster_support/).
+
+* CLI
+  * Added a section to the `linkerd check` that validates that all
+    clusters part of a multicluster setup have compatible trust anchors
+  * Modified the `inkerd cluster export-service` command to work by
+    transforming yaml instead of modifying cluster state
+  * Added functionality that allows the `linkerd cluster export-service`
+    command to operate on lists of services   
+* Controller
+  * Changed the multicluster gateway to always require TLS on connections
+    originating from outside the cluster
+  * Removed admin server timeouts from control plane components, thereby
+    fixing a bug that can cause liveness checks to fail
+* Helm
+  * Moved Grafana templates into a separate add-on chart    
+* Proxy
+  * Improved latency under high-concurrency use cases.  
+
+## edge-20.5.1
+
+* CLI
+  * Fixed all commands to use kubeconfig's default namespace if specified
+    (thanks @Matei207!)
+  * Added multicluster checks to the `linkerd check` command
+  * Hid development flags in the `linkerd install` command for release builds
+* Controller
+  * Added ability to configure Prometheus Altermanager as well as recording
+    and alerting rules on the Linkerd Prometheus (thanks @naseemkullah!)
+  * Added ability to add more commandline flags to the Prometheus command
+    (thanks @naseemkullah!)
+* Web UI
+  * Fixed TrafficSplit detail page not loading
+  * Added Jaeger links to the dashboard when the tracing addon is enabled
+* Proxy
+  * Modified internal buffering to avoid idling out services as a request
+    arrives, fixing failures for requests that are sent exactly once per
+    minute--such as Prometheus scrapes
+
+## edge-20.4.5
+
+This edge release includes several new CLI commands for use with multi-cluster
+gateways, and adds liveness checks and metrics for gateways. Additionally, it
+makes the proxy's gRPC error-handling behavior more consistent with other
+implementations, and includes a fix for a bug in the web UI.
+
+* CLI
+  * Added `linkerd cluster setup-remote` command for setting up a multi-cluster
+    gateway
+  * Added `linkerd cluster gateways` command to display stats for multi-cluster
+    gateways
+  * Changed `linkerd cluster export-service` to modify a provided YAML file and
+    output it, rather than mutating the cluster
+* Controller
+  * Added liveness checks and Prometheus metrics for multi-cluster gateways
+  * Changed the proxy injector to configure proxies to do destination lookups
+    for IPs in the private IP range
+* Web UI
+  * Fixed errors when viewing resource detail pages
+* Internal
+  * Created script and config to build a Linkerd CLI Chocolatey package for
+    Windows users, which will be published with stable releases (thanks to
+    @drholmie!)
+* Proxy
+  * Changed the proxy to set a `grpc-status: UNAVAILABLE` trailer when a gRPC
+    response stream is interrupted by a transport error
+
+## edge-20.4.4
+
+This edge release fixes a packaging issue in `edge-20.4.3`.
+
+_From `edge.20.4.3` release notes_:
+
+This edge release adds functionality to the CLI to output more detail and
+includes changes which support the multi-cluster functionality. Also, the helm
+support has been expanded to make installation more configurable. Finally, the
+HA reliability is improved by ensuring that control plane pods are restarted
+with a rolling strategy
+
+* CLI
+  * Added output to the `linkerd check --proxy` command to list all data
+    plane pods which are not up-to-date rather than just printing the first
+    one it encounters
+  * Added a `--proxy` flag to the `linkerd version` command which lists all
+    proxy versions running in the cluster and the number of pods running
+    each version
+  * Lifted requirement of using --unmeshed for linkerd stat when querying
+    TrafficSplit resources
+  * Added support for multi-stage installs with Add-Ons
+* Controller
+  * Added a rolling update strategy to Linkerd deployments that have
+    multiple replicas during HA deployments to ensure that at most
+    one pod begins terminating before a new pod ready is ready
+  * Added a new label for the proxy injector to write to the template,
+    `linkerd.io/workload-ns` which indicates the namespace of the workload/pod
+* Internal
+  * Added a [security policy](https://help.github.com/en/github/managing-security-vulnerabilities/adding-a-security-policy-to-your-repository)
+    to facilitate conversations around security
+* Helm
+  * Changed charts to use downwardAPI to mount labels to the proxy container
+    making them easier to identify
+* Proxy
+  * Changed the Linkerd proxy endpoint for liveness to use the new `/live` admin
+    endpoint instead of the `/metrics` endpoint, because the `/live` endpoint
+    returns a smaller payload
+  * Added a per-endpoint authority-override feature to support
+    multi-cluster gateways
+
+## edge-20.4.3
+
+**This release is superseded by `edge-20.4.4`**
+
+This edge release adds functionality to the CLI to output more detail and
+includes changes which support the multi-cluster functionality. Also, the helm
+support has been expanded to make installation more configurable. Finally, the
+HA reliability is improved by ensuring that control plane pods are restarted
+with a rolling strategy
+
+* CLI
+  * Added output to the `linkerd check --proxy` command to list all data
+    plane pods which are not up-to-date rather than just printing the first
+    one it encounters
+  * Added a `--proxy` flag to the `linkerd version` command which lists all
+    proxy versions running in the cluster and the number of pods running
+    each version
+  * Lifted requirement of using --unmeshed for linkerd stat when querying
+    TrafficSplit resources
+  * Added support for multi-stage installs with Add-Ons
+* Controller
+  * Added a rolling update strategy to Linkerd deployments that have
+    multiple replicas during HA deployments to ensure that at most
+    one pod begins terminating before a new pod ready is ready
+  * Added a new label for the proxy injector to write to the template,
+    `linkerd.io/workload-ns` which indicates the namespace of the workload/pod
+* Internal
+  * Added a [security policy](https://help.github.com/en/github/managing-security-vulnerabilities/adding-a-security-policy-to-your-repository)
+    to facilitate conversations around security
+* Helm
+  * Changed charts to use downwardAPI to mount labels to the proxy container
+    making them easier to identify
+* Proxy
+  * Changed the Linkerd proxy endpoint for liveness to use the new `/live` admin
+    endpoint instead of the `/metrics` endpoint, because the `/live` endpoint
+    returns a smaller payload
+  * Added a per-endpoint authority-override feature to support
+    multi-cluster gateways
+
 ## edge-20.4.2
 
 This release brings a number of CLI fixes and Controller improvements.
@@ -19,7 +185,7 @@ This release brings a number of CLI fixes and Controller improvements.
   * Improved endpoints change detection in the `linkerd-destination` service, enabling
     mirrored remote services to change cluster gateways
   * Added `operationID` field to tap OpenAPI response to prevent issues during
-    upgrade from 2.6 to 2.7 
+    upgrade from 2.6 to 2.7
 * Proxy
   * Added a new protocol detection timeout to prevent clients from consuming
     resources indefinitely when not sending any data
@@ -87,7 +253,7 @@ new observability and security functionality.
 
 * CLI
   * Added the `linkerd alpha stat` command, which uses the smi-metrics
-    API; the latter enables access to metrics to be controlled with RBAC 
+    API; the latter enables access to metrics to be controlled with RBAC
 * Controller
   * Added support for configuring service profile timeouts
     `(x-linkerd-timeout)` via OpenAPI spec (thanks @lewiscowper!)
@@ -122,7 +288,7 @@ experimenting with this feature, please join us in
 * Proxy
   * Fixed a bug that could cause the proxy's load balancer to stop processing
     updates from service discovery.
-    
+
 ## edge-20.2.3
 
 This release introduces the first optional add-on `tracing`, added through the

@@ -14,24 +14,26 @@ func TestNewValues(t *testing.T) {
 	testVersion := "linkerd-dev"
 
 	expected := &Values{
-		Stage:                       "",
-		ControllerImage:             "gcr.io/linkerd-io/controller",
-		ControllerImageVersion:      testVersion,
-		WebImage:                    "gcr.io/linkerd-io/web",
-		PrometheusImage:             "prom/prometheus:v2.15.2",
-		GrafanaImage:                "gcr.io/linkerd-io/grafana",
-		ControllerReplicas:          1,
-		ControllerLogLevel:          "info",
-		PrometheusLogLevel:          "info",
-		ControllerUID:               2103,
-		EnableH2Upgrade:             true,
-		EnablePodAntiAffinity:       false,
-		WebhookFailurePolicy:        "Ignore",
-		OmitWebhookSideEffects:      false,
-		RestrictDashboardPrivileges: false,
-		DisableHeartBeat:            false,
-		HeartbeatSchedule:           "0 0 * * *",
-		InstallNamespace:            true,
+		Stage:                         "",
+		ControllerImage:               "gcr.io/linkerd-io/controller",
+		ControllerImageVersion:        testVersion,
+		WebImage:                      "gcr.io/linkerd-io/web",
+		PrometheusImage:               "prom/prometheus:v2.15.2",
+		ControllerReplicas:            1,
+		ControllerLogLevel:            "info",
+		PrometheusLogLevel:            "info",
+		PrometheusExtraArgs:           map[string]string{},
+		PrometheusAlertmanagers:       []interface{}{},
+		PrometheusRuleConfigMapMounts: []PrometheusRuleConfigMapMount{},
+		ControllerUID:                 2103,
+		EnableH2Upgrade:               true,
+		EnablePodAntiAffinity:         false,
+		WebhookFailurePolicy:          "Ignore",
+		OmitWebhookSideEffects:        false,
+		RestrictDashboardPrivileges:   false,
+		DisableHeartBeat:              false,
+		HeartbeatSchedule:             "0 0 * * *",
+		InstallNamespace:              true,
 		Global: &Global{
 			Namespace:                "linkerd",
 			ClusterDomain:            "cluster.local",
@@ -129,6 +131,11 @@ func TestNewValues(t *testing.T) {
 			Image: "deislabs/smi-metrics:v0.2.1",
 			TLS:   &TLS{},
 		},
+		Grafana: Grafana{
+			"enabled": true,
+			"name":    "linkerd-grafana",
+			"image":   "gcr.io/linkerd-io/grafana",
+		},
 	}
 
 	// pin the versions to ensure consistent test result.
@@ -148,6 +155,12 @@ func TestNewValues(t *testing.T) {
 
 	t.Run("HA", func(t *testing.T) {
 		actual, err := NewValues(true)
+
+		// workaround for mergo, which resets these to []interface{}(nil)
+		// and []PrometheusRuleConfigMapMount(nil)
+		actual.PrometheusAlertmanagers = []interface{}{}
+		actual.PrometheusRuleConfigMapMounts = []PrometheusRuleConfigMapMount{}
+
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
@@ -174,14 +187,19 @@ func TestNewValues(t *testing.T) {
 		expected.WebResources = controllerResources
 		expected.HeartbeatResources = controllerResources
 
-		expected.GrafanaResources = &Resources{
-			CPU: Constraints{
-				Limit:   controllerResources.CPU.Limit,
-				Request: controllerResources.CPU.Request,
-			},
-			Memory: Constraints{
-				Limit:   "1024Mi",
-				Request: "50Mi",
+		expected.Grafana = Grafana{
+			"enabled": true,
+			"name":    "linkerd-grafana",
+			"image":   "gcr.io/linkerd-io/grafana",
+			"resources": map[string]interface{}{
+				"cpu": map[string]interface{}{
+					"limit":   controllerResources.CPU.Limit,
+					"request": controllerResources.CPU.Request,
+				},
+				"memory": map[string]interface{}{
+					"limit":   "1024Mi",
+					"request": "50Mi",
+				},
 			},
 		}
 

@@ -127,7 +127,7 @@ func renderServiceMirror(w io.Writer, config *installServiceMirrorOptions) error
 		RawValues: rawValues,
 		Files:     files,
 	}
-	buf, err := chart.RenderServiceMirror()
+	buf, err := chart.RenderNoPartials()
 	if err != nil {
 		return err
 	}

@@ -35,26 +35,28 @@ func TestServiceProfiles(t *testing.T) {
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
 	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(testNamespace, nil)
 	if err != nil {
-		t.Fatalf("failed to create %s namespace: %s", testNamespace, err)
+		testutil.Fatalf(t, "failed to create %s namespace: %s", testNamespace, err)
 	}
 	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
 	if err != nil {
-		t.Fatalf("'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
+		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
+			"'linkerd inject' command failed with %s: %s\n", err, stderr)
 	}
 
 	out, err = TestHelper.KubectlApply(out, testNamespace)
 	if err != nil {
-		t.Fatalf("kubectl apply command failed\n%s", out)
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
 	}
 
 	// wait for deployments to start
 	for _, deploy := range []string{"t1", "t2", "t3", "gateway"} {
 		if err := TestHelper.CheckPods(testNamespace, deploy, 1); err != nil {
-			t.Error(err)
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
 		}
 
 		if err := TestHelper.CheckDeployment(testNamespace, deploy, 1); err != nil {
-			t.Error(fmt.Errorf("Error validating deployment [%s]:\n%s", deploy, err))
+			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}
 
@@ -80,7 +82,8 @@ func TestServiceProfiles(t *testing.T) {
 		t.Run(tc.sourceName, func(t *testing.T) {
 			routes, err := getRoutes(tc.deployName, tc.namespace, []string{})
 			if err != nil {
-				t.Fatalf("routes command failed: %s\n", err)
+				testutil.AnnotatedFatalf(t, "'linkerd routes' command failed",
+					"'linkerd routes' command failed: %s\n", err)
 			}
 
 			initialExpectedRoutes := []string{"[DEFAULT]"}
@@ -108,17 +111,20 @@ func TestServiceProfiles(t *testing.T) {
 			cmd = append(cmd, tc.args...)
 			out, stderr, err := TestHelper.LinkerdRun(cmd...)
 			if err != nil {
-				t.Fatalf("'linkerd %s' command failed with %s: %s\n", cmd, err.Error(), stderr)
+				testutil.AnnotatedFatalf(t, fmt.Sprintf("'linkerd %s' command failed", cmd),
+					"'linkerd %s' command failed with %s: %s\n", cmd, err, stderr)
 			}
 
 			_, err = TestHelper.KubectlApply(out, tc.namespace)
 			if err != nil {
-				t.Fatalf("kubectl apply command failed:\n%s", err)
+				testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+					"'kubectl apply' command failed:\n%s", err)
 			}
 
 			routes, err = getRoutes(tc.deployName, tc.namespace, []string{})
 			if err != nil {
-				t.Fatalf("routes command failed: %s\n", err)
+				testutil.AnnotatedFatalf(t, "'linkerd routes' command failed",
+					"'linkerd routes' command failed: %s\n", err)
 			}
 
 			assertExpectedRoutes(tc.expectedRoutes, routes, t)
@@ -137,12 +143,14 @@ func TestServiceProfileMetrics(t *testing.T) {
 
 	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", testYAML)
 	if err != nil {
-		t.Errorf("'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
+		testutil.AnnotatedErrorf(t, "'linkerd inject' command failed",
+			"'linkerd inject' command failed with %s: %s\n", err, stderr)
 	}
 
 	out, err = TestHelper.KubectlApply(out, testNamespace)
 	if err != nil {
-		t.Errorf("kubectl apply command failed\n%s", out)
+		testutil.AnnotatedErrorf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
 	}
 
 	cmd := []string{
@@ -156,17 +164,19 @@ func TestServiceProfileMetrics(t *testing.T) {
 
 	out, stderr, err = TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		t.Errorf("'linkerd %s' command failed with %s: %s\n", cmd, err.Error(), stderr)
+		testutil.AnnotatedErrorf(t, fmt.Sprintf("'linkerd %s' command failed", cmd),
+			"'linkerd %s' command failed with %s: %s\n", cmd, err, stderr)
 	}
 
 	_, err = TestHelper.KubectlApply(out, testNamespace)
 	if err != nil {
-		t.Errorf("kubectl apply command failed:\n%s", err)
+		testutil.AnnotatedErrorf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", err)
 	}
 
 	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
-		if *stat.ActualSuccess == 100.00 {
-			return fmt.Errorf("expected Actual Success to be less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
+		if !(*stat.ActualSuccess > 0.00 && *stat.ActualSuccess < 100.00) {
+			return fmt.Errorf("expected Actual Success to be greater than 0%% and less than 100%% due to pre-seeded failure rate. But got %0.2f", *stat.ActualSuccess)
 		}
 		return nil
 	})
@@ -176,7 +186,8 @@ func TestServiceProfileMetrics(t *testing.T) {
 	// Grab the output and convert it to a service profile object for modification
 	err = yaml.Unmarshal([]byte(out), profile)
 	if err != nil {
-		t.Errorf("unable to unmarshall YAML: %s", err.Error())
+		testutil.AnnotatedErrorf(t, "unable to unmarshall YAML",
+			"unable to unmarshall YAML: %s", err)
 	}
 
 	// introduce retry in the service profile
@@ -189,17 +200,19 @@ func TestServiceProfileMetrics(t *testing.T) {
 
 	bytes, err := yaml.Marshal(profile)
 	if err != nil {
-		t.Errorf("error marshalling service profile: %s", bytes)
+		testutil.AnnotatedErrorf(t, "error marshalling service profile",
+			"error marshalling service profile: %s", bytes)
 	}
 
 	out, err = TestHelper.KubectlApply(string(bytes), testNamespace)
 	if err != nil {
-		t.Errorf("kubectl apply command failed:\n%s :%s", err, out)
+		testutil.AnnotatedErrorf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed:\n%s :%s", err, out)
 	}
 
 	assertRouteStat(testUpstreamDeploy, testNamespace, testDownstreamDeploy, t, func(stat *cmd2.JSONRouteStats) error {
 		if *stat.EffectiveSuccess < 0.95 {
-			return fmt.Errorf("expected Effective Success to be at least 95%% with retries enabled. But got %.2f", *stat.ActualSuccess)
+			return fmt.Errorf("expected Effective Success to be at least 95%% with retries enabled. But got %.2f", *stat.EffectiveSuccess)
 		}
 		return nil
 	})
@@ -207,10 +220,11 @@ func TestServiceProfileMetrics(t *testing.T) {
 
 func assertRouteStat(upstream, namespace, downstream string, t *testing.T, assertFn func(stat *cmd2.JSONRouteStats) error) {
 	const routePath = "GET /testpath"
-	err := TestHelper.RetryFor(2*time.Minute, func() error {
+	timeout := 2 * time.Minute
+	err := TestHelper.RetryFor(timeout, func() error {
 		routes, err := getRoutes(upstream, namespace, []string{"--to", downstream})
 		if err != nil {
-			return fmt.Errorf("routes command failed: %s", err)
+			return fmt.Errorf("'linkerd routes' command failed: %s", err)
 		}
 
 		var testRoute *cmd2.JSONRouteStats
@@ -230,14 +244,14 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 	})
 
 	if err != nil {
-		t.Error(err.Error())
+		testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out asserting route stat (%s)", timeout), err)
 	}
 }
 
 func assertExpectedRoutes(expected []string, actual []*cmd2.JSONRouteStats, t *testing.T) {
 
 	if len(expected) != len(actual) {
-		t.Errorf("mismatch routes count. Expected %d, Actual %d", len(expected), len(actual))
+		testutil.Errorf(t, "mismatch routes count. Expected %d, Actual %d", len(expected), len(actual))
 	}
 
 	for _, expectedRoute := range expected {
@@ -253,7 +267,7 @@ func assertExpectedRoutes(expected []string, actual []*cmd2.JSONRouteStats, t *t
 			for _, route := range actual {
 				sb.WriteString(fmt.Sprintf("%s ", route.Route))
 			}
-			t.Errorf("Expected route %s not found in %+v", expectedRoute, sb.String())
+			testutil.Errorf(t, "expected route %s not found in %+v", expectedRoute, sb.String())
 		}
 	}
 }
@@ -279,7 +293,7 @@ func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.J
 	var list map[string][]*cmd2.JSONRouteStats
 	err = yaml.Unmarshal([]byte(out), &list)
 	if err != nil {
-		return nil, fmt.Errorf(fmt.Sprintf("Error: %s stderr: %s", err.Error(), stderr))
+		return nil, fmt.Errorf(fmt.Sprintf("Error: %s stderr: %s", err, stderr))
 	}
 
 	if deployment, ok := list[deployName]; ok {

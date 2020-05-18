@@ -14,12 +14,13 @@ const (
 
 // Values contains the top-level elements in the Helm charts
 type Values struct {
-	Namespace              string `json:"namespace"`
-	ControllerImage        string `json:"controllerImage"`
-	ControllerImageVersion string `json:"controllerImageVersion"`
-	ServiceMirrorUID       int64  `json:"serviceMirrorUID"`
-	LogLevel               string `json:"logLevel"`
-	EventRequeueLimit      int32  `json:"eventRequeueLimit"`
+	Namespace                string `json:"namespace"`
+	ControllerImage          string `json:"controllerImage"`
+	ControllerImageVersion   string `json:"controllerImageVersion"`
+	ControllerComponentLabel string `json:"controllerComponentLabel"`
+	ServiceMirrorUID         int64  `json:"serviceMirrorUID"`
+	LogLevel                 string `json:"logLevel"`
+	EventRequeueLimit        int32  `json:"eventRequeueLimit"`
 }
 
 // NewValues returns a new instance of the Values type.

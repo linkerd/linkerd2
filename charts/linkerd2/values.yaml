@@ -7,11 +7,11 @@ global:
   clusterDomain: &cluster_domain cluster.local
   imagePullPolicy: &image_pull_policy IfNotPresent
 
- # control plane trace configuration
+  # control plane trace configuration
   controlPlaneTracing: false
 
   # control plane version. See Proxy section for proxy version
-  linkerdVersion: &linkerd_version {version}
+  linkerdVersion: &linkerd_version linkerdVersionValue
 
   namespace: linkerd
 
@@ -48,6 +48,7 @@ global:
     # See https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
     # for more info on container lifecycle hooks.
     waitBeforeExitSeconds: 0
+    requireIdentityOnInboundPorts: ""
 
   # proxy-init configuration
   proxyInit:
@@ -123,9 +124,6 @@ identity:
       # PEM-encoded ECDSA private key
       keyPEM: |
 
-# grafana configuration
-grafanaImage: gcr.io/linkerd-io/grafana
-
 # heartbeat configuration
 disableHeartBeat: false
 heartbeatSchedule: "0 0 * * *"
@@ -133,6 +131,20 @@ heartbeatSchedule: "0 0 * * *"
 # prometheus configuration
 prometheusImage: prom/prometheus:v2.15.2
 prometheusLogLevel: *controller_log_level
+prometheusExtraArgs: {}
+  # log.format: json
+prometheusAlertmanagers: []
+  # - scheme: http
+  #   static_configs:
+  #   - targets:
+  #     - "alertmanager.linkerd.svc:9093"
+prometheusRuleConfigMapMounts: []
+  # - name: alerting-rules
+  #   subPath: alerting_rules.yml
+  #   configMap: linkerd-prometheus-rules
+  # - name: recording-rules
+  #   subPath: recording_rules.yml
+  #   configMap: linkerd-prometheus-rules
 
 # proxy injector configuration
 proxyInjector:
@@ -195,13 +207,20 @@ smiMetrics:
   caBundle: |
 
 # Configuration for Add-ons
+
+grafana:
+  enabled: true
+  name: linkerd-grafana
+  image: gcr.io/linkerd-io/grafana
+  # resources:
+
 tracing:
   enabled: false
   collector:
     name: linkerd-collector
     image: omnition/opencensus-collector:0.1.11
-    resources:
+    # resources:
   jaeger:
     name: linkerd-jaeger
     image: jaegertracing/all-in-one:1.17.1
-    resources:
+    # resources:

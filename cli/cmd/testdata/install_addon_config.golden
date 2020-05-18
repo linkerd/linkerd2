@@ -418,19 +418,6 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
 ---
 ###
-### Grafana RBAC
-###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-grafana
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: grafana
-    linkerd.io/control-plane-ns: linkerd
----
-###
 ### Proxy Injector RBAC
 ###
 ---
@@ -863,4 +850,17 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: linkerd-jaeger
+    linkerd.io/control-plane-ns: linkerd
+---
+###
+### Grafana RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-grafana
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd

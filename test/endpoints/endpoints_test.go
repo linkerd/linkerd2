@@ -36,19 +36,19 @@ func TestGoodEndpoints(t *testing.T) {
 	}
 	out, stderr, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		t.Fatalf("Unexpected error: %v\nError output: %s", err, stderr)
+		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\nError output: %s", err, stderr)
 	}
 
 	tpl := template.Must(template.ParseFiles("testdata/linkerd_endpoints.golden"))
 	vars := struct{ Ns string }{ns}
 	var b bytes.Buffer
 	if err := tpl.Execute(&b, vars); err != nil {
-		t.Fatalf("failed to parse linkerd_endpoints.golden template: %s", err)
+		testutil.AnnotatedFatalf(t, "failed to parse linkerd_endpoints.golden template", "failed to parse linkerd_endpoints.golden template: %s", err)
 	}
 
 	r := regexp.MustCompile(b.String())
 	if !r.MatchString(out) {
-		t.Errorf("Expected output:\n%s\nactual:\n%s", b.String(), out)
+		testutil.AnnotatedErrorf(t, "unexpected output", "expected output:\n%s\nactual:\n%s", b.String(), out)
 	}
 }
 
@@ -56,13 +56,13 @@ func TestGoodEndpoints(t *testing.T) {
 func TestBadEndpoints(t *testing.T) {
 	_, stderr, err := TestHelper.LinkerdRun("endpoints", "foo")
 	if err == nil {
-		t.Fatalf("was expecting an error: %v", err)
+		testutil.AnnotatedFatalf(t, "was expecting an error", "was expecting an error: %v", err)
 	}
 	stderrOut := strings.Split(stderr, "\n")
 	if len(stderrOut) == 0 {
-		t.Fatalf("unexpected output: %s", stderr)
+		testutil.AnnotatedFatalf(t, "unexpected output", "unexpected output: %s", stderr)
 	}
 	if stderrOut[0] != "Error: Destination API error: Invalid authority: foo" {
-		t.Errorf("unexpected error string: %s", stderrOut[0])
+		testutil.AnnotatedErrorf(t, "unexpected error string", "unexpected error string: %s", stderrOut[0])
 	}
 }

@@ -57,7 +57,6 @@ func TestRender(t *testing.T) {
 		ControllerImageVersion:      "ControllerImageVersion",
 		WebImage:                    "WebImage",
 		PrometheusImage:             "PrometheusImage",
-		GrafanaImage:                "GrafanaImage",
 		ControllerLogLevel:          "ControllerLogLevel",
 		PrometheusLogLevel:          "PrometheusLogLevel",
 		ControllerUID:               2103,
@@ -134,6 +133,7 @@ func TestRender(t *testing.T) {
 		Tracing: map[string]interface{}{
 			"enabled": false,
 		},
+		Grafana: defaultValues.Grafana,
 	}
 
 	haOptions, err := testInstallOptions()

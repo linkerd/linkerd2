@@ -231,7 +231,7 @@ func GetPodStatus(pod corev1.Pod) string {
 
 // GetAddOnsConfigMap returns the data in the add-ons configmap
 func GetAddOnsConfigMap(kubeAPI kubernetes.Interface, namespace string) (map[string]string, error) {
-	cm, err := kubeAPI.CoreV1().ConfigMaps(namespace).Get(ValuesConfigMapName, metav1.GetOptions{})
+	cm, err := kubeAPI.CoreV1().ConfigMaps(namespace).Get(AddOnsConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

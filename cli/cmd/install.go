@@ -130,7 +130,6 @@ var (
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
 		"templates/prometheus-rbac.yaml",
-		"templates/grafana-rbac.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
 		"templates/tap-rbac.yaml",
@@ -148,12 +147,11 @@ var (
 		"templates/heartbeat.yaml",
 		"templates/web.yaml",
 		"templates/prometheus.yaml",
-		"templates/grafana.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
 		"templates/smi-metrics.yaml",
-		"templates/linkerd-values.yaml",
+		"templates/linkerd-config-addons.yaml",
 	}
 )
 
@@ -516,9 +514,23 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		"Enables installing the SMI-Metrics controller",
 	)
 
-	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
+	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "Tag to be used for the control plane component images")
 	flags.StringVar(&options.smiMetricsImage, "smi-metrics-image", options.smiMetricsImage, "SMI Metrics image")
-	flags.MarkHidden("control-plane-version")
+
+	// Hide developer focused flags in release builds.
+	release, err := version.IsReleaseChannel(version.Version)
+	if err != nil {
+		log.Errorf("Unable to parse version: %s", version.Version)
+	}
+	if release {
+		flags.MarkHidden("control-plane-version")
+		flags.MarkHidden("proxy-image")
+		flags.MarkHidden("proxy-version")
+		flags.MarkHidden("image-pull-policy")
+		flags.MarkHidden("init-image")
+		flags.MarkHidden("init-image-version")
+	}
+
 	flags.MarkHidden("control-plane-tracing")
 	flags.MarkHidden("smi-metrics")
 	flags.MarkHidden("smi-metrics-image")
@@ -751,7 +763,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.EnablePodAntiAffinity = options.highAvailability
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
-	installValues.GrafanaImage = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+	installValues.Grafana["image"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	if options.prometheusImage != "" {
 		installValues.PrometheusImage = options.prometheusImage
 	}
@@ -839,7 +851,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 			Name:      addOn.Name(),
 			Dir:       filepath.Join(addOnChartsPath, addOn.Name()),
 			Namespace: controlPlaneNamespace,
-			RawValues: append(rawValues, addOn.Values()...),
+			RawValues: append(addOn.Values(), rawValues...),
 			Files: []*chartutil.BufferedFile{&chartutil.BufferedFile{
 				Name: chartutil.ChartfileName,
 			}},

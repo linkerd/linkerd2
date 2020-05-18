@@ -17,7 +17,9 @@ clean_head() {
 }
 
 named_tag() {
-    echo "$(git name-rev --tags --name-only $(git_sha_head))"
+    tag="$(git name-rev --tags --name-only $(git_sha_head))"
+    tag=${tag%"^0"}
+    echo "${tag}"
 }
 
 head_root_tag() {

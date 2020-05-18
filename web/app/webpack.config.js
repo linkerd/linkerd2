@@ -76,9 +76,14 @@ module.exports = {
     }),
     // compile the bundle with hashed filename into index_bundle.js
     new HtmlWebpackPlugin({
+      cache: false,
       inject: false,
       filename: 'index_bundle.js',
       template: 'index_bundle.js.lodash.tmpl',
+      // this is important! Production builds minimize the template, causing
+      // the comment on the first line to be for the entire file and then
+      // nothing loads.
+      minify: false
     }),
   ],
 };

@@ -7,9 +7,16 @@ import (
 	"syscall"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	log "github.com/sirupsen/logrus"
 )
+
+type chanProbeEventSink struct{ sender func(event interface{}) }
+
+func (s *chanProbeEventSink) send(event interface{}) {
+	s.sender(event)
+}
 
 // Main executes the tap service-mirror
 func Main(args []string) {
@@ -17,6 +24,7 @@ func Main(args []string) {
 
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to the local kube config")
 	requeueLimit := cmd.Int("event-requeue-limit", 3, "requeue limit for events")
+	metricsAddr := cmd.String("metrics-addr", ":9999", "address to serve scrapable metrics on")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -36,12 +44,17 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
+	probeManager := NewProbeManager(k8sAPI)
+	probeManager.Start()
+
 	k8sAPI.Sync(nil)
-	watcher := NewRemoteClusterConfigWatcher(k8sAPI, *requeueLimit)
+	watcher := NewRemoteClusterConfigWatcher(k8sAPI, *requeueLimit, &chanProbeEventSink{probeManager.enqueueEvent})
 	log.Info("Started cluster config watcher")
 
-	<-stop
+	go admin.StartServer(*metricsAddr)
 
+	<-stop
 	log.Info("Stopping cluster config watcher")
 	watcher.Stop()
+	probeManager.Stop()
 }
