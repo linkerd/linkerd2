@@ -16,10 +16,10 @@ as a contributor, have the legal right to make the contribution.
 
 See the [DCO](DCO) file for the full text of what you must agree to.
 
-To signify that you agree to the DCO for a commit, you add a line to the
-git commit message:
+To signify that you agree to the DCO for a commit, you add a line to the git
+commit message:
 
-```
+```txt
 Signed-off-by: Jane Smith <jane.smith@example.com>
 ```
 
@@ -33,14 +33,16 @@ Do you have an improvement?
 
 1. Submit an [issue][issue] describing your proposed change.
 2. We will try to respond to your issue promptly.
-3. Fork this repo, develop and test your code changes. See the project's [README](README.md) for further information about working in this repository.
+3. Fork this repo, develop and test your code changes. See the project's
+   [README](README.md) for further information about working in this repository.
 4. Submit a pull request against this repo's `master` branch.
     - Include instructions on how to test your changes.
     - If you are making a change to the user interface (UI), include a
       screenshot of the UI before and after your changes.
 5. Your branch may be merged once all configured checks pass, including:
     - The branch has passed tests in CI.
-    - A review from appropriate maintainers (see [MAINTAINERS.md](MAINTAINERS.md) and [GOVERNANCE.md](GOVERNANCE.md))
+    - A review from appropriate maintainers (see
+      [MAINTAINERS.md](MAINTAINERS.md) and [GOVERNANCE.md](GOVERNANCE.md))
 
 ## Committing ##
 
@@ -53,7 +55,7 @@ message.
 
 Finalized commit messages should be in the following format:
 
-```
+```txt
 Subject
 
 Problem
@@ -76,12 +78,12 @@ Fixes #[GitHub issue ID]
 
 ##### Examples #####
 
-```
+```txt
 bad: server disconnects should cause dst client disconnects.
 good: Propagate disconnects from source to destination
 ```
 
-```
+```txt
 bad: support tls servers
 good: Introduce support for server-side TLS (#347)
 ```
@@ -103,14 +105,14 @@ example CLI output, or changed YAML where applicable.
 Describe any implementation changes which are particularly complex or
 unintuitive.
 
-List any follow-up work that will need to be done in a future PR and link to
-any relevant Github issues.
+List any follow-up work that will need to be done in a future PR and link to any
+relevant Github issues.
 
 #### Validation ####
 
-Describe the testing you've done to validate your change.  Give instructions
-for reviewers to replicate your tests.  Performance-related changes should
-include before- and after- benchmark results.
+Describe the testing you've done to validate your change.  Give instructions for
+reviewers to replicate your tests.  Performance-related changes should include
+before- and after- benchmark results.
 
 [discourse]: https://discourse.linkerd.io/c/linkerd2
 [issue]: https://github.com/linkerd/linkerd2/issues/new
