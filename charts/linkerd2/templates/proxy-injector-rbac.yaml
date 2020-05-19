@@ -52,8 +52,10 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: proxy-injector
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- if .Values.global.imagePullSecrets }}
 imagePullSecrets:
-{{toYaml .Values.global.imagePullSecrets | indent 2 }}
+{{ toYaml .Values.global.imagePullSecrets | indent 2 }}
+{{- end }}
 ---
 kind: Secret
 apiVersion: v1

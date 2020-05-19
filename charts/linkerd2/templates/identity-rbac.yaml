@@ -46,6 +46,8 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: identity
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- if .Values.global.imagePullSecrets }}
 imagePullSecrets:
-{{toYaml .Values.global.imagePullSecrets | indent 2 }}
+{{ toYaml .Values.global.imagePullSecrets | indent 2 }}
+{{- end }}
 {{ end -}}

@@ -6,6 +6,11 @@
 global:
   clusterDomain: &cluster_domain cluster.local
   imagePullPolicy: &image_pull_policy IfNotPresent
+  #
+  ## Define your image pull secrets for private docker registries like the following
+  #imagePullSecrets:
+  #    - name: my-private-docker-registry-secret-name
+  #
   imagePullSecrets: []
 
   # control plane trace configuration

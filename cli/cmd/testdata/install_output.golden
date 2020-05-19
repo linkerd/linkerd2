@@ -60,9 +60,6 @@ metadata:
   labels:
     ControllerComponentLabel: identity
     ControllerNamespaceLabel: Namespace
-imagePullSecrets:
-  null
-  
 ---
 ###
 ### Controller RBAC
@@ -116,9 +113,6 @@ metadata:
   labels:
     ControllerComponentLabel: controller
     ControllerNamespaceLabel: Namespace
-imagePullSecrets:
-  null
-  
 ---
 ###
 ### Destination Controller Service
@@ -172,9 +166,6 @@ metadata:
   labels:
     ControllerComponentLabel: destination
     ControllerNamespaceLabel: Namespace
-imagePullSecrets:
-  null
-  
 ---
 ###
 ### Heartbeat RBAC
@@ -217,9 +208,6 @@ metadata:
   labels:
     ControllerComponentLabel: heartbeat
     ControllerNamespaceLabel: Namespace
-imagePullSecrets:
-  null
-  
 ---
 ###
 ### Web RBAC
@@ -329,9 +317,6 @@ metadata:
   labels:
     ControllerComponentLabel: web
     ControllerNamespaceLabel: Namespace
-imagePullSecrets:
-  null
-  
 ---
 ###
 ### Service Profile CRD
@@ -431,9 +416,6 @@ metadata:
   labels:
     ControllerComponentLabel: prometheus
     ControllerNamespaceLabel: Namespace
-imagePullSecrets:
-  null
-  
 ---
 ###
 ### Proxy Injector RBAC
@@ -488,9 +470,6 @@ metadata:
   labels:
     ControllerComponentLabel: proxy-injector
     ControllerNamespaceLabel: Namespace
-imagePullSecrets:
-  null
-  
 ---
 kind: Secret
 apiVersion: v1
@@ -577,9 +556,6 @@ metadata:
   labels:
     ControllerComponentLabel: sp-validator
     ControllerNamespaceLabel: Namespace
-imagePullSecrets:
-  null
-  
 ---
 kind: Secret
 apiVersion: v1
@@ -699,9 +675,6 @@ metadata:
   labels:
     ControllerComponentLabel: tap
     ControllerNamespaceLabel: Namespace
-imagePullSecrets:
-  null
-  
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -2873,9 +2846,6 @@ metadata:
   labels:
     ControllerComponentLabel: grafana
     ControllerNamespaceLabel: Namespace
-imagePullSecrets:
-  null
-  
 ---
 ###
 ### Grafana

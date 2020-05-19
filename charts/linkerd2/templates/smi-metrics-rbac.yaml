@@ -12,8 +12,10 @@ metadata:
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   name: linkerd-smi-metrics
   namespace: {{.Values.global.namespace}}
+{{- if .Values.global.imagePullSecrets }}
 imagePullSecrets:
-{{toYaml .Values.global.imagePullSecrets | indent 2 }}
+{{ toYaml .Values.global.imagePullSecrets | indent 2 }}
+{{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
