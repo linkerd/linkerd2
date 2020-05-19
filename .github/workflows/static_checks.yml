@@ -87,7 +87,6 @@ jobs:
         ! -name _tag.sh \
         ! -name test-cleanup \
         ! -name _test-run.sh \
-        ! -name update-go-deps-shas \
         ! -name *.nuspec \
         ! -name *.ps1 \
         | xargs -I {} bin/shellcheck -x -P ./bin {}
