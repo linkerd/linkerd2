@@ -1628,7 +1628,6 @@ func (hc *HealthChecker) checkServiceMirrorController() error {
 		if controller.Status.AvailableReplicas < 1 {
 			return fmt.Errorf("Service mirror controller is not available: %s/%s", controller.Namespace, controller.Name)
 		}
-		println(fmt.Sprint(controller.Namespace))
 		hc.serviceMirrorNs = controller.Namespace
 		return nil
 	}
