@@ -16,5 +16,4 @@ if [ ! -x "$markdownlintbin" ] || [ "$($markdownlintbin -V)" != $markdownlint_ve
     npm install markdownlint-cli@$markdownlint_version
 fi
 
-$markdownlintbin ./*.md
-$markdownlintbin ./**/*.md --ignore node_modules/
+"$markdownlintbin" "$@"
