@@ -2,7 +2,7 @@
 
 set -eu
 
-scversion=v0.7.0
+scversion=v0.7.1
 
 bindir=$( cd "${0%/*}" && pwd )
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
@@ -22,7 +22,7 @@ if [ ! -f "$scbin" ]; then
   fi
 
   mkdir -p "$targetbin"
-  curl -sLf "https://storage.googleapis.com/shellcheck/shellcheck-${scversion?}.$file" | tar -OxJv "shellcheck-${scversion}/shellcheck" > "$scbin"
+  curl -sLf "https://github.com/koalaman/shellcheck/releases/download/$scversion/shellcheck-${scversion?}.$file" | tar -OxJv "shellcheck-${scversion}/shellcheck" > "$scbin"
   chmod +x "$scbin"
 fi
 
