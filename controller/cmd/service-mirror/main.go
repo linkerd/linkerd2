@@ -78,10 +78,7 @@ func Main(args []string) {
 	probeManager := NewProbeManager(k8sAPI)
 	probeManager.Start()
 
-	if err := k8sAPI.Sync(nil); err != nil {
-		log.Fatalf("Failed to sync caches for k8s api. Check your service mirror RBACs")
-	}
-
+	k8sAPI.Sync(nil)
 	watcher := NewRemoteClusterConfigWatcher(secretsInformer, k8sAPI, *requeueLimit, &chanProbeEventSink{probeManager.enqueueEvent})
 	log.Info("Started cluster config watcher")
 

@@ -2,7 +2,6 @@ package k8s
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -247,7 +246,7 @@ func NewAPI(
 }
 
 // Sync waits for all informers to be synced.
-func (api *API) Sync(stopCh <-chan struct{}) error {
+func (api *API) Sync(stopCh <-chan struct{}) {
 	api.sharedInformers.Start(stopCh)
 	api.spSharedInformers.Start(stopCh)
 	api.tsSharedInformers.Start(stopCh)
@@ -257,10 +256,9 @@ func (api *API) Sync(stopCh <-chan struct{}) error {
 
 	log.Infof("waiting for caches to sync")
 	if !cache.WaitForCacheSync(ctx.Done(), api.syncChecks...) {
-		return errors.New("failed to sync caches")
+		log.Fatal("failed to sync caches")
 	}
 	log.Infof("caches synced")
-	return nil
 }
 
 // NS provides access to a shared informer and lister for Namespaces.
