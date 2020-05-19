@@ -169,8 +169,8 @@ func newGatewaysCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "remote", "the name of the remote cluster")
-	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", defaultMulticlusterNamespace, "the namespace in which the gateway resides on the remote cluster")
+	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "the name of the remote cluster")
+	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "", "the namespace in which the gateway resides on the remote cluster")
 	cmd.Flags().StringVarP(&opts.timeWindow, "time-window", "t", "1m", "Time window (for example: \"15s\", \"1m\", \"10m\", \"1h\"). Needs to be at least 15s.")
 
 	return cmd
