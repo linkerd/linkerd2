@@ -22,8 +22,8 @@ import (
 var (
 	TestHelper *testutil.TestHelper
 
-	// fetchLogsEvents delimits the tests for which a failure triggers running
-	// the Testlogs and TestEvents tests
+	// fetchLogsEvents is a switch to enable calling Testlogs and TestEvents
+	// when a test fails
 	fetchLogsEvents = false
 )
 
