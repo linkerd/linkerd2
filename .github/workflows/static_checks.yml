@@ -78,14 +78,18 @@ jobs:
       # For more information on shellcheck failures:
       # https://github.com/koalaman/shellcheck/wiki/Checks
       run: |
-        find ./bin -type f \
-        ! -name docker-build-proxy \
-        ! -name minikube-start-hyperv.bat \
-        ! -name test-cleanup \
-        ! -name _test-run.sh \
-        ! -name *.nuspec \
-        ! -name *.ps1 \
-        | xargs -I {} bin/shellcheck -x -P ./bin {}
+        bin/shellcheck -x -P ./bin $(find . -type f \
+        ! -path ./bin/docker-build-proxy \
+        ! -path ./bin/fmt \
+        ! -path ./bin/lint \
+        ! -path ./bin/minikube-start-hyperv.bat \
+        ! -path ./bin/_tag.sh \
+        ! -path ./bin/test-cleanup \
+        ! -path ./bin/_test-run.sh \
+        ! -path ./bin/update-go-deps-shas \
+        ! -path ./cni-plugin/deployment/scripts/install-cni.sh \
+        ! -path ./.git/hooks/\*.sample \
+        | while read -r f; do [ "$(file -b --mime-type "$f")" = 'text/x-shellscript' ] && printf '%s\0' "$f"; done | xargs -0)
   markdown_lint:
     name: Markdown lint
     runs-on: ubuntu-18.04
