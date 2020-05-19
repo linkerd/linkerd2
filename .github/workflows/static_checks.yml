@@ -100,4 +100,4 @@ jobs:
       # actions/checkout@v2
       uses: actions/checkout@722adc6
     - name: Markdown lint
-      run: bin/markdownlint
+      run: bin/markdownlint-all
