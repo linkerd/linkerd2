@@ -192,6 +192,10 @@ func newSetupRemoteCommand() *cobra.Command {
 
 			values, err := buildMulticlusterSetupValues(options)
 
+			if options.namespace == controlPlaneNamespace {
+				return errors.New("you need to specify a namespace different than the one in which Linkerd is installed")
+			}
+
 			if err != nil {
 				return err
 			}

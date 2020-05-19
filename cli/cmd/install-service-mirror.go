@@ -11,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
@@ -84,6 +85,15 @@ func (options *installServiceMirrorOptions) buildValues() (*servicemirror.Values
 }
 
 func (options *installServiceMirrorOptions) validate() error {
+
+	_, err := getLinkerdConfigMap()
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return errors.New("you need Linkerd to be installed in order to install the service mirroring component")
+		}
+		return err
+	}
+
 	if !alphaNumDashDot.MatchString(options.controlPlaneVersion) {
 		return fmt.Errorf("%s is not a valid version", options.controlPlaneVersion)
 	}
