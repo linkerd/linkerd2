@@ -80,7 +80,7 @@ func Main(args []string) {
 	probeManager.Start()
 
 	k8sAPI.Sync(nil)
-	watcher := NewRemoteClusterConfigWatcher(secretsInformer, k8sAPI, *requeueLimit, &chanProbeEventSink{probeManager.enqueueEvent})
+	watcher := NewRemoteClusterConfigWatcher(*namespace, secretsInformer, k8sAPI, *requeueLimit, &chanProbeEventSink{probeManager.enqueueEvent})
 	log.Info("Started cluster config watcher")
 
 	go admin.StartServer(*metricsAddr)
