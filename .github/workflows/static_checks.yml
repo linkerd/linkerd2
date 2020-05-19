@@ -80,7 +80,6 @@ jobs:
       run: |
         find ./bin -type f \
         ! -name docker-build-proxy \
-        ! -name _docker.sh \
         ! -name fmt \
         ! -name lint \
         ! -name _log.sh \
