@@ -12,7 +12,7 @@ metadata:
     {{.Values.controllerComponentLabel}}: linkerd-service-mirror
 rules:
 - apiGroups: [""]
-  resources: ["endpoints", "services", "namespaces"]
+  resources: ["endpoints", "services"]
   verbs: ["list", "get", "watch", "create", "delete", "update"]
 - apiGroups: [""]
   resources: ["namespaces"]

@@ -198,20 +198,27 @@ var ExpectedServiceAccountNames = []string{
 	"linkerd-tap",
 }
 
-var expectedServiceMirrorClusterRolePolicyVerbs = []string{
-	"list", "get", "watch", "create", "delete", "update",
+type expectedPolicy struct {
+	resources []string
+	verbs     []string
 }
 
-var expectedServiceMirrorClusterRolePolicyResources = []string{
-	"endpoints", "services", "namespaces",
+var expectedServiceMirrorClusterRolePolicies = []expectedPolicy{
+	{
+		resources: []string{"endpoints", "services"},
+		verbs:     []string{"list", "get", "watch", "create", "delete", "update"},
+	},
+	{
+		resources: []string{"namespaces"},
+		verbs:     []string{"list", "get", "watch"},
+	},
 }
 
-var expectedServiceMirrorRolePolicyVerbs = []string{
-	"list", "get", "watch",
-}
-
-var expectedServiceMirrorRolePolicyResources = []string{
-	"secrets",
+var expectedServiceMirrorRolePolicies = []expectedPolicy{
+	{
+		resources: []string{"secrets"},
+		verbs:     []string{"list", "get", "watch"},
+	},
 }
 
 var expectedServiceMirrorRemoteClusterPolicyVerbs = []string{
@@ -1249,6 +1256,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "service mirror controller exists",
 					hintAnchor:  "l5d-smc-existence",
+					fatal:       true,
 					check: func(context.Context) error {
 						return hc.checkServiceMirrorController()
 					},
@@ -1620,6 +1628,7 @@ func (hc *HealthChecker) checkServiceMirrorController() error {
 		if controller.Status.AvailableReplicas < 1 {
 			return fmt.Errorf("Service mirror controller is not available: %s/%s", controller.Namespace, controller.Name)
 		}
+		println(fmt.Sprint(controller.Namespace))
 		hc.serviceMirrorNs = controller.Namespace
 		return nil
 	}
@@ -1641,6 +1650,18 @@ func comparePermissions(expected, actual []string) error {
 	return nil
 }
 
+func verifyRule(expected expectedPolicy, actual []v1.PolicyRule) error {
+	for _, rule := range actual {
+		if err := comparePermissions(expected.resources, rule.Resources); err == nil {
+			if err := comparePermissions(expected.verbs, rule.Verbs); err != nil {
+				return fmt.Errorf("unexpected verbs %s", err)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("could not fine rule for %s", strings.Join(expected.resources, ","))
+}
+
 func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 	if hc.Options.ShouldCheckMulticluster {
 		var errors []string
@@ -1655,46 +1676,24 @@ func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 			return fmt.Errorf("Could not obtain service mirror Role: %s", err)
 		}
 
-		var crPolicyRule *v1.PolicyRule
+		if len(clusterRole.Rules) != len(expectedServiceMirrorClusterRolePolicies) {
+			return fmt.Errorf("Service mirror ClusterRole has %d policy rules, expected %d", len(clusterRole.Rules), len(expectedServiceMirrorClusterRolePolicies))
+		}
 
-		for _, r := range clusterRole.Rules {
-			if len(r.APIGroups) == 1 && r.APIGroups[0] == "" {
-				rule := r
-				crPolicyRule = &rule
+		for _, rule := range expectedServiceMirrorClusterRolePolicies {
+			if err := verifyRule(rule, clusterRole.Rules); err != nil {
+				errors = append(errors, fmt.Sprintf("Service mirror ClusterRole: %s", err))
 			}
 		}
 
-		if crPolicyRule == nil {
-			return fmt.Errorf("Service mirror ClusterRole is missing expected policy rule")
+		if len(role.Rules) != len(expectedServiceMirrorRolePolicies) {
+			return fmt.Errorf("Service mirror Role has %d policy rules, expected %d", len(role.Rules), len(expectedServiceMirrorRolePolicies))
 		}
 
-		var rPolicyRule *v1.PolicyRule
-
-		for _, r := range role.Rules {
-			if len(r.APIGroups) == 1 && r.APIGroups[0] == "" {
-				rule := r
-				rPolicyRule = &rule
+		for _, rule := range expectedServiceMirrorRolePolicies {
+			if err := verifyRule(rule, role.Rules); err != nil {
+				errors = append(errors, fmt.Sprintf("Service mirror Role: %s", err))
 			}
-		}
-
-		if rPolicyRule == nil {
-			return fmt.Errorf("Service mirror Role is missing expected policy rule")
-		}
-
-		if err := comparePermissions(expectedServiceMirrorClusterRolePolicyVerbs, crPolicyRule.Verbs); err != nil {
-			errors = append(errors, fmt.Sprintf("Service mirror ClusterRole is missing verbs: %s", err))
-		}
-
-		if err := comparePermissions(expectedServiceMirrorClusterRolePolicyResources, crPolicyRule.Resources); err != nil {
-			errors = append(errors, fmt.Sprintf("Service mirror ClusterRole is missing required resources: %s", err))
-		}
-
-		if err := comparePermissions(expectedServiceMirrorRolePolicyVerbs, rPolicyRule.Verbs); err != nil {
-			errors = append(errors, fmt.Sprintf("Service mirror Role is missing verbs: %s", err))
-		}
-
-		if err := comparePermissions(expectedServiceMirrorRolePolicyResources, rPolicyRule.Resources); err != nil {
-			errors = append(errors, fmt.Sprintf("Service mirror Role is missing required resources: %s", err))
 		}
 
 		if len(errors) > 0 {
