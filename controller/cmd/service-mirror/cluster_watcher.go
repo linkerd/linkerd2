@@ -719,7 +719,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGa
 		clusterName: rcsw.clusterName,
 	})
 
-	if err := rcsw.localAPIClient.Client.CoreV1().Services("linkerd-multicluster").Delete(ev.gatewayData.Name, &metav1.DeleteOptions{}); err != nil {
+	if err := rcsw.localAPIClient.Client.CoreV1().Services(rcsw.serviceMirrorNamespace).Delete(rcsw.mirroredResourceName(ev.gatewayData.Name), &metav1.DeleteOptions{}); err != nil {
 		rcsw.log.Errorf("Could not delete  gateway proxy %s", err)
 	}
 
