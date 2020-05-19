@@ -19,6 +19,9 @@ global:
 
   identityTrustDomain: *cluster_domain
 
+  # url of external grafana instance.
+  grafanaUrl: ""
+
   # proxy configuration
   proxy:
     enableExternalProfiles: false
