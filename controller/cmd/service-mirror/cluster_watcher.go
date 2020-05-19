@@ -181,7 +181,7 @@ func NewRemoteClusterServiceWatcher(
 	clusterDomain string,
 	probeEventsSink ProbeEventSink,
 ) (*RemoteClusterServiceWatcher, error) {
-	remoteAPI, err := k8s.InitializeAPIForConfig(cfg, false, k8s.RT(k8s.Svc))
+	remoteAPI, err := k8s.InitializeAPIForConfig(cfg, false, k8s.Svc)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize remote api for cluster %s: %s", clusterName, err)
 	}

@@ -30,14 +30,14 @@ type RemoteClusterConfigWatcher struct {
 }
 
 // NewRemoteClusterConfigWatcher Creates a new config watcher
-func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int, probeEventsSink ProbeEventSink) *RemoteClusterConfigWatcher {
+func NewRemoteClusterConfigWatcher(secretsInformer cache.SharedIndexInformer, k8sAPI *k8s.API, requeueLimit int, probeEventsSink ProbeEventSink) *RemoteClusterConfigWatcher {
 	rcw := &RemoteClusterConfigWatcher{
 		k8sAPI:          k8sAPI,
 		clusterWatchers: map[string]*RemoteClusterServiceWatcher{},
 		requeueLimit:    requeueLimit,
 		probeEventsSink: probeEventsSink,
 	}
-	k8sAPI.Secret().Informer().AddEventHandler(
+	secretsInformer.AddEventHandler(
 		cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				switch object := obj.(type) {
