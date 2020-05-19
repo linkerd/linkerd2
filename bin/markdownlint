@@ -6,7 +6,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 markdownlintbin="$rootdir/node_modules/.bin/markdownlint"
 
-markdownlint_version=0.23.0
+markdownlint_version=0.23.1
 
 if [ ! -x "$markdownlintbin" ] || [ "$($markdownlintbin -V)" != $markdownlint_version ]; then
     if ! [ -x "$(command -v npm)" ]; then
