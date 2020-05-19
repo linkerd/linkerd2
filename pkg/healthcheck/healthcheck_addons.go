@@ -2,6 +2,7 @@ package healthcheck
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
@@ -35,7 +36,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 			id: LinkerdAddOnChecks,
 			checkers: []checker{
 				{
-					description: fmt.Sprintf("%s config map exists", k8s.AddOnsConfigMapName),
+					description: fmt.Sprintf("'%s' config map exists", k8s.AddOnsConfigMapName),
 					warning:     true,
 					check: func(context.Context) error {
 						return hc.checkIfAddOnsConfigMapExists()
@@ -51,9 +52,9 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-							name, ok := grafana.(map[string]interface{})["name"].(string)
-							if !ok {
-								return fmt.Errorf("couldn't find %s in grafana", "name")
+							name, err := getString(grafana, "name")
+							if err != nil {
+								return err
 							}
 							return hc.checkServiceAccounts([]string{name}, hc.ControlPlaneNamespace, "")
 						}
@@ -65,11 +66,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-							name, ok := grafana.(map[string]interface{})["name"].(string)
-							if !ok {
-								return fmt.Errorf("couldn't find %s in grafana", "name")
+							name, err := getString(grafana, "name")
+							if err != nil {
+								return err
 							}
-							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", name), metav1.GetOptions{})
+							_, err = hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", name), metav1.GetOptions{})
 							if err != nil {
 								return err
 							}
@@ -107,9 +108,15 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
-							collectorName, ok := tracing.(map[string]interface{})["collector"].(map[string]interface{})["name"].(string)
-							if !ok {
-								return fmt.Errorf("couldn't find %s in tracing", "collector.name")
+
+							collector, err := getMap(tracing, "collector")
+							if err != nil {
+								return err
+							}
+
+							collectorName, err := getString(collector, "name")
+							if err != nil {
+								return err
 							}
 							return hc.checkServiceAccounts([]string{collectorName}, hc.ControlPlaneNamespace, "")
 						}
@@ -121,10 +128,16 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
-							jaegerName, ok := tracing.(map[string]interface{})["jaeger"].(map[string]interface{})["name"].(string)
-							if !ok {
-								return fmt.Errorf("couldn't find %s in tracing", "jaeger.name")
+							jaeger, err := getMap(tracing, "jaeger")
+							if err != nil {
+								return err
 							}
+
+							jaegerName, err := getString(jaeger, "name")
+							if err != nil {
+								return err
+							}
+
 							return hc.checkServiceAccounts([]string{jaegerName}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "tracing add-on not enabled"}
@@ -135,11 +148,17 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
-							collectorName, ok := tracing.(map[string]interface{})["collector"].(map[string]interface{})["name"].(string)
-							if !ok {
-								return fmt.Errorf("couldn't find %s in tracing", "collector.name")
+							collector, err := getMap(tracing, "collector")
+							if err != nil {
+								return err
 							}
-							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", collectorName), metav1.GetOptions{})
+
+							collectorName, err := getString(collector, "name")
+							if err != nil {
+								return err
+							}
+
+							_, err = hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", collectorName), metav1.GetOptions{})
 							if err != nil {
 								return err
 							}
@@ -239,4 +258,42 @@ func (hc *HealthChecker) checkForAddOnCM() (string, error) {
 	}
 
 	return values, nil
+}
+
+func getString(i interface{}, k string) (string, error) {
+	m, ok := i.(map[string]interface{})
+	if !ok {
+		return "", errors.New("config value is not a map")
+	}
+
+	v, ok := m[k]
+	if !ok {
+		return "", fmt.Errorf("key '%s' not found in config value", k)
+	}
+
+	res, ok := v.(string)
+	if !ok {
+		return "", fmt.Errorf("config value '%v' for key '%s' is not a string", v, k)
+	}
+
+	return res, nil
+}
+
+func getMap(i interface{}, k string) (map[string]interface{}, error) {
+	m, ok := i.(map[string]interface{})
+	if !ok {
+		return nil, errors.New("config value is not a map")
+	}
+
+	v, ok := m[k]
+	if !ok {
+		return nil, fmt.Errorf("key '%s' not found in config value", k)
+	}
+
+	res, ok := v.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("config value '%v' for key '%s' is not a map", v, k)
+	}
+
+	return res, nil
 }
