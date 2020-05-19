@@ -11,13 +11,16 @@ global:
   controlPlaneTracing: false
 
   # control plane version. See Proxy section for proxy version
-  linkerdVersion: &linkerd_version {version}
+  linkerdVersion: &linkerd_version linkerdVersionValue
 
   namespace: linkerd
 
   identityTrustAnchorsPEM: |
 
   identityTrustDomain: *cluster_domain
+
+  # url of external grafana instance.
+  grafanaUrl: ""
 
   # proxy configuration
   proxy:

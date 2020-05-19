@@ -190,6 +190,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 			checks = append(checks, healthcheck.LinkerdHAChecks)
 			checks = append(checks, healthcheck.LinkerdMulticlusterChecks)
 
+			checks = append(checks, healthcheck.AddOnCategories...)
 		}
 	}
 

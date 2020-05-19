@@ -6,6 +6,7 @@ set -eu
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
+# shellcheck source=_tag.sh
 sha=$(. "$bindir"/_tag.sh ; go_deps_sha)
 
 for f in $( grep -lR --include=Dockerfile\* go-deps: $bindir/.. ) ; do

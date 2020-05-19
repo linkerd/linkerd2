@@ -11,17 +11,13 @@ import (
 	"strings"
 	"time"
 
-	v1 "k8s.io/api/rbac/v1"
-	"k8s.io/client-go/tools/clientcmd"
-
-	"github.com/linkerd/linkerd2/pkg/issuercerts"
-
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
 	"github.com/linkerd/linkerd2/pkg/tls"
@@ -29,6 +25,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/rbac/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,6 +35,7 @@ import (
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -374,6 +372,7 @@ type HealthChecker struct {
 	cniDaemonSet         *appsv1.DaemonSet
 	serviceMirrorNs      string
 	remoteClusterConfigs []*sm.WatchedClusterConfig
+	addOns               map[string]interface{}
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -382,7 +381,7 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 		Options: options,
 	}
 
-	hc.categories = hc.allCategories()
+	hc.categories = append(hc.allCategories(), hc.addOnCategories()...)
 
 	checkMap := map[CategoryID]struct{}{}
 	for _, category := range categoryIDs {
@@ -672,7 +671,7 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
-						return checkControllerRunning(hc.controlPlanePods)
+						return checkContainerRunning(hc.controlPlanePods, "controller")
 					},
 				},
 				{
@@ -2400,16 +2399,16 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 	return nil
 }
 
-func checkControllerRunning(pods []corev1.Pod) error {
+func checkContainerRunning(pods []corev1.Pod, container string) error {
 	statuses := getPodStatuses(pods)
-	if _, ok := statuses["controller"]; !ok {
+	if _, ok := statuses[container]; !ok {
 		for _, pod := range pods {
 			podStatus := k8s.GetPodStatus(pod)
 			if podStatus != running {
 				return fmt.Errorf("%s status is %s", pod.Name, podStatus)
 			}
 		}
-		return errors.New("No running pods for \"linkerd-controller\"")
+		return fmt.Errorf("No running pods for \"%s\"", container)
 	}
 	return nil
 }

@@ -19,7 +19,8 @@ The identity component of Linkerd requires setting up a trust anchor
 certificate, and an issuer certificate with its key. These need to be provided
 to Helm by the user (unlike when using the `linkerd install` CLI which can
 generate these automatically). You can provide your own, or follow [these
-instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new ones.
+instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new
+ones.
 
 Note that the provided certificates must be ECDSA certficates.
 
@@ -80,7 +81,8 @@ helm install \
 
 ## Configuration
 
-The following table lists the configurable parameters of the Linkerd2 chart and their default values.
+The following table lists the configurable parameters of the Linkerd2 chart and
+their default values.
 
 | Parameter                                   | Description                                                                                                                                                                           | Default                              |
 |:--------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------|
@@ -199,11 +201,10 @@ The following table lists the configurable parameters for the Tracing Add-On.
 ## Get involved
 
 * Check out Linkerd's source code at [Github][linkerd2].
-* Join Linkerd's [user mailing list][linkerd-users],
-[developer mailing list][linkerd-dev], and [announcements mailing list][linkerd-announce].
+* Join Linkerd's [user mailing list][linkerd-users], [developer mailing
+  list][linkerd-dev], and [announcements mailing list][linkerd-announce].
 * Follow [@linkerd][twitter] on Twitter.
 * Join the [Linkerd Slack][slack].
-
 
 [cncf]: https://www.cncf.io/
 [getting-started]: https://linkerd.io/2/getting-started/
