@@ -3250,6 +3250,68 @@ func TestMinReplicaCheck(t *testing.T) {
 	}
 }
 
+func TestGetString(t *testing.T) {
+	testCases := []struct {
+		i             interface{}
+		k             string
+		expected      string
+		expectedError error
+	}{
+		{
+			i: map[string]interface{}{
+				"key": "value",
+			},
+			k:             "key",
+			expected:      "value",
+			expectedError: nil,
+		},
+		{
+			i: map[string]interface{}{
+				"key": map[string]interface{}{
+					"key1": "value1",
+				},
+			},
+			k:             "key",
+			expected:      "",
+			expectedError: errors.New("config value 'map[key1:value1]' for key 'key' is not a string"),
+		},
+		{
+			i: map[string]interface{}{
+				"key": "value",
+			},
+			k:             "key1",
+			expected:      "",
+			expectedError: errors.New("key 'key1' not found in config value"),
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc //pin
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			ans, err := getString(tc.i, tc.k)
+
+			if ans != tc.expected {
+				t.Logf("Expected value: %s\n", tc.expected)
+				t.Logf("Received value: %s\n", ans)
+				t.Fatal("test case failed")
+			}
+
+			if err == nil && tc.expectedError != nil {
+				t.Log("Expected error: nil")
+				t.Logf("Received error: %s\n", err)
+				t.Fatal("test case failed")
+			}
+			if err != nil {
+				if err.Error() != tc.expectedError.Error() {
+					t.Logf("Expected error: %s\n", tc.expectedError)
+					t.Logf("Received error: %s\n", err)
+					t.Fatal("test case failed")
+				}
+			}
+		})
+	}
+}
+
 type controlPlaneReplicaOptions struct {
 	controller    int
 	destination   int
