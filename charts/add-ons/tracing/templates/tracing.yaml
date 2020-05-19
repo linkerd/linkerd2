@@ -55,7 +55,7 @@ spec:
     {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
 ---
 {{ if empty .Values.global.proxy.image.version -}}
-{{ $_ := set .Values.global.proxy.image "Version" .Values.global.linkerdVersion -}}
+{{ $_ := set .Values.global.proxy.image "version" .Values.global.linkerdVersion -}}
 {{ end -}}
 {{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
 {{ $_ := set .Values.global.proxy "component" .Values.collector.name -}}
@@ -166,7 +166,7 @@ spec:
       port: 16686
 ---
 {{ if empty .Values.global.proxy.image.version -}}
-{{ $_ := set .Values.global.proxy.image "Version" .Values.global.linkerdVersion -}}
+{{ $_ := set .Values.global.proxy.image "version" .Values.global.linkerdVersion -}}
 {{ end -}}
 {{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
 {{ $_ := set .Values.global.proxy "component" .Values.jaeger.name -}}
