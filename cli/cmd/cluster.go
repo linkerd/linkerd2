@@ -42,6 +42,7 @@ const (
 
 type (
 	getCredentialsOptions struct {
+		namespace               string
 		serviceAccountName      string
 		serviceAccountNamespace string
 		clusterName             string
@@ -227,7 +228,7 @@ func newSetupRemoteCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&options.gatewayName, "gateway-name", options.gatewayName, "the name of the gateway")
-	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "the namespace in which the gateway and SA will be installed")
+	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "the namespace in which the gateway and service account will be installed")
 	cmd.Flags().Uint32Var(&options.probePort, "probe-port", options.probePort, "the liveness check port of the gateway")
 	cmd.Flags().Uint32Var(&options.incomingPort, "incoming-port", options.incomingPort, "the port on the gateway used for all incomming traffic")
 	cmd.Flags().StringVar(&options.probePath, "probe-path", options.probePath, "the path that will be exercised by the liveness checks")
@@ -331,7 +332,7 @@ func newGetCredentialsCommand() *cobra.Command {
 				TypeMeta: metav1.TypeMeta{Kind: "Secret", APIVersion: "v1"},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
-					Namespace: defaultMulticlusterNamespace,
+					Namespace: opts.namespace,
 					Annotations: map[string]string{
 						k8s.RemoteClusterNameLabel:                  opts.clusterName,
 						k8s.RemoteClusterDomainAnnotation:           opts.remoteClusterDomain,
@@ -353,8 +354,9 @@ func newGetCredentialsCommand() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "the namespace in which the secret will be created")
 	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", defaultServiceAccountName, "the name of the service account")
-	cmd.Flags().StringVar(&opts.serviceAccountNamespace, "service-account-namespace", defaultMulticlusterNamespace, "the namespace in which the service account will be created")
+	cmd.Flags().StringVar(&opts.serviceAccountNamespace, "service-account-namespace", defaultMulticlusterNamespace, "the namespace in which the svc account resides on the remote cluster")
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", defaultClusterName, "cluster name")
 	cmd.Flags().StringVar(&opts.remoteClusterDomain, "remote-cluster-domain", defaultClusterDomain, "custom remote cluster domain")
 
