@@ -90,7 +90,7 @@ jobs:
     - name: Load cli-bin image into local docker images
       if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
       run: |
-        docker save -o image.tar "$DOCKER_REGISTRY/cli-bin:$TAG" 
+        docker save -o ./image.tar "$DOCKER_REGISTRY/cli-bin:$TAG" 
         docker load -i ./image.tar
     - name: Load cli-bin image into local docker images (Forked repositories)
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
