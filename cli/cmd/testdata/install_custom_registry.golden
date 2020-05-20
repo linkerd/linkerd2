@@ -2839,7 +2839,9 @@ data:
       grafanaUrl: 
     grafana:
       enabled: true
-      image: my.custom.registry/linkerd-io/grafana
+      image:
+        name: my.custom.registry/linkerd-io/grafana
+        version: install-control-plane-version
       name: linkerd-grafana
     tracing:
       enabled: false

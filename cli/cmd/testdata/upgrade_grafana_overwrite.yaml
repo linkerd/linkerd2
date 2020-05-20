@@ -2855,7 +2855,9 @@ data:
       grafanaUrl: 
     grafana:
       enabled: true
-      image: linkerd-image-overwrite
+      image:
+        name: linkerd-image-overwrite
+        version: UPGRADE-CONTROL-PLANE-VERSION
       name: linkerd-grafana-overwrite
     tracing:
       enabled: false

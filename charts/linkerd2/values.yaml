@@ -198,7 +198,9 @@ smiMetrics:
 grafana:
   enabled: true
   name: linkerd-grafana
-  image: gcr.io/linkerd-io/grafana
+  image:
+    name: gcr.io/linkerd-io/grafana
+    version: *linkerd_version
   # resources:
 
 tracing:

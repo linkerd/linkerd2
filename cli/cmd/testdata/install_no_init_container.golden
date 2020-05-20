@@ -2572,7 +2572,9 @@ data:
       grafanaUrl: 
     grafana:
       enabled: true
-      image: gcr.io/linkerd-io/grafana
+      image:
+        name: gcr.io/linkerd-io/grafana
+        version: install-control-plane-version
       name: linkerd-grafana
     tracing:
       enabled: false
