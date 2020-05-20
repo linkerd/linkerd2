@@ -945,7 +945,7 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 }
 
 // Start starts watching the remote cluster
-func (rcsw *RemoteClusterServiceWatcher) Start() {
+func (rcsw *RemoteClusterServiceWatcher) Start() error {
 	rcsw.remoteAPIClient.Sync(rcsw.stopper)
 	rcsw.eventsQueue.Add(&OprhanedServicesGcTriggered{})
 	rcsw.remoteAPIClient.Svc().Informer().AddEventHandler(
@@ -975,6 +975,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start() {
 		},
 	)
 	go rcsw.processEvents()
+	return nil
 }
 
 // Stop stops watching the cluster and cleans up all mirrored resources
