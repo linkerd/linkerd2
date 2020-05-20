@@ -106,6 +106,12 @@ external_issuer_integration_tests() {
     cleanup
 }
 
+cli_integration_static_tests() {
+    run_test "$test_directory/cli_install_static_test.go" --linkerd-namespace=$linkerd_namespace
+    exit_on_err 'error during install'
+    cleanup
+}
+
 #
 # Helper functions.
 #
