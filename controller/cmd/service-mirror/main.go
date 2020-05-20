@@ -65,6 +65,7 @@ func Main(args []string) {
 		k8s.Endpoint,
 	)
 
+	//TODO: Use can-i to check for required permissions
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
