@@ -57,7 +57,7 @@ global:
     image:
       name: gcr.io/linkerd-io/proxy-init
       pullPolicy: *image_pull_policy
-      version: v1.3.2
+      version: v1.3.3
     resources:
       cpu:
         limit: 100m
