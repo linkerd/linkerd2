@@ -210,7 +210,7 @@ var expectedServiceMirrorClusterRolePolicies = []expectedPolicy{
 	},
 	{
 		resources: []string{"namespaces"},
-		verbs:     []string{"list", "get", "watch"},
+		verbs:     []string{"create", "list", "get", "watch"},
 	},
 }
 

@@ -22,20 +22,22 @@ type ProbeEventSink interface {
 // RemoteClusterConfigWatcher watches for secrets of type MirrorSecretType
 // and upon the detection of such secret created starts a RemoteClusterServiceWatcher
 type RemoteClusterConfigWatcher struct {
-	k8sAPI          *k8s.API
-	clusterWatchers map[string]*RemoteClusterServiceWatcher
-	requeueLimit    int
+	serviceMirrorNamespace string
+	k8sAPI                 *k8s.API
+	clusterWatchers        map[string]*RemoteClusterServiceWatcher
+	requeueLimit           int
 	sync.RWMutex
 	probeEventsSink ProbeEventSink
 }
 
 // NewRemoteClusterConfigWatcher Creates a new config watcher
-func NewRemoteClusterConfigWatcher(secretsInformer cache.SharedIndexInformer, k8sAPI *k8s.API, requeueLimit int, probeEventsSink ProbeEventSink) *RemoteClusterConfigWatcher {
+func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInformer cache.SharedIndexInformer, k8sAPI *k8s.API, requeueLimit int, probeEventsSink ProbeEventSink) *RemoteClusterConfigWatcher {
 	rcw := &RemoteClusterConfigWatcher{
-		k8sAPI:          k8sAPI,
-		clusterWatchers: map[string]*RemoteClusterServiceWatcher{},
-		requeueLimit:    requeueLimit,
-		probeEventsSink: probeEventsSink,
+		serviceMirrorNamespace: serviceMirrorNamespace,
+		k8sAPI:                 k8sAPI,
+		clusterWatchers:        map[string]*RemoteClusterServiceWatcher{},
+		requeueLimit:           requeueLimit,
+		probeEventsSink:        probeEventsSink,
 	}
 	secretsInformer.AddEventHandler(
 		cache.FilteringResourceEventHandler{
@@ -131,7 +133,7 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", config.ClusterName)
 	}
 
-	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, config.ClusterName, rcw.requeueLimit, config.ClusterDomain, rcw.probeEventsSink)
+	watcher, err := NewRemoteClusterServiceWatcher(rcw.serviceMirrorNamespace, rcw.k8sAPI, clientConfig, config.ClusterName, rcw.requeueLimit, config.ClusterDomain, rcw.probeEventsSink)
 	if err != nil {
 		return err
 	}
