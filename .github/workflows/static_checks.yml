@@ -80,7 +80,6 @@ jobs:
       run: |
         find ./bin -type f \
         ! -name docker-build-proxy \
-        ! -name _log.sh \
         ! -name minikube-start-hyperv.bat \
         ! -name test-cleanup \
         ! -name _test-run.sh \
