@@ -7,7 +7,7 @@
     `linkerd stat` output
   * Added an `addon-overwrite` upgrade flag which allows users to overwrite the
     existing addon config rather than merging into it
-  * Added a `--close-wait-timeout` inject flag which sets the 
+  * Added a `--close-wait-timeout` inject flag which sets the
     `nf_conntrack_tcp_timeout_close_wait` property which can be used to mitigate
     connection issues with application that hold half-closed sockets
 * Controller
