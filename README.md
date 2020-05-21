@@ -1,3 +1,5 @@
+# Linkerd
+
 ![Linkerd][logo]
 
 [![GitHub Actions Status][github-actions-badge]][github-actions]
@@ -17,11 +19,13 @@ Linkerd is a Cloud Native Computing Foundation ([CNCF][cncf]) project.
 This is the primary repo for the Linkerd 2.x line of development.
 
 The complete list of Linkerd repos is:
+
 * [linkerd2][linkerd2]: Main Linkerd 2.x repo, including control plane and CLI
 * [linkerd2-proxy][proxy]: Linkerd 2.x data plane proxy
 * [linkerd2-proxy-api][proxy-api]: Linkerd 2.x gRPC API bindings
 * [linkerd][linkerd1]: Linkerd 1.x
-* [website][linkerd-website]: linkerd.io website (including docs for 1.x and 2.x)
+* [website][linkerd-website]: linkerd.io website (including docs for 1.x and
+  2.x)
 
 ## Quickstart and documentation
 
@@ -32,7 +36,7 @@ For more comprehensive documentation, start with the [Linkerd
 docs][linkerd-docs]. (The doc source code is available in the
 [website][linkerd-website] repo.)
 
-## Working in this repo ##
+## Working in this repo
 
 [`BUILD.md`](BUILD.md) includes general information on how to work in this repo.
 
@@ -41,8 +45,8 @@ contributing changes.
 
 ## Get involved
 
-* Join Linkerd's [user mailing list][linkerd-users],
-[developer mailing list][linkerd-dev], and [announcements mailing list][linkerd-announce].
+* Join Linkerd's [user mailing list][linkerd-users], [developer mailing
+  list][linkerd-dev], and [announcements mailing list][linkerd-announce].
 * Follow [@linkerd][twitter] on Twitter.
 * Join the [Linkerd Slack][slack].
 * Join us in the regular online community meetings!
@@ -69,7 +73,8 @@ minutes to review our [code of conduct][coc].
 
 ### Security Audit
 
-A third party security audit was performed by Cure53. You can see the full report [here](SECURITY_AUDIT.pdf).
+A third party security audit was performed by Cure53. You can see the full
+report [here](SECURITY_AUDIT.pdf).
 
 ## License
 

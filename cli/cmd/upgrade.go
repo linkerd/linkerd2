@@ -33,8 +33,9 @@ const (
 )
 
 type upgradeOptions struct {
-	manifests string
-	force     bool
+	addOnOverwrite bool
+	manifests      string
+	force          bool
 	*installOptions
 
 	verifyTLS func(tls *charts.TLS, service string) error
@@ -67,7 +68,10 @@ func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
 		&options.force, "force", options.force,
 		"Force upgrade operation even when issuer certificate does not work with the trust anchors of all proxies",
 	)
-
+	flags.BoolVar(
+		&options.addOnOverwrite, "addon-overwrite", options.addOnOverwrite,
+		"Overwrite (instead of merge) existing add-ons config with file in --addon-config (or reset to defaults if no new config is passed)",
+	)
 	return flags
 }
 
@@ -346,25 +350,29 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 
 	values.Stage = stage
 
-	// Update Add-Ons Configuration from the linkerd-value cm
-	cmRawValues, _ := k8s.GetAddOnsConfigMap(k, controlPlaneNamespace)
+	if !options.addOnOverwrite {
+		// Update Add-Ons Configuration from the linkerd-value cm
+		cmRawValues, _ := k8s.GetAddOnsConfigMap(k, controlPlaneNamespace)
+		if cmRawValues != nil {
+			//Cm is present now get the data
+			cmData, ok := cmRawValues["values"]
+			if !ok {
+				return nil, nil, fmt.Errorf("values subpath not found in %s configmap", k8s.AddOnsConfigMapName)
+			}
+			rawValues, err := yaml.Marshal(values)
+			if err != nil {
+				return nil, nil, err
+			}
 
-	if cmRawValues != nil {
-		//Cm is present now get the data
-		cmData := cmRawValues["values"]
-		rawValues, err := yaml.Marshal(values)
-		if err != nil {
-			return nil, nil, err
-		}
+			// over-write add-on values with cmValues
+			// Merge Add-On Values with Values
+			if rawValues, err = mergeRaw(rawValues, []byte(cmData)); err != nil {
+				return nil, nil, err
+			}
 
-		// over-write add-on values with cmValues
-		// Merge Add-On Values with Values
-		if rawValues, err = mergeRaw(rawValues, []byte(cmData)); err != nil {
-			return nil, nil, err
-		}
-
-		if err = yaml.Unmarshal(rawValues, &values); err != nil {
-			return nil, nil, err
+			if err = yaml.Unmarshal(rawValues, &values); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 

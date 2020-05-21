@@ -24,7 +24,7 @@ USAGE: web <command>
   * test - run the unit tests
       Note: any command line options are passed on to the test runner (jest)
 USAGE
-}; function --help { -h ;}
+}; function --help { '-h' ;}
 
 check-for-linkerd() {
   controller_pod=$(get-pod controller)
@@ -44,12 +44,13 @@ check-for-linkerd() {
 dev() {
   while getopts "p:" opt; do
     case "$opt" in
-      p) DEV_PORT=$OPTARG
+      p) DEV_PORT=$OPTARG;;
+      *) ;;
     esac
   done
 
-  cd "$ROOT"/web/app && yarn webpack-dev-server --port $DEV_PORT &
-  run
+  cd "$ROOT"/web/app && yarn webpack-dev-server --port "$DEV_PORT" &
+  run ''
 }
 
 build() {
@@ -64,7 +65,7 @@ get-pod() {
   fi
 
   kubectl --namespace=linkerd get po \
-    --selector=linkerd.io/control-plane-component=$1 \
+    --selector=linkerd.io/control-plane-component="$1" \
     --field-selector='status.phase==Running' \
     -o jsonpath='{.items[*].metadata.name}'
 }
@@ -76,7 +77,7 @@ port-forward() {
   fi
 
   nc -z localhost "$2" || \
-    kubectl --namespace=linkerd port-forward $(get-pod $1) "$2:$2"
+    kubectl --namespace=linkerd port-forward "$(get-pod "$1")" "$2:$2"
 }
 
 run() {
@@ -93,17 +94,17 @@ run() {
   )
 
   cd "$ROOT"/web && \
-    ../bin/go-run . --addr=:7777 $*
+    ../bin/go-run . --addr=:7777 "$@"
 }
 
 setup() {
   cd "$ROOT"/web/app
-  yarn $*
+  yarn "$@"
 }
 
 function test {
   cd "$ROOT"/web/app
-  yarn jest $*
+  yarn jest "$@"
 }
 
 integration() {
@@ -121,7 +122,7 @@ integration() {
 }
 
 main() {
-  setup
+  setup ''
   build
 }
 

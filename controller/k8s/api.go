@@ -562,7 +562,11 @@ func (api *API) GetPodsFor(obj runtime.Object, includeFailed bool) ([]*corev1.Po
 			return []*corev1.Pod{}, nil
 		}
 		namespace = typed.Namespace
-		selector = labels.Set(typed.Spec.Selector).AsSelector()
+		if typed.Spec.Selector == nil {
+			selector = labels.Nothing()
+		} else {
+			selector = labels.Set(typed.Spec.Selector).AsSelector()
+		}
 
 	case *appsv1.StatefulSet:
 		namespace = typed.Namespace
