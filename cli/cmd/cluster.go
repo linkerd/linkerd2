@@ -389,6 +389,17 @@ func transform(bytes []byte, gatewayName, gatewayNamespace string) ([]byte, []*e
 		if service.Annotations == nil {
 			service.Annotations = map[string]string{}
 		}
+		report := &exportReport{
+			resourceKind: strings.ToLower(metaType.Kind),
+			resourceName: service.Name,
+		}
+
+		if service.Labels != nil {
+			if _, isMirroredResource := service.Labels[k8s.MirroredResourceLabel]; isMirroredResource {
+				report.exported = false
+				return bytes, []*exportReport{report}, nil
+			}
+		}
 
 		service.Annotations[k8s.GatewayNameAnnotation] = gatewayName
 		service.Annotations[k8s.GatewayNsAnnotation] = gatewayNamespace
@@ -398,11 +409,7 @@ func transform(bytes []byte, gatewayName, gatewayNamespace string) ([]byte, []*e
 		if err != nil {
 			return nil, nil, err
 		}
-		report := &exportReport{
-			resourceKind: strings.ToLower(metaType.Kind),
-			resourceName: service.Name,
-			exported:     true,
-		}
+		report.exported = true
 		return transformed, []*exportReport{report}, nil
 	}
 
