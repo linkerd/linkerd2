@@ -834,6 +834,14 @@ func getGatewayMetadata(annotations map[string]string) *gatewayMetadata {
 	}
 	return nil
 }
+
+func isGateway(annotations map[string]string) bool {
+	if annotations != nil {
+		_, hasAnnotation := annotations[consts.MulticlusterGatewayAnnotation]
+		return hasAnnotation
+	}
+	return false
+}
 func (rcsw *RemoteClusterServiceWatcher) handleConsiderGatewayUpdateDispatch(event *ConsiderGatewayUpdateDispatch) error {
 	gtwMetadata := &gatewayMetadata{
 		Name:      event.maybeGateway.Name,
@@ -888,10 +896,24 @@ func (rcsw *RemoteClusterServiceWatcher) handleConsiderGatewayUpdateDispatch(eve
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.Service) error {
 	localName := rcsw.mirroredResourceName(service.Name)
 	localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(localName)
-	gtwData := getGatewayMetadata(service.Annotations)
-
+	var localNotFound = false
 	if err != nil {
-		if kerrors.IsNotFound(err) {
+		localNotFound = kerrors.IsNotFound(err)
+	}
+	if isGateway(service.Annotations) {
+		gatewaySpec, err := rcsw.extractGatewaySpec(service)
+		if err != nil {
+			return RetryableError{[]error{err}}
+		}
+		if localNotFound {
+			return rcsw.createGatewayMirrorService(gatewaySpec)
+		}
+		return rcsw.updateGatewayMirrorService(gatewaySpec)
+
+	}
+	gtwData := getGatewayMetadata(service.Annotations)
+	if err != nil {
+		if localNotFound {
 			if gtwData != nil {
 				// at this point we know that this is a service that
 				// we are not mirroring but has gateway data, so we need
@@ -949,6 +971,7 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.S
 			})
 		}
 	}
+
 	return nil
 }
 
