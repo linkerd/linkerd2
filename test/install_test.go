@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -22,17 +23,27 @@ import (
 var (
 	TestHelper *testutil.TestHelper
 
-	// fetchLogsEvents is a switch to enable calling Testlogs and TestEvents
-	// when a test fails
-	fetchLogsEvents = false
+	// controlPlaneInstalled becomes true as soon as there's a CP available to
+	// retrieve logs from
+	controlPlaneInstalled = false
 )
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
 	code := m.Run()
 	// if the test failed, show logs and events that can potentially explain cause
-	if code != 0 && fetchLogsEvents {
-		TestHelper.RunLogsAndEventTests()
+	if code != 0 && controlPlaneInstalled {
+		_, logs := fetchAndCheckLogs()
+		for _, err := range logs {
+			fmt.Println(err)
+		}
+		evts := fetchAndCheckEvents()
+		for _, err := range evts {
+			fmt.Println(err)
+		}
+		if len(logs) == 0 && len(evts) == 0 {
+			fmt.Println("No unexpected or events found")
+		}
 	}
 	os.Exit(code)
 }
@@ -206,8 +217,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.GetHelmReleaseName() != "" {
 		return
 	}
-	// as of this point, fetch logs and events if any test fails
-	fetchLogsEvents = true
+	controlPlaneInstalled = true
 
 	var (
 		cmd  = "install"
@@ -370,8 +380,7 @@ func TestInstallHelm(t *testing.T) {
 	if TestHelper.GetHelmReleaseName() == "" {
 		return
 	}
-	// as of this point, fetch logs and events if any test fails
-	fetchLogsEvents = true
+	controlPlaneInstalled = true
 
 	cn := fmt.Sprintf("identity.%s.cluster.local", TestHelper.GetLinkerdNamespace())
 	var err error
@@ -410,7 +419,7 @@ func TestResourcesPostInstall(t *testing.T) {
 	for _, svc := range linkerdSvcs {
 		if err := TestHelper.CheckService(TestHelper.GetLinkerdNamespace(), svc); err != nil {
 			testutil.AnnotatedErrorf(t, fmt.Sprintf("error validating service [%s]", svc),
-				"rrror validating service [%s]:\n%s", svc, err)
+				"error validating service [%s]:\n%s", svc, err)
 		}
 	}
 
@@ -735,9 +744,9 @@ func TestCheckProxy(t *testing.T) {
 	}
 }
 
-func TestLogs(t *testing.T) {
-	// as of this point, don't fetch logs nor events if any test fails
-	fetchLogsEvents = false
+func fetchAndCheckLogs() ([]string, []error) {
+	okMessages := []string{}
+	errs := []error{}
 
 	controllerRegex := regexp.MustCompile("level=(panic|fatal|error|warn)")
 	proxyRegex := regexp.MustCompile(fmt.Sprintf("%s (ERR|WARN)", k8s.ProxyContainerName))
@@ -761,85 +770,96 @@ func TestLogs(t *testing.T) {
 				knownErrorsRegex = knownProxyErrorsRegex
 			}
 
-			t.Run(name, func(t *testing.T) {
-				outputStream, err := TestHelper.LinkerdRunStream(
-					"logs", "--no-color",
-					"--control-plane-component", deploy,
-					"--container", container,
-				)
-				if err != nil {
-					testutil.AnnotatedErrorf(t, "error running command",
-						"error running command:\n%s", err)
-				}
-				defer outputStream.Stop()
-				// Ignore the error returned, since ReadUntil will return an error if it
-				// does not return 10,000 after 2 seconds. We don't need 10,000 log lines.
-				outputLines, _ := outputStream.ReadUntil(10000, 2*time.Second)
+			outputStream, err := TestHelper.LinkerdRunStream(
+				"logs", "--no-color",
+				"--control-plane-component", deploy,
+				"--container", container,
+			)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("error running command:\n%s", err))
+				continue
+			}
+			defer outputStream.Stop()
+			// Ignore the error returned, since ReadUntil will return an error if it
+			// does not return 10,000 after 2 seconds. We don't need 10,000 log lines.
+			outputLines, _ := outputStream.ReadUntil(10000, 2*time.Second)
+			if len(outputLines) == 0 {
+				// Retry one time for 30 more seconds, in case the cluster is slow to
+				// produce log lines.
+				outputLines, _ = outputStream.ReadUntil(10000, 30*time.Second)
 				if len(outputLines) == 0 {
-					// Retry one time for 30 more seconds, in case the cluster is slow to
-					// produce log lines.
-					outputLines, _ = outputStream.ReadUntil(10000, 30*time.Second)
-					if len(outputLines) == 0 {
-						testutil.AnnotatedErrorf(t, "no logs found for %s", name)
-					}
+					errs = append(errs, fmt.Errorf("no logs found for %s", name))
 				}
+			}
 
-				for _, line := range outputLines {
-					if errRegex.MatchString(line) {
-						if knownErrorsRegex.MatchString(line) {
-							// report all known logging errors in the output
-							t.Logf("Found known error in %s log: %s", name, line)
+			for _, line := range outputLines {
+				if errRegex.MatchString(line) {
+					if knownErrorsRegex.MatchString(line) {
+						// report all known logging errors in the output
+						okMessages = append(okMessages, fmt.Sprintf("found known error in %s log: %s", name, line))
+					} else {
+						if proxy {
+							okMessages = append(okMessages, fmt.Sprintf("found unexpected proxy error in %s log: %s", name, line))
 						} else {
-							if proxy {
-								t.Logf("Found unexpected proxy error in %s log: %s", name, line)
-							} else {
-								testutil.AnnotatedErrorf(t,
-									"Found unexpected controller error in %s log: %s", name, line)
-							}
+							errs = append(errs, fmt.Errorf("found unexpected controller error in %s log: %s", name, line))
 						}
 					}
-					if clientGoRegex.MatchString((line)) {
-						hasClientGoLogs = true
-					}
 				}
-			})
+				if clientGoRegex.MatchString((line)) {
+					hasClientGoLogs = true
+				}
+			}
 		}
 	}
 	if !hasClientGoLogs {
-		testutil.AnnotatedError(t, "didn't find any client-go entries")
+		errs = append(errs, errors.New("didn't find any client-go entries"))
+	}
+
+	return okMessages, errs
+}
+
+func TestLogs(t *testing.T) {
+	okMessages, errs := fetchAndCheckLogs()
+	for msg := range okMessages {
+		t.Log(msg)
+	}
+	for err := range errs {
+		testutil.AnnotatedError(t, "Error checking logs", err)
 	}
 }
 
-func TestEvents(t *testing.T) {
+func fetchAndCheckEvents() []error {
 	out, err := TestHelper.Kubectl("",
 		"--namespace", TestHelper.GetLinkerdNamespace(),
 		"get", "events", "-ojson",
 	)
 	if err != nil {
-		testutil.AnnotatedErrorf(t, "'kubectl get events' command failed",
-			"'kubectl get events' command failed with %s\n%s", err, out)
+		return []error{fmt.Errorf("'kubectl get events' command failed with %s\n%s", err, out)}
 	}
 
 	events, err := testutil.ParseEvents(out)
 	if err != nil {
-		testutil.AnnotatedError(t, "error parsing events", err)
+		return []error{err}
 	}
 
-	var unknownEvents []string
+	errs := []error{}
 	for _, e := range events {
 		if e.Type == corev1.EventTypeNormal {
 			continue
 		}
 
-		evtStr := fmt.Sprintf("Reason: [%s] Object: [%s] Message: [%s]", e.Reason, e.InvolvedObject.Name, e.Message)
+		evtStr := fmt.Errorf("found unexpected warning event: reason: [%s] Object: [%s] Message: [%s]", e.Reason, e.InvolvedObject.Name, e.Message)
 		if !knownEventWarningsRegex.MatchString(e.Message) {
-			unknownEvents = append(unknownEvents, evtStr)
+			errs = append(errs, evtStr)
 		}
 	}
 
-	if len(unknownEvents) > 0 {
-		testutil.AnnotatedErrorf(t, "found unexpected warning events",
-			"found unexpected warning events:\n%s", strings.Join(unknownEvents, "\n"))
+	return errs
+}
+
+func TestEvents(t *testing.T) {
+	for err := range fetchAndCheckEvents() {
+		testutil.AnnotatedError(t, "Error checking events", err)
 	}
 }
 

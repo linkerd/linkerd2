@@ -366,29 +366,6 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	return body, err
 }
 
-// RunLogsAndEventTests runs the TestLogs and TestEvents tests in a separate
-// process
-func (h *TestHelper) RunLogsAndEventTests() {
-	args := []string{"test", "-v", ".",
-		"-integration-tests",
-		"-linkerd", h.linkerd,
-		"-run",
-	}
-	out, err := exec.Command("go", append(args, "TestLogs")...).Output()
-	if err != nil {
-		fmt.Println(string(out))
-	} else {
-		fmt.Println("No unexpected log entries were found")
-	}
-
-	out, err = exec.Command("go", append(args, "TestEvents")...).Output()
-	if err != nil {
-		fmt.Println(string(out))
-	} else {
-		fmt.Println("No unexpected warning events were found")
-	}
-}
-
 // ReadFile reads a file from disk and returns the contents as a string.
 func ReadFile(file string) (string, error) {
 	b, err := ioutil.ReadFile(file)
