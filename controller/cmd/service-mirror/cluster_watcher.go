@@ -996,6 +996,7 @@ func (rcsw *RemoteClusterServiceWatcher) mirroredServicesForGateway(gatewayData 
 		consts.MirroredResourceLabel:  "true",
 		consts.RemoteGatewayNameLabel: gatewayData.Name,
 		consts.RemoteGatewayNsLabel:   gatewayData.Namespace,
+		consts.RemoteClusterNameLabel: rcsw.clusterName,
 	}
 
 	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
@@ -1010,6 +1011,7 @@ func (rcsw *RemoteClusterServiceWatcher) endpointsForGateway(gatewayData *gatewa
 		consts.MirroredResourceLabel:  "true",
 		consts.RemoteGatewayNameLabel: gatewayData.Name,
 		consts.RemoteGatewayNsLabel:   gatewayData.Namespace,
+		consts.RemoteClusterNameLabel: rcsw.clusterName,
 	}
 
 	endpoints, err := rcsw.localAPIClient.Endpoint().Lister().List(labels.Set(matchLabels).AsSelector())
