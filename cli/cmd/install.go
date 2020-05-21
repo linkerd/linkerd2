@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -850,7 +849,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 	for _, addOn := range addOns {
 		addOnCharts[addOn.Name()] = &charts.Chart{
 			Name:      addOn.Name(),
-			Dir:       filepath.Join(addOnChartsPath, addOn.Name()),
+			Dir:       addOnChartsPath + "/" + addOn.Name(),
 			Namespace: controlPlaneNamespace,
 			RawValues: append(addOn.Values(), rawValues...),
 			Files: []*chartutil.BufferedFile{&chartutil.BufferedFile{
