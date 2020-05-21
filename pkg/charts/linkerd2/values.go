@@ -21,7 +21,6 @@ type (
 	Values struct {
 		Stage                         string                         `json:"stage"`
 		ControllerImage               string                         `json:"controllerImage"`
-		ControllerImageVersion        string                         `json:"controllerImageVersion"`
 		WebImage                      string                         `json:"webImage"`
 		PrometheusImage               string                         `json:"prometheusImage"`
 		ControllerReplicas            uint                           `json:"controllerReplicas"`
@@ -72,6 +71,7 @@ type (
 		ImagePullPolicy          string `json:"imagePullPolicy"`
 		CliVersion               string `json:"cliVersion"`
 		ControllerComponentLabel string `json:"controllerComponentLabel"`
+		ControllerImageVersion   string `json:"controllerImageVersion"`
 		ControllerNamespaceLabel string `json:"controllerNamespaceLabel"`
 		WorkloadNamespaceLabel   string `json:"workloadNamespaceLabel"`
 		CreatedByAnnotation      string `json:"createdByAnnotation"`
@@ -84,6 +84,7 @@ type (
 		ControlPlaneTracing      bool   `json:"controlPlaneTracing"`
 		IdentityTrustAnchorsPEM  string `json:"identityTrustAnchorsPEM"`
 		IdentityTrustDomain      string `json:"identityTrustDomain"`
+		GrafanaURL               string `json:"grafanaUrl"`
 
 		Proxy     *Proxy     `json:"proxy"`
 		ProxyInit *ProxyInit `json:"proxyInit"`

@@ -149,10 +149,12 @@ const (
 	// "" are equal, making "false" the default
 	LinkerdCNIResourceLabel = "linkerd.io/cni-resource"
 
-	linkerdCNIDisabledSkipReason      = "skipping check because CNI is not enabled"
-	linkerdCNIResourceName            = "linkerd-cni"
-	linkerdCNIConfigMapName           = "linkerd-cni-config"
-	linkerdServiceMirrorComponentName = "linkerd-service-mirror"
+	linkerdCNIDisabledSkipReason        = "skipping check because CNI is not enabled"
+	linkerdCNIResourceName              = "linkerd-cni"
+	linkerdCNIConfigMapName             = "linkerd-cni-config"
+	linkerdServiceMirrorComponentName   = "linkerd-service-mirror"
+	linkerdServiceMirrorClusterRoleName = "linkerd-service-mirror-access-local-resources"
+	linkerdServiceMirrorRoleName        = "linkerd-service-mirror-read-remote-creds"
 
 	// linkerdTapAPIServiceName is the name of the tap api service
 	// This key is passed to checkApiSercice method to check whether
@@ -196,12 +198,27 @@ var ExpectedServiceAccountNames = []string{
 	"linkerd-tap",
 }
 
-var expectedServiceMirrorPolicyVerbs = []string{
-	"list", "get", "watch", "create", "delete", "update",
+type expectedPolicy struct {
+	resources []string
+	verbs     []string
 }
 
-var expectedServiceMirrorPolicyResources = []string{
-	"endpoints", "services", "secrets", "namespaces",
+var expectedServiceMirrorClusterRolePolicies = []expectedPolicy{
+	{
+		resources: []string{"endpoints", "services"},
+		verbs:     []string{"list", "get", "watch", "create", "delete", "update"},
+	},
+	{
+		resources: []string{"namespaces"},
+		verbs:     []string{"create", "list", "get", "watch"},
+	},
+}
+
+var expectedServiceMirrorRolePolicies = []expectedPolicy{
+	{
+		resources: []string{"secrets"},
+		verbs:     []string{"list", "get", "watch"},
+	},
 }
 
 var expectedServiceMirrorRemoteClusterPolicyVerbs = []string{
@@ -1237,8 +1254,8 @@ func (hc *HealthChecker) allCategories() []category {
 			id: LinkerdMulticlusterChecks,
 			checkers: []checker{
 				{
-					description: "service mirror controller exists",
-					hintAnchor:  "l5d-smc-existence",
+					description: "service mirror controller is running",
+					hintAnchor:  "l5d-multicluster-service-mirror-running",
 					fatal:       true,
 					check: func(context.Context) error {
 						return hc.checkServiceMirrorController()
@@ -1246,30 +1263,47 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "service mirror controller ClusterRoles exist",
-					hintAnchor:  "l5d-smc-existence-cr",
-					fatal:       true,
+					hintAnchor:  "l5d-multicluster-cluster-role-exist",
 					check: func(context.Context) error {
 						if hc.Options.ShouldCheckMulticluster {
-							return hc.checkClusterRoles(true, []string{linkerdServiceMirrorComponentName}, hc.serviceMirrorComponentsSelector())
+							return hc.checkClusterRoles(true, []string{linkerdServiceMirrorClusterRoleName}, hc.serviceMirrorComponentsSelector())
 						}
 						return &SkipError{Reason: "not checking muticluster"}
 					},
 				},
 				{
 					description: "service mirror controller ClusterRoleBindings exist",
-					hintAnchor:  "l5d-smc-existence-crb",
-					fatal:       true,
+					hintAnchor:  "l5d-multicluster-cluster-role-binding-exist",
 					check: func(context.Context) error {
 						if hc.Options.ShouldCheckMulticluster {
-							return hc.checkClusterRoleBindings(true, []string{linkerdServiceMirrorComponentName}, hc.serviceMirrorComponentsSelector())
+							return hc.checkClusterRoleBindings(true, []string{linkerdServiceMirrorClusterRoleName}, hc.serviceMirrorComponentsSelector())
+						}
+						return &SkipError{Reason: "not checking muticluster"}
+					},
+				},
+				{
+					description: "service mirror controller Roles exist",
+					hintAnchor:  "l5d-multicluster-role-exist",
+					check: func(context.Context) error {
+						if hc.Options.ShouldCheckMulticluster {
+							return hc.checkRoles(true, hc.serviceMirrorNs, []string{linkerdServiceMirrorRoleName}, hc.serviceMirrorComponentsSelector())
+						}
+						return &SkipError{Reason: "not checking muticluster"}
+					},
+				},
+				{
+					description: "service mirror controller RoleBindings exist",
+					hintAnchor:  "l5d-multicluster-role-binding-exist",
+					check: func(context.Context) error {
+						if hc.Options.ShouldCheckMulticluster {
+							return hc.checkRoleBindings(true, hc.serviceMirrorNs, []string{linkerdServiceMirrorRoleName}, hc.serviceMirrorComponentsSelector())
 						}
 						return &SkipError{Reason: "not checking muticluster"}
 					},
 				},
 				{
 					description: "service mirror controller ServiceAccounts exist",
-					hintAnchor:  "l5d-smc-existence-sa",
-					fatal:       true,
+					hintAnchor:  "l5d-multicluster-service-account-exist",
 					check: func(context.Context) error {
 						if hc.Options.ShouldCheckMulticluster {
 							return hc.checkServiceAccounts([]string{linkerdServiceMirrorComponentName}, hc.serviceMirrorNs, hc.serviceMirrorComponentsSelector())
@@ -1279,8 +1313,7 @@ func (hc *HealthChecker) allCategories() []category {
 				},
 				{
 					description: "service mirror controller has required permissions",
-					hintAnchor:  "l5d-smc-local-rbac-existence",
-					fatal:       true,
+					hintAnchor:  "l5d-multicluster-local-rbac-correct",
 					check: func(context.Context) error {
 						return hc.checkServiceMirrorLocalRBAC()
 					},
@@ -1288,23 +1321,20 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "service mirror controller can access remote clusters",
 					hintAnchor:  "l5d-smc-remote-remote-clusters-access",
-					fatal:       true,
 					check: func(context.Context) error {
 						return hc.checkRemoteClusterConnectivity()
 					},
 				},
 				{
 					description: "all remote cluster gateways are alive",
-					hintAnchor:  "l5d-remote-gateways-alive",
-					fatal:       true,
+					hintAnchor:  "l5d-multicluster-remote-gateways-alive",
 					check: func(ctx context.Context) error {
 						return hc.checkRemoteClusterGatewaysHealth(ctx)
 					},
 				},
 				{
 					description: "clusters share trust anchors",
-					hintAnchor:  "l5d-clusters-share-anchors",
-					fatal:       true,
+					hintAnchor:  "l5d-multicluster-clusters-share-anchors",
 					check: func(ctx context.Context) error {
 						return hc.checkRemoteClusterAnchors()
 					},
@@ -1619,38 +1649,54 @@ func comparePermissions(expected, actual []string) error {
 	return nil
 }
 
+func verifyRule(expected expectedPolicy, actual []v1.PolicyRule) error {
+	for _, rule := range actual {
+		if err := comparePermissions(expected.resources, rule.Resources); err == nil {
+			if err := comparePermissions(expected.verbs, rule.Verbs); err != nil {
+				return fmt.Errorf("unexpected verbs %s", err)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("could not fine rule for %s", strings.Join(expected.resources, ","))
+}
+
 func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 	if hc.Options.ShouldCheckMulticluster {
 		var errors []string
 
-		cr, err := hc.kubeAPI.RbacV1().ClusterRoles().Get(linkerdServiceMirrorComponentName, metav1.GetOptions{})
+		clusterRole, err := hc.kubeAPI.RbacV1().ClusterRoles().Get(linkerdServiceMirrorClusterRoleName, metav1.GetOptions{})
 		if err != nil {
-			return fmt.Errorf("Could not obtain service mirror ClusterRole: %s", err)
+			return fmt.Errorf("Could not obtain service mirror ClusterRole %s: %s", linkerdServiceMirrorClusterRoleName, err)
 		}
 
-		var policyRule *v1.PolicyRule
+		role, err := hc.kubeAPI.RbacV1().Roles(hc.serviceMirrorNs).Get(linkerdServiceMirrorRoleName, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("Could not obtain service mirror Role %s : %s", linkerdServiceMirrorRoleName, err)
+		}
 
-		for _, r := range cr.Rules {
-			if len(r.APIGroups) == 1 && r.APIGroups[0] == "" {
-				rule := r
-				policyRule = &rule
+		if len(clusterRole.Rules) != len(expectedServiceMirrorClusterRolePolicies) {
+			return fmt.Errorf("Service mirror ClusterRole %s has %d policy rules, expected %d", clusterRole.Name, len(clusterRole.Rules), len(expectedServiceMirrorClusterRolePolicies))
+		}
+
+		for _, rule := range expectedServiceMirrorClusterRolePolicies {
+			if err := verifyRule(rule, clusterRole.Rules); err != nil {
+				errors = append(errors, fmt.Sprintf("Service mirror ClusterRole %s: %s", clusterRole.Name, err))
 			}
 		}
 
-		if policyRule == nil {
-			return fmt.Errorf("Service mirror ClusterRole is missing expected policy rule")
+		if len(role.Rules) != len(expectedServiceMirrorRolePolicies) {
+			return fmt.Errorf("Service mirror Role %s has %d policy rules, expected %d", role.Name, len(role.Rules), len(expectedServiceMirrorRolePolicies))
 		}
 
-		if err := comparePermissions(expectedServiceMirrorPolicyVerbs, policyRule.Verbs); err != nil {
-			errors = append(errors, fmt.Sprintf("Service mirror ClusterRole is missing verbs: %s", err))
-		}
-
-		if err := comparePermissions(expectedServiceMirrorPolicyResources, policyRule.Resources); err != nil {
-			errors = append(errors, fmt.Sprintf("Service mirror ClusterRole is missing required resources: %s", err))
+		for _, rule := range expectedServiceMirrorRolePolicies {
+			if err := verifyRule(rule, role.Rules); err != nil {
+				errors = append(errors, fmt.Sprintf("Service mirror Role %s: %s", role.Name, err))
+			}
 		}
 
 		if len(errors) > 0 {
-			return fmt.Errorf(strings.Join(errors, "\n\t"))
+			return fmt.Errorf(strings.Join(errors, "\n"))
 		}
 
 		return nil
@@ -1843,6 +1889,44 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 		fmt.Sprintf("linkerd-%s-sp-validator", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-tap", hc.ControlPlaneNamespace),
 	}
+}
+
+func (hc *HealthChecker) checkRoles(shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
+	options := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+	crList, err := hc.kubeAPI.RbacV1().Roles(namespace).List(options)
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+
+	for _, item := range crList.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("Roles", objects, expectedNames, shouldExist)
+}
+
+func (hc *HealthChecker) checkRoleBindings(shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
+	options := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+	crbList, err := hc.kubeAPI.RbacV1().RoleBindings(namespace).List(options)
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+
+	for _, item := range crbList.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("RoleBindings", objects, expectedNames, shouldExist)
 }
 
 func (hc *HealthChecker) checkClusterRoles(shouldExist bool, expectedNames []string, labelSelector string) error {

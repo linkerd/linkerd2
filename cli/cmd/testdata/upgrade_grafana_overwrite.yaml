@@ -2851,9 +2851,13 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   values: |-
+    global:
+      grafanaUrl: 
     grafana:
       enabled: true
-      image: linkerd-image-overwrite
+      image:
+        name: linkerd-image-overwrite
+        version: UPGRADE-CONTROL-PLANE-VERSION
       name: linkerd-grafana-overwrite
     tracing:
       enabled: false

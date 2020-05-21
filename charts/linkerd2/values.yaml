@@ -19,6 +19,9 @@ global:
 
   identityTrustDomain: *cluster_domain
 
+  # url of external grafana instance.
+  grafanaUrl: ""
+
   # proxy configuration
   proxy:
     enableExternalProfiles: false
@@ -195,7 +198,9 @@ smiMetrics:
 grafana:
   enabled: true
   name: linkerd-grafana
-  image: gcr.io/linkerd-io/grafana
+  image:
+    name: gcr.io/linkerd-io/grafana
+    version: *linkerd_version
   # resources:
 
 tracing:

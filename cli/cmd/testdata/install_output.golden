@@ -2827,9 +2827,13 @@ metadata:
     CreatedByAnnotation: CliVersion
 data:
   values: |-
+    global:
+      grafanaUrl: 
     grafana:
       enabled: true
-      image: gcr.io/linkerd-io/grafana
+      image:
+        name: gcr.io/linkerd-io/grafana
+        version: install-control-plane-version
       name: linkerd-grafana
     tracing:
       enabled: false
@@ -2968,7 +2972,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:ControllerImageVersion
+        image: gcr.io/linkerd-io/grafana:install-control-plane-version
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:

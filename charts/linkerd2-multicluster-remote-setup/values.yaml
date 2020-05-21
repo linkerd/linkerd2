@@ -1,13 +1,12 @@
 gatewayName: linkerd-gateway
-gatewayNamespace: linkerd-gateway
+namespace: linkerd-multicluster
 identityTrustDomain: cluster.local
-incomingPort: 80
+incomingPort: 4180
 linkerdNamespace: linkerd
 probePath: /health
 probePeriodSeconds: 3
-probePort: 81
-serviceAccountName: linkerd-service-mirror
-serviceAccountNamespace: linkerd-service-mirror
+probePort: 4181
+serviceAccountName: linkerd-service-mirror-remote-access
 linkerdVersion: linkerdVersionValue
 createdByAnnotation: linkerd.io/created-by
 nginxImageVersion: 1.17

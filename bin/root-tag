@@ -2,6 +2,7 @@
 
 bindir=$( cd "${0%/*}" && pwd )
 
+# shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
 
 head_root_tag

@@ -350,6 +350,7 @@ func helmOverridesEdge(root *tls.CA) []string {
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
+		"--set", "grafana.image.version=" + TestHelper.GetVersion(),
 	}
 }
 

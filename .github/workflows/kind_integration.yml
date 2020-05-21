@@ -130,14 +130,14 @@ jobs:
       # engineerd/setup-kind@v0.3.0
       uses: engineerd/setup-kind@d0e9be1
       with:
-        version: "v0.7.0"
+        version: "v0.8.1"
     - name: Setup custom_domain KinD cluster
       if: matrix.integration_test == 'custom_domain'
       # engineerd/setup-kind@v0.3.0
       uses: engineerd/setup-kind@d0e9be1
       with:
         config: test/testdata/custom_cluster_domain_config.yaml
-        version: "v0.7.0"
+        version: "v0.8.1"
     - name: Load image archives into the local KinD cluster
       if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
       env:

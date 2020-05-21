@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -754,7 +753,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Configs.Proxy = proxyJSON
 	installValues.Configs.Install = installJSON
 	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
-	installValues.ControllerImageVersion = configs.GetGlobal().GetVersion()
+	installValues.Global.ControllerImageVersion = configs.GetGlobal().GetVersion()
 	installValues.ControllerLogLevel = options.controllerLogLevel
 	installValues.ControllerReplicas = options.controllerReplicas
 	installValues.ControllerUID = options.controllerUID
@@ -763,7 +762,8 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.EnablePodAntiAffinity = options.highAvailability
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
-	installValues.Grafana["image"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+	installValues.Grafana["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+	installValues.Grafana["image"].(map[string]interface{})["version"] = options.controlPlaneVersion
 	if options.prometheusImage != "" {
 		installValues.PrometheusImage = options.prometheusImage
 	}
@@ -849,7 +849,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 	for _, addOn := range addOns {
 		addOnCharts[addOn.Name()] = &charts.Chart{
 			Name:      addOn.Name(),
-			Dir:       filepath.Join(addOnChartsPath, addOn.Name()),
+			Dir:       addOnChartsPath + "/" + addOn.Name(),
 			Namespace: controlPlaneNamespace,
 			RawValues: append(addOn.Values(), rawValues...),
 			Files: []*chartutil.BufferedFile{&chartutil.BufferedFile{

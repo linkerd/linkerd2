@@ -2,12 +2,10 @@ package servicemirror
 
 import (
 	"fmt"
-	"math/rand"
 	"net/http"
 	"sync"
 	"time"
 
-	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 )
@@ -24,6 +22,7 @@ type probeSpec struct {
 
 // ProbeWorker is responsible for monitoring gateways using a probe specification
 type ProbeWorker struct {
+	localGatewayName string
 	*sync.RWMutex
 	probeSpec      *probeSpec
 	pairedServices map[string]struct{}
@@ -33,13 +32,14 @@ type ProbeWorker struct {
 }
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
-func NewProbeWorker(spec *probeSpec, metrics *probeMetrics, probekey string) *ProbeWorker {
+func NewProbeWorker(localGatewayName string, spec *probeSpec, metrics *probeMetrics, probekey string) *ProbeWorker {
 	return &ProbeWorker{
-		RWMutex:        &sync.RWMutex{},
-		probeSpec:      spec,
-		pairedServices: make(map[string]struct{}),
-		stopCh:         make(chan struct{}),
-		metrics:        metrics,
+		localGatewayName: localGatewayName,
+		RWMutex:          &sync.RWMutex{},
+		probeSpec:        spec,
+		pairedServices:   make(map[string]struct{}),
+		stopCh:           make(chan struct{}),
+		metrics:          metrics,
 		log: logging.WithFields(logging.Fields{
 			"probe-key": probekey,
 		}),
@@ -106,14 +106,6 @@ probeLoop:
 	}
 }
 
-func (pw *ProbeWorker) pickAnIP() string {
-	numIps := len(pw.probeSpec.ips)
-	if numIps == 0 {
-		return ""
-	}
-	return pw.probeSpec.ips[rand.Int()%numIps]
-}
-
 func (pw *ProbeWorker) doProbe() {
 	pw.RLock()
 	defer pw.RUnlock()
@@ -121,44 +113,37 @@ func (pw *ProbeWorker) doProbe() {
 	successLabel := prometheus.Labels{probeSuccessfulLabel: "true"}
 	notSuccessLabel := prometheus.Labels{probeSuccessfulLabel: "false"}
 
-	ipToTry := pw.pickAnIP()
-	if ipToTry == "" {
-		pw.log.Debug("No ips. Marking as unhealthy")
-		pw.metrics.alive.Set(0)
-	} else {
-		client := http.Client{
-			Timeout: httpGatewayTimeoutMillis * time.Millisecond,
-		}
-
-		req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/%s", ipToTry, pw.probeSpec.port, pw.probeSpec.path), nil)
-		if err != nil {
-			pw.log.Debugf("Could not create a GET request to gateway: %s", err)
-			return
-		}
-
-		req.Header.Set(consts.RequireIDHeader, pw.probeSpec.gatewayIdentity)
-		start := time.Now()
-		resp, err := client.Do(req)
-		end := time.Since(start)
-		if err != nil {
-			pw.log.Errorf("Problem connecting with gateway. Marking as unhealthy %s", err)
-			pw.metrics.alive.Set(0)
-			pw.metrics.probes.With(notSuccessLabel).Inc()
-			return
-		} else if resp.StatusCode != 200 {
-			pw.log.Debugf("Gateway returned unexpected status %d. Marking as unhealthy", resp.StatusCode)
-			pw.metrics.alive.Set(0)
-			pw.metrics.probes.With(notSuccessLabel).Inc()
-		} else {
-			pw.log.Debug("Gateway is healthy")
-			pw.metrics.alive.Set(1)
-			pw.metrics.latencies.Observe(float64(end.Milliseconds()))
-			pw.metrics.probes.With(successLabel).Inc()
-		}
-
-		if err := resp.Body.Close(); err != nil {
-			pw.log.Debugf("Failed to close response body %s", err)
-		}
-
+	client := http.Client{
+		Timeout: httpGatewayTimeoutMillis * time.Millisecond,
 	}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/%s", pw.localGatewayName, pw.probeSpec.port, pw.probeSpec.path), nil)
+	if err != nil {
+		pw.log.Debugf("Could not create a GET request to gateway: %s", err)
+		return
+	}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	end := time.Since(start)
+	if err != nil {
+		pw.log.Errorf("Problem connecting with gateway. Marking as unhealthy %s", err)
+		pw.metrics.alive.Set(0)
+		pw.metrics.probes.With(notSuccessLabel).Inc()
+		return
+	} else if resp.StatusCode != 200 {
+		pw.log.Debugf("Gateway returned unexpected status %d. Marking as unhealthy", resp.StatusCode)
+		pw.metrics.alive.Set(0)
+		pw.metrics.probes.With(notSuccessLabel).Inc()
+	} else {
+		pw.log.Debug("Gateway is healthy")
+		pw.metrics.alive.Set(1)
+		pw.metrics.latencies.Observe(float64(end.Milliseconds()))
+		pw.metrics.probes.With(successLabel).Inc()
+	}
+
+	if err := resp.Body.Close(); err != nil {
+		pw.log.Debugf("Failed to close response body %s", err)
+	}
+
 }

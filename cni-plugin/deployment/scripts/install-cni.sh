@@ -65,7 +65,7 @@ cleanup() {
 
   if [ -e "${CNI_CONF_PATH}" ]; then
     echo "Removing linkerd-cni config: ${CNI_CONF_PATH}"
-    CNI_CONF_DATA=$(cat "${CNI_CONF_PATH}" | jq 'del( .plugins[]? | select( .type == "linkerd-cni" ))')
+    CNI_CONF_DATA=$(jq 'del( .plugins[]? | select( .type == "linkerd-cni" ))' "${CNI_CONF_PATH}")
     echo "${CNI_CONF_DATA}" > "${CNI_CONF_PATH}"
 
     if [ "${CNI_CONF_PATH}" = "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf" ]; then
@@ -133,7 +133,7 @@ if [ -f "${SERVICE_ACCOUNT_PATH}/token" ]; then
   if [ "${SKIP_TLS_VERIFY}" = "true" ]; then
     TLS_CFG='insecure-skip-tls-verify: true'
   elif [ -f "${KUBE_CA_FILE}" ]; then
-    TLS_CFG="certificate-authority-data: $(cat "${KUBE_CA_FILE}" | base64 | tr -d '\n')"
+    TLS_CFG="certificate-authority-data: $(base64 "${KUBE_CA_FILE}" | tr -d '\n')"
   fi
 
   # Write a kubeconfig file for the CNI plugin. Do this
@@ -187,7 +187,7 @@ CNI_CONF_FILE="${CNI_CONF_PATH}"
 if [ -e "${CNI_CONF_FILE}" ]; then
   # Add the linkerd-cni plugin to the existing list
   CNI_TMP_CONF_DATA=$(cat "${TMP_CONF}")
-  CNI_CONF_DATA=$(cat "${CNI_CONF_FILE}" | jq --argjson CNI_TMP_CONF_DATA "$CNI_TMP_CONF_DATA" -f /linkerd/filter.jq)
+  CNI_CONF_DATA=$(jq --argjson CNI_TMP_CONF_DATA "$CNI_TMP_CONF_DATA" -f /linkerd/filter.jq "${CNI_CONF_FILE}")
   echo "${CNI_CONF_DATA}" > ${TMP_CONF}
 fi
 

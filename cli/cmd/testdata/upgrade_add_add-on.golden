@@ -2852,9 +2852,13 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   values: |-
+    global:
+      grafanaUrl: 
     grafana:
       enabled: true
-      image: gcr.io/linkerd-io/grafana
+      image:
+        name: gcr.io/linkerd-io/grafana
+        version: UPGRADE-CONTROL-PLANE-VERSION
       name: linkerd-grafana
     tracing:
       collector:
