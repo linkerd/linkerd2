@@ -1,5 +1,30 @@
 # Changes
 
+## edge-20.5.4
+
+* CLI
+  * Fixed the display of the meshed pod column for non-selector services in
+    `linkerd stat` output
+  * Added an `addon-overwrite` upgrade flag which allows users to overwrite the
+    existing addon config rather than merging into it
+  * Added a `--close-wait-timeout` inject flag which sets the 
+    `nf_conntrack_tcp_timeout_close_wait` property which can be used to mitigate
+    connection issues with application that hold half-closed sockets
+* Controller
+  * Restricted the service-mirror's RBAC permissions so that it no longer is
+    able to read secrets in all namespaces
+  * Moved many multicluster components into the `linkerd-multicluster` namespace
+    by default
+  * Added multicluster gateway mirror services to allow multicluster liveness
+    probes to work in private networks
+  * Fixed an issue where multicluster gateway mirror services could be
+    incorrectly deleted during a resync
+* Internal
+  * Fixed many style issues in build scripts (thanks @joakimr-axis!)
+* Helm
+  * Added `global.grafanaUrl` variable to allow using an existing Grafana
+    installation
+
 ## edge-20.5.3
 
 * Controller
