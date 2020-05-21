@@ -191,7 +191,6 @@ func TestRender(t *testing.T) {
 	withHeartBeatDisabledValues, _, _ := withHeartBeatDisabled.validateAndBuild("", withHeartBeatDisabled.recordableFlagSet())
 	addFakeTLSSecrets(withHeartBeatDisabledValues)
 
-	// FIXME: test heartbeat override here
 	withOverrideHeartBeatSchedule, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
