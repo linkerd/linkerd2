@@ -371,6 +371,10 @@ const (
 	// of a mirroring operation (can be a namespace or a service)
 	MirroredResourceLabel = SvcMirrorPrefix + "/mirrored-service"
 
+	// MulticlusterGatewayAnnotation indicates that this service is a
+	// gateway
+	MulticlusterGatewayAnnotation = SvcMirrorPrefix + "/multicluster-gateway"
+
 	// RemoteClusterNameLabel put on a local mirrored service, it
 	// allows us to associate a mirrored service with a remote cluster
 	RemoteClusterNameLabel = SvcMirrorPrefix + "/cluster-name"
