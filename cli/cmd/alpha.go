@@ -4,8 +4,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newCmdAlpha creates a new cobra command for the `alpha` command which are
-// used by experimental subcommands for Linkerd
+// newCmdAlpha creates a new cobra command `alpha` which is used by experimental subcommands
+// for linkerd
 func newCmdAlpha() *cobra.Command {
 	alphaCmd := &cobra.Command{
 		Use:   "alpha",
