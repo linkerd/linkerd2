@@ -117,12 +117,13 @@ type (
 
 	// ProxyInit contains the fields to set the proxy-init container
 	ProxyInit struct {
-		Capabilities        *Capabilities `json:"capabilities"`
-		IgnoreInboundPorts  string        `json:"ignoreInboundPorts"`
-		IgnoreOutboundPorts string        `json:"ignoreOutboundPorts"`
-		Image               *Image        `json:"image"`
-		SAMountPath         *SAMountPath  `json:"saMountPath"`
-		Resources           *Resources    `json:"resources"`
+		Capabilities         *Capabilities `json:"capabilities"`
+		IgnoreInboundPorts   string        `json:"ignoreInboundPorts"`
+		IgnoreOutboundPorts  string        `json:"ignoreOutboundPorts"`
+		Image                *Image        `json:"image"`
+		SAMountPath          *SAMountPath  `json:"saMountPath"`
+		Resources            *Resources    `json:"resources"`
+		CloseWaitTimeoutSecs int64         `json:"closeWaitTimeoutSecs"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar
