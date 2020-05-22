@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const helmDefaultChartDir = "linkerd2-multicluster-remote-setup"
+const helmDefaultChartDir = "linkerd2-multicluster"
 
 // Values contains the top-level elements in the Helm charts
 type Values struct {

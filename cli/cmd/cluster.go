@@ -34,7 +34,7 @@ import (
 
 const (
 	defaultMulticlusterNamespace                 = "linkerd-multicluster"
-	helmMulticlusterRemoteSetuprDefaultChartName = "linkerd2-multicluster-remote-setup"
+	helmMulticlusterRemoteSetuprDefaultChartName = "linkerd2-multicluster"
 	tokenKey                                     = "token"
 	defaultServiceAccountName                    = "linkerd-service-mirror-remote-access"
 	defaultClusterName                           = "remote"

@@ -1,5 +1,5 @@
 
-# Linkerd2-multicluster-remote-setup Helm Chart
+# Linkerd2-multicluster Helm Chart
 
 Linkerd is a *service mesh*, designed to give platform-wide observability,
 reliability, and security without requiring configuration or code changes. This
@@ -10,7 +10,7 @@ and service discovery
 ## Configuration
 
 The following table lists the configurable parameters of the
-linkerd2-multicluster-remote-setup chart and their default values.
+linkerd2-multicluster chart and their default values.
 
 | Parameter                | Description                                                                                                     | Default                |
 |--------------------------|-----------------------------------------------------------------------------------------------------------------|------------------------|
