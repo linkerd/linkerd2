@@ -13,23 +13,30 @@ const helmDefaultChartDir = "linkerd2-multicluster-remote-setup"
 
 // Values contains the top-level elements in the Helm charts
 type Values struct {
-	CliVersion          string `json:"cliVersion"`
-	GatewayName         string `json:"gatewayName"`
-	Namespace           string `json:"namespace"`
-	IdentityTrustDomain string `json:"identityTrustDomain"`
-	IncomingPort        uint32 `json:"incomingPort"`
-	LinkerdNamespace    string `json:"linkerdNamespace"`
-	ProbePath           string `json:"probePath"`
-	ProbePeriodSeconds  uint32 `json:"probePeriodSeconds"`
-	ProbePort           uint32 `json:"probePort"`
-	ProxyOutboundPort   uint32 `json:"proxyOutboundPort"`
-	ServiceAccountName  string `json:"serviceAccountName"`
-	NginxImageVersion   string `json:"nginxImageVersion"`
-	NginxImage          string `json:"nginxImage"`
-	LinkerdVersion      string `json:"linkerdVersion"`
-	CreatedByAnnotation string `json:"createdByAnnotation"`
-	LocalProbePath      string `json:"localProbePath"`
-	LocalProbePort      uint32 `json:"localProbePort"`
+	ControllerImage          string `json:"controllerImage"`
+	ControllerImageVersion   string `json:"controllerImageVersion"`
+	ControllerComponentLabel string `json:"controllerComponentLabel"`
+	Namespace                string `json:"namespace"`
+	LinkerdNamespace         string `json:"linkerdNamespace"`
+	ProxyOutboundPort        uint32 `json:"proxyOutboundPort"`
+	IdentityTrustDomain      string `json:"identityTrustDomain"`
+	LinkerdVersion           string `json:"linkerdVersion"`
+	CreatedByAnnotation      string `json:"createdByAnnotation"`
+	ServiceMirror            bool   `json:"serviceMirror"`
+	ServiceMirrorUID         int64  `json:"serviceMirrorUID"`
+	ServiceMirrorLogLevel    string `json:"serviceMirrorLogLevel"`
+	ServiceMirrorRetryLimit  uint32 `json:"serviceMirrorRetryLimit"`
+	CliVersion               string `json:"cliVersion"`
+	Gateway                  bool   `json:"gateway"`
+	GatewayName              string `json:"gatewayName"`
+	GatewayPort              uint32 `json:"gatewayPort"`
+	GatewayProbeSeconds      uint32 `json:"gatewayProbeSeconds"`
+	GatewayProbePort         uint32 `json:"gatewayProbePort"`
+	GatewayProbePath         string `json:"gatewayProbePath"`
+	GatewayLocalProbePath    string `json:"gatewayLocalProbePath"`
+	GatewayLocalProbePort    uint32 `json:"gatewayLocalProbePort"`
+	GatewayNginxImageVersion string `json:"gatewaynginxImageVersion"`
+	GatewayNginxImage        string `json:"gatewaynginxImage"`
 }
 
 // NewValues returns a new instance of the Values type.
