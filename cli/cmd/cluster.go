@@ -42,18 +42,19 @@ const (
 
 type (
 	multiclusterInstallOptions struct {
-		gateway                 bool
-		gatewayPort             uint32
-		gatewayProbeSeconds     uint32
-		gatewayProbePort        uint32
-		namespace               string
-		serviceMirror           bool
-		serviceMirrorRetryLimit uint32
-		serviceMirrorLogLevel   string
-		gatewayNginxImage       string
-		gatewayNginxVersion     string
-		controlPlaneVersion     string
-		dockerRegistry          string
+		gateway                        bool
+		gatewayPort                    uint32
+		gatewayProbeSeconds            uint32
+		gatewayProbePort               uint32
+		namespace                      string
+		serviceMirror                  bool
+		serviceMirrorRetryLimit        uint32
+		serviceMirrorLogLevel          string
+		gatewayNginxImage              string
+		gatewayNginxVersion            string
+		controlPlaneVersion            string
+		dockerRegistry                 string
+		remoteAccessServiceAccountName string
 	}
 
 	getCredentialsOptions struct {
@@ -83,18 +84,19 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 	}
 
 	return &multiclusterInstallOptions{
-		gateway:                 defaults.Gateway,
-		gatewayPort:             defaults.GatewayPort,
-		gatewayProbeSeconds:     defaults.GatewayProbeSeconds,
-		gatewayProbePort:        defaults.GatewayProbePort,
-		namespace:               defaults.Namespace,
-		serviceMirror:           defaults.ServiceMirror,
-		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
-		serviceMirrorLogLevel:   defaults.ServiceMirrorLogLevel,
-		gatewayNginxImage:       defaults.GatewayNginxImage,
-		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
-		controlPlaneVersion:     version.Version,
-		dockerRegistry:          defaultDockerRegistry,
+		gateway:                        defaults.Gateway,
+		gatewayPort:                    defaults.GatewayPort,
+		gatewayProbeSeconds:            defaults.GatewayProbeSeconds,
+		gatewayProbePort:               defaults.GatewayProbePort,
+		namespace:                      defaults.Namespace,
+		serviceMirror:                  defaults.ServiceMirror,
+		serviceMirrorRetryLimit:        defaults.ServiceMirrorRetryLimit,
+		serviceMirrorLogLevel:          defaults.ServiceMirrorLogLevel,
+		gatewayNginxImage:              defaults.GatewayNginxImage,
+		gatewayNginxVersion:            defaults.GatewayNginxImageVersion,
+		controlPlaneVersion:            version.Version,
+		dockerRegistry:                 defaultDockerRegistry,
+		remoteAccessServiceAccountName: defaults.RemoteAccessServiceAccountName,
 	}, nil
 
 }
@@ -148,6 +150,7 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	defaults.LinkerdVersion = version.Version
 	defaults.ControllerImageVersion = opts.controlPlaneVersion
 	defaults.ControllerImage = fmt.Sprintf("%s/controller", opts.dockerRegistry)
+	defaults.RemoteAccessServiceAccountName = opts.remoteAccessServiceAccountName
 
 	return defaults, nil
 }
@@ -214,12 +217,13 @@ func newMulticlusterInstallCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
+			
 			files := []*chartutil.BufferedFile{
 				{Name: chartutil.ChartfileName},
 				{Name: "templates/namespace.yaml"},
 				{Name: "templates/gateway.yaml"},
 				{Name: "templates/service-mirror.yaml"},
+				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
 			}
 
 			chart := &charts.Chart{
@@ -252,6 +256,8 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	cmd.Flags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
+	cmd.Flags().StringVar(&options.remoteAccessServiceAccountName, "remote-access-service-account-name", options.remoteAccessServiceAccountName, "The name of the service account that will be created and used by remote clusters, attempting to mirror services")
+
 	return cmd
 }
 
