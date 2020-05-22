@@ -41,24 +41,27 @@ const (
 )
 
 type (
+	multiclusterInstallOptions struct {
+		gateway                 bool
+		gatewayPort             uint32
+		gatewayProbeSeconds     uint32
+		gatewayProbePort        uint32
+		namespace               string
+		serviceMirror           bool
+		serviceMirrorRetryLimit uint32
+		serviceMirrorLogLevel   string
+		gatewayNginxImage       string
+		gatewayNginxVersion     string
+		controlPlaneVersion     string
+		dockerRegistry          string
+	}
+
 	getCredentialsOptions struct {
 		namespace               string
 		serviceAccountName      string
 		serviceAccountNamespace string
 		clusterName             string
 		remoteClusterDomain     string
-	}
-
-	setupRemoteClusterOptions struct {
-		namespace          string
-		serviceAccountName string
-		gatewayName        string
-		probePort          uint32
-		incomingPort       uint32
-		probePeriodSeconds uint32
-		probePath          string
-		nginxImageVersion  string
-		nginxImage         string
 	}
 
 	exportServiceOptions struct {
@@ -73,22 +76,25 @@ type (
 	}
 )
 
-func newSetupRemoteClusterOptionsWithDefault() (*setupRemoteClusterOptions, error) {
+func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, error) {
 	defaults, err := mccharts.NewValues()
 	if err != nil {
 		return nil, err
 	}
 
-	return &setupRemoteClusterOptions{
-		serviceAccountName: defaults.ServiceAccountName,
-		namespace:          defaults.Namespace,
-		gatewayName:        defaults.GatewayName,
-		probePort:          defaults.ProbePort,
-		incomingPort:       defaults.IncomingPort,
-		probePeriodSeconds: defaults.ProbePeriodSeconds,
-		probePath:          defaults.ProbePath,
-		nginxImageVersion:  defaults.NginxImageVersion,
-		nginxImage:         defaults.NginxImage,
+	return &multiclusterInstallOptions{
+		gateway:                 defaults.Gateway,
+		gatewayPort:             defaults.GatewayPort,
+		gatewayProbeSeconds:     defaults.GatewayProbeSeconds,
+		gatewayProbePort:        defaults.GatewayProbePort,
+		namespace:               defaults.Namespace,
+		serviceMirror:           defaults.ServiceMirror,
+		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
+		serviceMirrorLogLevel:   defaults.ServiceMirrorLogLevel,
+		gatewayNginxImage:       defaults.GatewayNginxImage,
+		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
+		controlPlaneVersion:     version.Version,
+		dockerRegistry:          defaultDockerRegistry,
 	}, nil
 
 }
@@ -107,7 +113,7 @@ func getLinkerdConfigMap() (*configPb.All, error) {
 	return global, nil
 }
 
-func buildMulticlusterSetupValues(opts *setupRemoteClusterOptions) (*multicluster.Values, error) {
+func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multicluster.Values, error) {
 
 	global, err := getLinkerdConfigMap()
 	if err != nil {
@@ -122,23 +128,26 @@ func buildMulticlusterSetupValues(opts *setupRemoteClusterOptions) (*multicluste
 		return nil, err
 	}
 
-	if opts.probePort == defaults.LocalProbePort {
-		return nil, fmt.Errorf("The probe port needs to be different from %d which is the local probe port", defaults.LocalProbePort)
+	if opts.gatewayProbePort == defaults.GatewayLocalProbePort {
+		return nil, fmt.Errorf("The probe port needs to be different from %d which is the local probe port", opts.gatewayProbePort)
 	}
 
-	defaults.GatewayName = opts.gatewayName
 	defaults.Namespace = opts.namespace
+	defaults.Gateway = opts.gateway
+	defaults.GatewayPort = opts.gatewayPort
+	defaults.GatewayProbeSeconds = opts.gatewayProbeSeconds
+	defaults.GatewayProbePort = opts.gatewayProbePort
+	defaults.ServiceMirror = opts.serviceMirror
+	defaults.ServiceMirrorRetryLimit = opts.serviceMirrorRetryLimit
+	defaults.ServiceMirrorLogLevel = opts.serviceMirrorLogLevel
+	defaults.GatewayNginxImage = opts.gatewayNginxImage
+	defaults.GatewayNginxImageVersion = opts.gatewayNginxVersion
 	defaults.IdentityTrustDomain = global.Global.IdentityContext.TrustDomain
-	defaults.IncomingPort = opts.incomingPort
 	defaults.LinkerdNamespace = controlPlaneNamespace
-	defaults.ProbePath = opts.probePath
-	defaults.ProbePeriodSeconds = opts.probePeriodSeconds
-	defaults.ProbePort = opts.probePort
 	defaults.ProxyOutboundPort = global.Proxy.OutboundPort.Port
-	defaults.ServiceAccountName = opts.serviceAccountName
-	defaults.NginxImageVersion = opts.nginxImageVersion
-	defaults.NginxImage = opts.nginxImage
 	defaults.LinkerdVersion = version.Version
+	defaults.ControllerImageVersion = opts.controlPlaneVersion
+	defaults.ControllerImage = fmt.Sprintf("%s/controller", opts.dockerRegistry)
 
 	return defaults, nil
 }
@@ -176,8 +185,8 @@ func newGatewaysCommand() *cobra.Command {
 	return cmd
 }
 
-func newSetupRemoteCommand() *cobra.Command {
-	options, err := newSetupRemoteClusterOptionsWithDefault()
+func newMulticlusterInstallCommand() *cobra.Command {
+	options, err := newMulticlusterInstallOptionsWithDefault()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s", err)
 		os.Exit(1)
@@ -185,12 +194,12 @@ func newSetupRemoteCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Hidden: false,
-		Use:    "setup-remote",
-		Short:  "Sets up the remote cluster by creating the gateway and necessary credentials",
+		Use:    "install",
+		Short:  "Output Kubernetes configs to install the Linkerd multi-cluster add-on",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			values, err := buildMulticlusterSetupValues(options)
+			values, err := buildMulticlusterInstallValues(options)
 
 			if options.namespace == controlPlaneNamespace {
 				return errors.New("you need to specify a namespace different than the one in which Linkerd is installed")
@@ -210,7 +219,7 @@ func newSetupRemoteCommand() *cobra.Command {
 				{Name: chartutil.ChartfileName},
 				{Name: "templates/namespace.yaml"},
 				{Name: "templates/gateway.yaml"},
-				{Name: "templates/service-mirror-rbac.yaml"},
+				{Name: "templates/service-mirror.yaml"},
 			}
 
 			chart := &charts.Chart{
@@ -231,16 +240,18 @@ func newSetupRemoteCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&options.gatewayName, "gateway-name", options.gatewayName, "the name of the gateway")
-	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "the namespace in which the gateway and service account will be installed")
-	cmd.Flags().Uint32Var(&options.probePort, "probe-port", options.probePort, "the liveness check port of the gateway")
-	cmd.Flags().Uint32Var(&options.incomingPort, "incoming-port", options.incomingPort, "the port on the gateway used for all incomming traffic")
-	cmd.Flags().StringVar(&options.probePath, "probe-path", options.probePath, "the path that will be exercised by the liveness checks")
-	cmd.Flags().Uint32Var(&options.probePeriodSeconds, "probe-period", options.probePeriodSeconds, "the interval at which the gateway will be checked for being alive in seconds")
-	cmd.Flags().StringVar(&options.serviceAccountName, "service-account-name", options.serviceAccountName, "the name of the service account")
-	cmd.Flags().StringVar(&options.nginxImageVersion, "nginx-image-version", options.nginxImageVersion, "the version of nginx to be used")
-	cmd.Flags().StringVar(&options.nginxImage, "nginx-image", options.nginxImage, "the nginx image to be used")
-
+	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "The namespace in which the multicluster add-on is to be installed. Must not be the control plane namespace. ")
+	cmd.Flags().BoolVar(&options.gateway, "gateway", options.gateway, "When the gateway component should be installed")
+	cmd.Flags().Uint32Var(&options.gatewayPort, "gateway-port", options.gatewayPort, "The port on the gateway used for all incoming traffic")
+	cmd.Flags().Uint32Var(&options.gatewayProbeSeconds, "gateway-probe-seconds", options.gatewayProbeSeconds, "The interval at which the gateway will be checked for being alive in seconds")
+	cmd.Flags().Uint32Var(&options.gatewayProbePort, "gateway-probe-port", options.gatewayProbePort, "The liveness check port of the gateway")
+	cmd.Flags().BoolVar(&options.serviceMirror, "service-mirror", options.serviceMirror, "When the service-mirror component should be installed")
+	cmd.Flags().Uint32Var(&options.serviceMirrorRetryLimit, "service-mirror-retry-limit", options.serviceMirrorRetryLimit, "The number of times a failed update from the remote cluster is allowed to be retried")
+	cmd.Flags().StringVar(&options.serviceMirrorLogLevel, "service-mirror-log-level", options.serviceMirrorLogLevel, "Log level for the Service Mirror Component")
+	cmd.Flags().StringVar(&options.gatewayNginxImage, "gateway-nginx-image", options.gatewayNginxImage, "The nginx image to be used")
+	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
+	cmd.Flags().StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
+	cmd.Flags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
 	return cmd
 }
 
@@ -621,9 +632,9 @@ available across clusters.`,
   # Exporting all the resources inside a folder and its sub-folders.
   linkerd export-service  <folder> | kubectl apply -f -`,
 	}
-
+	
 	multiclusterCmd.AddCommand(newGetCredentialsCommand())
-	multiclusterCmd.AddCommand(newSetupRemoteCommand())
+	multiclusterCmd.AddCommand(newMulticlusterInstallCommand())
 	multiclusterCmd.AddCommand(newExportServiceCommand())
 	multiclusterCmd.AddCommand(newGatewaysCommand())
 
