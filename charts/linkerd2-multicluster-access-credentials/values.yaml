@@ -1,0 +1,4 @@
+remoteAccessServiceAccountName: linkerd-service-mirror-remote-access-all-clusters
+namespace: linkerd-multicluster
+createdByAnnotation: linkerd.io/created-by
+linkerdVersion: linkerdVersionValue

@@ -16,6 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/multicluster"
 	mccharts "github.com/linkerd/linkerd2/pkg/charts/multicluster"
+	mcCredsCharts "github.com/linkerd/linkerd2/pkg/charts/multicluster-access-creds"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -33,28 +34,33 @@ import (
 )
 
 const (
-	defaultMulticlusterNamespace                 = "linkerd-multicluster"
-	helmMulticlusterRemoteSetuprDefaultChartName = "linkerd2-multicluster"
-	tokenKey                                     = "token"
-	defaultServiceAccountName                    = "linkerd-service-mirror-remote-access"
-	defaultClusterName                           = "remote"
+	defaultMulticlusterNamespace                      = "linkerd-multicluster"
+	helmMulticlusterDefaultChartName                  = "linkerd2-multicluster"
+	helmMulticlusterAccessCredentialsDefaultChartName = "linkerd2-multicluster-access-credentials"
+	tokenKey                                          = "token"
+	defaultServiceAccountName                         = "linkerd-service-mirror-remote-access-all-clusters"
+	defaultClusterName                                = "remote"
 )
 
 type (
+	allowOptions struct {
+		namespace     string
+		ignoreCluster bool
+	}
+
 	multiclusterInstallOptions struct {
-		gateway                        bool
-		gatewayPort                    uint32
-		gatewayProbeSeconds            uint32
-		gatewayProbePort               uint32
-		namespace                      string
-		serviceMirror                  bool
-		serviceMirrorRetryLimit        uint32
-		serviceMirrorLogLevel          string
-		gatewayNginxImage              string
-		gatewayNginxVersion            string
-		controlPlaneVersion            string
-		dockerRegistry                 string
-		remoteAccessServiceAccountName string
+		gateway                 bool
+		gatewayPort             uint32
+		gatewayProbeSeconds     uint32
+		gatewayProbePort        uint32
+		namespace               string
+		serviceMirror           bool
+		serviceMirrorRetryLimit uint32
+		serviceMirrorLogLevel   string
+		gatewayNginxImage       string
+		gatewayNginxVersion     string
+		controlPlaneVersion     string
+		dockerRegistry          string
 	}
 
 	getCredentialsOptions struct {
@@ -84,19 +90,18 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 	}
 
 	return &multiclusterInstallOptions{
-		gateway:                        defaults.Gateway,
-		gatewayPort:                    defaults.GatewayPort,
-		gatewayProbeSeconds:            defaults.GatewayProbeSeconds,
-		gatewayProbePort:               defaults.GatewayProbePort,
-		namespace:                      defaults.Namespace,
-		serviceMirror:                  defaults.ServiceMirror,
-		serviceMirrorRetryLimit:        defaults.ServiceMirrorRetryLimit,
-		serviceMirrorLogLevel:          defaults.ServiceMirrorLogLevel,
-		gatewayNginxImage:              defaults.GatewayNginxImage,
-		gatewayNginxVersion:            defaults.GatewayNginxImageVersion,
-		controlPlaneVersion:            version.Version,
-		dockerRegistry:                 defaultDockerRegistry,
-		remoteAccessServiceAccountName: defaults.RemoteAccessServiceAccountName,
+		gateway:                 defaults.Gateway,
+		gatewayPort:             defaults.GatewayPort,
+		gatewayProbeSeconds:     defaults.GatewayProbeSeconds,
+		gatewayProbePort:        defaults.GatewayProbePort,
+		namespace:               defaults.Namespace,
+		serviceMirror:           defaults.ServiceMirror,
+		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
+		serviceMirrorLogLevel:   defaults.ServiceMirrorLogLevel,
+		gatewayNginxImage:       defaults.GatewayNginxImage,
+		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
+		controlPlaneVersion:     version.Version,
+		dockerRegistry:          defaultDockerRegistry,
 	}, nil
 
 }
@@ -166,9 +171,117 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	defaults.LinkerdVersion = version.Version
 	defaults.ControllerImageVersion = opts.controlPlaneVersion
 	defaults.ControllerImage = fmt.Sprintf("%s/controller", opts.dockerRegistry)
-	defaults.RemoteAccessServiceAccountName = opts.remoteAccessServiceAccountName
 
 	return defaults, nil
+}
+
+func buildMulticlusterAllowValues(remoteClusterName string, opts *allowOptions) (*mcCredsCharts.Values, error) {
+
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.namespace == "" {
+		return nil, errors.New("you need to specify a namespace")
+	}
+
+	if opts.namespace == controlPlaneNamespace {
+		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
+	}
+
+	defaults, err := mcCredsCharts.NewValues()
+	if err != nil {
+		return nil, err
+	}
+
+	defaults.Namespace = opts.namespace
+	defaults.LinkerdVersion = version.Version
+	if remoteClusterName != "" {
+		defaults.RemoteAccessServiceAccountName = fmt.Sprintf("linkerd-service-mirror-remote-access-%s", remoteClusterName)
+	}
+
+	if !opts.ignoreCluster {
+		acc, err := kubeAPI.CoreV1().ServiceAccounts(defaults.Namespace).Get(defaults.RemoteAccessServiceAccountName, metav1.GetOptions{})
+		if err == nil && acc != nil {
+			return nil, fmt.Errorf("Service account with name %s already exists, use --ignore-cluster for force operation", defaults.RemoteAccessServiceAccountName)
+		}
+		if !kerrors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+
+	return defaults, nil
+}
+
+func newAllowCommand() *cobra.Command {
+	opts := allowOptions{
+		namespace:     defaultMulticlusterNamespace,
+		ignoreCluster: false,
+	}
+
+	cmd := &cobra.Command{
+		Hidden: false,
+		Use:    "allow",
+		Short:  "Output Kubernetes configs to allow a mirror to connect to this cluster.",
+		Long: `Output Kubernetes configs to allow a mirror to connect to this cluster.
+
+This command provides subcommands to manage the multicluster support
+functionality of Linkerd. You can use it to deploy credentials to
+remote clusters, extract them as well as export remote services to be
+available across clusters.`,
+		Example: `  # Add a SA using the default name
+linkerd --context=east multicluster allow | kubectl --context=east apply -f -
+
+# Specify the SA, ClusterRole and ClusterRoleBinding names
+linkerd --context=east multicluster allow foobar | kubectl --context=east apply -f -`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+
+			clusterName := ""
+
+			if len(args) > 0 {
+				clusterName = args[0]
+			}
+
+			values, err := buildMulticlusterAllowValues(clusterName, &opts)
+			if err != nil {
+				return err
+			}
+
+			// Render raw values and create chart config
+			rawValues, err := yaml.Marshal(values)
+			if err != nil {
+				return err
+			}
+
+			files := []*chartutil.BufferedFile{
+				{Name: chartutil.ChartfileName},
+				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
+			}
+
+			chart := &charts.Chart{
+				Name:      helmMulticlusterAccessCredentialsDefaultChartName,
+				Dir:       helmMulticlusterAccessCredentialsDefaultChartName,
+				Namespace: controlPlaneNamespace,
+				RawValues: rawValues,
+				Files:     files,
+			}
+			buf, err := chart.RenderNoPartials()
+			if err != nil {
+				return err
+			}
+			stdout.Write(buf.Bytes())
+			stdout.Write([]byte("---\n"))
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The destination namespace for the service account.")
+	cmd.Flags().BoolVar(&opts.ignoreCluster, "ignore-cluster", false, "Ignore cluster configuration")
+
+	return cmd
 }
 
 func newGatewaysCommand() *cobra.Command {
@@ -239,8 +352,8 @@ func newMulticlusterInstallCommand() *cobra.Command {
 			}
 
 			chart := &charts.Chart{
-				Name:      helmMulticlusterRemoteSetuprDefaultChartName,
-				Dir:       helmMulticlusterRemoteSetuprDefaultChartName,
+				Name:      helmMulticlusterDefaultChartName,
+				Dir:       helmMulticlusterDefaultChartName,
 				Namespace: controlPlaneNamespace,
 				RawValues: rawValues,
 				Files:     files,
@@ -268,7 +381,6 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	cmd.Flags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
-	cmd.Flags().StringVar(&options.remoteAccessServiceAccountName, "remote-access-service-account-name", options.remoteAccessServiceAccountName, "The name of the service account that will be created and used by remote clusters, attempting to mirror services")
 
 	return cmd
 }
@@ -655,7 +767,7 @@ available across clusters.`,
 	multiclusterCmd.AddCommand(newMulticlusterInstallCommand())
 	multiclusterCmd.AddCommand(newExportServiceCommand())
 	multiclusterCmd.AddCommand(newGatewaysCommand())
-
+	multiclusterCmd.AddCommand(newAllowCommand())
 	return multiclusterCmd
 }
 

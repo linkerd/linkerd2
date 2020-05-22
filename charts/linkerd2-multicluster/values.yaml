@@ -17,7 +17,6 @@ linkerdNamespace: linkerd
 linkerdVersion: linkerdVersionValue
 namespace: linkerd-multicluster
 proxyOutboundPort: 4140
-remoteAccessServiceAccountName: linkerd-service-mirror-remote-access
 serviceMirror: true
 serviceMirrorLogLevel: info
 serviceMirrorRetryLimit: 3
