@@ -64,11 +64,10 @@ type (
 	}
 
 	getCredentialsOptions struct {
-		namespace               string
-		serviceAccountName      string
-		serviceAccountNamespace string
-		clusterName             string
-		remoteClusterDomain     string
+		namespace           string
+		clusterName         string
+		remoteClusterDomain string
+		remoteClusterServer string
 	}
 
 	exportServiceOptions struct {
@@ -390,10 +389,19 @@ func newGetCredentialsCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Hidden: false,
-		Use:    "get-credentials",
-		Short:  "Get cluster credentials as a secret",
-		Args:   cobra.NoArgs,
+		Use:    "link",
+		Short:  "Output Kubernetes configs to allow a mirror to connect to this cluster.",
+		Args:   cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			if opts.clusterName == "" {
+				return errors.New("You need to specify cluster name")
+			}
+
+			accountName := defaultServiceAccountName
+			if len(args) > 0 {
+				accountName = fmt.Sprintf("linkerd-service-mirror-remote-access-%s", args[0])
+			}
 
 			_, err := getLinkerdConfigMap()
 			if err != nil {
@@ -420,7 +428,7 @@ func newGetCredentialsCommand() *cobra.Command {
 				return err
 			}
 
-			sa, err := k.CoreV1().ServiceAccounts(opts.serviceAccountNamespace).Get(opts.serviceAccountName, metav1.GetOptions{})
+			sa, err := k.CoreV1().ServiceAccounts(opts.namespace).Get(accountName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -436,7 +444,7 @@ func newGetCredentialsCommand() *cobra.Command {
 				return fmt.Errorf("could not find service account token secret for %s", sa.Name)
 			}
 
-			secret, err := k.CoreV1().Secrets(opts.serviceAccountNamespace).Get(secretName, metav1.GetOptions{})
+			secret, err := k.CoreV1().Secrets(opts.namespace).Get(secretName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -451,17 +459,21 @@ func newGetCredentialsCommand() *cobra.Command {
 				return fmt.Errorf("could not extract current context from config")
 			}
 
-			context.AuthInfo = opts.serviceAccountName
+			context.AuthInfo = accountName
 			config.Contexts = map[string]*api.Context{
 				config.CurrentContext: context,
 			}
 			config.AuthInfos = map[string]*api.AuthInfo{
-				opts.serviceAccountName: {
+				accountName: {
 					Token: string(token),
 				},
 			}
 
 			cluster := config.Clusters[context.Cluster]
+
+			if opts.remoteClusterServer != "" {
+				cluster.Server = opts.remoteClusterServer
+			}
 
 			config.Clusters = map[string]*api.Cluster{
 				context.Cluster: cluster,
@@ -499,11 +511,10 @@ func newGetCredentialsCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "the namespace in which the secret will be created")
-	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", defaultServiceAccountName, "the name of the service account")
-	cmd.Flags().StringVar(&opts.serviceAccountNamespace, "service-account-namespace", defaultMulticlusterNamespace, "the namespace in which the svc account resides on the remote cluster")
-	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", defaultClusterName, "cluster name")
+	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The namespace for the service account")
+	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "cluster name")
 	cmd.Flags().StringVar(&opts.remoteClusterDomain, "remote-cluster-domain", defaultClusterDomain, "custom remote cluster domain")
+	cmd.Flags().StringVar(&opts.remoteClusterServer, "cluster-server", "", "custom remote cluster domain")
 
 	return cmd
 }
