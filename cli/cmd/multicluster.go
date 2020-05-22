@@ -39,7 +39,6 @@ const (
 	helmMulticlusterAccessCredentialsDefaultChartName = "linkerd2-multicluster-access-credentials"
 	tokenKey                                          = "token"
 	defaultServiceAccountName                         = "linkerd-service-mirror-remote-access-all-clusters"
-	defaultClusterName                                = "remote"
 )
 
 type (

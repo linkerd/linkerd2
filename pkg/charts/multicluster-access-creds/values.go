@@ -1,4 +1,4 @@
-package multicluster_access_creds
+package multiclusteraccesscreds
 
 import (
 	"fmt"
