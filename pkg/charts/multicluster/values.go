@@ -22,8 +22,8 @@ type Values struct {
 	GatewayLocalProbePath    string `json:"gatewayLocalProbePath"`
 	GatewayLocalProbePort    uint32 `json:"gatewayLocalProbePort"`
 	GatewayName              string `json:"gatewayName"`
-	GatewayNginxImage        string `json:"gatewaynginxImage"`
-	GatewayNginxImageVersion string `json:"gatewaynginxImageVersion"`
+	GatewayNginxImage        string `json:"gatewayNginxImage"`
+	GatewayNginxImageVersion string `json:"gatewayNginxImageVersion"`
 	GatewayPort              uint32 `json:"gatewayPort"`
 	GatewayProbePath         string `json:"gatewayProbePath"`
 	GatewayProbePort         uint32 `json:"gatewayProbePort"`
