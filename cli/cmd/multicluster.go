@@ -10,8 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/runtime"
-
 	"github.com/linkerd/linkerd2/cli/table"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
@@ -21,10 +19,12 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -120,9 +120,25 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	global, err := getLinkerdConfigMap()
 	if err != nil {
 		if kerrors.IsNotFound(err) {
-			return nil, errors.New("you need Linkerd to be installed in order to setup a remote cluster")
+			return nil, errors.New("you need Linkerd to be installed in order to install mutlicluster addons")
 		}
 		return nil, err
+	}
+
+	if !alphaNumDashDot.MatchString(opts.controlPlaneVersion) {
+		return nil, fmt.Errorf("%s is not a valid version", opts.controlPlaneVersion)
+	}
+
+	if opts.namespace == "" {
+		return nil, errors.New("you need to specify a namespace")
+	}
+
+	if opts.namespace == controlPlaneNamespace {
+		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
+	}
+
+	if _, err := log.ParseLevel(opts.serviceMirrorLogLevel); err != nil {
+		return nil, fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
 	defaults, err := mccharts.NewValues()
@@ -204,10 +220,6 @@ func newMulticlusterInstallCommand() *cobra.Command {
 
 			values, err := buildMulticlusterInstallValues(options)
 
-			if options.namespace == controlPlaneNamespace {
-				return errors.New("you need to specify a namespace different than the one in which Linkerd is installed")
-			}
-
 			if err != nil {
 				return err
 			}
@@ -217,7 +229,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			
+
 			files := []*chartutil.BufferedFile{
 				{Name: chartutil.ChartfileName},
 				{Name: "templates/namespace.yaml"},
@@ -623,8 +635,8 @@ This command provides subcommands to manage the multicluster support
 functionality of Linkerd. You can use it to deploy credentials to
 remote clusters, extract them as well as export remote services to be
 available across clusters.`,
-		Example: `  # Setup remote cluster.
-  linkerd --context=cluster-a multicluster setup-remote | kubectl --context=cluster-a apply -f -
+		Example: `  # Install multicluster addons.
+  linkerd --context=cluster-a cluster install | kubectl --context=cluster-a apply -f -
 
   # Extract mirroring cluster credentials from cluster A and install them on cluster B
   linkerd --context=cluster-a multicluster get-credentials --cluster-name=remote | kubectl apply --context=cluster-b -f -
