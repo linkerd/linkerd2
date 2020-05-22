@@ -591,12 +591,13 @@ func newExportServiceCommand() *cobra.Command {
 	return cmd
 }
 
-func newCmdCluster() *cobra.Command {
+func newCmdMulticluster() *cobra.Command {
 
-	clusterCmd := &cobra.Command{
+	multiclusterCmd := &cobra.Command{
 
 		Hidden: true,
-		Use:    "cluster [flags]",
+		Use:    "multicluster [flags]",
+		Aliases: []string{"mc"},
 		Args:   cobra.NoArgs,
 		Short:  "Manages the multicluster setup for Linkerd",
 		Long: `Manages the multicluster setup for Linkerd.
@@ -606,10 +607,10 @@ functionality of Linkerd. You can use it to deploy credentials to
 remote clusters, extract them as well as export remote services to be
 available across clusters.`,
 		Example: `  # Setup remote cluster.
-  linkerd --context=cluster-a cluster setup-remote | kubectl --context=cluster-a apply -f -
+  linkerd --context=cluster-a multicluster setup-remote | kubectl --context=cluster-a apply -f -
 
   # Extract mirroring cluster credentials from cluster A and install them on cluster B
-  linkerd --context=cluster-a cluster get-credentials --cluster-name=remote | kubectl apply --context=cluster-b -f -
+  linkerd --context=cluster-a multicluster get-credentials --cluster-name=remote | kubectl apply --context=cluster-b -f -
 
   # Export services from cluster to be available to other clusters
   kubectl get svc -o yaml | linkerd export-service - | kubectl apply -f -
@@ -621,12 +622,12 @@ available across clusters.`,
   linkerd export-service  <folder> | kubectl apply -f -`,
 	}
 
-	clusterCmd.AddCommand(newGetCredentialsCommand())
-	clusterCmd.AddCommand(newSetupRemoteCommand())
-	clusterCmd.AddCommand(newExportServiceCommand())
-	clusterCmd.AddCommand(newGatewaysCommand())
+	multiclusterCmd.AddCommand(newGetCredentialsCommand())
+	multiclusterCmd.AddCommand(newSetupRemoteCommand())
+	multiclusterCmd.AddCommand(newExportServiceCommand())
+	multiclusterCmd.AddCommand(newGatewaysCommand())
 
-	return clusterCmd
+	return multiclusterCmd
 }
 
 func requestGatewaysFromAPI(client pb.ApiClient, req *pb.GatewaysRequest) (*pb.GatewaysResponse, error) {
