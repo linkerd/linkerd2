@@ -346,7 +346,6 @@ func newMulticlusterInstallCommand() *cobra.Command {
 				{Name: "templates/namespace.yaml"},
 				{Name: "templates/gateway.yaml"},
 				{Name: "templates/service-mirror.yaml"},
-				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
 			}
 
 			chart := &charts.Chart{
