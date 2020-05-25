@@ -36,7 +36,7 @@ const (
 	defaultMulticlusterNamespace     = "linkerd-multicluster"
 	helmMulticlusterDefaultChartName = "linkerd2-multicluster"
 	tokenKey                         = "token"
-	defaultServiceAccountName                         = "linkerd-service-mirror-remote-access-default"
+	defaultServiceAccountName        = "linkerd-service-mirror-remote-access-default"
 )
 
 type (
@@ -230,7 +230,7 @@ func newAllowCommand() *cobra.Command {
 		Hidden: false,
 		Use:    "allow",
 		Short:  "Outputs credential resources to that needs to be installed on the remote cluster to allow service mirror controllers to connect to it and mirror services",
-		Args: cobra.NoArgs,
+		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			values, err := buildMulticlusterAllowValues(&opts)
@@ -401,7 +401,7 @@ func newLinkCommand() *cobra.Command {
 			if opts.clusterName == "" {
 				return errors.New("You need to specify cluster name")
 			}
-			
+
 			_, err := getLinkerdConfigMap()
 			if err != nil {
 				if kerrors.IsNotFound(err) {

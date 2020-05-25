@@ -6,7 +6,6 @@ setValues() {
     sed -i "s/$1/$2/" charts/linkerd2/values.yaml
     sed -i "s/$1/$2/" charts/linkerd2-cni/values.yaml
     sed -i "s/$1/$2/" charts/linkerd2-multicluster/values.yaml
-    sed -i "s/$1/$2/" charts/linkerd2-multicluster-access-credentials/values.yaml
 }
 
 showErr() {
@@ -20,7 +19,6 @@ trap 'showErr' ERR
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 
-"$bindir"/helm lint "$rootdir"/charts/linkerd2-multicluster-access-credentials
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-multicluster
 "$bindir"/helm lint "$rootdir"/charts/partials
 "$bindir"/helm dep up "$rootdir"/charts/linkerd2-cni
@@ -52,7 +50,6 @@ if [ "$1" = package ]; then
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-cni
     # TODO: When ready to publish, uncomment
-    #"$bindir"/helm --version $version --app-version $tag -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-multicluster-access-credentials
     #"$bindir"/helm --version $version --app-version $tag -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-multicluster
     mv "$rootdir"/target/helm/index-pre.yaml "$rootdir"/target/helm/index-pre-"$version".yaml
     "$bindir"/helm repo index --url "https://helm.linkerd.io/$repo/" --merge "$rootdir"/target/helm/index-pre-"$version".yaml "$rootdir"/target/helm
