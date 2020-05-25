@@ -1,7 +1,0 @@
-apiVersion: v1
-appVersion: edge-XX.X.X
-description: A helm chart containing the credentails to enable mirroring of services on remote clusters
-kubeVersion: ">=1.13.0-0"
-icon: https://linkerd.io/images/logo-only-200h.png
-name: "linkerd2-multicluster-access-credentials"
-version: 0.1.0
