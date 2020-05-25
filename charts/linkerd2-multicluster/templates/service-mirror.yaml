@@ -92,7 +92,7 @@ spec:
       containers:
       - args:
         - service-mirror
-        - -log-level={{.Values.serviceMirrorLogLevel}}
+        - -log-level={{.Values.logLevel}}
         - -event-requeue-limit={{.Values.serviceMirrorRetryLimit}}
         - -namespace={{.Values.namespace}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}

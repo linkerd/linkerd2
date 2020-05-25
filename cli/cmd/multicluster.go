@@ -33,17 +33,16 @@ import (
 )
 
 const (
-	defaultMulticlusterNamespace                      = "linkerd-multicluster"
-	helmMulticlusterDefaultChartName                  = "linkerd2-multicluster"
-	tokenKey                                          = "token"
-	defaultServiceAccountName                         = "linkerd-service-mirror-remote-access-default"
+	defaultMulticlusterNamespace     = "linkerd-multicluster"
+	helmMulticlusterDefaultChartName = "linkerd2-multicluster"
+	tokenKey                         = "token"
 )
 
 type (
 	allowOptions struct {
-		namespace     string
+		namespace          string
 		serviceAccountName string
-		ignoreCluster bool
+		ignoreCluster      bool
 	}
 
 	multiclusterInstallOptions struct {
@@ -54,12 +53,12 @@ type (
 		namespace               string
 		serviceMirror           bool
 		serviceMirrorRetryLimit uint32
-		serviceMirrorLogLevel   string
+		logLevel                string
 		gatewayNginxImage       string
 		gatewayNginxVersion     string
 		controlPlaneVersion     string
 		dockerRegistry          string
-		remoteMirrorCredentials          bool
+		remoteMirrorCredentials bool
 	}
 
 	getCredentialsOptions struct {
@@ -67,7 +66,7 @@ type (
 		clusterName         string
 		remoteClusterDomain string
 		remoteClusterServer string
-		serviceAccountName string
+		serviceAccountName  string
 	}
 
 	exportServiceOptions struct {
@@ -96,7 +95,7 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 		namespace:               defaults.Namespace,
 		serviceMirror:           defaults.ServiceMirror,
 		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
-		serviceMirrorLogLevel:   defaults.ServiceMirrorLogLevel,
+		logLevel:                defaults.LogLevel,
 		gatewayNginxImage:       defaults.GatewayNginxImage,
 		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
 		controlPlaneVersion:     version.Version,
@@ -125,7 +124,7 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	global, err := getLinkerdConfigMap()
 	if err != nil {
 		if kerrors.IsNotFound(err) {
-			return nil, errors.New("you need Linkerd to be installed in order to install mutlicluster addons")
+			return nil, errors.New("you need Linkerd to be installed in order to install multicluster addons")
 		}
 		return nil, err
 	}
@@ -142,7 +141,7 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
 	}
 
-	if _, err := log.ParseLevel(opts.serviceMirrorLogLevel); err != nil {
+	if _, err := log.ParseLevel(opts.logLevel); err != nil {
 		return nil, fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
@@ -162,7 +161,7 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	defaults.GatewayProbePort = opts.gatewayProbePort
 	defaults.ServiceMirror = opts.serviceMirror
 	defaults.ServiceMirrorRetryLimit = opts.serviceMirrorRetryLimit
-	defaults.ServiceMirrorLogLevel = opts.serviceMirrorLogLevel
+	defaults.LogLevel = opts.logLevel
 	defaults.GatewayNginxImage = opts.gatewayNginxImage
 	defaults.GatewayNginxImageVersion = opts.gatewayNginxVersion
 	defaults.IdentityTrustDomain = global.Global.IdentityContext.TrustDomain
@@ -206,7 +205,7 @@ func buildMulticlusterAllowValues(opts *allowOptions) (*mccharts.Values, error) 
 	defaults.ServiceMirror = false
 	defaults.RemoteMirrorServiceAccount = true
 	defaults.RemoteMirrorServiceAccountName = opts.serviceAccountName
-	
+
 	if !opts.ignoreCluster {
 		acc, err := kubeAPI.CoreV1().ServiceAccounts(defaults.Namespace).Get(defaults.RemoteMirrorServiceAccountName, metav1.GetOptions{})
 		if err == nil && acc != nil {
@@ -243,7 +242,7 @@ linkerd --context=east multicluster allow | kubectl --context=east apply -f -
 linkerd --context=east multicluster allow foobar | kubectl --context=east apply -f -`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			
+
 			values, err := buildMulticlusterAllowValues(&opts)
 			if err != nil {
 				return err
@@ -329,7 +328,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: false,
 		Use:    "install",
-		Short:  "Output Kubernetes configs to install the Linkerd multi-cluster add-on",
+		Short:  "Output Kubernetes configs to install the Linkerd multicluster add-on",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -372,18 +371,29 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "The namespace in which the multicluster add-on is to be installed. Must not be the control plane namespace. ")
-	cmd.Flags().BoolVar(&options.gateway, "gateway", options.gateway, "When the gateway component should be installed")
+	cmd.Flags().BoolVar(&options.gateway, "gateway", options.gateway, "If the gateway component should be installed")
 	cmd.Flags().Uint32Var(&options.gatewayPort, "gateway-port", options.gatewayPort, "The port on the gateway used for all incoming traffic")
 	cmd.Flags().Uint32Var(&options.gatewayProbeSeconds, "gateway-probe-seconds", options.gatewayProbeSeconds, "The interval at which the gateway will be checked for being alive in seconds")
 	cmd.Flags().Uint32Var(&options.gatewayProbePort, "gateway-probe-port", options.gatewayProbePort, "The liveness check port of the gateway")
-	cmd.Flags().BoolVar(&options.serviceMirror, "service-mirror", options.serviceMirror, "When the service-mirror component should be installed")
+	cmd.Flags().BoolVar(&options.serviceMirror, "service-mirror", options.serviceMirror, "If the service-mirror component should be installed")
 	cmd.Flags().Uint32Var(&options.serviceMirrorRetryLimit, "service-mirror-retry-limit", options.serviceMirrorRetryLimit, "The number of times a failed update from the remote cluster is allowed to be retried")
-	cmd.Flags().StringVar(&options.serviceMirrorLogLevel, "service-mirror-log-level", options.serviceMirrorLogLevel, "Log level for the Service Mirror Component")
+	cmd.Flags().StringVar(&options.logLevel, "log-level", options.logLevel, "Log level for the Multicluster components")
 	cmd.Flags().StringVar(&options.gatewayNginxImage, "gateway-nginx-image", options.gatewayNginxImage, "The nginx image to be used")
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	cmd.Flags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
-	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "remote-mirror-credentials", options.remoteMirrorCredentials, "Whther to install the default remote access service account")
+	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "remote-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the default remote access service account")
+
+	// Hide developer focused flags in release builds.
+	release, err := version.IsReleaseChannel(version.Version)
+	if err != nil {
+		log.Errorf("Unable to parse version: %s", version.Version)
+	}
+	if release {
+		cmd.Flags().MarkHidden("control-plane-version")
+		cmd.Flags().MarkHidden("gateway-nginx-image")
+		cmd.Flags().MarkHidden("gateway-nginx-image-version")
+	}
 
 	return cmd
 }
@@ -401,7 +411,11 @@ func newLinkCommand() *cobra.Command {
 			if opts.clusterName == "" {
 				return errors.New("You need to specify cluster name")
 			}
-			
+
+			if opts.serviceAccountName == "" {
+				return errors.New("You need to specify service account name")
+			}
+
 			_, err := getLinkerdConfigMap()
 			if err != nil {
 				if kerrors.IsNotFound(err) {
@@ -514,7 +528,7 @@ func newLinkCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "Cluster name")
 	cmd.Flags().StringVar(&opts.remoteClusterDomain, "remote-cluster-domain", defaultClusterDomain, "Custom remote cluster domain")
 	cmd.Flags().StringVar(&opts.remoteClusterServer, "cluster-server", "", "Custom remote cluster domain")
-	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account", defaultServiceAccountName, "The name of th service account associated with the credentials")
+	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account", "", "The name of th service account associated with the credentials")
 
 	return cmd
 }

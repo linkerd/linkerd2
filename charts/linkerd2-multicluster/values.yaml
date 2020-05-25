@@ -18,7 +18,7 @@ linkerdVersion: linkerdVersionValue
 namespace: linkerd-multicluster
 proxyOutboundPort: 4140
 serviceMirror: true
-serviceMirrorLogLevel: info
+logLevel: info
 serviceMirrorRetryLimit: 3
 serviceMirrorUID: 2103
 serviceAccount: true
