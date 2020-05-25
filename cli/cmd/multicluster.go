@@ -16,7 +16,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/multicluster"
 	mccharts "github.com/linkerd/linkerd2/pkg/charts/multicluster"
-	mcCredsCharts "github.com/linkerd/linkerd2/pkg/charts/multicluster-access-creds"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -36,14 +35,14 @@ import (
 const (
 	defaultMulticlusterNamespace                      = "linkerd-multicluster"
 	helmMulticlusterDefaultChartName                  = "linkerd2-multicluster"
-	helmMulticlusterAccessCredentialsDefaultChartName = "linkerd2-multicluster-access-credentials"
 	tokenKey                                          = "token"
-	defaultServiceAccountName                         = "linkerd-service-mirror-remote-access-all-clusters"
+	defaultServiceAccountName                         = "linkerd-service-mirror-remote-access-default"
 )
 
 type (
 	allowOptions struct {
 		namespace     string
+		serviceAccountName string
 		ignoreCluster bool
 	}
 
@@ -68,6 +67,7 @@ type (
 		clusterName         string
 		remoteClusterDomain string
 		remoteClusterServer string
+		serviceAccountName string
 	}
 
 	exportServiceOptions struct {
@@ -176,7 +176,7 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	return defaults, nil
 }
 
-func buildMulticlusterAllowValues(remoteClusterName string, opts *allowOptions) (*mcCredsCharts.Values, error) {
+func buildMulticlusterAllowValues(opts *allowOptions) (*mccharts.Values, error) {
 
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
@@ -187,25 +187,30 @@ func buildMulticlusterAllowValues(remoteClusterName string, opts *allowOptions) 
 		return nil, errors.New("you need to specify a namespace")
 	}
 
+	if opts.serviceAccountName == "" {
+		return nil, errors.New("you need to specify a service account name")
+	}
+
 	if opts.namespace == controlPlaneNamespace {
 		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
 	}
 
-	defaults, err := mcCredsCharts.NewValues()
+	defaults, err := mccharts.NewValues()
 	if err != nil {
 		return nil, err
 	}
 
 	defaults.Namespace = opts.namespace
 	defaults.LinkerdVersion = version.Version
-	if remoteClusterName != "" {
-		defaults.RemoteAccessServiceAccountName = fmt.Sprintf("linkerd-service-mirror-remote-access-%s", remoteClusterName)
-	}
-
+	defaults.Gateway = false
+	defaults.ServiceMirror = false
+	defaults.RemoteMirrorServiceAccount = true
+	defaults.RemoteMirrorServiceAccountName = opts.serviceAccountName
+	
 	if !opts.ignoreCluster {
-		acc, err := kubeAPI.CoreV1().ServiceAccounts(defaults.Namespace).Get(defaults.RemoteAccessServiceAccountName, metav1.GetOptions{})
+		acc, err := kubeAPI.CoreV1().ServiceAccounts(defaults.Namespace).Get(defaults.RemoteMirrorServiceAccountName, metav1.GetOptions{})
 		if err == nil && acc != nil {
-			return nil, fmt.Errorf("Service account with name %s already exists, use --ignore-cluster for force operation", defaults.RemoteAccessServiceAccountName)
+			return nil, fmt.Errorf("Service account with name %s already exists, use --ignore-cluster for force operation", defaults.RemoteMirrorServiceAccountName)
 		}
 		if !kerrors.IsNotFound(err) {
 			return nil, err
@@ -236,16 +241,10 @@ linkerd --context=east multicluster allow | kubectl --context=east apply -f -
 
 # Specify the SA, ClusterRole and ClusterRoleBinding names
 linkerd --context=east multicluster allow foobar | kubectl --context=east apply -f -`,
-		Args: cobra.MaximumNArgs(1),
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			clusterName := ""
-
-			if len(args) > 0 {
-				clusterName = args[0]
-			}
-
-			values, err := buildMulticlusterAllowValues(clusterName, &opts)
+			
+			values, err := buildMulticlusterAllowValues(&opts)
 			if err != nil {
 				return err
 			}
@@ -258,12 +257,13 @@ linkerd --context=east multicluster allow foobar | kubectl --context=east apply 
 
 			files := []*chartutil.BufferedFile{
 				{Name: chartutil.ChartfileName},
+				{Name: "templates/namespace.yaml"},
 				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
 			}
 
 			chart := &charts.Chart{
-				Name:      helmMulticlusterAccessCredentialsDefaultChartName,
-				Dir:       helmMulticlusterAccessCredentialsDefaultChartName,
+				Name:      helmMulticlusterDefaultChartName,
+				Dir:       helmMulticlusterDefaultChartName,
 				Namespace: controlPlaneNamespace,
 				RawValues: rawValues,
 				Files:     files,
@@ -281,6 +281,7 @@ linkerd --context=east multicluster allow foobar | kubectl --context=east apply 
 
 	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The destination namespace for the service account.")
 	cmd.Flags().BoolVar(&opts.ignoreCluster, "ignore-cluster", false, "Ignore cluster configuration")
+	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", "", "The name of the remote access service account")
 
 	return cmd
 }
@@ -387,25 +388,20 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	return cmd
 }
 
-func newGetCredentialsCommand() *cobra.Command {
+func newLinkCommand() *cobra.Command {
 	opts := getCredentialsOptions{}
 
 	cmd := &cobra.Command{
 		Hidden: false,
 		Use:    "link",
 		Short:  "Output Kubernetes configs to allow a mirror to connect to this cluster.",
-		Args:   cobra.MaximumNArgs(1),
+		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if opts.clusterName == "" {
 				return errors.New("You need to specify cluster name")
 			}
-
-			accountName := defaultServiceAccountName
-			if len(args) > 0 {
-				accountName = fmt.Sprintf("linkerd-service-mirror-remote-access-%s", args[0])
-			}
-
+			
 			_, err := getLinkerdConfigMap()
 			if err != nil {
 				if kerrors.IsNotFound(err) {
@@ -431,7 +427,7 @@ func newGetCredentialsCommand() *cobra.Command {
 				return err
 			}
 
-			sa, err := k.CoreV1().ServiceAccounts(opts.namespace).Get(accountName, metav1.GetOptions{})
+			sa, err := k.CoreV1().ServiceAccounts(opts.namespace).Get(opts.serviceAccountName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -462,12 +458,12 @@ func newGetCredentialsCommand() *cobra.Command {
 				return fmt.Errorf("could not extract current context from config")
 			}
 
-			context.AuthInfo = accountName
+			context.AuthInfo = opts.serviceAccountName
 			config.Contexts = map[string]*api.Context{
 				config.CurrentContext: context,
 			}
 			config.AuthInfos = map[string]*api.AuthInfo{
-				accountName: {
+				opts.serviceAccountName: {
 					Token: string(token),
 				},
 			}
@@ -515,9 +511,10 @@ func newGetCredentialsCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The namespace for the service account")
-	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "cluster name")
-	cmd.Flags().StringVar(&opts.remoteClusterDomain, "remote-cluster-domain", defaultClusterDomain, "custom remote cluster domain")
-	cmd.Flags().StringVar(&opts.remoteClusterServer, "cluster-server", "", "custom remote cluster domain")
+	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "Cluster name")
+	cmd.Flags().StringVar(&opts.remoteClusterDomain, "remote-cluster-domain", defaultClusterDomain, "Custom remote cluster domain")
+	cmd.Flags().StringVar(&opts.remoteClusterServer, "cluster-server", "", "Custom remote cluster domain")
+	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account", defaultServiceAccountName, "The name of th service account associated with the credentials")
 
 	return cmd
 }
@@ -777,7 +774,7 @@ available across clusters.`,
   linkerd export-service  <folder> | kubectl apply -f -`,
 	}
 	
-	multiclusterCmd.AddCommand(newGetCredentialsCommand())
+	multiclusterCmd.AddCommand(newLinkCommand())
 	multiclusterCmd.AddCommand(newMulticlusterInstallCommand())
 	multiclusterCmd.AddCommand(newExportServiceCommand())
 	multiclusterCmd.AddCommand(newGatewaysCommand())
