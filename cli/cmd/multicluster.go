@@ -36,6 +36,7 @@ const (
 	defaultMulticlusterNamespace     = "linkerd-multicluster"
 	helmMulticlusterDefaultChartName = "linkerd2-multicluster"
 	tokenKey                         = "token"
+	defaultServiceAccountName                         = "linkerd-service-mirror-remote-access-default"
 )
 
 type (
@@ -61,7 +62,7 @@ type (
 		remoteMirrorCredentials bool
 	}
 
-	getCredentialsOptions struct {
+	linkOptions struct {
 		namespace           string
 		clusterName         string
 		remoteClusterDomain string
@@ -228,18 +229,7 @@ func newAllowCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: false,
 		Use:    "allow",
-		Short:  "Output Kubernetes configs to allow a mirror to connect to this cluster.",
-		Long: `Output Kubernetes configs to allow a mirror to connect to this cluster.
-
-This command provides subcommands to manage the multicluster support
-functionality of Linkerd. You can use it to deploy credentials to
-remote clusters, extract them as well as export remote services to be
-available across clusters.`,
-		Example: `  # Add a SA using the default name
-linkerd --context=east multicluster allow | kubectl --context=east apply -f -
-
-# Specify the SA, ClusterRole and ClusterRoleBinding names
-linkerd --context=east multicluster allow foobar | kubectl --context=east apply -f -`,
+		Short:  "Outputs credential resources to that needs to be installed on the remote cluster to allow service mirror controllers to connect to it and mirror services",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -399,23 +389,19 @@ func newMulticlusterInstallCommand() *cobra.Command {
 }
 
 func newLinkCommand() *cobra.Command {
-	opts := getCredentialsOptions{}
+	opts := linkOptions{}
 
 	cmd := &cobra.Command{
 		Hidden: false,
 		Use:    "link",
-		Short:  "Output Kubernetes configs to allow a mirror to connect to this cluster.",
+		Short:  "Outputs a Kubernetes secret containing the credential that can allow a service mirror component to connect to a remote cluster",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if opts.clusterName == "" {
 				return errors.New("You need to specify cluster name")
 			}
-
-			if opts.serviceAccountName == "" {
-				return errors.New("You need to specify service account name")
-			}
-
+			
 			_, err := getLinkerdConfigMap()
 			if err != nil {
 				if kerrors.IsNotFound(err) {
@@ -528,7 +514,7 @@ func newLinkCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "Cluster name")
 	cmd.Flags().StringVar(&opts.remoteClusterDomain, "remote-cluster-domain", defaultClusterDomain, "Custom remote cluster domain")
 	cmd.Flags().StringVar(&opts.remoteClusterServer, "cluster-server", "", "Custom remote cluster domain")
-	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account", "", "The name of th service account associated with the credentials")
+	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account", defaultServiceAccountName, "The name of th service account associated with the credentials")
 
 	return cmd
 }
@@ -769,14 +755,13 @@ func newCmdMulticluster() *cobra.Command {
 		Long: `Manages the multicluster setup for Linkerd.
 
 This command provides subcommands to manage the multicluster support
-functionality of Linkerd. You can use it to deploy credentials to
-remote clusters, extract them as well as export remote services to be
-available across clusters.`,
+functionality of Linkerd. You can use it to install the service mirror
+components on a cluster, manage credentials and link clusters together.`,
 		Example: `  # Install multicluster addons.
   linkerd --context=cluster-a cluster install | kubectl --context=cluster-a apply -f -
 
   # Extract mirroring cluster credentials from cluster A and install them on cluster B
-  linkerd --context=cluster-a multicluster get-credentials --cluster-name=remote | kubectl apply --context=cluster-b -f -
+  linkerd --context=cluster-a cluster link --cluster-name=remote | kubectl apply --context=cluster-b -f -
 
   # Export services from cluster to be available to other clusters
   kubectl get svc -o yaml | linkerd export-service - | kubectl apply -f -
