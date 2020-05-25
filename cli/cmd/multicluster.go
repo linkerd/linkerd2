@@ -60,6 +60,7 @@ type (
 		gatewayNginxVersion     string
 		controlPlaneVersion     string
 		dockerRegistry          string
+		remoteMirrorCredentials          bool
 	}
 
 	getCredentialsOptions struct {
@@ -100,6 +101,7 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
 		controlPlaneVersion:     version.Version,
 		dockerRegistry:          defaultDockerRegistry,
+		remoteMirrorCredentials: true,
 	}, nil
 
 }
@@ -169,6 +171,7 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	defaults.LinkerdVersion = version.Version
 	defaults.ControllerImageVersion = opts.controlPlaneVersion
 	defaults.ControllerImage = fmt.Sprintf("%s/controller", opts.dockerRegistry)
+	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
 
 	return defaults, nil
 }
@@ -346,6 +349,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 				{Name: "templates/namespace.yaml"},
 				{Name: "templates/gateway.yaml"},
 				{Name: "templates/service-mirror.yaml"},
+				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
 			}
 
 			chart := &charts.Chart{
@@ -378,6 +382,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	cmd.Flags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
+	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "remote-mirror-credentials", options.remoteMirrorCredentials, "Whther to install the default remote access service account")
 
 	return cmd
 }

@@ -37,6 +37,9 @@ type Values struct {
 	ServiceMirrorLogLevel    string `json:"serviceMirrorLogLevel"`
 	ServiceMirrorRetryLimit  uint32 `json:"serviceMirrorRetryLimit"`
 	ServiceMirrorUID         int64  `json:"serviceMirrorUID"`
+	RemoteMirrorServiceAccount bool `json:"remoteMirrorServiceAccount"`
+	RemoteMirrorServiceAccountName string `json:"remoteMirrorServiceAccountName"`
+
 }
 
 // NewValues returns a new instance of the Values type.

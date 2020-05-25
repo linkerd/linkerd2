@@ -1,8 +1,9 @@
+{{if .Values.remoteMirrorServiceAccount -}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{.Values.remoteAccessServiceAccountName}}
+  name: {{.Values.remoteMirrorServiceAccountName}}
   namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
@@ -18,7 +19,7 @@ rules:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{.Values.remoteAccessServiceAccountName}}
+  name: {{.Values.remoteMirrorServiceAccountName}}
   namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
@@ -26,16 +27,17 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{.Values.remoteAccessServiceAccountName}}
+  name: {{.Values.remoteMirrorServiceAccountName}}
   namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{.Values.remoteAccessServiceAccountName}}
+  name: {{.Values.remoteMirrorServiceAccountName}}
 subjects:
 - kind: ServiceAccount
-  name: {{.Values.remoteAccessServiceAccountName}}
+  name: {{.Values.remoteMirrorServiceAccountName}}
   namespace: {{.Values.namespace}}
+{{end -}}
 
