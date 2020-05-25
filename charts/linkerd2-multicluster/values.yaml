@@ -23,4 +23,4 @@ serviceMirrorRetryLimit: 3
 serviceMirrorUID: 2103
 serviceAccount: true
 remoteMirrorServiceAccount: true
-remoteMirrorServiceAccountName: linkerd-service-mirror-remote-access-all-clusters
+remoteMirrorServiceAccountName: linkerd-service-mirror-remote-access-default
