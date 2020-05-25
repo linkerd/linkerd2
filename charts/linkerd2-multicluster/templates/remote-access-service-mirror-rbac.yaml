@@ -1,0 +1,41 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{.Values.remoteAccessServiceAccountName}}
+  namespace: {{.Values.namespace}}
+  annotations:
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+rules:
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["list", "get", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["linkerd-config"]  
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{.Values.remoteAccessServiceAccountName}}
+  namespace: {{.Values.namespace}}
+  annotations:
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{.Values.remoteAccessServiceAccountName}}
+  namespace: {{.Values.namespace}}
+  annotations:
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{.Values.remoteAccessServiceAccountName}}
+subjects:
+- kind: ServiceAccount
+  name: {{.Values.remoteAccessServiceAccountName}}
+  namespace: {{.Values.namespace}}
+
