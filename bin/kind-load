@@ -58,9 +58,9 @@ cluster=${1:-"kind"}
 
 bindir=$( cd "${0%/*}" && pwd )
 
-# shellcheck source=bin/_tag.sh
+# shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
-# shellcheck source=bin/_docker.sh
+# shellcheck source=_docker.sh
 . "$bindir"/_docker.sh
 
 TAG=${TAG:-$(head_root_tag)}

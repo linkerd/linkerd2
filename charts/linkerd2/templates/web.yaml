@@ -36,7 +36,7 @@ metadata:
   labels:
     app.kubernetes.io/name: web
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: web
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   name: linkerd-web
@@ -63,7 +63,9 @@ spec:
       containers:
       - args:
         - -api-addr=linkerd-controller-api.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8085
-        {{- if .Values.grafana.enabled }}
+        {{- if .Values.global.grafanaUrl }}
+        - -grafana-addr={{.Values.global.grafanaUrl}}
+        {{- else if .Values.grafana.enabled }}
         - -grafana-addr={{.Values.grafana.name}}.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:3000
         {{- end}}
         {{- if .Values.tracing.enabled }}
@@ -79,7 +81,7 @@ spec:
         - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
         {{- end}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
-        image: {{.Values.webImage}}:{{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+        image: {{.Values.webImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:

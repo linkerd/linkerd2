@@ -8,7 +8,7 @@ working in this repo, see the [BUILD.md](BUILD.md) guide.
 Note that all shell commands in this guide are expected to be run from the root
 of this repo, unless otherwise indicated by a `cd` command.
 
-# Table of contents
+## Table of contents
 
 - [Unit tests](#unit-tests)
   - [Go](#go)
@@ -19,9 +19,9 @@ of this repo, unless otherwise indicated by a `cd` command.
   - [Running tests](#running-tests)
   - [Writing tests](#writing-tests)
 
-# Unit tests
+## Unit tests
 
-## Go
+### Go
 
 To run tests:
 
@@ -43,11 +43,11 @@ To analyze and lint the Go code using golangci-lint, run:
 bin/lint
 ```
 
-## Javascript
+### Javascript
 
 Javascript dependencies are managed via [yarn](https://yarnpkg.com/) and
-[webpack](https://webpack.js.org/). We use [jest](https://facebook.github.io/jest) as
-our test runner.
+[webpack](https://webpack.js.org/). We use
+[jest](https://facebook.github.io/jest) as our test runner.
 
 To fetch dependencies and run tests, run:
 
@@ -65,11 +65,13 @@ yarn jest "$*"
 For faster testing, run a subset of the tests by passing flags to jest.
 
 Run tests on files that have changed since the last commit:
+
 ```bash
 bin/web test -o
 ```
 
 Run tests that match a spec name (regex):
+
 ```bash
 bin/web test -t name-of-spec
 ```
@@ -81,18 +83,18 @@ bin/web test --watch # runs -o by default (tests only files changed since last c
 bin/web test --watchAll # runs all tests after a change to a file
 ```
 
-## Shell
+### Shell
 
 ```bash
 bin/shellcheck -x bin/*
 ```
 
-# Integration tests
+## Integration tests
 
 The `test/` directory contains a test suite that can be run to validate Linkerd
 functionality via a series of end-to-end tests.
 
-## Prerequisites
+### Prerequisites
 
 The integration test suite operates on your currently configured Kubernetes
 cluster. Prior to running the test suite, verify that:
@@ -100,10 +102,10 @@ cluster. Prior to running the test suite, verify that:
 - The Linkerd docker images you're trying to test have been built and are
   accessible to the Kubernetes cluster to which you are deploying
 - The `kubectl` CLI has been configured to talk to that Kubernetes cluster
-- The namespace where the tests will install Linkerd does not already exist;
-  by default the namespace `l5d-integration` is used
+- The namespace where the tests will install Linkerd does not already exist; by
+  default the namespace `l5d-integration` is used
 
-## Running tests
+### Running tests
 
 You can use the `bin/test-run` script to run the full suite of tests.
 
@@ -127,18 +129,18 @@ To run an individual test (e.g. the "get" test), first run the root test, and
 then run the subdirectory test. For instance:
 
 ```bash
-$ go test -v ./test -integration-tests -linkerd /path/to/linkerd
-$ go test -v ./test/get -integration-tests -linkerd /path/to/linkerd
+go test -v ./test -integration-tests -linkerd /path/to/linkerd
+go test -v ./test/get -integration-tests -linkerd /path/to/linkerd
 ```
 
-### Testing against the installed version of the CLI
+#### Testing against the installed version of the CLI
 
 You can run tests using your installed version of the `linkerd` CLI. For
 example, to run the full suite of tests using your installed CLI in the
 "specialtest" namespace, run:
 
 ```bash
-$ bin/test-run `which linkerd` specialtest
+bin/test-run `which linkerd` specialtest
 ```
 
 That will create multiple namespaces in your Kubernetes cluster:
@@ -154,10 +156,10 @@ specialtest-get-test      Active    1m
 To cleanup the namespaces after the test has finished, run:
 
 ```bash
-$ bin/test-cleanup
+bin/test-cleanup
 ```
 
-### Testing against a locally-built version of the CLI
+#### Testing against a locally-built version of the CLI
 
 You can also test a locally-built version of the `linkerd` CLI. Note, however,
 that this requires that you build the corresponding Linkerd docker images and
@@ -170,7 +172,7 @@ To test your current branch on minikube, first build all of the Linkerd images
 in your minikube environment, by running:
 
 ```bash
-$ DOCKER_TRACE=1 bin/mkube bin/docker-build
+DOCKER_TRACE=1 bin/mkube bin/docker-build
 ```
 
 That command also copies the corresponding `linkerd` binaries into the
@@ -178,7 +180,7 @@ That command also copies the corresponding `linkerd` binaries into the
 binaries when running tests. To run tests using your local binary, run:
 
 ```bash
-$ bin/test-run `pwd`/bin/linkerd
+bin/test-run `pwd`/bin/linkerd
 ```
 
 That will create multiple namespaces in your Kubernetes cluster:
@@ -194,10 +196,10 @@ l5d-integration-get-test         Active    1m
 To cleanup the namespaces after the test has finished, run:
 
 ```bash
-$ bin/test-cleanup
+bin/test-cleanup
 ```
 
-### Testing the dashboard
+#### Testing the dashboard
 
 We use [WebdriverIO](https://webdriver.io/) to test how the web dashboard looks
 and operates locally in Chrome. For cross-browser testing, we use
@@ -219,13 +221,15 @@ ways:
 # standalone
 bin/web run
 ```
+
 OR
+
 ```bash
 # with webpack-dev-server
 bin/web dev
 ```
 
-#### Local
+##### Local
 
 To run a local WebdriverIO instance that will run the tests on a local instance
 of Chrome, run:
@@ -234,7 +238,7 @@ of Chrome, run:
 bin/web integration local
 ```
 
-#### Cloud
+##### Cloud
 
 To run cross-browser tests via SauceLabs, you need to do a few things first:
 
@@ -297,15 +301,16 @@ directory. For a complete description of how to use the test helpers to write
 your own tests, view the `testutil` package's godoc, with:
 
 ```bash
-$ godoc github.com/linkerd/linkerd2/testutil | less
+godoc github.com/linkerd/linkerd2/testutil | less
 ```
 
-# Scale tests
+## Scale tests
 
 The scale tests deploy a single Linkerd control-plane, and then scale up
 multiple sample apps across multiple replicas across multiple namespaces.
 
 Prequisites:
+
 - a `linkerd` CLI binary
 - Linkerd Docker images associated with the `linkerd` CLI binary
 - a Kubernetes cluster with sufficient resources to run 100s of pods
@@ -329,20 +334,21 @@ bin/test-scale `pwd`/bin/linkerd
 bin/test-cleanup
 ```
 
-# Test against multiple cloud providers
+## Test against multiple cloud providers
 
 The [`bin/test-clouds`](bin/test-clouds) script runs the integration tests
 against 4 cloud providers:
+
 - Amazon (EKS)
 - DigitalOcean (DO)
 - Google (GKE)
 - Microsoft (AKS)
 
 This script assumes you have a working Kubernetes cluster set up on each Cloud
-provider, and that Kubernetes contexts are configured via environment
-variables.
+provider, and that Kubernetes contexts are configured via environment variables.
 
 For example:
+
 ```bash
 export AKS=my-aks-cluster
 export DO=do-nyc1-my-cluster
@@ -351,7 +357,7 @@ export GKE=gke_my-project_us-east1-b_my-cluster
 ```
 
 For more information on configuring access to multiple clusters, see:
-https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/#define-clusters-users-and-contexts
+<https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/#define-clusters-users-and-contexts>
 
 ```bash
 bin/test-clouds `pwd`/bin/linkerd

@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-file code-block-style -->
 # Linkerd2 Development Guide
 
 :balloon: Welcome to the Linkerd2 development guide! :wave:
@@ -19,7 +20,8 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
 - [Dependencies](#dependencies)
   - [Updating protobuf dependencies](#updating-protobuf-dependencies)
   - [Updating Docker dependencies](#updating-docker-dependencies)
-  - [Updating ServiceProfile generated code](#updating-serviceprofile-generated-code)
+  - [Updating ServiceProfile generated
+    code](#updating-serviceprofile-generated-code)
 - [Helm Chart](#helm-chart)
 - [Build Architecture](#build-architecture)
 - [Generating CLI docs](#generating-cli-docs)
@@ -37,9 +39,9 @@ written in Go. The dashboard UI is a React application.
 - [`controller`](controller)
   - [`destination`](controller/api/destination): Accepts requests from `proxy`
     instances and serves service discovery information.
-  - [`public-api`](controller/api/public): Accepts requests from API
-    clients such as `cli` and `web`, provides access to and control of the
-    Linkerd2 service mesh.
+  - [`public-api`](controller/api/public): Accepts requests from API clients
+    such as `cli` and `web`, provides access to and control of the Linkerd2
+    service mesh.
   - [`tap`](controller/tap): Provides a live pipeline of requests.
 - [`web`](web): Provides a UI dashboard to view and drive the control plane.
   This component is written in Go and React.
@@ -48,13 +50,15 @@ written in Go. The dashboard UI is a React application.
 
 - [`linkerd2-proxy`](https://github.com/linkerd/linkerd2-proxy): Rust source
   code for the proxy lives in the linkerd2-proxy repo.
-- [`linkerd2-proxy-api`](https://github.com/linkerd/linkerd2-proxy-api): Protobuf
-  definitions for the data plane APIs live in the linkerd2-proxy-api repo.
+- [`linkerd2-proxy-api`](https://github.com/linkerd/linkerd2-proxy-api):
+  Protobuf definitions for the data plane APIs live in the linkerd2-proxy-api
+  repo.
 
 ## Components
 
 ![Linkerd2 Components](https://g.gravizo.com/source/svg/linkerd2_components?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
 
+<!-- markdownlint-disable no-inline-html -->
 <details>
 <summary></summary>
 linkerd2_components
@@ -93,6 +97,7 @@ linkerd2_components
   }
 linkerd2_components
 </details>
+<!-- markdownlint-enable no-inline-html -->
 
 ## Development configurations
 
@@ -107,7 +112,8 @@ and run Linkerd2:
 
 This configuration builds all Linkerd2 components in Docker images, and deploys
 them onto Minikube. This setup most closely parallels our recommended production
-installation, documented at https://linkerd.io/2/getting-started/.
+installation, documented in [Getting
+Started](https://linkerd.io/2/getting-started/)
 
 These commands assume a working
 [Minikube](https://github.com/kubernetes/minikube) environment.
@@ -144,9 +150,13 @@ bin/linkerd -n emojivoto tap deploy voting
 
 #### Deploying Control Plane components with Tracing
 
-Control Plane components have the `trace-collector` flag used to enable [Distributed Tracing](https://opentracing.io/docs/overview/what-is-tracing/) for development purposes. It can be enabled globally i.e Control plane components and their proxies by using the `--control-plane-tracing` installation flag.
+Control Plane components have the `trace-collector` flag used to enable
+[Distributed Tracing](https://opentracing.io/docs/overview/what-is-tracing/) for
+development purposes. It can be enabled globally i.e Control plane components
+and their proxies by using the `--control-plane-tracing` installation flag.
 
-This will configure all the components to send the traces at `linkerd-collector.{{.Namespace}}.svc.{{.ClusterDomain}}:55678`
+This will configure all the components to send the traces at
+`linkerd-collector.{{.Namespace}}.svc.{{.ClusterDomain}}:55678`
 
 ```bash
 
@@ -176,8 +186,8 @@ export GO111MODULE=on
 
 #### A note about Go run
 
-Our instructions use a [`bin/go-run`](bin/go-run) script in lieu `go run`.
-This is a convenience script that leverages caching via `go build` to make your
+Our instructions use a [`bin/go-run`](bin/go-run) script in lieu `go run`. This
+is a convenience script that leverages caching via `go build` to make your
 build/run/debug loop faster.
 
 In general, replace commands like this:
@@ -198,11 +208,10 @@ That is equivalent to running `linkerd check` using the code on your branch.
 
 All Go source code is formatted with `goimports`. The version of `goimports`
 used by this project is specified in `go.mod`. To ensure you have the same
-version installed, run
-`go install -mod=readonly golang.org/x/tools/cmd/goimports`. It's recommended
-that you set your IDE or other development tools to use `goimports`. Formatting
-is checked during CI by the `bin/fmt` script.
-
+version installed, run `go install -mod=readonly
+golang.org/x/tools/cmd/goimports`. It's recommended that you set your IDE or
+other development tools to use `goimports`. Formatting is checked during CI by
+the `bin/fmt` script.
 
 #### Building the CLI for development
 
@@ -253,15 +262,14 @@ curl -k https://localhost:8089/apis/tap.linkerd.io/v1alpha1
 
 #### Generating CLI docs
 
-The [documentation](https://linkerd.io/2/cli/) for the CLI
-tool is partially generated from YAML. This can be generated by running the
-`linkerd doc` command.
+The [documentation](https://linkerd.io/2/cli/) for the CLI tool is partially
+generated from YAML. This can be generated by running the `linkerd doc` command.
 
 #### Updating templates
 
-When kubernetes templates change, several test fixtures usually need to be updated (in
-`cli/cmd/testdata/*.golden`). These golden files can be automatically
-regenerated with the command:
+When kubernetes templates change, several test fixtures usually need to be
+updated (in `cli/cmd/testdata/*.golden`). These golden files can be
+automatically regenerated with the command:
 
 ```sh
 go test ./cli/cmd/... --update
@@ -269,10 +277,10 @@ go test ./cli/cmd/... --update
 
 ##### Pretty-printed diffs for templated text
 
-When running `go test`, mismatched text is usually displayed as a compact
-diff. If you prefer to see the full text of the mismatch with colorized
-output, you can set the `LINKERD_TEST_PRETTY_DIFF` environment variable or
-run `go test ./cli/cmd/... --pretty-diff`.
+When running `go test`, mismatched text is usually displayed as a compact diff.
+If you prefer to see the full text of the mismatch with colorized output, you
+can set the `LINKERD_TEST_PRETTY_DIFF` environment variable or run `go test
+./cli/cmd/... --pretty-diff`.
 
 ### Web
 
@@ -318,8 +326,8 @@ To develop with a webpack dev server:
       javascript.
     - `controller` is port-forwarded from the Kubernetes cluster via `kubectl`
       on :8085
-    - `grafana` is port-forwarded from the Kubernetes cluster via `kubectl`
-      on :3000
+    - `grafana` is port-forwarded from the Kubernetes cluster via `kubectl` on
+      :3000
 
 2. Go to [http://localhost:7777](http://localhost:7777) to see everything
    running.
@@ -347,23 +355,24 @@ proxy binary:
 DOCKER_TRACE=1 bin/docker-build-proxy
 ```
 
-# Dependencies
+## Dependencies
 
 ### Updating protobuf dependencies
+
  If you make Protobuf changes, run:
+
  ```bash
 bin/protoc-go.sh
 ```
 
 ### Updating Docker dependencies
 
-The Go Docker images rely on base dependency images with
-hard-coded SHA's:
+The Go Docker images rely on base dependency images with hard-coded SHA's:
 
 `gcr.io/linkerd-io/go-deps` depends on
+
 - [`go.mod`](go.mod)
 - [`Dockerfile-go-deps`](Dockerfile-go-deps)
-
 
 When Go dependencies change, run the following:
 
@@ -375,10 +384,10 @@ bin/update-go-deps-shas
 ### Updating ServiceProfile generated code
 
 The [ServiceProfile client code](./controller/gen/client) is generated by
-[`bin/update-codegen.sh`](bin/update-codegen.sh), which depends on
-[K8s code-generator](https://github.com/kubernetes/code-generator), which does
-not yet support Go Modules. To re-generate this code, check out this repo into
-your `GOPATH`:
+[`bin/update-codegen.sh`](bin/update-codegen.sh), which depends on [K8s
+code-generator](https://github.com/kubernetes/code-generator), which does not
+yet support Go Modules. To re-generate this code, check out this repo into your
+`GOPATH`:
 
 ```bash
 go get -u github.com/linkerd/linkerd2
@@ -395,7 +404,7 @@ injector to inject the proxy container. Both charts depend on the partials
 subchart which can be found in the [`charts/partials`](charts/partials) folder.
 
 Note that the `charts/linkerd2/values.yaml` file contains a placeholder
-`{version}` that you need to replace with an appropriate string (like
+`linkerdVersionValue` that you need to replace with an appropriate string (like
 `edge-20.2.2`) before proceeding.
 
 During development, please use the [`bin/helm`](bin/helm) wrapper script to
@@ -425,6 +434,7 @@ the templates.
 
 ![Build Architecture](https://g.gravizo.com/source/svg/build_architecture?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
 
+<!-- markdownlint-disable no-inline-html -->
 <details>
 <summary></summary>
 build_architecture
@@ -541,3 +551,4 @@ build_architecture
   }
 build_architecture
 </details>
+<!-- markdownlint-enable no-inline-html -->

@@ -68,7 +68,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{.Values.collector.name}}
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: {{.Values.collector.name}}
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   name: {{.Values.collector.name}}
@@ -179,7 +179,7 @@ metadata:
   labels:
     app.kubernetes.io/name: {{.Values.jaeger.name}}
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: {{.Values.jaeger.name}}
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   name: {{.Values.jaeger.name}}

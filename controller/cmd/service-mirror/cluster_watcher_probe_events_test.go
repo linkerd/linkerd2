@@ -155,6 +155,16 @@ func TestRemoteGatewayUpdatedProbeEvents(t *testing.T) {
 			description: "sends gateway updated when endpoints ports",
 			environment: remoteGatewayUpdated,
 			expectedEventsSentToProbeManager: []interface{}{
+				&MirroredServicePaired{
+					serviceName:      "test-service-1-remote",
+					serviceNamespace: "test-namespace",
+					GatewaySpec:      gatewaySpec("gateway", "gateway-ns", clusterName, "0.0.0.0", "currentGatewayResVersion", "", 999, defaultProbePort, defaultProbePath, defaultProbePeriod),
+				},
+				&MirroredServicePaired{
+					serviceName:      "test-service-2-remote",
+					serviceNamespace: "test-namespace",
+					GatewaySpec:      gatewaySpec("gateway", "gateway-ns", clusterName, "0.0.0.0", "currentGatewayResVersion", "", 999, defaultProbePort, defaultProbePath, defaultProbePeriod),
+				},
 				&GatewayUpdated{
 					GatewaySpec: gatewaySpec("gateway", "gateway-ns", clusterName, "0.0.0.0", "currentGatewayResVersion", "", 999, defaultProbePort, defaultProbePath, defaultProbePeriod),
 				},
@@ -165,6 +175,16 @@ func TestRemoteGatewayUpdatedProbeEvents(t *testing.T) {
 			description: "sends gateway updated when address changes",
 			environment: gatewayAddressChanged,
 			expectedEventsSentToProbeManager: []interface{}{
+				&MirroredServicePaired{
+					serviceName:      "test-service-1-remote",
+					serviceNamespace: "test-namespace",
+					GatewaySpec:      gatewaySpec("gateway", "gateway-ns", "some-cluster", "0.0.0.1", "currentGatewayResVersion", "", 888, 1, "/p", 222),
+				},
+				&MirroredServicePaired{
+					serviceName:      "test-service-2-remote",
+					serviceNamespace: "test-namespace",
+					GatewaySpec:      gatewaySpec("gateway", "gateway-ns", "some-cluster", "0.0.0.1", "currentGatewayResVersion", "", 888, 1, "/p", 222),
+				},
 				&GatewayUpdated{
 					GatewaySpec: gatewaySpec("gateway", "gateway-ns", "some-cluster", "0.0.0.1", "currentGatewayResVersion", "", 888, 1, "/p", 222),
 				},
@@ -174,6 +194,16 @@ func TestRemoteGatewayUpdatedProbeEvents(t *testing.T) {
 			description: "sends gateway updated when identity changes",
 			environment: gatewayIdentityChanged,
 			expectedEventsSentToProbeManager: []interface{}{
+				&MirroredServicePaired{
+					serviceName:      "test-service-1-remote",
+					serviceNamespace: "test-namespace",
+					GatewaySpec:      gatewaySpec("gateway", "gateway-ns", clusterName, "0.0.0.0", "currentGatewayResVersion", "new-identity", 888, defaultProbePort, defaultProbePath, defaultProbePeriod),
+				},
+				&MirroredServicePaired{
+					serviceName:      "test-service-2-remote",
+					serviceNamespace: "test-namespace",
+					GatewaySpec:      gatewaySpec("gateway", "gateway-ns", clusterName, "0.0.0.0", "currentGatewayResVersion", "new-identity", 888, defaultProbePort, defaultProbePath, defaultProbePeriod),
+				},
 				&GatewayUpdated{
 					GatewaySpec: gatewaySpec("gateway", "gateway-ns", clusterName, "0.0.0.0", "currentGatewayResVersion", "new-identity", 888, defaultProbePort, defaultProbePath, defaultProbePeriod),
 				},
@@ -183,6 +213,11 @@ func TestRemoteGatewayUpdatedProbeEvents(t *testing.T) {
 			description: "sends gateway updated when probe changes",
 			environment: gatewayProbeConfigChanged,
 			expectedEventsSentToProbeManager: []interface{}{
+				&MirroredServicePaired{
+					serviceName:      "test-service-1-remote",
+					serviceNamespace: "test-namespace",
+					GatewaySpec:      gatewaySpec("gateway", "gateway-ns", clusterName, "0.0.0.0", "currentGatewayResVersion", "identity", 888, defaultProbePort, "/new-path", defaultProbePeriod),
+				},
 				&GatewayUpdated{
 					GatewaySpec: gatewaySpec("gateway", "gateway-ns", clusterName, "0.0.0.0", "currentGatewayResVersion", "identity", 888, defaultProbePort, "/new-path", defaultProbePeriod),
 				},

@@ -11,7 +11,7 @@ setValues() {
 
 showErr() {
   printf "Error on exit:\n  Exit code: %d\n  Failed command: \"%s\"\n" $? "$BASH_COMMAND"
-  setValues "$fullVersion" "{version}"
+  setValues "$fullVersion" "linkerdVersionValue"
 }
 
 # trap the last failed command
@@ -20,7 +20,6 @@ trap 'showErr' ERR
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 
-"$bindir"/helm init --client-only
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-multicluster-remote-setup
 "$bindir"/helm lint "$rootdir"/charts/linkerd2-service-mirror
 "$bindir"/helm lint "$rootdir"/charts/partials
@@ -33,7 +32,7 @@ rootdir=$( cd "$bindir"/.. && pwd )
 
 # `bin/helm-build package` assumes the presence of "$rootdir"/target/helm/index-pre.yaml which is downloaded in the chart_deploy CI job
 if [ "$1" = package ]; then
-    # shellcheck source=bin/_tag.sh
+    # shellcheck source=_tag.sh
     . "$bindir"/_tag.sh
     tag=$(named_tag)
     clean_head || { echo 'There are uncommitted changes'; exit 1; }
@@ -48,7 +47,7 @@ if [ "$1" = package ]; then
     version=${BASH_REMATCH[2]}
 
     # set version in Values files
-    setValues "{version}" "$fullVersion"
+    setValues "linkerdVersionValue" "$fullVersion"
 
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-cni
@@ -59,5 +58,5 @@ if [ "$1" = package ]; then
     "$bindir"/helm repo index --url "https://helm.linkerd.io/$repo/" --merge "$rootdir"/target/helm/index-pre-"$version".yaml "$rootdir"/target/helm
 
     # restore version in Values files
-    setValues "$fullVersion" "{version}"
+    setValues "$fullVersion" "linkerdVersionValue"
 fi

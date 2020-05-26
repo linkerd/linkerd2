@@ -1,4 +1,5 @@
 grafana:
   enabled: true
   name: linkerd-grafana-overwrite
-  image: linkerd-image-overwrite
+  image:
+    name: linkerd-image-overwrite
