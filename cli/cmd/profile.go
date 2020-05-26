@@ -27,7 +27,7 @@ type profileOptions struct {
 func newProfileOptions() *profileOptions {
 	return &profileOptions{
 		name:          "",
-		namespace:     getDefaultNamespace(),
+		namespace:     kubeNamespace,
 		template:      false,
 		openAPI:       "",
 		proto:         "",

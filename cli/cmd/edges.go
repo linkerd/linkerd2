@@ -23,7 +23,7 @@ type edgesOptions struct {
 
 func newEdgesOptions() *edgesOptions {
 	return &edgesOptions{
-		namespace:     getDefaultNamespace(),
+		namespace:     kubeNamespace,
 		outputFormat:  tableOutput,
 		allNamespaces: false,
 	}

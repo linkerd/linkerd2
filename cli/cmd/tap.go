@@ -103,7 +103,7 @@ type tapEvent struct {
 
 func newTapOptions() *tapOptions {
 	return &tapOptions{
-		namespace:     getDefaultNamespace(),
+		namespace:     kubeNamespace,
 		toResource:    "",
 		toNamespace:   "",
 		maxRps:        maxRps,

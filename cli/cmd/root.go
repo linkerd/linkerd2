@@ -47,6 +47,7 @@ var (
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	kubeconfigPath        string
 	kubeContext           string
+	kubeNamespace         string
 	impersonate           string
 	impersonateGroup      []string
 	verbose               bool
@@ -98,6 +99,7 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
+	RootCmd.PersistentFlags().StringVarP(&kubeNamespace, "namespace", "n", getDefaultNamespace(), "Namespace for specified resource")
 	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
 	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
@@ -141,7 +143,7 @@ type statOptionsBase struct {
 
 func newStatOptionsBase() *statOptionsBase {
 	return &statOptionsBase{
-		namespace:    getDefaultNamespace(),
+		namespace:    kubeNamespace,
 		timeWindow:   "1m",
 		outputFormat: tableOutput,
 	}
@@ -205,7 +207,7 @@ func getDefaultNamespace() string {
 	ns, _, err := kubeCfg.Namespace()
 
 	if err != nil {
-		log.Errorf("failed to set namespace from config context:%v", err)
+		log.Errorf("could not set namespace from kubectl context: ensure a valid KUBECONFIG path has been set")
 		return corev1.NamespaceDefault
 	}
 
