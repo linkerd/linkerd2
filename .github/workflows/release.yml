@@ -126,17 +126,10 @@ jobs:
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
     - name: Setup default KinD cluster
       if: matrix.integration_test != 'custom_domain'
-      # engineerd/setup-kind@v0.3.0
-      uses: engineerd/setup-kind@d0e9be1
-      with:
-        version: "v0.8.1"
+      run: bin/kind create cluster
     - name: Setup custom_domain KinD cluster
       if: matrix.integration_test == 'custom_domain'
-      # engineerd/setup-kind@v0.3.0
-      uses: engineerd/setup-kind@d0e9be1
-      with:
-        config: test/testdata/custom_cluster_domain_config.yaml
-        version: "v0.8.1"
+      run: bin/kind create cluster --config test/testdata/custom_cluster_domain_config.yaml
     - name: Load image archives into the local KinD cluster
       env:
         PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1

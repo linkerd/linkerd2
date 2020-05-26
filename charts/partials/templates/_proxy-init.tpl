@@ -15,12 +15,20 @@ args:
 - --outbound-ports-to-ignore
 - {{.Values.global.proxyInit.ignoreOutboundPorts | quote}}
 {{- end }}
+{{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
+- --timeout-close-wait-secs
+- {{ .Values.global.proxyInit.closeWaitTimeoutSecs | quote}}
+{{- end }}
 image: {{.Values.global.proxyInit.image.name}}:{{.Values.global.proxyInit.image.version}}
 imagePullPolicy: {{.Values.global.proxyInit.image.pullPolicy}}
 name: linkerd-init
 {{ include "partials.resources" .Values.global.proxyInit.resources }}
 securityContext:
+  {{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
+  allowPrivilegeEscalation: true
+  {{- else }}
   allowPrivilegeEscalation: false
+  {{- end }}
   capabilities:
     add:
     - NET_ADMIN
@@ -33,7 +41,11 @@ securityContext:
     {{- include "partials.proxy-init.capabilities.drop" . | nindent 4 -}}
     {{- end }}
     {{- end }}
+  {{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
+  privileged: true
+  {{- else }}
   privileged: false
+  {{- end }}
   readOnlyRootFilesystem: true
   runAsNonRoot: false
   runAsUser: 0

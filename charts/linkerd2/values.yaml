@@ -60,7 +60,7 @@ global:
     image:
       name: gcr.io/linkerd-io/proxy-init
       pullPolicy: *image_pull_policy
-      version: v1.3.2
+      version: v1.3.3
     resources:
       cpu:
         limit: 100m
@@ -68,6 +68,7 @@ global:
       memory:
         limit: 50Mi
         request: 10Mi
+    closeWaitTimeoutSecs: 0
 
   # control plane annotations - do not edit
   createdByAnnotation: linkerd.io/created-by

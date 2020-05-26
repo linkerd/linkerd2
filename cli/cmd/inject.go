@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	cfg "github.com/linkerd/linkerd2/controller/gen/config"
@@ -38,6 +39,7 @@ type resourceTransformerInject struct {
 	configs             *cfg.All
 	overrideAnnotations map[string]string
 	enableDebugSidecar  bool
+	closeWaitTimeout    time.Duration
 }
 
 func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transformer *resourceTransformerInject) int {
@@ -47,6 +49,7 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transforme
 func newCmdInject() *cobra.Command {
 	options := &proxyConfigOptions{}
 	var manualOption, enableDebugSidecar bool
+	var closeWaitTimeout time.Duration
 
 	cmd := &cobra.Command{
 		Use:   "inject [flags] CONFIG-FILE",
@@ -90,6 +93,7 @@ sub-folders, or coming from stdin.`,
 				configs:             configs,
 				overrideAnnotations: overrideAnnotations,
 				enableDebugSidecar:  enableDebugSidecar,
+				closeWaitTimeout:    closeWaitTimeout,
 			}
 			exitCode := uninjectAndInject(in, stderr, stdout, transformer)
 			os.Exit(exitCode)
@@ -134,6 +138,10 @@ sub-folders, or coming from stdin.`,
 	flags.StringSliceVar(&options.requireIdentityOnInboundPorts, "require-identity-on-inbound-ports", options.requireIdentityOnInboundPorts,
 		"Inbound ports on which the proxy should require identity")
 
+	flags.DurationVar(
+		&closeWaitTimeout, "close-wait-timeout", closeWaitTimeout,
+		"Sets nf_conntrack_tcp_timeout_close_wait")
+
 	cmd.PersistentFlags().AddFlagSet(flags)
 
 	return cmd
@@ -152,6 +160,10 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 
 	if rt.enableDebugSidecar {
 		conf.AppendPodAnnotation(k8s.ProxyEnableDebugAnnotation, "true")
+	}
+
+	if rt.closeWaitTimeout != time.Duration(0) {
+		conf.AppendPodAnnotation(k8s.CloseWaitTimeoutAnnotation, rt.closeWaitTimeout.String())
 	}
 
 	report, err := conf.ParseMetaAndYAML(bytes)
