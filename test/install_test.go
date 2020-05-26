@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 			fmt.Println(err)
 		}
 		if len(errs1) == 0 && len(errs2) == 0 {
-			fmt.Println("No unexpected or events found")
+			fmt.Println("No unexpected log entries or events found")
 		}
 	}
 	os.Exit(code)
