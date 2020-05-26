@@ -1,16 +1,11 @@
 ---
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: {{ .Values.gatewayNamespace }}
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: nginx-configuration
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
-  namespace: {{.Values.gatewayNamespace}}
+  namespace: {{.Values.namespace}}
 data:
   nginx.conf: |-
     events {
@@ -49,7 +44,7 @@ metadata:
     app.kubernetes.io/version: {{.Values.linkerdVersion}}
     app: {{.Values.gatewayName}}
   name: {{.Values.gatewayName}}
-  namespace: {{.Values.gatewayNamespace}}
+  namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
@@ -97,12 +92,13 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{.Values.gatewayName}}
-  namespace: {{.Values.gatewayNamespace}}
+  namespace: {{.Values.namespace}}
   annotations: 
-    mirror.linkerd.io/gateway-identity: {{.Values.gatewayName}}.{{.Values.gatewayNamespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain}}
+    mirror.linkerd.io/gateway-identity: {{.Values.gatewayName}}.{{.Values.namespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain}}
     mirror.linkerd.io/probe-port: "{{.Values.probePort}}"
     mirror.linkerd.io/probe-period: "{{.Values.probePeriodSeconds}}"
     mirror.linkerd.io/probe-path: {{.Values.probePath}}
+    mirror.linkerd.io/multicluster-gateway: "true"
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   ports:
@@ -120,5 +116,5 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: {{.Values.gatewayName}}
-  namespace: {{.Values.gatewayNamespace}}
+  namespace: {{.Values.namespace}}
   

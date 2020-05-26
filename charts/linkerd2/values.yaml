@@ -11,13 +11,16 @@ global:
   controlPlaneTracing: false
 
   # control plane version. See Proxy section for proxy version
-  linkerdVersion: &linkerd_version {version}
+  linkerdVersion: &linkerd_version linkerdVersionValue
 
   namespace: linkerd
 
   identityTrustAnchorsPEM: |
 
   identityTrustDomain: *cluster_domain
+
+  # url of external grafana instance.
+  grafanaUrl: ""
 
   # proxy configuration
   proxy:
@@ -57,7 +60,7 @@ global:
     image:
       name: gcr.io/linkerd-io/proxy-init
       pullPolicy: *image_pull_policy
-      version: v1.3.2
+      version: v1.3.3
     resources:
       cpu:
         limit: 100m
@@ -65,6 +68,7 @@ global:
       memory:
         limit: 50Mi
         request: 10Mi
+    closeWaitTimeoutSecs: 0
 
   # control plane annotations - do not edit
   createdByAnnotation: linkerd.io/created-by
@@ -195,7 +199,9 @@ smiMetrics:
 grafana:
   enabled: true
   name: linkerd-grafana
-  image: gcr.io/linkerd-io/grafana
+  image:
+    name: gcr.io/linkerd-io/grafana
+    version: *linkerd_version
   # resources:
 
 tracing:

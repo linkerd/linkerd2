@@ -2427,7 +2427,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.2","debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.3","debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}`,
 			},
@@ -2473,7 +2473,7 @@ data:
 					},
 					DisableExternalProfiles: true,
 					ProxyVersion:            "install-proxy-version",
-					ProxyInitImageVersion:   "v1.3.2",
+					ProxyInitImageVersion:   "v1.3.3",
 					DebugImage: &configPb.Image{
 						ImageName:  "gcr.io/linkerd-io/debug",
 						PullPolicy: "IfNotPresent",
@@ -3242,6 +3242,68 @@ func TestMinReplicaCheck(t *testing.T) {
 			if err != nil {
 				if err.Error() != tc.expected.Error() {
 					t.Logf("Expected error: %s\n", tc.expected)
+					t.Logf("Received error: %s\n", err)
+					t.Fatal("test case failed")
+				}
+			}
+		})
+	}
+}
+
+func TestGetString(t *testing.T) {
+	testCases := []struct {
+		i             interface{}
+		k             string
+		expected      string
+		expectedError error
+	}{
+		{
+			i: map[string]interface{}{
+				"key": "value",
+			},
+			k:             "key",
+			expected:      "value",
+			expectedError: nil,
+		},
+		{
+			i: map[string]interface{}{
+				"key": map[string]interface{}{
+					"key1": "value1",
+				},
+			},
+			k:             "key",
+			expected:      "",
+			expectedError: errors.New("config value 'map[key1:value1]' for key 'key' is not a string"),
+		},
+		{
+			i: map[string]interface{}{
+				"key": "value",
+			},
+			k:             "key1",
+			expected:      "",
+			expectedError: errors.New("key 'key1' not found in config value"),
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc //pin
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			ans, err := getString(tc.i, tc.k)
+
+			if ans != tc.expected {
+				t.Logf("Expected value: %s\n", tc.expected)
+				t.Logf("Received value: %s\n", ans)
+				t.Fatal("test case failed")
+			}
+
+			if err == nil && tc.expectedError != nil {
+				t.Log("Expected error: nil")
+				t.Logf("Received error: %s\n", err)
+				t.Fatal("test case failed")
+			}
+			if err != nil {
+				if err.Error() != tc.expectedError.Error() {
+					t.Logf("Expected error: %s\n", tc.expectedError)
 					t.Logf("Received error: %s\n", err)
 					t.Fatal("test case failed")
 				}

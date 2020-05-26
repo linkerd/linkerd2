@@ -6,6 +6,8 @@ on:
     - '**/*.md'
     branches:
     - master
+env:
+  GH_ANNOTATION: true
 jobs:
   # todo: Keep in sync with `release.yml`
   docker_build:

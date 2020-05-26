@@ -65,4 +65,14 @@ linkerd-data-plane
 √ data plane is up-to-date
 √ data plane and cli versions match
 
+linkerd-addons
+--------------
+√ 'linkerd-config-addons' config map exists
+
+linkerd-grafana
+---------------
+√ grafana add-on service account exists
+√ grafana add-on config map exists
+√ grafana pod is running
+
 Status check results are √
