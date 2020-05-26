@@ -33,15 +33,15 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	// if the test failed, show logs and events that can potentially explain cause
 	if code != 0 && controlPlaneInstalled {
-		_, logs := fetchAndCheckLogs()
-		for _, err := range logs {
+		_, errs1 := fetchAndCheckLogs()
+		for _, err := range errs1 {
 			fmt.Println(err)
 		}
-		evts := fetchAndCheckEvents()
-		for _, err := range evts {
+		errs2 := fetchAndCheckEvents()
+		for _, err := range errs2 {
 			fmt.Println(err)
 		}
-		if len(logs) == 0 && len(evts) == 0 {
+		if len(errs1) == 0 && len(errs2) == 0 {
 			fmt.Println("No unexpected or events found")
 		}
 	}
