@@ -514,7 +514,7 @@ func newLinkCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "Cluster name")
 	cmd.Flags().StringVar(&opts.remoteClusterDomain, "remote-cluster-domain", defaultClusterDomain, "Custom remote cluster domain")
 	cmd.Flags().StringVar(&opts.remoteClusterServer, "cluster-server", "", "Custom remote cluster domain")
-	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account", defaultServiceAccountName, "The name of th service account associated with the credentials")
+	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", defaultServiceAccountName, "The name of th service account associated with the credentials")
 
 	return cmd
 }
