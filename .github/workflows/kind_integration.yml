@@ -82,18 +82,11 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Download image archives (Forked repositories)
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       # actions/download-artifact@v1
       uses: actions/download-artifact@18f0f59
       with:
         name: image-archives
-    - name: Load cli-bin image into local docker images
-      if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
-      run: |
-        docker save -o .\image.tar "$DOCKER_REGISTRY/cli-bin:$TAG" 
-        docker load -i .\image.tar
     - name: Load cli-bin image into local docker images (Forked repositories)
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: docker load -i image-archives\cli-bin.tar
     - name: Install CLI
       run: |
