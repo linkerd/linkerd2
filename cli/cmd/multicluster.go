@@ -148,10 +148,9 @@ func newGatewaysCommand() *cobra.Command {
 	opts := gatewaysOptions{}
 
 	cmd := &cobra.Command{
-		Hidden: false,
-		Use:    "gateways",
-		Short:  "Display stats information about the remote gateways",
-		Args:   cobra.NoArgs,
+		Use:   "gateways",
+		Short: "Display stats information about the remote gateways",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req := &pb.GatewaysRequest{
 				RemoteClusterName: opts.clusterName,
@@ -184,10 +183,9 @@ func newSetupRemoteCommand() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Hidden: false,
-		Use:    "setup-remote",
-		Short:  "Sets up the remote cluster by creating the gateway and necessary credentials",
-		Args:   cobra.NoArgs,
+		Use:   "setup-remote",
+		Short: "Sets up the remote cluster by creating the gateway and necessary credentials",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			values, err := buildMulticlusterSetupValues(options)
@@ -248,10 +246,9 @@ func newGetCredentialsCommand() *cobra.Command {
 	opts := getCredentialsOptions{}
 
 	cmd := &cobra.Command{
-		Hidden: false,
-		Use:    "get-credentials",
-		Short:  "Get cluster credentials as a secret",
-		Args:   cobra.NoArgs,
+		Use:   "get-credentials",
+		Short: "Get cluster credentials as a secret",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			_, err := getLinkerdConfigMap()
@@ -558,9 +555,8 @@ func newExportServiceCommand() *cobra.Command {
 	opts := exportServiceOptions{}
 
 	cmd := &cobra.Command{
-		Hidden: false,
-		Use:    "export-service",
-		Short:  "Exposes a remote service to be mirrored",
+		Use:   "export-service",
+		Short: "Exposes a remote service to be mirrored",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
@@ -594,12 +590,10 @@ func newExportServiceCommand() *cobra.Command {
 func newCmdMulticluster() *cobra.Command {
 
 	multiclusterCmd := &cobra.Command{
-
-		Hidden: true,
-		Use:    "multicluster [flags]",
+		Use:     "multicluster [flags]",
 		Aliases: []string{"mc"},
-		Args:   cobra.NoArgs,
-		Short:  "Manages the multicluster setup for Linkerd",
+		Args:    cobra.NoArgs,
+		Short:   "Manages the multicluster setup for Linkerd",
 		Long: `Manages the multicluster setup for Linkerd.
 
 This command provides subcommands to manage the multicluster support
