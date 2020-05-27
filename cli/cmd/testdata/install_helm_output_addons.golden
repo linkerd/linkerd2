@@ -2881,7 +2881,9 @@ data:
       grafanaUrl: 
     grafana:
       enabled: true
-      image: gcr.io/linkerd-io/grafana
+      image:
+        name: gcr.io/linkerd-io/grafana
+        version: linkerdVersionValue
       name: linkerd-grafana
     tracing:
       collector:
@@ -3493,7 +3495,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:linkerd-version
+        image: gcr.io/linkerd-io/grafana:linkerdVersionValue
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

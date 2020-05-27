@@ -1925,6 +1925,38 @@ data:
 				options.addOnConfig = filepath.Join("testdata", "grafana_disabled.yaml")
 			},
 		},
+
+		{
+			// Linkerd upgrade with addons-overwrite
+			k8sConfigs: append(commonk8sconfig, `
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config-addons
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/cli edge-19.4.1
+data:
+  values: |-
+    grafana:
+      enabled: true
+      resources:
+        cpu:
+          limit: "1"
+          request: 100m
+        memory:
+          limit: 250Mi
+          request: 50Mi
+`),
+			outputfile: "upgrade_grafana_addon_overwrite.yaml",
+			err:        nil,
+			processOptions: func(options *upgradeOptions) {
+				options.addOnConfig = filepath.Join("testdata", "grafana_enabled.yaml")
+				options.addOnOverwrite = true
+			},
+		},
 	}
 	for i, tc := range testCases {
 		tc := tc // pin

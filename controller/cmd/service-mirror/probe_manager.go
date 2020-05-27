@@ -149,7 +149,8 @@ func (m *ProbeManager) handleMirroredServicePaired(event *MirroredServicePaired)
 		} else {
 			probeSpec := gatewayToProbeSpec(event.GatewaySpec)
 			if probeSpec != nil {
-				worker = NewProbeWorker(probeSpec, probeMetrics, probeKey)
+				localGatewayName := fmt.Sprintf("%s-%s", event.gatewayName, event.clusterName)
+				worker = NewProbeWorker(localGatewayName, probeSpec, probeMetrics, probeKey)
 				worker.PairService(event.serviceName, event.serviceNamespace)
 				m.probeWorkers[probeKey] = worker
 				worker.Start()

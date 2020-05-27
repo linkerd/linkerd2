@@ -278,6 +278,8 @@ github.com/linkerd/linkerd2-proxy-api v0.1.12 h1:mP0UYjmemLI6Ru7m1HW3d9up5Bt9VRB
 github.com/linkerd/linkerd2-proxy-api v0.1.12/go.mod h1:2WJHEYXoww5ALM6c1QspRFiROGZg08tGxCO1js0tTVA=
 github.com/linkerd/linkerd2-proxy-init v1.3.2 h1:bl+gwdBtHI0cki/urTyicxxb/ekQtVWJ6NDWzMXAgVs=
 github.com/linkerd/linkerd2-proxy-init v1.3.2/go.mod h1:M6iaaLLi06ofuIV6x74SDknSFi7VS/MFqa5m+CwHgLY=
+github.com/linkerd/linkerd2-proxy-init v1.3.3 h1:x561EUgmk5aJNDjE7UEEL0r9U4vtM2IK0thuDcSf81g=
+github.com/linkerd/linkerd2-proxy-init v1.3.3/go.mod h1:M6iaaLLi06ofuIV6x74SDknSFi7VS/MFqa5m+CwHgLY=
 github.com/linkerd/stern v0.0.0-20200316183041-1ab5375fb7e9 h1:xSfvUw8PVp+a+PBE8AYXiFjNcpE1p/KSpkza7KTm0F4=
 github.com/linkerd/stern v0.0.0-20200316183041-1ab5375fb7e9/go.mod h1:5524WGXWpnoZQyBjmfLhuV17TkioMrtCaQD8zWKG6gQ=
 github.com/linkerd/stern v0.0.0-20200331220320-37779ceb2c32 h1:BIdntxDGoVcFzrihrNcWjdjA92S28cl+/mOC7bsgb3c=
