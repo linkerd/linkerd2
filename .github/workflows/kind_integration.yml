@@ -99,17 +99,17 @@ jobs:
       run: |
         # Copy the CLI out of the local cli-bin container.
         $container_id = (docker create "$DOCKER_REGISTRY/cli-bin:$TAG")
-        docker cp $container_id:/out/linkerd-windows $HOME/.linkerd
+        docker cp $container_id:/out/linkerd-windows $HOME\linkerd.exe
 
         # Validate the CLI version matches the current build tag.
-        [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
+        [[ "$TAG" == "$($HOME/linkerd.exe version --short --client)" ]]
     - name: Run CLI Integration tests
       run: |
         # Export `init_test_run` and `*_integration_tests` into the
         # environment.
         . bin/_test-run.sh
 
-        init_test_run $HOME/.linkerd
+        init_test_run $HOME/linkerd.exe
         cli_integration_static_tests
 
   kind_integration_tests:
