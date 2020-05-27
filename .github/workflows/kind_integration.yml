@@ -96,7 +96,7 @@ jobs:
 
     - name: Run CLI Integration tests
       run: |
-        GO111MODULE=on go test --failfast --mod=readonly ".\test\cli_install_static_test.go" --linkerd=$HOME\linkerd.exe --integration-tests TestCliInstall
+        go test --failfast --mod=readonly ".\test\cli_install_static_test.go" --linkerd=$HOME\linkerd.exe --integration-tests TestCliInstall
   kind_integration_tests:
     strategy:
       matrix:
