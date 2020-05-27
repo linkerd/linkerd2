@@ -185,7 +185,10 @@ install_stable() {
     #Now we need to install the app that will be used to verify that upgrade does not break anything
     kubectl --context=$k8s_context create namespace "$test_app_namespace" > /dev/null 2>&1
     kubectl --context=$k8s_context label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
-    $linkerd_path inject --linkerd-namespace="$stable_namespace" "$test_directory/testdata/upgrade_test.yaml" | kubectl --context=$k8s_context apply --namespace="$test_app_namespace" -f - 2>&1
+    (
+        set -x
+        $linkerd_path inject --linkerd-namespace="$stable_namespace" "$test_directory/testdata/upgrade_test.yaml" | kubectl --context=$k8s_context apply --namespace="$test_app_namespace" -f - 2>&1
+    )
 }
 
 # Run the upgrade test by upgrading the most-recent stable release to the HEAD of
