@@ -7,18 +7,12 @@ import (
 	"github.com/linkerd/linkerd2/testutil"
 )
 
-var (
-	TestHelper *testutil.TestHelper
-)
-
 func TestCliInstall(t *testing.T) {
-	if TestHelper.GetHelmReleaseName() != "" {
-		return
-	}
 
 	var (
-		cmd  = "install"
-		args = []string{
+		TestHelper = testutil.NewTestHelper()
+		cmd        = "install"
+		args       = []string{
 			"--ignore-cluster",
 			"--controller-log-level", "debug",
 			"--proxy-log-level", "warn,linkerd2_proxy=debug",
