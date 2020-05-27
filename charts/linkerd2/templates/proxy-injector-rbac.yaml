@@ -91,8 +91,8 @@ webhooks:
       name: linkerd-proxy-injector
       namespace: {{ .Values.global.namespace }}
       path: "/"
-{{ if and (.Values.proxyInjector.externalSecret) (empty .Values.proxyInjector.caBundle) }}
-  {{- fail "If proxyInjector.externalSecret is true then you need to provide proxyInject.caBundle }}
+{{- if and (.Values.proxyInjector.externalSecret) (empty .Values.proxyInjector.caBundle) }}
+  {{- fail "If proxyInjector.externalSecret is true then you need to provide proxyInject.caBundle" }}
 {{- end }}
     caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.proxyInjector.caBundle)) (empty .Values.proxyInjector.caBundle) }}
   failurePolicy: {{.Values.webhookFailurePolicy}}

@@ -65,8 +65,8 @@ spec:
   service:
     name: linkerd-smi-metrics
     namespace: {{.Values.global.namespace}}
-{{ if and (.Values.smiMetrics.externalSecret) (empty .Values.smiMetrics.caBundle) }}
-  {{- fail "If smiMetrics.externalSecret is true then you need to provide smiMetrics.caBundle }}
+{{- if and (.Values.smiMetrics.externalSecret) (empty .Values.smiMetrics.caBundle) }}
+  {{- fail "If smiMetrics.externalSecret is true then you need to provide smiMetrics.caBundle" }}
 {{- end }}
   caBundle: {{ ternary (b64enc $cert.Cert) (b64enc (trim .Values.smiMetrics.caBundle)) (empty .Values.smiMetrics.caBundle) }}
 {{- end }}

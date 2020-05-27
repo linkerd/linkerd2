@@ -17,14 +17,14 @@ create_cert() {
     cakey=$4
 
     openssl genrsa -out ${basename}-key.pem 2048 2>/dev/null
-    openssl req -new -sha256 -key ${basename}-key.pem -subj "/CN=linkerd-smi-metrics.linkerd.svc" -out ${basename}.csr 
+    openssl req -new -sha256 -key ${basename}-key.pem -subj "${subject}" -out ${basename}.csr 
     openssl x509 -req -in ${basename}.csr -CA ${cacert} -CAkey ${cakey} -CAcreateserial -out ${basename}.pem -days 500 -sha256 2>/dev/null
 
     echo -n "${basename}.pem: "
-    cat "${basename}.pem" | base64 | tr '\n' ' ' ; printf "\n\n"
+    cat "${basename}.pem" | base64 | tr -d '\n' ; printf "\n\n"
 
     echo -n "${basename}-key.pem: "
-    cat "${basename}-key.pem" | base64 | tr '\n' ' ' ; printf "\n\n"
+    cat "${basename}-key.pem" | base64 | tr -d '\n' ; printf "\n\n"
 
 }
 
@@ -44,7 +44,7 @@ openssl req -new -key CA-key.pem -x509 -days 1000 -out CA-cert.pem -subj "/CN=Li
 
 echo
 echo -n "CA-cert.pem: "
-cat "CA-cert.pem" | base64 | tr '\n' ' ' ; printf "\n\n"
+cat "CA-cert.pem" | base64 | tr -d '\n' ; printf "\n\n"
 
 
 create_cert smi-metrics-webhook "/CN=linkerd-smi-metrics.linkerd.svc" CA-cert.pem CA-key.pem
