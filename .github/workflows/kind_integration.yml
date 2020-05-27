@@ -50,6 +50,9 @@ jobs:
           docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar || tee save_fail &
         done
 
+        # save cli's as artifacts
+        cp -r ./target/cli $ARCHIVES/cli
+
         # Wait for `docker save` background processes to complete. Exit early
         # if any job failed.
         wait < <(jobs -p)
@@ -86,13 +89,10 @@ jobs:
       uses: actions/download-artifact@18f0f59
       with:
         name: image-archives
-    - name: Load cli-bin image into local docker images (Forked repositories)
-      run: docker load -i image-archives\cli-bin.tar
     - name: Install CLI
       run: |
-        # Copy the CLI out of the local cli-bin container.
-        $container_id = (docker create "$DOCKER_REGISTRY/cli-bin:$TAG")
-        docker cp $container_id:/out/linkerd-windows $HOME\linkerd.exe
+        # Copy the CLI out of the $ARCHIVES/cli folder.
+        cp image-archive\cli\windows\linkerd $HOME\linkerd.exe
 
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($HOME/linkerd.exe version --short --client)" ]]
