@@ -131,8 +131,6 @@ jobs:
     - name: Setup custom_domain KinD cluster
       if: matrix.integration_test == 'custom_domain'
       run: bin/kind create cluster --config test/testdata/custom_cluster_domain_config.yaml
-    - name: Wait for all nodes to be ready
-      run: kubectl wait --for=condition=Ready --all nodes
     - name: Load image archives into the local KinD cluster
       if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
       env:
@@ -151,6 +149,8 @@ jobs:
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: |
         bin/kind-load --images
+    - name: Wait for all nodes to be ready
+      run: kubectl wait --for=condition=Ready --all nodes
     - name: Run integration tests
       run: |
         # Export `init_test_run` and `*_integration_tests` into the

@@ -143,6 +143,8 @@ jobs:
         # for the next run.
         kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROXY_INIT_IMAGE_NAME) 2>&1 || true
         kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROMETHEUS_IMAGE_NAME) 2>&1 || true
+    - name: Wait for all nodes to be ready
+      run: kubectl wait --for=condition=Ready --all nodes
     - name: Run integration tests
       run: |
         # Export `init_test_run` and `*_integration_tests` into the
