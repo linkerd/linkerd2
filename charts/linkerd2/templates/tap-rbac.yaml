@@ -107,8 +107,8 @@ type: Opaque
 data:
   crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
   key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.tap.keyPEM)) (empty .Values.tap.keyPEM) }}
-{{- end }}
 ---
+{{- end }}
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
@@ -124,4 +124,7 @@ spec:
   service:
     name: linkerd-tap
     namespace: {{.Values.global.namespace}}
+{{ if and (.Values.tap.externalSecret) (empty .Values.tap.caBundle) }}
+  {{- fail "If tap.externalSecret is true then you need to provide tap.caBundle }}
+{{- end }}
   caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.tap.caBundle)) (empty .Values.tap.caBundle) }}

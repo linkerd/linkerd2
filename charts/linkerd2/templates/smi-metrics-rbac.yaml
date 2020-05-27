@@ -47,8 +47,8 @@ type: kubernetes.io/tls
 data:
   tls.crt: {{ ternary (b64enc $cert.Cert) (b64enc (trim .Values.smiMetrics.crtPEM)) (empty .Values.smiMetrics.crtPEM) }}
   tls.key: {{ ternary (b64enc $cert.Key) (b64enc (trim .Values.smiMetrics.keyPEM)) (empty .Values.smiMetrics.keyPEM) }}
-{{- end }}
 ---
+{{- end }}
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
@@ -65,5 +65,8 @@ spec:
   service:
     name: linkerd-smi-metrics
     namespace: {{.Values.global.namespace}}
+{{ if and (.Values.smiMetrics.externalSecret) (empty .Values.smiMetrics.caBundle) }}
+  {{- fail "If smiMetrics.externalSecret is true then you need to provide smiMetrics.caBundle }}
+{{- end }}
   caBundle: {{ ternary (b64enc $cert.Cert) (b64enc (trim .Values.smiMetrics.caBundle)) (empty .Values.smiMetrics.caBundle) }}
 {{- end }}
