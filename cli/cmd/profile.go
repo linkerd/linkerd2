@@ -80,7 +80,7 @@ func newCmdProfile() *cobra.Command {
 		Short: "Output service profile config for Kubernetes",
 		Long:  "Output service profile config for Kubernetes.",
 		Example: `  # Output a basic template to apply after modification.
-  linkerd profile -n emoijvoto --template web-svc
+  linkerd profile -n emojivoto --template web-svc
 
   # Generate a profile from an OpenAPI specification.
   linkerd profile -n emojivoto --open-api web-svc.swagger web-svc

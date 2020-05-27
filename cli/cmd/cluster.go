@@ -33,15 +33,16 @@ import (
 )
 
 const (
+	defaultMulticlusterNamespace                 = "linkerd-multicluster"
 	helmMulticlusterRemoteSetuprDefaultChartName = "linkerd2-multicluster-remote-setup"
 	tokenKey                                     = "token"
-	defaultServiceAccountName                    = "linkerd-service-mirror"
-	defaultServiceAccountNs                      = "linkerd-service-mirror"
+	defaultServiceAccountName                    = "linkerd-service-mirror-remote-access"
 	defaultClusterName                           = "remote"
 )
 
 type (
 	getCredentialsOptions struct {
+		namespace               string
 		serviceAccountName      string
 		serviceAccountNamespace string
 		clusterName             string
@@ -49,16 +50,15 @@ type (
 	}
 
 	setupRemoteClusterOptions struct {
-		serviceAccountName      string
-		serviceAccountNamespace string
-		gatewayNamespace        string
-		gatewayName             string
-		probePort               uint32
-		incomingPort            uint32
-		probePeriodSeconds      uint32
-		probePath               string
-		nginxImageVersion       string
-		nginxImage              string
+		namespace          string
+		serviceAccountName string
+		gatewayName        string
+		probePort          uint32
+		incomingPort       uint32
+		probePeriodSeconds uint32
+		probePath          string
+		nginxImageVersion  string
+		nginxImage         string
 	}
 
 	exportServiceOptions struct {
@@ -80,16 +80,15 @@ func newSetupRemoteClusterOptionsWithDefault() (*setupRemoteClusterOptions, erro
 	}
 
 	return &setupRemoteClusterOptions{
-		serviceAccountName:      defaults.ServiceAccountName,
-		serviceAccountNamespace: defaults.ServiceAccountNamespace,
-		gatewayNamespace:        defaults.GatewayNamespace,
-		gatewayName:             defaults.GatewayName,
-		probePort:               defaults.ProbePort,
-		incomingPort:            defaults.IncomingPort,
-		probePeriodSeconds:      defaults.ProbePeriodSeconds,
-		probePath:               defaults.ProbePath,
-		nginxImageVersion:       defaults.NginxImageVersion,
-		nginxImage:              defaults.NginxImage,
+		serviceAccountName: defaults.ServiceAccountName,
+		namespace:          defaults.Namespace,
+		gatewayName:        defaults.GatewayName,
+		probePort:          defaults.ProbePort,
+		incomingPort:       defaults.IncomingPort,
+		probePeriodSeconds: defaults.ProbePeriodSeconds,
+		probePath:          defaults.ProbePath,
+		nginxImageVersion:  defaults.NginxImageVersion,
+		nginxImage:         defaults.NginxImage,
 	}, nil
 
 }
@@ -128,7 +127,7 @@ func buildMulticlusterSetupValues(opts *setupRemoteClusterOptions) (*multicluste
 	}
 
 	defaults.GatewayName = opts.gatewayName
-	defaults.GatewayNamespace = opts.gatewayNamespace
+	defaults.Namespace = opts.namespace
 	defaults.IdentityTrustDomain = global.Global.IdentityContext.TrustDomain
 	defaults.IncomingPort = opts.incomingPort
 	defaults.LinkerdNamespace = controlPlaneNamespace
@@ -137,7 +136,6 @@ func buildMulticlusterSetupValues(opts *setupRemoteClusterOptions) (*multicluste
 	defaults.ProbePort = opts.probePort
 	defaults.ProxyOutboundPort = global.Proxy.OutboundPort.Port
 	defaults.ServiceAccountName = opts.serviceAccountName
-	defaults.ServiceAccountNamespace = opts.serviceAccountNamespace
 	defaults.NginxImageVersion = opts.nginxImageVersion
 	defaults.NginxImage = opts.nginxImage
 	defaults.LinkerdVersion = version.Version
@@ -171,8 +169,8 @@ func newGatewaysCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "remote", "the name of the remote cluster")
-	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "linkerd-gateway", "the namespace in which the gateway resides on the remote cluster")
+	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "the name of the remote cluster")
+	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "", "the namespace in which the gateway resides on the remote cluster")
 	cmd.Flags().StringVarP(&opts.timeWindow, "time-window", "t", "1m", "Time window (for example: \"15s\", \"1m\", \"10m\", \"1h\"). Needs to be at least 15s.")
 
 	return cmd
@@ -194,6 +192,10 @@ func newSetupRemoteCommand() *cobra.Command {
 
 			values, err := buildMulticlusterSetupValues(options)
 
+			if options.namespace == controlPlaneNamespace {
+				return errors.New("you need to specify a namespace different than the one in which Linkerd is installed")
+			}
+
 			if err != nil {
 				return err
 			}
@@ -206,6 +208,7 @@ func newSetupRemoteCommand() *cobra.Command {
 
 			files := []*chartutil.BufferedFile{
 				{Name: chartutil.ChartfileName},
+				{Name: "templates/namespace.yaml"},
 				{Name: "templates/gateway.yaml"},
 				{Name: "templates/service-mirror-rbac.yaml"},
 			}
@@ -229,13 +232,12 @@ func newSetupRemoteCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&options.gatewayName, "gateway-name", options.gatewayName, "the name of the gateway")
-	cmd.Flags().StringVar(&options.gatewayNamespace, "gateway-namespace", options.gatewayNamespace, "the namespace in which the gateway will be installed")
+	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "the namespace in which the gateway and service account will be installed")
 	cmd.Flags().Uint32Var(&options.probePort, "probe-port", options.probePort, "the liveness check port of the gateway")
 	cmd.Flags().Uint32Var(&options.incomingPort, "incoming-port", options.incomingPort, "the port on the gateway used for all incomming traffic")
 	cmd.Flags().StringVar(&options.probePath, "probe-path", options.probePath, "the path that will be exercised by the liveness checks")
 	cmd.Flags().Uint32Var(&options.probePeriodSeconds, "probe-period", options.probePeriodSeconds, "the interval at which the gateway will be checked for being alive in seconds")
 	cmd.Flags().StringVar(&options.serviceAccountName, "service-account-name", options.serviceAccountName, "the name of the service account")
-	cmd.Flags().StringVar(&options.serviceAccountNamespace, "service-account-namespace", options.serviceAccountNamespace, "the namespace in which the service account will be created")
 	cmd.Flags().StringVar(&options.nginxImageVersion, "nginx-image-version", options.nginxImageVersion, "the version of nginx to be used")
 	cmd.Flags().StringVar(&options.nginxImage, "nginx-image", options.nginxImage, "the nginx image to be used")
 
@@ -333,7 +335,8 @@ func newGetCredentialsCommand() *cobra.Command {
 				Type:     k8s.MirrorSecretType,
 				TypeMeta: metav1.TypeMeta{Kind: "Secret", APIVersion: "v1"},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
+					Name:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
+					Namespace: opts.namespace,
 					Annotations: map[string]string{
 						k8s.RemoteClusterNameLabel:                  opts.clusterName,
 						k8s.RemoteClusterDomainAnnotation:           opts.remoteClusterDomain,
@@ -355,8 +358,9 @@ func newGetCredentialsCommand() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "the namespace in which the secret will be created")
 	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", defaultServiceAccountName, "the name of the service account")
-	cmd.Flags().StringVar(&opts.serviceAccountNamespace, "service-account-namespace", defaultServiceAccountNs, "the namespace in which the service account will be created")
+	cmd.Flags().StringVar(&opts.serviceAccountNamespace, "service-account-namespace", defaultMulticlusterNamespace, "the namespace in which the svc account resides on the remote cluster")
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", defaultClusterName, "cluster name")
 	cmd.Flags().StringVar(&opts.remoteClusterDomain, "remote-cluster-domain", defaultClusterDomain, "custom remote cluster domain")
 
@@ -385,6 +389,17 @@ func transform(bytes []byte, gatewayName, gatewayNamespace string) ([]byte, []*e
 		if service.Annotations == nil {
 			service.Annotations = map[string]string{}
 		}
+		report := &exportReport{
+			resourceKind: strings.ToLower(metaType.Kind),
+			resourceName: service.Name,
+		}
+
+		if service.Labels != nil {
+			if _, isMirroredResource := service.Labels[k8s.MirroredResourceLabel]; isMirroredResource {
+				report.exported = false
+				return bytes, []*exportReport{report}, nil
+			}
+		}
 
 		service.Annotations[k8s.GatewayNameAnnotation] = gatewayName
 		service.Annotations[k8s.GatewayNsAnnotation] = gatewayNamespace
@@ -394,11 +409,7 @@ func transform(bytes []byte, gatewayName, gatewayNamespace string) ([]byte, []*e
 		if err != nil {
 			return nil, nil, err
 		}
-		report := &exportReport{
-			resourceKind: strings.ToLower(metaType.Kind),
-			resourceName: service.Name,
-			exported:     true,
-		}
+		report.exported = true
 		return transformed, []*exportReport{report}, nil
 	}
 
@@ -575,7 +586,7 @@ func newExportServiceCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.gatewayName, "gateway-name", "linkerd-gateway", "the name of the gateway")
-	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "linkerd-gateway", "the namespace of the gateway")
+	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", defaultMulticlusterNamespace, "the namespace of the gateway")
 
 	return cmd
 }

@@ -45,4 +45,3 @@ All PRs must receive approval from at least one super maintainer before merge.
 ## Changes in Governance
 
 All changes in Governance require a 2/3 majority organization vote.
-

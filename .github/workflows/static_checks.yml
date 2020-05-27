@@ -68,27 +68,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: shellcheck
-      # TODO: Each file listed here is excluded from shellcheck because it
-      # fails. As we fix files we can remove them from this list.
-      #
-      # Once we have this list paired down signficantly, we can switch to
-      # disabling specific checks across all files, for example:
-      # bin/shellcheck bin/* --exclude=SC1000
-      #
       # For more information on shellcheck failures:
       # https://github.com/koalaman/shellcheck/wiki/Checks
       run: |
-        find ./bin -type f \
-        ! -name docker-build-proxy \
-        ! -name _docker.sh \
-        ! -name fmt \
-        ! -name lint \
-        ! -name _log.sh \
-        ! -name minikube-start-hyperv.bat \
-        ! -name _tag.sh \
-        ! -name test-cleanup \
-        ! -name _test-run.sh \
-        ! -name update-go-deps-shas \
-        ! -name *.nuspec \
-        ! -name *.ps1 \
-        | xargs -I {} bin/shellcheck -x -P ./bin {}
+        bin/shellcheck-all
+  markdown_lint:
+    name: Markdown lint
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Checkout code
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
+    - name: Markdown lint
+      run: bin/markdownlint-all

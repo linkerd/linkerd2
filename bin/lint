@@ -12,12 +12,8 @@ targetbin=$rootdir/target/bin
 
 cd "$rootdir"
 
-os=linux
 exe=
-if [ "$(uname -s)" = Darwin ]; then
-  os=darwin
-elif [ "$(uname -o)" = Msys ]; then
-  os=windows
+if [ "$(uname -o)" = Msys ]; then
   exe=.exe
 fi
 

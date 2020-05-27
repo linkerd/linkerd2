@@ -1,3 +1,4 @@
+#!/bin/sh
 set -eu
 
 # build debug logging is disabled by default; enable with BUILD_DEBUG=1
