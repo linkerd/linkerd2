@@ -94,8 +94,6 @@ jobs:
         # Copy the CLI out of the $ARCHIVES/cli folder.
         cp image-archive\cli\windows\linkerd $HOME\linkerd.exe
 
-        # Validate the CLI version matches the current build tag.
-        [[ "$TAG" == "$($HOME/linkerd.exe version --short --client)" ]]
     - name: Run CLI Integration tests
       run: |
         # Export `init_test_run` and `*_integration_tests` into the
