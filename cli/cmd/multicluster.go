@@ -595,11 +595,11 @@ func newCmdMulticluster() *cobra.Command {
 
 	multiclusterCmd := &cobra.Command{
 
-		Hidden: true,
-		Use:    "multicluster [flags]",
+		Hidden:  true,
+		Use:     "multicluster [flags]",
 		Aliases: []string{"mc"},
-		Args:   cobra.NoArgs,
-		Short:  "Manages the multicluster setup for Linkerd",
+		Args:    cobra.NoArgs,
+		Short:   "Manages the multicluster setup for Linkerd",
 		Long: `Manages the multicluster setup for Linkerd.
 
 This command provides subcommands to manage the multicluster support
