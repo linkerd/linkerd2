@@ -121,10 +121,7 @@ check_linkerd_binary(){
         exit 1
     fi
     exit_code=0
-    (
-        set -x
-        "$linkerd_path" version --client 2>&1
-    )
+    "$linkerd_path" version --client > /dev/null 2>&1
     exit_on_err 'error running linkerd version command'
     printf '[ok]\n'
 }
