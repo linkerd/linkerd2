@@ -7,6 +7,10 @@ import (
 	"github.com/linkerd/linkerd2/testutil"
 )
 
+var (
+	TestHelper *testutil.TestHelper
+)
+
 func TestCliInstall(t *testing.T) {
 	if TestHelper.GetHelmReleaseName() != "" {
 		return
