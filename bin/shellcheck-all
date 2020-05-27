@@ -1,0 +1,22 @@
+#!/bin/sh -eu
+
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+
+# TODO: Each file excluded from the shell script search result below is
+# excluded from shellcheck because it fails. As we fix files we can remove them
+# from this exclusion list. And this comment when all files pass shellcheck.
+
+# For more information on shellcheck failures:
+# https://github.com/koalaman/shellcheck/wiki/Checks
+
+# We want the word splitting for the shellcheck arguments
+# shellcheck disable=SC2046
+"$bindir"/shellcheck -x -P "$bindir" $(find "$rootdir" -type f \
+		! -path "$bindir"/docker-build-proxy \
+		! -path "$bindir"/_log.sh \
+		! -path "$bindir"/test-cleanup \
+		! -path "$bindir"/_test-run.sh \
+		! -path "$rootdir"/cni-plugin/deployment/scripts/install-cni.sh \
+		! -path "$rootdir"/.git/hooks/\*.sample \
+		| while read -r f; do [ "$(file -b --mime-type "$f")" = 'text/x-shellscript' ] && printf '%s\0' "$f"; done | xargs -0)

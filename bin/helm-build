@@ -32,7 +32,7 @@ rootdir=$( cd "$bindir"/.. && pwd )
 
 # `bin/helm-build package` assumes the presence of "$rootdir"/target/helm/index-pre.yaml which is downloaded in the chart_deploy CI job
 if [ "$1" = package ]; then
-    # shellcheck source=bin/_tag.sh
+    # shellcheck source=_tag.sh
     . "$bindir"/_tag.sh
     tag=$(named_tag)
     clean_head || { echo 'There are uncommitted changes'; exit 1; }

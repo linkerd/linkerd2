@@ -12,10 +12,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// alphaClientsOptions holds values for command line flags that apply to the alpha
+// clients command. All fields in this struct should have corresponding flags added in
+// the newCmdAlphaClients func later in this file.
 type alphaClientsOptions struct {
 	namespace string
 }
 
+// newCmdAlphaClients creates a new cobra command for the `alpha clients` subcommand which
+// display client-side traffic stats to a resource. [Experimental]
 func newCmdAlphaClients() *cobra.Command {
 	options := alphaClientsOptions{
 		namespace: corev1.NamespaceDefault,

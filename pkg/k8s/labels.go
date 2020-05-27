@@ -205,6 +205,9 @@ const (
 	// injected.
 	ProxyEnableDebugAnnotation = ProxyConfigAnnotationsPrefix + "/enable-debug-sidecar"
 
+	// CloseWaitTimeoutAnnotation configures nf_conntrack_tcp_timeout_close_wait.
+	CloseWaitTimeoutAnnotation = ProxyConfigAnnotationsPrefix + "/close-wait-timeout"
+
 	// ProxyTraceCollectorSvcAddrAnnotation can be used to enable tracing on a proxy.
 	// It takes the collector service name (e.g. oc-collector.tracing:55678) as
 	// its value.
@@ -373,6 +376,10 @@ const (
 	// MirroredResourceLabel indicates that this resource is the result
 	// of a mirroring operation (can be a namespace or a service)
 	MirroredResourceLabel = SvcMirrorPrefix + "/mirrored-service"
+
+	// MulticlusterGatewayAnnotation indicates that this service is a
+	// gateway
+	MulticlusterGatewayAnnotation = SvcMirrorPrefix + "/multicluster-gateway"
 
 	// RemoteClusterNameLabel put on a local mirrored service, it
 	// allows us to associate a mirrored service with a remote cluster
