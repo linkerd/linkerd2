@@ -129,7 +129,6 @@ func init() {
 	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
-	RootCmd.AddCommand(newCmdInstallServiceMirror())
 	RootCmd.AddCommand(newCmdMulticluster())
 	RootCmd.AddCommand(newCmdUninstall())
 }

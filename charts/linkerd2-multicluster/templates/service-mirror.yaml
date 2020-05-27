@@ -1,3 +1,4 @@
+{{if .Values.serviceMirror -}}
 ---
 kind: Namespace
 apiVersion: v1
@@ -92,7 +93,7 @@ spec:
       - args:
         - service-mirror
         - -log-level={{.Values.logLevel}}
-        - -event-requeue-limit={{.Values.eventRequeueLimit}}
+        - -event-requeue-limit={{.Values.serviceMirrorRetryLimit}}
         - -namespace={{.Values.namespace}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
         name: service-mirror
@@ -102,3 +103,4 @@ spec:
         - containerPort: 9999
           name: admin-http
       serviceAccountName: linkerd-service-mirror
+{{end -}}
