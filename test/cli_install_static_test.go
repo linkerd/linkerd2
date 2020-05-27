@@ -15,6 +15,7 @@ func TestCliInstall(t *testing.T) {
 	var (
 		cmd  = "install"
 		args = []string{
+			"--ignore-cluster",
 			"--controller-log-level", "debug",
 			"--proxy-log-level", "warn,linkerd2_proxy=debug",
 			"--proxy-version", "test-version",
