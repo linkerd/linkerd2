@@ -78,7 +78,7 @@ jobs:
       uses: actions/checkout@722adc6
     - name: Try to load cached Go modules
       # actions/cache@v1.1.2
-          uses: actions/cache@70655ec
+      uses: actions/cache@70655ec
       with:
         path: ~/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
