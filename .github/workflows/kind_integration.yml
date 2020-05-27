@@ -92,7 +92,7 @@ jobs:
     - name: Install CLI
       run: |
         # Copy the CLI out of the $ARCHIVES/cli folder.
-        cp image-archive\cli\windows\linkerd $HOME\linkerd.exe
+        cp image-archives\cli\windows\linkerd $HOME\linkerd.exe
 
     - name: Run CLI Integration tests
       run: |
