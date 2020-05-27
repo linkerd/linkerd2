@@ -279,10 +279,9 @@ func newGatewaysCommand() *cobra.Command {
 	opts := gatewaysOptions{}
 
 	cmd := &cobra.Command{
-		Hidden: false,
-		Use:    "gateways",
-		Short:  "Display stats information about the remote gateways",
-		Args:   cobra.NoArgs,
+		Use:   "gateways",
+		Short: "Display stats information about the remote gateways",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req := &pb.GatewaysRequest{
 				RemoteClusterName: opts.clusterName,
@@ -315,7 +314,6 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Hidden: false,
 		Use:    "install",
 		Short:  "Output Kubernetes configs to install the Linkerd multicluster add-on",
 		Args:   cobra.NoArgs,
@@ -391,7 +389,6 @@ func newLinkCommand() *cobra.Command {
 	opts := linkOptions{}
 
 	cmd := &cobra.Command{
-		Hidden: false,
 		Use:    "link",
 		Short:  "Outputs a Kubernetes secret that allows a service mirror component to connect to this cluster",
 		Args:   cobra.NoArgs,
@@ -708,9 +705,8 @@ func newExportServiceCommand() *cobra.Command {
 	opts := exportServiceOptions{}
 
 	cmd := &cobra.Command{
-		Hidden: false,
-		Use:    "export-service",
-		Short:  "Exposes a remote service to be mirrored",
+		Use:   "export-service",
+		Short: "Exposes a remote service to be mirrored",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
@@ -744,12 +740,10 @@ func newExportServiceCommand() *cobra.Command {
 func newCmdMulticluster() *cobra.Command {
 
 	multiclusterCmd := &cobra.Command{
-
-		Hidden: true,
-		Use:    "multicluster [flags]",
+		Use:     "multicluster [flags]",
 		Aliases: []string{"mc"},
-		Args:   cobra.NoArgs,
-		Short:  "Manages the multicluster setup for Linkerd",
+		Args:    cobra.NoArgs,
+		Short:   "Manages the multicluster setup for Linkerd",
 		Long: `Manages the multicluster setup for Linkerd.
 
 This command provides subcommands to manage the multicluster support
