@@ -65,8 +65,7 @@ type (
 	linkOptions struct {
 		namespace           string
 		clusterName         string
-		remoteClusterDomain string
-		remoteClusterServer string
+		apiServerAddress    string
 		serviceAccountName  string
 	}
 
@@ -229,7 +228,7 @@ func newAllowCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: false,
 		Use:    "allow",
-		Short:  "Outputs credential resources to that needs to be installed on the remote cluster to allow service mirror controllers to connect to it and mirror services",
+		Short:  "Outputs credential resources that allow service-mirror controllers to connect to this cluster",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -394,7 +393,7 @@ func newLinkCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: false,
 		Use:    "link",
-		Short:  "Outputs a Kubernetes secret containing the credential that can allow a service mirror component to connect to a remote cluster",
+		Short:  "Outputs a Kubernetes secret that allows a service mirror component to connect to this cluster",
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -402,7 +401,7 @@ func newLinkCommand() *cobra.Command {
 				return errors.New("You need to specify cluster name")
 			}
 
-			_, err := getLinkerdConfigMap()
+			configMap, err := getLinkerdConfigMap()
 			if err != nil {
 				if kerrors.IsNotFound(err) {
 					return errors.New("you need Linkerd to be installed on a cluster in order to get its credentials")
@@ -470,8 +469,8 @@ func newLinkCommand() *cobra.Command {
 
 			cluster := config.Clusters[context.Cluster]
 
-			if opts.remoteClusterServer != "" {
-				cluster.Server = opts.remoteClusterServer
+			if opts.apiServerAddress != "" {
+				cluster.Server = opts.apiServerAddress
 			}
 
 			config.Clusters = map[string]*api.Cluster{
@@ -491,7 +490,7 @@ func newLinkCommand() *cobra.Command {
 					Namespace: opts.namespace,
 					Annotations: map[string]string{
 						k8s.RemoteClusterNameLabel:                  opts.clusterName,
-						k8s.RemoteClusterDomainAnnotation:           opts.remoteClusterDomain,
+						k8s.RemoteClusterDomainAnnotation:           configMap.Global.ClusterDomain,
 						k8s.RemoteClusterLinkerdNamespaceAnnotation: controlPlaneNamespace,
 					},
 				},
@@ -512,9 +511,8 @@ func newLinkCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The namespace for the service account")
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "Cluster name")
-	cmd.Flags().StringVar(&opts.remoteClusterDomain, "remote-cluster-domain", defaultClusterDomain, "Custom remote cluster domain")
-	cmd.Flags().StringVar(&opts.remoteClusterServer, "cluster-server", "", "Custom remote cluster domain")
-	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", defaultServiceAccountName, "The name of th service account associated with the credentials")
+	cmd.Flags().StringVar(&opts.apiServerAddress, "api-server-address", "", "The api server address of the target cluster")
+	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", defaultServiceAccountName, "The name of the service account associated with the credentials")
 
 	return cmd
 }

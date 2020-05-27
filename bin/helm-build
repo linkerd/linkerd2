@@ -49,8 +49,7 @@ if [ "$1" = package ]; then
 
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2
     "$bindir"/helm --version "$version" --app-version "$tag" -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-cni
-    # TODO: When ready to publish, uncomment
-    #"$bindir"/helm --version $version --app-version $tag -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-multicluster
+    "$bindir"/helm --version $version --app-version $tag -d "$rootdir"/target/helm package "$rootdir"/charts/linkerd2-multicluster
     mv "$rootdir"/target/helm/index-pre.yaml "$rootdir"/target/helm/index-pre-"$version".yaml
     "$bindir"/helm repo index --url "https://helm.linkerd.io/$repo/" --merge "$rootdir"/target/helm/index-pre-"$version".yaml "$rootdir"/target/helm
 
