@@ -96,13 +96,8 @@ jobs:
 
     - name: Run CLI Integration tests
       run: |
-        # Export `init_test_run` and `*_integration_tests` into the
-        # environment.
-        . bin/_test-run.sh
-
-        init_test_run $HOME/linkerd.exe
-        cli_integration_static_tests
-
+        test_directory=.\test
+        GO111MODULE=on go test --failfast --mod=readonly "$test_directory\cli_install_static_test.go" --linkerd=$HOME\linkerd.exe --integration-tests TestCliInstall
   kind_integration_tests:
     strategy:
       matrix:
