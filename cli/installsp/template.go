@@ -24,14 +24,6 @@ spec:
     condition:
       method: POST
       pathRegex: /api/v1/ListServices
-  - name: POST /api/v1/Tap
-    condition:
-      method: POST
-      pathRegex: /api/v1/Tap
-  - name: POST /api/v1/TapByResource
-    condition:
-      method: POST
-      pathRegex: /api/v1/TapByResource
   - name: POST /api/v1/Version
     condition:
       method: POST
@@ -64,9 +56,9 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   routes:
-  - name: GET /api/v1/query
+  - name: POST /api/v1/query
     condition:
-      method: GET
+      method: POST
       pathRegex: /api/v1/query
   - name: GET /api/v1/query_range
     condition:
@@ -96,6 +88,10 @@ spec:
     condition:
       method: GET
       pathRegex: /api/dashboards/uid/.*
+  - name: GET /api/dashboard/{dashboard}
+    condition:
+      method: GET
+      pathRegex: /api/dashboard/.*
   - name: GET /api/datasources/proxy/1/api/v1/series
     condition:
       method: GET
@@ -124,16 +120,4 @@ spec:
     condition:
       method: GET
       pathRegex: /public/img/.*
----
-apiVersion: linkerd.io/v1alpha2
-kind: ServiceProfile
-metadata:
-  name: linkerd-tap.{{.Namespace}}.svc.{{.ClusterDomain}}
-  namespace: {{.Namespace}}
-spec:
-  routes:
-  - name: POST /linkerd2.controller.tap.Tap/TapByResource
-    condition:
-      method: POST
-      pathRegex: /linkerd2\.controller\.tap\.Tap/TapByResource
 `
