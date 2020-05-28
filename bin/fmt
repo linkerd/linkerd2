@@ -12,7 +12,7 @@ while IFS= read -r line; do dirs+=("$line"); done <<< "$(go list -f \{\{.Dir\}\}
 files=$(bin/goimports -l "${dirs[@]}" | sort -u)
 
 if [ -n "$files" ]; then
-  for file in $files; do
+  for file in "${files[@]}"; do
     bin/goimports -d "$@" "$file"
   done
   exit 64
