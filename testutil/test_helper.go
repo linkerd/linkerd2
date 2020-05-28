@@ -60,6 +60,31 @@ var LinkerdDeployReplicas = map[string]deploySpec{
 	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 }
 
+// NewStaticCliTestHelper creates a new instance of TestHelper for the current test run.
+// This consists of only the static cli flags without the kubernetes api stuff.
+func NewStaticCliTestHelper() *TestHelper {
+
+	exit := func(code int, msg string) {
+		fmt.Fprintln(os.Stderr, msg)
+		os.Exit(code)
+	}
+
+	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
+	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
+
+	flag.Parse()
+
+	if *linkerd == "" {
+		exit(1, "-linkerd flag is required")
+	}
+
+	return &TestHelper{
+		linkerd:   *linkerd,
+		namespace: *namespace,
+	}
+
+}
+
 // NewTestHelper creates a new instance of TestHelper for the current test run.
 // The new TestHelper can be configured via command line flags.
 func NewTestHelper() *TestHelper {
