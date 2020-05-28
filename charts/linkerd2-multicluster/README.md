@@ -29,9 +29,9 @@ linkerd2-multicluster chart and their default values.
 |`identityTrustDomain`            | Trust domain used for identity of the existing linkerd installation                         |`cluster.local`                               |
 |`linkerdNamespace`               | The namespace of the existing Linkerd installation                                          |`linkerd`                                     |
 |`linkerdVersion`                 | Control plane version                                                                       | latest version                               |
-|`namespace`                      | Service Mirror component namespace                                                          |`linkerd-multicluster`                      |
+|`namespace`                      | Service Mirror component namespace                                                          |`linkerd-multicluster`                        |
 |`proxyOutboundPort`              | The port on which the proxy accepts outbound traffic                                        |`4140`                                        |
-|`remoteAccessServiceAccountName` | The name of the service account used to allow remote clusters to mirror local services      |`linkerd-service-mirror-remote-access-default`|
+|`remoteMirrorServiceAccountName` | The name of the service account used to allow remote clusters to mirror local services      |`linkerd-service-mirror-remote-access-default`|
 |`remoteMirrorServiceAccount`     | If the remote mirror service account should be installed                                    |`true`                                        |
 |`serviceMirror`                  | If the service mirror component should be installed                                         |`true`                                        |
 |`logLevel`                       | Log level for the Multicluster components                                                   |`info`                                        |
