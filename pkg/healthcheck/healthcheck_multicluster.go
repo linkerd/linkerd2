@@ -338,6 +338,8 @@ func serviceExported(svc corev1.Service) bool {
 
 func (hc *HealthChecker) checkDaisyChains() error {
 	if hc.Options.ShouldCheckMulticluster {
+		errs := []error{}
+
 		svcs, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
 		if err != nil {
 			return err
@@ -345,7 +347,7 @@ func (hc *HealthChecker) checkDaisyChains() error {
 		for _, svc := range svcs.Items {
 			_, isMirror := svc.Labels[k8s.MirroredResourceLabel]
 			if isMirror && serviceExported(svc) {
-				return fmt.Errorf("mirror service %s.%s is exported", svc.Name, svc.Namespace)
+				errs = append(errs, fmt.Errorf("mirror service %s.%s is exported", svc.Name, svc.Namespace))
 			}
 		}
 
@@ -373,12 +375,19 @@ func (hc *HealthChecker) checkDaisyChains() error {
 					}
 					_, isMirror := leaf.Labels[k8s.MirroredResourceLabel]
 					if isMirror {
-						return fmt.Errorf("exported service %s.%s routes to mirror service %s.%s via traffic split %s.%s",
+						errs = append(errs, fmt.Errorf("exported service %s.%s routes to mirror service %s.%s via traffic split %s.%s",
 							apex.Name, apex.Namespace, leaf.Name, leaf.Namespace, split.Name, split.Namespace,
-						)
+						))
 					}
 				}
 			}
+		}
+		if len(errs) > 0 {
+			messages := []string{}
+			for _, err := range errs {
+				messages = append(messages, fmt.Sprintf("* %s", err.Error()))
+			}
+			return errors.New(strings.Join(messages, "\n"))
 		}
 		return nil
 	}
