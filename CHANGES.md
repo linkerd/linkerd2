@@ -7,11 +7,10 @@ adds new health checks for the tracing add-on, and addresses an issue in which
 outbound requests from the proxy result in looping behavior.
 
 * CLI
-  * Added `allow` and `link` commands, effectively enabling a cluster to have
-    more than one set of credentials that allow it to be mirrored
-  * Added documentation for alpha cli command
+  * Added the `multicluster` command along with subcommands to configure and
+    deploy Linkerd workloads which enable services to be mirrored across
+    clusters
   * Added health-checks for tracing add-on
-  * Separated multi-cluster checks and run them after add-ons
 * Proxy
   * Added logic to prevent loops in outbound requests
 
