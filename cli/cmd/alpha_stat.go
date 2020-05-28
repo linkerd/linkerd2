@@ -30,12 +30,17 @@ var allowedKinds = map[string]struct{}{
 	k8s.StatefulSet:           struct{}{},
 }
 
+// alphaStatOptions holds values for command line flags that apply to the alpha
+// stat command. All fields in this struct should have corresponding flags added in
+// the newCmdAlphaStat func later in this file.
 type alphaStatOptions struct {
 	namespace     string
 	toResource    string
 	allNamespaces bool
 }
 
+// newCmdAlphaStat creates a new cobra command for the `alpha stat` subcommand which
+// display traffic stats about one or many resources. [Experimental]
 func newCmdAlphaStat() *cobra.Command {
 	options := alphaStatOptions{
 		namespace: "default",
@@ -45,7 +50,7 @@ func newCmdAlphaStat() *cobra.Command {
 		Use:   "stat [flags] (RESOURCE)",
 		Short: "Display traffic stats about one or many resources",
 		Long: `Display traffic stats about one or many resources
-		
+
 (RESOURCE) can be a resource kind; one of:
   * cronjobs
   * daemonsets
@@ -176,6 +181,8 @@ func renderTrafficMetricsList(metrics *v1alpha1.TrafficMetricsList, allNamespace
 	t.Render(w)
 }
 
+// renderTrafficMetricsEdgesList will render a table to the given Writer.
+// Rows will be filtered to make sure that only traffic directed to the resource requested by the `--to` flag is shown
 func renderTrafficMetricsEdgesList(metrics *v1alpha1.TrafficMetricsList, w io.Writer, toResource *public.Resource, direction string) {
 	t := buildTable(true, false)
 	t.Data = []table.Row{}
