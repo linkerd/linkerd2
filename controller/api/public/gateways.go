@@ -11,7 +11,6 @@ import (
 
 const (
 	gatewayAliveQuery           = "sum(gateway_alive%s) by (%s)"
-	numMirroredServicesQuery    = "sum(num_mirrored_services%s) by (%s)"
 	gatewayLatencyQuantileQuery = "histogram_quantile(%s, sum(irate(gateway_probe_latency_ms_bucket%s[%s])) by (le, %s))"
 )
 
@@ -85,10 +84,6 @@ func processPrometheusResult(results []promResult) map[string]*pb.GatewaysTable_
 				} else {
 					rows[key].Alive = true
 				}
-
-			case promNumMirroredServices:
-				addRow()
-				rows[key].PairedServices = value
 			case promLatencyP50:
 				addRow()
 				rows[key].LatencyMsP50 = value
@@ -111,8 +106,7 @@ func (s *grpcServer) getGatewaysMetrics(ctx context.Context, req *pb.GatewaysReq
 	reqLabels := generateLabelStringWithExclusion(labels, string(gatewayNameLabel))
 
 	promQueries := map[promType]string{
-		promGatewayAlive:        gatewayAliveQuery,
-		promNumMirroredServices: numMirroredServicesQuery,
+		promGatewayAlive: gatewayAliveQuery,
 	}
 
 	metricsResp, err := s.getPrometheusMetrics(ctx, promQueries, gatewayLatencyQuantileQuery, reqLabels, timeWindow, groupBy.String())

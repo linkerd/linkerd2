@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"k8s.io/apimachinery/pkg/labels"
 	"os"
 	"strings"
 
@@ -294,7 +295,14 @@ func newGatewaysCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			renderGateways(resp.GetOk().GatewaysTable.Rows, stdout)
+
+			numSvcMap, err := getNumServicesMap()
+
+			if err != nil {
+				return err
+			}
+
+			renderGateways(resp.GetOk().GatewaysTable.Rows, numSvcMap, stdout)
 			return nil
 		},
 	}
@@ -784,12 +792,12 @@ func requestGatewaysFromAPI(client pb.ApiClient, req *pb.GatewaysRequest) (*pb.G
 	return resp, nil
 }
 
-func renderGateways(rows []*pb.GatewaysTable_Row, w io.Writer) {
+func renderGateways(rows []*pb.GatewaysTable_Row, numSvcMap map[string]uint64, w io.Writer) {
 	t := buildGatewaysTable()
 	t.Data = []table.Row{}
 	for _, row := range rows {
 		row := row // Copy to satisfy golint.
-		t.Data = append(t.Data, gatewaysRowToTableRow(row))
+		t.Data = append(t.Data, gatewaysRowToTableRow(row, numSvcMap))
 	}
 	t.Render(w)
 }
@@ -804,6 +812,41 @@ var (
 	latencyP95Header       = "LATENCY_P95"
 	latencyP99Header       = "LATENCY_P99"
 )
+
+func getNumServicesMap() (map[string]uint64, error) {
+
+	results := make(map[string]uint64)
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return nil, err
+	}
+	matchLabels := map[string]string{
+		k8s.MirroredResourceLabel: "true",
+	}
+
+	services, err := kubeAPI.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{LabelSelector: labels.Set(matchLabels).AsSelector().String()})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, svc := range services.Items {
+		if svc.Labels != nil {
+			clusterName := svc.Labels[k8s.RemoteClusterNameLabel]
+			gatewayName := svc.Labels[k8s.RemoteGatewayNameLabel]
+			gatewayNs := svc.Labels[k8s.RemoteGatewayNsLabel]
+			key := fmt.Sprintf("%s-%s-%s", clusterName, gatewayName, gatewayNs)
+
+			value, hasResult := results[key]
+			if hasResult {
+				results[key] = value + 1
+			} else {
+				results[key] = 1
+			}
+		}
+	}
+
+	return results, nil
+}
 
 func buildGatewaysTable() table.Table {
 	columns := []table.Column{
@@ -853,7 +896,14 @@ func buildGatewaysTable() table.Table {
 	return t
 }
 
-func gatewaysRowToTableRow(row *pb.GatewaysTable_Row) []string {
+func gatewaysRowToTableRow(row *pb.GatewaysTable_Row, numSvcMap map[string]uint64) []string {
+
+	numPairedServices := uint64(0)
+	key := fmt.Sprintf("%s-%s-%s", row.ClusterName, row.Name, row.Namespace)
+	if val, ok := numSvcMap[key]; ok {
+		numPairedServices = val
+	}
+
 	valueOrPlaceholder := func(value string) string {
 		if row.Alive {
 			return value
@@ -871,7 +921,7 @@ func gatewaysRowToTableRow(row *pb.GatewaysTable_Row) []string {
 		row.Namespace,
 		row.Name,
 		alive,
-		fmt.Sprint(row.PairedServices),
+		fmt.Sprint(numPairedServices),
 		valueOrPlaceholder(fmt.Sprintf("%dms", row.LatencyMsP50)),
 		valueOrPlaceholder(fmt.Sprintf("%dms", row.LatencyMsP95)),
 		valueOrPlaceholder(fmt.Sprintf("%dms", row.LatencyMsP99)),
