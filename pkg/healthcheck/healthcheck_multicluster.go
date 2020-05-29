@@ -399,11 +399,14 @@ func (hc *HealthChecker) checkRemoteClusterGatewaysHealth(ctx context.Context) e
 		}
 
 		var deadGateways []string
+		var aliveGateways []string
 		if len(rsp.GetOk().GatewaysTable.Rows) == 0 {
 			return &SkipError{Reason: "no remote gateways"}
 		}
 		for _, gtw := range rsp.GetOk().GatewaysTable.Rows {
-			if !gtw.Alive {
+			if gtw.Alive {
+				aliveGateways = append(aliveGateways, fmt.Sprintf("\t* cluster: [%s], gateway: [%s/%s]", gtw.ClusterName, gtw.Namespace, gtw.Name))
+			} else {
 				deadGateways = append(deadGateways, fmt.Sprintf("* cluster: [%s], gateway: [%s/%s]", gtw.ClusterName, gtw.Namespace, gtw.Name))
 			}
 		}
@@ -411,7 +414,7 @@ func (hc *HealthChecker) checkRemoteClusterGatewaysHealth(ctx context.Context) e
 		if len(deadGateways) > 0 {
 			return fmt.Errorf("Some gateways are not alive:\n\t%s", strings.Join(deadGateways, "\n\t"))
 		}
-		return nil
+		return &VerboseSuccess{Message: strings.Join(aliveGateways, "\n")}
 	}
 	return &SkipError{Reason: "not checking muticluster"}
 }

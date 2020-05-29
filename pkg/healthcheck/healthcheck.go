@@ -261,6 +261,18 @@ func (e *SkipError) Error() string {
 	return e.Reason
 }
 
+// VerboseSuccess implements the error interface but represents a success with
+// a message.
+type VerboseSuccess struct {
+	Message string
+}
+
+// Error satisfies the error interface for VerboseSuccess.  Since VerboseSuccess
+// does not actually represent a failure, this returns the empty string.
+func (e *VerboseSuccess) Error() string {
+	return ""
+}
+
 type checker struct {
 	// description is the short description that's printed to the command line
 	// when the check is executed
@@ -291,6 +303,10 @@ type checker struct {
 	// check is the function that's called to execute the check; if the function
 	// returns an error, the check fails
 	check func(context.Context) error
+
+	// subchecks is an alternative to check that returns a list of checks to
+	// perform.  Check status is successful if all subchecks are successful.
+	subchecks func(context.Context) ([]checker, error)
 
 	// checkRPC is an alternative to check that can be used to perform a remote
 	// check using the SelfCheck gRPC endpoint; check status is based on the value
@@ -1317,18 +1333,20 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer Ch
 			log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
 			return true
 		}
-		if err != nil {
-			err = &CategoryError{categoryID, err}
-		}
+
 		checkResult := &CheckResult{
 			Category:    categoryID,
 			Description: c.description,
 			HintAnchor:  c.hintAnchor,
 			Warning:     c.warning,
-			Err:         err,
+		}
+		if vs, ok := err.(*VerboseSuccess); ok {
+			checkResult.Description = fmt.Sprintf("%s\n%s", checkResult.Description, vs.Message)
+		} else if err != nil {
+			checkResult.Err = &CategoryError{categoryID, err}
 		}
 
-		if err != nil && time.Now().Before(c.retryDeadline) {
+		if checkResult.Err != nil && time.Now().Before(c.retryDeadline) {
 			checkResult.Retry = true
 			if !c.surfaceErrorOnRetry {
 				checkResult.Err = errors.New("waiting for check to complete")
@@ -1341,7 +1359,7 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer Ch
 		}
 
 		observer(checkResult)
-		return err == nil
+		return checkResult.Err == nil
 	}
 }
 
