@@ -304,10 +304,6 @@ type checker struct {
 	// returns an error, the check fails
 	check func(context.Context) error
 
-	// subchecks is an alternative to check that returns a list of checks to
-	// perform.  Check status is successful if all subchecks are successful.
-	subchecks func(context.Context) ([]checker, error)
-
 	// checkRPC is an alternative to check that can be used to perform a remote
 	// check using the SelfCheck gRPC endpoint; check status is based on the value
 	// of the gRPC response
