@@ -371,6 +371,24 @@ const (
 	// of a mirroring operation (can be a namespace or a service)
 	MirroredResourceLabel = SvcMirrorPrefix + "/mirrored-service"
 
+	// MirroredGatewayLabel indicates that this is a mirrored gateway
+	MirroredGatewayLabel = SvcMirrorPrefix + "/mirrored-gateway"
+
+	// MirroredGatewayProbePort specifies the port probe for the gateway mirror
+	MirroredGatewayProbePort = SvcMirrorPrefix + "/mirrored-gateway-probe-port"
+
+	// MirroredGatewayProbePeriod specifies the probe period for the gateway mirror
+	MirroredGatewayProbePeriod = SvcMirrorPrefix + "/mirrored-gateway-probe-period"
+
+	// MirroredGatewayProbePath specifies the probe path for the gateway mirror
+	MirroredGatewayProbePath = SvcMirrorPrefix + "/mirrored-gateway-probe-path"
+
+	// MirroredGatewayRemoteName specifies the name of the remote gateway that has been mirrored
+	MirroredGatewayRemoteName = SvcMirrorPrefix + "/mirrored-gateway-remote-name"
+
+	// MirroredGatewayRemoteNameSpace specifies the namespace of the remote gateway that has been mirrored
+	MirroredGatewayRemoteNameSpace = SvcMirrorPrefix + "/mirrored-gateway-remote-namespace"
+
 	// MulticlusterGatewayAnnotation indicates that this service is a
 	// gateway
 	MulticlusterGatewayAnnotation = SvcMirrorPrefix + "/multicluster-gateway"

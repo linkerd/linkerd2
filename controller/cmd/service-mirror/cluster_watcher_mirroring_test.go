@@ -10,10 +10,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-type NoOpProbeEventSink struct{}
-
-func (s *NoOpProbeEventSink) send(event interface{}) {}
-
 type mirroringTestCase struct {
 	description            string
 	environment            *testEnvironment
@@ -26,7 +22,7 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 	t.Run(tc.description, func(t *testing.T) {
 
 		q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-		localAPI, err := tc.environment.runEnvironment(&NoOpProbeEventSink{}, q)
+		localAPI, err := tc.environment.runEnvironment(q)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -464,17 +460,10 @@ func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
 			environment: onAddOrUpdateExportedSvc(isAdd),
 			expectedEventsInQueue: []interface{}{&RemoteServiceCreated{
 				service: remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "resVersion", nil),
-				gatewayData: &gatewayMetadata{
+				gatewayData: gatewayMetadata{
 					Name:      "gateway",
 					Namespace: "gateway-ns",
 				},
-			}},
-		},
-		{
-			description: fmt.Sprintf("enqueue a ConsiderGatewayUpdateDispatch event if this is clearly not a mirrorable service (%s)", testType),
-			environment: onAddOrUpdateNonExportedSvc(isAdd),
-			expectedEventsInQueue: []interface{}{&ConsiderGatewayUpdateDispatch{
-				maybeGateway: remoteService("test-service", "test-namespace", "", "", "resVersion", nil),
 			}},
 		},
 		{
@@ -512,10 +501,6 @@ func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
 			expectedEventsInQueue: []interface{}{&RemoteServiceDeleted{
 				Name:      "test-service",
 				Namespace: "test-namespace",
-				GatewayData: gatewayMetadata{
-					Name:      "gateway",
-					Namespace: "gateway-ns",
-				},
 			}},
 
 			expectedLocalServices: []*corev1.Service{
@@ -551,24 +536,13 @@ func TestOnDelete(t *testing.T) {
 				&RemoteServiceDeleted{
 					Name:      "test-service",
 					Namespace: "test-namespace",
-					GatewayData: gatewayMetadata{
-						Name:      "gateway",
-						Namespace: "gateway-ns",
-					},
 				},
 			},
 		},
 		{
-			description: "enqueues a RemoteGatewayDeleted because there is no gateway metadata present on the service",
-			environment: onDeleteNoGatewayMetadata,
-			expectedEventsInQueue: []interface{}{
-				&RemoteGatewayDeleted{
-					gatewayData: gatewayMetadata{
-						Name:      "gateway",
-						Namespace: "test-namespace",
-					},
-				},
-			},
+			description:           "skips because there is no gateway metadata present on the service",
+			environment:           onDeleteNoGatewayMetadata,
+			expectedEventsInQueue: []interface{}{},
 		},
 	} {
 		tc := tt // pin

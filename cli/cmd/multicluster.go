@@ -63,10 +63,10 @@ type (
 	}
 
 	linkOptions struct {
-		namespace           string
-		clusterName         string
-		apiServerAddress    string
-		serviceAccountName  string
+		namespace          string
+		clusterName        string
+		apiServerAddress   string
+		serviceAccountName string
 	}
 
 	exportServiceOptions struct {
@@ -314,9 +314,9 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:    "install",
-		Short:  "Output Kubernetes configs to install the Linkerd multicluster add-on",
-		Args:   cobra.NoArgs,
+		Use:   "install",
+		Short: "Output Kubernetes configs to install the Linkerd multicluster add-on",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			values, err := buildMulticlusterInstallValues(options)
@@ -389,9 +389,9 @@ func newLinkCommand() *cobra.Command {
 	opts := linkOptions{}
 
 	cmd := &cobra.Command{
-		Use:    "link",
-		Short:  "Outputs a Kubernetes secret that allows a service mirror component to connect to this cluster",
-		Args:   cobra.NoArgs,
+		Use:   "link",
+		Short: "Outputs a Kubernetes secret that allows a service mirror component to connect to this cluster",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if opts.clusterName == "" {
@@ -764,7 +764,7 @@ components on a cluster, manage credentials and link clusters together.`,
   # Exporting all the resources inside a folder and its sub-folders.
   linkerd export-service  <folder> | kubectl apply -f -`,
 	}
-	
+
 	multiclusterCmd.AddCommand(newLinkCommand())
 	multiclusterCmd.AddCommand(newMulticlusterInstallCommand())
 	multiclusterCmd.AddCommand(newExportServiceCommand())
