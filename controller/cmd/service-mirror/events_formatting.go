@@ -76,8 +76,12 @@ func (rsd RemoteServiceDeleted) String() string {
 	return fmt.Sprintf("RemoteServiceDeleted: {name: %s, namespace: %s }", rsd.Name, rsd.Namespace)
 }
 
-func (rgd *RemoteGatewayDeleted) String() string {
+func (rgd RemoteGatewayDeleted) String() string {
 	return fmt.Sprintf("RemoteGatewayDeleted: {gatewayData: %s}", rgd.gatewayData)
+}
+
+func (rgd *RemoteGatewayCreated) String() string {
+	return fmt.Sprintf("RemoteGatewayCreated: {gatewaySpec: %s}", rgd.gatewaySpec)
 }
 
 func (rgu RemoteGatewayUpdated) String() string {
