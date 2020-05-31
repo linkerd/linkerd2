@@ -1796,6 +1796,8 @@ type: kubernetes.io/tls`,
 			nil,
 		},
 		{
+			// test the handling of certificates in webhooks with actual two-level
+			// certificate chain instead of self-signed certs.
 			"",
 			[]string{`
 kind: ConfigMap
