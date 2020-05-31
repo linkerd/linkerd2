@@ -173,9 +173,6 @@ spec:
     port: 9090
     targetPort: 9090
 ---
-{{ if empty .Values.global.proxy.image.version -}}
-{{ $_ := set .Values.global.proxy.image "Version" .Values.global.linkerdVersion -}}
-{{ end -}}
 {{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
 {{ $_ := set .Values.global.proxy "component" "linkerd-prometheus" -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}

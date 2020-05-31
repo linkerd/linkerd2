@@ -1,5 +1,19 @@
 # Changes
 
+## edge-20.5.5
+
+This edge release adds refinements to the Linkerd multicluster implementation,
+adds new health checks for the tracing add-on, and addresses an issue in which
+outbound requests from the proxy result in looping behavior.
+
+* CLI
+  * Added the `multicluster` command along with subcommands to configure and
+    deploy Linkerd workloads which enable services to be mirrored across
+    clusters
+  * Added health-checks for tracing add-on
+* Proxy
+  * Added logic to prevent loops in outbound requests
+
 ## edge-20.5.4
 
 * CLI
@@ -61,7 +75,7 @@ multicluster. For a tutorial on how to do that, check out the
 * Helm
   * Moved Grafana templates into a separate add-on chart
 * Proxy
-  * Improved latency under high-concurrency use cases.  
+  * Improved latency under high-concurrency use cases.
 
 ## edge-20.5.1
 
