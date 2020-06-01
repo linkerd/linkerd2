@@ -705,6 +705,8 @@ func (rcsw *RemoteClusterServiceWatcher) updateGatewayMirrorService(spec *Gatewa
 		updatedService := service.DeepCopy()
 		if updatedService.Annotations != nil {
 			updatedService.Annotations[consts.RemoteGatewayResourceVersionAnnotation] = spec.resourceVersion
+			updatedService.Annotations[consts.MirroredGatewayProbePath] = spec.ProbeConfig.path
+			updatedService.Annotations[consts.MirroredGatewayProbePeriod] = fmt.Sprint(spec.ProbeConfig.periodInSeconds)
 		}
 
 		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(rcsw.serviceMirrorNamespace).Get(localServiceName)
@@ -729,8 +731,10 @@ func (rcsw *RemoteClusterServiceWatcher) updateGatewayMirrorService(spec *Gatewa
 				},
 			}
 		}
-
-		_, err = rcsw.localAPIClient.Client.CoreV1().Services(rcsw.serviceMirrorNamespace).Update(updatedService)
+		
+		endpoints.Annotations[consts.RemoteGatewayIdentity]		 = spec.identity
+		
+			_, err = rcsw.localAPIClient.Client.CoreV1().Services(rcsw.serviceMirrorNamespace).Update(updatedService)
 		if err != nil {
 			return err
 		}
