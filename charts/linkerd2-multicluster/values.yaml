@@ -2,7 +2,6 @@ controllerComponentLabel: linkerd.io/control-plane-component
 controllerImage: gcr.io/linkerd-io/controller
 controllerImageVersion: linkerdVersionValue
 createdByAnnotation: linkerd.io/created-by
-installNamespace: true
 gateway: true
 gatewayLocalProbePath: /health-local
 gatewayLocalProbePort: 8888
@@ -14,6 +13,7 @@ gatewayProbePath: /health
 gatewayProbePort: 4181
 gatewayProbeSeconds: 3
 identityTrustDomain: cluster.local
+installNamespace: true
 linkerdNamespace: linkerd
 linkerdVersion: linkerdVersionValue
 namespace: linkerd-multicluster
