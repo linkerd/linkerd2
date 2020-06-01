@@ -322,10 +322,12 @@ func helmOverridesEdge(root *tls.CA) []string {
 }
 
 func TestInstallHelm(t *testing.T) {
+	// at this point all the tests assume the control plane is present
+	controlPlaneInstalled = true
+
 	if TestHelper.GetHelmReleaseName() == "" {
 		return
 	}
-	controlPlaneInstalled = true
 
 	cn := fmt.Sprintf("identity.%s.cluster.local", TestHelper.GetLinkerdNamespace())
 	var err error
