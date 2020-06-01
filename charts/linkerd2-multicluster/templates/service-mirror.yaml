@@ -5,7 +5,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror-access-local-resources
   labels:
-    {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+    {{.Values.controllerComponentLabel}}: service-mirror
 rules:
 - apiGroups: [""]
   resources: ["endpoints", "services"]
@@ -19,7 +19,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-service-mirror-access-local-resources
   labels:
-    {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+    {{.Values.controllerComponentLabel}}: service-mirror
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -35,7 +35,7 @@ metadata:
   name: linkerd-service-mirror-read-remote-creds
   namespace: {{.Values.namespace}}
   labels:
-      {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+      {{.Values.controllerComponentLabel}}: service-mirror
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -47,7 +47,7 @@ metadata:
   name: linkerd-service-mirror-read-remote-creds
   namespace: {{.Values.namespace}}
   labels:
-      {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+      {{.Values.controllerComponentLabel}}: service-mirror
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -63,26 +63,26 @@ metadata:
   name: linkerd-service-mirror
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+    {{.Values.controllerComponentLabel}}: service-mirror
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+    {{.Values.controllerComponentLabel}}: service-mirror
   name: linkerd-service-mirror
   namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+      {{.Values.controllerComponentLabel}}: service-mirror
   template:
     metadata:
       annotations:
         linkerd.io/inject: enabled
       labels:
-        {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+        {{.Values.controllerComponentLabel}}: service-mirror
     spec:
       containers:
       - args:

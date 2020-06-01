@@ -7,6 +7,8 @@ metadata:
   namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+  labels:
+    {{.Values.controllerComponentLabel}}: service-mirror
 rules:
 - apiGroups: [""]
   resources: ["services"]
@@ -23,6 +25,8 @@ metadata:
   namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+  labels:
+    {{.Values.controllerComponentLabel}}: service-mirror
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -31,6 +35,8 @@ metadata:
   namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+  labels:
+    {{.Values.controllerComponentLabel}}: service-mirror
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

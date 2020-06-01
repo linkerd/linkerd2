@@ -25,7 +25,8 @@ const (
 	// that the multicluster setup is working as expected
 	LinkerdMulticlusterChecks CategoryID = "linkerd-multicluster"
 
-	linkerdServiceMirrorComponentName   = "linkerd-service-mirror"
+	linkerdServiceMirrorComponentName   = "service-mirror"
+	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror"
 	linkerdServiceMirrorClusterRoleName = "linkerd-service-mirror-access-local-resources"
 	linkerdServiceMirrorRoleName        = "linkerd-service-mirror-read-remote-creds"
 )
@@ -111,7 +112,7 @@ func (hc *HealthChecker) multiClusterCategory() category {
 				hintAnchor:  "l5d-multicluster-service-account-exist",
 				check: func(context.Context) error {
 					if hc.Options.ShouldCheckMulticluster {
-						return hc.checkServiceAccounts([]string{linkerdServiceMirrorComponentName}, hc.serviceMirrorNs, hc.serviceMirrorComponentsSelector())
+						return hc.checkServiceAccounts([]string{linkerdServiceMirrorServiceAccountName}, hc.serviceMirrorNs, hc.serviceMirrorComponentsSelector())
 					}
 					return &SkipError{Reason: "not checking muticluster"}
 				},

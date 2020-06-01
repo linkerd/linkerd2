@@ -6,6 +6,8 @@ metadata:
   name: linkerd-gateway
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+  labels:
+    {{.Values.controllerComponentLabel}}: gateway
   namespace: {{.Values.namespace}}
 data:
   nginx.conf: |-
@@ -43,6 +45,7 @@ metadata:
     app.kubernetes.io/name: gateway
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{.Values.linkerdVersion}}
+    {{.Values.controllerComponentLabel}}: gateway
     app: {{.Values.gatewayName}}
   name: {{.Values.gatewayName}}
   namespace: {{.Values.namespace}}
@@ -59,6 +62,7 @@ spec:
         config.linkerd.io/proxy-require-identity-inbound-ports: "{{.Values.gatewayProbePort}},{{.Values.gatewayPort}}"
       labels:
         app: {{.Values.gatewayName}}
+        {{.Values.controllerComponentLabel}}: gateway
     spec:
       volumes:
         - name: config
@@ -100,6 +104,8 @@ metadata:
     mirror.linkerd.io/probe-path: {{.Values.gatewayProbePath}}
     mirror.linkerd.io/multicluster-gateway: "true"
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+  labels:
+    {{.Values.controllerComponentLabel}}: gateway
 spec:
   ports:
   - name: linkerd-gateway
@@ -117,4 +123,6 @@ apiVersion: v1
 metadata:
   name: {{.Values.gatewayName}}
   namespace: {{.Values.namespace}}
+  labels:
+    {{.Values.controllerComponentLabel}}: gateway
 {{end -}}
