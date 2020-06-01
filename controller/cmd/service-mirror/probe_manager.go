@@ -2,83 +2,69 @@ package servicemirror
 
 import (
 	"fmt"
-
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/client-go/tools/cache"
+	"strconv"
 
-	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 const probeChanBufferSize = 500
 
 // ProbeManager takes care of managing the lifecycle of probe workers
 type ProbeManager struct {
-	k8sAPI       *k8s.API
-	probeWorkers map[string]*ProbeWorker
-
-	events     chan interface{}
-	metricVecs *probeMetricVecs
-	done       chan struct{}
+	probeWorkers            map[string]*ProbeWorker
+	mirroredGatewayInformer cache.SharedIndexInformer
+	events                  chan interface{}
+	metricVecs              *probeMetricVecs
+	done                    chan struct{}
 }
 
-// MirroredServiceUnpaired is emitted when a service is no longer mirrored
-type MirroredServiceUnpaired struct {
-	serviceName      string
-	serviceNamespace string
+// GatewayMirrorCreated is observed when a mirror of a remote gateway is created locally
+type GatewayMirrorCreated struct {
 	gatewayName      string
-	gatewayNs        string
+	gatewayNamespace string
+	clusterName      string
+	probeSpec
+}
+
+// GatewayMirrorDeleted is emitted when a mirror of a remote gateway is deleted
+type GatewayMirrorDeleted struct {
+	gatewayName      string
+	gatewayNamespace string
 	clusterName      string
 }
 
-// MirroredServicePaired is emitted when a new mirrored service is created
-type MirroredServicePaired struct {
-	serviceName      string
-	serviceNamespace string
-	GatewaySpec
-}
-
-// GatewayDeleted is emitted when a gateway is deleted
-type GatewayDeleted struct {
-	gatewayName string
-	gatewayNs   string
-	clusterName string
-}
-
-// ClusterNotRegistered is is emitted when the cluster is not monitored anymore
-type ClusterNotRegistered struct {
-	clusterName string
-}
-
-// GatewayUpdated is emitted when something about the gateway is updated (i.e. its external IP(s))
-type GatewayUpdated struct {
-	GatewaySpec
+// GatewayMirrorUpdated is emitted when the mirror of a remote gateway has changed
+type GatewayMirrorUpdated struct {
+	gatewayName      string
+	gatewayNamespace string
+	clusterName      string
+	probeSpec
 }
 
 // NewProbeManager creates a new probe manager
-func NewProbeManager(k8sAPI *k8s.API) *ProbeManager {
+func NewProbeManager(mirroredGatewayInformer cache.SharedIndexInformer) *ProbeManager {
 	metricVecs := newProbeMetricVecs()
 	return &ProbeManager{
-		k8sAPI:       k8sAPI,
-		probeWorkers: make(map[string]*ProbeWorker),
-		events:       make(chan interface{}, probeChanBufferSize),
-		metricVecs:   &metricVecs,
-		done:         make(chan struct{}),
+		mirroredGatewayInformer: mirroredGatewayInformer,
+		probeWorkers:            make(map[string]*ProbeWorker),
+		events:                  make(chan interface{}, probeChanBufferSize),
+		metricVecs:              &metricVecs,
+		done:                    make(chan struct{}),
 	}
 }
 
 func eventTypeString(ev interface{}) string {
 	switch ev.(type) {
-	case *MirroredServicePaired:
-		return "MirroredServicePaired"
-	case *MirroredServiceUnpaired:
-		return "MirroredServiceUnpaired"
-	case *GatewayUpdated:
-		return "GatewayUpdated"
-	case *ClusterNotRegistered:
-		return "ClusterNotRegistered"
+	case *GatewayMirrorCreated:
+		return "GatewayMirrorCreated"
+	case *GatewayMirrorDeleted:
+		return "GatewayMirrorDeleted"
+	case *GatewayMirrorUpdated:
+		return "GatewayMirrorUpdated"
 	default:
 		return "Unknown"
 	}
@@ -95,99 +81,51 @@ func probeKey(gatewayNamespace string, gatewayName string, clusterName string) s
 
 func (m *ProbeManager) handleEvent(ev interface{}) {
 	switch ev := ev.(type) {
-	case *MirroredServicePaired:
-		m.handleMirroredServicePaired(ev)
-	case *MirroredServiceUnpaired:
-		m.handleMirroredServiceUnpaired(ev)
-	case *GatewayUpdated:
-		m.handleGatewayUpdated(ev)
-	case *GatewayDeleted:
-		m.handleGatewayDeleted(ev)
-	case *ClusterNotRegistered:
-		m.handleClusterNotRegistered(ev)
+	case *GatewayMirrorCreated:
+		m.handleGatewayMirrorCreated(ev)
+	case *GatewayMirrorUpdated:
+		m.handleGatewayMirrorUpdated(ev)
+	case *GatewayMirrorDeleted:
+		m.handleGatewayMirrorDeleted(ev)
 	default:
 		log.Errorf("Received unknown event: %v", ev)
 	}
 }
 
-func endpointAddressesToIps(addrs []corev1.EndpointAddress) []string {
-	result := []string{}
-
-	for _, a := range addrs {
-
-		result = append(result, a.IP)
-	}
-
-	return result
+func (m *ProbeManager) handleGatewayMirrorDeleted(event *GatewayMirrorDeleted) {
+	probeKey := probeKey(event.gatewayNamespace, event.gatewayName, event.clusterName)
+	m.stopProbe(probeKey)
 }
 
-func gatewayToProbeSpec(gatewaySpec GatewaySpec) *probeSpec {
-
-	if gatewaySpec.ProbeConfig == nil {
-		return nil
-	}
-	return &probeSpec{
-		ips:             endpointAddressesToIps(gatewaySpec.addresses),
-		path:            gatewaySpec.path,
-		port:            gatewaySpec.port,
-		periodInSeconds: gatewaySpec.periodInSeconds,
-		gatewayIdentity: gatewaySpec.identity,
-	}
-}
-
-func (m *ProbeManager) handleMirroredServicePaired(event *MirroredServicePaired) {
+func (m *ProbeManager) handleGatewayMirrorCreated(event *GatewayMirrorCreated) {
 	probeKey := probeKey(event.gatewayNamespace, event.gatewayName, event.clusterName)
 	worker, ok := m.probeWorkers[probeKey]
 	if ok {
-		log.Debugf("Probe worker %s already exists", probeKey)
-		worker.PairService(event.serviceName, event.serviceNamespace)
+		log.Debugf("There is already a probe worker for %s. Updating instead of creating", probeKey)
+		worker.UpdateProbeSpec(&event.probeSpec)
 	} else {
 		log.Debugf("Creating probe worker %s", probeKey)
 		probeMetrics, err := m.metricVecs.newWorkerMetrics(event.gatewayNamespace, event.gatewayName, event.clusterName)
 		if err != nil {
 			log.Errorf("Could not crete probe metrics: %s", err)
 		} else {
-			probeSpec := gatewayToProbeSpec(event.GatewaySpec)
-			if probeSpec != nil {
-				localGatewayName := fmt.Sprintf("%s-%s", event.gatewayName, event.clusterName)
-				worker = NewProbeWorker(localGatewayName, probeSpec, probeMetrics, probeKey)
-				worker.PairService(event.serviceName, event.serviceNamespace)
-				m.probeWorkers[probeKey] = worker
-				worker.Start()
-			} else {
-				log.Debugf("No probe spec for: %s", probeKey)
-			}
+			localGatewayName := fmt.Sprintf("%s-%s", event.gatewayName, event.clusterName)
+			worker = NewProbeWorker(localGatewayName, &event.probeSpec, probeMetrics, probeKey)
+			m.probeWorkers[probeKey] = worker
+			worker.Start()
 		}
 	}
 }
 
-func (m *ProbeManager) handleMirroredServiceUnpaired(event *MirroredServiceUnpaired) {
-	probeKey := probeKey(event.gatewayNs, event.gatewayName, event.clusterName)
-	worker, ok := m.probeWorkers[probeKey]
-	if ok {
-		worker.UnPairService(event.serviceName, event.serviceNamespace)
-		if worker.NumPairedServices() < 1 {
-			log.Debugf("Probe worker's %s associated services dropped to 0, cleaning up", probeKey)
-			worker.Stop()
-			delete(m.probeWorkers, probeKey)
-		}
-	} else {
-		log.Debugf("Could not find a worker for %s while handling MirroredServiceUnpaired event", probeKey)
-	}
-}
-
-func (m *ProbeManager) handleGatewayUpdated(event *GatewayUpdated) {
+func (m *ProbeManager) handleGatewayMirrorUpdated(event *GatewayMirrorUpdated) {
 	probeKey := probeKey(event.gatewayNamespace, event.gatewayName, event.clusterName)
 	worker, ok := m.probeWorkers[probeKey]
 	if ok {
-		probeSpec := gatewayToProbeSpec(event.GatewaySpec)
-		if probeSpec != nil {
-			worker.UpdateProbeSpec(probeSpec)
-		} else {
-			log.Debugf("No probe spec for: %s", probeKey)
+		if worker.probeSpec.port != event.port || worker.probeSpec.periodInSeconds != event.periodInSeconds || worker.probeSpec.path != event.path {
+			worker.UpdateProbeSpec(&event.probeSpec)
 		}
 	} else {
-		log.Debugf("Could not find a worker for %s while handling GatewayUpdated event", probeKey)
+		log.Debugf("Could not find a worker for %s while handling GatewayMirrorUpdated event", probeKey)
 	}
 }
 
@@ -197,33 +135,6 @@ func (m *ProbeManager) stopProbe(key string) {
 		delete(m.probeWorkers, key)
 	} else {
 		log.Infof("Could not find probe worker with key %s", key)
-	}
-}
-
-func (m *ProbeManager) handleGatewayDeleted(event *GatewayDeleted) {
-	probeKey := probeKey(event.gatewayNs, event.gatewayName, event.clusterName)
-	m.stopProbe(probeKey)
-}
-
-func (m *ProbeManager) handleClusterNotRegistered(event *ClusterNotRegistered) {
-	matchLabels := map[string]string{
-		consts.MirroredResourceLabel:  "true",
-		consts.RemoteClusterNameLabel: event.clusterName,
-	}
-
-	services, err := m.k8sAPI.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
-	if err != nil {
-		log.Errorf("Was not able to unregister cluster %s, %s", event.clusterName, err)
-	}
-
-	stopped := make(map[string]bool)
-	for _, svc := range services {
-		probeKey := probeKey(svc.Labels[consts.RemoteGatewayNsLabel], svc.Labels[consts.RemoteGatewayNameLabel], event.clusterName)
-
-		if _, ok := stopped[probeKey]; !ok {
-			m.stopProbe(probeKey)
-			stopped[probeKey] = true
-		}
 	}
 }
 
@@ -244,8 +155,113 @@ func (m *ProbeManager) run() {
 	}
 }
 
+func extractProbeSpec(svc *corev1.Service) (*probeSpec, error) {
+	path, hasPath := svc.Annotations[consts.MirroredGatewayProbePath]
+	if !hasPath {
+		return nil, fmt.Errorf("mirrored Gateway service is missing %s annotation", consts.MirroredGatewayProbePath)
+	}
+
+	probePort, err := extractPort(svc.Spec.Ports, consts.ProbePortName)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %s", svc.Name, err)
+	}
+
+	period, hasPeriod := svc.Annotations[consts.MirroredGatewayProbePeriod]
+	if !hasPeriod {
+		return nil, fmt.Errorf("mirrored Gateway service is missing %s annotation", consts.MirroredGatewayProbePeriod)
+	}
+
+	probePeriod, err := strconv.ParseUint(period, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	return &probeSpec{
+		path:            path,
+		port:            probePort,
+		periodInSeconds: uint32(probePeriod),
+	}, nil
+
+}
+
 // Start starts the probe manager
 func (m *ProbeManager) Start() {
+	m.mirroredGatewayInformer.AddEventHandler(
+		cache.FilteringResourceEventHandler{
+			FilterFunc: func(obj interface{}) bool {
+				switch object := obj.(type) {
+				case *corev1.Service:
+					_, isMirrorGateway := object.Labels[consts.MirroredGatewayLabel]
+					return isMirrorGateway
+
+				case cache.DeletedFinalStateUnknown:
+					if svc, ok := object.Obj.(*corev1.Service); ok {
+						_, isMirrorGateway := svc.Labels[consts.MirroredGatewayLabel]
+						return isMirrorGateway
+					}
+					return false
+				default:
+					return false
+				}
+			},
+
+			Handler: cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					service := obj.(*corev1.Service)
+					spec, err := extractProbeSpec(service)
+					if err != nil {
+						log.Errorf("Could not parse probe spec %s", err)
+					} else {
+						m.enqueueEvent(&GatewayMirrorCreated{
+							gatewayName:      service.Annotations[consts.MirroredGatewayRemoteName],
+							gatewayNamespace: service.Annotations[consts.MirroredGatewayRemoteNameSpace],
+							clusterName:      service.Labels[consts.RemoteClusterNameLabel],
+							probeSpec:        *spec,
+						})
+					}
+				},
+				DeleteFunc: func(obj interface{}) {
+					service, ok := obj.(*corev1.Service)
+					if !ok {
+						tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+						if !ok {
+							log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+							return
+						}
+						service, ok = tombstone.Obj.(*corev1.Service)
+						if !ok {
+							log.Errorf("DeletedFinalStateUnknown contained object that is not a Secret %#v", obj)
+							return
+						}
+					}
+
+					m.enqueueEvent(&GatewayMirrorDeleted{
+						gatewayName:      service.Annotations[consts.MirroredGatewayRemoteName],
+						gatewayNamespace: service.Annotations[consts.MirroredGatewayRemoteNameSpace],
+						clusterName:      service.Labels[consts.RemoteClusterNameLabel],
+					})
+				},
+				UpdateFunc: func(old, new interface{}) {
+					oldService := old.(*corev1.Service)
+					newService := new.(*corev1.Service)
+
+					if oldService.ResourceVersion != newService.ResourceVersion {
+						spec, err := extractProbeSpec(newService)
+						if err != nil {
+							log.Errorf("Could not parse probe spec %s", err)
+						} else {
+							m.enqueueEvent(&GatewayMirrorUpdated{
+								gatewayName:      newService.Annotations[consts.MirroredGatewayRemoteName],
+								gatewayNamespace: newService.Annotations[consts.MirroredGatewayRemoteNameSpace],
+								clusterName:      newService.Labels[consts.RemoteClusterNameLabel],
+								probeSpec:        *spec,
+							})
+						}
+					}
+				},
+			},
+		},
+	)
 	go m.run()
 }
 
