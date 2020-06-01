@@ -243,7 +243,6 @@ type proxyConfigOptions struct {
 	ignoreCluster                 bool // not validated by validate()
 	disableIdentity               bool
 	requireIdentityOnInboundPorts []string
-	enableGateway                 bool
 	disableTap                    bool
 }
 
