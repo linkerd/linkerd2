@@ -25,7 +25,7 @@ type ProbeManager struct {
 // GatewayMirrorCreated is observed when a mirror of a remote gateway is created locally
 type GatewayMirrorCreated struct {
 	gatewayName      string
-	gatewayNameSpace string
+	gatewayNamespace string
 	clusterName      string
 	probeSpec
 }
@@ -33,14 +33,14 @@ type GatewayMirrorCreated struct {
 // GatewayMirrorDeleted is emitted when a mirror of a remote gateway is deleted
 type GatewayMirrorDeleted struct {
 	gatewayName      string
-	gatewayNameSpace string
+	gatewayNamespace string
 	clusterName      string
 }
 
 // GatewayMirrorUpdated is emitted when the mirror of a remote gateway has changed
 type GatewayMirrorUpdated struct {
 	gatewayName      string
-	gatewayNameSpace string
+	gatewayNamespace string
 	clusterName      string
 	probeSpec
 }
@@ -93,19 +93,19 @@ func (m *ProbeManager) handleEvent(ev interface{}) {
 }
 
 func (m *ProbeManager) handleGatewayMirrorDeleted(event *GatewayMirrorDeleted) {
-	probeKey := probeKey(event.gatewayNameSpace, event.gatewayName, event.clusterName)
+	probeKey := probeKey(event.gatewayNamespace, event.gatewayName, event.clusterName)
 	m.stopProbe(probeKey)
 }
 
 func (m *ProbeManager) handleGatewayMirrorCreated(event *GatewayMirrorCreated) {
-	probeKey := probeKey(event.gatewayNameSpace, event.gatewayName, event.clusterName)
+	probeKey := probeKey(event.gatewayNamespace, event.gatewayName, event.clusterName)
 	worker, ok := m.probeWorkers[probeKey]
 	if ok {
 		log.Debugf("There is already a probe worker for %s. Updating instead of creating", probeKey)
 		worker.UpdateProbeSpec(&event.probeSpec)
 	} else {
 		log.Debugf("Creating probe worker %s", probeKey)
-		probeMetrics, err := m.metricVecs.newWorkerMetrics(event.gatewayNameSpace, event.gatewayName, event.clusterName)
+		probeMetrics, err := m.metricVecs.newWorkerMetrics(event.gatewayNamespace, event.gatewayName, event.clusterName)
 		if err != nil {
 			log.Errorf("Could not crete probe metrics: %s", err)
 		} else {
@@ -118,7 +118,7 @@ func (m *ProbeManager) handleGatewayMirrorCreated(event *GatewayMirrorCreated) {
 }
 
 func (m *ProbeManager) handleGatewayMirrorUpdated(event *GatewayMirrorUpdated) {
-	probeKey := probeKey(event.gatewayNameSpace, event.gatewayName, event.clusterName)
+	probeKey := probeKey(event.gatewayNamespace, event.gatewayName, event.clusterName)
 	worker, ok := m.probeWorkers[probeKey]
 	if ok {
 		if worker.probeSpec.port != event.port || worker.probeSpec.periodInSeconds != event.periodInSeconds || worker.probeSpec.path != event.path {
@@ -214,7 +214,7 @@ func (m *ProbeManager) Start() {
 					} else {
 						m.enqueueEvent(&GatewayMirrorCreated{
 							gatewayName:      service.Annotations[consts.MirroredGatewayRemoteName],
-							gatewayNameSpace: service.Annotations[consts.MirroredGatewayRemoteNameSpace],
+							gatewayNamespace: service.Annotations[consts.MirroredGatewayRemoteNameSpace],
 							clusterName:      service.Labels[consts.RemoteClusterNameLabel],
 							probeSpec:        *spec,
 						})
@@ -237,7 +237,7 @@ func (m *ProbeManager) Start() {
 
 					m.enqueueEvent(&GatewayMirrorDeleted{
 						gatewayName:      service.Annotations[consts.MirroredGatewayRemoteName],
-						gatewayNameSpace: service.Annotations[consts.MirroredGatewayRemoteNameSpace],
+						gatewayNamespace: service.Annotations[consts.MirroredGatewayRemoteNameSpace],
 						clusterName:      service.Labels[consts.RemoteClusterNameLabel],
 					})
 				},
@@ -252,7 +252,7 @@ func (m *ProbeManager) Start() {
 						} else {
 							m.enqueueEvent(&GatewayMirrorUpdated{
 								gatewayName:      newService.Annotations[consts.MirroredGatewayRemoteName],
-								gatewayNameSpace: newService.Annotations[consts.MirroredGatewayRemoteNameSpace],
+								gatewayNamespace: newService.Annotations[consts.MirroredGatewayRemoteNameSpace],
 								clusterName:      newService.Labels[consts.RemoteClusterNameLabel],
 								probeSpec:        *spec,
 							})

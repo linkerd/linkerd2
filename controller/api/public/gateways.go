@@ -3,8 +3,11 @@ package public
 import (
 	"context"
 	"fmt"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 
 	"github.com/prometheus/common/model"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
@@ -52,7 +55,34 @@ func buildGatewaysRequestLabels(req *pb.GatewaysRequest) (labels model.LabelSet,
 	return labels, groupBy
 }
 
-func processPrometheusResult(results []promResult) map[string]*pb.GatewaysTable_Row {
+
+// this function returns a map of gateways to the number of services using them
+func (s *grpcServer) getNumServicesMap() (map[string]uint64, error) {
+
+	results := make(map[string]uint64)
+	selector := 	fmt.Sprintf("%s,!%s", k8s.MirroredResourceLabel,  k8s.MirroredGatewayLabel)
+	services, err := s.k8sAPI.Client.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{LabelSelector:selector})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, svc := range services.Items {
+		if svc.Labels != nil {
+			clusterName := svc.Labels[k8s.RemoteClusterNameLabel]
+			gatewayName := svc.Labels[k8s.RemoteGatewayNameLabel]
+			gatewayNs := svc.Labels[k8s.RemoteGatewayNsLabel]
+			key := fmt.Sprintf("%s-%s-%s", clusterName, gatewayName, gatewayNs)
+
+			value := results[key]
+			results[key] = value + 1
+		}
+	}
+
+	return results, nil
+}
+
+func processPrometheusResult(results []promResult, numSvcMap map[string]uint64) map[string]*pb.GatewaysTable_Row {
+
 	rows := make(map[string]*pb.GatewaysTable_Row)
 
 	for _, result := range results {
@@ -61,6 +91,7 @@ func processPrometheusResult(results []promResult) map[string]*pb.GatewaysTable_
 			clusterName := sample.Metric[remoteClusterNameLabel]
 			gatewayName := sample.Metric[gatewayNameLabel]
 			gatewayNamespace := sample.Metric[gatewayNamespaceLabel]
+			numPairedSvc := numSvcMap[fmt.Sprintf("%s-%s-%s", clusterName, gatewayName, gatewayNamespace)]
 
 			key := fmt.Sprintf("%s-%s-%s", clusterName, gatewayNamespace, gatewayName)
 
@@ -70,7 +101,7 @@ func processPrometheusResult(results []promResult) map[string]*pb.GatewaysTable_
 					rows[key].ClusterName = string(clusterName)
 					rows[key].Name = string(gatewayName)
 					rows[key].Namespace = string(gatewayNamespace)
-
+					rows[key].PairedServices = numPairedSvc
 				}
 			}
 
@@ -79,11 +110,7 @@ func processPrometheusResult(results []promResult) map[string]*pb.GatewaysTable_
 			switch result.prom {
 			case promGatewayAlive:
 				addRow()
-				if value == 0 {
-					rows[key].Alive = false
-				} else {
-					rows[key].Alive = true
-				}
+				rows[key].Alive = value > 0
 			case promLatencyP50:
 				addRow()
 				rows[key].LatencyMsP50 = value
@@ -114,8 +141,13 @@ func (s *grpcServer) getGatewaysMetrics(ctx context.Context, req *pb.GatewaysReq
 	if err != nil {
 		return nil, err
 	}
+	numSvcMap, err := s.getNumServicesMap()
+	
+	if err != nil {
+		return nil, err
+	}
 
-	rowsMap := processPrometheusResult(metricsResp)
+	rowsMap := processPrometheusResult(metricsResp, numSvcMap)
 
 	return rowsMap, nil
 }

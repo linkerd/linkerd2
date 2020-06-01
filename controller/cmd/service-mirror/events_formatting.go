@@ -120,13 +120,13 @@ func (ps probeSpec) String() string {
 }
 
 func (gmc GatewayMirrorCreated) String() string {
-	return fmt.Sprintf("GatewayMirrorCreated: {gatewayName: %s, gatewayNameSpace: %s, clusterName: %s, probeSpec: %s}", gmc.gatewayName, gmc.gatewayNameSpace, gmc.clusterName, gmc.probeSpec)
+	return fmt.Sprintf("GatewayMirrorCreated: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s, probeSpec: %s}", gmc.gatewayName, gmc.gatewayNamespace, gmc.clusterName, gmc.probeSpec)
 }
 
 func (gmd GatewayMirrorDeleted) String() string {
-	return fmt.Sprintf("GatewayMirrorDeleted: {gatewayName: %s, gatewayNameSpace: %s, clusterName: %s}", gmd.gatewayName, gmd.gatewayNameSpace, gmd.clusterName)
+	return fmt.Sprintf("GatewayMirrorDeleted: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s}", gmd.gatewayName, gmd.gatewayNamespace, gmd.clusterName)
 }
 
 func (gmu GatewayMirrorUpdated) String() string {
-	return fmt.Sprintf("GatewayMirrorUpdated: {gatewayName: %s, gatewayNameSpace: %s, clusterName: %s, probeSpec: %s}", gmu.gatewayName, gmu.gatewayNameSpace, gmu.clusterName, gmu.probeSpec)
+	return fmt.Sprintf("GatewayMirrorUpdated: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s, probeSpec: %s}", gmu.gatewayName, gmu.gatewayNamespace, gmu.clusterName, gmu.probeSpec)
 }

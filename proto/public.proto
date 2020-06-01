@@ -491,10 +491,11 @@ message GatewaysTable {
     string namespace = 1;
     string name = 2;
     string cluster_name = 3;
-    bool alive = 4;
-    uint64 latency_ms_p50 = 5;
-    uint64 latency_ms_p95 = 6;
-    uint64 latency_ms_p99 = 7;
+    uint64 paired_services = 4;
+    bool alive = 5;
+    uint64 latency_ms_p50 = 6;
+    uint64 latency_ms_p95 = 7;
+    uint64 latency_ms_p99 = 8;
   }
 }
 
