@@ -10,6 +10,7 @@ import (
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
+	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -141,6 +142,14 @@ func (hc *HealthChecker) multiClusterCategory() category {
 				hintAnchor:  "l5d-multicluster-clusters-share-anchors",
 				check: func(ctx context.Context) error {
 					return hc.checkRemoteClusterAnchors()
+				},
+			},
+			{
+				description: "multicluster daisy chaining is avoided",
+				hintAnchor:  "l5d-multicluster-daisy-chaining",
+				warning:     true,
+				check: func(ctx context.Context) error {
+					return hc.checkDaisyChains()
 				},
 			},
 		},
@@ -319,6 +328,70 @@ func (hc *HealthChecker) checkRemoteClusterAnchors() error {
 	}
 
 	return nil
+}
+
+func serviceExported(svc corev1.Service) bool {
+	_, hasGtwName := svc.Annotations[k8s.GatewayNameAnnotation]
+	_, hasGtwNs := svc.Annotations[k8s.GatewayNsAnnotation]
+	return hasGtwName && hasGtwNs
+}
+
+func (hc *HealthChecker) checkDaisyChains() error {
+	if hc.Options.ShouldCheckMulticluster {
+		errs := []error{}
+
+		svcs, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
+		for _, svc := range svcs.Items {
+			_, isMirror := svc.Labels[k8s.MirroredResourceLabel]
+			if isMirror && serviceExported(svc) {
+				errs = append(errs, fmt.Errorf("mirror service %s.%s is exported", svc.Name, svc.Namespace))
+			}
+		}
+
+		ts, err := tsclient.NewForConfig(hc.kubeAPI.Config)
+		if err != nil {
+			return err
+		}
+		splits, err := ts.SplitV1alpha1().TrafficSplits(metav1.NamespaceAll).List(metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
+		for _, split := range splits.Items {
+			apex, err := hc.kubeAPI.CoreV1().Services(split.Namespace).Get(split.Spec.Service, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			if serviceExported(*apex) {
+				for _, backend := range split.Spec.Backends {
+					if backend.Weight.IsZero() {
+						continue
+					}
+					leaf, err := hc.kubeAPI.CoreV1().Services(split.Namespace).Get(backend.Service, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+					_, isMirror := leaf.Labels[k8s.MirroredResourceLabel]
+					if isMirror {
+						errs = append(errs, fmt.Errorf("exported service %s.%s routes to mirror service %s.%s via traffic split %s.%s",
+							apex.Name, apex.Namespace, leaf.Name, leaf.Namespace, split.Name, split.Namespace,
+						))
+					}
+				}
+			}
+		}
+		if len(errs) > 0 {
+			messages := []string{}
+			for _, err := range errs {
+				messages = append(messages, fmt.Sprintf("* %s", err.Error()))
+			}
+			return errors.New(strings.Join(messages, "\n"))
+		}
+		return nil
+	}
+	return &SkipError{Reason: "not checking muticluster"}
 }
 
 func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
