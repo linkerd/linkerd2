@@ -2,7 +2,7 @@ controllerComponentLabel: linkerd.io/control-plane-component
 controllerImage: gcr.io/linkerd-io/controller
 controllerImageVersion: linkerdVersionValue
 createdByAnnotation: linkerd.io/created-by
-createNamespace: true
+installNamespace: true
 gateway: true
 gatewayLocalProbePath: /health-local
 gatewayLocalProbePort: 8888
