@@ -2,9 +2,10 @@ package servicemirror
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/client-go/tools/cache"
-	"strconv"
 
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
