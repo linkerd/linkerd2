@@ -78,9 +78,9 @@ spec:
             initialDelaySeconds: 10
           image: {{.Values.gatewayNginxImage}}:{{.Values.gatewayNginxImageVersion}}
           ports:
-            - name: incoming-port
+            - name: linkerd-gateway
               containerPort: {{.Values.gatewayPort}}
-            - name: probe-port
+            - name: linkerd-gateway-probe
               containerPort: {{.Values.gatewayProbePort}}
             - name: local-probe
               containerPort: {{.Values.gatewayLocalProbePort}}              
@@ -102,10 +102,10 @@ metadata:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   ports:
-  - name: incoming-port
+  - name: linkerd-gateway
     port: {{.Values.gatewayPort}}    
     protocol: TCP
-  - name: probe-port
+  - name: linkerd-gateway-probe
     port: {{.Values.gatewayProbePort}}    
     protocol: TCP
   selector:
