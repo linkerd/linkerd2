@@ -683,7 +683,6 @@ func (rcsw *RemoteClusterServiceWatcher) updateAffectedServices(gatewaySpec Gate
 
 		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(updatedService.Namespace).Update(updatedEndpoints)
 		if err != nil {
-			rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Delete(updatedService.Name, &metav1.DeleteOptions{})
 			errors = append(errors, err)
 		}
 	}
@@ -713,16 +712,20 @@ func (rcsw *RemoteClusterServiceWatcher) updateGatewayMirrorService(spec *Gatewa
 		}
 
 		updatedEndpoints := endpoints.DeepCopy()
-		updatedEndpoints.Subsets = []corev1.EndpointSubset{
-			{
-				Addresses: spec.addresses,
-				Ports: []corev1.EndpointPort{
-					{
-						Protocol: "TCP",
-						Port:     int32(spec.ProbeConfig.port),
+		if spec.addresses == nil {
+			updatedEndpoints.Subsets = nil
+		} else {
+			updatedEndpoints.Subsets = []corev1.EndpointSubset{
+				{
+					Addresses: spec.addresses,
+					Ports: []corev1.EndpointPort{
+						{
+							Protocol: "TCP",
+							Port:     int32(spec.ProbeConfig.port),
+						},
 					},
 				},
-			},
+			}
 		}
 
 		_, err = rcsw.localAPIClient.Client.CoreV1().Services(rcsw.serviceMirrorNamespace).Update(updatedService)
@@ -732,7 +735,6 @@ func (rcsw *RemoteClusterServiceWatcher) updateGatewayMirrorService(spec *Gatewa
 
 		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(rcsw.serviceMirrorNamespace).Update(updatedEndpoints)
 		if err != nil {
-			rcsw.localAPIClient.Client.CoreV1().Services(rcsw.serviceMirrorNamespace).Delete(updatedService.Name, &metav1.DeleteOptions{})
 			return err
 		}
 		rcsw.log.Debugf("%s gateway mirror updated", localServiceName)
