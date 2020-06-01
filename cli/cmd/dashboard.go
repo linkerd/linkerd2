@@ -35,6 +35,9 @@ const (
 	defaultPort = 50750
 )
 
+// dashboardOptions holds values for command line flags that apply to the dashboard
+// command. All fields in this struct should have corresponding flags added in
+// the newCmdDashboard func later in this file.
 type dashboardOptions struct {
 	host string
 	port int
@@ -42,6 +45,10 @@ type dashboardOptions struct {
 	wait time.Duration
 }
 
+// newDashboardOptions initializes dashboard options with default
+// host, port and which dashboard to show.
+//
+// These options may be overridden on the CLI at run-time
 func newDashboardOptions() *dashboardOptions {
 	return &dashboardOptions{
 		host: defaultHost,
@@ -51,6 +58,7 @@ func newDashboardOptions() *dashboardOptions {
 	}
 }
 
+// newCmdDashboard creates a new cobra command `dashboard` which contains commands for visualizing linkerd's dashboards
 func newCmdDashboard() *cobra.Command {
 	options := newDashboardOptions()
 
