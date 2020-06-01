@@ -26,14 +26,14 @@ func ParseRemoteClusterSecret(secret *corev1.Secret) (*WatchedClusterConfig, err
 		return nil, fmt.Errorf("secret of type %s should contain key %s", consts.MirrorSecretType, consts.ConfigKeyName)
 	}
 	if !hasConfig {
-		return nil, fmt.Errorf("secret should contain remote cluster name as annotation %s", consts.RemoteClusterNameLabel)
+		return nil, fmt.Errorf("secret should contain target cluster name as annotation %s", consts.RemoteClusterNameLabel)
 	}
 	if !hasDomain {
-		return nil, fmt.Errorf("secret should contain remote cluster domain as annotation %s", consts.RemoteClusterDomainAnnotation)
+		return nil, fmt.Errorf("secret should contain target cluster domain as annotation %s", consts.RemoteClusterDomainAnnotation)
 	}
 
 	if !hasL5dNamespace {
-		return nil, fmt.Errorf("secret should contain remote linkerd installation namespace as annotation %s", consts.RemoteClusterLinkerdNamespaceAnnotation)
+		return nil, fmt.Errorf("secret should contain target linkerd installation namespace as annotation %s", consts.RemoteClusterLinkerdNamespaceAnnotation)
 	}
 
 	return &WatchedClusterConfig{

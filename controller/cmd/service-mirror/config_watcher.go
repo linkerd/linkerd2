@@ -60,7 +60,7 @@ func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInforme
 				AddFunc: func(obj interface{}) {
 					secret := obj.(*corev1.Secret)
 					if err := rcw.registerRemoteCluster(secret); err != nil {
-						log.Errorf("Cannot register remote cluster: %s", err)
+						log.Errorf("Cannot register target cluster: %s", err)
 					}
 				},
 				DeleteFunc: func(obj interface{}) {
@@ -78,7 +78,7 @@ func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInforme
 						}
 					}
 					if err := rcw.unregisterRemoteCluster(secret, true); err != nil {
-						log.Errorf("Cannot unregister remote cluster: %s", err)
+						log.Errorf("Cannot unregister target cluster: %s", err)
 					}
 				},
 				UpdateFunc: func(old, new interface{}) {
@@ -87,12 +87,12 @@ func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInforme
 
 					if oldSecret.ResourceVersion != newSecret.ResourceVersion {
 						if err := rcw.unregisterRemoteCluster(oldSecret, false); err != nil {
-							log.Errorf("Cannot unregister remote cluster: %s", err)
+							log.Errorf("Cannot unregister target cluster: %s", err)
 							return
 						}
 
 						if err := rcw.registerRemoteCluster(newSecret); err != nil {
-							log.Errorf("Cannot register remote cluster: %s", err)
+							log.Errorf("Cannot register target cluster: %s", err)
 						}
 
 					}
