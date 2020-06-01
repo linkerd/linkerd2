@@ -51,6 +51,9 @@ var (
 	}, "|"))
 )
 
+// FetchAndCheckLogs retrieves the logs from the control plane containers and matches them
+// to the list in knownControllerErrorsRegex and knownProxyErrorsRegex.
+// It returns the list of matched entries and the list of unmatched entries (as errors).
 func FetchAndCheckLogs(helper *TestHelper) ([]string, []error) {
 	okMessages := []string{}
 	errs := []error{}
@@ -125,6 +128,9 @@ func FetchAndCheckLogs(helper *TestHelper) ([]string, []error) {
 	return okMessages, errs
 }
 
+// FetchAndCheckEvents retrieves the events from k8s for the current namespace, matches
+// them against knownEventWarningsRegex and returns the list of unmatched entries
+// (as errors).
 func FetchAndCheckEvents(helper *TestHelper) []error {
 	out, err := helper.Kubectl("",
 		"--namespace", helper.GetLinkerdNamespace(),
