@@ -11,12 +11,6 @@ data:
   nginx.conf: |-
     events {
     }
-    stream {
-      server {
-          listen     {{.Values.gatewayPort}};
-          proxy_pass 127.0.0.1:{{.Values.proxyOutboundPort}};
-      }
-    }
     http {
       server {
           listen     {{.Values.gatewayProbePort}};
@@ -57,6 +51,7 @@ spec:
         {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}        
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-require-identity-inbound-ports: "{{.Values.gatewayProbePort}},{{.Values.gatewayPort}}"
+        config.linkerd.io/enable-gateway: "true"
       labels:
         app: {{.Values.gatewayName}}
     spec:
@@ -78,9 +73,7 @@ spec:
             initialDelaySeconds: 10
           image: {{.Values.gatewayNginxImage}}:{{.Values.gatewayNginxImageVersion}}
           ports:
-            - name: incoming-port
-              containerPort: {{.Values.gatewayPort}}
-            - name: probe-port
+            - name: remote-probe
               containerPort: {{.Values.gatewayProbePort}}
             - name: local-probe
               containerPort: {{.Values.gatewayLocalProbePort}}              

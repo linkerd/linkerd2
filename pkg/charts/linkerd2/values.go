@@ -112,6 +112,7 @@ type (
 		Trace                         *Trace        `json:"trace"`
 		UID                           int64         `json:"uid"`
 		WaitBeforeExitSeconds         uint64        `json:"waitBeforeExitSeconds"`
+		IsGateway                     bool          `json:"isGateway"`
 		RequireIdentityOnInboundPorts string        `json:"requireIdentityOnInboundPorts"`
 	}
 

@@ -8,7 +8,7 @@ gatewayLocalProbePort: 8888
 gatewayName: linkerd-gateway
 gatewayNginxImage: nginx
 gatewayNginxImageVersion: 1.17
-gatewayPort: 4180
+gatewayPort: 4143
 gatewayProbePath: /health
 gatewayProbePort: 4181
 gatewayProbeSeconds: 3

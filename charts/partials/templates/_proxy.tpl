@@ -18,12 +18,17 @@ env:
   value: 127.0.0.1:{{.Values.global.proxy.ports.outbound}}
 - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.global.proxy.ports.inbound}}
+{{ if .Values.global.proxy.isGateway -}}
+- name: LINKERD2_PROXY_INBOUND_GATEWAY_SUFFIXES
+  {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
+  value: {{ternary "." $internalDomain .Values.global.proxy.enableExternalProfiles}}
+{{ end -}}  
 - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-  {{- $internalProfileSuffix := printf "svc.%s." .Values.global.clusterDomain }}
-  value: {{ternary "." $internalProfileSuffix .Values.global.proxy.enableExternalProfiles}}
+  {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
+  value: {{ternary "." $internalDomain .Values.global.proxy.enableExternalProfiles}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
-  {{- $internalProfileSuffix := printf "svc.%s." .Values.global.clusterDomain }}
-  value: {{ternary "." $internalProfileSuffix .Values.global.proxy.enableExternalProfiles}}
+  {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
+  value: {{ternary "." $internalDomain .Values.global.proxy.enableExternalProfiles}}
 - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
   value: 10000ms
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
