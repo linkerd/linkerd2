@@ -13,22 +13,19 @@ import (
 const httpGatewayTimeoutMillis = 50000
 
 type probeSpec struct {
-	ips             []string
 	path            string
 	port            uint32
 	periodInSeconds uint32
-	gatewayIdentity string
 }
 
 // ProbeWorker is responsible for monitoring gateways using a probe specification
 type ProbeWorker struct {
 	localGatewayName string
 	*sync.RWMutex
-	probeSpec      *probeSpec
-	pairedServices map[string]struct{}
-	stopCh         chan struct{}
-	metrics        *probeMetrics
-	log            *logging.Entry
+	probeSpec *probeSpec
+	stopCh    chan struct{}
+	metrics   *probeMetrics
+	log       *logging.Entry
 }
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
@@ -37,35 +34,11 @@ func NewProbeWorker(localGatewayName string, spec *probeSpec, metrics *probeMetr
 		localGatewayName: localGatewayName,
 		RWMutex:          &sync.RWMutex{},
 		probeSpec:        spec,
-		pairedServices:   make(map[string]struct{}),
 		stopCh:           make(chan struct{}),
 		metrics:          metrics,
 		log: logging.WithFields(logging.Fields{
 			"probe-key": probekey,
 		}),
-	}
-}
-
-// NumPairedServices returns the number of paired services for this probe worker
-func (pw *ProbeWorker) NumPairedServices() int {
-	return len(pw.pairedServices)
-}
-
-// PairService increments the number of services that are routed by the gateway
-func (pw *ProbeWorker) PairService(serviceName, serviceNamespace string) {
-	svcKey := fmt.Sprintf("%s-%s", serviceNamespace, serviceName)
-	if _, ok := pw.pairedServices[svcKey]; !ok {
-		pw.pairedServices[svcKey] = struct{}{}
-		pw.metrics.services.Set(float64(len(pw.pairedServices)))
-	}
-}
-
-// UnPairService decrements the number of services that are routed by the gateway
-func (pw *ProbeWorker) UnPairService(serviceName, serviceNamespace string) {
-	svcKey := fmt.Sprintf("%s-%s", serviceNamespace, serviceName)
-	if _, ok := pw.pairedServices[svcKey]; ok {
-		delete(pw.pairedServices, svcKey)
-		pw.metrics.services.Set(float64(len(pw.pairedServices)))
 	}
 }
 

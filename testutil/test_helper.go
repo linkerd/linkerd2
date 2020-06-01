@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"testing"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -481,4 +482,24 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	}
 
 	return events, nil
+}
+
+// Run calls `m.Run()`, shows unexpected logs/events if showLogs is true,
+// and returns the exit code for the tests
+func Run(m *testing.M, helper *TestHelper, showLogs bool) int {
+	code := m.Run()
+	if code != 0 && showLogs {
+		_, errs1 := FetchAndCheckLogs(helper)
+		for _, err := range errs1 {
+			fmt.Println(err)
+		}
+		errs2 := FetchAndCheckEvents(helper)
+		for _, err := range errs2 {
+			fmt.Println(err)
+		}
+		if len(errs1) == 0 && len(errs2) == 0 {
+			fmt.Println("No unexpected log entries or events found")
+		}
+	}
+	return code
 }

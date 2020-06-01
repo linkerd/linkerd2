@@ -16,7 +16,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, "Uninstall test disabled")
 		os.Exit(0)
 	}
-	os.Exit(m.Run())
+	os.Exit(testutil.Run(m, TestHelper, true))
 }
 
 func TestInstall(t *testing.T) {

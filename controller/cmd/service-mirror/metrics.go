@@ -15,7 +15,6 @@ const (
 )
 
 type probeMetricVecs struct {
-	services  *prometheus.GaugeVec
 	alive     *prometheus.GaugeVec
 	latencies *prometheus.HistogramVec
 	enqueues  *prometheus.CounterVec
@@ -24,7 +23,6 @@ type probeMetricVecs struct {
 }
 
 type probeMetrics struct {
-	services   prometheus.Gauge
 	alive      prometheus.Gauge
 	latencies  prometheus.Observer
 	probes     *prometheus.CounterVec
@@ -58,14 +56,6 @@ func newProbeMetricVecs() probeMetricVecs {
 		[]string{eventTypeLabelName},
 	)
 
-	services := promauto.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "num_mirrored_services",
-			Help: "A gauge for the current number of mirrored services associated with a gateway",
-		},
-		labelNames,
-	)
-
 	alive := promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "gateway_alive",
@@ -89,7 +79,6 @@ func newProbeMetricVecs() probeMetricVecs {
 		labelNames)
 
 	return probeMetricVecs{
-		services:  services,
 		alive:     alive,
 		latencies: latencies,
 		enqueues:  enqueues,
@@ -110,7 +99,6 @@ func (mv probeMetricVecs) newWorkerMetrics(gatewayNamespace, gatewayName, remote
 		return nil, err
 	}
 	return &probeMetrics{
-		services:  mv.services.With(labels),
 		alive:     mv.alive.With(labels),
 		latencies: mv.latencies.With(labels),
 		probes:    curriedProbes,
@@ -127,9 +115,6 @@ func (mv probeMetricVecs) unregister(gatewayNamespace, gatewayName, remoteCluste
 		gatewayClusterName:    remoteClusterName,
 	}
 
-	if !mv.services.Delete(labels) {
-		logging.Warnf("unable to delete num_mirrored_services metric with labels %s", labels)
-	}
 	if !mv.alive.Delete(labels) {
 		logging.Warnf("unable to delete gateway_alive metric with labels %s", labels)
 	}

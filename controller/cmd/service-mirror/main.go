@@ -2,8 +2,8 @@ package servicemirror
 
 import (
 	"context"
-	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,27 +19,31 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type chanProbeEventSink struct{ sender func(event interface{}) }
-
-func (s *chanProbeEventSink) send(event interface{}) {
-	s.sender(event)
-}
-
-func initLocalSecretsInformer(api kubernetes.Interface, namespace string) (cache.SharedIndexInformer, error) {
+func initLocalResourceInformer(api kubernetes.Interface, namespace string, resource k8s.APIResource) (cache.SharedIndexInformer, error) {
 	sharedInformers := informers.NewSharedInformerFactoryWithOptions(api, 10*time.Minute, informers.WithNamespace(namespace))
 
-	informer := sharedInformers.Core().V1().Secrets().Informer()
+	var informer cache.SharedIndexInformer
+
+	switch resource {
+	case k8s.Svc:
+		informer = sharedInformers.Core().V1().Services().Informer()
+	case k8s.Secret:
+		informer = sharedInformers.Core().V1().Secrets().Informer()
+	default:
+		return nil, fmt.Errorf("cannot instantiate local informer for %v", resource)
+
+	}
 
 	sharedInformers.Start(nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	log.Infof("waiting for local namespaced secrets informer caches to sync")
+	log.Infof("waiting for local namespaced %v informer caches to sync", resource)
 	if !cache.WaitForCacheSync(ctx.Done(), informer.HasSynced) {
-		return nil, errors.New("failed to sync local namespaced secrets informer caches")
+		return nil, fmt.Errorf("failed to sync local namespaced %v informer caches", resource)
 	}
-	log.Infof("local namespaced secrets informer  caches synced")
+	log.Infof("local namespaced %v informer  caches synced", resource)
 	return informer, nil
 }
 
@@ -70,17 +74,21 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	secretsInformer, err := initLocalSecretsInformer(k8sAPI.Client, *namespace)
+	secretsInformer, err := initLocalResourceInformer(k8sAPI.Client, *namespace, k8s.Secret)
+	if err != nil {
+		log.Fatalf("Failed to initialize secret informer: %s", err)
+	}
+	svcInformer, err := initLocalResourceInformer(k8sAPI.Client, *namespace, k8s.Svc)
 
 	if err != nil {
-		log.Fatalf("Failed to initialize secrets informer: %s", err)
+		log.Fatalf("Failed to initialize service informer: %s", err)
 	}
 
-	probeManager := NewProbeManager(k8sAPI)
+	probeManager := NewProbeManager(svcInformer)
 	probeManager.Start()
 
 	k8sAPI.Sync(nil)
-	watcher := NewRemoteClusterConfigWatcher(*namespace, secretsInformer, k8sAPI, *requeueLimit, &chanProbeEventSink{probeManager.enqueueEvent})
+	watcher := NewRemoteClusterConfigWatcher(*namespace, secretsInformer, k8sAPI, *requeueLimit)
 	log.Info("Started cluster config watcher")
 
 	go admin.StartServer(*metricsAddr)
