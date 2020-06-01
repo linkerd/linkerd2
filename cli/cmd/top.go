@@ -259,7 +259,7 @@ const (
 
 func newTopOptions() *topOptions {
 	return &topOptions{
-		namespace:     kubeNamespace,
+		namespace:     defaultNamespace,
 		toResource:    "",
 		toNamespace:   "",
 		maxRps:        maxRps,

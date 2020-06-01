@@ -202,7 +202,7 @@ func newCmdLogs() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&options.container, "container", "c", options.container, "Tail logs from the specified container. Options are 'public-api', 'destination', 'tap', 'prometheus', 'grafana' or 'linkerd-proxy'")
 	cmd.PersistentFlags().StringVar(&options.controlPlaneComponent, "control-plane-component", options.controlPlaneComponent, "Tail logs from the specified control plane component. Default value (empty string) causes this command to tail logs from all resources marked with the 'linkerd.io/control-plane-component' label selector")
-	cmd.PersistentFlags().BoolVar(&options.noColor, "no-color", options.noColor, "Disable colorized output") // needed until at least https://github.com/wercker/stern/issues/69 is resolved
+	cmd.PersistentFlags().BoolVarP(&options.noColor, "no-color", "n", options.noColor, "Disable colorized output") // needed until at least https://github.com/wercker/stern/issues/69 is resolved
 	cmd.PersistentFlags().DurationVarP(&options.sinceSeconds, "since", "s", options.sinceSeconds, "Duration of how far back logs should be retrieved")
 	cmd.PersistentFlags().Int64Var(&options.tail, "tail", options.tail, "Last number of log lines to show for a given container. -1 does not show previous log lines")
 	cmd.PersistentFlags().BoolVarP(&options.timestamps, "timestamps", "t", options.timestamps, "Print timestamps for each given log line")

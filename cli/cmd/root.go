@@ -20,10 +20,10 @@ import (
 )
 
 const (
-	defaultNamespace      = "linkerd"
-	defaultCNINamespace   = "linkerd-cni"
-	defaultClusterDomain  = "cluster.local"
-	defaultDockerRegistry = "gcr.io/linkerd-io"
+	defaultLinkerdNamespace = "linkerd"
+	defaultCNINamespace     = "linkerd-cni"
+	defaultClusterDomain    = "cluster.local"
+	defaultDockerRegistry   = "gcr.io/linkerd-io"
 
 	jsonOutput  = "json"
 	tableOutput = "table"
@@ -47,7 +47,7 @@ var (
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	kubeconfigPath        string
 	kubeContext           string
-	kubeNamespace         string
+	defaultNamespace      string // Default namespace taken from current kubectl context
 	impersonate           string
 	impersonateGroup      []string
 	verbose               bool
@@ -86,7 +86,7 @@ var RootCmd = &cobra.Command{
 		}
 
 		controlPlaneNamespaceFromEnv := os.Getenv("LINKERD_NAMESPACE")
-		if controlPlaneNamespace == defaultNamespace && controlPlaneNamespaceFromEnv != "" {
+		if controlPlaneNamespace == defaultLinkerdNamespace && controlPlaneNamespaceFromEnv != "" {
 			controlPlaneNamespace = controlPlaneNamespaceFromEnv
 		}
 
@@ -99,8 +99,8 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringVarP(&kubeNamespace, "namespace", "n", getDefaultNamespace(), "Namespace for specified resource")
-	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
+	defaultNamespace = getDefaultNamespace()
+	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
 	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
@@ -143,7 +143,7 @@ type statOptionsBase struct {
 
 func newStatOptionsBase() *statOptionsBase {
 	return &statOptionsBase{
-		namespace:    kubeNamespace,
+		namespace:    defaultNamespace,
 		timeWindow:   "1m",
 		outputFormat: tableOutput,
 	}
