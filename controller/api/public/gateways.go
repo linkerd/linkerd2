@@ -3,13 +3,12 @@ package public
 import (
 	"context"
 	"fmt"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 
+	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	pb "github.com/linkerd/linkerd2/controller/gen/public"
 )
 
 const (
@@ -55,27 +54,23 @@ func buildGatewaysRequestLabels(req *pb.GatewaysRequest) (labels model.LabelSet,
 	return labels, groupBy
 }
 
-
 // this function returns a map of gateways to the number of services using them
 func (s *grpcServer) getNumServicesMap() (map[string]uint64, error) {
 
 	results := make(map[string]uint64)
-	selector := 	fmt.Sprintf("%s,!%s", k8s.MirroredResourceLabel,  k8s.MirroredGatewayLabel)
-	services, err := s.k8sAPI.Client.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{LabelSelector:selector})
+	selector := fmt.Sprintf("%s,!%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
+	services, err := s.k8sAPI.Client.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return nil, err
 	}
 
 	for _, svc := range services.Items {
-		if svc.Labels != nil {
-			clusterName := svc.Labels[k8s.RemoteClusterNameLabel]
-			gatewayName := svc.Labels[k8s.RemoteGatewayNameLabel]
-			gatewayNs := svc.Labels[k8s.RemoteGatewayNsLabel]
-			key := fmt.Sprintf("%s-%s-%s", clusterName, gatewayName, gatewayNs)
+		clusterName := svc.Labels[k8s.RemoteClusterNameLabel]
+		gatewayName := svc.Labels[k8s.RemoteGatewayNameLabel]
+		gatewayNs := svc.Labels[k8s.RemoteGatewayNsLabel]
+		key := fmt.Sprintf("%s-%s-%s", clusterName, gatewayName, gatewayNs)
 
-			value := results[key]
-			results[key] = value + 1
-		}
+		results[key]++
 	}
 
 	return results, nil
@@ -142,7 +137,7 @@ func (s *grpcServer) getGatewaysMetrics(ctx context.Context, req *pb.GatewaysReq
 		return nil, err
 	}
 	numSvcMap, err := s.getNumServicesMap()
-	
+
 	if err != nil {
 		return nil, err
 	}
