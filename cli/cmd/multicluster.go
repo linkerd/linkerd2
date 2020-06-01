@@ -294,6 +294,7 @@ func newGatewaysCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			renderGateways(resp.GetOk().GatewaysTable.Rows, stdout)
 			return nil
 		},

@@ -96,7 +96,6 @@ metadata:
   namespace: {{.Values.namespace}}
   annotations: 
     mirror.linkerd.io/gateway-identity: {{.Values.gatewayName}}.{{.Values.namespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain}}
-    mirror.linkerd.io/probe-port: "{{.Values.gatewayProbePort}}"
     mirror.linkerd.io/probe-period: "{{.Values.gatewayProbeSeconds}}"
     mirror.linkerd.io/probe-path: {{.Values.gatewayProbePath}}
     mirror.linkerd.io/multicluster-gateway: "true"
