@@ -65,23 +65,23 @@ func (gtm gatewayMetadata) String() string {
 
 // Events for cluster watcher
 func (rsc RemoteServiceCreated) String() string {
-	return fmt.Sprintf("RemoteServiceCreated: {service: %s, gatewayData: %s}", formatService(rsc.service), rsc.gatewayData)
+	return fmt.Sprintf("TargetServiceCreated: {service: %s, gatewayData: %s}", formatService(rsc.service), rsc.gatewayData)
 }
 
 func (rsu RemoteServiceUpdated) String() string {
-	return fmt.Sprintf("RemoteServiceUpdated: {localService: %s, localEndpoints: %s, remoteUpdate: %s, gatewayData: %s}", formatService(rsu.localService), formatEndpoints(rsu.localEndpoints), formatService(rsu.remoteUpdate), rsu.gatewayData)
+	return fmt.Sprintf("TargetServiceUpdated: {sourceService: %s, sourceEndpoints: %s, targetUpdate: %s, gatewayData: %s}", formatService(rsu.localService), formatEndpoints(rsu.localEndpoints), formatService(rsu.remoteUpdate), rsu.gatewayData)
 }
 
 func (rsd RemoteServiceDeleted) String() string {
-	return fmt.Sprintf("RemoteServiceDeleted: {name: %s, namespace: %s }", rsd.Name, rsd.Namespace)
+	return fmt.Sprintf("TargetServiceDeleted: {name: %s, namespace: %s }", rsd.Name, rsd.Namespace)
 }
 
 func (rgd RemoteGatewayDeleted) String() string {
-	return fmt.Sprintf("RemoteGatewayDeleted: {gatewayData: %s}", rgd.gatewayData)
+	return fmt.Sprintf("TargetGatewayDeleted: {gatewayData: %s}", rgd.gatewayData)
 }
 
 func (rgd *RemoteGatewayCreated) String() string {
-	return fmt.Sprintf("RemoteGatewayCreated: {gatewaySpec: %s}", rgd.gatewaySpec)
+	return fmt.Sprintf("TargetGatewayCreated: {gatewaySpec: %s}", rgd.gatewaySpec)
 }
 
 func (rgu RemoteGatewayUpdated) String() string {
@@ -90,7 +90,7 @@ func (rgu RemoteGatewayUpdated) String() string {
 	for _, s := range rgu.affectedServices {
 		services = append(services, formatService(s))
 	}
-	return fmt.Sprintf("RemoteGatewayUpdated: {gatewaySpec: %s, affectedServices: [%s]}", rgu.gatewaySpec, strings.Join(services, ","))
+	return fmt.Sprintf("TargetGatewayUpdated: {gatewaySpec: %s, affectedServices: [%s]}", rgu.gatewaySpec, strings.Join(services, ","))
 }
 
 func (cgu ClusterUnregistered) String() string {

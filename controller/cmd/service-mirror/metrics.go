@@ -9,7 +9,7 @@ import (
 const (
 	gatewayNameLabel      = "gateway_name"
 	gatewayNamespaceLabel = "gateway_namespace"
-	gatewayClusterName    = "remote_cluster_name"
+	gatewayClusterName    = "target_cluster_name"
 	eventTypeLabelName    = "event_type"
 	probeSuccessfulLabel  = "probe_successful"
 )
@@ -67,7 +67,7 @@ func newProbeMetricVecs() probeMetricVecs {
 	latencies := promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: "gateway_probe_latency_ms",
-			Help: "A histogram of latencies to a remote gateway.",
+			Help: "A histogram of latencies to a target gateway.",
 			Buckets: []float64{
 				1, 2, 3, 4, 5,
 				10, 20, 30, 40, 50,
