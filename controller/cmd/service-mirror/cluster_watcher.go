@@ -577,7 +577,6 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayCreated(event *Remot
 				consts.MirroredGatewayRemoteName:              event.gatewaySpec.gatewayName,
 				consts.MirroredGatewayRemoteNameSpace:         event.gatewaySpec.gatewayNamespace,
 				consts.MirroredGatewayProbePath:               event.gatewaySpec.ProbeConfig.path,
-				consts.MirroredGatewayProbePort:               fmt.Sprint(event.gatewaySpec.ProbeConfig.port),
 				consts.MirroredGatewayProbePeriod:             fmt.Sprint(event.gatewaySpec.ProbeConfig.periodInSeconds),
 			},
 			Labels: map[string]string{
@@ -589,6 +588,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayCreated(event *Remot
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
+					Name:     consts.ProbePortName,
 					Protocol: "TCP",
 					Port:     int32(event.gatewaySpec.ProbeConfig.port),
 				},
@@ -616,6 +616,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayCreated(event *Remot
 				Addresses: event.gatewaySpec.addresses,
 				Ports: []corev1.EndpointPort{
 					{
+						Name:     consts.ProbePortName,
 						Protocol: "TCP",
 						Port:     int32(event.gatewaySpec.ProbeConfig.port),
 					},
@@ -720,6 +721,7 @@ func (rcsw *RemoteClusterServiceWatcher) updateGatewayMirrorService(spec *Gatewa
 					Addresses: spec.addresses,
 					Ports: []corev1.EndpointPort{
 						{
+							Name:     consts.ProbePortName,
 							Protocol: "TCP",
 							Port:     int32(spec.ProbeConfig.port),
 						},
@@ -1059,14 +1061,25 @@ func (rcsw *RemoteClusterServiceWatcher) Stop(cleanupState bool) {
 	rcsw.eventsQueue.ShutDown()
 }
 
-func parseProbeConfig(data map[string]string) (*ProbeConfig, error) {
-	probePath := data[consts.GatewayProbePath]
-	probePort, err := strconv.ParseUint(data[consts.GatewayProbePort], 10, 32)
+func extractPort(port []corev1.ServicePort, portName string) (uint32, error) {
+	for _, p := range port {
+		if p.Name == portName {
+			return uint32(p.Port), nil
+		}
+	}
+	return 0, fmt.Errorf("could not find port with name %s", portName)
+}
+
+func extractProbeConfig(gateway *corev1.Service) (*ProbeConfig, error) {
+	probePath := gateway.Annotations[consts.GatewayProbePath]
+
+	probePort, err := extractPort(gateway.Spec.Ports, consts.ProbePortName)
+
 	if err != nil {
 		return nil, err
 	}
 
-	probePeriod, err := strconv.ParseUint(data[consts.GatewayProbePeriod], 10, 32)
+	probePeriod, err := strconv.ParseUint(gateway.Annotations[consts.GatewayProbePeriod], 10, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -1077,24 +1090,16 @@ func parseProbeConfig(data map[string]string) (*ProbeConfig, error) {
 
 	return &ProbeConfig{
 		path:            probePath,
-		port:            uint32(probePort),
+		port:            probePort,
 		periodInSeconds: uint32(probePeriod),
 	}, nil
 }
 
 func (rcsw *RemoteClusterServiceWatcher) extractGatewaySpec(gateway *corev1.Service) (*GatewaySpec, error) {
-	var foundPort = false
-	var port uint32
-	for _, p := range gateway.Spec.Ports {
-		if p.Name == consts.GatewayPortName {
-			foundPort = true
-			port = uint32(p.Port)
-			break
-		}
-	}
+	incomingPort, err := extractPort(gateway.Spec.Ports, consts.GatewayPortName)
 
-	if !foundPort {
-		return nil, fmt.Errorf("cannot find  port named %s on gateway", consts.GatewayPortName)
+	if err != nil {
+		return nil, err
 	}
 
 	var gatewayEndpoints []corev1.EndpointAddress
@@ -1106,10 +1111,9 @@ func (rcsw *RemoteClusterServiceWatcher) extractGatewaySpec(gateway *corev1.Serv
 	}
 
 	gatewayIdentity := gateway.Annotations[consts.GatewayIdentity]
-	probeConfig, err := parseProbeConfig(gateway.Annotations)
-
+	probeConfig, err := extractProbeConfig(gateway)
 	if err != nil {
-		rcsw.log.Debugf("could not parse probe config for gateway: %s/%s: %s", gateway.Namespace, gateway.Name, err)
+		return nil, fmt.Errorf("could not parse probe config for gateway: %s/%s: %s", gateway.Namespace, gateway.Name, err)
 	}
 
 	return &GatewaySpec{
@@ -1117,7 +1121,7 @@ func (rcsw *RemoteClusterServiceWatcher) extractGatewaySpec(gateway *corev1.Serv
 		gatewayName:      gateway.Name,
 		gatewayNamespace: gateway.Namespace,
 		addresses:        gatewayEndpoints,
-		incomingPort:     port,
+		incomingPort:     incomingPort,
 		resourceVersion:  gateway.ResourceVersion,
 		identity:         gatewayIdentity,
 		ProbeConfig:      probeConfig,

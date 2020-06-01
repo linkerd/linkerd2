@@ -161,19 +161,14 @@ func extractProbeSpec(svc *corev1.Service) (*probeSpec, error) {
 		return nil, fmt.Errorf("mirrored Gateway service is missing %s annotation", consts.MirroredGatewayProbePath)
 	}
 
-	port, hasPort := svc.Annotations[consts.MirroredGatewayProbePort]
-	if !hasPort {
-		return nil, fmt.Errorf("mirrored Gateway service is missing %s annotation", consts.MirroredGatewayProbePort)
+	probePort, err := extractPort(svc.Spec.Ports, consts.ProbePortName)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %s", svc.Name, err)
 	}
 
 	period, hasPeriod := svc.Annotations[consts.MirroredGatewayProbePeriod]
 	if !hasPeriod {
 		return nil, fmt.Errorf("mirrored Gateway service is missing %s annotation", consts.MirroredGatewayProbePeriod)
-	}
-
-	probePort, err := strconv.ParseUint(port, 10, 32)
-	if err != nil {
-		return nil, err
 	}
 
 	probePeriod, err := strconv.ParseUint(period, 10, 32)
@@ -183,7 +178,7 @@ func extractProbeSpec(svc *corev1.Service) (*probeSpec, error) {
 
 	return &probeSpec{
 		path:            path,
-		port:            uint32(probePort),
+		port:            probePort,
 		periodInSeconds: uint32(probePeriod),
 	}, nil
 

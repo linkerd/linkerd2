@@ -774,7 +774,7 @@ func mirroredServiceAsYaml(name, namespace, gtwName, gtwNs, resourceVersion, gat
 	return string(bytes)
 }
 
-func gateway(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int, probePath string, probePeriod int) *corev1.Service {
+func gateway(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int32, probePath string, probePeriod int) *corev1.Service {
 	svc := corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -788,7 +788,6 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32, 
 				consts.GatewayIdentity:    identity,
 				consts.GatewayProbePath:   probePath,
 				consts.GatewayProbePeriod: fmt.Sprint(probePeriod),
-				consts.GatewayProbePort:   fmt.Sprint(probePort),
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -797,6 +796,11 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32, 
 					Name:     portName,
 					Protocol: "TCP",
 					Port:     port,
+				},
+				{
+					Name:     consts.ProbePortName,
+					Protocol: "TCP",
+					Port:     probePort,
 				},
 			},
 		},
@@ -808,7 +812,7 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32, 
 	return &svc
 }
 
-func gatewayAsYaml(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int, probePath string, probePeriod int) string {
+func gatewayAsYaml(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int32, probePath string, probePeriod int) string {
 	gtw := gateway(name, namespace, resourceVersion, ip, portName, port, identity, probePort, probePath, probePeriod)
 
 	bytes, err := yaml.Marshal(gtw)

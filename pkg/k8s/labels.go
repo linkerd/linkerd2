@@ -374,9 +374,6 @@ const (
 	// MirroredGatewayLabel indicates that this is a mirrored gateway
 	MirroredGatewayLabel = SvcMirrorPrefix + "/mirrored-gateway"
 
-	// MirroredGatewayProbePort specifies the port probe for the gateway mirror
-	MirroredGatewayProbePort = SvcMirrorPrefix + "/mirrored-gateway-probe-port"
-
 	// MirroredGatewayProbePeriod specifies the probe period for the gateway mirror
 	MirroredGatewayProbePeriod = SvcMirrorPrefix + "/mirrored-gateway-probe-period"
 
@@ -425,9 +422,6 @@ const (
 	// GatewayIdentity can be found on the remote gateway service
 	GatewayIdentity = SvcMirrorPrefix + "/gateway-identity"
 
-	// GatewayProbePort the port on which the gateway can be probed
-	GatewayProbePort = SvcMirrorPrefix + "/probe-port"
-
 	// GatewayProbePeriod the interval at which the health of the gateway should be probed
 	GatewayProbePeriod = SvcMirrorPrefix + "/probe-period"
 
@@ -440,6 +434,9 @@ const (
 
 	// GatewayPortName is the name of the incoming port of the gateway
 	GatewayPortName = "incoming-port"
+
+	// ProbePortName is the name of the probe port of the gateway
+	ProbePortName = "probe-port"
 
 	// ServiceMirrorLabel is the value used in the controller component label
 	ServiceMirrorLabel = "servicemirror"
