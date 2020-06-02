@@ -33,7 +33,7 @@ func ParseRemoteClusterSecret(secret *corev1.Secret) (*WatchedClusterConfig, err
 	}
 
 	if !hasL5dNamespace {
-		return nil, fmt.Errorf("secret should contain target linkerd installation namespace as annotation %s", consts.RemoteClusterLinkerdNamespaceAnnotation)
+		return nil, fmt.Errorf("secret should contain target cluster linkerd installation namespace as annotation %s", consts.RemoteClusterLinkerdNamespaceAnnotation)
 	}
 
 	return &WatchedClusterConfig{

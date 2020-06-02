@@ -175,7 +175,7 @@ func NewRemoteClusterServiceWatcher(
 ) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(cfg, false, k8s.Svc)
 	if err != nil {
-		return nil, fmt.Errorf("cannot initialize target api for cluster %s: %s", clusterName, err)
+		return nil, fmt.Errorf("cannot initialize api for target cluster %s: %s", clusterName, err)
 	}
 	stopper := make(chan struct{})
 	return &RemoteClusterServiceWatcher{
@@ -271,7 +271,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 
 	servicesOnLocalCluster, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
-		innerErr := fmt.Errorf("failed obtaining source services while GC-ing: %s", err)
+		innerErr := fmt.Errorf("failed to list services while cleaning up mirror services: %s", err)
 		if kerrors.IsNotFound(err) {
 			return innerErr
 		}
@@ -390,7 +390,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteSe
 // new gateway being assigned or additional ports exposed. This method takes care of that.
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteServiceUpdated) error {
 	serviceInfo := fmt.Sprintf("%s/%s", ev.remoteUpdate.Namespace, ev.remoteUpdate.Name)
-	rcsw.log.Debugf("Updating target mirrored service %s/%s", ev.localService.Namespace, ev.localService.Name)
+	rcsw.log.Debugf("Updating mirror service %s/%s", ev.localService.Namespace, ev.localService.Name)
 
 	gatewaySpec, err := rcsw.resolveGateway(&ev.gatewayData)
 	copiedEndpoints := ev.localEndpoints.DeepCopy()
@@ -490,7 +490,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 	gatewaySpec, err := rcsw.resolveGateway(&ev.gatewayData)
 	if err == nil {
 		// only if we resolve it, we are updating the endpoints addresses and ports
-		rcsw.log.Debugf("Resolved target gateway [%v:%d] for %s", gatewaySpec.addresses, gatewaySpec.incomingPort, serviceInfo)
+		rcsw.log.Debugf("Resolved gateway [%v:%d] for %s", gatewaySpec.addresses, gatewaySpec.incomingPort, serviceInfo)
 		endpointsToCreate.Subsets = []corev1.EndpointSubset{
 			{
 				Addresses: gatewaySpec.addresses,
@@ -543,7 +543,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGa
 
 	var errors []error
 	if len(affectedEndpoints) > 0 {
-		rcsw.log.Debugf("Nulling %d endpoints due to target gateway [%s/%s] deletion", len(affectedEndpoints), ev.gatewayData.Namespace, ev.gatewayData.Name)
+		rcsw.log.Debugf("Nulling %d endpoints due to gateway [%s/%s] deletion", len(affectedEndpoints), ev.gatewayData.Namespace, ev.gatewayData.Name)
 		for _, ep := range affectedEndpoints {
 			updated := ep.DeepCopy()
 			updated.Subsets = nil
@@ -645,7 +645,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayCreated(event *Remot
 }
 
 func (rcsw *RemoteClusterServiceWatcher) updateAffectedServices(gatewaySpec GatewaySpec, affectedServices []*corev1.Service) error {
-	rcsw.log.Debugf("Updating %d services due to target gateway [%s/%s] update", len(affectedServices), gatewaySpec.gatewayNamespace, gatewaySpec.gatewayName)
+	rcsw.log.Debugf("Updating %d services due to gateway [%s/%s] update", len(affectedServices), gatewaySpec.gatewayNamespace, gatewaySpec.gatewayName)
 	var errors []error
 	for _, svc := range affectedServices {
 		updatedService := svc.DeepCopy()

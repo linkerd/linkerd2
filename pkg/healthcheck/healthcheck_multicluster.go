@@ -425,7 +425,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 
 			remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate target api: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+				errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, config.ClusterName, err))
 				continue
 			}
 
