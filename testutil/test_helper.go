@@ -61,6 +61,45 @@ var LinkerdDeployReplicas = map[string]deploySpec{
 	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 }
 
+// ConformanceTestHelperOptions defines the TestHelper
+// options required for conformance validation - https://github.com/linkerd/linkerd2-conformance
+// This way the default options may be defined in the linkerd2-conformance repo,
+// and an instance can be passed to NewConformanceTestHelper() to obtain a *TestHelper
+// See - https://github.com/linkerd/linkerd2/issues/4530
+type ConformanceTestHelperOptions struct {
+	Linkerd            string
+	Namespace          string
+	UpgradeFromVersion string
+	ClusterDomain      string
+	ExternalIssuer     bool
+	Uninstall          bool
+	HelmPath           string
+	HelmChart          string
+	HelmStableChart    string
+	HelmReleaseName    string
+}
+
+// NewConformanceTestHelper creates a new TestHelper from the options provided
+// This helper was created to be able to reuse this package for Conformance validation
+// See - https://github.com/linkerd/linkerd2/issues/4530
+func NewConformanceTestHelper(options *ConformanceTestHelperOptions) *TestHelper {
+	return &TestHelper{
+		linkerd:            options.Linkerd,
+		namespace:          options.Namespace,
+		upgradeFromVersion: options.UpgradeFromVersion,
+		helm: helm{
+			path:               options.HelmPath,
+			chart:              options.HelmChart,
+			stableChart:        options.HelmStableChart,
+			releaseName:        options.HelmReleaseName,
+			upgradeFromVersion: options.UpgradeFromVersion,
+		},
+		clusterDomain:  options.ClusterDomain,
+		externalIssuer: options.ExternalIssuer,
+		uninstall:      options.Uninstall,
+	}
+}
+
 // NewTestHelper creates a new instance of TestHelper for the current test run.
 // The new TestHelper can be configured via command line flags.
 func NewTestHelper() *TestHelper {
