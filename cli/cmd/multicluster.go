@@ -151,7 +151,7 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	}
 
 	if opts.gatewayProbePort == defaults.GatewayLocalProbePort {
-		return nil, fmt.Errorf("The probe port needs to be different from %d which is the source probe port", opts.gatewayProbePort)
+		return nil, fmt.Errorf("The probe port needs to be different from %d which is the multicluster probe port", opts.gatewayProbePort)
 	}
 
 	defaults.Namespace = opts.namespace
@@ -269,7 +269,7 @@ func newAllowCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The destination namespace for the service account.")
 	cmd.Flags().BoolVar(&opts.ignoreCluster, "ignore-cluster", false, "Ignore cluster configuration")
-	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", "", "The name of the target access service account")
+	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", "", "The name of the multicluster access service account")
 
 	return cmd
 }
@@ -280,7 +280,7 @@ func newGatewaysCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "gateways",
-		Short: "Display stats information about the target gateways",
+		Short: "Display stats information about the gateways in target clusters",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req := &pb.GatewaysRequest{
@@ -370,7 +370,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	cmd.Flags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
-	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "target-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the default target access service account")
+	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported servivces")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -707,7 +707,7 @@ func newExportServiceCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "export-service",
-		Short: "Exposes a target service to be mirrored",
+		Short: "Exposes a service to be mirrored",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
