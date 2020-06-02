@@ -67,7 +67,7 @@ func newProbeMetricVecs() probeMetricVecs {
 	latencies := promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: "gateway_probe_latency_ms",
-			Help: "A histogram of latencies to a target gateway.",
+			Help: "A histogram of latencies to a gateway in a target cluster.",
 			Buckets: []float64{
 				1, 2, 3, 4, 5,
 				10, 20, 30, 40, 50,
