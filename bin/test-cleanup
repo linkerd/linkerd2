@@ -63,9 +63,9 @@ if [[ $namespaces_controlplane || $namespaces_cni || $namespaces_helm || $namesp
 fi
 
 echo "cleaning up rolebindings in kube-system namespace in k8s-context [${k8s_context}]"
-if ! rolebindings=$(kubectl --context="$k8s_context" -n kube-system get rolebindings -l linkerd.io/control-plane-ns -oname); then
+while IFS= read -r line; do rolebindings+=("$line"); done <<< "$(kubectl --context="$k8s_context" -n kube-system get rolebindings -l linkerd.io/control-plane-ns -oname)"
+if [[ ${rolebindings[*]} ]]; then
+  kubectl --context="$k8s_context" delete "${rolebindings[@]}" -n kube-system
+else
   echo 'no rolebindings found in the kube-system namespace' >&2
-fi
-if [[ $rolebindings ]]; then
-  kubectl --context="$k8s_context" delete "$rolebindings" -n kube-system
 fi
