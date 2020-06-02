@@ -1,6 +1,6 @@
 controllerComponentLabel: linkerd.io/control-plane-component
 controllerImage: gcr.io/linkerd-io/controller
-controllerImageVersion: linkerdVersionValue
+controllerImageVersion: git-91a067c9
 createdByAnnotation: linkerd.io/created-by
 gateway: true
 gatewayLocalProbePath: /health-local
@@ -14,7 +14,7 @@ gatewayProbePort: 4181
 gatewayProbeSeconds: 3
 identityTrustDomain: cluster.local
 linkerdNamespace: linkerd
-linkerdVersion: linkerdVersionValue
+linkerdVersion: git-91a067c9
 namespace: linkerd-multicluster
 proxyOutboundPort: 4140
 serviceMirror: true
