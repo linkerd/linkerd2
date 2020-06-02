@@ -20,12 +20,10 @@ env:
   value: 0.0.0.0:{{.Values.global.proxy.ports.inbound}}
 {{ if .Values.global.proxy.isGateway -}}
 - name: LINKERD2_PROXY_INBOUND_GATEWAY_SUFFIXES
-  {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
-  value: {{$internalDomain}}
+  value: {{printf "svc.%s." .Values.global.clusterDomain}}
 {{ end -}}  
 - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-  {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
-  value: {{$internalDomain}}
+  value: {{printf "svc.%s." .Values.global.clusterDomain}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
   {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
   value: {{ternary "." $internalDomain .Values.global.proxy.enableExternalProfiles}}
