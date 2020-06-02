@@ -25,10 +25,10 @@ const (
 	// that the multicluster setup is working as expected
 	LinkerdMulticlusterChecks CategoryID = "linkerd-multicluster"
 
-	linkerdServiceMirrorComponentName   = "service-mirror"
+	linkerdServiceMirrorComponentName      = "service-mirror"
 	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror"
-	linkerdServiceMirrorClusterRoleName = "linkerd-service-mirror-access-local-resources"
-	linkerdServiceMirrorRoleName        = "linkerd-service-mirror-read-remote-creds"
+	linkerdServiceMirrorClusterRoleName    = "linkerd-service-mirror-access-local-resources"
+	linkerdServiceMirrorRoleName           = "linkerd-service-mirror-read-remote-creds"
 )
 
 var expectedServiceMirrorClusterRolePolicies = []expectedPolicy{
