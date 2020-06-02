@@ -90,7 +90,7 @@ func (rgu RemoteGatewayUpdated) String() string {
 	for _, s := range rgu.affectedServices {
 		services = append(services, formatService(s))
 	}
-	return fmt.Sprintf("TargetGatewayUpdated: {gatewaySpec: %s, affectedServices: [%s]}", rgu.gatewaySpec, strings.Join(services, ","))
+	return fmt.Sprintf("RemoteGatewayUpdated: {gatewaySpec: %s, affectedServices: [%s]}", rgu.gatewaySpec, strings.Join(services, ","))
 }
 
 func (cgu ClusterUnregistered) String() string {
