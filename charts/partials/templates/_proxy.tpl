@@ -21,11 +21,11 @@ env:
 {{ if .Values.global.proxy.isGateway -}}
 - name: LINKERD2_PROXY_INBOUND_GATEWAY_SUFFIXES
   {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
-  value: {{ternary "." $internalDomain .Values.global.proxy.enableExternalProfiles}}
+  value: {{$internalDomain}}
 {{ end -}}  
 - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
   {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
-  value: {{ternary "." $internalDomain .Values.global.proxy.enableExternalProfiles}}
+  value: {{$internalDomain}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
   {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
   value: {{ternary "." $internalDomain .Values.global.proxy.enableExternalProfiles}}
