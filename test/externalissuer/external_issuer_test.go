@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stdout, "Skiping as --external-issuer=false")
 		os.Exit(0)
 	}
-	os.Exit(testutil.Run(m, TestHelper, true))
+	os.Exit(testutil.Run(m, TestHelper))
 }
 
 func TestExternalIssuer(t *testing.T) {
