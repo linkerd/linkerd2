@@ -437,10 +437,10 @@ const (
 	ConfigKeyName = "kubeconfig"
 
 	// GatewayPortName is the name of the incoming port of the gateway
-	GatewayPortName = "linkerd-gateway"
+	GatewayPortName = "mc-gateway"
 
 	// ProbePortName is the name of the probe port of the gateway
-	ProbePortName = "linkerd-gateway-probe"
+	ProbePortName = "mc-probe"
 
 	// ServiceMirrorLabel is the value used in the controller component label
 	ServiceMirrorLabel = "servicemirror"
