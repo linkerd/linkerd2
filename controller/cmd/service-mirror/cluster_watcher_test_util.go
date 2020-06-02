@@ -104,7 +104,7 @@ var createServiceWrongGatewaySpec = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "linkerd-gateway-wrong", 888, "", 111, "/path", 666),
+		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "incoming-port-wrong", 888, "", 111, "/path", 666),
 	},
 }
 
@@ -130,7 +130,7 @@ var createServiceOkeGatewaySpec = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "linkerd-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "incoming-port", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
 	},
 }
 
@@ -193,7 +193,7 @@ var updateServiceToNewGateway = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("gateway-new", "gateway-ns", "currentGatewayResVersion", "0.0.0.0", "linkerd-gateway", 999, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		gatewayAsYaml("gateway-new", "gateway-ns", "currentGatewayResVersion", "0.0.0.0", "incoming-port", 999, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
 	},
 	localResources: []string{
 		mirroredServiceAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "past", "pastGatewayResVersion", []corev1.ServicePort{
@@ -269,7 +269,7 @@ var updateServiceWithChangedPorts = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "linkerd-gateway", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "incoming-port", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
 	},
 	localResources: []string{
 		mirroredServiceAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "past", "pastGatewayResVersion", []corev1.ServicePort{
