@@ -808,7 +808,7 @@ func (conf *ResourceConfig) requireIdentityOnInboundPorts() string {
 }
 
 func (conf *ResourceConfig) isGateway() bool {
-	if override := conf.getOverride(k8s.ProxyEnableDebugAnnotation); override != "" {
+	if override := conf.getOverride(k8s.ProxyEnableGatewayAnnotation); override != "" {
 		value, err := strconv.ParseBool(override)
 		return err == nil && value
 	}
