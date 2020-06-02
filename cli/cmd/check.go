@@ -213,7 +213,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 	success := runChecks(wout, werr, hc, options.output)
 
 	if !success {
-		os.Exit(2)
+		os.Exit(1)
 	}
 
 	return nil

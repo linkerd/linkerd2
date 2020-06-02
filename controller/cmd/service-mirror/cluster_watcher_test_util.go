@@ -29,7 +29,7 @@ type testEnvironment struct {
 	localResources  []string
 }
 
-func (te *testEnvironment) runEnvironment(probeEventSync ProbeEventSink, watcherQueue workqueue.RateLimitingInterface) (*k8s.API, error) {
+func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInterface) (*k8s.API, error) {
 	remoteAPI, err := k8s.NewFakeAPI(te.remoteResources...)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,6 @@ func (te *testEnvironment) runEnvironment(probeEventSync ProbeEventSink, watcher
 		log:             logging.WithFields(logging.Fields{"cluster": clusterName}),
 		eventsQueue:     watcherQueue,
 		requeueLimit:    0,
-		probeEventsSink: probeEventSync,
 	}
 
 	for _, ev := range te.events {
@@ -73,7 +72,7 @@ var serviceCreateWithMissingGateway = &testEnvironment{
 	events: []interface{}{
 		&RemoteServiceCreated{
 			service: remoteService("service-one", "ns1", "missing-gateway", "missing-namespace", "111", nil),
-			gatewayData: &gatewayMetadata{
+			gatewayData: gatewayMetadata{
 				Name:      "missing-gateway",
 				Namespace: "missing-namespace",
 			},
@@ -98,7 +97,7 @@ var createServiceWrongGatewaySpec = &testEnvironment{
 					},
 				}),
 
-			gatewayData: &gatewayMetadata{
+			gatewayData: gatewayMetadata{
 				Name:      "existing-gateway",
 				Namespace: "existing-namespace",
 			},
@@ -124,7 +123,7 @@ var createServiceOkeGatewaySpec = &testEnvironment{
 					Port:     666,
 				},
 			}),
-			gatewayData: &gatewayMetadata{
+			gatewayData: gatewayMetadata{
 				Name:      "existing-gateway",
 				Namespace: "existing-namespace",
 			},
@@ -140,10 +139,6 @@ var deleteMirroredService = &testEnvironment{
 		&RemoteServiceDeleted{
 			Name:      "test-service-remote-to-delete",
 			Namespace: "test-namespace-to-delete",
-			GatewayData: gatewayMetadata{
-				Name:      "gateway",
-				Namespace: "gateway-ns",
-			},
 		},
 	},
 	localResources: []string{
@@ -520,54 +515,6 @@ var gatewayIdentityChanged = &testEnvironment{
 	},
 }
 
-var gatewayProbeConfigChanged = &testEnvironment{
-	events: []interface{}{
-		&RemoteGatewayUpdated{
-			gatewaySpec: GatewaySpec{
-				gatewayName:      "gateway",
-				gatewayNamespace: "gateway-ns",
-				clusterName:      clusterName,
-				addresses:        []corev1.EndpointAddress{{IP: "0.0.0.0"}},
-				incomingPort:     888,
-				resourceVersion:  "currentGatewayResVersion",
-				identity:         "identity",
-				ProbeConfig: &ProbeConfig{
-					path:            "/new-path",
-					port:            defaultProbePort,
-					periodInSeconds: defaultProbePeriod,
-				},
-			},
-			affectedServices: []*corev1.Service{
-				mirroredService("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
-					[]corev1.ServicePort{
-						{
-							Name:     "svc-1-port",
-							Protocol: "TCP",
-							Port:     8081,
-						},
-					}),
-			},
-		},
-	},
-	localResources: []string{
-		mirroredServiceAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
-			[]corev1.ServicePort{
-				{
-					Name:     "svc-1-port",
-					Protocol: "TCP",
-					Port:     8081,
-				},
-			}),
-		endpointsAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "",
-			[]corev1.EndpointPort{
-				{
-					Name:     "svc-1-port",
-					Port:     888,
-					Protocol: "TCP",
-				}}),
-	},
-}
-
 var gatewayDeleted = &testEnvironment{
 	events: []interface{}{
 		&RemoteGatewayDeleted{
@@ -641,15 +588,6 @@ func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 	return &testEnvironment{
 		events: []interface{}{
 			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "resVersion", nil)),
-		},
-	}
-
-}
-
-func onAddOrUpdateNonExportedSvc(isAdd bool) *testEnvironment {
-	return &testEnvironment{
-		events: []interface{}{
-			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "", "", "resVersion", nil)),
 		},
 	}
 
@@ -836,7 +774,7 @@ func mirroredServiceAsYaml(name, namespace, gtwName, gtwNs, resourceVersion, gat
 	return string(bytes)
 }
 
-func gateway(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int, probePath string, probePeriod int) *corev1.Service {
+func gateway(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int32, probePath string, probePeriod int) *corev1.Service {
 	svc := corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -850,7 +788,6 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32, 
 				consts.GatewayIdentity:    identity,
 				consts.GatewayProbePath:   probePath,
 				consts.GatewayProbePeriod: fmt.Sprint(probePeriod),
-				consts.GatewayProbePort:   fmt.Sprint(probePort),
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -859,6 +796,11 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32, 
 					Name:     portName,
 					Protocol: "TCP",
 					Port:     port,
+				},
+				{
+					Name:     consts.ProbePortName,
+					Protocol: "TCP",
+					Port:     probePort,
 				},
 			},
 		},
@@ -870,7 +812,7 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32, 
 	return &svc
 }
 
-func gatewayAsYaml(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int, probePath string, probePeriod int) string {
+func gatewayAsYaml(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int32, probePath string, probePeriod int) string {
 	gtw := gateway(name, namespace, resourceVersion, ip, portName, port, identity, probePort, probePath, probePeriod)
 
 	bytes, err := yaml.Marshal(gtw)
