@@ -118,21 +118,21 @@ func (hc *HealthChecker) multiClusterCategory() category {
 			},
 			{
 				description: "service mirror controller has required permissions",
-				hintAnchor:  "l5d-multicluster-local-rbac-correct",
+				hintAnchor:  "l5d-multicluster-source-rbac-correct",
 				check: func(context.Context) error {
 					return hc.checkServiceMirrorLocalRBAC()
 				},
 			},
 			{
-				description: "service mirror controller can access remote clusters",
-				hintAnchor:  "l5d-smc-remote-remote-clusters-access",
+				description: "service mirror controller can access target clusters",
+				hintAnchor:  "l5d-smc-target-clusters-access",
 				check: func(context.Context) error {
 					return hc.checkRemoteClusterConnectivity()
 				},
 			},
 			{
-				description: "all remote cluster gateways are alive",
-				hintAnchor:  "l5d-multicluster-remote-gateways-alive",
+				description: "all target cluster gateways are alive",
+				hintAnchor:  "l5d-multicluster-target-gateways-alive",
 				check: func(ctx context.Context) error {
 					return hc.checkRemoteClusterGatewaysHealth(ctx)
 				},
@@ -267,12 +267,12 @@ func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 
 func (hc *HealthChecker) checkRemoteClusterAnchors() error {
 	if len(hc.remoteClusterConfigs) == 0 {
-		return &SkipError{Reason: "no remote cluster configs"}
+		return &SkipError{Reason: "no target cluster configs"}
 	}
 
 	localAnchors, err := tls.DecodePEMCertificates(hc.linkerdConfig.Global.IdentityContext.TrustAnchorsPem)
 	if err != nil {
-		return fmt.Errorf("Cannot parse local trust anchors: %s", err)
+		return fmt.Errorf("Cannot parse source trust anchors: %s", err)
 	}
 
 	var offendingClusters []string
@@ -405,7 +405,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 		}
 
 		if len(secrets.Items) == 0 {
-			return &SkipError{Reason: "no remote cluster configs"}
+			return &SkipError{Reason: "no target cluster configs"}
 		}
 
 		var errors []string
@@ -425,7 +425,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 
 			remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate remote api: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+				errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, config.ClusterName, err))
 				continue
 			}
 
@@ -474,7 +474,7 @@ func (hc *HealthChecker) checkRemoteClusterGatewaysHealth(ctx context.Context) e
 		var deadGateways []string
 		var aliveGateways []string
 		if len(rsp.GetOk().GatewaysTable.Rows) == 0 {
-			return &SkipError{Reason: "no remote gateways"}
+			return &SkipError{Reason: "no target gateways"}
 		}
 		for _, gtw := range rsp.GetOk().GatewaysTable.Rows {
 			if gtw.Alive {
