@@ -39,23 +39,21 @@ func TestRoutes(t *testing.T) {
 		s string
 		c int
 	}{
-		{"linkerd-controller-api", 9},
+		{"linkerd-controller-api", 7},
 		{"linkerd-destination", 1},
 		{"linkerd-dst", 3},
-		{"linkerd-grafana", 12},
+		{"linkerd-grafana", 13},
 		{"linkerd-identity", 2},
 		{"linkerd-prometheus", 5},
 		{"linkerd-web", 2},
-		{"linkerd-tap", 3},
 
 		{"POST /api/v1/ListPods", 1},
-		{"POST /api/v1/", 8},
+		{"POST /api/v1/", 7},
 		{"POST /io.linkerd.proxy.destination.Destination/Get", 2},
-		{"POST /linkerd2.controller.tap.Tap/TapByResource", 1},
 		{"GET /api/annotations", 1},
 		{"GET /api/", 9},
 		{"GET /public/", 3},
-		{"GET /api/v1/", 3},
+		{"GET /api/v1/", 2},
 	}
 
 	for _, r := range routeStrings {
