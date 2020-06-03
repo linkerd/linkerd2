@@ -11,12 +11,12 @@ data:
   nginx.conf: |-
     events {
     }
-    stream {                                                                                                                                                                                  
-       server {                                                                                                                                                                                
-           listen     4180;                                                                                                                                                 
-           proxy_pass 127.0.0.1:{{.Values.proxyOutboundPort}};                                                                                                                                 
-       }                                                                                                                                                                                       
-    } 
+    stream {
+       server {
+           listen     4180;
+           proxy_pass 127.0.0.1:{{.Values.proxyOutboundPort}};
+       }
+    }
     http {
       server {
           listen     {{.Values.gatewayProbePort}};
@@ -31,9 +31,9 @@ data:
             access_log off;
             return 200 "healthy\n";
           }
-      }    
+      }
     }
----    
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
