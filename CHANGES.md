@@ -7,9 +7,12 @@ improvements and fixes for multicluster support.
 
 * CLI
   * Added multicluster daisy chain checks to `linkerd check`
-  * Added list of successful gatways in multicluster checks section of `linkerd
+  * Added list of successful gateways in multicluster checks section of `linkerd
     check`
 * Controller
+  * Renamed `nginx-configuration` ConfigMap to `linkerd-gateway-config` (please
+    manually remove the former if upgrading from an earlier multicluster
+    install, thanks @mayankshah1607!)
   * Renamed multicluster gateway ports to `mc-gateway` and `mc-probe`
   * Fixed Service Profiles routes for `linkerd-prometheus`
 * Internal
