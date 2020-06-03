@@ -1,5 +1,32 @@
 # Changes
 
+## edge-20.6.1
+
+This edge release is a release candidate for `stable-2.8`! It introduces several
+improvements and fixes for multicluster support.
+
+* CLI
+  * Added multicluster daisy chain checks to `linkerd check`
+  * Added list of successful gatways in multicluster checks section of `linkerd
+    check`
+* Controller
+  * Renamed multicluster gateway ports to `mc-gateway` and `mc-probe`
+  * Fixed Service Profiles routes for `linkerd-prometheus`
+* Internal
+  * Fixed array handling in the `bin/fmt` script
+  * Improved error reporting for scripts in failed CI runs
+  * Improved logs and event reporting in CI for all integration test failures
+  * Fixed `uname` flags for Darwin in the `bin/lint` script
+  * Fixed shellcheck errors in all `bin/` scripts (thanks @joakimr-axis!)
+* Helm
+  * Added support for `linkerd mc allow`
+  * Added ability to disable secret rescources for self-signed certs (thanks
+    @cypherfox!)
+* Proxy
+  * Modified the `linkerd-gateway` component to use the inbound proxy, rather
+    than nginx, for gateway; this allows Linkerd to detect loops and propogate
+    identity
+
 ## edge-20.5.5
 
 This edge release adds refinements to the Linkerd multicluster implementation,
