@@ -9,15 +9,22 @@ metadata:
   namespace: {{.Values.namespace}}
 data:
   nginx.conf: |-
+    error_log stderr;
+    pid /tmp/nginx.pid;
     events {
     }
-    stream {                                                                                                                                                                                  
-       server {                                                                                                                                                                                
-           listen     4180;                                                                                                                                                 
-           proxy_pass 127.0.0.1:{{.Values.proxyOutboundPort}};                                                                                                                                 
-       }                                                                                                                                                                                       
-    } 
+    stream {
+       server {
+           listen     4180;
+           proxy_pass 127.0.0.1:{{.Values.proxyOutboundPort}};
+       }
+    }
     http {
+      client_body_temp_path /tmp/client_temp;
+      proxy_temp_path       /tmp/proxy_temp_path;
+      fastcgi_temp_path     /tmp/fastcgi_temp;
+      uwsgi_temp_path       /tmp/uwsgi_temp;
+      scgi_temp_path        /tmp/scgi_temp;
       server {
           listen     {{.Values.gatewayProbePort}};
           location {{.Values.gatewayProbePath}} {
@@ -31,9 +38,9 @@ data:
             access_log off;
             return 200 "healthy\n";
           }
-      }    
+      }
     }
----    
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -54,7 +61,7 @@ spec:
   template:
     metadata:
       annotations:
-        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}        
+        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
         linkerd.io/inject: enabled
         config.linkerd.io/proxy-require-identity-inbound-ports: "{{.Values.gatewayProbePort}},{{.Values.gatewayPort}},4180"
         config.linkerd.io/enable-gateway: "true"
@@ -84,10 +91,14 @@ spec:
             - name: mc-probe
               containerPort: {{.Values.gatewayProbePort}}
             - name: local-probe
-              containerPort: {{.Values.gatewayLocalProbePort}}              
+              containerPort: {{.Values.gatewayLocalProbePort}}
+          securityContext:
+            runAsUser: 1001
           volumeMounts:
             - name: config
               mountPath: /etc/nginx
+            - name: nginx-tmp
+              mountPath: /tmp
       serviceAccountName: {{.Values.gatewayName}}
 ---
 apiVersion: v1
@@ -95,7 +106,7 @@ kind: Service
 metadata:
   name: {{.Values.gatewayName}}
   namespace: {{.Values.namespace}}
-  annotations: 
+  annotations:
     mirror.linkerd.io/gateway-identity: {{.Values.gatewayName}}.{{.Values.namespace}}.serviceaccount.identity.{{.Values.linkerdNamespace}}.{{.Values.identityTrustDomain}}
     mirror.linkerd.io/probe-period: "{{.Values.gatewayProbeSeconds}}"
     mirror.linkerd.io/probe-path: {{.Values.gatewayProbePath}}
@@ -104,10 +115,10 @@ metadata:
 spec:
   ports:
   - name: mc-gateway
-    port: {{.Values.gatewayPort}}    
+    port: {{.Values.gatewayPort}}
     protocol: TCP
   - name: mc-probe
-    port: {{.Values.gatewayProbePort}}    
+    port: {{.Values.gatewayProbePort}}
     protocol: TCP
   selector:
     app: {{.Values.gatewayName}}
