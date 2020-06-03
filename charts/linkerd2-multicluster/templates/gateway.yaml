@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: linkerd-gateway
+  name: {{.Values.gatewayName}}-config
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
   namespace: {{.Values.namespace}}
@@ -64,7 +64,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: linkerd-gateway   
+            name: {{.Values.gatewayName}}-config
       containers:
         - name: nginx
           readinessProbe:
