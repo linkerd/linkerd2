@@ -27,6 +27,7 @@ linkerd2-multicluster chart and their default values.
 |`gatewayProbePort`               | The port used for liveliness probing                                                        |`4181`                                        |
 |`gatewayProbeSeconds`            | The interval (in seconds) between liveness probes                                           |`3`                                           |
 |`identityTrustDomain`            | Trust domain used for identity of the existing linkerd installation                         |`cluster.local`                               |
+|`installNamespace`               | If the namespace should be installed                                                        |`true`                                        |
 |`linkerdNamespace`               | The namespace of the existing Linkerd installation                                          |`linkerd`                                     |
 |`linkerdVersion`                 | Control plane version                                                                       | latest version                               |
 |`namespace`                      | Service Mirror component namespace                                                          |`linkerd-multicluster`                        |
