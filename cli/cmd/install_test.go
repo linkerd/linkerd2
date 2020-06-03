@@ -503,10 +503,14 @@ func fakeHeartbeatSchedule() string {
 func addFakeTLSSecrets(values *charts.Values) {
 	values.ProxyInjector.CrtPEM = "proxy injector crt"
 	values.ProxyInjector.KeyPEM = "proxy injector key"
-	values.ProfileValidator.CrtPEM = "proxy injector crt"
-	values.ProfileValidator.KeyPEM = "proxy injector key"
+	values.ProxyInjector.CaBundle = "proxy injector CA bundle"
+	values.ProfileValidator.CrtPEM = "profile validator crt"
+	values.ProfileValidator.KeyPEM = "profile validator key"
+	values.ProfileValidator.CaBundle = "profile validator CA bundle"
 	values.Tap.CrtPEM = "tap crt"
 	values.Tap.KeyPEM = "tap key"
+	values.Tap.CaBundle = "tap CA bundle"
 	values.SMIMetrics.CrtPEM = "smi metrics crt"
 	values.SMIMetrics.KeyPEM = "smi metrics key"
+	values.SMIMetrics.CaBundle = "smi metrics CA bundle"
 }

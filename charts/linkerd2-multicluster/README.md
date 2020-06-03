@@ -22,11 +22,12 @@ linkerd2-multicluster chart and their default values.
 |`gatewayName`                    | The name of the gateway that will be installed                                              |`linkerd-gateway`                             |
 |`gatewayNginxImage`              | The Nginx image                                                                             |`nginx`                                       |
 |`gatewayNginxImageVersion`       | The version of the Nginx image                                                              |`1.17`                                        |
-|`gatewayPort`                    | The port on which all the gateway will accept incoming traffic                              |`4180`                                        |
+|`gatewayPort`                    | The port on which all the gateway will accept incoming traffic                              |`4143`                                        |
 |`gatewayProbePath`               | The path that will be used by remote clusters for determining whether the gateway is alive  |`/health`                                     |
 |`gatewayProbePort`               | The port used for liveliness probing                                                        |`4181`                                        |
 |`gatewayProbeSeconds`            | The interval (in seconds) between liveness probes                                           |`3`                                           |
 |`identityTrustDomain`            | Trust domain used for identity of the existing linkerd installation                         |`cluster.local`                               |
+|`installNamespace`               | If the namespace should be installed                                                        |`true`                                        |
 |`linkerdNamespace`               | The namespace of the existing Linkerd installation                                          |`linkerd`                                     |
 |`linkerdVersion`                 | Control plane version                                                                       | latest version                               |
 |`namespace`                      | Service Mirror component namespace                                                          |`linkerd-multicluster`                        |

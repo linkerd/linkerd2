@@ -13,7 +13,10 @@ targetbin=$rootdir/target/bin
 cd "$rootdir"
 
 exe=
-if [ "$(uname -o)" = Msys ]; then
+if [ "$(uname -s)" = Darwin ]; then
+  # Darwin's uname doesn't support the -o flag so we short circuit here.
+  :;
+elif [ "$(uname -o)" = Msys ]; then
   exe=.exe
 fi
 
