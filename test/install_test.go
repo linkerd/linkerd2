@@ -41,6 +41,10 @@ var (
 		"linkerd-tap",
 	}
 
+	multiclusterSvcs = []string{
+		"linkerd-gateway",
+	}
+
 	injectionCases = []struct {
 		ns          string
 		annotations map[string]string
@@ -351,35 +355,69 @@ func TestInstallHelm(t *testing.T) {
 	}
 }
 
-func TestResourcesPostInstall(t *testing.T) {
+func testResourcesPostInstall(namespace string, services []string, deploys map[string]testutil.DeploySpec, t *testing.T) {
 	// Tests Namespace
-	err := TestHelper.CheckIfNamespaceExists(TestHelper.GetLinkerdNamespace())
+	err := TestHelper.CheckIfNamespaceExists(namespace)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output",
 			"received unexpected output\n%s", err)
 	}
 
 	// Tests Services
-	for _, svc := range linkerdSvcs {
-		if err := TestHelper.CheckService(TestHelper.GetLinkerdNamespace(), svc); err != nil {
+	for _, svc := range services {
+		if err := TestHelper.CheckService(namespace, svc); err != nil {
 			testutil.AnnotatedErrorf(t, fmt.Sprintf("error validating service [%s]", svc),
 				"error validating service [%s]:\n%s", svc, err)
 		}
 	}
 
 	// Tests Pods and Deployments
-	for deploy, spec := range testutil.LinkerdDeployReplicas {
-		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+	for deploy, spec := range deploys {
+		if err := TestHelper.CheckPods(namespace, deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
 				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
 			}
 		}
-		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+		if err := TestHelper.CheckDeployment(namespace, deploy, spec.Replicas); err != nil {
 			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}
+}
+
+func TestControlPlaneResourcesPostInstall(t *testing.T) {
+	testResourcesPostInstall(TestHelper.GetLinkerdNamespace(), linkerdSvcs, testutil.LinkerdDeployReplicas, t)
+}
+
+func TestInstallMulticluster(t *testing.T) {
+	if !TestHelper.Multicluster() {
+		return
+	}
+
+	exec := append([]string{"multicluster"}, []string{
+		"install",
+		"--log-level", "debug",
+		"--namespace", TestHelper.GetMulticlusterNamespace(),
+	}...)
+	out, stderr, err := TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
+			"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+}
+
+func TestMulticlusterResourcesPostInstall(t *testing.T) {
+	if !TestHelper.Multicluster() {
+		return
+	}
+	testResourcesPostInstall(TestHelper.GetMulticlusterNamespace(), multiclusterSvcs, testutil.MulticlusterDeployReplicas, t)
 }
 
 func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
@@ -436,13 +474,21 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 	var golden string
 	if stage == "proxy" {
 		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=0"}
-		golden = "check.proxy.golden"
+		if TestHelper.Multicluster() {
+			golden = "check.multicluster.proxy.golden"
+		} else {
+			golden = "check.proxy.golden"
+		}
 	} else if stage == "config" {
 		cmd = []string{"check", "config", "--expected-version", expectedVersion, "--wait=0"}
 		golden = "check.config.golden"
 	} else {
 		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=0"}
-		golden = "check.golden"
+		if TestHelper.Multicluster() {
+			golden = "check.multicluster.golden"
+		} else {
+			golden = "check.golden"
+		}
 	}
 
 	timeout := time.Minute

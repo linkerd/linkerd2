@@ -26,6 +26,7 @@ helm_upgrade_integration_tests
 uninstall_integration_tests
 deep_integration_tests
 external_issuer_integration_tests
+multicluster_integration_tests
 
 if [ $exit_code -eq 0 ]; then
     printf '\n=== PASS: all tests passed\n'

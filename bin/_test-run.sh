@@ -117,6 +117,11 @@ external_issuer_integration_tests() {
     cleanup
 }
 
+multicluster_integration_tests() {
+    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace-multi" --multicluster
+    cleanup
+}
+
 #
 # Helper functions.
 #
