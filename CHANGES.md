@@ -16,10 +16,6 @@ improvements and fixes for multicluster support.
   * Renamed multicluster gateway ports to `mc-gateway` and `mc-probe`
   * Fixed Service Profiles routes for `linkerd-prometheus`
 * Internal
-  * Fixed array handling in the `bin/fmt` script
-  * Improved error reporting for scripts in failed CI runs
-  * Improved logs and event reporting in CI for all integration test failures
-  * Fixed `uname` flags for Darwin in the `bin/lint` script
   * Fixed shellcheck errors in all `bin/` scripts (thanks @joakimr-axis!)
 * Helm
   * Added support for `linkerd mc allow`
