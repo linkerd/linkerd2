@@ -235,7 +235,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		// prepare for stage 2
-		args = append([]string{"control-plane"}, args...)
+		args = append([]string{"control-plane --addon-overwrite"}, args...)
 	}
 
 	exec := append([]string{cmd}, args...)
