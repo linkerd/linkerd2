@@ -709,13 +709,11 @@ func (rcsw *RemoteClusterServiceWatcher) updateGatewayMirrorService(spec *Gatewa
 			updatedService.Annotations[consts.MirroredGatewayProbePeriod] = fmt.Sprint(spec.ProbeConfig.periodInSeconds)
 		}
 
-		updatedService.Spec = corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name:     consts.ProbePortName,
-					Protocol: "TCP",
-					Port:     int32(spec.ProbeConfig.port),
-				},
+		updatedService.Spec.Ports = []corev1.ServicePort{
+			{
+				Name:     consts.ProbePortName,
+				Protocol: "TCP",
+				Port:     int32(spec.ProbeConfig.port),
 			},
 		}
 
