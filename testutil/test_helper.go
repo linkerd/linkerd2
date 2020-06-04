@@ -61,12 +61,11 @@ var LinkerdDeployReplicas = map[string]deploySpec{
 	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 }
 
-// ConformanceTestHelperOptions defines the TestHelper
-// options required for conformance validation - https://github.com/linkerd/linkerd2-conformance
-// This way the default options may be defined in the linkerd2-conformance repo,
-// and an instance can be passed to NewConformanceTestHelper() to obtain a *TestHelper
+// GenericTestHelperOptions defines the TestHelper options
+// that are used along with `NewGenericTestHelper()` method
+// to obtain a *TestHelper
 // See - https://github.com/linkerd/linkerd2/issues/4530
-type ConformanceTestHelperOptions struct {
+type GenericTestHelperOptions struct {
 	Linkerd            string
 	Namespace          string
 	UpgradeFromVersion string
@@ -79,10 +78,11 @@ type ConformanceTestHelperOptions struct {
 	HelmReleaseName    string
 }
 
-// NewConformanceTestHelper creates a new TestHelper from the options provided
-// This helper was created to be able to reuse this package for Conformance validation
+// NewGenericTestHelper returns a new *TestHelper from the options provided.
+// This helper was created to be able to reuse this package without hard restrictions
+// as seen in `NewTestHelper()` which is primarily used with integration tests
 // See - https://github.com/linkerd/linkerd2/issues/4530
-func NewConformanceTestHelper(options *ConformanceTestHelperOptions) *TestHelper {
+func NewGenericTestHelper(options *GenericTestHelperOptions) *TestHelper {
 	return &TestHelper{
 		linkerd:            options.Linkerd,
 		namespace:          options.Namespace,
