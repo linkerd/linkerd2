@@ -740,7 +740,7 @@ func (rcsw *RemoteClusterServiceWatcher) updateGatewayMirrorService(spec *Gatewa
 			}
 		}
 
-		endpoints.Annotations[consts.RemoteGatewayIdentity] = spec.identity
+		updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = spec.identity
 
 		_, err = rcsw.localAPIClient.Client.CoreV1().Services(rcsw.serviceMirrorNamespace).Update(updatedService)
 		if err != nil {
