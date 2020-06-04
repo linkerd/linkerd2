@@ -181,7 +181,7 @@ func (hc *HealthChecker) multiClusterCategory() category {
 				hintAnchor:  "l5d-multicluster-gateways-exist",
 				warning:     true,
 				check: func(ctx context.Context) error {
-					return hc.checkIfGatewaysHaveExternalIp()
+					return hc.checkIfGatewaysHaveExternalIP()
 				},
 			},
 			{
@@ -619,7 +619,7 @@ func (hc *HealthChecker) checkIfAllMirrorServicesHaveGatewayMirrors() error {
 	return &SkipError{Reason: "not checking muticluster"}
 }
 
-func (hc *HealthChecker) checkIfGatewaysHaveExternalIp() error {
+func (hc *HealthChecker) checkIfGatewaysHaveExternalIP() error {
 	if hc.Options.ShouldCheckMulticluster {
 
 		var gatewaysWithNoExternalIps []string
