@@ -63,10 +63,10 @@ type (
 	}
 
 	linkOptions struct {
-		namespace           string
-		clusterName         string
-		apiServerAddress    string
-		serviceAccountName  string
+		namespace          string
+		clusterName        string
+		apiServerAddress   string
+		serviceAccountName string
 	}
 
 	exportServiceOptions struct {
@@ -151,7 +151,7 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	}
 
 	if opts.gatewayProbePort == defaults.GatewayLocalProbePort {
-		return nil, fmt.Errorf("The probe port needs to be different from %d which is the local probe port", opts.gatewayProbePort)
+		return nil, fmt.Errorf("The probe port needs to be different from %d which is the multicluster probe port", opts.gatewayProbePort)
 	}
 
 	defaults.Namespace = opts.namespace
@@ -269,7 +269,7 @@ func newAllowCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The destination namespace for the service account.")
 	cmd.Flags().BoolVar(&opts.ignoreCluster, "ignore-cluster", false, "Ignore cluster configuration")
-	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", "", "The name of the remote access service account")
+	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", "", "The name of the multicluster access service account")
 
 	return cmd
 }
@@ -280,7 +280,7 @@ func newGatewaysCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "gateways",
-		Short: "Display stats information about the remote gateways",
+		Short: "Display stats information about the gateways in target clusters",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req := &pb.GatewaysRequest{
@@ -294,13 +294,14 @@ func newGatewaysCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			renderGateways(resp.GetOk().GatewaysTable.Rows, stdout)
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "the name of the remote cluster")
-	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "", "the namespace in which the gateway resides on the remote cluster")
+	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "the name of the target cluster")
+	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", "", "the namespace in which the gateway resides on the target cluster")
 	cmd.Flags().StringVarP(&opts.timeWindow, "time-window", "t", "1m", "Time window (for example: \"15s\", \"1m\", \"10m\", \"1h\"). Needs to be at least 15s.")
 
 	return cmd
@@ -314,9 +315,9 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:    "install",
-		Short:  "Output Kubernetes configs to install the Linkerd multicluster add-on",
-		Args:   cobra.NoArgs,
+		Use:   "install",
+		Short: "Output Kubernetes configs to install the Linkerd multicluster add-on",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			values, err := buildMulticlusterInstallValues(options)
@@ -363,13 +364,13 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().Uint32Var(&options.gatewayProbeSeconds, "gateway-probe-seconds", options.gatewayProbeSeconds, "The interval at which the gateway will be checked for being alive in seconds")
 	cmd.Flags().Uint32Var(&options.gatewayProbePort, "gateway-probe-port", options.gatewayProbePort, "The liveness check port of the gateway")
 	cmd.Flags().BoolVar(&options.serviceMirror, "service-mirror", options.serviceMirror, "If the service-mirror component should be installed")
-	cmd.Flags().Uint32Var(&options.serviceMirrorRetryLimit, "service-mirror-retry-limit", options.serviceMirrorRetryLimit, "The number of times a failed update from the remote cluster is allowed to be retried")
+	cmd.Flags().Uint32Var(&options.serviceMirrorRetryLimit, "service-mirror-retry-limit", options.serviceMirrorRetryLimit, "The number of times a failed update from the target cluster is allowed to be retried")
 	cmd.Flags().StringVar(&options.logLevel, "log-level", options.logLevel, "Log level for the Multicluster components")
 	cmd.Flags().StringVar(&options.gatewayNginxImage, "gateway-nginx-image", options.gatewayNginxImage, "The nginx image to be used")
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	cmd.Flags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
-	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "remote-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the default remote access service account")
+	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported servivces")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -389,9 +390,9 @@ func newLinkCommand() *cobra.Command {
 	opts := linkOptions{}
 
 	cmd := &cobra.Command{
-		Use:    "link",
-		Short:  "Outputs a Kubernetes secret that allows a service mirror component to connect to this cluster",
-		Args:   cobra.NoArgs,
+		Use:   "link",
+		Short: "Outputs a Kubernetes secret that allows a service mirror component to connect to this cluster",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if opts.clusterName == "" {
@@ -706,7 +707,7 @@ func newExportServiceCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "export-service",
-		Short: "Exposes a remote service to be mirrored",
+		Short: "Exposes a service to be mirrored",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			if len(args) < 1 {
@@ -753,7 +754,7 @@ components on a cluster, manage credentials and link clusters together.`,
   linkerd --context=cluster-a cluster install | kubectl --context=cluster-a apply -f -
 
   # Extract mirroring cluster credentials from cluster A and install them on cluster B
-  linkerd --context=cluster-a cluster link --cluster-name=remote | kubectl apply --context=cluster-b -f -
+  linkerd --context=cluster-a cluster link --cluster-name=target | kubectl apply --context=cluster-b -f -
 
   # Export services from cluster to be available to other clusters
   kubectl get svc -o yaml | linkerd export-service - | kubectl apply -f -
@@ -764,7 +765,7 @@ components on a cluster, manage credentials and link clusters together.`,
   # Exporting all the resources inside a folder and its sub-folders.
   linkerd export-service  <folder> | kubectl apply -f -`,
 	}
-	
+
 	multiclusterCmd.AddCommand(newLinkCommand())
 	multiclusterCmd.AddCommand(newMulticlusterInstallCommand())
 	multiclusterCmd.AddCommand(newExportServiceCommand())

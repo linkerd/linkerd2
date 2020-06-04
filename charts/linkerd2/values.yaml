@@ -178,11 +178,14 @@ prometheusRuleConfigMapMounts: []
 
 # proxy injector configuration
 proxyInjector:
+  externalSecret: false
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
 
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
 
 # set resources for proxy injector and its linkerd proxy respectively
 # see global.proxy.resources for details.
@@ -191,11 +194,14 @@ proxyInjector:
 
 # service profile validator configuration
 profileValidator:
+  externalSecret: false
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
 
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
 
 # set resources for controllers public API and its linkerd proxy respectively
 # see global.proxy.resources for details.
@@ -204,10 +210,14 @@ profileValidator:
 
 # tap configuration
 tap:
+  externalSecret: false
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
+
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
 
 # set resources for tap and its linkerd proxy respectively
 # see global.proxy.resources for details.
@@ -236,11 +246,15 @@ nodeSelector:
 
 smiMetrics:
   enabled: false
+  externalSecret: false
   image: deislabs/smi-metrics:v0.2.1
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
+
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
 
 # set resources for smi-metrics and its linkerd proxy respectively
 # see global.proxy.resources for details.

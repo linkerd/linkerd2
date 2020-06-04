@@ -20,6 +20,7 @@
 - [Nordstrom](https://nordstrom.com/)
 - [Paybase](https://paybase.io/)
 - [PlayStudios Asia](https://www.playstudios.asia)
+- [Projector](https://projector.com)
 - [Studyo](https://studyo.co)
 - [Transit](https://transit.app)
 - [Vernacular.ai](https://vernacular.ai/)

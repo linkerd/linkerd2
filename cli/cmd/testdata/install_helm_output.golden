@@ -526,7 +526,7 @@ webhooks:
       name: linkerd-proxy-injector
       namespace: linkerd
       path: "/"
-    caBundle: dGVzdC1wcm94eS1pbmplY3Rvci1jcnQtcGVt
+    caBundle: dGVzdC1wcm94eS1pbmplY3Rvci1jYS1idW5kbGU=
   failurePolicy: Ignore
   rules:
   - operations: [ "CREATE" ]
@@ -614,7 +614,7 @@ webhooks:
       name: linkerd-sp-validator
       namespace: linkerd
       path: "/"
-    caBundle: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jcnQtcGVt
+    caBundle: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jYS1idW5kbGU=
   failurePolicy: Ignore
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
@@ -747,7 +747,7 @@ spec:
   service:
     name: linkerd-tap
     namespace: linkerd
-  caBundle: dGVzdC10YXAtY3J0LXBlbQ==
+  caBundle: dGVzdC10YXAtY2EtYnVuZGxl
 ---
 # Source: linkerd2/templates/psp.yaml
 ---

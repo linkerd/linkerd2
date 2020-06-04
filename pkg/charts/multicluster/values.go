@@ -29,6 +29,7 @@ type Values struct {
 	GatewayProbePort               uint32 `json:"gatewayProbePort"`
 	GatewayProbeSeconds            uint32 `json:"gatewayProbeSeconds"`
 	IdentityTrustDomain            string `json:"identityTrustDomain"`
+	InstallNamespace               bool   `json:"installNamespace"`
 	LinkerdNamespace               string `json:"linkerdNamespace"`
 	LinkerdVersion                 string `json:"linkerdVersion"`
 	Namespace                      string `json:"namespace"`

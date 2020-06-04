@@ -21,11 +21,11 @@ rm -rf "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen"
 chmod +x "${codegen_pkg}/generate-groups.sh"
 
 # run the code-generator entrypoint script
-GO111MODULE="on" "${codegen_pkg}/generate-groups.sh" \
-  "deepcopy,client,informer,lister" \
+GO111MODULE='on' "${codegen_pkg}/generate-groups.sh" \
+  'deepcopy,client,informer,lister' \
   "${ROOT_PACKAGE}/controller/gen/client" \
   "${ROOT_PACKAGE}/controller/gen/apis" \
   "${CUSTOM_RESOURCE_NAME}:${CUSTOM_RESOURCE_VERSION}"
 
 # copy generated code out of GOPATH
-cp -R "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen" "controller/"
+cp -R "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen" 'controller/'

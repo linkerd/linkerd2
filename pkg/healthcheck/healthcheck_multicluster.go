@@ -10,6 +10,7 @@ import (
 
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
+	tsclient "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -117,21 +118,21 @@ func (hc *HealthChecker) multiClusterCategory() category {
 			},
 			{
 				description: "service mirror controller has required permissions",
-				hintAnchor:  "l5d-multicluster-local-rbac-correct",
+				hintAnchor:  "l5d-multicluster-source-rbac-correct",
 				check: func(context.Context) error {
 					return hc.checkServiceMirrorLocalRBAC()
 				},
 			},
 			{
-				description: "service mirror controller can access remote clusters",
-				hintAnchor:  "l5d-smc-remote-remote-clusters-access",
+				description: "service mirror controller can access target clusters",
+				hintAnchor:  "l5d-smc-target-clusters-access",
 				check: func(context.Context) error {
 					return hc.checkRemoteClusterConnectivity()
 				},
 			},
 			{
-				description: "all remote cluster gateways are alive",
-				hintAnchor:  "l5d-multicluster-remote-gateways-alive",
+				description: "all target cluster gateways are alive",
+				hintAnchor:  "l5d-multicluster-target-gateways-alive",
 				check: func(ctx context.Context) error {
 					return hc.checkRemoteClusterGatewaysHealth(ctx)
 				},
@@ -141,6 +142,14 @@ func (hc *HealthChecker) multiClusterCategory() category {
 				hintAnchor:  "l5d-multicluster-clusters-share-anchors",
 				check: func(ctx context.Context) error {
 					return hc.checkRemoteClusterAnchors()
+				},
+			},
+			{
+				description: "multicluster daisy chaining is avoided",
+				hintAnchor:  "l5d-multicluster-daisy-chaining",
+				warning:     true,
+				check: func(ctx context.Context) error {
+					return hc.checkDaisyChains()
 				},
 			},
 		},
@@ -258,12 +267,12 @@ func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 
 func (hc *HealthChecker) checkRemoteClusterAnchors() error {
 	if len(hc.remoteClusterConfigs) == 0 {
-		return &SkipError{Reason: "no remote cluster configs"}
+		return &SkipError{Reason: "no target cluster configs"}
 	}
 
 	localAnchors, err := tls.DecodePEMCertificates(hc.linkerdConfig.Global.IdentityContext.TrustAnchorsPem)
 	if err != nil {
-		return fmt.Errorf("Cannot parse local trust anchors: %s", err)
+		return fmt.Errorf("Cannot parse source trust anchors: %s", err)
 	}
 
 	var offendingClusters []string
@@ -321,6 +330,70 @@ func (hc *HealthChecker) checkRemoteClusterAnchors() error {
 	return nil
 }
 
+func serviceExported(svc corev1.Service) bool {
+	_, hasGtwName := svc.Annotations[k8s.GatewayNameAnnotation]
+	_, hasGtwNs := svc.Annotations[k8s.GatewayNsAnnotation]
+	return hasGtwName && hasGtwNs
+}
+
+func (hc *HealthChecker) checkDaisyChains() error {
+	if hc.Options.ShouldCheckMulticluster {
+		errs := []error{}
+
+		svcs, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
+		for _, svc := range svcs.Items {
+			_, isMirror := svc.Labels[k8s.MirroredResourceLabel]
+			if isMirror && serviceExported(svc) {
+				errs = append(errs, fmt.Errorf("mirror service %s.%s is exported", svc.Name, svc.Namespace))
+			}
+		}
+
+		ts, err := tsclient.NewForConfig(hc.kubeAPI.Config)
+		if err != nil {
+			return err
+		}
+		splits, err := ts.SplitV1alpha1().TrafficSplits(metav1.NamespaceAll).List(metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
+		for _, split := range splits.Items {
+			apex, err := hc.kubeAPI.CoreV1().Services(split.Namespace).Get(split.Spec.Service, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			if serviceExported(*apex) {
+				for _, backend := range split.Spec.Backends {
+					if backend.Weight.IsZero() {
+						continue
+					}
+					leaf, err := hc.kubeAPI.CoreV1().Services(split.Namespace).Get(backend.Service, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+					_, isMirror := leaf.Labels[k8s.MirroredResourceLabel]
+					if isMirror {
+						errs = append(errs, fmt.Errorf("exported service %s.%s routes to mirror service %s.%s via traffic split %s.%s",
+							apex.Name, apex.Namespace, leaf.Name, leaf.Namespace, split.Name, split.Namespace,
+						))
+					}
+				}
+			}
+		}
+		if len(errs) > 0 {
+			messages := []string{}
+			for _, err := range errs {
+				messages = append(messages, fmt.Sprintf("* %s", err.Error()))
+			}
+			return errors.New(strings.Join(messages, "\n"))
+		}
+		return nil
+	}
+	return &SkipError{Reason: "not checking muticluster"}
+}
+
 func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 	if hc.Options.ShouldCheckMulticluster {
 		options := metav1.ListOptions{
@@ -332,7 +405,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 		}
 
 		if len(secrets.Items) == 0 {
-			return &SkipError{Reason: "no remote cluster configs"}
+			return &SkipError{Reason: "no target cluster configs"}
 		}
 
 		var errors []string
@@ -352,7 +425,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 
 			remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate remote api: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+				errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, config.ClusterName, err))
 				continue
 			}
 
@@ -399,11 +472,14 @@ func (hc *HealthChecker) checkRemoteClusterGatewaysHealth(ctx context.Context) e
 		}
 
 		var deadGateways []string
+		var aliveGateways []string
 		if len(rsp.GetOk().GatewaysTable.Rows) == 0 {
-			return &SkipError{Reason: "no remote gateways"}
+			return &SkipError{Reason: "no target gateways"}
 		}
 		for _, gtw := range rsp.GetOk().GatewaysTable.Rows {
-			if !gtw.Alive {
+			if gtw.Alive {
+				aliveGateways = append(aliveGateways, fmt.Sprintf("\t* cluster: [%s], gateway: [%s/%s]", gtw.ClusterName, gtw.Namespace, gtw.Name))
+			} else {
 				deadGateways = append(deadGateways, fmt.Sprintf("* cluster: [%s], gateway: [%s/%s]", gtw.ClusterName, gtw.Namespace, gtw.Name))
 			}
 		}
@@ -411,7 +487,7 @@ func (hc *HealthChecker) checkRemoteClusterGatewaysHealth(ctx context.Context) e
 		if len(deadGateways) > 0 {
 			return fmt.Errorf("Some gateways are not alive:\n\t%s", strings.Join(deadGateways, "\n\t"))
 		}
-		return nil
+		return &VerboseSuccess{Message: strings.Join(aliveGateways, "\n")}
 	}
 	return &SkipError{Reason: "not checking muticluster"}
 }

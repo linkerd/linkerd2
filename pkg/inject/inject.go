@@ -498,6 +498,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		UID:                           conf.proxyUID(),
 		Resources:                     conf.proxyResourceRequirements(),
 		WaitBeforeExitSeconds:         conf.proxyWaitBeforeExitSeconds(),
+		IsGateway:                     conf.isGateway(),
 		RequireIdentityOnInboundPorts: conf.requireIdentityOnInboundPorts(),
 	}
 
@@ -804,6 +805,15 @@ func (conf *ResourceConfig) tapDisabled() bool {
 
 func (conf *ResourceConfig) requireIdentityOnInboundPorts() string {
 	return conf.getOverride(k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
+}
+
+func (conf *ResourceConfig) isGateway() bool {
+	if override := conf.getOverride(k8s.ProxyEnableGatewayAnnotation); override != "" {
+		value, err := strconv.ParseBool(override)
+		return err == nil && value
+	}
+
+	return false
 }
 
 func (conf *ResourceConfig) proxyWaitBeforeExitSeconds() uint64 {

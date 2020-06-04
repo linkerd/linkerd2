@@ -123,6 +123,7 @@ type (
 		Trace                         *Trace        `json:"trace"`
 		UID                           int64         `json:"uid"`
 		WaitBeforeExitSeconds         uint64        `json:"waitBeforeExitSeconds"`
+		IsGateway                     bool          `json:"isGateway"`
 		RequireIdentityOnInboundPorts string        `json:"requireIdentityOnInboundPorts"`
 	}
 
@@ -196,12 +197,12 @@ type (
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		Scheme              string    `json:"scheme"`
-		ClockSkewAllowance  string    `json:"clockSkewAllowance"`
-		IssuanceLifetime    string    `json:"issuanceLifetime"`
-		CrtExpiryAnnotation string    `json:"crtExpiryAnnotation"`
-		CrtExpiry           time.Time `json:"crtExpiry"`
-		TLS                 *TLS      `json:"tls"`
+		Scheme              string     `json:"scheme"`
+		ClockSkewAllowance  string     `json:"clockSkewAllowance"`
+		IssuanceLifetime    string     `json:"issuanceLifetime"`
+		CrtExpiryAnnotation string     `json:"crtExpiryAnnotation"`
+		CrtExpiry           time.Time  `json:"crtExpiry"`
+		TLS                 *IssuerTLS `json:"tls"`
 	}
 
 	// PrometheusRuleConfigMapMount is a user supplied prometheus rule config maps.
@@ -236,6 +237,15 @@ type (
 	// TLS has a pair of PEM-encoded key and certificate variables used in the
 	// Helm templates
 	TLS struct {
+		ExternalSecret bool   `json:"externalSecret"`
+		KeyPEM         string `json:"keyPEM"`
+		CrtPEM         string `json:"crtPEM"`
+		CaBundle       string `json:"caBundle"`
+	}
+
+	// IssuerTLS is a stripped down version of TLS that lacks the integral caBundle.
+	// It is tracked separately in the field 'global.IdentityTrustAnchorsPEM'
+	IssuerTLS struct {
 		KeyPEM string `json:"keyPEM"`
 		CrtPEM string `json:"crtPEM"`
 	}
