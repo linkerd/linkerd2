@@ -709,6 +709,14 @@ func (rcsw *RemoteClusterServiceWatcher) updateGatewayMirrorService(spec *Gatewa
 			updatedService.Annotations[consts.MirroredGatewayProbePeriod] = fmt.Sprint(spec.ProbeConfig.periodInSeconds)
 		}
 
+		updatedService.Spec.Ports = []corev1.ServicePort{
+			{
+				Name:     consts.ProbePortName,
+				Protocol: "TCP",
+				Port:     int32(spec.ProbeConfig.port),
+			},
+		}
+
 		endpoints, err := rcsw.localAPIClient.Endpoint().Lister().Endpoints(rcsw.serviceMirrorNamespace).Get(localServiceName)
 		if err != nil {
 			return err
