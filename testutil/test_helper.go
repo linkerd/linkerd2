@@ -484,11 +484,11 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	return events, nil
 }
 
-// Run calls `m.Run()`, shows unexpected logs/events if showLogs is true,
+// Run calls `m.Run()`, shows unexpected logs/events,
 // and returns the exit code for the tests
-func Run(m *testing.M, helper *TestHelper, showLogs bool) int {
+func Run(m *testing.M, helper *TestHelper) int {
 	code := m.Run()
-	if code != 0 && showLogs {
+	if code != 0 {
 		_, errs1 := FetchAndCheckLogs(helper)
 		for _, err := range errs1 {
 			fmt.Println(err)
