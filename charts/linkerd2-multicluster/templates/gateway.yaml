@@ -10,7 +10,6 @@ metadata:
 data:
   nginx.conf: |-
     error_log stderr;
-    pid /tmp/nginx.pid;
     events {
     }
     stream {
@@ -20,11 +19,6 @@ data:
        }
     }
     http {
-      client_body_temp_path /tmp/client_temp;
-      proxy_temp_path       /tmp/proxy_temp_path;
-      fastcgi_temp_path     /tmp/fastcgi_temp;
-      uwsgi_temp_path       /tmp/uwsgi_temp;
-      scgi_temp_path        /tmp/scgi_temp;
       server {
           listen     {{.Values.gatewayProbePort}};
           location {{.Values.gatewayProbePath}} {
@@ -97,8 +91,6 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/nginx
-            - name: nginx-tmp
-              mountPath: /tmp
       serviceAccountName: {{.Values.gatewayName}}
 ---
 apiVersion: v1
