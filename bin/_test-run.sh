@@ -219,8 +219,8 @@ run_upgrade_test() {
     local upgrade_namespace
 
     release_channel=$1
-    upgrade_version=$(latest_release_channel $release_channel)
-    upgrade_namespace="$linkerd_namespace"-upgrade-$release_channel
+    upgrade_version=$(latest_release_channel "$release_channel")
+    upgrade_namespace="$linkerd_namespace"-upgrade-"$release_channel"
 
     install_version "$2" "$upgrade_namespace" "$upgrade_version"
     run_test "$test_directory/install_test.go" --upgrade-from-version="$upgrade_version" --linkerd-namespace="$upgrade_namespace"
