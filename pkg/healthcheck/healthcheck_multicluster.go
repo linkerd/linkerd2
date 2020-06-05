@@ -159,7 +159,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					},
 				},
 				{
-					description: "all mirrored services have endpoints",
+					description: "all mirror services have endpoints",
 					hintAnchor:  "l5d-multicluster-services-endpoints",
 					warning:     true,
 					check: func(ctx context.Context) error {
@@ -175,7 +175,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					},
 				},
 				{
-					description: "matching gateway mirrors of all mirrored services exist",
+					description: "matching gateway mirrors of all mirror services exist",
 					hintAnchor:  "l5d-multicluster-mirror-gateways",
 					warning:     true,
 					check: func(ctx context.Context) error {
@@ -183,7 +183,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					},
 				},
 				{
-					description: "remote: all gateways have external Ips",
+					description: "remote: all gateways have external IPs",
 					hintAnchor:  "l5d-multicluster-gateways-exist",
 					warning:     true,
 					check: func(ctx context.Context) error {
@@ -219,7 +219,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					},
 				},
 				{
-					description: "all gateways have external Ips",
+					description: "all gateways have external IPs",
 					hintAnchor:  "l5d-multicluster-gateways-exist",
 					warning:     true,
 					check: func(ctx context.Context) error {
@@ -711,19 +711,19 @@ func (hc *HealthChecker) checkIfAllMirrorServicesHaveGatewayMirrors() error {
 
 func (hc *HealthChecker) checkIfGatewaysHaveExternalIP() error {
 
-	gatewaysWithNoExternalIps, err := getGatewaysWithNoExternalIps(hc.kubeAPI)
+	gatewaysWithNoExternalIPs, err := getGatewaysWithNoExternalIPs(hc.kubeAPI)
 	if err != nil {
 		return err
 	}
-	if len(gatewaysWithNoExternalIps) > 0 {
-		return fmt.Errorf("Some gateways don't have external Ips:\n\t%s", strings.Join(gatewaysWithNoExternalIps, "\n\t"))
+	if len(gatewaysWithNoExternalIPs) > 0 {
+		return fmt.Errorf("Some gateways don't have external IPs:\n\t%s", strings.Join(gatewaysWithNoExternalIPs, "\n\t"))
 	}
 	return nil
 }
 
-func getGatewaysWithNoExternalIps(api *k8s.KubernetesAPI) ([]string, error) {
+func getGatewaysWithNoExternalIPs(api *k8s.KubernetesAPI) ([]string, error) {
 
-	var gatewaysWithNoExternalIps []string
+	var gatewaysWithNoExternalIPs []string
 	services, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -733,12 +733,12 @@ func getGatewaysWithNoExternalIps(api *k8s.KubernetesAPI) ([]string, error) {
 		if gatewayService(svc) {
 			// check if there is an external IP for the gateway service
 			if len(svc.Status.LoadBalancer.Ingress) <= 0 {
-				gatewaysWithNoExternalIps = append(gatewaysWithNoExternalIps, fmt.Sprintf("%s.%s", svc.Name, svc.Namespace))
+				gatewaysWithNoExternalIPs = append(gatewaysWithNoExternalIPs, fmt.Sprintf("%s.%s", svc.Name, svc.Namespace))
 			}
 		}
 	}
 
-	return gatewaysWithNoExternalIps, nil
+	return gatewaysWithNoExternalIPs, nil
 }
 
 func (hc *HealthChecker) checkRemoteIfGatewaysHaveExternalIP() error {
@@ -761,14 +761,14 @@ func (hc *HealthChecker) checkRemoteIfGatewaysHaveExternalIP() error {
 			continue
 		}
 
-		gatewaysWithNoExternalIps, err := getGatewaysWithNoExternalIps(remoteAPI)
+		gatewaysWithNoExternalIPs, err := getGatewaysWithNoExternalIPs(remoteAPI)
 		if err != nil {
 			offendingClusters = append(offendingClusters, err.Error())
 			continue
 		}
 
-		if len(gatewaysWithNoExternalIps) > 0 {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t\t%s", cfg.ClusterName, strings.Join(gatewaysWithNoExternalIps, "\n\t\t")))
+		if len(gatewaysWithNoExternalIPs) > 0 {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t\t%s", cfg.ClusterName, strings.Join(gatewaysWithNoExternalIPs, "\n\t\t")))
 		}
 	}
 
@@ -874,12 +874,12 @@ func (hc *HealthChecker) checkifGatewaysExistforExportedServices() error {
 
 func getNonExistentGateways(api *k8s.KubernetesAPI) ([]string, error) {
 	var nonExistentGateways []string
-	exportedServices, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+	services, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	for _, svc := range exportedServices.Items {
+	for _, svc := range services.Items {
 		if serviceExported(svc) {
 			// Check if there is a relevant gateway
 			_, err := api.CoreV1().Services(svc.Annotations[k8s.GatewayNsAnnotation]).Get(svc.Annotations[k8s.GatewayNameAnnotation], metav1.GetOptions{})
