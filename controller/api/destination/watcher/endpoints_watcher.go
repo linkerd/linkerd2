@@ -150,7 +150,7 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry) *EndpointsWatcher 
 	})
 
 	if err := endpointSliceAccess(k8sAPI.Client); err != nil {
-		ew.log.Debugf("%v\nWatching Endpoints resources")
+		ew.log.Debugf("Watching Endpoints resources")
 		k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpoints,
 			DeleteFunc: ew.deleteEndpoints,
@@ -370,10 +370,23 @@ func (ew *EndpointsWatcher) getServicePublisher(id ServiceID) (sp *servicePublis
 func (sp *servicePublisher) updateEndpoints(newResource interface{}) {
 	sp.Lock()
 	defer sp.Unlock()
-	sp.log.Debugf("Updating endpoints for %s", sp.id)
 
-	for _, port := range sp.ports {
-		port.updateEndpoints(newResource)
+	switch res := newResource.(type) {
+	case *corev1.Endpoints:
+		sp.log.Debugf("Updating endpoints for %s", sp.id)
+		for _, port := range sp.ports {
+			port.updateEndpoints(newResource)
+		}
+	case *dv1beta1.EndpointSlice:
+		sp.log.Debugf("Updating endpoint slice for %s", sp.id)
+		// only update addresses in ports whose
+		// target ports are present in our subset (slice)
+		for _, port := range sp.ports {
+			if b := isTargetPortInSlice(port.targetPort, res.Ports); !b {
+				continue
+			}
+			port.updateEndpoints(newResource)
+		}
 	}
 
 }
@@ -391,15 +404,17 @@ func (sp *servicePublisher) deleteEndpoints() {
 func (sp *servicePublisher) deleteEndpointSlice(es *dv1beta1.EndpointSlice) {
 	sp.Lock()
 	defer sp.Unlock()
-	sp.log.Debug("Deleting endpoint slice for %s", sp.id)
+	sp.log.Debugf("Deleting endpoint slice for %s", sp.id)
 
 	// We only want to delete the addresses associated with ports
 	// that are present in this subset, i.e in the slice
 	// as opposed to a whole Endpoints obj which contains all ports
 	// of the service and their associated addresses, grouped in subsets
 	// ugh
-	//TODO: address
 	for _, port := range sp.ports {
+		if b := isTargetPortInSlice(port.targetPort, es.Ports); !b {
+			continue
+		}
 		port.deleteEndpointSlice(es)
 	}
 
@@ -594,6 +609,12 @@ func (pp *portPublisher) endpointSliceToAddresses(es *dv1beta1.EndpointSlice) Ad
 			continue
 		}
 
+		// Without this we get `Add:` twice, once when !ready
+		// and once when ready
+		if !*endpoint.Conditions.Ready {
+			continue
+		}
+
 		// Every endpoint has addresses that correspond to the EndpointSlice addressType field
 		// Consumers must handle different types of addresses
 		// An "addresses" set must contain at least 1 but no more than 100 addresses
@@ -768,6 +789,19 @@ func (pp *portPublisher) deleteEndpointSlice(es *dv1beta1.EndpointSlice) {
 		}
 	}
 
+	if len(pp.addresses.Addresses) > 0 {
+		return
+	}
+
+	pp.exists = false
+	pp.addresses = AddressSet{}
+	for _, listener := range pp.listeners {
+		listener.NoEndpoints(false)
+	}
+
+	pp.metrics.incUpdates()
+	pp.metrics.setExists(false)
+	pp.metrics.setPods(0)
 }
 
 func (pp *portPublisher) noEndpoints(exists bool) {
@@ -907,4 +941,22 @@ func endpointSliceAccess(k8sClient kubernetes.Interface) error {
 
 func isIPv6Address(address string) bool {
 	return strings.Count(address, ":") >= 2
+}
+
+func isTargetPortInSlice(targetPort namedPort, slicePorts []dv1beta1.EndpointPort) bool {
+	switch targetPort.Type {
+	case intstr.Int:
+		for _, p := range slicePorts {
+			if *p.Port == targetPort.IntVal {
+				return true
+			}
+		}
+	case intstr.String:
+		for _, p := range slicePorts {
+			if *p.Name == targetPort.StrVal {
+				return true
+			}
+		}
+	}
+	return false
 }
