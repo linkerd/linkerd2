@@ -642,8 +642,8 @@ func (hc *HealthChecker) checkIfMirroredServicesHaveEndpoints() error {
 
 		for _, svc := range mirroredServices.Items {
 			// Check if there is a relevant end-point
-			_, err := hc.kubeAPI.CoreV1().Endpoints(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
-			if err != nil {
+			endpoint, err := hc.kubeAPI.CoreV1().Endpoints(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
+			if err != nil || len(endpoint.Subsets) == 0 {
 				servicesWithNoEndpoints = append(servicesWithNoEndpoints, fmt.Sprintf("%s.%s of cluster: [%s], gateway: [%s/%s]", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel], svc.Labels[k8s.RemoteGatewayNsLabel], svc.Labels[k8s.RemoteGatewayNameLabel]))
 			}
 		}
@@ -667,8 +667,8 @@ func (hc *HealthChecker) checkIfGatewayMirrorsHaveEndpoints() error {
 
 		for _, svc := range gatewayServices.Items {
 			// Check if there is a relevant end-point
-			_, err := hc.kubeAPI.CoreV1().Endpoints(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
-			if err != nil {
+			endpoints, err := hc.kubeAPI.CoreV1().Endpoints(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
+			if err != nil || len(endpoints.Subsets) == 0 {
 				gatewayMirrorsWithNoEndpoints = append(gatewayMirrorsWithNoEndpoints, fmt.Sprintf("%s.%s of cluster: [%s]", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
 			}
 		}
