@@ -1,5 +1,30 @@
 # Changes
 
+## edge-20.6.2
+
+This edge release is our second release candidate for `stable-2.8`, including
+various fixes and improvements around multicluster support.
+
+* CLI
+  * Fixed bad output in the `linkerd multicluster gateways` command
+  * Improved the error returned when running the CLI with no KUBECONFIG path set
+    (thanks @Matei207!)
+* Controller
+  * Fixed issue where mirror service wasn't created when paired to a gateway
+    whose external IP wasn't yet provided
+  * Fixed issue where updating the gateway identity annotation wasn't propagated
+    back into the mirror gateway endpoints object
+  * Fixed issue where updating the gateway ports wasn't reflected in the gateway
+    mirror service
+  * Increased the log level for some of the service mirror events
+  * Changed the nginx gateway config so that it runs as non-root and denies all
+    requests to locations other than the probe path
+* Web UI
+  * Fixed multicluster Grafana dashboard
+* Internal
+  * Added flag in integration tests to dump fixture diffs into a separate
+    directory (thanks @cypherfox!)
+
 ## edge-20.6.1
 
 This edge release is a release candidate for `stable-2.8`! It introduces several
