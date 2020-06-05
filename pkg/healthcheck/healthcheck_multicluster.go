@@ -23,9 +23,11 @@ import (
 const (
 	// LinkerdMulticlusterChecks adds a series of checks to validate
 	// that the multicluster setup is working as expected
-	LinkerdMulticlusterChecks CategoryID = "linkerd-multicluster"
+	LinkerdMulticlusterSourceChecks CategoryID = "linkerd-multicluster-source"
+	LinkerdMulticlusterTargetChecks CategoryID = "linkerd-multicluster-target"
 
 	linkerdServiceMirrorComponentName   = "linkerd-service-mirror"
+	LinkerdGatewayComponentName         = "linkerd-gateway"
 	linkerdServiceMirrorClusterRoleName = "linkerd-service-mirror-access-local-resources"
 	linkerdServiceMirrorRoleName        = "linkerd-service-mirror-read-remote-creds"
 )
@@ -54,154 +56,205 @@ var expectedServiceMirrorRemoteClusterPolicyVerbs = []string{
 	"watch",
 }
 
-func (hc *HealthChecker) multiClusterCategory() category {
-	return category{
-		id: LinkerdMulticlusterChecks,
-		checkers: []checker{
-			{
-				description: "service mirror controller is running",
-				hintAnchor:  "l5d-multicluster-service-mirror-running",
-				fatal:       true,
-				check: func(context.Context) error {
-					return hc.checkServiceMirrorController()
+func (hc *HealthChecker) multiClusterCategory() []category {
+	return []category{
+		{
+			id: LinkerdMulticlusterSourceChecks,
+			checkers: []checker{
+				{
+					description: "service mirror controller is running",
+					hintAnchor:  "l5d-multicluster-service-mirror-running",
+					fatal:       true,
+					check: func(context.Context) error {
+						return hc.checkServiceMirrorController()
+					},
+				},
+				{
+					description: "service mirror controller ClusterRoles exist",
+					hintAnchor:  "l5d-multicluster-cluster-role-exist",
+					check: func(context.Context) error {
+						if hc.Options.SourceCluster {
+							return hc.checkClusterRoles(true, []string{linkerdServiceMirrorClusterRoleName}, hc.serviceMirrorComponentsSelector())
+						}
+						return &SkipError{Reason: "not checking muticluster"}
+					},
+				},
+				{
+					description: "service mirror controller ClusterRoleBindings exist",
+					hintAnchor:  "l5d-multicluster-cluster-role-binding-exist",
+					check: func(context.Context) error {
+						if hc.Options.SourceCluster {
+							return hc.checkClusterRoleBindings(true, []string{linkerdServiceMirrorClusterRoleName}, hc.serviceMirrorComponentsSelector())
+						}
+						return &SkipError{Reason: "not checking muticluster"}
+					},
+				},
+				{
+					description: "service mirror controller Roles exist",
+					hintAnchor:  "l5d-multicluster-role-exist",
+					check: func(context.Context) error {
+						if hc.Options.SourceCluster {
+							return hc.checkRoles(true, hc.serviceMirrorNs, []string{linkerdServiceMirrorRoleName}, hc.serviceMirrorComponentsSelector())
+						}
+						return &SkipError{Reason: "not checking muticluster"}
+					},
+				},
+				{
+					description: "service mirror controller RoleBindings exist",
+					hintAnchor:  "l5d-multicluster-role-binding-exist",
+					check: func(context.Context) error {
+						if hc.Options.SourceCluster {
+							return hc.checkRoleBindings(true, hc.serviceMirrorNs, []string{linkerdServiceMirrorRoleName}, hc.serviceMirrorComponentsSelector())
+						}
+						return &SkipError{Reason: "not checking muticluster"}
+					},
+				},
+				{
+					description: "service mirror controller ServiceAccounts exist",
+					hintAnchor:  "l5d-multicluster-service-account-exist",
+					check: func(context.Context) error {
+						if hc.Options.SourceCluster {
+							return hc.checkServiceAccounts([]string{linkerdServiceMirrorComponentName}, hc.serviceMirrorNs, hc.serviceMirrorComponentsSelector())
+						}
+						return &SkipError{Reason: "not checking muticluster"}
+					},
+				},
+				{
+					description: "service mirror controller has required permissions",
+					hintAnchor:  "l5d-multicluster-source-rbac-correct",
+					check: func(context.Context) error {
+						return hc.checkServiceMirrorLocalRBAC()
+					},
+				},
+				{
+					description: "service mirror controller can access target clusters",
+					hintAnchor:  "l5d-smc-target-clusters-access",
+					check: func(context.Context) error {
+						return hc.checkRemoteClusterConnectivity()
+					},
+				},
+				{
+					description: "all target cluster gateways are alive",
+					hintAnchor:  "l5d-multicluster-target-gateways-alive",
+					check: func(ctx context.Context) error {
+						return hc.checkRemoteClusterGatewaysHealth(ctx)
+					},
+				},
+				{
+					description: "clusters share trust anchors",
+					hintAnchor:  "l5d-multicluster-clusters-share-anchors",
+					check: func(ctx context.Context) error {
+						return hc.checkRemoteClusterAnchors()
+					},
+				},
+				{
+					description: "multicluster daisy chaining is avoided",
+					hintAnchor:  "l5d-multicluster-daisy-chaining",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkDaisyChains()
+					},
+				},
+				{
+					description: "all mirrored services have endpoints",
+					hintAnchor:  "l5d-multicluster-services-endpoints",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkIfMirroredServicesHaveEndpoints()
+					},
+				},
+				{
+					description: "all gateway mirrors have endpoints",
+					hintAnchor:  "l5d-multicluster-gateways-endpoints",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkIfGatewayMirrorsHaveEndpoints()
+					},
+				},
+				{
+					description: "matching gateway mirrors of all mirrored services exist",
+					hintAnchor:  "l5d-multicluster-mirror-gateways",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkIfAllMirrorServicesHaveGatewayMirrors()
+					},
+				},
+				{
+					description: "remote: all gateways have external Ips",
+					hintAnchor:  "l5d-multicluster-gateways-exist",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkRemoteIfGatewaysHaveExternalIP()
+					},
+				},
+				{
+					description: "remote: gateways exists for all exported services",
+					hintAnchor:  "l5d-multicluster-exported-gateways",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkRemoteifGatewaysExistforExportedServices()
+					},
+				},
+				{
+					description: "remote: all gateways have correct port names exposed",
+					hintAnchor:  "l5d-multicluster-gateways-ports",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						return hc.checkRemoteIfAllGatewaysHaveCorrectPortNames()
+					},
 				},
 			},
-			{
-				description: "service mirror controller ClusterRoles exist",
-				hintAnchor:  "l5d-multicluster-cluster-role-exist",
-				check: func(context.Context) error {
-					if hc.Options.ShouldCheckMulticluster {
-						return hc.checkClusterRoles(true, []string{linkerdServiceMirrorClusterRoleName}, hc.serviceMirrorComponentsSelector())
-					}
-					return &SkipError{Reason: "not checking muticluster"}
+		},
+		{
+			id: LinkerdMulticlusterTargetChecks,
+			checkers: []checker{
+				{
+					description: "all cluster gateways are alive",
+					hintAnchor:  "l5d-multicluster-target-gateways-alive",
+					check: func(ctx context.Context) error {
+						return hc.checkClusterGatewaysHealth(ctx)
+					},
 				},
-			},
-			{
-				description: "service mirror controller ClusterRoleBindings exist",
-				hintAnchor:  "l5d-multicluster-cluster-role-binding-exist",
-				check: func(context.Context) error {
-					if hc.Options.ShouldCheckMulticluster {
-						return hc.checkClusterRoleBindings(true, []string{linkerdServiceMirrorClusterRoleName}, hc.serviceMirrorComponentsSelector())
-					}
-					return &SkipError{Reason: "not checking muticluster"}
+				{
+					description: "all gateways have external Ips",
+					hintAnchor:  "l5d-multicluster-gateways-exist",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						if hc.TargetCluster {
+							return hc.checkIfGatewaysHaveExternalIP()
+						}
+						return &SkipError{Reason: "not checking target"}
+					},
 				},
-			},
-			{
-				description: "service mirror controller Roles exist",
-				hintAnchor:  "l5d-multicluster-role-exist",
-				check: func(context.Context) error {
-					if hc.Options.ShouldCheckMulticluster {
-						return hc.checkRoles(true, hc.serviceMirrorNs, []string{linkerdServiceMirrorRoleName}, hc.serviceMirrorComponentsSelector())
-					}
-					return &SkipError{Reason: "not checking muticluster"}
+				{
+					description: "gateways exists for all exported services",
+					hintAnchor:  "l5d-multicluster-exported-gateways",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						if hc.TargetCluster {
+							return hc.checkifGatewaysExistforExportedServices()
+						}
+						return &SkipError{Reason: "not checking target"}
+					},
 				},
-			},
-			{
-				description: "service mirror controller RoleBindings exist",
-				hintAnchor:  "l5d-multicluster-role-binding-exist",
-				check: func(context.Context) error {
-					if hc.Options.ShouldCheckMulticluster {
-						return hc.checkRoleBindings(true, hc.serviceMirrorNs, []string{linkerdServiceMirrorRoleName}, hc.serviceMirrorComponentsSelector())
-					}
-					return &SkipError{Reason: "not checking muticluster"}
-				},
-			},
-			{
-				description: "service mirror controller ServiceAccounts exist",
-				hintAnchor:  "l5d-multicluster-service-account-exist",
-				check: func(context.Context) error {
-					if hc.Options.ShouldCheckMulticluster {
-						return hc.checkServiceAccounts([]string{linkerdServiceMirrorComponentName}, hc.serviceMirrorNs, hc.serviceMirrorComponentsSelector())
-					}
-					return &SkipError{Reason: "not checking muticluster"}
-				},
-			},
-			{
-				description: "service mirror controller has required permissions",
-				hintAnchor:  "l5d-multicluster-source-rbac-correct",
-				check: func(context.Context) error {
-					return hc.checkServiceMirrorLocalRBAC()
-				},
-			},
-			{
-				description: "service mirror controller can access target clusters",
-				hintAnchor:  "l5d-smc-target-clusters-access",
-				check: func(context.Context) error {
-					return hc.checkRemoteClusterConnectivity()
-				},
-			},
-			{
-				description: "all target cluster gateways are alive",
-				hintAnchor:  "l5d-multicluster-target-gateways-alive",
-				check: func(ctx context.Context) error {
-					return hc.checkRemoteClusterGatewaysHealth(ctx)
-				},
-			},
-			{
-				description: "clusters share trust anchors",
-				hintAnchor:  "l5d-multicluster-clusters-share-anchors",
-				check: func(ctx context.Context) error {
-					return hc.checkRemoteClusterAnchors()
-				},
-			},
-			{
-				description: "multicluster daisy chaining is avoided",
-				hintAnchor:  "l5d-multicluster-daisy-chaining",
-				warning:     true,
-				check: func(ctx context.Context) error {
-					return hc.checkDaisyChains()
-				},
-			},
-			{
-				description: "all mirrored services have endpoints",
-				hintAnchor:  "l5d-multicluster-services-endpoints",
-				warning:     true,
-				check: func(ctx context.Context) error {
-					return hc.checkIfMirroredServicesHaveEndpoints()
-				},
-			},
-			{
-				description: "all gateway mirrors have endpoints",
-				hintAnchor:  "l5d-multicluster-gateways-endpoints",
-				warning:     true,
-				check: func(ctx context.Context) error {
-					return hc.checkIfGatewayMirrorsHaveEndpoints()
-				},
-			},
-			{
-				description: "matching gateway mirrors of all mirrored services exist",
-				hintAnchor:  "l5d-multicluster-mirror-gateways",
-				warning:     true,
-				check: func(ctx context.Context) error {
-					return hc.checkIfAllMirrorServicesHaveGatewayMirrors()
-				},
-			},
-			{
-				description: "all gateways have external Ips",
-				hintAnchor:  "l5d-multicluster-gateways-exist",
-				warning:     true,
-				check: func(ctx context.Context) error {
-					return hc.checkIfGatewaysHaveExternalIP()
-				},
-			},
-			{
-				description: "gateways exists for all exported services",
-				hintAnchor:  "l5d-multicluster-exported-gateways",
-				warning:     true,
-				check: func(ctx context.Context) error {
-					return hc.checkifGatewaysExistforExportedServices()
-				},
-			},
-			{
-				description: "all gateways have correct port names exposed",
-				hintAnchor:  "l5d-multicluster-gateways-ports",
-				warning:     true,
-				check: func(ctx context.Context) error {
-					return hc.checkIfAllGatewaysHaveCorrectPortNames()
+				{
+					description: "all gateways have correct port names exposed",
+					hintAnchor:  "l5d-multicluster-gateways-ports",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						if hc.TargetCluster {
+							return hc.checkIfAllGatewaysHaveCorrectPortNames()
+						}
+						return &SkipError{Reason: "not checking target"}
+					},
 				},
 			},
 		},
 	}
+}
+
+func (hc *HealthChecker) GatewayComponentsSelector() string {
+	return fmt.Sprintf("%s=%s", "app", LinkerdGatewayComponentName)
 }
 
 func (hc *HealthChecker) serviceMirrorComponentsSelector() string {
@@ -218,12 +271,12 @@ func (hc *HealthChecker) checkServiceMirrorController() error {
 	}
 
 	// if we have explicitly requested for multicluster to be checked, error out
-	if len(result.Items) == 0 && hc.Options.ShouldCheckMulticluster {
+	if len(result.Items) == 0 && hc.Options.SourceCluster {
 		return errors.New("Service mirror controller is not present")
 	}
 
 	if len(result.Items) > 0 {
-		hc.Options.ShouldCheckMulticluster = true
+		hc.Options.SourceCluster = true
 
 		if len(result.Items) > 1 {
 			var errors []string
@@ -271,7 +324,7 @@ func verifyRule(expected expectedPolicy, actual []v1.PolicyRule) error {
 }
 
 func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
-	if hc.Options.ShouldCheckMulticluster {
+	if hc.Options.SourceCluster {
 		var errors []string
 
 		clusterRole, err := hc.kubeAPI.RbacV1().ClusterRoles().Get(linkerdServiceMirrorClusterRoleName, metav1.GetOptions{})
@@ -385,7 +438,7 @@ func serviceExported(svc corev1.Service) bool {
 }
 
 func (hc *HealthChecker) checkDaisyChains() error {
-	if hc.Options.ShouldCheckMulticluster {
+	if hc.Options.SourceCluster {
 		errs := []error{}
 
 		svcs, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
@@ -442,8 +495,42 @@ func (hc *HealthChecker) checkDaisyChains() error {
 	return &SkipError{Reason: "not checking muticluster"}
 }
 
+func (hc *HealthChecker) checkClusterGatewaysHealth(ctx context.Context) error {
+
+	var offendingGateways []string
+	options := metav1.ListOptions{
+		LabelSelector: hc.GatewayComponentsSelector(),
+	}
+	result, err := hc.kubeAPI.AppsV1().Deployments(corev1.NamespaceAll).List(options)
+	if err != nil {
+		return err
+	}
+
+	// if we have explicitly requested for multicluster to be checked, error out
+	if len(result.Items) == 0 && hc.Options.TargetCluster {
+		return &SkipError{"Linkerd gateways are not present"}
+	}
+
+	if len(result.Items) > 0 {
+		hc.Options.TargetCluster = true
+
+		for _, gateway := range result.Items {
+			if gateway.Status.AvailableReplicas < 1 {
+				offendingGateways = append(offendingGateways, fmt.Sprintf("%s.%s", gateway.Name, gateway.Namespace))
+			}
+		}
+
+	}
+
+	if len(offendingGateways) > 0 {
+		return fmt.Errorf(fmt.Sprintf("Some gateways are not available: %s\t\t", strings.Join(offendingGateways, "\n\t\t")))
+	}
+
+	return &SkipError{Reason: "Linkerd gateways not present"}
+}
+
 func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
-	if hc.Options.ShouldCheckMulticluster {
+	if hc.Options.SourceCluster {
 		options := metav1.ListOptions{
 			FieldSelector: fmt.Sprintf("%s=%s", "type", k8s.MirrorSecretType),
 		}
@@ -499,7 +586,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 		}
 
 		if len(errors) > 0 {
-			return fmt.Errorf("Problematic clusters:\n\t%s", strings.Join(errors, "\n\t"))
+			return fmt.Errorf("Problematic clusters:\n\t%s", strings.Join(errors, "\n\t\t"))
 		}
 		return nil
 	}
@@ -507,7 +594,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 }
 
 func (hc *HealthChecker) checkRemoteClusterGatewaysHealth(ctx context.Context) error {
-	if hc.Options.ShouldCheckMulticluster {
+	if hc.Options.SourceCluster {
 		if hc.apiClient == nil {
 			return errors.New("public api client uninitialized")
 		}
@@ -541,7 +628,7 @@ func (hc *HealthChecker) checkRemoteClusterGatewaysHealth(ctx context.Context) e
 }
 
 func (hc *HealthChecker) checkIfMirroredServicesHaveEndpoints() error {
-	if hc.Options.ShouldCheckMulticluster {
+	if hc.Options.SourceCluster {
 
 		var servicesWithNoEndpoints []string
 		selector := fmt.Sprintf("%s, !%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
@@ -567,7 +654,7 @@ func (hc *HealthChecker) checkIfMirroredServicesHaveEndpoints() error {
 }
 
 func (hc *HealthChecker) checkIfGatewayMirrorsHaveEndpoints() error {
-	if hc.Options.ShouldCheckMulticluster {
+	if hc.Options.SourceCluster {
 
 		var gatewayMirrorsWithNoEndpoints []string
 		gatewayServices, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{LabelSelector: k8s.MirroredGatewayLabel})
@@ -593,7 +680,7 @@ func (hc *HealthChecker) checkIfGatewayMirrorsHaveEndpoints() error {
 
 func (hc *HealthChecker) checkIfAllMirrorServicesHaveGatewayMirrors() error {
 
-	if hc.Options.ShouldCheckMulticluster {
+	if hc.Options.SourceCluster {
 
 		var nonExistentGatewayMirrors []string
 		selector := fmt.Sprintf("%s,!%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
@@ -620,10 +707,51 @@ func (hc *HealthChecker) checkIfAllMirrorServicesHaveGatewayMirrors() error {
 }
 
 func (hc *HealthChecker) checkIfGatewaysHaveExternalIP() error {
-	if hc.Options.ShouldCheckMulticluster {
+
+	var gatewaysWithNoExternalIps []string
+	services, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, svc := range services.Items {
+		if gatewayService(svc) {
+			// check if there is an external IP for the gateway service
+			if len(svc.Status.LoadBalancer.Ingress) <= 0 {
+				gatewaysWithNoExternalIps = append(gatewaysWithNoExternalIps, fmt.Sprintf("%s.%s", svc.Name, svc.Namespace))
+			}
+		}
+	}
+
+	if len(gatewaysWithNoExternalIps) > 0 {
+		return fmt.Errorf("Some gateways don't have external Ips:\n\t%s", strings.Join(gatewaysWithNoExternalIps, "\n\t"))
+	}
+	return nil
+
+}
+
+func (hc *HealthChecker) checkRemoteIfGatewaysHaveExternalIP() error {
+
+	if len(hc.remoteClusterConfigs) == 0 {
+		return &SkipError{Reason: "no target cluster configs"}
+	}
+
+	var offendingClusters []string
+	for _, cfg := range hc.remoteClusterConfigs {
+		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(cfg.APIConfig)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to parse api config", cfg.ClusterName))
+			continue
+		}
+
+		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to instantiate api", cfg.ClusterName))
+			continue
+		}
 
 		var gatewaysWithNoExternalIps []string
-		services, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+		services, err := remoteAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -638,11 +766,14 @@ func (hc *HealthChecker) checkIfGatewaysHaveExternalIP() error {
 		}
 
 		if len(gatewaysWithNoExternalIps) > 0 {
-			return fmt.Errorf("Some gateways don't have external Ips:\n\t%s", strings.Join(gatewaysWithNoExternalIps, "\n\t"))
+			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t\t%s", cfg.ClusterName, strings.Join(gatewaysWithNoExternalIps, "\n\t\t")))
 		}
-		return nil
 	}
-	return &SkipError{Reason: "not checking muticluster"}
+
+	if len(offendingClusters) > 0 {
+		return fmt.Errorf("Problematic gateways:\n\t%s", strings.Join(offendingClusters, "\n\t"))
+	}
+	return nil
 }
 
 func gatewayService(service corev1.Service) bool {
@@ -651,10 +782,52 @@ func gatewayService(service corev1.Service) bool {
 }
 
 func (hc *HealthChecker) checkIfAllGatewaysHaveCorrectPortNames() error {
-	if hc.Options.ShouldCheckMulticluster {
+
+	var gatewaysWithMisconfiguredPorts []string
+	services, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, svc := range services.Items {
+		if gatewayService(svc) {
+			// check if the gateway service has relevant ports
+			portNames := []string{k8s.GatewayPortName, k8s.ProbePortName}
+			for _, portName := range portNames {
+				if !ifPortExists(svc.Spec.Ports, portName) {
+					gatewaysWithMisconfiguredPorts = append(gatewaysWithMisconfiguredPorts, fmt.Sprintf("port %s does not exist for gateway %s.%s", portName, svc.Name, svc.Namespace))
+				}
+			}
+		}
+	}
+
+	if len(gatewaysWithMisconfiguredPorts) > 0 {
+		return fmt.Errorf("Some gateway's have misconfigured ports:\n\t%s", strings.Join(gatewaysWithMisconfiguredPorts, "\n\t"))
+	}
+	return nil
+}
+
+func (hc *HealthChecker) checkRemoteIfAllGatewaysHaveCorrectPortNames() error {
+	if len(hc.remoteClusterConfigs) == 0 {
+		return &SkipError{Reason: "no target cluster configs"}
+	}
+
+	var offendingClusters []string
+	for _, cfg := range hc.remoteClusterConfigs {
+		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(cfg.APIConfig)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to parse api config", cfg.ClusterName))
+			continue
+		}
+
+		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to instantiate api", cfg.ClusterName))
+			continue
+		}
 
 		var gatewaysWithMisconfiguredPorts []string
-		services, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+		services, err := remoteAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -672,11 +845,13 @@ func (hc *HealthChecker) checkIfAllGatewaysHaveCorrectPortNames() error {
 		}
 
 		if len(gatewaysWithMisconfiguredPorts) > 0 {
-			return fmt.Errorf("Some gateway's have misconfigured ports:\n\t%s", strings.Join(gatewaysWithMisconfiguredPorts, "\n\t"))
+			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t\t%s", cfg.ClusterName, strings.Join(gatewaysWithMisconfiguredPorts, "\n\t\t")))
 		}
-		return nil
 	}
-	return &SkipError{Reason: "not checking muticluster"}
+	if len(offendingClusters) > 0 {
+		return fmt.Errorf("Some gateway's have misconfigured ports:\n\t%s", strings.Join(offendingClusters, "\n\t"))
+	}
+	return nil
 }
 
 func ifPortExists(ports []corev1.ServicePort, portName string) bool {
@@ -689,10 +864,51 @@ func ifPortExists(ports []corev1.ServicePort, portName string) bool {
 	return false
 }
 func (hc *HealthChecker) checkifGatewaysExistforExportedServices() error {
-	if hc.Options.ShouldCheckMulticluster {
+
+	var nonExistentGateways []string
+	exportedServices, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, svc := range exportedServices.Items {
+		if serviceExported(svc) {
+			// Check if there is a relevant gateway
+			_, err := hc.kubeAPI.CoreV1().Services(svc.Annotations[k8s.GatewayNsAnnotation]).Get(svc.Annotations[k8s.GatewayNameAnnotation], metav1.GetOptions{})
+			if err != nil {
+				nonExistentGateways = append(nonExistentGateways, fmt.Sprintf("%s.%s gateway used with service %s.%s", svc.Annotations[k8s.GatewayNameAnnotation], svc.Annotations[k8s.GatewayNsAnnotation], svc.Name, svc.Namespace))
+			}
+		}
+	}
+
+	if len(nonExistentGateways) > 0 {
+		return fmt.Errorf("Some gateways do not exist:\n\t%s", strings.Join(nonExistentGateways, "\n\t"))
+	}
+	return nil
+
+}
+
+func (hc *HealthChecker) checkRemoteifGatewaysExistforExportedServices() error {
+	if len(hc.remoteClusterConfigs) == 0 {
+		return &SkipError{Reason: "no target cluster configs"}
+	}
+
+	var offendingClusters []string
+	for _, cfg := range hc.remoteClusterConfigs {
+		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(cfg.APIConfig)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to parse api config", cfg.ClusterName))
+			continue
+		}
+
+		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to instantiate api", cfg.ClusterName))
+			continue
+		}
 
 		var nonExistentGateways []string
-		exportedServices, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+		exportedServices, err := remoteAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -705,12 +921,15 @@ func (hc *HealthChecker) checkifGatewaysExistforExportedServices() error {
 					nonExistentGateways = append(nonExistentGateways, fmt.Sprintf("%s.%s gateway used with service %s.%s", svc.Annotations[k8s.GatewayNameAnnotation], svc.Annotations[k8s.GatewayNsAnnotation], svc.Name, svc.Namespace))
 				}
 			}
+
 		}
 
 		if len(nonExistentGateways) > 0 {
-			return fmt.Errorf("Some gateways do not exist:\n\t%s", strings.Join(nonExistentGateways, "\n\t"))
+			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t\t%s", cfg.ClusterName, strings.Join(nonExistentGateways, "\n\t\t")))
 		}
-		return nil
 	}
-	return &SkipError{Reason: "not checking muticluster"}
+	if len(offendingClusters) > 0 {
+		return fmt.Errorf("Some gateways do not exist:\n\t%s", strings.Join(offendingClusters, "\n\t"))
+	}
+	return nil
 }

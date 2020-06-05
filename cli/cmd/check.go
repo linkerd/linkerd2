@@ -188,26 +188,28 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 			}
 			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 			checks = append(checks, healthcheck.LinkerdHAChecks)
-			checks = append(checks, healthcheck.LinkerdMulticlusterChecks)
+			checks = append(checks, healthcheck.LinkerdMulticlusterSourceChecks)
+			checks = append(checks, healthcheck.LinkerdMulticlusterTargetChecks)
 
 			checks = append(checks, healthcheck.AddOnCategories...)
 		}
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
-		ControlPlaneNamespace:   controlPlaneNamespace,
-		CNINamespace:            cniNamespace,
-		DataPlaneNamespace:      options.namespace,
-		KubeConfig:              kubeconfigPath,
-		KubeContext:             kubeContext,
-		Impersonate:             impersonate,
-		ImpersonateGroup:        impersonateGroup,
-		APIAddr:                 apiAddr,
-		VersionOverride:         options.versionOverride,
-		RetryDeadline:           time.Now().Add(options.wait),
-		CNIEnabled:              options.cniEnabled,
-		InstallManifest:         installManifest,
-		ShouldCheckMulticluster: options.multicluster,
+		ControlPlaneNamespace: controlPlaneNamespace,
+		CNINamespace:          cniNamespace,
+		DataPlaneNamespace:    options.namespace,
+		KubeConfig:            kubeconfigPath,
+		KubeContext:           kubeContext,
+		Impersonate:           impersonate,
+		ImpersonateGroup:      impersonateGroup,
+		APIAddr:               apiAddr,
+		VersionOverride:       options.versionOverride,
+		RetryDeadline:         time.Now().Add(options.wait),
+		CNIEnabled:            options.cniEnabled,
+		InstallManifest:       installManifest,
+		SourceCluster:         options.multicluster,
+		TargetCluster:         options.multicluster,
 	})
 
 	success := runChecks(wout, werr, hc, options.output)
