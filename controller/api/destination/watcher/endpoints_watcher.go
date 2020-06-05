@@ -509,6 +509,9 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		}
 		if err == nil {
 			for _, es := range esList {
+				if !isTargetPortInSlice(port.targetPort, es.Ports) {
+					continue
+				}
 				port.updateEndpoints(es)
 			}
 		}
