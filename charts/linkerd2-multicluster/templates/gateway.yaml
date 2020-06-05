@@ -21,9 +21,13 @@ data:
     http {
       server {
           listen     {{.Values.gatewayProbePort}};
-          location {{.Values.gatewayProbePath}} {
+          location = {{.Values.gatewayProbePath}} {
             access_log off;
             return 200 "healthy\n";
+          }
+
+          location ~* ^/(.*)$ {
+            deny all;
           }
       }
       server {
