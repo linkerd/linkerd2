@@ -11,8 +11,14 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: sp-validator
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.profileValidator.service.labels}}
+    {{ toYaml .Values.profileValidator.service.labels | indent 6 }}
+    {{- end }}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.profileValidator.service.annotations}}
+    {{ toYaml .Values.profileValidator.service.annotations | indent 6 }}
+    {{- end }}
 spec:
   type: ClusterIP
   selector:
@@ -30,12 +36,18 @@ kind: Deployment
 metadata:
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.profileValidator.deployment.annotations}}
+    {{ toYaml .Values.profileValidator.deployment.annotations | indent 6 }}
+    {{- end }}
   labels:
     app.kubernetes.io/name: sp-validator
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: sp-validator
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.profileValidator.deployment.labels}}
+    {{ toYaml .Values.profileValidator.deployment.labels | indent 6 }}
+    {{- end }}
   name: linkerd-sp-validator
   namespace: {{.Values.global.namespace}}
 spec:

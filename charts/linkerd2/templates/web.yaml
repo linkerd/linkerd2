@@ -11,8 +11,14 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: web
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.dashboard.service.labels}}
+    {{ toYaml .Values.dashboard.service.labels | indent 6 }}
+    {{- end }}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.dashboard.service.annotations}}
+    {{ toYaml .Values.dashboard.service.annotations | indent 6 }}
+    {{- end }}
 spec:
   type: ClusterIP
   selector:
@@ -33,12 +39,18 @@ kind: Deployment
 metadata:
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.dashboard.deployment.annotations}}
+    {{ toYaml .Values.dashboard.deployment.annotations | indent 6 }}
+    {{- end }}
   labels:
     app.kubernetes.io/name: web
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: web
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.dashboard.deployment.labels}}
+    {{ toYaml .Values.dashboard.deployment.labels | indent 6 }}
+    {{- end }}
   name: linkerd-web
   namespace: {{.Values.global.namespace}}
 spec:

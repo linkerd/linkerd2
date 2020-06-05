@@ -94,10 +94,23 @@ controllerImage: gcr.io/linkerd-io/controller
 controllerLogLevel: &controller_log_level info
 controllerReplicas: 1
 controllerUID: 2103
+controller:
+  service:
+      labels: {}
+      annotations: {}
+  deployment:
+      labels: {}
+      annotations: {}
 
 # web dashboard configuration
 dashboard:
   replicas: 1
+  service:
+    labels: {}
+    annotations: {}
+  deployment:
+    labels: {}
+    annotations: {}
 
 # debug configuration
 debugContainer:
@@ -128,6 +141,13 @@ identity:
       # PEM-encoded ECDSA private key
       keyPEM: |
 
+  service:
+    labels: {}
+    annotations: {}
+  deployment:
+    labels: {}
+    annotations: {}
+
 # heartbeat configuration
 disableHeartBeat: false
 heartbeatSchedule: "0 0 * * *"
@@ -149,6 +169,13 @@ prometheusRuleConfigMapMounts: []
   # - name: recording-rules
   #   subPath: recording_rules.yml
   #   configMap: linkerd-prometheus-rules
+prometheus:
+  service:
+      labels: {}
+      annotations: {}
+  deployment:
+      labels: {}
+      annotations: {}
 
 # proxy injector configuration
 proxyInjector:
@@ -157,12 +184,28 @@ proxyInjector:
 
   keyPEM: |
 
+  service:
+      labels: {}
+      annotations: {}
+  deployment:
+      labels: {}
+      annotations: {}
+
 # service profile validator configuration
 profileValidator:
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
+
+  service:
+    labels: {}
+    annotations: {}
+  deployment:
+    labels: {}
+    annotations: {}
+
+
 
 # tap configuration
 tap:
@@ -171,8 +214,25 @@ tap:
 
   keyPEM: |
 
+  service:
+    labels: {}
+    annotations: {}
+  deployment:
+    labels: {}
+    annotations: {}
+
+# destination configuration
+destination:
+  service:
+    labels: {}
+    annotations: {}
+  deployment:
+    labels: {}
+    annotations: {}
+
 # web configuration
 webImage: gcr.io/linkerd-io/web
+
 
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:
@@ -193,6 +253,13 @@ smiMetrics:
   crtPEM: |
 
   keyPEM: |
+
+  service:
+    labels: {}
+    annotations: {}
+  deployment:
+    labels: {}
+    annotations: {}
 
 # Configuration for Add-ons
 

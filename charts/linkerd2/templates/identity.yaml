@@ -31,8 +31,14 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: identity
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.identity.service.labels}}
+    {{ toYaml .Values.identity.service.labels | indent 6 }}
+    {{- end }}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.identity.service.annotations}}
+    {{ toYaml .Values.identity.service.annotations | indent 6 }}
+    {{- end }}
 spec:
   type: ClusterIP
   selector:
@@ -50,12 +56,18 @@ kind: Deployment
 metadata:
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.identity.deployment.annotations}}
+    {{ toYaml .Values.identity.deployment.annotations | indent 6 }}
+    {{- end }}
   labels:
     app.kubernetes.io/name: identity
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: identity
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.identity.deployment.labels}}
+    {{ toYaml .Values.identity.deployment.labels | indent 6 }}
+    {{- end }}
   name: linkerd-identity
   namespace: {{.Values.global.namespace}}
 spec:

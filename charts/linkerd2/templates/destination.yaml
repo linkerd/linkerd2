@@ -11,8 +11,14 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: destination
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.destination.service.labels}}
+    {{ toYaml .Values.destination.service.labels | indent 6 }}
+    {{- end }}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.destination.service.annotations}}
+    {{ toYaml .Values.destination.service.annotations | indent 6 }}
+    {{- end }}
 spec:
   type: ClusterIP
   selector:
@@ -30,12 +36,18 @@ kind: Deployment
 metadata:
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.destination.deployment.annotations}}
+    {{ toYaml .Values.destination.deployment.annotations | indent 6 }}
+    {{- end }}
   labels:
     app.kubernetes.io/name: destination
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: destination
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.destination.deployment.labels}}
+    {{ toYaml .Values.destination.deployment.labels | indent 6 }}
+    {{- end }}
   name: linkerd-destination
   namespace: {{.Values.global.namespace}}
 spec:
