@@ -21,9 +21,12 @@ import (
 )
 
 const (
-	// LinkerdMulticlusterChecks adds a series of checks to validate
-	// that the multicluster setup is working as expected
+	// LinkerdMulticlusterSourceChecks adds a series of checks to validate
+	// the source side of a multicluster setup
 	LinkerdMulticlusterSourceChecks CategoryID = "linkerd-multicluster-source"
+
+	// LinkerdMulticlusterTargetChecks add a series of checks to validate the
+	// targetside of a multicluster setup
 	LinkerdMulticlusterTargetChecks CategoryID = "linkerd-multicluster-target"
 
 	linkerdServiceMirrorComponentName   = "linkerd-service-mirror"
@@ -212,7 +215,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					description: "all cluster gateways are alive",
 					hintAnchor:  "l5d-multicluster-target-gateways-alive",
 					check: func(ctx context.Context) error {
-						return hc.checkClusterGatewaysHealth(ctx)
+						return hc.checkClusterGatewaysHealth()
 					},
 				},
 				{
@@ -253,7 +256,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 	}
 }
 
-func (hc *HealthChecker) GatewayComponentsSelector() string {
+func (hc *HealthChecker) gatewayComponentsSelector() string {
 	return fmt.Sprintf("%s=%s", "app", LinkerdGatewayComponentName)
 }
 
@@ -495,11 +498,11 @@ func (hc *HealthChecker) checkDaisyChains() error {
 	return &SkipError{Reason: "not checking muticluster"}
 }
 
-func (hc *HealthChecker) checkClusterGatewaysHealth(ctx context.Context) error {
+func (hc *HealthChecker) checkClusterGatewaysHealth() error {
 
 	var offendingGateways []string
 	options := metav1.ListOptions{
-		LabelSelector: hc.GatewayComponentsSelector(),
+		LabelSelector: hc.gatewayComponentsSelector(),
 	}
 	result, err := hc.kubeAPI.AppsV1().Deployments(corev1.NamespaceAll).List(options)
 	if err != nil {
