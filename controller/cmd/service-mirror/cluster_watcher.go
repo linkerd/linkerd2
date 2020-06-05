@@ -289,7 +289,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 					// something went wrong with deletion, we need to retry
 					errors = append(errors, err)
 				} else {
-					rcsw.log.Infof("Deleted service %s/%s as part of GC process", srv.Namespace, srv.Name)
+					rcsw.log.Infof("Deleted service %s/%s while cleaning up mirror services", srv.Namespace, srv.Name)
 				}
 			} else {
 				// something went wrong getting the service, we can retry
