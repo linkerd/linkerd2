@@ -491,11 +491,16 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 	if err == nil {
 		// only if we resolve it, we are updating the endpoints addresses and ports
 		rcsw.log.Debugf("Resolved gateway [%v:%d] for %s", gatewaySpec.addresses, gatewaySpec.incomingPort, serviceInfo)
-		endpointsToCreate.Subsets = []corev1.EndpointSubset{
-			{
-				Addresses: gatewaySpec.addresses,
-				Ports:     rcsw.getEndpointsPorts(ev.service, int32(gatewaySpec.incomingPort)),
-			},
+
+		if len(gatewaySpec.addresses) > 0 {
+			endpointsToCreate.Subsets = []corev1.EndpointSubset{
+				{
+					Addresses: gatewaySpec.addresses,
+					Ports:     rcsw.getEndpointsPorts(ev.service, int32(gatewaySpec.incomingPort)),
+				},
+			}
+		} else {
+			rcsw.log.Warnf("gateway for %s: %s does not have ready addresses, skipping subsets", serviceInfo, err)
 		}
 		serviceToCreate.Annotations[consts.RemoteGatewayResourceVersionAnnotation] = gatewaySpec.resourceVersion
 		if gatewaySpec.identity != "" {
