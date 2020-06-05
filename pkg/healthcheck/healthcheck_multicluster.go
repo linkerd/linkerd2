@@ -175,7 +175,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					},
 				},
 				{
-					description: "matching gateway mirrors of all mirror services exist",
+					description: "all mirror services have a valid gateway mirror",
 					hintAnchor:  "l5d-multicluster-mirror-gateways",
 					warning:     true,
 					check: func(ctx context.Context) error {
@@ -635,12 +635,12 @@ func (hc *HealthChecker) checkIfMirroredServicesHaveEndpoints() error {
 
 		var servicesWithNoEndpoints []string
 		selector := fmt.Sprintf("%s, !%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
-		mirroredServices, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{LabelSelector: selector})
+		mirrorServices, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{LabelSelector: selector})
 		if err != nil {
 			return err
 		}
 
-		for _, svc := range mirroredServices.Items {
+		for _, svc := range mirrorServices.Items {
 			// Check if there is a relevant end-point
 			endpoint, err := hc.kubeAPI.CoreV1().Endpoints(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
 			if err != nil || len(endpoint.Subsets) == 0 {
@@ -649,7 +649,7 @@ func (hc *HealthChecker) checkIfMirroredServicesHaveEndpoints() error {
 		}
 
 		if len(servicesWithNoEndpoints) > 0 {
-			return fmt.Errorf("Some mirrored services do not have endpoints:\n\t%s", strings.Join(servicesWithNoEndpoints, "\n\t"))
+			return fmt.Errorf("Some mirror services do not have endpoints:\n\t%s", strings.Join(servicesWithNoEndpoints, "\n\t"))
 		}
 		return nil
 	}
@@ -674,7 +674,7 @@ func (hc *HealthChecker) checkIfGatewayMirrorsHaveEndpoints() error {
 		}
 
 		if len(gatewayMirrorsWithNoEndpoints) > 0 {
-			return fmt.Errorf("Some mirrored services do not have endpoints:\n\t%s", strings.Join(gatewayMirrorsWithNoEndpoints, "\n\t"))
+			return fmt.Errorf("Some mirror services do not have endpoints:\n\t%s", strings.Join(gatewayMirrorsWithNoEndpoints, "\n\t"))
 		}
 		return nil
 	}
@@ -687,12 +687,12 @@ func (hc *HealthChecker) checkIfAllMirrorServicesHaveGatewayMirrors() error {
 
 		var nonExistentGatewayMirrors []string
 		selector := fmt.Sprintf("%s,!%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
-		mirroredServices, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{LabelSelector: selector})
+		mirrorServices, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{LabelSelector: selector})
 		if err != nil {
 			return err
 		}
 
-		for _, svc := range mirroredServices.Items {
+		for _, svc := range mirrorServices.Items {
 			// Check if the relevant gateway mirror exists
 			gatewayMirrorName := svc.Labels[k8s.RemoteGatewayNameLabel] + "-" + svc.Labels[k8s.RemoteClusterNameLabel]
 			_, err := hc.kubeAPI.CoreV1().Services(svc.Labels[k8s.RemoteGatewayNsLabel]).Get(gatewayMirrorName, metav1.GetOptions{})
@@ -702,7 +702,7 @@ func (hc *HealthChecker) checkIfAllMirrorServicesHaveGatewayMirrors() error {
 		}
 
 		if len(nonExistentGatewayMirrors) > 0 {
-			return fmt.Errorf("Some mirrored gateway services of mirrored services don't exist:\n\t%s", strings.Join(nonExistentGatewayMirrors, "\n\t"))
+			return fmt.Errorf("Some mirror services do not have a valid gateway mirror:\n\t%s", strings.Join(nonExistentGatewayMirrors, "\n\t"))
 		}
 		return nil
 	}
