@@ -19,15 +19,11 @@ import (
 
 var (
 	TestHelper *testutil.TestHelper
-
-	// controlPlaneInstalled becomes true as soon as there's a CP available to
-	// retrieve logs from
-	controlPlaneInstalled = false
 )
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper, controlPlaneInstalled))
+	os.Exit(testutil.Run(m, TestHelper))
 }
 
 var (
@@ -161,7 +157,6 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.GetHelmReleaseName() != "" {
 		return
 	}
-	controlPlaneInstalled = true
 
 	var (
 		cmd  = "install"
@@ -322,9 +317,6 @@ func helmOverridesEdge(root *tls.CA) []string {
 }
 
 func TestInstallHelm(t *testing.T) {
-	// at this point all the tests assume the control plane is present
-	controlPlaneInstalled = true
-
 	if TestHelper.GetHelmReleaseName() == "" {
 		return
 	}

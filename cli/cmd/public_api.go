@@ -87,7 +87,7 @@ func exitOnError(result *healthcheck.CheckResult) {
 		fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
 
 		checkCmd := "linkerd check"
-		if controlPlaneNamespace != defaultNamespace {
+		if controlPlaneNamespace != defaultLinkerdNamespace {
 			checkCmd += fmt.Sprintf(" --linkerd-namespace %s", controlPlaneNamespace)
 		}
 		fmt.Fprintf(os.Stderr, "Validate the install with: %s\n", checkCmd)

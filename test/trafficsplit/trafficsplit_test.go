@@ -16,7 +16,7 @@ const zeroRPS = "0.0rps"
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper, true))
+	os.Exit(testutil.Run(m, TestHelper))
 }
 
 type statTsRow struct {

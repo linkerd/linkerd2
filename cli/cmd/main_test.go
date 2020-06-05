@@ -16,6 +16,9 @@ var (
 
 	// prettyDiff is set by the `-pretty-diff` flag.
 	prettyDiff bool
+
+	// write any rejected test data into this path
+	rejectPath string
 )
 
 // TestMain parses flags before running tests
@@ -23,6 +26,7 @@ func TestMain(m *testing.M) {
 	flag.BoolVar(&updateFixtures, "update", false, "update text fixtures in place")
 	prettyDiff = os.Getenv("LINKERD_TEST_PRETTY_DIFF") != ""
 	flag.BoolVar(&prettyDiff, "pretty-diff", prettyDiff, "display the full text when diffing")
+	flag.StringVar(&rejectPath, "reject-path", "", "write results for failed tests to this path (path is relative to the test location)")
 	flag.Parse()
 	os.Exit(m.Run())
 }
@@ -49,6 +53,13 @@ func writeTestdata(t *testing.T, fileName string, data []byte) {
 	}
 }
 
+func writeRejects(t *testing.T, origFileName string, data []byte) {
+	p := filepath.Join(rejectPath, origFileName+".rej")
+	if err := ioutil.WriteFile(p, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // TODO: share this with integration tests
 func diffTestdata(t *testing.T, path, actual string) {
 	expected := readTestdata(t, path)
@@ -68,5 +79,9 @@ func diffTestdata(t *testing.T, path, actual string) {
 
 	if updateFixtures {
 		writeTestdata(t, path, []byte(actual))
+	}
+
+	if rejectPath != "" {
+		writeRejects(t, path, []byte(actual))
 	}
 }
