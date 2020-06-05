@@ -708,10 +708,22 @@ func (hc *HealthChecker) checkIfAllMirrorServicesHaveGatewayMirrors() error {
 
 func (hc *HealthChecker) checkIfGatewaysHaveExternalIP() error {
 
-	var gatewaysWithNoExternalIps []string
-	services, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+	gatewaysWithNoExternalIps, err := getGatewaysWithNoExternalIps(hc.kubeAPI)
 	if err != nil {
 		return err
+	}
+	if len(gatewaysWithNoExternalIps) > 0 {
+		return fmt.Errorf("Some gateways don't have external Ips:\n\t%s", strings.Join(gatewaysWithNoExternalIps, "\n\t"))
+	}
+	return nil
+}
+
+func getGatewaysWithNoExternalIps(api *k8s.KubernetesAPI) ([]string, error) {
+
+	var gatewaysWithNoExternalIps []string
+	services, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
 	}
 
 	for _, svc := range services.Items {
@@ -723,11 +735,7 @@ func (hc *HealthChecker) checkIfGatewaysHaveExternalIP() error {
 		}
 	}
 
-	if len(gatewaysWithNoExternalIps) > 0 {
-		return fmt.Errorf("Some gateways don't have external Ips:\n\t%s", strings.Join(gatewaysWithNoExternalIps, "\n\t"))
-	}
-	return nil
-
+	return gatewaysWithNoExternalIps, nil
 }
 
 func (hc *HealthChecker) checkRemoteIfGatewaysHaveExternalIP() error {
@@ -750,19 +758,10 @@ func (hc *HealthChecker) checkRemoteIfGatewaysHaveExternalIP() error {
 			continue
 		}
 
-		var gatewaysWithNoExternalIps []string
-		services, err := remoteAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+		gatewaysWithNoExternalIps, err := getGatewaysWithNoExternalIps(remoteAPI)
 		if err != nil {
-			return err
-		}
-
-		for _, svc := range services.Items {
-			if gatewayService(svc) {
-				// check if there is an external IP for the gateway service
-				if len(svc.Status.LoadBalancer.Ingress) <= 0 {
-					gatewaysWithNoExternalIps = append(gatewaysWithNoExternalIps, fmt.Sprintf("%s.%s", svc.Name, svc.Namespace))
-				}
-			}
+			offendingClusters = append(offendingClusters, err.Error())
+			continue
 		}
 
 		if len(gatewaysWithNoExternalIps) > 0 {
@@ -782,27 +781,12 @@ func gatewayService(service corev1.Service) bool {
 }
 
 func (hc *HealthChecker) checkIfAllGatewaysHaveCorrectPortNames() error {
-
-	var gatewaysWithMisconfiguredPorts []string
-	services, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+	gatewaysWithMisConfiguredPorts, err := getGatewaysWithMisConfiguredPorts(hc.kubeAPI)
 	if err != nil {
 		return err
 	}
-
-	for _, svc := range services.Items {
-		if gatewayService(svc) {
-			// check if the gateway service has relevant ports
-			portNames := []string{k8s.GatewayPortName, k8s.ProbePortName}
-			for _, portName := range portNames {
-				if !ifPortExists(svc.Spec.Ports, portName) {
-					gatewaysWithMisconfiguredPorts = append(gatewaysWithMisconfiguredPorts, fmt.Sprintf("port %s does not exist for gateway %s.%s", portName, svc.Name, svc.Namespace))
-				}
-			}
-		}
-	}
-
-	if len(gatewaysWithMisconfiguredPorts) > 0 {
-		return fmt.Errorf("Some gateway's have misconfigured ports:\n\t%s", strings.Join(gatewaysWithMisconfiguredPorts, "\n\t"))
+	if len(gatewaysWithMisConfiguredPorts) > 0 {
+		return fmt.Errorf("Some gateway's have misconfigured ports:\n\t%s", strings.Join(gatewaysWithMisConfiguredPorts, "\n\t"))
 	}
 	return nil
 }
@@ -826,32 +810,41 @@ func (hc *HealthChecker) checkRemoteIfAllGatewaysHaveCorrectPortNames() error {
 			continue
 		}
 
-		var gatewaysWithMisconfiguredPorts []string
-		services, err := remoteAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+		gatewaysWithMisConfiguredPorts, err := getGatewaysWithMisConfiguredPorts(remoteAPI)
 		if err != nil {
-			return err
+			offendingClusters = append(offendingClusters, err.Error())
+			continue
 		}
 
-		for _, svc := range services.Items {
-			if gatewayService(svc) {
-				// check if the gateway service has relevant ports
-				portNames := []string{k8s.GatewayPortName, k8s.ProbePortName}
-				for _, portName := range portNames {
-					if !ifPortExists(svc.Spec.Ports, portName) {
-						gatewaysWithMisconfiguredPorts = append(gatewaysWithMisconfiguredPorts, fmt.Sprintf("port %s does not exist for gateway %s.%s", portName, svc.Name, svc.Namespace))
-					}
-				}
-			}
-		}
-
-		if len(gatewaysWithMisconfiguredPorts) > 0 {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t\t%s", cfg.ClusterName, strings.Join(gatewaysWithMisconfiguredPorts, "\n\t\t")))
+		if len(gatewaysWithMisConfiguredPorts) > 0 {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t\t%s", cfg.ClusterName, strings.Join(gatewaysWithMisConfiguredPorts, "\n\t\t")))
 		}
 	}
 	if len(offendingClusters) > 0 {
 		return fmt.Errorf("Some gateway's have misconfigured ports:\n\t%s", strings.Join(offendingClusters, "\n\t"))
 	}
 	return nil
+}
+
+func getGatewaysWithMisConfiguredPorts(api *k8s.KubernetesAPI) ([]string, error) {
+	var gatewaysWithMisconfiguredPorts []string
+	services, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, svc := range services.Items {
+		if gatewayService(svc) {
+			// check if the gateway service has relevant ports
+			portNames := []string{k8s.GatewayPortName, k8s.ProbePortName}
+			for _, portName := range portNames {
+				if !ifPortExists(svc.Spec.Ports, portName) {
+					gatewaysWithMisconfiguredPorts = append(gatewaysWithMisconfiguredPorts, fmt.Sprintf("port %s does not exist for gateway %s.%s", portName, svc.Name, svc.Namespace))
+				}
+			}
+		}
+	}
+	return gatewaysWithMisconfiguredPorts, nil
 }
 
 func ifPortExists(ports []corev1.ServicePort, portName string) bool {
@@ -865,27 +858,35 @@ func ifPortExists(ports []corev1.ServicePort, portName string) bool {
 }
 func (hc *HealthChecker) checkifGatewaysExistforExportedServices() error {
 
-	var nonExistentGateways []string
-	exportedServices, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+	nonExistentGateways, err := getNonExistentGateways(hc.kubeAPI)
 	if err != nil {
 		return err
+	}
+	if len(nonExistentGateways) > 0 {
+		return fmt.Errorf("Some gateways do not exist:\n\t%s", strings.Join(nonExistentGateways, "\n\t"))
+	}
+	return nil
+
+}
+
+func getNonExistentGateways(api *k8s.KubernetesAPI) ([]string, error) {
+	var nonExistentGateways []string
+	exportedServices, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
 	}
 
 	for _, svc := range exportedServices.Items {
 		if serviceExported(svc) {
 			// Check if there is a relevant gateway
-			_, err := hc.kubeAPI.CoreV1().Services(svc.Annotations[k8s.GatewayNsAnnotation]).Get(svc.Annotations[k8s.GatewayNameAnnotation], metav1.GetOptions{})
+			_, err := api.CoreV1().Services(svc.Annotations[k8s.GatewayNsAnnotation]).Get(svc.Annotations[k8s.GatewayNameAnnotation], metav1.GetOptions{})
 			if err != nil {
 				nonExistentGateways = append(nonExistentGateways, fmt.Sprintf("%s.%s gateway used with service %s.%s", svc.Annotations[k8s.GatewayNameAnnotation], svc.Annotations[k8s.GatewayNsAnnotation], svc.Name, svc.Namespace))
 			}
 		}
 	}
 
-	if len(nonExistentGateways) > 0 {
-		return fmt.Errorf("Some gateways do not exist:\n\t%s", strings.Join(nonExistentGateways, "\n\t"))
-	}
-	return nil
-
+	return nonExistentGateways, nil
 }
 
 func (hc *HealthChecker) checkRemoteifGatewaysExistforExportedServices() error {
@@ -907,21 +908,10 @@ func (hc *HealthChecker) checkRemoteifGatewaysExistforExportedServices() error {
 			continue
 		}
 
-		var nonExistentGateways []string
-		exportedServices, err := remoteAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+		nonExistentGateways, err := getNonExistentGateways(remoteAPI)
 		if err != nil {
-			return err
-		}
-
-		for _, svc := range exportedServices.Items {
-			if serviceExported(svc) {
-				// Check if there is a relevant gateway
-				_, err := hc.kubeAPI.CoreV1().Services(svc.Annotations[k8s.GatewayNsAnnotation]).Get(svc.Annotations[k8s.GatewayNameAnnotation], metav1.GetOptions{})
-				if err != nil {
-					nonExistentGateways = append(nonExistentGateways, fmt.Sprintf("%s.%s gateway used with service %s.%s", svc.Annotations[k8s.GatewayNameAnnotation], svc.Annotations[k8s.GatewayNsAnnotation], svc.Name, svc.Namespace))
-				}
-			}
-
+			offendingClusters = append(offendingClusters, err.Error())
+			continue
 		}
 
 		if len(nonExistentGateways) > 0 {
