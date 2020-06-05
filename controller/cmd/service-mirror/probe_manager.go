@@ -102,10 +102,10 @@ func (m *ProbeManager) handleGatewayMirrorCreated(event *GatewayMirrorCreated) {
 	probeKey := probeKey(event.gatewayNamespace, event.gatewayName, event.clusterName)
 	worker, ok := m.probeWorkers[probeKey]
 	if ok {
-		log.Debugf("There is already a probe worker for %s. Updating instead of creating", probeKey)
+		log.Infof("There is already a probe worker for %s. Updating instead of creating", probeKey)
 		worker.UpdateProbeSpec(&event.probeSpec)
 	} else {
-		log.Debugf("Creating probe worker %s", probeKey)
+		log.Infof("Creating probe worker %s", probeKey)
 		probeMetrics, err := m.metricVecs.newWorkerMetrics(event.gatewayNamespace, event.gatewayName, event.clusterName)
 		if err != nil {
 			log.Errorf("Could not crete probe metrics: %s", err)
@@ -126,7 +126,7 @@ func (m *ProbeManager) handleGatewayMirrorUpdated(event *GatewayMirrorUpdated) {
 			worker.UpdateProbeSpec(&event.probeSpec)
 		}
 	} else {
-		log.Debugf("Could not find a worker for %s while handling GatewayMirrorUpdated event", probeKey)
+		log.Infof("Could not find a worker for %s while handling GatewayMirrorUpdated event", probeKey)
 	}
 }
 
@@ -143,11 +143,11 @@ func (m *ProbeManager) run() {
 	for {
 		select {
 		case event := <-m.events:
-			log.Debugf("Probe Manager: received event: %s", event)
+			log.Infof("Probe Manager: received event: %s", event)
 			m.metricVecs.dequeues.With(prometheus.Labels{eventTypeLabelName: eventTypeString(event)}).Inc()
 			m.handleEvent(event)
 		case <-m.done:
-			log.Debug("Shutting down ProbeManager")
+			log.Infof("Shutting down ProbeManager")
 			for key := range m.probeWorkers {
 				m.stopProbe(key)
 			}
