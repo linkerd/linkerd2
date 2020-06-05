@@ -11,8 +11,14 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: tap
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.tap.service.labels}}
+    {{ toYaml .Values.tap.service.labels | indent 6 }}
+    {{- end }}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.tap.service.annotations}}
+    {{ toYaml .Values.tap.service.annotations | indent 6 }}
+    {{- end }}
 spec:
   type: ClusterIP
   selector:
@@ -33,12 +39,18 @@ apiVersion: apps/v1
 metadata:
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.tap.deployment.annotations}}
+    {{ toYaml .Values.tap.deployment.annotations | indent 6 }}
+    {{- end }}
   labels:
     app.kubernetes.io/name: tap
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: tap
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.tap.deployment.labels}}
+    {{ toYaml .Values.tap.deployment.labels | indent 6 }}
+    {{- end }}
   name: linkerd-tap
   namespace: {{.Values.global.namespace}}
 spec:

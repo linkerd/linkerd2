@@ -34,7 +34,7 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
-    {{ if .Values.grafana.enabled -}} 
+    {{ if .Values.grafana.enabled -}}
     - job_name: 'grafana'
       kubernetes_sd_configs:
       - role: pod
@@ -162,8 +162,15 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: prometheus
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.prometheus.service.labels}}
+    {{ toYaml .Values.prometheus.service.labels | indent 6 }}
+    {{- end }}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.prometheus.service.annotations}}
+    {{ toYaml .Values.prometheus.service.annotations | indent 6 }}
+    {{- end }}
+
 spec:
   type: ClusterIP
   selector:
@@ -181,12 +188,18 @@ kind: Deployment
 metadata:
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.prometheus.deployment.annotations}}
+    {{ toYaml .Values.prometheus.deployment.annotations | indent 6 }}
+    {{- end }}
   labels:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: prometheus
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.prometheus.deployment.labels}}
+    {{ toYaml .Values.prometheus.deployment.labels | indent 6 }}
+    {{- end }}
   name: linkerd-prometheus
   namespace: {{.Values.global.namespace}}
 spec:

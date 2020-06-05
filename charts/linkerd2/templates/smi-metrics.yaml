@@ -21,12 +21,19 @@ kind: Deployment
 metadata:
   name: linkerd-smi-metrics
   namespace: {{.Values.global.namespace}}
+  annotations:
+    {{- if .Values.smiMetrics.deployment.annotations}}
+    {{ toYaml .Values.smiMetrics.deployment.annotations | indent 6 }}
+    {{- end }}
   labels:
     app.kubernetes.io/name: smi-metrics
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: smi-metrics
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.smiMetrics.deployment.labels}}
+    {{ toYaml .Values.smiMetrics.deployment.labels | indent 6 }}
+    {{- end }}
 spec:
   replicas: 1
   selector:
@@ -105,8 +112,14 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: smi-metrics
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{- if .Values.smiMetrics.service.labels}}
+    {{ toYaml .Values.smiMetrics.service.labels | indent 6 }}
+    {{- end }}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.smiMetrics.service.annotations}}
+    {{ toYaml .Values.smiMetrics.service.annotations | indent 6 }}
+    {{- end }}
 spec:
   ports:
     - port: 443
