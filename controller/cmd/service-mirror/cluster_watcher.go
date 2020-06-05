@@ -289,7 +289,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 					// something went wrong with deletion, we need to retry
 					errors = append(errors, err)
 				} else {
-					rcsw.log.Debugf("Deleted service %s/%s as part of GC process", srv.Namespace, srv.Name)
+					rcsw.log.Infof("Deleted service %s/%s while cleaning up mirror services", srv.Namespace, srv.Name)
 				}
 			} else {
 				// something went wrong getting the service, we can retry
@@ -331,7 +331,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 			}
 			errors = append(errors, fmt.Errorf("Could not delete  service %s/%s: %s", svc.Namespace, svc.Name, err))
 		} else {
-			rcsw.log.Debugf("Deleted service %s/%s", svc.Namespace, svc.Name)
+			rcsw.log.Infof("Deleted service %s/%s", svc.Namespace, svc.Name)
 		}
 	}
 
@@ -351,7 +351,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 			}
 			errors = append(errors, fmt.Errorf("Could not delete  Endpoints %s/%s: %s", endpt.Namespace, endpt.Name, err))
 		} else {
-			rcsw.log.Debugf("Deleted Endpoints %s/%s", endpt.Namespace, endpt.Name)
+			rcsw.log.Infof("Deleted Endpoints %s/%s", endpt.Namespace, endpt.Name)
 		}
 	}
 
@@ -364,7 +364,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 // Deletes a locally mirrored service as it is not present on the remote cluster anymore
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteServiceDeleted) error {
 	localServiceName := rcsw.mirroredResourceName(ev.Name)
-	rcsw.log.Debugf("Deleting mirrored service %s/%s and its corresponding Endpoints", ev.Namespace, localServiceName)
+	rcsw.log.Infof("Deleting mirrored service %s/%s and its corresponding Endpoints", ev.Namespace, localServiceName)
 	var errors []error
 	if err := rcsw.localAPIClient.Client.CoreV1().Services(ev.Namespace).Delete(localServiceName, &metav1.DeleteOptions{}); err != nil {
 		if !kerrors.IsNotFound(err) {
@@ -382,7 +382,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteSe
 		return RetryableError{errors}
 	}
 
-	rcsw.log.Debugf("Successfully deleted Service: %s/%s", ev.Namespace, localServiceName)
+	rcsw.log.Infof("Successfully deleted Service: %s/%s", ev.Namespace, localServiceName)
 	return nil
 }
 
@@ -390,7 +390,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteSe
 // new gateway being assigned or additional ports exposed. This method takes care of that.
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteServiceUpdated) error {
 	serviceInfo := fmt.Sprintf("%s/%s", ev.remoteUpdate.Namespace, ev.remoteUpdate.Name)
-	rcsw.log.Debugf("Updating mirror service %s/%s", ev.localService.Namespace, ev.localService.Name)
+	rcsw.log.Infof("Updating mirror service %s/%s", ev.localService.Namespace, ev.localService.Name)
 
 	gatewaySpec, err := rcsw.resolveGateway(&ev.gatewayData)
 	copiedEndpoints := ev.localEndpoints.DeepCopy()
@@ -490,7 +490,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 	gatewaySpec, err := rcsw.resolveGateway(&ev.gatewayData)
 	if err == nil {
 		// only if we resolve it, we are updating the endpoints addresses and ports
-		rcsw.log.Debugf("Resolved gateway [%v:%d] for %s", gatewaySpec.addresses, gatewaySpec.incomingPort, serviceInfo)
+		rcsw.log.Infof("Resolved gateway [%v:%d] for %s", gatewaySpec.addresses, gatewaySpec.incomingPort, serviceInfo)
 
 		if len(gatewaySpec.addresses) > 0 {
 			endpointsToCreate.Subsets = []corev1.EndpointSubset{
@@ -508,11 +508,11 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 		}
 
 	} else {
-		rcsw.log.Warnf("Could not resolve gateway for %s: %s, skipping subsets", serviceInfo, err)
+		rcsw.log.Infof("Could not resolve gateway for %s: %s, skipping subsets", serviceInfo, err)
 		endpointsToCreate.Subsets = nil
 	}
 
-	rcsw.log.Debugf("Creating a new service mirror for %s", serviceInfo)
+	rcsw.log.Infof("Creating a new service mirror for %s", serviceInfo)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(remoteService.Namespace).Create(serviceToCreate); err != nil {
 		if !kerrors.IsAlreadyExists(err) {
 			// we might have created it during earlier attempt, if that is not the case, we retry
@@ -520,7 +520,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 		}
 	}
 
-	rcsw.log.Debugf("Creating a new Endpoints for %s", serviceInfo)
+	rcsw.log.Infof("Creating a new Endpoints for %s", serviceInfo)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.service.Namespace).Create(endpointsToCreate); err != nil {
 		// we clean up after ourselves
 		rcsw.localAPIClient.Client.CoreV1().Services(ev.service.Namespace).Delete(localServiceName, &metav1.DeleteOptions{})
@@ -548,7 +548,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGa
 
 	var errors []error
 	if len(affectedEndpoints) > 0 {
-		rcsw.log.Debugf("Nulling %d endpoints due to gateway [%s/%s] deletion", len(affectedEndpoints), ev.gatewayData.Namespace, ev.gatewayData.Name)
+		rcsw.log.Infof("Nulling %d endpoints due to gateway [%s/%s] deletion", len(affectedEndpoints), ev.gatewayData.Namespace, ev.gatewayData.Name)
 		for _, ep := range affectedEndpoints {
 			updated := ep.DeepCopy()
 			updated.Subsets = nil
@@ -570,7 +570,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayDeleted(ev *RemoteGa
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayCreated(event *RemoteGatewayCreated) error {
 	localServiceName := rcsw.mirroredResourceName(event.gatewaySpec.gatewayName)
 	if event.gatewaySpec.ProbeConfig == nil {
-		rcsw.log.Debugf("Skipping creation of gateway mirror as gateway does not specify probe config")
+		rcsw.log.Infof("Skipping creation of gateway mirror as gateway does not specify probe config")
 		return nil
 	}
 	serviceToCreate := &corev1.Service{
@@ -630,7 +630,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayCreated(event *Remot
 		}
 	}
 
-	rcsw.log.Debugf("Creating a new gateway mirror Service for %s", localServiceName)
+	rcsw.log.Infof("Creating a new gateway mirror Service for %s", localServiceName)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Services(rcsw.serviceMirrorNamespace).Create(serviceToCreate); err != nil {
 		if !kerrors.IsAlreadyExists(err) {
 			// we might have created it during earlier attempt, if that is not the case, we retry
@@ -638,7 +638,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayCreated(event *Remot
 		}
 	}
 
-	rcsw.log.Debugf("Creating a new gateway mirror Endpoints for %s", localServiceName)
+	rcsw.log.Infof("Creating a new gateway mirror Endpoints for %s", localServiceName)
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(rcsw.serviceMirrorNamespace).Create(endpointsToCreate); err != nil {
 		// we clean up after ourselves
 		rcsw.localAPIClient.Client.CoreV1().Services(rcsw.serviceMirrorNamespace).Delete(event.gatewaySpec.gatewayName, &metav1.DeleteOptions{})
@@ -650,7 +650,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteGatewayCreated(event *Remot
 }
 
 func (rcsw *RemoteClusterServiceWatcher) updateAffectedServices(gatewaySpec GatewaySpec, affectedServices []*corev1.Service) error {
-	rcsw.log.Debugf("Updating %d services due to gateway [%s/%s] update", len(affectedServices), gatewaySpec.gatewayNamespace, gatewaySpec.gatewayName)
+	rcsw.log.Infof("Updating %d services due to gateway [%s/%s] update", len(affectedServices), gatewaySpec.gatewayNamespace, gatewaySpec.gatewayName)
 	var errors []error
 	for _, svc := range affectedServices {
 		updatedService := svc.DeepCopy()
@@ -756,7 +756,7 @@ func (rcsw *RemoteClusterServiceWatcher) updateGatewayMirrorService(spec *Gatewa
 		if err != nil {
 			return err
 		}
-		rcsw.log.Debugf("%s gateway mirror updated", localServiceName)
+		rcsw.log.Infof("%s gateway mirror updated", localServiceName)
 	}
 
 	return nil
@@ -952,17 +952,17 @@ func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service)
 				Namespace: service.Namespace,
 			}})
 	} else {
-		rcsw.log.Debugf("Skipping OnDelete for service %s", service)
+		rcsw.log.Infof("Skipping OnDelete for service %s", service)
 	}
 }
 
 func (rcsw *RemoteClusterServiceWatcher) processNextEvent() (bool, interface{}, error) {
 	event, done := rcsw.eventsQueue.Get()
 	if event != nil {
-		rcsw.log.Debugf("Received: %s", event)
+		rcsw.log.Infof("Received: %s", event)
 	} else {
 		if done {
-			rcsw.log.Debug("Received: Stop")
+			rcsw.log.Infof("Received: Stop")
 		}
 	}
 
@@ -1029,7 +1029,7 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 			}
 		}
 		if done {
-			rcsw.log.Debug("Shutting down events processor")
+			rcsw.log.Infof("Shutting down events processor")
 			return
 		}
 	}
