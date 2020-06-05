@@ -11,14 +11,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	dv1beta1 "k8s.io/api/discovery/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
 const (
-	kubeSystem = "kube-system"
-	podIPIndex = "ip"
+	kubeSystem        = "kube-system"
+	podIPIndex        = "ip"
+	endpointSliceKind = "EndpointSlice"
 
 	// metrics labels
 	service                = "service"
@@ -145,12 +149,21 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry) *EndpointsWatcher 
 		UpdateFunc: func(_, obj interface{}) { ew.addService(obj) },
 	})
 
-	k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ew.addEndpoints,
-		DeleteFunc: ew.deleteEndpoints,
-		UpdateFunc: func(_, obj interface{}) { ew.addEndpoints(obj) },
-	})
-
+	if err := endpointSliceAccess(k8sAPI.Client); err != nil {
+		ew.log.Debugf("%v\nWatching Endpoints resources")
+		k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    ew.addEndpoints,
+			DeleteFunc: ew.deleteEndpoints,
+			UpdateFunc: func(_, obj interface{}) { ew.addEndpoints(obj) },
+		})
+	} else {
+		ew.log.Debugf("Watching EndpointSlice resources")
+		k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    ew.addEndpoints,
+			DeleteFunc: ew.deleteEndpointSlice,
+			UpdateFunc: func(_, obj interface{}) { ew.addEndpoints(obj) },
+		})
+	}
 	return ew
 }
 
@@ -240,18 +253,24 @@ func (ew *EndpointsWatcher) deleteService(obj interface{}) {
 }
 
 func (ew *EndpointsWatcher) addEndpoints(obj interface{}) {
-	endpoints := obj.(*corev1.Endpoints)
-	if endpoints.Namespace == kubeSystem {
-		return
-	}
-	id := ServiceID{
-		Namespace: endpoints.Namespace,
-		Name:      endpoints.Name,
+
+	switch res := obj.(type) {
+	case *corev1.Endpoints:
+		if res.Namespace == kubeSystem {
+			return
+		}
+		id := ServiceID{res.Namespace, res.Name}
+		sp := ew.getOrNewServicePublisher(id)
+		sp.updateEndpoints(res)
+	case *dv1beta1.EndpointSlice:
+		if res.Namespace == kubeSystem {
+			return
+		}
+		id := ServiceID{res.Namespace, res.Labels[dv1beta1.LabelServiceName]}
+		sp := ew.getOrNewServicePublisher(id)
+		sp.updateEndpoints(res)
 	}
 
-	sp := ew.getOrNewServicePublisher(id)
-
-	sp.updateEndpoints(endpoints)
 }
 
 func (ew *EndpointsWatcher) deleteEndpoints(obj interface{}) {
@@ -280,6 +299,35 @@ func (ew *EndpointsWatcher) deleteEndpoints(obj interface{}) {
 	sp, ok := ew.getServicePublisher(id)
 	if ok {
 		sp.deleteEndpoints()
+	}
+}
+
+func (ew *EndpointsWatcher) deleteEndpointSlice(obj interface{}) {
+	es, ok := obj.(*dv1beta1.EndpointSlice)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			ew.log.Errorf("couldn't get object from DeletedFinalStateUnknown %#v", obj)
+		}
+		es, ok = tombstone.Obj.(*dv1beta1.EndpointSlice)
+		if !ok {
+			ew.log.Errorf("DeletedFinalStateUnknown contained object that is not an EndpointSlice %#v", obj)
+			return
+		}
+	}
+
+	if es.Namespace == kubeSystem {
+		return
+	}
+
+	id := ServiceID{
+		Namespace: es.Namespace,
+		Name:      es.Labels[dv1beta1.LabelServiceName],
+	}
+
+	sp, ok := ew.getServicePublisher(id)
+	if ok {
+		sp.deleteEndpointSlice(es)
 	}
 }
 
@@ -319,14 +367,15 @@ func (ew *EndpointsWatcher) getServicePublisher(id ServiceID) (sp *servicePublis
 /// servicePublisher ///
 ////////////////////////
 
-func (sp *servicePublisher) updateEndpoints(newEndpoints *corev1.Endpoints) {
+func (sp *servicePublisher) updateEndpoints(newResource interface{}) {
 	sp.Lock()
 	defer sp.Unlock()
 	sp.log.Debugf("Updating endpoints for %s", sp.id)
 
 	for _, port := range sp.ports {
-		port.updateEndpoints(newEndpoints)
+		port.updateEndpoints(newResource)
 	}
+
 }
 
 func (sp *servicePublisher) deleteEndpoints() {
@@ -339,6 +388,22 @@ func (sp *servicePublisher) deleteEndpoints() {
 	}
 }
 
+func (sp *servicePublisher) deleteEndpointSlice(es *dv1beta1.EndpointSlice) {
+	sp.Lock()
+	defer sp.Unlock()
+	sp.log.Debug("Deleting endpoint slice for %s", sp.id)
+
+	// We only want to delete the addresses associated with ports
+	// that are present in this subset, i.e in the slice
+	// as opposed to a whole Endpoints obj which contains all ports
+	// of the service and their associated addresses, grouped in subsets
+	// ugh
+	//TODO: address
+	for _, port := range sp.ports {
+		port.deleteEndpointSlice(es)
+	}
+
+}
 func (sp *servicePublisher) updateService(newService *corev1.Service) {
 	sp.Lock()
 	defer sp.Unlock()
@@ -411,12 +476,27 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		metrics:    endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname)),
 	}
 
-	endpoints, err := sp.k8sAPI.Endpoint().Lister().Endpoints(sp.id.Namespace).Get(sp.id.Name)
-	if err != nil && !apierrors.IsNotFound(err) {
-		sp.log.Errorf("error getting endpoints: %s", err)
-	}
-	if err == nil {
-		port.updateEndpoints(endpoints)
+	if err := endpointSliceAccess(sp.k8sAPI.Client); err != nil {
+		endpoints, err := sp.k8sAPI.Endpoint().Lister().Endpoints(sp.id.Namespace).Get(sp.id.Name)
+		if err != nil && !apierrors.IsNotFound(err) {
+			sp.log.Errorf("error getting endpoints: %s", err)
+		}
+		if err == nil {
+			port.updateEndpoints(endpoints)
+		}
+	} else {
+		matchLabels := map[string]string{dv1beta1.LabelServiceName: sp.id.Name}
+		selector := k8slabels.Set(matchLabels).AsSelector()
+
+		esList, err := sp.k8sAPI.ES().Lister().EndpointSlices(sp.id.Namespace).List(selector)
+		if err != nil && !apierrors.IsNotFound(err) {
+			sp.log.Errorf("error getting endpointSlice list: %s", err)
+		}
+		if err == nil {
+			for _, es := range esList {
+				port.updateEndpoints(es)
+			}
+		}
 	}
 
 	return port
@@ -434,8 +514,15 @@ func (sp *servicePublisher) metricsLabels(port Port, hostname string) prometheus
 // hold the parent servicePublisher's mutex before calling methods on a
 // portPublisher.
 
-func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
-	newAddressSet := pp.endpointsToAddresses(endpoints)
+func (pp *portPublisher) updateEndpoints(resource interface{}) {
+	var newAddressSet AddressSet
+	switch res := resource.(type) {
+	case *corev1.Endpoints:
+		newAddressSet = pp.endpointsToAddresses(res)
+	case *dv1beta1.EndpointSlice:
+		newAddressSet = pp.endpointSliceToAddresses(res)
+	}
+
 	if len(newAddressSet.Addresses) == 0 {
 		for _, listener := range pp.listeners {
 			listener.NoEndpoints(true)
@@ -459,13 +546,28 @@ func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	pp.metrics.setExists(true)
 }
 
-func metricLabels(endpoints *corev1.Endpoints) map[string]string {
-	labels := map[string]string{service: endpoints.Name, namespace: endpoints.Namespace}
+func metricLabels(resource interface{}) map[string]string {
+	var serviceName, ns string
+	var resLabels, resAnnotations map[string]string
+	switch res := resource.(type) {
+	case *corev1.Endpoints:
+		{
+			serviceName, ns = res.Name, res.Namespace
+			resLabels, resAnnotations = res.Labels, res.Annotations
+		}
+	case *dv1beta1.EndpointSlice:
+		{
+			serviceName, ns = res.Labels[dv1beta1.LabelServiceName], res.Namespace
+			resLabels, resAnnotations = res.Labels, res.Annotations
+		}
+	}
 
-	gateway, hasRemoteGateway := endpoints.Labels[consts.RemoteGatewayNameLabel]
-	gatewayNs, hasRemoteGatwayNs := endpoints.Labels[consts.RemoteGatewayNsLabel]
-	remoteClusterName, hasRemoteClusterName := endpoints.Labels[consts.RemoteClusterNameLabel]
-	serviceFqn, hasServiceFqn := endpoints.Annotations[consts.RemoteServiceFqName]
+	labels := map[string]string{service: serviceName, namespace: ns}
+
+	gateway, hasRemoteGateway := resLabels[consts.RemoteGatewayNameLabel]
+	gatewayNs, hasRemoteGatwayNs := resLabels[consts.RemoteGatewayNsLabel]
+	remoteClusterName, hasRemoteClusterName := resLabels[consts.RemoteClusterNameLabel]
+	serviceFqn, hasServiceFqn := resAnnotations[consts.RemoteServiceFqName]
 
 	if hasRemoteGateway && hasRemoteGatwayNs && hasRemoteClusterName && hasServiceFqn {
 		// this means we are looking at Endpoints created for the purpose of mirroring
@@ -483,6 +585,81 @@ func metricLabels(endpoints *corev1.Endpoints) map[string]string {
 	return labels
 }
 
+func (pp *portPublisher) endpointSliceToAddresses(es *dv1beta1.EndpointSlice) AddressSet {
+	addresses := make(map[ID]Address)
+
+	resolvedPort := pp.resolveESTargetPort(es.Ports)
+	for _, endpoint := range es.Endpoints {
+		if pp.hostname != "" && pp.hostname != *endpoint.Hostname {
+			continue
+		}
+
+		// Every endpoint has addresses that correspond to the EndpointSlice addressType field
+		// Consumers must handle different types of addresses
+		// An "addresses" set must contain at least 1 but no more than 100 addresses
+		if endpoint.TargetRef == nil {
+			serviceName := es.Labels[dv1beta1.LabelServiceName]
+			for _, addr := range endpoint.Addresses {
+				if isIPv6Address(addr) {
+					continue
+				}
+
+				id := ServiceID{
+					Name: strings.Join([]string{
+						serviceName,
+						addr,
+						fmt.Sprint(resolvedPort),
+					}, "-"),
+					Namespace: es.Namespace,
+				}
+
+				var authorityOverride string
+				if fqName, ok := es.Annotations[consts.RemoteServiceFqName]; ok {
+					authorityOverride = fmt.Sprintf("%s:%d", fqName, pp.srcPort)
+				}
+				addresses[id] = Address{
+					IP:                addr,
+					Port:              resolvedPort,
+					Identity:          es.Annotations[consts.RemoteGatewayIdentity],
+					AuthorityOverride: authorityOverride,
+				}
+			}
+			continue
+		}
+
+		if endpoint.TargetRef.Kind == "Pod" {
+			for _, addr := range endpoint.Addresses {
+				if isIPv6Address(addr) {
+					continue
+				}
+
+				id := PodID{
+					Name:      endpoint.TargetRef.Name,
+					Namespace: endpoint.TargetRef.Namespace,
+				}
+				pod, err := pp.k8sAPI.Pod().Lister().Pods(id.Namespace).Get(id.Name)
+				if err != nil {
+					pp.log.Errorf("Unable to fetch pod %v: %s", id, err)
+					continue
+				}
+				ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(pod, false)
+				addresses[id] = Address{
+					IP:        addr,
+					Port:      resolvedPort,
+					Pod:       pod,
+					OwnerName: ownerName,
+					OwnerKind: ownerKind,
+				}
+			}
+		}
+
+	}
+	return AddressSet{
+		Addresses: addresses,
+		Labels:    metricLabels(es),
+	}
+}
+
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
 	addresses := make(map[ID]Address)
 	for _, subset := range endpoints.Subsets {
@@ -491,6 +668,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 			if pp.hostname != "" && pp.hostname != endpoint.Hostname {
 				continue
 			}
+
 			if endpoint.TargetRef == nil {
 				id := ServiceID{
 					Name: strings.Join([]string{
@@ -541,6 +719,23 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 	}
 }
 
+func (pp *portPublisher) resolveESTargetPort(slicePorts []dv1beta1.EndpointPort) Port {
+	switch pp.targetPort.Type {
+	case intstr.Int:
+		return Port(pp.targetPort.IntVal)
+	case intstr.String:
+		for _, p := range slicePorts {
+			// Port names in v1beta1 are pointers
+			// Not doing any nil checks because documentation says:
+			// "Default is empty string"
+			if *p.Name == pp.targetPort.StrVal {
+				return Port(*p.Port)
+			}
+		}
+	}
+	return Port(0)
+}
+
 func (pp *portPublisher) resolveTargetPort(subset corev1.EndpointSubset) Port {
 	switch pp.targetPort.Type {
 	case intstr.Int:
@@ -563,6 +758,16 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 	} else {
 		pp.log.Errorf("Unable to get endpoints during port update: %s", err)
 	}
+}
+
+func (pp *portPublisher) deleteEndpointSlice(es *dv1beta1.EndpointSlice) {
+	addrSet := pp.endpointSliceToAddresses(es)
+	for id := range pp.addresses.Addresses {
+		if _, found := addrSet.Addresses[id]; found {
+			delete(pp.addresses.Addresses, id)
+		}
+	}
+
 }
 
 func (pp *portPublisher) noEndpoints(exists bool) {
@@ -680,4 +885,26 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 		Addresses: removeAddresses,
 	}
 	return
+}
+
+func endpointSliceAccess(k8sClient kubernetes.Interface) error {
+	gv := dv1beta1.SchemeGroupVersion.String()
+	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(gv)
+	if err != nil {
+		return err
+	}
+
+	if res.GroupVersion == gv {
+		for _, apiRes := range res.APIResources {
+			if apiRes.Kind == endpointSliceKind {
+				return nil
+			}
+		}
+	}
+
+	return fmt.Errorf("%s resource not found", endpointSliceKind)
+}
+
+func isIPv6Address(address string) bool {
+	return strings.Count(address, ":") >= 2
 }
