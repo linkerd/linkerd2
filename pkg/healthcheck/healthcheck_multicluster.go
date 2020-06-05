@@ -30,7 +30,7 @@ const (
 	LinkerdMulticlusterTargetChecks CategoryID = "linkerd-multicluster-target"
 
 	linkerdServiceMirrorComponentName   = "linkerd-service-mirror"
-	LinkerdGatewayComponentName         = "linkerd-gateway"
+	linkerdGatewayComponentName         = "linkerd-gateway"
 	linkerdServiceMirrorClusterRoleName = "linkerd-service-mirror-access-local-resources"
 	linkerdServiceMirrorRoleName        = "linkerd-service-mirror-read-remote-creds"
 )
@@ -257,7 +257,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 }
 
 func (hc *HealthChecker) gatewayComponentsSelector() string {
-	return fmt.Sprintf("%s=%s", "app", LinkerdGatewayComponentName)
+	return fmt.Sprintf("%s=%s", "app", linkerdGatewayComponentName)
 }
 
 func (hc *HealthChecker) serviceMirrorComponentsSelector() string {
