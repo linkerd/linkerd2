@@ -1,1 +1,2 @@
-Error transforming resources: failed to inject deployment/web - pods have a 3rd party proxy or initContainer already injected
+Error transforming resources: 
+failed to inject deployment/web - pod has a sidecar injected already, 
