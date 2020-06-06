@@ -31,12 +31,6 @@ const (
 	udpDesc                          = "pod specs do not include UDP ports"
 	automountServiceAccountTokenDesc = "pods do not have automountServiceAccountToken set to \"false\""
 	slash                            = "/"
-
-	// for throwing inject error
-	hostNetworkError                  = "pods use host networking"
-	sidecarError                      = "pods have a 3rd party proxy or initContainer already injected"
-	udpError                          = "pod specs include UDP ports"
-	automountServiceAccountTokenError = "pods have automountServiceAccountToken set to \"false\""
 )
 
 type resourceTransformerInject struct {
@@ -188,7 +182,7 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return b, reports, err
 	}
 	if b, _ := report.Injectable(); !b {
-		if e, err := shouldInjectThrowError(report); e {
+		if err := throwInjectError(report); err.Error() != "" {
 			return bytes, reports, fmt.Errorf("failed to inject %s%s%s - %s", report.Kind, slash, report.Name, err)
 		}
 		return bytes, reports, nil
@@ -541,22 +535,30 @@ func overwriteRegistry(image, newRegistry string) string {
 	return registry + imageName
 }
 
-func shouldInjectThrowError(report *inject.Report) (bool, error) {
+func throwInjectError(report *inject.Report) error {
+	err := errors.New("")
+
+	const (
+		disabledAutomountServiceAccountToken = "disabled_automount_service_account_token_account"
+		hostNetworkEnabled                   = "host_network_enabled"
+		sidecarExists                        = "sidecar_already_exists"
+		udpPortsEnabled                      = "udp_ports_enabled"
+	)
 	if !report.AutomountServiceAccountToken {
-		return true, errors.New(automountServiceAccountTokenError)
+		err = fmt.Errorf("%s%s, ", err, inject.Reasons[disabledAutomountServiceAccountToken])
 	}
 
 	if report.HostNetwork {
-		return true, errors.New(hostNetworkError)
+		err = fmt.Errorf("%s%s, ", err, inject.Reasons[hostNetworkEnabled])
 	}
 
 	if report.Sidecar {
-		return true, errors.New(sidecarError)
+		err = fmt.Errorf("%s%s, ", err, inject.Reasons[sidecarExists])
 	}
 
 	if report.UDP {
-		return true, errors.New(udpError)
+		err = fmt.Errorf("%s%s, ", err, inject.Reasons[udpPortsEnabled])
 	}
 
-	return false, nil
+	return err
 }

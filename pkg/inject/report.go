@@ -20,6 +20,7 @@ const (
 	invalidInjectAnnotationWorkload      = "invalid_inject_annotation_at_workload"
 	invalidInjectAnnotationNamespace     = "invalid_inject_annotation_at_ns"
 	disabledAutomountServiceAccountToken = "disabled_automount_service_account_token_account"
+	udpPortsEnabled                      = "udp_ports_enabled"
 )
 
 var (
@@ -33,6 +34,7 @@ var (
 		invalidInjectAnnotationWorkload:      fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
 		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
 		disabledAutomountServiceAccountToken: fmt.Sprintf("automountServiceAccountToken set to \"false\""),
+		udpPortsEnabled:                      "UDP port(s) configured on pod spec",
 	}
 )
 

@@ -3,13 +3,13 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/inject"
 	corev1 "k8s.io/api/core/v1"
@@ -30,13 +30,15 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 	reportBuf := &bytes.Buffer{}
 
 	for _, input := range inputs {
-		errMsgs := processYAML(input, postInjectBuf, reportBuf, rt)
-		if len(errMsgs) > 0 {
-			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", strings.Join(errMsgs, ", \n"))
-			return 1
+		err := processYAML(input, postInjectBuf, reportBuf, rt)
+		if err != nil {
+			if err.Error() != "" { // This check is required because `processYAML` initilizes an error with an empty string for the sake of accumulating error messages
+				fmt.Fprintf(errWriter, "Error transforming resources: %v\n", err)
+				return 1
+			}
 		}
 
-		_, err := io.Copy(outWriter, postInjectBuf)
+		_, err = io.Copy(outWriter, postInjectBuf)
 
 		// print error report after yaml output, for better visibility
 		io.Copy(errWriter, reportBuf)
@@ -50,12 +52,12 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 }
 
 // processYAML takes an input stream of YAML, outputting injected/uninjected YAML to out.
-func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) []string {
+func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 
 	reports := []inject.Report{}
 
-	errorMessages := []string{}
+	errs := errors.New("")
 
 	// Iterate over all YAML objects in the input
 	for {
@@ -65,7 +67,7 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 			break
 		}
 		if err != nil {
-			return []string{err.Error()}
+			return err
 		}
 
 		var result []byte
@@ -73,7 +75,7 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 
 		isList, err := kindIsList(bytes)
 		if err != nil {
-			return []string{err.Error()}
+			return err
 		}
 		if isList {
 			result, irs, err = processList(bytes, rt)
@@ -81,11 +83,11 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 			result, irs, err = rt.transform(bytes)
 		}
 		if err != nil {
-			errorMessages = append(errorMessages, err.Error())
+			errs = fmt.Errorf("%w\n%s", errs, err)
 		}
 		reports = append(reports, irs...)
 
-		if len(errorMessages) == 0 {
+		if errs.Error() == "" {
 			out.Write(result)
 			out.Write([]byte("---\n"))
 		}
@@ -93,7 +95,7 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 
 	rt.generateReport(reports, report)
 
-	return errorMessages
+	return errs
 }
 
 func kindIsList(bytes []byte) (bool, error) {
