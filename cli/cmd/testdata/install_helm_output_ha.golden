@@ -929,7 +929,7 @@ data:
   install: |
     {
       "cliVersion":"linkerd-version",
-      "flags":[]
+      "flags":[{"name":"ha","value":"true"}]
     }
 ---
 # Source: linkerd2/templates/identity.yaml
