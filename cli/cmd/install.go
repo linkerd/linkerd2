@@ -763,7 +763,6 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.Grafana["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
-	installValues.Grafana["image"].(map[string]interface{})["version"] = options.controlPlaneVersion
 	if options.prometheusImage != "" {
 		installValues.PrometheusImage = options.prometheusImage
 	}
