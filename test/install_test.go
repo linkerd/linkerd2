@@ -248,7 +248,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	// test `linkerd upgrade --from-manifests`
 	if TestHelper.UpgradeFromVersion() != "" {
 		resources := []string{}
-		resources = append(resources, "configmaps/"+k8s.ConfigConfigMapName, "secrets/"+k8s.IdentityIssuerSchemeLinkerd)
+		resources = append(resources, "configmaps/"+k8s.ConfigConfigMapName, "secrets/"+k8s.IdentityIssuerSecretName)
 
 		// If `linkerd-config-addons` exists, add it to the resources to get
 		_, err := TestHelper.Kubectl("", "--namespace", TestHelper.GetLinkerdNamespace(), "get", "configmaps/"+k8s.AddOnsConfigMapName)
