@@ -256,7 +256,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			resources = append(resources, "configmaps/"+k8s.AddOnsConfigMapName)
 		}
 
-		args := append([]string{"--namespace", TestHelper.GetLinkerdNamespace()}, resources...)
+		args := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
 		args = append(args, "-o yaml")
 
 		manifests, err := TestHelper.Kubectl("", args...)
