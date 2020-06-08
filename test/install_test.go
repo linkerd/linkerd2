@@ -257,12 +257,12 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		args := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
-		args = append(args, "-o yaml")
+		args = append(args, "-oyaml")
 
 		manifests, err := TestHelper.Kubectl("", args...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-				"'kubectl get' command failed with %s\n%s", err, out)
+				"'kubectl get' command failed with %s\n%s\n%s", err, out, args)
 		}
 
 		exec = append(exec, "--from-manifests", "-")
