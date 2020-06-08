@@ -252,7 +252,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 		// If `linkerd-config-addons` exists, add it to the resources to get
 		_, err := TestHelper.Kubectl("", "--namespace", TestHelper.GetLinkerdNamespace(), "get", "configmaps/"+k8s.AddOnsConfigMapName)
-		if err != nil {
+		if err == nil {
 			resources = append(resources, "configmaps/"+k8s.AddOnsConfigMapName)
 		}
 
@@ -262,7 +262,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		manifests, err := TestHelper.Kubectl("", args...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-				"'kubectl get' command failed with %s\n%s\n%s", err, out, args)
+				"'kubectl get' command failed with %s\n%s\n%s", err, manifests, args)
 		}
 
 		exec = append(exec, "--from-manifests", "-")
