@@ -188,8 +188,6 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 			id: LinkerdMulticlusterTargetChecks,
 			checkers: []checker{
 				{
-					description: "all cluster gateways are alive",
-					hintAnchor:  "l5d-multicluster-target-gateways-alive",
 					check: func(ctx context.Context) error {
 						return hc.checkIfTargetCluster()
 					},
