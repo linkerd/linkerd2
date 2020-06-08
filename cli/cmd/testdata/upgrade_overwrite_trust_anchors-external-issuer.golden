@@ -2827,7 +2827,6 @@ data:
       enabled: true
       image:
         name: gcr.io/linkerd-io/grafana
-        version: UPGRADE-CONTROL-PLANE-VERSION
       name: linkerd-grafana
     tracing:
       enabled: false
