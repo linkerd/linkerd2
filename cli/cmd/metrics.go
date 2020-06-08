@@ -22,7 +22,7 @@ type metricsOptions struct {
 
 func newMetricsOptions() *metricsOptions {
 	return &metricsOptions{
-		namespace: getDefaultNamespace(),
+		namespace: defaultNamespace,
 		pod:       "",
 	}
 }
