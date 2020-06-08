@@ -163,7 +163,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					hintAnchor:  "l5d-multicluster-services-endpoints",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						return hc.checkIfMirroredServicesHaveEndpoints()
+						return hc.checkIfMirrorServicesHaveEndpoints()
 					},
 				},
 				{
@@ -175,35 +175,11 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					},
 				},
 				{
-					description: "all mirror services have a valid gateway mirror",
-					hintAnchor:  "l5d-multicluster-mirror-gateways",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkIfAllMirrorServicesHaveGatewayMirrors()
-					},
-				},
-				{
-					description: "remote: all gateways have external IPs",
+					description: "remote: all referenced gateways are healthy",
 					hintAnchor:  "l5d-multicluster-gateways-exist",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						return hc.checkRemoteIfGatewaysHaveExternalIP()
-					},
-				},
-				{
-					description: "remote: gateways exists for all exported services",
-					hintAnchor:  "l5d-multicluster-exported-gateways",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkRemoteifGatewaysExistforExportedServices()
-					},
-				},
-				{
-					description: "remote: all gateways have correct port names exposed",
-					hintAnchor:  "l5d-multicluster-gateways-ports",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkRemoteIfAllGatewaysHaveCorrectPortNames()
+						return hc.checkRemoteGateways()
 					},
 				},
 			},
@@ -219,34 +195,12 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					},
 				},
 				{
-					description: "all gateways have external IPs",
+					description: "all gateways are healthy",
 					hintAnchor:  "l5d-multicluster-gateways-exist",
 					warning:     true,
 					check: func(ctx context.Context) error {
 						if hc.TargetCluster {
-							return hc.checkIfGatewaysHaveExternalIP()
-						}
-						return &SkipError{Reason: "not checking target"}
-					},
-				},
-				{
-					description: "gateways exists for all exported services",
-					hintAnchor:  "l5d-multicluster-exported-gateways",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						if hc.TargetCluster {
-							return hc.checkifGatewaysExistforExportedServices()
-						}
-						return &SkipError{Reason: "not checking target"}
-					},
-				},
-				{
-					description: "all gateways have correct port names exposed",
-					hintAnchor:  "l5d-multicluster-gateways-ports",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						if hc.TargetCluster {
-							return hc.checkIfAllGatewaysHaveCorrectPortNames()
+							return hc.checkGateways()
 						}
 						return &SkipError{Reason: "not checking target"}
 					},
@@ -498,6 +452,107 @@ func (hc *HealthChecker) checkDaisyChains() error {
 	return &SkipError{Reason: "not checking muticluster"}
 }
 
+func (hc *HealthChecker) checkGateways() error {
+
+	offendingCluster, err := checkGateways(hc.kubeAPI)
+	if err != nil {
+		return err
+	}
+
+	if offendingCluster != "" {
+		return fmt.Errorf("Some gateways have problems:\n\t%s", offendingCluster)
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) checkRemoteGateways() error {
+
+	if len(hc.remoteClusterConfigs) == 0 {
+		return &SkipError{Reason: "no target cluster configs"}
+	}
+
+	var offendingClusters []string
+	for _, cfg := range hc.remoteClusterConfigs {
+		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(cfg.APIConfig)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to parse api config", cfg.ClusterName))
+			continue
+		}
+
+		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
+		if err != nil {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to instantiate api", cfg.ClusterName))
+			continue
+		}
+
+		offendingCluster, err := checkGateways(remoteAPI)
+		if err != nil {
+			offendingClusters = append(offendingClusters, err.Error())
+			continue
+		}
+
+		if offendingCluster != "" {
+			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t%s", cfg.ClusterName, offendingCluster))
+		}
+	}
+	if len(offendingClusters) > 0 {
+		return fmt.Errorf("Some gateways have problems:\n\t%s", strings.Join(offendingClusters, "\n\t"))
+	}
+	return nil
+}
+
+func checkGateways(api *k8s.KubernetesAPI) (string, error) {
+	var nonExistentGateways, gatewaysWithNoExternalIPs, gatewaysWithMisConfiguredPorts []string
+	services, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	for _, svc := range services.Items {
+		if serviceExported(svc) {
+			// Check if there is a relevant gateway
+			gateway, err := api.CoreV1().Services(svc.Annotations[k8s.GatewayNsAnnotation]).Get(svc.Annotations[k8s.GatewayNameAnnotation], metav1.GetOptions{})
+			if err != nil {
+				nonExistentGateways = append(nonExistentGateways, fmt.Sprintf("%s.%s: %s.%s", svc.Name, svc.Namespace, svc.Annotations[k8s.GatewayNameAnnotation], svc.Annotations[k8s.GatewayNsAnnotation], svc.Name, svc.Namespace))
+				continue
+			}
+
+			// check if there is an external IP for the gateway service
+			if len(gateway.Status.LoadBalancer.Ingress) <= 0 {
+				gatewaysWithNoExternalIPs = append(gatewaysWithNoExternalIPs, fmt.Sprintf("%s.%s: %s.%s", svc.Name, svc.Namespace, gateway.Name, gateway.Namespace))
+			}
+
+			// check if the gateway service has relevant ports
+			portNames := []string{k8s.GatewayPortName, k8s.ProbePortName}
+			for _, portName := range portNames {
+				if !ifPortExists(gateway.Spec.Ports, portName) {
+					gatewaysWithMisConfiguredPorts = append(gatewaysWithMisConfiguredPorts, fmt.Sprintf("%s.%s: port %s for gateway %s.%s", svc.Name, svc.Namespace, portName, gateway.Name, gateway.Namespace))
+				}
+			}
+		}
+	}
+	var clusterErrors []string
+
+	if len(nonExistentGateways) > 0 {
+		clusterErrors = append(clusterErrors, fmt.Sprintf("Some gateways do not exist:\n\t\t%s", strings.Join(nonExistentGateways, "\n\t\t")))
+	}
+
+	if len(gatewaysWithNoExternalIPs) > 0 {
+		clusterErrors = append(clusterErrors, fmt.Sprintf("Some gateways have no external IPs:\n\t\t%s", strings.Join(gatewaysWithNoExternalIPs, "\n\t\t")))
+	}
+
+	if len(gatewaysWithMisConfiguredPorts) > 0 {
+		clusterErrors = append(clusterErrors, fmt.Sprintf("Some gateways have misconfiguerd ports:\n\t\t%s", strings.Join(gatewaysWithMisConfiguredPorts, "\n\t\t")))
+	}
+
+	if len(nonExistentGateways) > 0 || len(gatewaysWithNoExternalIPs) > 0 || len(gatewaysWithMisConfiguredPorts) > 0 {
+		return fmt.Sprintf("%s", strings.Join(clusterErrors, "\n\t")), nil
+	}
+
+	return "", nil
+}
+
 func (hc *HealthChecker) checkClusterGatewaysHealth() error {
 
 	var offendingGateways []string
@@ -630,7 +685,7 @@ func (hc *HealthChecker) checkRemoteClusterGatewaysHealth(ctx context.Context) e
 	return &SkipError{Reason: "not checking muticluster"}
 }
 
-func (hc *HealthChecker) checkIfMirroredServicesHaveEndpoints() error {
+func (hc *HealthChecker) checkIfMirrorServicesHaveEndpoints() error {
 	if hc.Options.SourceCluster {
 
 		var servicesWithNoEndpoints []string
@@ -681,173 +736,9 @@ func (hc *HealthChecker) checkIfGatewayMirrorsHaveEndpoints() error {
 	return &SkipError{Reason: "not checking muticluster"}
 }
 
-func (hc *HealthChecker) checkIfAllMirrorServicesHaveGatewayMirrors() error {
-
-	if hc.Options.SourceCluster {
-
-		var nonExistentGatewayMirrors []string
-		selector := fmt.Sprintf("%s,!%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
-		mirrorServices, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{LabelSelector: selector})
-		if err != nil {
-			return err
-		}
-
-		for _, svc := range mirrorServices.Items {
-			// Check if the relevant gateway mirror exists
-			gatewayMirrorName := svc.Labels[k8s.RemoteGatewayNameLabel] + "-" + svc.Labels[k8s.RemoteClusterNameLabel]
-			_, err := hc.kubeAPI.CoreV1().Services(svc.Labels[k8s.RemoteGatewayNsLabel]).Get(gatewayMirrorName, metav1.GetOptions{})
-			if err != nil {
-				nonExistentGatewayMirrors = append(nonExistentGatewayMirrors, fmt.Sprintf("%s.%s", gatewayMirrorName, svc.Annotations[k8s.RemoteGatewayNsLabel]))
-			}
-		}
-
-		if len(nonExistentGatewayMirrors) > 0 {
-			return fmt.Errorf("Some mirror services do not have a valid gateway mirror:\n\t%s", strings.Join(nonExistentGatewayMirrors, "\n\t"))
-		}
-		return nil
-	}
-	return &SkipError{Reason: "not checking muticluster"}
-}
-
-func (hc *HealthChecker) checkIfGatewaysHaveExternalIP() error {
-
-	gatewaysWithNoExternalIPs, err := getGatewaysWithNoExternalIPs(hc.kubeAPI)
-	if err != nil {
-		return err
-	}
-	if len(gatewaysWithNoExternalIPs) > 0 {
-		return fmt.Errorf("Some gateways don't have external IPs:\n\t%s", strings.Join(gatewaysWithNoExternalIPs, "\n\t"))
-	}
-	return nil
-}
-
-func getGatewaysWithNoExternalIPs(api *k8s.KubernetesAPI) ([]string, error) {
-
-	var gatewaysWithNoExternalIPs []string
-	services, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	for _, svc := range services.Items {
-		if gatewayService(svc) {
-			// check if there is an external IP for the gateway service
-			if len(svc.Status.LoadBalancer.Ingress) <= 0 {
-				gatewaysWithNoExternalIPs = append(gatewaysWithNoExternalIPs, fmt.Sprintf("%s.%s", svc.Name, svc.Namespace))
-			}
-		}
-	}
-
-	return gatewaysWithNoExternalIPs, nil
-}
-
-func (hc *HealthChecker) checkRemoteIfGatewaysHaveExternalIP() error {
-
-	if len(hc.remoteClusterConfigs) == 0 {
-		return &SkipError{Reason: "no target cluster configs"}
-	}
-
-	var offendingClusters []string
-	for _, cfg := range hc.remoteClusterConfigs {
-		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(cfg.APIConfig)
-		if err != nil {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to parse api config", cfg.ClusterName))
-			continue
-		}
-
-		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
-		if err != nil {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to instantiate api", cfg.ClusterName))
-			continue
-		}
-
-		gatewaysWithNoExternalIPs, err := getGatewaysWithNoExternalIPs(remoteAPI)
-		if err != nil {
-			offendingClusters = append(offendingClusters, err.Error())
-			continue
-		}
-
-		if len(gatewaysWithNoExternalIPs) > 0 {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t\t%s", cfg.ClusterName, strings.Join(gatewaysWithNoExternalIPs, "\n\t\t")))
-		}
-	}
-
-	if len(offendingClusters) > 0 {
-		return fmt.Errorf("Problematic gateways:\n\t%s", strings.Join(offendingClusters, "\n\t"))
-	}
-	return nil
-}
-
 func gatewayService(service corev1.Service) bool {
 	_, hasGtwName := service.Annotations[k8s.MulticlusterGatewayAnnotation]
 	return hasGtwName
-}
-
-func (hc *HealthChecker) checkIfAllGatewaysHaveCorrectPortNames() error {
-	gatewaysWithMisConfiguredPorts, err := getGatewaysWithMisConfiguredPorts(hc.kubeAPI)
-	if err != nil {
-		return err
-	}
-	if len(gatewaysWithMisConfiguredPorts) > 0 {
-		return fmt.Errorf("Some gateway's have misconfigured ports:\n\t%s", strings.Join(gatewaysWithMisConfiguredPorts, "\n\t"))
-	}
-	return nil
-}
-
-func (hc *HealthChecker) checkRemoteIfAllGatewaysHaveCorrectPortNames() error {
-	if len(hc.remoteClusterConfigs) == 0 {
-		return &SkipError{Reason: "no target cluster configs"}
-	}
-
-	var offendingClusters []string
-	for _, cfg := range hc.remoteClusterConfigs {
-		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(cfg.APIConfig)
-		if err != nil {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to parse api config", cfg.ClusterName))
-			continue
-		}
-
-		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
-		if err != nil {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to instantiate api", cfg.ClusterName))
-			continue
-		}
-
-		gatewaysWithMisConfiguredPorts, err := getGatewaysWithMisConfiguredPorts(remoteAPI)
-		if err != nil {
-			offendingClusters = append(offendingClusters, err.Error())
-			continue
-		}
-
-		if len(gatewaysWithMisConfiguredPorts) > 0 {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t\t%s", cfg.ClusterName, strings.Join(gatewaysWithMisConfiguredPorts, "\n\t\t")))
-		}
-	}
-	if len(offendingClusters) > 0 {
-		return fmt.Errorf("Some gateway's have misconfigured ports:\n\t%s", strings.Join(offendingClusters, "\n\t"))
-	}
-	return nil
-}
-
-func getGatewaysWithMisConfiguredPorts(api *k8s.KubernetesAPI) ([]string, error) {
-	var gatewaysWithMisconfiguredPorts []string
-	services, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	for _, svc := range services.Items {
-		if gatewayService(svc) {
-			// check if the gateway service has relevant ports
-			portNames := []string{k8s.GatewayPortName, k8s.ProbePortName}
-			for _, portName := range portNames {
-				if !ifPortExists(svc.Spec.Ports, portName) {
-					gatewaysWithMisconfiguredPorts = append(gatewaysWithMisconfiguredPorts, fmt.Sprintf("port %s does not exist for gateway %s.%s", portName, svc.Name, svc.Namespace))
-				}
-			}
-		}
-	}
-	return gatewaysWithMisconfiguredPorts, nil
 }
 
 func ifPortExists(ports []corev1.ServicePort, portName string) bool {
@@ -856,73 +747,5 @@ func ifPortExists(ports []corev1.ServicePort, portName string) bool {
 			return true
 		}
 	}
-
 	return false
-}
-func (hc *HealthChecker) checkifGatewaysExistforExportedServices() error {
-
-	nonExistentGateways, err := getNonExistentGateways(hc.kubeAPI)
-	if err != nil {
-		return err
-	}
-	if len(nonExistentGateways) > 0 {
-		return fmt.Errorf("Some gateways do not exist:\n\t%s", strings.Join(nonExistentGateways, "\n\t"))
-	}
-	return nil
-
-}
-
-func getNonExistentGateways(api *k8s.KubernetesAPI) ([]string, error) {
-	var nonExistentGateways []string
-	services, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	for _, svc := range services.Items {
-		if serviceExported(svc) {
-			// Check if there is a relevant gateway
-			_, err := api.CoreV1().Services(svc.Annotations[k8s.GatewayNsAnnotation]).Get(svc.Annotations[k8s.GatewayNameAnnotation], metav1.GetOptions{})
-			if err != nil {
-				nonExistentGateways = append(nonExistentGateways, fmt.Sprintf("%s.%s gateway used with service %s.%s", svc.Annotations[k8s.GatewayNameAnnotation], svc.Annotations[k8s.GatewayNsAnnotation], svc.Name, svc.Namespace))
-			}
-		}
-	}
-
-	return nonExistentGateways, nil
-}
-
-func (hc *HealthChecker) checkRemoteifGatewaysExistforExportedServices() error {
-	if len(hc.remoteClusterConfigs) == 0 {
-		return &SkipError{Reason: "no target cluster configs"}
-	}
-
-	var offendingClusters []string
-	for _, cfg := range hc.remoteClusterConfigs {
-		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(cfg.APIConfig)
-		if err != nil {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to parse api config", cfg.ClusterName))
-			continue
-		}
-
-		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
-		if err != nil {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to instantiate api", cfg.ClusterName))
-			continue
-		}
-
-		nonExistentGateways, err := getNonExistentGateways(remoteAPI)
-		if err != nil {
-			offendingClusters = append(offendingClusters, err.Error())
-			continue
-		}
-
-		if len(nonExistentGateways) > 0 {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t\t%s", cfg.ClusterName, strings.Join(nonExistentGateways, "\n\t\t")))
-		}
-	}
-	if len(offendingClusters) > 0 {
-		return fmt.Errorf("Some gateways do not exist:\n\t%s", strings.Join(offendingClusters, "\n\t"))
-	}
-	return nil
 }
