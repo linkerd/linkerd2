@@ -655,7 +655,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 		}
 
 		if len(errors) > 0 {
-			return fmt.Errorf("Problematic clusters:\n\t%s", strings.Join(errors, "\n\t\t"))
+			return fmt.Errorf("Problematic clusters:\n\t\t%s", strings.Join(errors, "\n\t\t"))
 		}
 		return nil
 	}
