@@ -1064,6 +1064,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_SOURCE_NODE
+          valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1279,6 +1283,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_SOURCE_NODE
+          valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1491,6 +1499,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_SOURCE_NODE
+          valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1755,6 +1767,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_SOURCE_NODE
+          valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -2114,6 +2130,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_SOURCE_NODE
+          valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
         - name: LINKERD2_PROXY_IDENTITY_DIR
@@ -2310,6 +2330,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_SOURCE_NODE
+          valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -2541,6 +2565,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_SOURCE_NODE
+          valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -2760,6 +2788,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_SOURCE_NODE
+          valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -3069,6 +3101,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_SOURCE_NODE
+          valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -3265,6 +3301,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_SOURCE_NODE
+          valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -3547,6 +3587,10 @@ spec:
               fieldPath: metadata.namespace
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: ns:$(_pod_ns)
+        - name: LINKERD2_PROXY_SOURCE_NODE
+          valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS

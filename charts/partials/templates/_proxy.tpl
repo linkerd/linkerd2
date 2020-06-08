@@ -3,7 +3,7 @@ env:
 {{ if .Values.global.proxy.requireIdentityOnInboundPorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_IDENTITY
   value: "{{.Values.global.proxy.requireIdentityOnInboundPorts}}"
-{{ end -}}  
+{{ end -}}
 - name: LINKERD2_PROXY_LOG
   value: {{.Values.global.proxy.logLevel}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -21,7 +21,7 @@ env:
 {{ if .Values.global.proxy.isGateway -}}
 - name: LINKERD2_PROXY_INBOUND_GATEWAY_SUFFIXES
   value: {{printf "svc.%s." .Values.global.clusterDomain}}
-{{ end -}}  
+{{ end -}}
 - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
   value: {{printf "svc.%s." .Values.global.clusterDomain}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
@@ -41,6 +41,10 @@ env:
       fieldPath: metadata.namespace
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
   value: ns:$(_pod_ns)
+- name: LINKERD2_PROXY_SOURCE_NODE
+  valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
 {{ if eq .Values.global.proxy.component "linkerd-prometheus" -}}
 - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
   value: "10000"
