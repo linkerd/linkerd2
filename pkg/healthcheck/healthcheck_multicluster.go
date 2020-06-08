@@ -175,7 +175,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					},
 				},
 				{
-					description: "remote: all referenced gateways are healthy",
+					description: "remote: all referenced gateways are valid",
 					hintAnchor:  "l5d-multicluster-gateways-exist",
 					warning:     true,
 					check: func(ctx context.Context) error {
@@ -195,7 +195,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					},
 				},
 				{
-					description: "all gateways are healthy",
+					description: "all  cluster gateways are valid",
 					hintAnchor:  "l5d-multicluster-gateways-exist",
 					warning:     true,
 					check: func(ctx context.Context) error {
@@ -503,7 +503,7 @@ func (hc *HealthChecker) checkRemoteGateways() error {
 }
 
 func checkGateways(api *k8s.KubernetesAPI) (string, error) {
-	var nonExistentGateways, gatewaysWithNoExternalIPs, gatewaysWithMisConfiguredPorts []string
+	var nonExistentGateways, gatewaysWithNoExternalIPs, gatewaysWithMisConfiguredPorts, gatewaysWithNoEndpoints []string
 	services, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
 		return "", err
@@ -514,7 +514,7 @@ func checkGateways(api *k8s.KubernetesAPI) (string, error) {
 			// Check if there is a relevant gateway
 			gateway, err := api.CoreV1().Services(svc.Annotations[k8s.GatewayNsAnnotation]).Get(svc.Annotations[k8s.GatewayNameAnnotation], metav1.GetOptions{})
 			if err != nil {
-				nonExistentGateways = append(nonExistentGateways, fmt.Sprintf("%s.%s: %s.%s", svc.Name, svc.Namespace, svc.Annotations[k8s.GatewayNameAnnotation], svc.Annotations[k8s.GatewayNsAnnotation], svc.Name, svc.Namespace))
+				nonExistentGateways = append(nonExistentGateways, fmt.Sprintf("%s.%s: %s.%s", svc.Name, svc.Namespace, svc.Annotations[k8s.GatewayNameAnnotation], svc.Annotations[k8s.GatewayNsAnnotation]))
 				continue
 			}
 
@@ -530,6 +530,13 @@ func checkGateways(api *k8s.KubernetesAPI) (string, error) {
 					gatewaysWithMisConfiguredPorts = append(gatewaysWithMisConfiguredPorts, fmt.Sprintf("%s.%s: port %s for gateway %s.%s", svc.Name, svc.Namespace, portName, gateway.Name, gateway.Namespace))
 				}
 			}
+
+			// check if the gateway has endpoints
+			endpoints, err := api.CoreV1().Endpoints(gateway.Namespace).Get(gateway.Name, metav1.GetOptions{})
+			if err != nil || len(endpoints.Subsets) == 0 {
+				gatewaysWithNoEndpoints = append(gatewaysWithNoEndpoints, fmt.Sprintf("%s.%s: %s.%s", svc.Name, svc.Namespace, gateway.Name, gateway.Namespace))
+			}
+
 		}
 	}
 	var clusterErrors []string
@@ -546,8 +553,12 @@ func checkGateways(api *k8s.KubernetesAPI) (string, error) {
 		clusterErrors = append(clusterErrors, fmt.Sprintf("Some gateways have misconfiguerd ports:\n\t\t%s", strings.Join(gatewaysWithMisConfiguredPorts, "\n\t\t")))
 	}
 
-	if len(nonExistentGateways) > 0 || len(gatewaysWithNoExternalIPs) > 0 || len(gatewaysWithMisConfiguredPorts) > 0 {
-		return fmt.Sprintf("%s", strings.Join(clusterErrors, "\n\t")), nil
+	if len(gatewaysWithNoEndpoints) > 0 {
+		clusterErrors = append(clusterErrors, fmt.Sprintf("Some gateways do not have endpoints:\n\t\t%s", strings.Join(gatewaysWithNoEndpoints, "\n\t\t")))
+	}
+
+	if len(nonExistentGateways) > 0 || len(gatewaysWithNoExternalIPs) > 0 || len(gatewaysWithMisConfiguredPorts) > 0 || len(gatewaysWithNoEndpoints) > 0 {
+		return strings.Join(clusterErrors, "\n\t"), nil
 	}
 
 	return "", nil
@@ -734,11 +745,6 @@ func (hc *HealthChecker) checkIfGatewayMirrorsHaveEndpoints() error {
 		return nil
 	}
 	return &SkipError{Reason: "not checking muticluster"}
-}
-
-func gatewayService(service corev1.Service) bool {
-	_, hasGtwName := service.Annotations[k8s.MulticlusterGatewayAnnotation]
-	return hasGtwName
 }
 
 func ifPortExists(ports []corev1.ServicePort, portName string) bool {
