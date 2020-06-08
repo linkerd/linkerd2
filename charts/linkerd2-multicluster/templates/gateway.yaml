@@ -76,6 +76,8 @@ spec:
         - name: config
           configMap:
             name: {{.Values.gatewayName}}-config
+        - name: tmp
+          emptyDir: {}
       containers:
         - name: nginx
           readinessProbe:
@@ -101,6 +103,8 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/nginx
+            - name: tmp
+              mountPath: /tmp
       serviceAccountName: {{.Values.gatewayName}}
 ---
 apiVersion: v1

@@ -3131,7 +3131,6 @@ data:
       enabled: true
       image:
         name: gcr.io/linkerd-io/grafana
-        version: linkerdVersionValue
       name: linkerd-grafana
       resources:
         cpu:
@@ -3281,7 +3280,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:linkerdVersionValue
+        image: gcr.io/linkerd-io/grafana:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
