@@ -187,27 +187,19 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 			id: LinkerdMulticlusterTargetChecks,
 			checkers: []checker{
 				{
-					check: func(ctx context.Context) error {
-						return hc.checkIfTargetCluster()
-					},
-				},
-				{
-					description: "all  cluster gateways are valid",
+					description: "all cluster gateways are valid",
 					hintAnchor:  "l5d-multicluster-gateways-exist",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						if hc.TargetCluster {
-							return hc.checkLocalGateways()
+						targetCluster, err := hc.isTargetCluster()
+						if err != nil {
+							return err
 						}
-						return &SkipError{Reason: "not checking target cluster"}
-					},
-				},
-				{
-					description: "all  cluster gateways have endpoints",
-					hintAnchor:  "l5d-multicluster-gateways-endpoints",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						if hc.TargetCluster {
+						if targetCluster || hc.TargetCluster {
+							err := hc.checkLocalGateways()
+							if err != nil {
+								return err
+							}
 							return hc.checkIfGatewaysHaveEndpoints()
 						}
 						return &SkipError{Reason: "not checking target cluster"}
@@ -240,11 +232,11 @@ func (hc *HealthChecker) checkServiceMirrorController() error {
 		hc.Options.SourceCluster = true
 
 		if len(result.Items) > 1 {
-			var errors []string
+			var errors []error
 			for _, smc := range result.Items {
-				errors = append(errors, fmt.Sprintf("%s/%s", smc.Namespace, smc.Name))
+				errors = append(errors, fmt.Errorf("%s/%s", smc.Namespace, smc.Name))
 			}
-			return fmt.Errorf("There are more than one service mirror controllers:\n\t%s", strings.Join(errors, "\n\t"))
+			return fmt.Errorf("There are more than one service mirror controllers:\n%s", joinErrors(errors, 1))
 		}
 
 		controller := result.Items[0]
@@ -386,7 +378,7 @@ func (hc *HealthChecker) checkRemoteClusterAnchors() error {
 	}
 
 	if len(offendingClusters) > 0 {
-		return fmt.Errorf("Problematic clusters:\n\t%s", strings.Join(offendingClusters, "\n\t"))
+		return fmt.Errorf("Problematic clusters:\n    %s", strings.Join(offendingClusters, "\n    "))
 	}
 
 	return nil
@@ -458,15 +450,10 @@ func (hc *HealthChecker) checkDaisyChains() error {
 
 func (hc *HealthChecker) checkLocalGateways() error {
 
-	offendingCluster, err := checkGateways(hc.kubeAPI)
-	if err != nil {
-		return err
+	errs := checkGateways(hc.kubeAPI)
+	if len(errs) > 0 {
+		return joinErrors(errs, 1)
 	}
-
-	if offendingCluster != "" {
-		return fmt.Errorf("Some gateways have problems:\n\t%s", offendingCluster)
-	}
-
 	return nil
 }
 
@@ -476,41 +463,37 @@ func (hc *HealthChecker) checkRemoteGateways() error {
 		return &SkipError{Reason: "no target cluster configs"}
 	}
 
-	var offendingClusters []string
+	var offendingClusters []error
 	for _, cfg := range hc.remoteClusterConfigs {
 		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(cfg.APIConfig)
 		if err != nil {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to parse api config", cfg.ClusterName))
+			offendingClusters = append(offendingClusters, fmt.Errorf("* %s: unable to parse api config", cfg.ClusterName))
 			continue
 		}
 
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
 		if err != nil {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("* %s: unable to instantiate api", cfg.ClusterName))
+			offendingClusters = append(offendingClusters, fmt.Errorf("* %s: unable to instantiate api", cfg.ClusterName))
 			continue
 		}
 
-		offendingCluster, err := checkGateways(remoteAPI)
-		if err != nil {
-			offendingClusters = append(offendingClusters, err.Error())
+		errs := checkGateways(remoteAPI)
+		if len(errs) > 0 {
+			offendingClusters = append(offendingClusters, fmt.Errorf("* %s: remote cluster has invalid gateways:\n%s", cfg.ClusterName, joinErrors(errs, 2).Error()))
 			continue
-		}
-
-		if offendingCluster != "" {
-			offendingClusters = append(offendingClusters, fmt.Sprintf("%s:\n\t%s", cfg.ClusterName, offendingCluster))
 		}
 	}
 	if len(offendingClusters) > 0 {
-		return fmt.Errorf("Some gateways have problems:\n\t%s", strings.Join(offendingClusters, "\n\t"))
+		return joinErrors(offendingClusters, 1)
 	}
 	return nil
 }
 
-func checkGateways(api *k8s.KubernetesAPI) (string, error) {
-	var nonExistentGateways, gatewaysWithNoExternalIPs, gatewaysWithMisConfiguredPorts []string
+func checkGateways(api *k8s.KubernetesAPI) []error {
+	errs := []error{}
 	services, err := api.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
-		return "", err
+		return []error{err}
 	}
 
 	for _, svc := range services.Items {
@@ -520,44 +503,26 @@ func checkGateways(api *k8s.KubernetesAPI) (string, error) {
 			gatewayNamespace := svc.Annotations[k8s.GatewayNsAnnotation]
 			gateway, err := api.CoreV1().Services(gatewayNamespace).Get(gatewayName, metav1.GetOptions{})
 			if err != nil {
-				nonExistentGateways = append(nonExistentGateways, fmt.Sprintf("%s.%s: %s.%s", svc.Name, svc.Namespace, gatewayName, gatewayNamespace))
+				errs = append(errs, fmt.Errorf("Exported service %s.%s references a gateway that does not exist: %s.%s", svc.Name, svc.Namespace, gatewayName, gatewayNamespace))
 				continue
 			}
 
 			// check if there is an external IP for the gateway service
 			if len(gateway.Status.LoadBalancer.Ingress) <= 0 {
-				gatewaysWithNoExternalIPs = append(gatewaysWithNoExternalIPs, fmt.Sprintf("%s.%s: %s.%s", svc.Name, svc.Namespace, gatewayName, gatewayNamespace))
+				errs = append(errs, fmt.Errorf("Exported service %s.%s references a gateway with no external IP: %s.%s", svc.Name, svc.Namespace, gatewayName, gatewayNamespace))
 			}
 
 			// check if the gateway service has relevant ports
 			portNames := []string{k8s.GatewayPortName, k8s.ProbePortName}
 			for _, portName := range portNames {
 				if !ifPortExists(gateway.Spec.Ports, portName) {
-					gatewaysWithMisConfiguredPorts = append(gatewaysWithMisConfiguredPorts, fmt.Sprintf("%s.%s: port %s for gateway %s.%s", svc.Name, svc.Namespace, portName, gatewayName, gatewayNamespace))
+					errs = append(errs, fmt.Errorf("Exported service %s.%s references a gateway that is missing port %s: %s.%s", svc.Name, svc.Namespace, portName, gatewayName, gatewayNamespace))
 				}
 			}
 
 		}
 	}
-	var clusterErrors []string
-
-	if len(nonExistentGateways) > 0 {
-		clusterErrors = append(clusterErrors, fmt.Sprintf("Some gateways do not exist:\n\t\t%s", strings.Join(nonExistentGateways, "\n\t\t")))
-	}
-
-	if len(gatewaysWithNoExternalIPs) > 0 {
-		clusterErrors = append(clusterErrors, fmt.Sprintf("Some gateways have no external IPs:\n\t\t%s", strings.Join(gatewaysWithNoExternalIPs, "\n\t\t")))
-	}
-
-	if len(gatewaysWithMisConfiguredPorts) > 0 {
-		clusterErrors = append(clusterErrors, fmt.Sprintf("Some gateways have misconfiguerd ports:\n\t\t%s", strings.Join(gatewaysWithMisConfiguredPorts, "\n\t\t")))
-	}
-
-	if len(nonExistentGateways) > 0 || len(gatewaysWithNoExternalIPs) > 0 || len(gatewaysWithMisConfiguredPorts) > 0 {
-		return strings.Join(clusterErrors, "\n\t"), nil
-	}
-
-	return "", nil
+	return errs
 }
 
 func ifPortExists(ports []corev1.ServicePort, portName string) bool {
@@ -569,21 +534,20 @@ func ifPortExists(ports []corev1.ServicePort, portName string) bool {
 	return false
 }
 
-func (hc *HealthChecker) checkIfTargetCluster() error {
+func (hc *HealthChecker) isTargetCluster() (bool, error) {
 
 	services, err := hc.kubeAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{})
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	for _, service := range services.Items {
 		if serviceExported(service) {
-			hc.Options.TargetCluster = true
-			return &SkipError{}
+			return true, nil
 		}
 	}
 
-	return &SkipError{Reason: "Linkerd gateways not present"}
+	return false, nil
 }
 
 func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
@@ -600,24 +564,24 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 			return &SkipError{Reason: "no target cluster configs"}
 		}
 
-		var errors []string
+		var errors []error
 		for _, s := range secrets.Items {
 			secret := s
 			config, err := sm.ParseRemoteClusterSecret(&secret)
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("*  secret: [%s/%s]: could not parse config secret: %s", secret.Namespace, secret.Name, err))
+				errors = append(errors, fmt.Errorf("* secret: [%s/%s]: could not parse config secret: %s", secret.Namespace, secret.Name, err))
 				continue
 			}
 
 			clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config.APIConfig)
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+				errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, config.ClusterName, err))
 				continue
 			}
 
 			remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+				errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, config.ClusterName, err))
 				continue
 			}
 
@@ -635,7 +599,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 			}
 
 			if err := comparePermissions(expectedServiceMirrorRemoteClusterPolicyVerbs, verbs); err != nil {
-				errors = append(errors, fmt.Sprintf("* cluster: [%s]: Insufficient Service permissions: %s", config.ClusterName, err))
+				errors = append(errors, fmt.Errorf("* cluster: [%s]: Insufficient Service permissions: %s", config.ClusterName, err))
 			}
 
 			hc.remoteClusterConfigs = append(hc.remoteClusterConfigs, config)
@@ -643,7 +607,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 		}
 
 		if len(errors) > 0 {
-			return fmt.Errorf("Problematic clusters:\n\t\t%s", strings.Join(errors, "\n\t\t"))
+			return joinErrors(errors, 2)
 		}
 		return nil
 	}
@@ -670,14 +634,14 @@ func (hc *HealthChecker) checkRemoteClusterGatewaysHealth(ctx context.Context) e
 		}
 		for _, gtw := range rsp.GetOk().GatewaysTable.Rows {
 			if gtw.Alive {
-				aliveGateways = append(aliveGateways, fmt.Sprintf("\t* cluster: [%s], gateway: [%s/%s]", gtw.ClusterName, gtw.Namespace, gtw.Name))
+				aliveGateways = append(aliveGateways, fmt.Sprintf("    * cluster: [%s], gateway: [%s/%s]", gtw.ClusterName, gtw.Namespace, gtw.Name))
 			} else {
 				deadGateways = append(deadGateways, fmt.Sprintf("* cluster: [%s], gateway: [%s/%s]", gtw.ClusterName, gtw.Namespace, gtw.Name))
 			}
 		}
 
 		if len(deadGateways) > 0 {
-			return fmt.Errorf("Some gateways are not alive:\n\t%s", strings.Join(deadGateways, "\n\t"))
+			return fmt.Errorf("Some gateways are not alive:\n    %s", strings.Join(deadGateways, "\n    "))
 		}
 		return &VerboseSuccess{Message: strings.Join(aliveGateways, "\n")}
 	}
@@ -698,12 +662,12 @@ func (hc *HealthChecker) checkIfMirrorServicesHaveEndpoints() error {
 			// Check if there is a relevant end-point
 			endpoint, err := hc.kubeAPI.CoreV1().Endpoints(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
 			if err != nil || len(endpoint.Subsets) == 0 {
-				servicesWithNoEndpoints = append(servicesWithNoEndpoints, fmt.Sprintf("%s.%s of cluster: [%s], gateway: [%s/%s]", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel], svc.Labels[k8s.RemoteGatewayNsLabel], svc.Labels[k8s.RemoteGatewayNameLabel]))
+				servicesWithNoEndpoints = append(servicesWithNoEndpoints, fmt.Sprintf("%s.%s mirrored from cluster [%s] (gateway: [%s/%s])", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel], svc.Labels[k8s.RemoteGatewayNsLabel], svc.Labels[k8s.RemoteGatewayNameLabel]))
 			}
 		}
 
 		if len(servicesWithNoEndpoints) > 0 {
-			return fmt.Errorf("Some mirror services do not have endpoints:\n\t%s", strings.Join(servicesWithNoEndpoints, "\n\t"))
+			return fmt.Errorf("Some mirror services do not have endpoints:\n    %s", strings.Join(servicesWithNoEndpoints, "\n    "))
 		}
 		return nil
 	}
@@ -723,12 +687,12 @@ func (hc *HealthChecker) checkIfGatewayMirrorsHaveEndpoints() error {
 			// Check if there is a relevant end-point
 			endpoints, err := hc.kubeAPI.CoreV1().Endpoints(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
 			if err != nil || len(endpoints.Subsets) == 0 {
-				gatewayMirrorsWithNoEndpoints = append(gatewayMirrorsWithNoEndpoints, fmt.Sprintf("%s.%s of cluster: [%s]", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
+				gatewayMirrorsWithNoEndpoints = append(gatewayMirrorsWithNoEndpoints, fmt.Sprintf("%s.%s mirrored from cluster [%s]", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
 			}
 		}
 
 		if len(gatewayMirrorsWithNoEndpoints) > 0 {
-			return fmt.Errorf("Some mirror services do not have endpoints:\n\t%s", strings.Join(gatewayMirrorsWithNoEndpoints, "\n\t"))
+			return fmt.Errorf("Some gateway mirrors do not have endpoints:\n    %s", strings.Join(gatewayMirrorsWithNoEndpoints, "\n    "))
 		}
 		return nil
 	}
@@ -755,7 +719,7 @@ func (hc *HealthChecker) checkIfGatewaysHaveEndpoints() error {
 	}
 
 	if len(gatewaysWithNoEndpoints) > 0 {
-		return fmt.Errorf("Some gateway services do not have endpoints:\n\t%s", strings.Join(gatewaysWithNoEndpoints, "\n\t"))
+		return fmt.Errorf("Some gateway services do not have endpoints:\n    %s", strings.Join(gatewaysWithNoEndpoints, "\n    "))
 	}
 	return nil
 
@@ -764,4 +728,13 @@ func (hc *HealthChecker) checkIfGatewaysHaveEndpoints() error {
 func gatewayService(svc corev1.Service) bool {
 	_, isGtw := svc.Annotations[k8s.MulticlusterGatewayAnnotation]
 	return isGtw
+}
+
+func joinErrors(errs []error, tabDepth int) error {
+	indent := strings.Repeat("    ", tabDepth)
+	errStrings := []string{}
+	for _, err := range errs {
+		errStrings = append(errStrings, indent+err.Error())
+	}
+	return errors.New(strings.Join(errStrings, "\n"))
 }
