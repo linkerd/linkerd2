@@ -199,7 +199,18 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 						if hc.TargetCluster {
 							return hc.checkLocalGateways()
 						}
-						return &SkipError{Reason: "not checking target"}
+						return &SkipError{Reason: "not checking target cluster"}
+					},
+				},
+				{
+					description: "all  cluster gateways have endpoints",
+					hintAnchor:  "l5d-multicluster-gateways-endpoints",
+					warning:     true,
+					check: func(ctx context.Context) error {
+						if hc.TargetCluster {
+							return hc.checkIfGatewaysHaveEndpoints()
+						}
+						return &SkipError{Reason: "not checking target cluster"}
 					},
 				},
 			},
@@ -568,7 +579,7 @@ func (hc *HealthChecker) checkIfTargetCluster() error {
 	for _, service := range services.Items {
 		if serviceExported(service) {
 			hc.Options.TargetCluster = true
-			return nil
+			return &SkipError{}
 		}
 	}
 
@@ -722,4 +733,35 @@ func (hc *HealthChecker) checkIfGatewayMirrorsHaveEndpoints() error {
 		return nil
 	}
 	return &SkipError{Reason: "not checking muticluster"}
+}
+
+func (hc *HealthChecker) checkIfGatewaysHaveEndpoints() error {
+
+	var gatewaysWithNoEndpoints []string
+	services, err := hc.kubeAPI.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, service := range services.Items {
+		if gatewayService(service) {
+			// Check if there is a relevant end-point
+			endpoints, err := hc.kubeAPI.CoreV1().Endpoints(service.Namespace).Get(service.Name, metav1.GetOptions{})
+			if err != nil || len(endpoints.Subsets) == 0 {
+				gatewaysWithNoEndpoints = append(gatewaysWithNoEndpoints, fmt.Sprintf("%s.%s", service.Name, service.Namespace))
+			}
+		}
+
+	}
+
+	if len(gatewaysWithNoEndpoints) > 0 {
+		return fmt.Errorf("Some gateway services do not have endpoints:\n\t%s", strings.Join(gatewaysWithNoEndpoints, "\n\t"))
+	}
+	return nil
+
+}
+
+func gatewayService(svc corev1.Service) bool {
+	_, isGtw := svc.Annotations[k8s.MulticlusterGatewayAnnotation]
+	return isGtw
 }
