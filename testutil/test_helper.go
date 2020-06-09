@@ -61,42 +61,36 @@ var LinkerdDeployReplicas = map[string]deploySpec{
 	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 }
 
-// GenericTestHelperOptions defines the TestHelper options
-// that are used along with `NewGenericTestHelper()` method
-// to obtain a *TestHelper
-// See - https://github.com/linkerd/linkerd2/issues/4530
-type GenericTestHelperOptions struct {
-	Linkerd            string
-	Namespace          string
-	UpgradeFromVersion string
-	ClusterDomain      string
-	ExternalIssuer     bool
-	Uninstall          bool
-	HelmPath           string
-	HelmChart          string
-	HelmStableChart    string
-	HelmReleaseName    string
-}
-
-// NewGenericTestHelper returns a new *TestHelper from the options provided.
+// NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
 // This helper was created to be able to reuse this package without hard restrictions
 // as seen in `NewTestHelper()` which is primarily used with integration tests
 // See - https://github.com/linkerd/linkerd2/issues/4530
-func NewGenericTestHelper(options *GenericTestHelperOptions) *TestHelper {
+func NewGenericTestHelper(
+	linkerd,
+	namespace,
+	upgradeFromVersion,
+	clusterDomain,
+	helmPath,
+	helmChart,
+	helmStableChart,
+	helmReleaseName string,
+	externalIssuer,
+	uninstall bool,
+) *TestHelper {
 	return &TestHelper{
-		linkerd:            options.Linkerd,
-		namespace:          options.Namespace,
-		upgradeFromVersion: options.UpgradeFromVersion,
+		linkerd:            linkerd,
+		namespace:          namespace,
+		upgradeFromVersion: upgradeFromVersion,
 		helm: helm{
-			path:               options.HelmPath,
-			chart:              options.HelmChart,
-			stableChart:        options.HelmStableChart,
-			releaseName:        options.HelmReleaseName,
-			upgradeFromVersion: options.UpgradeFromVersion,
+			path:               helmPath,
+			chart:              helmChart,
+			stableChart:        helmStableChart,
+			releaseName:        helmReleaseName,
+			upgradeFromVersion: upgradeFromVersion,
 		},
-		clusterDomain:  options.ClusterDomain,
-		externalIssuer: options.ExternalIssuer,
-		uninstall:      options.Uninstall,
+		clusterDomain:  clusterDomain,
+		externalIssuer: externalIssuer,
+		uninstall:      uninstall,
 	}
 }
 
