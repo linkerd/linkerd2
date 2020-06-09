@@ -41,7 +41,7 @@ transparent to the application, and work with any network topology.
 
 ***NOTE***: Linkerd's `multicluster` extension does not yet work on Amazon
 EKS. We expect to follow this release with a stable-2.8.1 to address this
-issue. Follow #4582 for updates.
+issue. Follow [#4582](https://github.com/linkerd/linkerd2/pull/4582) for updates.
 
 This release includes changes from a massive list of contributors. A special
 thank-you to everyone who helped make this release possible: @aliariff,
