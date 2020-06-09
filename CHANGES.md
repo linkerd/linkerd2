@@ -14,7 +14,7 @@ transparent to the application, and work with any network topology.
 * The Linkerd-provided Grafana instance remains enabled by default, but it can
   now be disabled; and the Linkerd dashboard can be configured to link to an
   alternate, externally-managed Grafana instance.
-* Jaegar & OpenCensus are configurable as an [add-on][addon-2.8.0]. And the
+* Jaeger & OpenCensus are configurable as an [add-on][addon-2.8.0]. And the
   proxy has been improved to emit spans with labels that reflect its pod's
   metadata.
 * The `linkerd-cni` component has been promoted from _experimental_ to
