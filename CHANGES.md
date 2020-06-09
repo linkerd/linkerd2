@@ -1,5 +1,54 @@
 # Changes
 
+## stable-2.8.0
+
+This release introduces new a multi-cluster extension to Linkerd, allowing it
+to establish connections across Kubernetes clusters that are secure,
+transparent to the application, and work with any network topology.
+
+* The CLI has a new set of `linkerd multlicluster` subcommands that provide
+  tooling to create the resources needed to discover services across
+  Kubernetes clusters.
+* The `linkerd multicluster gateways` command exposes gateway-specific
+  telemetry,  addition to the existing `stat` and `tap` commands.
+* The Linkerd-provided Grafana instance remains enabled by default, but it can
+  now be disabled; and the Linkerd dashboard can be configured to link to an
+  alternate, externally-managed Grafana instance.
+* Jaegar & OpenCensus are configurable as an [add-on][addon-2.8.0]. And the
+  proxy has been improved to emit spans with labels that reflect its pod's
+  metadata.
+* The `linkerd-cni` component has been promoted from _experimental_ to
+  *stable**.
+* `linkerd profile --open-api` now honors the `x-linkerd-retryable` and
+  `x-linkerd-timeout` OpenAPI annotations.
+* The Helm chart continues to become more flexible and modular, with new
+  Prometheus configuration options, especially. More information is available
+  in the [Helm chart README][helm-2.8.0].
+* The proxy more gracefully handles errors with gRPC streams, propagating the
+  `grpc-status: UNAVAILABLE` when an I/O error is encountered.
+* The proxy's memory footprint could grow significantly when
+  server-speaks-first-protocol connections hit the proxy. Now, a timeout is
+  in place to prevent these connections from consuming resources.
+* After benchmarking the proxy in high-concurrency situations, the inbound
+  proxy has been improved to reduce contention, improving latency and
+  reducing spurious timeouts.
+* The proxy could fail requests to services that had only 1 request every 60
+  seconds. This race condition has been eliminated.
+* Finally, users reported that ingress misconfigurations could cause the proxy
+  to consume an entire CPU, which could lead to timeouts. The proxy now
+  attempts to prevent the most common traffic-loop scenarios to protect against
+  this.
+
+This release includes changes from a massive list of contributors. A special
+thank-you to everyone who helped make this release possible: @aliariff,
+@amariampolskiy, @arminbuerkle, @arthursens, @christianhuening,
+@christyjacob4, @cypherfox, @daxmc99, @dr0pdb, @drholmie, @hydeenoble,
+@joakimr-axis, @jpresky, @kohsheen1234, @lewiscowper, @lundbird, @matei207,
+@mayankshah1607, @mmiller1, @naseemkullah, @sannimichaelse, & @supra08.
+
+[addon-2.8.0]: https://github.com/linkerd/linkerd2/blob/4219955bdb5441c5fce192328d3760da13fb7ba1/charts/linkerd2/README.md#add-ons-configuration
+[helm-2.8.0]: https://github.com/linkerd/linkerd2/blob/4219955bdb5441c5fce192328d3760da13fb7ba1/charts/linkerd2/README.md
+
 ## edge-20.6.2
 
 This edge release is our second release candidate for `stable-2.8`, including
