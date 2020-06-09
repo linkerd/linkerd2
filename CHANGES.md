@@ -1,5 +1,19 @@
 # Changes
 
+## edge-20.6.3
+
+This edge release is our third release candidate for `stable-2.8`, including
+various fixes and improvements around multicluster support.
+
+* CLI
+  * Added many more checks to `linkerd check` to detect errors in multicluster
+    configuration
+* Controller
+  * Added tmp volume to linkerd-gateway to allow it to work with more
+    restrictive pod security policies
+* Helm
+  * Removed `grafana.image.version` field to fix issues when upgrading
+
 ## edge-20.6.2
 
 This edge release is our second release candidate for `stable-2.8`, including
