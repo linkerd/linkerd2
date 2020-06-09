@@ -18,7 +18,7 @@ transparent to the application, and work with any network topology.
   proxy has been improved to emit spans with labels that reflect its pod's
   metadata.
 * The `linkerd-cni` component has been promoted from _experimental_ to
-  *stable**.
+  _stable_.
 * `linkerd profile --open-api` now honors the `x-linkerd-retryable` and
   `x-linkerd-timeout` OpenAPI annotations.
 * The Helm chart continues to become more flexible and modular, with new
