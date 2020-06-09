@@ -6,7 +6,7 @@ This release introduces new a multi-cluster extension to Linkerd, allowing it
 to establish connections across Kubernetes clusters that are secure,
 transparent to the application, and work with any network topology.
 
-* The CLI has a new set of `linkerd multlicluster` subcommands that provide
+* The CLI has a new set of `linkerd multicluster` subcommands that provide
   tooling to create the resources needed to discover services across
   Kubernetes clusters.
 * The `linkerd multicluster gateways` command exposes gateway-specific
