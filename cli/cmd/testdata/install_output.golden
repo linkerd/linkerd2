@@ -2828,7 +2828,7 @@ metadata:
 data:
   values: |-
     global:
-      grafanaUrl: 
+      grafanaUrl: ""
     grafana:
       enabled: true
       image:
