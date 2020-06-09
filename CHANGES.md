@@ -39,6 +39,10 @@ transparent to the application, and work with any network topology.
   attempts to prevent the most common traffic-loop scenarios to protect against
   this.
 
+***NOTE***: Linkerd's `multicluster` extension does not yet work on Amazon
+EKS. We expect to follow this release with a stable-2.8.1 to address this
+issue. Follow #4582 for updates.
+
 This release includes changes from a massive list of contributors. A special
 thank-you to everyone who helped make this release possible: @aliariff,
 @amariampolskiy, @arminbuerkle, @arthursens, @christianhuening,
