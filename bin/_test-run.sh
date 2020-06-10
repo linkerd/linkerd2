@@ -36,6 +36,28 @@ init_test_run() {
   check_if_l5d_exists
 }
 
+# init_test_run_new parses input params, initializes global vars, and checks
+# for linkerd and kubectl. Call this prior to calling any of the
+# *_integration_tests() functions.
+init_test_run_new() {
+  linkerd_path=$1
+  if [ -z "$linkerd_path" ]; then
+      echo "usage: ${0##*/} /path/to/linkerd [namespace] [k8s-context]" >&2
+      exit 64
+  fi
+
+  bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+  test_directory=$bindir/../test
+  linkerd_version=$($linkerd_path version --client --short)
+  linkerd_namespace=${2:-l5d-integration}
+  k8s_context=${3:-''}
+  export linkerd_version
+  export linkerd_namespace
+  export k8s_context
+
+  check_linkerd_binary
+}
+
 # These 3 functions are the primary entrypoints into running integration tests.
 # They each expect a fresh Kubernetes cluster:
 # 1. upgrade_integration_tests
@@ -45,6 +67,17 @@ init_test_run() {
 # 5. custom_domain_integration_tests
 # 6. external_issuer_integration_tests
 
+create_cluster() {
+    local name=$1
+    local config=$2
+    "$bindir"/kind create cluster --name "$name" --config "$test_directory"/configs/"$config".yaml
+}
+
+delete_cluster() {
+    local name=$1
+    "$bindir"/kind delete cluster --name "$name"
+}
+
 upgrade_integration_tests() {
     # run upgrade test:
     # 1. install latest stable
@@ -52,8 +85,11 @@ upgrade_integration_tests() {
     # 3. if failed, exit script to avoid leaving behind stale resources which will
     # fail subsequent tests. `cleanup` is not called if this test failed so that
     # there is a chance to debug the problem
+    local cluster_name="upgrade"
+    
+    create_cluster "$cluster_name" "default"
     run_upgrade_test "$linkerd_namespace"-upgrade
-    cleanup
+    delete_cluster "$cluster_name"
 }
 
 helm_upgrade_integration_tests() {
