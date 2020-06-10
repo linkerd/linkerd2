@@ -66,15 +66,12 @@
 {{- end -}}
 
 {{- define "linkerd.configs.install" -}}
-{{- if ge (.Values.controllerReplicas | int) 3 -}}
 {
   "cliVersion":"{{ .Values.global.linkerdVersion }}",
+{{- if ge (.Values.controllerReplicas | int) 3 }}
   "flags":[{"name":"ha","value":"true"}]
-}
-{{- else -}}
-{
-  "cliVersion":"{{ .Values.global.linkerdVersion }}",
+{{- else }}
   "flags":[]
+{{- end }}
 }
-{{- end -}}
 {{- end -}}
