@@ -333,19 +333,21 @@ type category struct {
 
 // Options specifies configuration for a HealthChecker.
 type Options struct {
-	ControlPlaneNamespace   string
-	CNINamespace            string
-	DataPlaneNamespace      string
-	KubeConfig              string
-	KubeContext             string
-	Impersonate             string
-	ImpersonateGroup        []string
-	APIAddr                 string
-	VersionOverride         string
-	RetryDeadline           time.Time
-	CNIEnabled              bool
-	InstallManifest         string
-	ShouldCheckMulticluster bool
+	ControlPlaneNamespace string
+	CNINamespace          string
+	DataPlaneNamespace    string
+	KubeConfig            string
+	KubeContext           string
+	Impersonate           string
+	ImpersonateGroup      []string
+	APIAddr               string
+	VersionOverride       string
+	RetryDeadline         time.Time
+	CNIEnabled            bool
+	InstallManifest       string
+	SourceCluster         bool
+	TargetCluster         bool
+	MultiCluster          bool
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -378,7 +380,7 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 	}
 
 	hc.categories = append(hc.allCategories(), hc.addOnCategories()...)
-	hc.categories = append(hc.categories, hc.multiClusterCategory())
+	hc.categories = append(hc.categories, hc.multiClusterCategory()...)
 
 	checkMap := map[CategoryID]struct{}{}
 	for _, category := range categoryIDs {

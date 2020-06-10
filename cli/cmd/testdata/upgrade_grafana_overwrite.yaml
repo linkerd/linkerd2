@@ -2852,12 +2852,11 @@ metadata:
 data:
   values: |-
     global:
-      grafanaUrl:
+      grafanaUrl: ""
     grafana:
       enabled: true
       image:
         name: linkerd-image-overwrite
-        version: UPGRADE-CONTROL-PLANE-VERSION
       name: linkerd-grafana-overwrite
     tracing:
       enabled: false

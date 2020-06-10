@@ -52,13 +52,13 @@ func (pw *ProbeWorker) UpdateProbeSpec(spec *probeSpec) {
 // Stop this probe worker
 func (pw *ProbeWorker) Stop() {
 	pw.metrics.unregister()
-	pw.log.Debug("Stopping probe worker")
+	pw.log.Infof("Stopping probe worker")
 	close(pw.stopCh)
 }
 
 // Start this probe worker
 func (pw *ProbeWorker) Start() {
-	pw.log.Debug("Starting probe worker")
+	pw.log.Infof("Starting probe worker")
 	go pw.run()
 }
 
@@ -92,7 +92,7 @@ func (pw *ProbeWorker) doProbe() {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/%s", pw.localGatewayName, pw.probeSpec.port, pw.probeSpec.path), nil)
 	if err != nil {
-		pw.log.Debugf("Could not create a GET request to gateway: %s", err)
+		pw.log.Errorf("Could not create a GET request to gateway: %s", err)
 		return
 	}
 
@@ -100,12 +100,12 @@ func (pw *ProbeWorker) doProbe() {
 	resp, err := client.Do(req)
 	end := time.Since(start)
 	if err != nil {
-		pw.log.Errorf("Problem connecting with gateway. Marking as unhealthy %s", err)
+		pw.log.Warnf("Problem connecting with gateway. Marking as unhealthy %s", err)
 		pw.metrics.alive.Set(0)
 		pw.metrics.probes.With(notSuccessLabel).Inc()
 		return
 	} else if resp.StatusCode != 200 {
-		pw.log.Debugf("Gateway returned unexpected status %d. Marking as unhealthy", resp.StatusCode)
+		pw.log.Warnf("Gateway returned unexpected status %d. Marking as unhealthy", resp.StatusCode)
 		pw.metrics.alive.Set(0)
 		pw.metrics.probes.With(notSuccessLabel).Inc()
 	} else {
@@ -116,7 +116,7 @@ func (pw *ProbeWorker) doProbe() {
 	}
 
 	if err := resp.Body.Close(); err != nil {
-		pw.log.Debugf("Failed to close response body %s", err)
+		pw.log.Warnf("Failed to close response body %s", err)
 	}
 
 }

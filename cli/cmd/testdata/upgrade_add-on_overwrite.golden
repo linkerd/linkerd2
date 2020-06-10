@@ -2853,12 +2853,11 @@ metadata:
 data:
   values: |-
     global:
-      grafanaUrl:
+      grafanaUrl: ""
     grafana:
       enabled: true
       image:
         name: gcr.io/linkerd-io/grafana
-        version: UPGRADE-CONTROL-PLANE-VERSION
       name: linkerd-grafana
     tracing:
       collector:

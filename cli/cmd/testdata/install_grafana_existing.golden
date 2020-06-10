@@ -2824,7 +2824,7 @@ metadata:
 data:
   values: |-
     global:
-      grafanaUrl:somegrafana.xyz
+      grafanaUrl: "somegrafana.xyz"
     grafana:
       enabled: false
     tracing:

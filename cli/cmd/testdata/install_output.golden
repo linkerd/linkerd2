@@ -2828,12 +2828,11 @@ metadata:
 data:
   values: |-
     global:
-      grafanaUrl:
+      grafanaUrl: ""
     grafana:
       enabled: true
       image:
         name: gcr.io/linkerd-io/grafana
-        version: install-control-plane-version
       name: linkerd-grafana
     tracing:
       enabled: false
@@ -2972,7 +2971,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:install-control-plane-version
+        image: gcr.io/linkerd-io/grafana:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:

@@ -3085,12 +3085,11 @@ metadata:
 data:
   values: |-
     global:
-      grafanaUrl:
+      grafanaUrl: ""
     grafana:
       enabled: true
       image:
         name: gcr.io/linkerd-io/grafana
-        version: install-control-plane-version
       name: linkerd-grafana
       resources:
         cpu:
