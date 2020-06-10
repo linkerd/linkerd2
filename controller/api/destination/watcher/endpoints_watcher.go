@@ -149,7 +149,7 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry) *EndpointsWatcher 
 		UpdateFunc: func(_, obj interface{}) { ew.addService(obj) },
 	})
 
-	if err := endpointSliceAccess(k8sAPI.Client); err != nil {
+	if b := endpointSliceAccess(k8sAPI.Client); !b {
 		ew.log.Debugf("Watching Endpoints resources")
 		k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpoints,
@@ -253,7 +253,6 @@ func (ew *EndpointsWatcher) deleteService(obj interface{}) {
 }
 
 func (ew *EndpointsWatcher) addEndpoints(obj interface{}) {
-
 	switch res := obj.(type) {
 	case *corev1.Endpoints:
 		if res.Namespace == kubeSystem {
@@ -263,7 +262,7 @@ func (ew *EndpointsWatcher) addEndpoints(obj interface{}) {
 		sp := ew.getOrNewServicePublisher(id)
 		sp.updateEndpoints(res)
 	case *dv1beta1.EndpointSlice:
-		if res.Namespace == kubeSystem {
+		if res.Namespace == kubeSystem || res.AddressType != dv1beta1.AddressTypeIPv4 {
 			return
 		}
 		id := ServiceID{res.Namespace, res.Labels[dv1beta1.LabelServiceName]}
@@ -491,7 +490,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		metrics:    endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname)),
 	}
 
-	if err := endpointSliceAccess(sp.k8sAPI.Client); err != nil {
+	if b := endpointSliceAccess(sp.k8sAPI.Client); !b {
 		endpoints, err := sp.k8sAPI.Endpoint().Lister().Endpoints(sp.id.Namespace).Get(sp.id.Name)
 		if err != nil && !apierrors.IsNotFound(err) {
 			sp.log.Errorf("error getting endpoints: %s", err)
@@ -604,8 +603,8 @@ func metricLabels(resource interface{}) map[string]string {
 }
 
 func (pp *portPublisher) endpointSliceToAddresses(es *dv1beta1.EndpointSlice) AddressSet {
-	addresses := make(map[ID]Address)
 
+	addresses := make(map[ID]Address)
 	resolvedPort := pp.resolveESTargetPort(es.Ports)
 	for _, endpoint := range es.Endpoints {
 		if pp.hostname != "" && pp.hostname != *endpoint.Hostname {
@@ -624,10 +623,6 @@ func (pp *portPublisher) endpointSliceToAddresses(es *dv1beta1.EndpointSlice) Ad
 		if endpoint.TargetRef == nil {
 			serviceName := es.Labels[dv1beta1.LabelServiceName]
 			for _, addr := range endpoint.Addresses {
-				if isIPv6Address(addr) {
-					continue
-				}
-
 				id := ServiceID{
 					Name: strings.Join([]string{
 						serviceName,
@@ -653,10 +648,6 @@ func (pp *portPublisher) endpointSliceToAddresses(es *dv1beta1.EndpointSlice) Ad
 
 		if endpoint.TargetRef.Kind == "Pod" {
 			for _, addr := range endpoint.Addresses {
-				if isIPv6Address(addr) {
-					continue
-				}
-
 				id := PodID{
 					Name:      endpoint.TargetRef.Name,
 					Namespace: endpoint.TargetRef.Namespace,
@@ -924,42 +915,37 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 	return
 }
 
-func endpointSliceAccess(k8sClient kubernetes.Interface) error {
+func endpointSliceAccess(k8sClient kubernetes.Interface) bool {
 	gv := dv1beta1.SchemeGroupVersion.String()
 	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(gv)
 	if err != nil {
-		return err
+		return false
 	}
 
 	if res.GroupVersion == gv {
 		for _, apiRes := range res.APIResources {
 			if apiRes.Kind == endpointSliceKind {
-				return nil
+				return true
 			}
 		}
 	}
 
-	return fmt.Errorf("%s resource not found", endpointSliceKind)
-}
-
-func isIPv6Address(address string) bool {
-	return strings.Count(address, ":") >= 2
+	return false
 }
 
 func isTargetPortInSlice(targetPort namedPort, slicePorts []dv1beta1.EndpointPort) bool {
-	switch targetPort.Type {
-	case intstr.Int:
-		for _, p := range slicePorts {
+	for _, p := range slicePorts {
+		switch targetPort.Type {
+		case intstr.Int:
 			if *p.Port == targetPort.IntVal {
 				return true
 			}
-		}
-	case intstr.String:
-		for _, p := range slicePorts {
+		case intstr.String:
 			if *p.Name == targetPort.StrVal {
 				return true
 			}
 		}
 	}
+
 	return false
 }
