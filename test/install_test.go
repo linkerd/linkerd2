@@ -825,7 +825,6 @@ func TestLogs(t *testing.T) {
 
 func TestEvents(t *testing.T) {
 	for _, err := range testutil.FetchAndCheckEvents(TestHelper) {
-		fmt.Printf("%T\n", err)
 		testutil.AnnotatedError(t, "Error checking events", err)
 	}
 }
