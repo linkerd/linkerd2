@@ -130,6 +130,6 @@ jobs:
       run: |
         bin/${{ matrix.integration_test }}-tests --images --images-host ssh://linkerd-docker $HOME/.linkerd
     - name: Run integration tests (Forked repositories)
-      if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: |
         bin/${{ matrix.integration_test }}-tests --images $HOME/.linkerd
