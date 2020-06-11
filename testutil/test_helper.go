@@ -71,7 +71,7 @@ func NewTestHelper() *TestHelper {
 
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
-	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
+	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
 	helmStableChart := flag.String("helm-stable-chart", "linkerd/linkerd2", "path to linkerd2's stable Helm chart")

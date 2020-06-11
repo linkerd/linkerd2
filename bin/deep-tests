@@ -1,0 +1,15 @@
+#!/bin/bash
+
+export bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+
+. "$bindir"/_test-helpers.sh
+test_setup $1
+
+name="deep"
+create_cluster "$name" "default"
+check_cluster "$name"
+"$bindir"/kind-load "$name"
+run_test "$test_directory/install_test.go"
+while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+run_test "${tests[@]}"
+delete_cluster "$name"

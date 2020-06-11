@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -x
+
+export bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+
+. "$bindir"/_test-helpers.sh
+test_setup "$@"
+
+name="upgrade"
+# create_cluster "$name" "default"
+# check_cluster "$name"
+"$bindir"/kind-load ${images:+'--images'} ${images_host:+'--images-host' "$images_host"} "$name"
+run_upgrade_test "$name"
+delete_cluster "$name"
+

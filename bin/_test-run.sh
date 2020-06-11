@@ -50,10 +50,8 @@ init_test_run_new() {
   test_directory=$bindir/../test
   linkerd_version=$($linkerd_path version --client --short)
   linkerd_namespace=${2:-l5d-integration}
-  k8s_context=${3:-''}
   export linkerd_version
   export linkerd_namespace
-  export k8s_context
 
   check_linkerd_binary
 }
@@ -70,7 +68,12 @@ init_test_run_new() {
 create_cluster() {
     local name=$1
     local config=$2
+
     "$bindir"/kind create cluster --name "$name" --config "$test_directory"/configs/"$config".yaml
+    exit_on_err 'error creating KinD cluster'
+
+    k8s_context="kind-$name"
+    export k8s_context
 }
 
 delete_cluster() {
@@ -85,10 +88,12 @@ upgrade_integration_tests() {
     # 3. if failed, exit script to avoid leaving behind stale resources which will
     # fail subsequent tests. `cleanup` is not called if this test failed so that
     # there is a chance to debug the problem
+    
     local cluster_name="upgrade"
     
     create_cluster "$cluster_name" "default"
     run_upgrade_test "$linkerd_namespace"-upgrade
+    
     delete_cluster "$cluster_name"
 }
 
