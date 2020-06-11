@@ -143,8 +143,7 @@ check_if_l5d_exists() {
 Linkerd resources exist on cluster:
 \n%s\n
 Help:
-    Run: [%s/test-cleanup]
-    Specify a cluster context: [%s/test-run %s [%s] [context]]\n' "$resources" "$bindir" "$bindir" "$linkerd_path" "$linkerd_namespace"
+    Run: [%s/test-cleanup]'
     exit 1
   fi
   printf '[ok]\n'
@@ -167,7 +166,6 @@ latest_stable() {
 }
 
 # Install the latest stable release.
-# $1 - namespace to use for the stable release
 install_stable() {
   tmp=$(mktemp -d -t l5dbin.XXX)
 
@@ -200,7 +198,6 @@ install_stable() {
 
 # Run the upgrade test by upgrading the most-recent stable release to the HEAD
 # of this branch.
-# $1 - namespace to use for the stable release
 run_upgrade_test() {
   local stable_version
   stable_version=$(latest_stable)
