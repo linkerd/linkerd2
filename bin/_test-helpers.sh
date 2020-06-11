@@ -7,12 +7,74 @@ set +e
 # Setup related helpers
 
 test_setup() {
-  . "$bindir"/_kind.sh
-  handle_input "$@"
+  export images=""
+  export images_host=""
+  export skip_kind_create=""
 
-  export linkerd_path="$input_arg"
+  while :
+  do
+    case $1 in
+      -h|--help)
+        echo "TODO"
+        echo ""
+        echo "Usage:"
+        echo "    ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--skip-kind-create] /path/to/linkerd"
+        echo ""
+        echo "Examples:"
+        echo ""
+        echo "    # Run tests in isolated clusters"
+        echo "    ${0##*/} /path/to/linkerd"
+        echo ""
+        echo "    # Load images from tar files located under the 'image-archives' directory"
+        echo "    # Note: This is primarly for CI"
+        echo "    ${0##*/} --images /path/to/linkerd"
+        echo ""
+        echo "    # Retrieve images from a remote docker instance and then load them into KinD"
+        echo "    # Note: This is primarly for CI"
+        echo "    ${0##*/} --images --images-host ssh://linkerd-docker /path/to/linkerd"
+        echo ""
+        echo "    # Skip KinD cluster creation and run tests in an existing cluster"
+        echo "    ${0##*/} --skip-kind-create /path/to/linkerd"
+        echo ""
+        echo "Available Commands:"
+        echo "    --images: use 'kind load image-archive' to load the images from local .tar files in the current directory."
+        echo "    --images-host: the argument to this option is used as the remote docker instance from which images are first retrieved"
+        echo "                   (using 'docker save') to be then loaded into KinD. This command requires --images."
+        echo "    --skip-kind-create: Skip KinD cluster creation step and run tests in an existing cluster."
+        exit 0
+        ;;
+      --images)
+        images=1
+        ;;
+      --images-host)
+        images_host=$2
+        if [ -z "$images_host" ]; then
+          echo "Error: the argument for --images-host was not specified"
+          exit 1
+        fi
+        shift
+        ;;
+      --skip-kind-create)
+        skip_kind_create=1
+        ;;
+      *)
+        break
+    esac
+    shift
+  done
+
+  if [ "$images_host" ] && [ -z "$images" ]; then
+    echo "Error: --images-host needs to be used with --images" >&2
+    exit 1
+  fi
+
+  export linkerd_path="$1"
   if [ -z "$linkerd_path" ]; then
-    echo "usage: ${0##*/} /path/to/linkerd [namespace] [k8s-context]" >&2
+    echo "Error: path to linkerd binary is required"
+    echo "Help:"
+    echo "     ${0##*/} -h"
+    echo "Basic usage:"
+    echo "     ${0##*/} /path/to/linkerd"
     exit 64
   fi
 
@@ -112,18 +174,17 @@ install_stable() {
   curl -s https://run.linkerd.io/install | HOME=$tmp sh > /dev/null 2>&1
 
   local linkerd_path=$tmp/.linkerd2/bin/linkerd
-  local stable_namespace=$1
-  local test_app_namespace=$stable_namespace-upgrade-test
+  local test_app_namespace='upgrade-test'
 
   (
     set -x
-    "$linkerd_path" install --linkerd-namespace="$stable_namespace" | kubectl --context="$k8s_context" apply -f - 2>&1
+    "$linkerd_path" install | kubectl --context="$k8s_context" apply -f - 2>&1
   )
   exit_on_err 'install_stable() - installing stable failed'
 
   (
     set -x
-    "$linkerd_path" check --linkerd-namespace="$stable_namespace" 2>&1
+    "$linkerd_path" check 2>&1
   )
   exit_on_err 'install_stable() - linkerd check failed'
 
@@ -132,7 +193,7 @@ install_stable() {
   kubectl --context="$k8s_context" label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
   (
     set -x
-    "$linkerd_path" inject --linkerd-namespace="$stable_namespace" "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$k8s_context" apply --namespace="$test_app_namespace" -f - 2>&1
+    "$linkerd_path" inject "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$k8s_context" apply --namespace="$test_app_namespace" -f - 2>&1
   )
   exit_on_err 'install_stable() - linkerd inject failed'
 }
@@ -141,11 +202,10 @@ install_stable() {
 # of this branch.
 # $1 - namespace to use for the stable release
 run_upgrade_test() {
-  local stable_namespace=$1
   local stable_version
   stable_version=$(latest_stable)
 
-  install_stable "$stable_namespace"
+  install_stable
   run_test "$test_directory/install_test.go" --upgrade-from-version="$stable_version"
 }
 
