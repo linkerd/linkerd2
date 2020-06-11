@@ -7,7 +7,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 test_setup "$@"
 
 name="custom-domain"
-create_cluster "$name" "default"
+create_cluster "$name" "custom-cluster-domain"
 check_cluster "$name"
 "$bindir"/kind-load "$name"
 run_test "$test_directory/install_test.go" --cluster-domain='custom.domain'
