@@ -14,4 +14,3 @@ fi
 check_cluster "$name"
 run_upgrade_test "$name"
 delete_cluster "$name"
-

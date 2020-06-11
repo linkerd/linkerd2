@@ -6,7 +6,7 @@ set +e
 
 # Setup related helpers
 
-test_setup() {
+handle_input() {
   export images=""
   export images_host=""
   export skip_kind_create=""
@@ -76,6 +76,10 @@ test_setup() {
     echo "     ${0##*/} /path/to/linkerd"
     exit 64
   fi
+}
+
+test_setup() {
+  handle_input "$@"
 
   bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
   export bindir
