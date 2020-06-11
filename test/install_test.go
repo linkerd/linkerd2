@@ -418,7 +418,12 @@ func TestUpgradeHelm(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	args := []string{
-		// implicit as at least on value is set manually: "--reset-values",
+		// implicit as at least one value is set manually: "--reset-values",
+		// (see https://medium.com/@kcatstack/understand-helm-upgrade-flags-reset-values-reuse-values-6e58ac8f127e )
+
+		// Also ensure that the CPU requests are fairly small (<100m) in order
+		// to avoid squeeze-out of other pods in CI tests.
+
 		"--set", "global.proxy.resources.cpu.limit=200m",
 		"--set", "global.proxy.resources.cpu.request=20m",
 		"--set", "global.proxy.resources.memory.limit=200Mi",
