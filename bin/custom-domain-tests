@@ -1,9 +1,10 @@
 #!/bin/bash
 
-export bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
+# shellcheck source=_test-helpers.sh
 . "$bindir"/_test-helpers.sh
-test_setup $1
+test_setup "$@"
 
 name="custom-domain"
 create_cluster "$name" "default"

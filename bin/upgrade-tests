@@ -1,7 +1,8 @@
 #!/bin/bash
 
-export bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
+# shellcheck source=_test-helpers.sh
 . "$bindir"/_test-helpers.sh
 test_setup "$@"
 

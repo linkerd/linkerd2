@@ -33,9 +33,8 @@ test_setup() {
         echo "    # Note: This is primarly for CI"
         echo "    ${0##*/} --images --images-host ssh://linkerd-docker /path/to/linkerd"
         echo ""
-        echo "    # Skip KinD cluster creation and run tests in an existing cluster"
+        echo "    # Skip KinD cluster creation and run tests in default cluster context"
         echo "    ${0##*/} --skip-kind-create /path/to/linkerd"
-        echo ""
         echo "Available Commands:"
         echo "    --images: use 'kind load image-archive' to load the images from local .tar files in the current directory."
         echo "    --images-host: the argument to this option is used as the remote docker instance from which images are first retrieved"
@@ -78,7 +77,10 @@ test_setup() {
     exit 64
   fi
 
-  export test_directory=$bindir/../test
+  bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+  export bindir
+
+  export test_directory="$bindir"/../test
 
   check_linkerd_binary
 }
@@ -104,7 +106,6 @@ check_linkerd_binary(){
 create_cluster() {
   local name=$1
   local config=$2
-
   "$bindir"/kind create cluster --name "$name" --config "$test_directory"/configs/"$config".yaml --wait 300s 2>&1
   exit_on_err 'error creating KinD cluster'
 
@@ -113,8 +114,8 @@ create_cluster() {
 
 check_cluster() {
   local name=$1
-
-  export linkerd_version=$($linkerd_path version --client --short)
+  linkerd_version=$($linkerd_path version --client --short)
+  export linkerd_version
   export k8s_context="kind-$name"
 
   check_if_k8s_reachable
@@ -123,7 +124,6 @@ check_cluster() {
 
 delete_cluster() {
   local name=$1
-
   "$bindir"/kind delete cluster --name "$name" 2>&1
 }
 
@@ -137,13 +137,14 @@ check_if_k8s_reachable(){
 
 check_if_l5d_exists() {
   printf 'Checking if Linkerd resources exist on cluster...'
-  local resources=$(kubectl --context="$k8s_context" get all,clusterrole,clusterrolebinding,mutatingwebhookconfigurations,validatingwebhookconfigurations,psp,crd -l linkerd.io/control-plane-ns --all-namespaces -oname)
+  local resources
+  resources=$(kubectl --context="$k8s_context" get all,clusterrole,clusterrolebinding,mutatingwebhookconfigurations,validatingwebhookconfigurations,psp,crd -l linkerd.io/control-plane-ns --all-namespaces -oname)
   if [ -n "$resources" ]; then
     printf '
 Linkerd resources exist on cluster:
 \n%s\n
 Help:
-    Run: [%s/test-cleanup]'
+    Run: [%s/test-cleanup]' "$resources" "$bindir"
     exit 1
   fi
   printf '[ok]\n'
@@ -208,7 +209,9 @@ run_upgrade_test() {
 
 setup_helm() {
   export helm_path="$bindir"/helm
-  export helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd
+  helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd
+  export helm_chart
+  export helm_release_name='helm-test'
   "$bindir"/helm-build
   "$helm_path" --kube-context="$k8s_context" repo add linkerd https://helm.linkerd.io/stable
   exit_on_err 'error setting up Helm'
