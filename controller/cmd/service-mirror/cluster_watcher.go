@@ -39,6 +39,7 @@ type (
 		log                    *logging.Entry
 		eventsQueue            workqueue.RateLimitingInterface
 		requeueLimit           int
+		repairPeriod           time.Duration
 	}
 
 	// ProbeConfig describes the configured probe on particular gateway (if presents)
@@ -178,6 +179,7 @@ func NewRemoteClusterServiceWatcher(
 	cfg *rest.Config,
 	clusterName string,
 	requeueLimit int,
+	repairPeriod time.Duration,
 	clusterDomain string,
 ) (*RemoteClusterServiceWatcher, error) {
 	remoteAPI, err := k8s.InitializeAPIForConfig(cfg, false, k8s.Svc)
@@ -198,6 +200,7 @@ func NewRemoteClusterServiceWatcher(
 		}),
 		eventsQueue:  workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		requeueLimit: requeueLimit,
+		repairPeriod: repairPeriod,
 	}, nil
 }
 
@@ -1078,7 +1081,7 @@ func (rcsw *RemoteClusterServiceWatcher) Start() error {
 	go rcsw.processEvents()
 
 	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
+		ticker := time.NewTicker(rcsw.repairPeriod)
 		for {
 			select {
 			case <-ticker.C:
