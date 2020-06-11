@@ -2,10 +2,12 @@ package servicemirror
 
 import (
 	"fmt"
+	"net"
 	"reflect"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -83,7 +85,7 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 		for _, ev := range tc.expectedEventsInQueue {
 			evInQueue, _ := q.Get()
 			if !reflect.DeepEqual(ev, evInQueue) {
-				t.Fatalf("was expecting to see event %T but got %T", ev, evInQueue)
+				t.Fatalf("was expecting to see event %s but got %s", ev, evInQueue)
 			}
 		}
 	})
@@ -262,6 +264,12 @@ func TestRemoteServiceUpdatedMirroring(t *testing.T) {
 }
 
 func TestRemoteGatewayUpdatedMirroring(t *testing.T) {
+
+	linkerdIP, err := net.ResolveIPAddr("ip", "linkerd.io")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	for _, tt := range []mirroringTestCase{
 		{
 			description: "endpoints ports are updated on gateway change",
@@ -375,6 +383,28 @@ func TestRemoteGatewayUpdatedMirroring(t *testing.T) {
 							Port:     888,
 							Protocol: "TCP",
 						}}),
+			},
+		},
+		{
+			description: "gateway uses hostname address",
+			environment: remoteGatewayUpdatedWithHostnameAddress,
+			expectedEventsInQueue: []interface{}{
+				&RemoteGatewayUpdated{
+					gatewaySpec: GatewaySpec{
+						gatewayName:      "gateway",
+						gatewayNamespace: "gateway-ns",
+						clusterName:      "remote",
+						addresses:        []corev1.EndpointAddress{{IP: linkerdIP.String()}},
+						incomingPort:     999,
+						resourceVersion:  "currentGatewayResVersion",
+						ProbeConfig: &ProbeConfig{
+							path:            defaultProbePath,
+							port:            defaultProbePort,
+							periodInSeconds: defaultProbePeriod,
+						},
+					},
+					affectedServices: []*v1.Service{},
+				},
 			},
 		},
 	} {

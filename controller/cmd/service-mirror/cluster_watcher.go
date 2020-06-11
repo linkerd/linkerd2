@@ -3,11 +3,14 @@ package servicemirror
 import (
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -135,6 +138,10 @@ type (
 	OnDeleteCalled struct {
 		svc *corev1.Service
 	}
+
+	// RepairEndpoints is issued when the service mirror and mirror gateway
+	// endpoints should be resolved based on the remote gateway and updated.
+	RepairEndpoints struct{}
 
 	gatewayMetadata struct {
 		Name      string
@@ -990,6 +997,8 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent() (bool, interface{}, 
 		err = rcsw.cleanupMirroredResources()
 	case *OprhanedServicesGcTriggered:
 		err = rcsw.cleanupOrphanedServices()
+	case *RepairEndpoints:
+		rcsw.repairEndpoints()
 	default:
 		if ev != nil || !done { // we get a nil in case we are shutting down...
 			rcsw.log.Warnf("Received unknown event: %v", ev)
@@ -1005,6 +1014,7 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent() (bool, interface{}, 
 func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 	for {
 		done, event, err := rcsw.processNextEvent()
+		rcsw.eventsQueue.Done(event)
 		// the logic here is that there might have been an API
 		// connectivity glitch or something. So its not a bad idea to requeue
 		// the event and try again up to a number of limits, just to ensure
@@ -1066,6 +1076,20 @@ func (rcsw *RemoteClusterServiceWatcher) Start() error {
 		},
 	)
 	go rcsw.processEvents()
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		for {
+			select {
+			case <-ticker.C:
+				ev := RepairEndpoints{}
+				rcsw.eventsQueue.Add(&ev)
+			case <-rcsw.stopper:
+				return
+			}
+		}
+	}()
+
 	return nil
 }
 
@@ -1121,9 +1145,16 @@ func (rcsw *RemoteClusterServiceWatcher) extractGatewaySpec(gateway *corev1.Serv
 
 	var gatewayEndpoints []corev1.EndpointAddress
 	for _, ingress := range gateway.Status.LoadBalancer.Ingress {
+		ip := ingress.IP
+		if ip == "" {
+			ipAddr, err := net.ResolveIPAddr("ip", ingress.Hostname)
+			if err != nil {
+				return nil, err
+			}
+			ip = ipAddr.String()
+		}
 		gatewayEndpoints = append(gatewayEndpoints, corev1.EndpointAddress{
-			IP:       ingress.IP,
-			Hostname: ingress.Hostname,
+			IP: ip,
 		})
 	}
 
@@ -1143,4 +1174,54 @@ func (rcsw *RemoteClusterServiceWatcher) extractGatewaySpec(gateway *corev1.Serv
 		identity:         gatewayIdentity,
 		ProbeConfig:      probeConfig,
 	}, nil
+}
+
+// repairEndpoints will look up all remote gateways and update the endpoints
+// of all local mirror services for those gateways. Note that we ignore resource
+// version and update ALL affected endpoints objects. This is because the
+// remote gateway may be exposed as a DNS hostname and we want to re-resolve
+// this DNS name in case its IP address has changed. By invoking repairEndpoints
+// frequently, we can pick up any DNS changes fairly quickly.
+// TODO: Replace this with a more robust solution that does not rely on
+// frequently repairing endpoints to pick up DNS updates.
+func (rcsw *RemoteClusterServiceWatcher) repairEndpoints() {
+	svcs, err := rcsw.remoteAPIClient.Svc().Lister().Services(metav1.NamespaceAll).List(labels.Everything())
+	if err != nil {
+		rcsw.log.Errorf("failed to list remote gateways: %s", err)
+		return
+	}
+	rcsw.log.Errorf("During repair, found %d remote services", len(svcs))
+	for _, svc := range svcs {
+		if isGateway(svc.Annotations) {
+
+			// We omit a resource version here because we want to get ALL mirror
+			// services for this gateway.
+			affectedServices, err := rcsw.affectedMirroredServicesForGatewayUpdate(&gatewayMetadata{
+				Name:      svc.Name,
+				Namespace: svc.Namespace,
+			}, "")
+			if err != nil {
+				rcsw.log.Errorf("failed to determine mirror services for gateway %s.%s: %s", svc.Name, svc.Namespace, err)
+				continue
+			}
+
+			spec, err := rcsw.extractGatewaySpec(svc)
+			if err != nil {
+				rcsw.log.Errorf("failed to extract spec for gateway %s.%s: %s", svc.Name, svc.Namespace, err)
+				continue
+			}
+
+			endpointRepairCounter.With(prometheus.Labels{
+				gatewayNameLabel:      svc.Name,
+				gatewayNamespaceLabel: svc.Namespace,
+				gatewayClusterName:    rcsw.clusterName,
+			}).Inc()
+
+			rcsw.log.Errorf("adding gateway update event %s with %d mirrro services", svc.Name, len(affectedServices))
+			rcsw.eventsQueue.Add(&RemoteGatewayUpdated{
+				gatewaySpec:      *spec,
+				affectedServices: affectedServices,
+			})
+		}
+	}
 }

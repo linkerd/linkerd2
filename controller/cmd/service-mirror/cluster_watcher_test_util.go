@@ -104,7 +104,7 @@ var createServiceWrongGatewaySpec = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-wrong", 888, "", 111, "/path", 666),
+		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "", "mc-wrong", 888, "", 111, "/path", 666),
 	},
 }
 
@@ -130,7 +130,7 @@ var createServiceOkeGatewaySpec = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
 	},
 }
 
@@ -193,7 +193,7 @@ var updateServiceToNewGateway = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("gateway-new", "gateway-ns", "currentGatewayResVersion", "0.0.0.0", "mc-gateway", 999, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		gatewayAsYaml("gateway-new", "gateway-ns", "currentGatewayResVersion", "0.0.0.0", "", "mc-gateway", 999, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
 	},
 	localResources: []string{
 		mirroredServiceAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "past", "pastGatewayResVersion", []corev1.ServicePort{
@@ -269,7 +269,7 @@ var updateServiceWithChangedPorts = &testEnvironment{
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "mc-gateway", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "", "mc-gateway", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
 	},
 	localResources: []string{
 		mirroredServiceAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "past", "pastGatewayResVersion", []corev1.ServicePort{
@@ -375,6 +375,15 @@ var remoteGatewayUpdated = &testEnvironment{
 					Port:     888,
 					Protocol: "TCP",
 				}}),
+	},
+}
+
+var remoteGatewayUpdatedWithHostnameAddress = &testEnvironment{
+	events: []interface{}{
+		&RepairEndpoints{},
+	},
+	remoteResources: []string{
+		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "", "linkerd.io", "mc-gateway", 999, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
 	},
 }
 
@@ -774,7 +783,7 @@ func mirroredServiceAsYaml(name, namespace, gtwName, gtwNs, resourceVersion, gat
 	return string(bytes)
 }
 
-func gateway(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int32, probePath string, probePeriod int) *corev1.Service {
+func gateway(name, namespace, resourceVersion, ip, hostname, portName string, port int32, identity string, probePort int32, probePath string, probePeriod int) *corev1.Service {
 	svc := corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -785,9 +794,10 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32, 
 			Namespace:       namespace,
 			ResourceVersion: resourceVersion,
 			Annotations: map[string]string{
-				consts.GatewayIdentity:    identity,
-				consts.GatewayProbePath:   probePath,
-				consts.GatewayProbePeriod: fmt.Sprint(probePeriod),
+				consts.GatewayIdentity:               identity,
+				consts.GatewayProbePath:              probePath,
+				consts.GatewayProbePeriod:            fmt.Sprint(probePeriod),
+				consts.MulticlusterGatewayAnnotation: "true",
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -809,11 +819,14 @@ func gateway(name, namespace, resourceVersion, ip, portName string, port int32, 
 	if ip != "" {
 		svc.Status.LoadBalancer.Ingress = append(svc.Status.LoadBalancer.Ingress, corev1.LoadBalancerIngress{IP: ip})
 	}
+	if hostname != "" {
+		svc.Status.LoadBalancer.Ingress = append(svc.Status.LoadBalancer.Ingress, corev1.LoadBalancerIngress{Hostname: hostname})
+	}
 	return &svc
 }
 
-func gatewayAsYaml(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int32, probePath string, probePeriod int) string {
-	gtw := gateway(name, namespace, resourceVersion, ip, portName, port, identity, probePort, probePath, probePeriod)
+func gatewayAsYaml(name, namespace, resourceVersion, ip, hostname, portName string, port int32, identity string, probePort int32, probePath string, probePeriod int) string {
+	gtw := gateway(name, namespace, resourceVersion, ip, hostname, portName, port, identity, probePort, probePath, probePeriod)
 
 	bytes, err := yaml.Marshal(gtw)
 	if err != nil {
