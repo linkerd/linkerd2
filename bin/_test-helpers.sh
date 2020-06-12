@@ -4,11 +4,12 @@
 # proper messages
 set +e
 
-# Setup related helpers
+# Test runner helpers
 
 handle_input() {
   export images=""
   export images_host=""
+  export test_name=""
   export skip_kind_create=""
 
   while :
@@ -18,12 +19,15 @@ handle_input() {
         echo "TODO"
         echo ""
         echo "Usage:"
-        echo "    ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--skip-kind-create] /path/to/linkerd"
+        echo "    ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--name test-name] [--skip-kind-create] /path/to/linkerd"
         echo ""
         echo "Examples:"
         echo ""
         echo "    # Run tests in isolated clusters"
         echo "    ${0##*/} /path/to/linkerd"
+        echo ""
+        echo "    # Run single test in isolated clusters"
+        echo "    ${0##*/} --name test-name /path/to/linkerd"
         echo ""
         echo "    # Load images from tar files located under the 'image-archives' directory"
         echo "    # Note: This is primarly for CI"
@@ -33,13 +37,14 @@ handle_input() {
         echo "    # Note: This is primarly for CI"
         echo "    ${0##*/} --images --images-host ssh://linkerd-docker /path/to/linkerd"
         echo ""
-        echo "    # Skip KinD cluster creation and run tests in default cluster context"
+        echo "    # Skip KinD cluster creation and run all tests in default cluster context"
         echo "    ${0##*/} --skip-kind-create /path/to/linkerd"
         echo "Available Commands:"
         echo "    --images: use 'kind load image-archive' to load the images from local .tar files in the current directory."
         echo "    --images-host: the argument to this option is used as the remote docker instance from which images are first retrieved"
         echo "                   (using 'docker save') to be then loaded into KinD. This command requires --images."
-        echo "    --skip-kind-create: Skip KinD cluster creation step and run tests in an existing cluster."
+        echo "    --name: the argument to this option is the specific test to run"
+        echo "    --skip-kind-create: skip KinD cluster creation step and run tests in an existing cluster."
         exit 0
         ;;
       --images)
@@ -49,6 +54,14 @@ handle_input() {
         images_host=$2
         if [ -z "$images_host" ]; then
           echo "Error: the argument for --images-host was not specified"
+          exit 1
+        fi
+        shift
+        ;;
+      --name)
+        test_name=$2
+        if [ -z "$test_name" ]; then
+          echo "Error: the argument for --name was not specified"
           exit 1
         fi
         shift
@@ -71,16 +84,46 @@ handle_input() {
   if [ -z "$linkerd_path" ]; then
     echo "Error: path to linkerd binary is required"
     echo "Help:"
-    echo "     ${0##*/} -h"
+    echo "     ${0##*/} -h|--help"
     echo "Basic usage:"
     echo "     ${0##*/} /path/to/linkerd"
     exit 64
   fi
 }
 
-test_setup() {
-  handle_input "$@"
+start_test() {
+  name=$1
+  config=$2
 
+  test_setup
+  if [ -z "$skip_kind_create" ]; then
+    create_cluster "$name" "$config"
+    "$bindir"/kind-load ${images:+'--images'} ${images_host:+'--images-host' "$images_host"} "$name"
+  fi
+  check_cluster
+  run_"$name"_test
+  if [ -z "$skip_kind_create" ]; then
+    delete_cluster "$name"
+  else
+    cleanup_cluster
+  fi
+}
+
+get_test_config() {
+  local name=$1
+  config=""
+  case $name in
+    custom-domain)
+      config="custom-domain"
+      ;;
+    *)
+      config="default"
+      ;;
+  esac
+  echo "$config"
+}
+
+test_setup() {
   bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
   export bindir
 
@@ -126,6 +169,11 @@ delete_cluster() {
   "$bindir"/kind delete cluster --name "$name" 2>&1
 }
 
+cleanup_cluster() {
+  "$bindir"/test-cleanup "$context" > /dev/null 2>&1
+  exit_on_err 'error removing existing Linkerd resources'
+}
+
 check_if_k8s_reachable(){
   printf 'Checking if there is a Kubernetes cluster available...'
   exit_code=0
@@ -149,7 +197,7 @@ Help:
   printf '[ok]\n'
 }
 
-# Test helpers
+# Test runners
 
 run_test(){
   local filename=$1
@@ -222,13 +270,32 @@ run_helm_test() {
   --helm-release="$helm_release_name"
 }
 
-run_helm_upgrade_test() {
-    local stable_version
-    stable_version=$(latest_stable)
- 
-    setup_helm
-    run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
-    --helm-stable-chart='linkerd/linkerd2' --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
+run_helm-upgrade_test() {
+  local stable_version
+  stable_version=$(latest_stable)
+
+  setup_helm
+  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
+  --helm-stable-chart='linkerd/linkerd2' --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
+}
+
+run_uninstall_test() {
+  run_test "$test_directory/uninstall/uninstall_test.go" --uninstall=true
+}
+
+run_deep_test() {
+  run_test "$test_directory/install_test.go"
+  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  run_test "${tests[@]}"
+}
+
+run_external-issuer_test() {
+  run_test "$test_directory/install_test.go" --external-issuer=true
+  run_test "$test_directory/externalissuer/external_issuer_test.go" --external-issuer=true
+}
+
+run_cluster-domain_test() {
+  run_test "$test_directory/install_test.go" --cluster-domain='custom.domain'
 }
 
 # exit_on_err should be called right after a command to check the result status
