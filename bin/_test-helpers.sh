@@ -18,10 +18,12 @@ handle_input() {
   do
     case $1 in
       -h|--help)
-        echo "TODO"
+        echo "Run Linkerd integration tests."
         echo ""
         echo "Usage:"
         echo "    ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--name test-name] [--skip-kind-create] /path/to/linkerd"
+        echo ""
+        echo "    Valid test names: ${test_names[@]}"
         echo ""
         echo "Examples:"
         echo ""
