@@ -75,8 +75,8 @@ jobs:
         bin/docker-retag-all $TAG master
         bin/docker-push master
   # todo: Keep in sync with `kind_integration.yml`
-  cli_static_integration_tests:
-    name: Test install command for Windows
+  cli_windows_static_integration_tests:
+    name: Integration tests (windows)
     runs-on: windows-latest
     needs: [docker_build]
     steps:
@@ -92,39 +92,18 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Download image archives (Forked repositories)
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       # actions/download-artifact@v1
       uses: actions/download-artifact@18f0f59
       with:
         name: image-archives
-    - name: Load cli-bin image into local docker images
-      if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
-      run: |
-        # `docker load` only accepts input from STDIN, so pipe the image
-        # archive into the command.
-        #
-        # In order to pipe the image archive, set `DOCKER_HOST` for a single
-        # command and `docker save` the CLI image from the Packet host.
-        DOCKER_HOST=ssh://linkerd-docker docker save "$DOCKER_REGISTRY/cli-bin:$TAG" | docker load
-    - name: Load cli-bin image into local docker images (Forked repositories)
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
-      run: docker load < image-archives/cli-bin.tar
     - name: Install CLI
       run: |
-        # Copy the CLI out of the local cli-bin container.
-        container_id=$(docker create "$DOCKER_REGISTRY/cli-bin:$TAG")
-        docker cp $container_id:/out/linkerd-windows $HOME/.linkerd
-
-        # Validate the CLI version matches the current build tag.
-        [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
+        # Copy the CLI out of the $ARCHIVES/cli folder.
+        cp image-archives\cli\windows\linkerd $HOME\linkerd.exe
     - name: Run CLI Integration tests
       run: |
-        # Export `init_test_run` and `*_integration_tests` into the
-        # environment.
-        . bin/_test-run.sh
-
-        init_test_run $HOME/.linkerd
-        cli_integration_static_tests
+        # Run go test
+        go test --failfast --mod=readonly ".\test\static\cli_install_static_test.go" --linkerd=$HOME\linkerd.exe TestCliInstall -v
   kind_integration_tests:
     strategy:
       matrix:

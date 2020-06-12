@@ -22,7 +22,6 @@ func TestMain(m *testing.M) {
 	}
 
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
-	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
 	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	flag.Parse()
 
@@ -34,7 +33,7 @@ func TestMain(m *testing.M) {
 		exit(1, "-linkerd flag is required")
 	}
 
-	TestHelper = testutil.NewGenericTestHelper(*linkerd, *namespace, "", "", "", "", "", "", false, false)
+	TestHelper = testutil.NewGenericTestHelper(*linkerd, "l5d", "", "", "", "", "", "", false, false)
 	os.Exit(testutil.Run(m, TestHelper))
 }
 

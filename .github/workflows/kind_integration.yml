@@ -68,8 +68,8 @@ jobs:
         name: image-archives
         path: /home/runner/archives
   # todo: Keep in sync with `release.yml`
-  cli_static_integration_tests:
-    name: Test install command for Windows
+  cli_windows_static_integration_tests:
+    name: Integration tests (windows)
     runs-on: windows-latest
     needs: [docker_build]
     steps:
@@ -93,11 +93,10 @@ jobs:
       run: |
         # Copy the CLI out of the $ARCHIVES/cli folder.
         cp image-archives\cli\windows\linkerd $HOME\linkerd.exe
-
     - name: Run CLI Integration tests
       run: |
         # Run go test
-        go test --failfast --mod=readonly ".\test\static\cli_install_static_test.go" --linkerd=$HOME\linkerd.exe --linkerd-namespace=l5d  TestCliInstall -v  
+        go test --failfast --mod=readonly ".\test\static\cli_install_static_test.go" --linkerd=$HOME\linkerd.exe TestCliInstall -v
   kind_integration_tests:
     strategy:
       matrix:
