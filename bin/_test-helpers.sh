@@ -20,7 +20,7 @@ handle_input() {
       -h|--help)
         echo "Run Linkerd integration tests."
         echo ""
-        echo "Optionally specify one of the following tests: [${test_names[@]}]"
+        echo "Optionally specify one of the following tests: [${test_names[*]}]"
         echo ""
         echo "Usage:"
         echo "    ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--name test-name] [--skip-kind-create] /path/to/linkerd"
@@ -33,6 +33,9 @@ handle_input() {
         echo "    # Run single test in isolated clusters"
         echo "    ${0##*/} --name test-name /path/to/linkerd"
         echo ""
+        echo "    # Skip KinD cluster creation and run all tests in default cluster context"
+        echo "    ${0##*/} --skip-kind-create /path/to/linkerd"
+        echo ""
         echo "    # Load images from tar files located under the 'image-archives' directory"
         echo "    # Note: This is primarly for CI"
         echo "    ${0##*/} --images /path/to/linkerd"
@@ -40,15 +43,11 @@ handle_input() {
         echo "    # Retrieve images from a remote docker instance and then load them into KinD"
         echo "    # Note: This is primarly for CI"
         echo "    ${0##*/} --images --images-host ssh://linkerd-docker /path/to/linkerd"
-        echo ""
-        echo "    # Skip KinD cluster creation and run all tests in default cluster context"
-        echo "    ${0##*/} --skip-kind-create /path/to/linkerd"
         echo "Available Commands:"
-        echo "    --images: use 'kind load image-archive' to load the images from local .tar files in the current directory."
-        echo "    --images-host: the argument to this option is used as the remote docker instance from which images are first retrieved"
-        echo "                   (using 'docker save') to be then loaded into KinD. This command requires --images."
         echo "    --name: the argument to this option is the specific test to run"
         echo "    --skip-kind-create: skip KinD cluster creation step and run tests in an existing cluster."
+        echo "    --images: (Primarily for CI) use 'kind load image-archive' to load the images from local .tar files in the current directory."
+        echo "    --images-host: (Primarily for CI) the argument to this option is used as the remote docker instance from which images are first retrieved (using 'docker save') to be then loaded into KinD. This command requires --images."
         exit 0
         ;;
       --images)
