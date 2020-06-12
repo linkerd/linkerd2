@@ -13,22 +13,19 @@ import (
 const httpGatewayTimeoutMillis = 50000
 
 type probeSpec struct {
-	ips             []string
 	path            string
 	port            uint32
 	periodInSeconds uint32
-	gatewayIdentity string
 }
 
 // ProbeWorker is responsible for monitoring gateways using a probe specification
 type ProbeWorker struct {
 	localGatewayName string
 	*sync.RWMutex
-	probeSpec      *probeSpec
-	pairedServices map[string]struct{}
-	stopCh         chan struct{}
-	metrics        *probeMetrics
-	log            *logging.Entry
+	probeSpec *probeSpec
+	stopCh    chan struct{}
+	metrics   *probeMetrics
+	log       *logging.Entry
 }
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
@@ -37,35 +34,11 @@ func NewProbeWorker(localGatewayName string, spec *probeSpec, metrics *probeMetr
 		localGatewayName: localGatewayName,
 		RWMutex:          &sync.RWMutex{},
 		probeSpec:        spec,
-		pairedServices:   make(map[string]struct{}),
 		stopCh:           make(chan struct{}),
 		metrics:          metrics,
 		log: logging.WithFields(logging.Fields{
 			"probe-key": probekey,
 		}),
-	}
-}
-
-// NumPairedServices returns the number of paired services for this probe worker
-func (pw *ProbeWorker) NumPairedServices() int {
-	return len(pw.pairedServices)
-}
-
-// PairService increments the number of services that are routed by the gateway
-func (pw *ProbeWorker) PairService(serviceName, serviceNamespace string) {
-	svcKey := fmt.Sprintf("%s-%s", serviceNamespace, serviceName)
-	if _, ok := pw.pairedServices[svcKey]; !ok {
-		pw.pairedServices[svcKey] = struct{}{}
-		pw.metrics.services.Set(float64(len(pw.pairedServices)))
-	}
-}
-
-// UnPairService decrements the number of services that are routed by the gateway
-func (pw *ProbeWorker) UnPairService(serviceName, serviceNamespace string) {
-	svcKey := fmt.Sprintf("%s-%s", serviceNamespace, serviceName)
-	if _, ok := pw.pairedServices[svcKey]; ok {
-		delete(pw.pairedServices, svcKey)
-		pw.metrics.services.Set(float64(len(pw.pairedServices)))
 	}
 }
 
@@ -79,13 +52,13 @@ func (pw *ProbeWorker) UpdateProbeSpec(spec *probeSpec) {
 // Stop this probe worker
 func (pw *ProbeWorker) Stop() {
 	pw.metrics.unregister()
-	pw.log.Debug("Stopping probe worker")
+	pw.log.Infof("Stopping probe worker")
 	close(pw.stopCh)
 }
 
 // Start this probe worker
 func (pw *ProbeWorker) Start() {
-	pw.log.Debug("Starting probe worker")
+	pw.log.Infof("Starting probe worker")
 	go pw.run()
 }
 
@@ -119,7 +92,7 @@ func (pw *ProbeWorker) doProbe() {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/%s", pw.localGatewayName, pw.probeSpec.port, pw.probeSpec.path), nil)
 	if err != nil {
-		pw.log.Debugf("Could not create a GET request to gateway: %s", err)
+		pw.log.Errorf("Could not create a GET request to gateway: %s", err)
 		return
 	}
 
@@ -127,12 +100,12 @@ func (pw *ProbeWorker) doProbe() {
 	resp, err := client.Do(req)
 	end := time.Since(start)
 	if err != nil {
-		pw.log.Errorf("Problem connecting with gateway. Marking as unhealthy %s", err)
+		pw.log.Warnf("Problem connecting with gateway. Marking as unhealthy %s", err)
 		pw.metrics.alive.Set(0)
 		pw.metrics.probes.With(notSuccessLabel).Inc()
 		return
 	} else if resp.StatusCode != 200 {
-		pw.log.Debugf("Gateway returned unexpected status %d. Marking as unhealthy", resp.StatusCode)
+		pw.log.Warnf("Gateway returned unexpected status %d. Marking as unhealthy", resp.StatusCode)
 		pw.metrics.alive.Set(0)
 		pw.metrics.probes.With(notSuccessLabel).Inc()
 	} else {
@@ -143,7 +116,7 @@ func (pw *ProbeWorker) doProbe() {
 	}
 
 	if err := resp.Body.Close(); err != nil {
-		pw.log.Debugf("Failed to close response body %s", err)
+		pw.log.Warnf("Failed to close response body %s", err)
 	}
 
 }

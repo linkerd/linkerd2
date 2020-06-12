@@ -152,24 +152,36 @@ prometheusRuleConfigMapMounts: []
 
 # proxy injector configuration
 proxyInjector:
+  externalSecret: false
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
+
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
 
 # service profile validator configuration
 profileValidator:
+  externalSecret: false
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
+
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
 
 # tap configuration
 tap:
+  externalSecret: false
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
+
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
 
 # web configuration
 webImage: gcr.io/linkerd-io/web
@@ -188,11 +200,15 @@ nodeSelector:
 
 smiMetrics:
   enabled: false
+  externalSecret: false
   image: deislabs/smi-metrics:v0.2.1
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
+
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
 
 # Configuration for Add-ons
 
@@ -201,7 +217,6 @@ grafana:
   name: linkerd-grafana
   image:
     name: gcr.io/linkerd-io/grafana
-    version: *linkerd_version
   # resources:
 
 tracing:

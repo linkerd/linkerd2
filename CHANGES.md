@@ -1,5 +1,123 @@
 # Changes
 
+## stable-2.8.0
+
+This release introduces new a multi-cluster extension to Linkerd, allowing it
+to establish connections across Kubernetes clusters that are secure,
+transparent to the application, and work with any network topology.
+
+* The CLI has a new set of `linkerd multicluster` sub-commands that provide
+  tooling to create the resources needed to discover services across
+  Kubernetes clusters.
+* The `linkerd multicluster gateways` command exposes gateway-specific
+  telemetry to supplement the existing `stat` and `tap` commands.
+* The Linkerd-provided Grafana instance remains enabled by default, but it can
+  now be disabled. When it is disabled, the Linkerd dashboard can be
+  configured to link to an alternate, externally-managed Grafana instance.
+* Jaeger & OpenCensus are configurable as an [add-on][addon-2.8.0]; and the
+  proxy has been improved to emit spans with labels that reflect its pod's
+  metadata.
+* The `linkerd-cni` component has been promoted from _experimental_ to
+  _stable_.
+* `linkerd profile --open-api` now honors the `x-linkerd-retryable` and
+  `x-linkerd-timeout` OpenAPI annotations.
+* The Helm chart continues to become more flexible and modular, with new
+  Prometheus configuration options. More information is available in the
+  [Helm chart README][helm-2.8.0].
+* gRPC stream error handling has been improved so that transport errors
+  are indicated to the client with a `grpc-status: UNAVAILABLE` trailer.
+* The proxy's memory footprint could grow significantly when
+  server-speaks-first-protocol connections hit the proxy. Now, a timeout is
+  in place to prevent these connections from consuming resources.
+* After benchmarking the proxy in high-concurrency situations, the inbound
+  proxy has been improved to reduce contention, improving latency and
+  reducing spurious timeouts.
+* The proxy could fail requests to services that had only 1 request every 60
+  seconds. This race condition has been eliminated.
+* Finally, users reported that ingress misconfigurations could cause the proxy
+  to consume an entire CPU which could lead to timeouts. The proxy now
+  attempts to prevent the most common traffic-loop scenarios to protect against
+  this.
+
+***NOTE***: Linkerd's `multicluster` extension does not yet work on Amazon
+EKS. We expect to follow this release with a stable-2.8.1 to address this
+issue. Follow [#4582](https://github.com/linkerd/linkerd2/pull/4582) for updates.
+
+This release includes changes from a massive list of contributors. A special
+thank-you to everyone who helped make this release possible: @aliariff,
+@amariampolskiy, @arminbuerkle, @arthursens, @christianhuening,
+@christyjacob4, @cypherfox, @daxmc99, @dr0pdb, @drholmie, @hydeenoble,
+@joakimr-axis, @jpresky, @kohsheen1234, @lewiscowper, @lundbird, @matei207,
+@mayankshah1607, @mmiller1, @naseemkullah, @sannimichaelse, & @supra08.
+
+[addon-2.8.0]: https://github.com/linkerd/linkerd2/blob/4219955bdb5441c5fce192328d3760da13fb7ba1/charts/linkerd2/README.md#add-ons-configuration
+[helm-2.8.0]: https://github.com/linkerd/linkerd2/blob/4219955bdb5441c5fce192328d3760da13fb7ba1/charts/linkerd2/README.md
+
+## edge-20.6.2
+
+This edge release is our second release candidate for `stable-2.8`, including
+various fixes and improvements around multicluster support.
+
+* CLI
+  * Fixed bad output in the `linkerd multicluster gateways` command
+  * Improved the error returned when running the CLI with no KUBECONFIG path set
+    (thanks @Matei207!)
+* Controller
+  * Fixed issue where mirror service wasn't created when paired to a gateway
+    whose external IP wasn't yet provided
+  * Fixed issue where updating the gateway identity annotation wasn't propagated
+    back into the mirror gateway endpoints object
+  * Fixed issue where updating the gateway ports wasn't reflected in the gateway
+    mirror service
+  * Increased the log level for some of the service mirror events
+  * Changed the nginx gateway config so that it runs as non-root and denies all
+    requests to locations other than the probe path
+* Web UI
+  * Fixed multicluster Grafana dashboard
+* Internal
+  * Added flag in integration tests to dump fixture diffs into a separate
+    directory (thanks @cypherfox!)
+
+## edge-20.6.1
+
+This edge release is a release candidate for `stable-2.8`! It introduces several
+improvements and fixes for multicluster support.
+
+* CLI
+  * Added multicluster daisy chain checks to `linkerd check`
+  * Added list of successful gateways in multicluster checks section of `linkerd
+    check`
+* Controller
+  * Renamed `nginx-configuration` ConfigMap to `linkerd-gateway-config` (please
+    manually remove the former if upgrading from an earlier multicluster
+    install, thanks @mayankshah1607!)
+  * Renamed multicluster gateway ports to `mc-gateway` and `mc-probe`
+  * Fixed Service Profiles routes for `linkerd-prometheus`
+* Internal
+  * Fixed shellcheck errors in all `bin/` scripts (thanks @joakimr-axis!)
+* Helm
+  * Added support for `linkerd mc allow`
+  * Added ability to disable secret rescources for self-signed certs (thanks
+    @cypherfox!)
+* Proxy
+  * Modified the `linkerd-gateway` component to use the inbound proxy, rather
+    than nginx, for gateway; this allows Linkerd to detect loops and propogate
+    identity
+
+## edge-20.5.5
+
+This edge release adds refinements to the Linkerd multicluster implementation,
+adds new health checks for the tracing add-on, and addresses an issue in which
+outbound requests from the proxy result in looping behavior.
+
+* CLI
+  * Added the `multicluster` command along with subcommands to configure and
+    deploy Linkerd workloads which enable services to be mirrored across
+    clusters
+  * Added health-checks for tracing add-on
+* Proxy
+  * Added logic to prevent loops in outbound requests
+
 ## edge-20.5.4
 
 * CLI
@@ -61,7 +179,7 @@ multicluster. For a tutorial on how to do that, check out the
 * Helm
   * Moved Grafana templates into a separate add-on chart
 * Proxy
-  * Improved latency under high-concurrency use cases.  
+  * Improved latency under high-concurrency use cases.
 
 ## edge-20.5.1
 

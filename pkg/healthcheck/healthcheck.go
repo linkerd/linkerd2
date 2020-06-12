@@ -261,6 +261,18 @@ func (e *SkipError) Error() string {
 	return e.Reason
 }
 
+// VerboseSuccess implements the error interface but represents a success with
+// a message.
+type VerboseSuccess struct {
+	Message string
+}
+
+// Error satisfies the error interface for VerboseSuccess.  Since VerboseSuccess
+// does not actually represent a failure, this returns the empty string.
+func (e *VerboseSuccess) Error() string {
+	return ""
+}
+
 type checker struct {
 	// description is the short description that's printed to the command line
 	// when the check is executed
@@ -321,19 +333,21 @@ type category struct {
 
 // Options specifies configuration for a HealthChecker.
 type Options struct {
-	ControlPlaneNamespace   string
-	CNINamespace            string
-	DataPlaneNamespace      string
-	KubeConfig              string
-	KubeContext             string
-	Impersonate             string
-	ImpersonateGroup        []string
-	APIAddr                 string
-	VersionOverride         string
-	RetryDeadline           time.Time
-	CNIEnabled              bool
-	InstallManifest         string
-	ShouldCheckMulticluster bool
+	ControlPlaneNamespace string
+	CNINamespace          string
+	DataPlaneNamespace    string
+	KubeConfig            string
+	KubeContext           string
+	Impersonate           string
+	ImpersonateGroup      []string
+	APIAddr               string
+	VersionOverride       string
+	RetryDeadline         time.Time
+	CNIEnabled            bool
+	InstallManifest       string
+	SourceCluster         bool
+	TargetCluster         bool
+	MultiCluster          bool
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -366,7 +380,7 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 	}
 
 	hc.categories = append(hc.allCategories(), hc.addOnCategories()...)
-	hc.categories = append(hc.categories, hc.multiClusterCategory())
+	hc.categories = append(hc.categories, hc.multiClusterCategory()...)
 
 	checkMap := map[CategoryID]struct{}{}
 	for _, category := range categoryIDs {
@@ -1317,18 +1331,20 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer Ch
 			log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
 			return true
 		}
-		if err != nil {
-			err = &CategoryError{categoryID, err}
-		}
+
 		checkResult := &CheckResult{
 			Category:    categoryID,
 			Description: c.description,
 			HintAnchor:  c.hintAnchor,
 			Warning:     c.warning,
-			Err:         err,
+		}
+		if vs, ok := err.(*VerboseSuccess); ok {
+			checkResult.Description = fmt.Sprintf("%s\n%s", checkResult.Description, vs.Message)
+		} else if err != nil {
+			checkResult.Err = &CategoryError{categoryID, err}
 		}
 
-		if err != nil && time.Now().Before(c.retryDeadline) {
+		if checkResult.Err != nil && time.Now().Before(c.retryDeadline) {
 			checkResult.Retry = true
 			if !c.surfaceErrorOnRetry {
 				checkResult.Err = errors.New("waiting for check to complete")
@@ -1341,7 +1357,7 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer Ch
 		}
 
 		observer(checkResult)
-		return err == nil
+		return checkResult.Err == nil
 	}
 }
 

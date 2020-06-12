@@ -763,7 +763,6 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.Grafana["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
-	installValues.Grafana["image"].(map[string]interface{})["version"] = options.controlPlaneVersion
 	if options.prometheusImage != "" {
 		installValues.PrometheusImage = options.prometheusImage
 	}
@@ -1163,7 +1162,7 @@ func (idopts *installIdentityOptions) genValues() (*identityWithAnchorsAndTrustD
 				IssuanceLifetime:    idopts.issuanceLifetime.String(),
 				CrtExpiry:           root.Cred.Crt.Certificate.NotAfter,
 				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-				TLS: &l5dcharts.TLS{
+				TLS: &l5dcharts.IssuerTLS{
 					KeyPEM: root.Cred.EncodePrivateKeyPEM(),
 					CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
 				},
@@ -1227,7 +1226,7 @@ func (idopts *installIdentityOptions) readValues() (*identityWithAnchorsAndTrust
 				IssuanceLifetime:    idopts.issuanceLifetime.String(),
 				CrtExpiry:           creds.Crt.Certificate.NotAfter,
 				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-				TLS: &l5dcharts.TLS{
+				TLS: &l5dcharts.IssuerTLS{
 					KeyPEM: creds.EncodePrivateKeyPEM(),
 					CrtPEM: creds.EncodeCertificatePEM(),
 				},

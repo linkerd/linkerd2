@@ -14,11 +14,6 @@ import (
 	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
 )
 
-// ProbeEventSink is an interface for a type that can send events to the probe manager
-type ProbeEventSink interface {
-	send(event interface{})
-}
-
 // RemoteClusterConfigWatcher watches for secrets of type MirrorSecretType
 // and upon the detection of such secret created starts a RemoteClusterServiceWatcher
 type RemoteClusterConfigWatcher struct {
@@ -27,17 +22,15 @@ type RemoteClusterConfigWatcher struct {
 	clusterWatchers        map[string]*RemoteClusterServiceWatcher
 	requeueLimit           int
 	sync.RWMutex
-	probeEventsSink ProbeEventSink
 }
 
 // NewRemoteClusterConfigWatcher Creates a new config watcher
-func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInformer cache.SharedIndexInformer, k8sAPI *k8s.API, requeueLimit int, probeEventsSink ProbeEventSink) *RemoteClusterConfigWatcher {
+func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInformer cache.SharedIndexInformer, k8sAPI *k8s.API, requeueLimit int) *RemoteClusterConfigWatcher {
 	rcw := &RemoteClusterConfigWatcher{
 		serviceMirrorNamespace: serviceMirrorNamespace,
 		k8sAPI:                 k8sAPI,
 		clusterWatchers:        map[string]*RemoteClusterServiceWatcher{},
 		requeueLimit:           requeueLimit,
-		probeEventsSink:        probeEventsSink,
 	}
 	secretsInformer.AddEventHandler(
 		cache.FilteringResourceEventHandler{
@@ -60,7 +53,7 @@ func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInforme
 				AddFunc: func(obj interface{}) {
 					secret := obj.(*corev1.Secret)
 					if err := rcw.registerRemoteCluster(secret); err != nil {
-						log.Errorf("Cannot register remote cluster: %s", err)
+						log.Errorf("Cannot register target cluster: %s", err)
 					}
 				},
 				DeleteFunc: func(obj interface{}) {
@@ -78,7 +71,7 @@ func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInforme
 						}
 					}
 					if err := rcw.unregisterRemoteCluster(secret, true); err != nil {
-						log.Errorf("Cannot unregister remote cluster: %s", err)
+						log.Errorf("Cannot unregister target cluster: %s", err)
 					}
 				},
 				UpdateFunc: func(old, new interface{}) {
@@ -87,12 +80,12 @@ func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInforme
 
 					if oldSecret.ResourceVersion != newSecret.ResourceVersion {
 						if err := rcw.unregisterRemoteCluster(oldSecret, false); err != nil {
-							log.Errorf("Cannot unregister remote cluster: %s", err)
+							log.Errorf("Cannot unregister target cluster: %s", err)
 							return
 						}
 
 						if err := rcw.registerRemoteCluster(newSecret); err != nil {
-							log.Errorf("Cannot register remote cluster: %s", err)
+							log.Errorf("Cannot register target cluster: %s", err)
 						}
 
 					}
@@ -133,7 +126,7 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", config.ClusterName)
 	}
 
-	watcher, err := NewRemoteClusterServiceWatcher(rcw.serviceMirrorNamespace, rcw.k8sAPI, clientConfig, config.ClusterName, rcw.requeueLimit, config.ClusterDomain, rcw.probeEventsSink)
+	watcher, err := NewRemoteClusterServiceWatcher(rcw.serviceMirrorNamespace, rcw.k8sAPI, clientConfig, config.ClusterName, rcw.requeueLimit, config.ClusterDomain)
 	if err != nil {
 		return err
 	}

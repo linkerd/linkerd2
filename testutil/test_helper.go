@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"testing"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -60,29 +61,37 @@ var LinkerdDeployReplicas = map[string]deploySpec{
 	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 }
 
-// NewStaticCliTestHelper creates a new instance of TestHelper for the current test run.
-// This consists of only the static cli flags without the kubernetes api stuff.
-func NewStaticCliTestHelper() *TestHelper {
-
-	exit := func(code int, msg string) {
-		fmt.Fprintln(os.Stderr, msg)
-		os.Exit(code)
-	}
-
-	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
-	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
-
-	flag.Parse()
-
-	if *linkerd == "" {
-		exit(1, "-linkerd flag is required")
-	}
-
+// NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
+// This helper was created to be able to reuse this package without hard restrictions
+// as seen in `NewTestHelper()` which is primarily used with integration tests
+// See - https://github.com/linkerd/linkerd2/issues/4530
+func NewGenericTestHelper(
+	linkerd,
+	namespace,
+	upgradeFromVersion,
+	clusterDomain,
+	helmPath,
+	helmChart,
+	helmStableChart,
+	helmReleaseName string,
+	externalIssuer,
+	uninstall bool,
+) *TestHelper {
 	return &TestHelper{
-		linkerd:   *linkerd,
-		namespace: *namespace,
+		linkerd:            linkerd,
+		namespace:          namespace,
+		upgradeFromVersion: upgradeFromVersion,
+		helm: helm{
+			path:               helmPath,
+			chart:              helmChart,
+			stableChart:        helmStableChart,
+			releaseName:        helmReleaseName,
+			upgradeFromVersion: upgradeFromVersion,
+		},
+		clusterDomain:  clusterDomain,
+		externalIssuer: externalIssuer,
+		uninstall:      uninstall,
 	}
-
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -506,4 +515,24 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	}
 
 	return events, nil
+}
+
+// Run calls `m.Run()`, shows unexpected logs/events,
+// and returns the exit code for the tests
+func Run(m *testing.M, helper *TestHelper) int {
+	code := m.Run()
+	if code != 0 {
+		_, errs1 := FetchAndCheckLogs(helper)
+		for _, err := range errs1 {
+			fmt.Println(err)
+		}
+		errs2 := FetchAndCheckEvents(helper)
+		for _, err := range errs2 {
+			fmt.Println(err)
+		}
+		if len(errs1) == 0 && len(errs2) == 0 {
+			fmt.Println("No unexpected log entries or events found")
+		}
+	}
+	return code
 }

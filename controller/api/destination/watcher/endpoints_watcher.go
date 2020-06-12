@@ -23,11 +23,11 @@ const (
 	// metrics labels
 	service                = "service"
 	namespace              = "namespace"
-	remoteGatewayNamespace = "remote_gateway_namespace"
-	remoteGateway          = "remote_gateway"
-	remoteCluster          = "remote_cluster"
-	remoteService          = "remote_service"
-	remoteServiceNamespace = "remote_service_namespace"
+	targetGatewayNamespace = "target_gateway_namespace"
+	targetGateway          = "target_gateway"
+	targetCluster          = "target_cluster"
+	targetService          = "target_service"
+	targetServiceNamespace = "target_service_namespace"
 )
 
 // TODO: prom metrics for all the queues/caches
@@ -470,14 +470,14 @@ func metricLabels(endpoints *corev1.Endpoints) map[string]string {
 	if hasRemoteGateway && hasRemoteGatwayNs && hasRemoteClusterName && hasServiceFqn {
 		// this means we are looking at Endpoints created for the purpose of mirroring
 		// an out of cluster service.
-		labels[remoteGatewayNamespace] = gatewayNs
-		labels[remoteGateway] = gateway
-		labels[remoteCluster] = remoteClusterName
+		labels[targetGatewayNamespace] = gatewayNs
+		labels[targetGateway] = gateway
+		labels[targetCluster] = remoteClusterName
 
 		fqParts := strings.Split(serviceFqn, ".")
 		if len(fqParts) >= 2 {
-			labels[remoteService] = fqParts[0]
-			labels[remoteServiceNamespace] = fqParts[1]
+			labels[targetService] = fqParts[0]
+			labels[targetServiceNamespace] = fqParts[1]
 		}
 	}
 	return labels

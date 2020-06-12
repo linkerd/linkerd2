@@ -1,6 +1,6 @@
-ARG RUNTIME_IMAGE=debian:stretch-20190812-slim
+ARG RUNTIME_IMAGE=debian:buster-20200514-slim
 
-FROM debian:stretch-20190812-slim as fetch
+FROM debian:buster-20200514-slim as fetch
 RUN apt-get update && apt-get install -y ca-certificates curl
 WORKDIR /build
 COPY bin/fetch-proxy bin/fetch-proxy

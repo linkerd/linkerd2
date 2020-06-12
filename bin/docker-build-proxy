@@ -28,10 +28,12 @@ get_extra_options() {
     for var in http_proxy https_proxy no_proxy; do
         [ -z "${!var:-}" ] || options="$options --build-arg '$var=${!var}'"
     done
-    echo $options
+    echo "$options"
 }
 
 tag=$(head_root_tag)
+# We want wordsplit for the extra options here:
+# shellcheck disable=SC2046
 docker_build proxy "$tag" "$dockerfile" \
   --build-arg "LINKERD_VERSION=$tag" \
   $(get_extra_options)

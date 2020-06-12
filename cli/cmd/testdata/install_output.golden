@@ -506,7 +506,7 @@ webhooks:
       name: linkerd-proxy-injector
       namespace: Namespace
       path: "/"
-    caBundle: cHJveHkgaW5qZWN0b3IgY3J0
+    caBundle: cHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxl
   failurePolicy: WebhookFailurePolicy
   rules:
   - operations: [ "CREATE" ]
@@ -569,8 +569,8 @@ metadata:
     CreatedByAnnotation: CliVersion
 type: Opaque
 data:
-  crt.pem: cHJveHkgaW5qZWN0b3IgY3J0
-  key.pem: cHJveHkgaW5qZWN0b3Iga2V5
+  crt.pem: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  key.pem: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -592,7 +592,7 @@ webhooks:
       name: linkerd-sp-validator
       namespace: Namespace
       path: "/"
-    caBundle: cHJveHkgaW5qZWN0b3IgY3J0
+    caBundle: cHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxl
   failurePolicy: WebhookFailurePolicy
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
@@ -723,7 +723,7 @@ spec:
   service:
     name: linkerd-tap
     namespace: Namespace
-  caBundle: dGFwIGNydA==
+  caBundle: dGFwIENBIGJ1bmRsZQ==
 ---
 ###
 ### Control Plane PSP
@@ -2828,12 +2828,11 @@ metadata:
 data:
   values: |-
     global:
-      grafanaUrl: 
+      grafanaUrl: ""
     grafana:
       enabled: true
       image:
         name: gcr.io/linkerd-io/grafana
-        version: install-control-plane-version
       name: linkerd-grafana
     tracing:
       enabled: false
@@ -2972,7 +2971,7 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: gcr.io/linkerd-io/grafana:install-control-plane-version
+        image: gcr.io/linkerd-io/grafana:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
           httpGet:
