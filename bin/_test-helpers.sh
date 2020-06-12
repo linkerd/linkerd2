@@ -193,7 +193,7 @@ get_test_config() {
   config=""
   case $name in
     custom-domain)
-      config="custom-domain"
+      config="cluster-domain"
       ;;
     *)
       config="default"
