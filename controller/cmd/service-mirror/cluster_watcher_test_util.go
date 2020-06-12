@@ -383,7 +383,7 @@ var remoteGatewayUpdatedWithHostnameAddress = &testEnvironment{
 		&RepairEndpoints{},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "", "linkerd.io", "mc-gateway", 999, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "", "localhost", "mc-gateway", 999, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
 	},
 }
 

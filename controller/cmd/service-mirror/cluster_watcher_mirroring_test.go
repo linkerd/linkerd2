@@ -265,7 +265,7 @@ func TestRemoteServiceUpdatedMirroring(t *testing.T) {
 
 func TestRemoteGatewayUpdatedMirroring(t *testing.T) {
 
-	linkerdIP, err := net.ResolveIPAddr("ip", "linkerd.io")
+	localhostIP, err := net.ResolveIPAddr("ip", "localhost")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +394,7 @@ func TestRemoteGatewayUpdatedMirroring(t *testing.T) {
 						gatewayName:      "gateway",
 						gatewayNamespace: "gateway-ns",
 						clusterName:      "remote",
-						addresses:        []corev1.EndpointAddress{{IP: linkerdIP.String()}},
+						addresses:        []corev1.EndpointAddress{{IP: localhostIP.String()}},
 						incomingPort:     999,
 						resourceVersion:  "currentGatewayResVersion",
 						ProbeConfig: &ProbeConfig{
