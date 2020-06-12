@@ -23,7 +23,12 @@ func TestMain(m *testing.M) {
 
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
+	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
 	flag.Parse()
+
+	if !*runTests {
+		exit(0, "integration tests not enabled: enable with -integration-tests")
+	}
 
 	if *linkerd == "" {
 		exit(1, "-linkerd flag is required")
