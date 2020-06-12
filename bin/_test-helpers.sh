@@ -20,10 +20,10 @@ handle_input() {
       -h|--help)
         echo "Run Linkerd integration tests."
         echo ""
+        echo "Optionally specify one of the following tests: [${test_names[@]}]"
+        echo ""
         echo "Usage:"
         echo "    ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--name test-name] [--skip-kind-create] /path/to/linkerd"
-        echo ""
-        echo "    Valid test names: ${test_names[@]}"
         echo ""
         echo "Examples:"
         echo ""
