@@ -122,7 +122,7 @@ func exerciseTestAppEndpoint(endpoint, namespace string) error {
 func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
 		// make sure app is running
-		testAppNamespace := TestHelper.GetTestNamespace("upgrade-test")
+		testAppNamespace := "upgrade-test"
 		for _, deploy := range []string{"emoji", "voting", "web"} {
 			if err := TestHelper.CheckPods(testAppNamespace, deploy, 1); err != nil {
 				testutil.AnnotatedError(t, "CheckPods timed-out", err)
@@ -506,7 +506,7 @@ func TestCheckPostInstall(t *testing.T) {
 
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
-		testAppNamespace := TestHelper.GetTestNamespace("upgrade-test")
+		testAppNamespace := "upgrade-test"
 		if err := exerciseTestAppEndpoint("/api/vote?choice=:policeman:", testAppNamespace); err != nil {
 			testutil.AnnotatedFatalf(t, "error exercising test app endpoint after upgrade",
 				"error exercising test app endpoint after upgrade %s", err)
