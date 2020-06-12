@@ -1,6 +1,8 @@
-#!/bin/bash
+#!/usr/local/bin/bash
 
 set -eu
+
+set -x
 
 k8s_context=${1:-""}
 
@@ -12,7 +14,7 @@ Usage: ${FUNCNAME[0]} TARGET_ARRAY RESOURCE_TYPE LINKERD_LABEL (FRIENDLY_NAME)" 
   }
 
   local -n res=$1
-  while IFS= read -r line; do res+=("$line"); done <<< "$(kubectl --context="$k8s_context" get "$2" -oname -l "linkerd.io/$3")"
+  while IFS= read -r line; do res+=("$line"); done <<< "$(kubectl --context="$k8s_context" get -A "$2" -oname -l "linkerd.io/$3")"
   if [ -z "${res[*]}" ]; then
     echo "no ${4:-$2} found" >&2
   fi
