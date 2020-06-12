@@ -30,9 +30,7 @@ func TestMain(m *testing.M) {
 	}
 
 	TestHelper = testutil.NewGenericTestHelper(*linkerd, *namespace, "", "", "", "", "", "", false, false)
-
-	code := m.Run()
-	os.Exit(code)
+	os.Exit(testutil.Run(m, TestHelper))
 }
 
 func TestCliInstall(t *testing.T) {
