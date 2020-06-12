@@ -213,7 +213,7 @@ run_upgrade_test() {
 
 setup_helm() {
   export helm_path="$bindir"/helm
-  helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd
+  helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2
   export helm_chart
   export helm_release_name='helm-test'
   "$bindir"/helm-build
