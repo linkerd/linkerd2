@@ -126,7 +126,6 @@ create_cluster() {
   local config=$2
   "$bindir"/kind create cluster --name "$name" --config "$test_directory"/configs/"$config".yaml --wait 300s 2>&1
   exit_on_err 'error creating KinD cluster'
-
   export context="kind-$name"
 }
 
@@ -192,7 +191,7 @@ get_test_config() {
   local name=$1
   config=""
   case $name in
-    custom-domain)
+    cluster-domain)
       config="cluster-domain"
       ;;
     *)
