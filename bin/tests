@@ -12,7 +12,7 @@ if [ -n "$test_name" ]; then
 else
   printf '==================RUNNING ALL TESTS==================\n'
 
-  for test_name in upgrade helm helm-upgrade uninstall deep external-issuer; do
+  for test_name in ${test_names[@]}; do
     config=$(get_test_config "$test_name")
     start_test "$test_name" "$config"
   done

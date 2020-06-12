@@ -4,7 +4,9 @@
 # proper messages
 set +e
 
-# Test runner helpers
+##### Test setup helpers #####
+
+export test_names=(upgrade helm helm-upgrade uninstall deep external-issuer)
 
 handle_input() {
   export images=""
@@ -23,7 +25,7 @@ handle_input() {
         echo ""
         echo "Examples:"
         echo ""
-        echo "    # Run tests in isolated clusters"
+        echo "    # Run all tests in isolated clusters"
         echo "    ${0##*/} /path/to/linkerd"
         echo ""
         echo "    # Run single test in isolated clusters"
@@ -91,38 +93,6 @@ handle_input() {
   fi
 }
 
-start_test() {
-  name=$1
-  config=$2
-
-  test_setup
-  if [ -z "$skip_kind_create" ]; then
-    create_cluster "$name" "$config"
-    "$bindir"/kind-load ${images:+'--images'} ${images_host:+'--images-host' "$images_host"} "$name"
-  fi
-  check_cluster
-  run_"$name"_test
-  if [ -z "$skip_kind_create" ]; then
-    delete_cluster "$name"
-  else
-    cleanup_cluster
-  fi
-}
-
-get_test_config() {
-  local name=$1
-  config=""
-  case $name in
-    custom-domain)
-      config="custom-domain"
-      ;;
-    *)
-      config="default"
-      ;;
-  esac
-  echo "$config"
-}
-
 test_setup() {
   bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
   export bindir
@@ -148,7 +118,7 @@ check_linkerd_binary(){
   printf '[ok]\n'
 }
 
-# Cluster helpers
+##### Cluster helpers #####
 
 create_cluster() {
   local name=$1
@@ -197,7 +167,39 @@ Help:
   printf '[ok]\n'
 }
 
-# Test runners
+##### Test runner helpers #####
+
+start_test() {
+  name=$1
+  config=$2
+
+  test_setup
+  if [ -z "$skip_kind_create" ]; then
+    create_cluster "$name" "$config"
+    "$bindir"/kind-load ${images:+'--images'} ${images_host:+'--images-host' "$images_host"} "$name"
+  fi
+  check_cluster
+  run_"$name"_test
+  if [ -z "$skip_kind_create" ]; then
+    delete_cluster "$name"
+  else
+    cleanup_cluster
+  fi
+}
+
+get_test_config() {
+  local name=$1
+  config=""
+  case $name in
+    custom-domain)
+      config="custom-domain"
+      ;;
+    *)
+      config="default"
+      ;;
+  esac
+  echo "$config"
+}
 
 run_test(){
   local filename=$1
