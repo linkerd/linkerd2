@@ -12,7 +12,7 @@ if [ -n "$test_name" ]; then
 else
   printf '==================RUNNING ALL TESTS==================\n'
 
-  for test_name in ${test_names[@]}; do
+  for test_name in "${test_names[@]}"; do
     config=$(get_test_config "$test_name")
     start_test "$test_name" "$config"
   done
