@@ -122,27 +122,26 @@ The `bin/tests` script requires an absolute path to a `linkerd` binary to test.
 
 Optional flags can be passed that change the testing behavior:
 
-* `--name`: Pass an argument with this flag to specify a specific test that
+- `--name`: Pass an argument with this flag to specify a specific test that
   should be run; all tests are run in the absence of this flag. Valid test names
   are included in the `bin/tests --help` output
-* `--skip-kind-create`: Skip KinD cluster creation for each test and use an
+- `--skip-kind-create`: Skip KinD cluster creation for each test and use an
   existing Kubernetes cluster
-
-* `--images`: (Primarily for CI) Loads images from the `image-archive/`
+- `--images`: (Primarily for CI) Loads images from the `image-archive/`
   directory into the KinD clusters created for each test
-* `--images-host`: (Primarily for CI) Pass an argument with this flag to be used
+- `--images-host`: (Primarily for CI) Pass an argument with this flag to be used
   as the remote docker instance from which images are first retrieved
 
 View full help text:
 
 ```bash
-$ bin/tests --help
+bin/tests --help
 ```
 
 Run individual test:
 
 ```bash
-$ bin/tests --name upgrade /path/to/linkerd
+bin/tests --name upgrade /path/to/linkerd
 ```
 
 #### Testing against the installed version of the CLI
