@@ -68,7 +68,8 @@ jobs:
   kind_integration_tests:
     strategy:
       matrix:
-        integration_test: [deep, upgrade, helm, helm-upgrade, uninstall, cluster-domain, external-issuer]
+        # integration_test: [deep, upgrade, helm, helm-upgrade, uninstall, cluster-domain, external-issuer]
+        integration_test: [upgrade]
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
