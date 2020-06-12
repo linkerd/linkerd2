@@ -141,15 +141,6 @@ identity:
 #identityResources:
 #identityProxyResources:
 
-
-# grafana configuration
-grafanaImage: gcr.io/linkerd-io/grafana
-# set resources for grafana and its linkerd proxy respectively
-# see global.proxy.resources for details.
-#grafanaResources:
-#grafanaProxyResources:
-
-
 # heartbeat configuration
 disableHeartBeat: false
 heartbeatSchedule: "0 0 * * *"
@@ -202,6 +193,11 @@ profileValidator:
 
   # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
   caBundle: |
+
+# set resources for the sp-validator and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#spValidatorResources:
+#spValidatorProxyResources:
 
 # set resources for controllers public API and its linkerd proxy respectively
 # see global.proxy.resources for details.
@@ -268,7 +264,10 @@ grafana:
   name: linkerd-grafana
   image:
     name: gcr.io/linkerd-io/grafana
+  # set resource requests and limits for grafana and its linkerd proxy respectively
+  # see global.proxy.resources in the linkerd2 chart for details.
   # resources:
+  #proxy.resources:
 
 tracing:
   enabled: false
@@ -280,9 +279,3 @@ tracing:
     name: linkerd-jaeger
     image: jaegertracing/all-in-one:1.17.1
     # resources:
-
-
-# set resources for the sp-validator and its linkerd proxy respectively
-# see global.proxy.resources for details.
-#spValidatorResources:
-#spValidatorProxyResources:

@@ -64,7 +64,7 @@ type (
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		PrometheusProxyResources    *Resources `json:"prometheusProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
-		PublicAPIPRoxyResources     *Resources `json:"publicAPIProxyResources"`
+		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
 		SMIMetricsProxyResources    *Resources `json:"smiMetricsProxyResources"`
 		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
 		TapProxyResources           *Resources `json:"tapProxyResources"`
