@@ -113,15 +113,10 @@ create_cluster() {
   "$bindir"/kind create cluster --name "$name" --config "$test_directory"/configs/"$config".yaml --wait 300s 2>&1
   exit_on_err 'error creating KinD cluster'
 
-  export k8s_context="kind-$name"
+  export context="kind-$name"
 }
 
 check_cluster() {
-  local name=$1
-  linkerd_version=$($linkerd_path version --client --short)
-  export linkerd_version
-  export k8s_context="kind-$name"
-
   check_if_k8s_reachable
   check_if_l5d_exists
 }
@@ -134,7 +129,7 @@ delete_cluster() {
 check_if_k8s_reachable(){
   printf 'Checking if there is a Kubernetes cluster available...'
   exit_code=0
-  kubectl --context="$k8s_context" --request-timeout=5s get ns > /dev/null 2>&1
+  kubectl --context="$context" --request-timeout=5s get ns > /dev/null 2>&1
   exit_on_err 'error connecting to Kubernetes cluster'
   printf '[ok]\n'
 }
@@ -142,7 +137,7 @@ check_if_k8s_reachable(){
 check_if_l5d_exists() {
   printf 'Checking if Linkerd resources exist on cluster...'
   local resources
-  resources=$(kubectl --context="$k8s_context" get all,clusterrole,clusterrolebinding,mutatingwebhookconfigurations,validatingwebhookconfigurations,psp,crd -l linkerd.io/control-plane-ns --all-namespaces -oname)
+  resources=$(kubectl --context="$context" get all,clusterrole,clusterrolebinding,mutatingwebhookconfigurations,validatingwebhookconfigurations,psp,crd -l linkerd.io/control-plane-ns --all-namespaces -oname)
   if [ -n "$resources" ]; then
     printf '
 Linkerd resources exist on cluster:
@@ -162,7 +157,7 @@ run_test(){
 
   printf 'Test script: [%s] Params: [%s]\n' "${filename##*/}" "$*"
   # Exit on failure here
-  GO111MODULE=on go test --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --k8s-context="$k8s_context" --integration-tests "$@" || exit 1
+  GO111MODULE=on go test --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --k8s-context="$context" --integration-tests "$@" || exit 1
 }
 
 # Returns the latest stable verson
@@ -181,7 +176,7 @@ install_stable() {
 
   (
     set -x
-    "$linkerd_path" install | kubectl --context="$k8s_context" apply -f - 2>&1
+    "$linkerd_path" install | kubectl --context="$context" apply -f - 2>&1
   )
   exit_on_err 'install_stable() - installing stable failed'
 
@@ -192,11 +187,11 @@ install_stable() {
   exit_on_err 'install_stable() - linkerd check failed'
 
   #Now we need to install the app that will be used to verify that upgrade does not break anything
-  kubectl --context="$k8s_context" create namespace "$test_app_namespace" > /dev/null 2>&1
-  kubectl --context="$k8s_context" label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
+  kubectl --context="$context" create namespace "$test_app_namespace" > /dev/null 2>&1
+  kubectl --context="$context" label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
   (
     set -x
-    "$linkerd_path" inject "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$k8s_context" apply --namespace="$test_app_namespace" -f - 2>&1
+    "$linkerd_path" inject "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1
   )
   exit_on_err 'install_stable() - linkerd inject failed'
 }
@@ -217,7 +212,7 @@ setup_helm() {
   export helm_chart
   export helm_release_name='helm-test'
   "$bindir"/helm-build
-  "$helm_path" --kube-context="$k8s_context" repo add linkerd https://helm.linkerd.io/stable
+  "$helm_path" --kube-context="$context" repo add linkerd https://helm.linkerd.io/stable
   exit_on_err 'error setting up Helm'
 }
 
