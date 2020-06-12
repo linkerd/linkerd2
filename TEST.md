@@ -94,28 +94,38 @@ bin/shellcheck -x bin/*
 The `test/` directory contains a test suite that can be run to validate Linkerd
 functionality via a series of end-to-end tests.
 
-### Prerequisites
+### Prerequisites for default behavior
 
-The integration test suite operates on your currently configured Kubernetes
-cluster. Prior to running the test suite, verify that:
+The integration tests will configure their own KinD clusters by default. There are no prerequisites for this test path.
+
+### Prerequisites for existing cluster
+
+If integration tests should run on an existing Kubernetes cluster, then the `--skip-kind-create` flag should be passed. This will disable the tests from creating their own clusters and instead use the current Kubernetes context.
+
+In this case, ensure the following:
 
 - The Linkerd docker images you're trying to test have been built and are
-  accessible to the Kubernetes cluster to which you are deploying
+  accessible to the Kubernetes cluster to which you are deploying (**note**: If the existing cluster is a KinD cluster, this includes running `bin/kind-load` so that the images are available within the cluster)
 - The `kubectl` CLI has been configured to talk to that Kubernetes cluster
-- The namespace where the tests will install Linkerd does not already exist; by
-  default the namespace `l5d-integration` is used
 
 ### Running tests
 
-You can use the `bin/test-run` script to run the full suite of tests.
+You can use the `bin/tests` script to run one or all of the tests in the test suite.
 
-The `bin/test-run` script requires an absolute path to a `linkerd` binary to
-test as the first argument. You can optionally pass the namespace where Linkerd
-will be installed as the second argument.
+The `bin/tests` script requires an absolute path to a `linkerd` binary to test.
+
+Optional flags can be passed that change the testing behavior:
+
+* `--name`: Pass an argument with this flag to specify a specific test that should be run; all tests are run in the absence of this flag. Valid test names are included in the `bin/tests --help` output
+* `--skip-kind-create`: Skip KinD cluster creation for each test and use an existing Kubernetes cluster
+
+* `--images`: (Primarily for CI) Loads images from the `image-archive/` directory into the KinD clusters created for each test
+* `--images-host`: (Primarily for CI) Pass an argument with this flag to be used as the remote docker instance from which images are first retrieved
+
+View full help text:
 
 ```bash
-$ bin/test-run
-usage: test-run /path/to/linkerd [namespace]
+$ bin/tests --help
 ```
 
 It's also possible to run tests individually, using the `go test` command. All
