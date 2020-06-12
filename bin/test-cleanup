@@ -2,8 +2,6 @@
 
 set -eu
 
-set -x
-
 k8s_context=${1:-""}
 
 populate_array() {
