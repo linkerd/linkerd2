@@ -1,6 +1,8 @@
 package test
 
 import (
+	"flag"
+	"fmt"
 	"os"
 	"testing"
 
@@ -12,7 +14,23 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	TestHelper = testutil.NewStaticCliTestHelper()
+
+	// Read the flags and create a new test helper
+	exit := func(code int, msg string) {
+		fmt.Fprintln(os.Stderr, msg)
+		os.Exit(code)
+	}
+
+	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
+	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
+	flag.Parse()
+
+	if *linkerd == "" {
+		exit(1, "-linkerd flag is required")
+	}
+
+	TestHelper = testutil.NewGenericTestHelper(*linkerd, *namespace, "", "", "", "", "", "", false, false)
+
 	code := m.Run()
 	os.Exit(code)
 }
