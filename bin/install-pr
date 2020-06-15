@@ -80,7 +80,7 @@ cd "$dir" || exit
 echo "### Downloading images ###"
 
 curl -L -o archive.zip -H "$auth" "$archive"
-unzip -o archive.zip
+unzip -o archive.zip -d image-archives/
 
 echo "### Loading images into Docker ###"
 
