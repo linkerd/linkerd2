@@ -85,11 +85,11 @@ Available Commands:
 
   export linkerd_path="$1"
   if [ -z "$linkerd_path" ]; then
-    echo 'Error: path to linkerd binary is required
+    echo "Error: path to linkerd binary is required
 Help:
      ${0##*/} -h|--help
 Basic usage:
-     ${0##*/} /path/to/linkerd'
+     ${0##*/} /path/to/linkerd"
     exit 64
   fi
 }
