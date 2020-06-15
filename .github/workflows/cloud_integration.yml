@@ -93,7 +93,7 @@ jobs:
         image="gcr.io/linkerd-io/cli-bin:$TAG"
         id=$(bin/docker create $image)
         bin/docker cp "$id:/out/linkerd-linux" "$HOME/.linkerd"
-        $HOME/.linkerd version --client
+        "$HOME/.linkerd" version --client
         # validate CLI version matches the repo
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
         echo "Installed Linkerd CLI version: $TAG"
@@ -115,7 +115,7 @@ jobs:
         export PATH="`pwd`/bin:$PATH"
         echo "$GITCOOKIE_SH" | bash
         version="$($HOME/.linkerd version --client --short | tr -cd '[:alnum:]-')"
-        bin/tests --skip-kind-create $HOME/.linkerd
+        bin/tests --skip-kind-create "$HOME/.linkerd"
     - name: CNI tests
       run: |
         export TAG="$($HOME/.linkerd version --client --short)"

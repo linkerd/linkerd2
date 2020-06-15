@@ -9,45 +9,45 @@ set +e
 export test_names=(upgrade helm helm-upgrade uninstall deep external-issuer)
 
 handle_input() {
-  export images=""
-  export images_host=""
-  export test_name=""
-  export skip_kind_create=""
+  export images=''
+  export images_host=''
+  export test_name=''
+  export skip_kind_create=''
 
   while :
   do
     case $1 in
       -h|--help)
-        echo "Run Linkerd integration tests."
-        echo ""
-        echo "Optionally specify one of the following tests: [${test_names[*]}]"
-        echo ""
-        echo "Usage:"
-        echo "    ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--name test-name] [--skip-kind-create] /path/to/linkerd"
-        echo ""
-        echo "Examples:"
-        echo "    # Run all tests in isolated clusters"
-        echo "    ${0##*/} /path/to/linkerd"
-        echo ""
-        echo "    # Run single test in isolated clusters"
-        echo "    ${0##*/} --name test-name /path/to/linkerd"
-        echo ""
-        echo "    # Skip KinD cluster creation and run all tests in default cluster context"
-        echo "    ${0##*/} --skip-kind-create /path/to/linkerd"
-        echo ""
-        echo "    # Load images from tar files located under the 'image-archives' directory"
-        echo "    # Note: This is primarly for CI"
-        echo "    ${0##*/} --images /path/to/linkerd"
-        echo ""
-        echo "    # Retrieve images from a remote docker instance and then load them into KinD"
-        echo "    # Note: This is primarly for CI"
-        echo "    ${0##*/} --images --images-host ssh://linkerd-docker /path/to/linkerd"
-        echo ""
-        echo "Available Commands:"
-        echo "    --name: the argument to this option is the specific test to run"
-        echo "    --skip-kind-create: skip KinD cluster creation step and run tests in an existing cluster."
-        echo "    --images: (Primarily for CI) use 'kind load image-archive' to load the images from local .tar files in the current directory."
-        echo "    --images-host: (Primarily for CI) the argument to this option is used as the remote docker instance from which images are first retrieved (using 'docker save') to be then loaded into KinD. This command requires --images."
+        echo "Run Linkerd integration tests.
+
+Optionally specify one of the following tests: [${test_names[*]}]
+
+Usage:
+    ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--name test-name] [--skip-kind-create] /path/to/linkerd
+
+Examples:
+    # Run all tests in isolated clusters
+    ${0##*/} /path/to/linkerd
+
+    # Run single test in isolated clusters
+    ${0##*/} --name test-name /path/to/linkerd
+
+    # Skip KinD cluster creation and run all tests in default cluster context
+    ${0##*/} --skip-kind-create /path/to/linkerd
+
+    # Load images from tar files located under the 'image-archives' directory
+    # Note: This is primarly for CI
+    ${0##*/} --images /path/to/linkerd
+
+    # Retrieve images from a remote docker instance and then load them into KinD
+    # Note: This is primarly for CI
+    ${0##*/} --images --images-host ssh://linkerd-docker /path/to/linkerd
+
+Available Commands:
+    --name: the argument to this option is the specific test to run
+    --skip-kind-create: skip KinD cluster creation step and run tests in an existing cluster.
+    --images: (Primarily for CI) use 'kind load image-archive' to load the images from local .tar files in the current directory.
+    --images-host: (Primarily for CI) the argument to this option is used as the remote docker instance from which images are first retrieved (using 'docker save') to be then loaded into KinD. This command requires --images."
         exit 0
         ;;
       --images)
@@ -56,7 +56,7 @@ handle_input() {
       --images-host)
         images_host=$2
         if [ -z "$images_host" ]; then
-          echo "Error: the argument for --images-host was not specified"
+          echo 'Error: the argument for --images-host was not specified'
           exit 1
         fi
         shift
@@ -64,7 +64,7 @@ handle_input() {
       --name)
         test_name=$2
         if [ -z "$test_name" ]; then
-          echo "Error: the argument for --name was not specified"
+          echo 'Error: the argument for --name was not specified'
           exit 1
         fi
         shift
@@ -79,17 +79,17 @@ handle_input() {
   done
 
   if [ "$images_host" ] && [ -z "$images" ]; then
-    echo "Error: --images-host needs to be used with --images" >&2
+    echo 'Error: --images-host needs to be used with --images' >&2
     exit 1
   fi
 
   export linkerd_path="$1"
   if [ -z "$linkerd_path" ]; then
-    echo "Error: path to linkerd binary is required"
-    echo "Help:"
-    echo "     ${0##*/} -h|--help"
-    echo "Basic usage:"
-    echo "     ${0##*/} /path/to/linkerd"
+    echo 'Error: path to linkerd binary is required
+Help:
+     ${0##*/} -h|--help
+Basic usage:
+     ${0##*/} /path/to/linkerd'
     exit 64
   fi
 }
@@ -103,7 +103,7 @@ test_setup() {
   check_linkerd_binary
 }
 
-check_linkerd_binary(){
+check_linkerd_binary() {
   printf 'Checking the linkerd binary...'
   if [[ "$linkerd_path" != /* ]]; then
     printf '\n[%s] is not an absolute path\n' "$linkerd_path"
@@ -144,7 +144,7 @@ cleanup_cluster() {
   exit_on_err 'error removing existing Linkerd resources'
 }
 
-check_if_k8s_reachable(){
+check_if_k8s_reachable() {
   printf 'Checking if there is a Kubernetes cluster available...'
   exit_code=0
   kubectl --context="$context" --request-timeout=5s get ns > /dev/null 2>&1
@@ -189,13 +189,13 @@ start_test() {
 
 get_test_config() {
   local name=$1
-  config=""
+  config=''
   case $name in
     cluster-domain)
-      config="cluster-domain"
+      config='cluster-domain'
       ;;
     *)
-      config="default"
+      config='default'
       ;;
   esac
   echo "$config"
@@ -236,7 +236,7 @@ install_stable() {
   )
   exit_on_err 'install_stable() - linkerd check failed'
 
-  #Now we need to install the app that will be used to verify that upgrade does not break anything
+  # Now we need to install the app that will be used to verify that upgrade does not break anything
   kubectl --context="$context" create namespace "$test_app_namespace" > /dev/null 2>&1
   kubectl --context="$context" label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
   (
