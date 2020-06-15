@@ -66,6 +66,7 @@ func TestServiceAccountsMatch(t *testing.T) {
 			"error retrieving list of linkerd-psp rolebindings: %s", err)
 	}
 	saNamesPSP := strings.Split(res, " ")
+
 	if len(saNamesPSP) < len(expectedNames) || !namesMatch(saNamesPSP) {
 		t.Fatalf(
 			"The service accounts in the linkerd-psp rolebindings don't match the expected list: %s",
