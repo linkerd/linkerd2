@@ -3,7 +3,6 @@ package test
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,18 +11,19 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/testutil"
-	corev1 "k8s.io/api/core/v1"
 )
 
 //////////////////////
 ///   TEST SETUP   ///
 //////////////////////
 
-var TestHelper *testutil.TestHelper
+var (
+	TestHelper *testutil.TestHelper
+)
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(m.Run())
+	os.Exit(testutil.Run(m, TestHelper))
 }
 
 var (
@@ -40,44 +40,6 @@ var (
 		"linkerd-web",
 		"linkerd-tap",
 	}
-
-	// Linkerd commonly logs these errors during testing, remove these once
-	// they're addressed: https://github.com/linkerd/linkerd2/issues/2453
-	knownControllerErrorsRegex = regexp.MustCompile(strings.Join([]string{
-		`.*linkerd-controller-.*-.* tap time=".*" level=error msg="\[.*\] encountered an error: rpc error: code = Canceled desc = context canceled"`,
-		`.*linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
-		`.*linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer .*-smoke-test.*/smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`,
-		`.*linkerd-destination-.* destination time=".*" level=warning msg="failed to retrieve replicaset from indexer .* not found"`,
-	}, "|"))
-
-	knownProxyErrorsRegex = regexp.MustCompile(strings.Join([]string{
-		// k8s hitting readiness endpoints before components are ready
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::app::errors unexpected error: an IO error occurred: Connection reset by peer \(os error 104\)`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=in listen=0\.0\.0\.0:4143 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: 127\.0\.0\.1:.*\)`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: Connection refused \(os error 111\) \(address: .*\)`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::(proxy::http::router service|app::errors unexpected) error: an error occurred trying to connect: operation timed out after 1s`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy WARN \[ *\d+.\d+s\] .* linkerd2_proxy::proxy::reconnect connect error to ControlAddr .*`,
-
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ *\d+.\d+s\] admin={server=metrics listen=0\.0\.0\.0:4191 remote=.*} linkerd2_proxy::control::serve_http error serving metrics: Error { kind: Shutdown, .* }`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|sp-validator|web|tap)-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] admin={server=admin listen=127\.0\.0\.1:4191 remote=.*} linkerd2_proxy::control::serve_http error serving admin: Error { kind: Shutdown, cause: Os { code: 107, kind: NotConnected, message: "Transport endpoint is not connected" } }`,
-
-		`.* linkerd-web-.*-.* linkerd-proxy WARN trust_dns_proto::xfer::dns_exchange failed to associate send_message response to the sender`,
-		`.* linkerd-(controller|identity|grafana|prometheus|proxy-injector|web|tap)-.*-.* linkerd-proxy WARN \[.*\] linkerd2_proxy::proxy::canonicalize failed to refine linkerd-.*\..*\.svc\.cluster\.local: deadline has elapsed; using original name`,
-
-		// prometheus scrape failures of control-plane
-		`.* linkerd-prometheus-.*-.* linkerd-proxy ERR! \[ +\d+.\d+s\] proxy={server=out listen=127\.0\.0\.1:4140 remote=.*} linkerd2_proxy::proxy::http::router service error: an error occurred trying to connect: .*`,
-	}, "|"))
-
-	knownEventWarningsRegex = regexp.MustCompile(strings.Join([]string{
-		`MountVolume.SetUp failed for volume .* : couldn't propagate object cache: timed out waiting for the condition`, // pre k8s 1.16
-		`MountVolume.SetUp failed for volume .* : failed to sync .* cache: timed out waiting for the condition`,         // post k8s 1.16
-		`(Liveness|Readiness) probe failed: HTTP probe failed with statuscode: 50(2|3)`,
-		`(Liveness|Readiness) probe failed: Get http://.*: dial tcp .*: connect: connection refused`,
-		`(Liveness|Readiness) probe failed: Get http://.*: read tcp .*: read: connection reset by peer`,
-		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled .*\(Client\.Timeout exceeded while awaiting headers\)`,
-		`Failed to update endpoint .*/linkerd-.*: Operation cannot be fulfilled on endpoints "linkerd-.*": the object has been modified; please apply your changes to the latest version and try again`,
-		`error killing pod: failed to "KillPodSandbox" for ".*" with KillPodSandboxError: "rpc error: code = Unknown desc`,
-	}, "|"))
 
 	injectionCases = []struct {
 		ns          string
@@ -350,6 +312,7 @@ func helmOverridesEdge(root *tls.CA) []string {
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.keyPEM=" + root.Cred.EncodePrivateKeyPEM(),
 		"--set", "identity.issuer.crtExpiry=" + root.Cred.Crt.Certificate.NotAfter.Format(time.RFC3339),
+		"--set", "grafana.image.version=" + TestHelper.GetVersion(),
 	}
 }
 
@@ -367,14 +330,14 @@ func TestInstallHelm(t *testing.T) {
 	}
 
 	var chartToInstall string
-	args := []string{"--name", TestHelper.GetHelmReleaseName()}
+	var args []string
 
 	if TestHelper.UpgradeHelmFromVersion() != "" {
 		chartToInstall = TestHelper.GetHelmStableChart()
-		args = append(args, helmOverridesStable(helmTLSCerts)...)
+		args = helmOverridesStable(helmTLSCerts)
 	} else {
 		chartToInstall = TestHelper.GetHelmChart()
-		args = append(args, helmOverridesEdge(helmTLSCerts)...)
+		args = helmOverridesEdge(helmTLSCerts)
 	}
 
 	if stdout, stderr, err := TestHelper.HelmInstall(chartToInstall, args...); err != nil {
@@ -395,7 +358,7 @@ func TestResourcesPostInstall(t *testing.T) {
 	for _, svc := range linkerdSvcs {
 		if err := TestHelper.CheckService(TestHelper.GetLinkerdNamespace(), svc); err != nil {
 			testutil.AnnotatedErrorf(t, fmt.Sprintf("error validating service [%s]", svc),
-				"rrror validating service [%s]:\n%s", svc, err)
+				"error validating service [%s]:\n%s", svc, err)
 		}
 	}
 
@@ -434,7 +397,8 @@ func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
 			"linkerd-smi-metrics SA labeling failed: %s", err)
 	}
 
-	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
+	// TODO: once 2.8 comes out, Replace compareOutput with true to make sure check outputs are correct
+	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion(), false)
 }
 
 func TestUpgradeHelm(t *testing.T) {
@@ -489,7 +453,7 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string) {
+func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string, compareOutput bool) {
 	var cmd []string
 	var golden string
 	if stage == "proxy" {
@@ -515,6 +479,10 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", stderr, out)
 		}
 
+		if !compareOutput {
+			return nil
+		}
+
 		err = TestHelper.ValidateOutput(out, golden)
 		if err != nil {
 			return fmt.Errorf("received unexpected output\n%s", err.Error())
@@ -529,11 +497,11 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 // TODO: run this after a `linkerd install config`
 func TestCheckConfigPostInstall(t *testing.T) {
-	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "")
+	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "", true)
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	testCheckCommand(t, "", TestHelper.GetVersion(), "", "")
+	testCheckCommand(t, "", TestHelper.GetVersion(), "", "", true)
 }
 
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
@@ -710,113 +678,24 @@ func TestCheckProxy(t *testing.T) {
 		tc := tc // pin
 		t.Run(tc.ns, func(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
-			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "")
+			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "", true)
 		})
 	}
 }
 
 func TestLogs(t *testing.T) {
-	controllerRegex := regexp.MustCompile("level=(panic|fatal|error|warn)")
-	proxyRegex := regexp.MustCompile(fmt.Sprintf("%s (ERR|WARN)", k8s.ProxyContainerName))
-	clientGoRegex := regexp.MustCompile("client-go@")
-	hasClientGoLogs := false
-
-	for deploy, spec := range testutil.LinkerdDeployReplicas {
-		deploy := strings.TrimPrefix(deploy, "linkerd-")
-		containers := append(spec.Containers, k8s.ProxyContainerName)
-
-		for _, container := range containers {
-			container := container // pin
-			name := fmt.Sprintf("%s/%s", deploy, container)
-
-			proxy := false
-			errRegex := controllerRegex
-			knownErrorsRegex := knownControllerErrorsRegex
-			if container == k8s.ProxyContainerName {
-				proxy = true
-				errRegex = proxyRegex
-				knownErrorsRegex = knownProxyErrorsRegex
-			}
-
-			t.Run(name, func(t *testing.T) {
-				outputStream, err := TestHelper.LinkerdRunStream(
-					"logs", "--no-color",
-					"--control-plane-component", deploy,
-					"--container", container,
-				)
-				if err != nil {
-					testutil.AnnotatedErrorf(t, "error running command",
-						"error running command:\n%s", err)
-				}
-				defer outputStream.Stop()
-				// Ignore the error returned, since ReadUntil will return an error if it
-				// does not return 10,000 after 2 seconds. We don't need 10,000 log lines.
-				outputLines, _ := outputStream.ReadUntil(10000, 2*time.Second)
-				if len(outputLines) == 0 {
-					// Retry one time for 30 more seconds, in case the cluster is slow to
-					// produce log lines.
-					outputLines, _ = outputStream.ReadUntil(10000, 30*time.Second)
-					if len(outputLines) == 0 {
-						testutil.AnnotatedErrorf(t, "no logs found for %s", name)
-					}
-				}
-
-				for _, line := range outputLines {
-					if errRegex.MatchString(line) {
-						if knownErrorsRegex.MatchString(line) {
-							// report all known logging errors in the output
-							t.Logf("Found known error in %s log: %s", name, line)
-						} else {
-							if proxy {
-								t.Logf("Found unexpected proxy error in %s log: %s", name, line)
-							} else {
-								testutil.AnnotatedErrorf(t,
-									"Found unexpected controller error in %s log: %s", name, line)
-							}
-						}
-					}
-					if clientGoRegex.MatchString((line)) {
-						hasClientGoLogs = true
-					}
-				}
-			})
-		}
+	okMessages, errs := testutil.FetchAndCheckLogs(TestHelper)
+	for msg := range okMessages {
+		t.Log(msg)
 	}
-	if !hasClientGoLogs {
-		testutil.AnnotatedError(t, "didn't find any client-go entries")
+	for err := range errs {
+		testutil.AnnotatedError(t, "Error checking logs", err)
 	}
 }
 
 func TestEvents(t *testing.T) {
-	out, err := TestHelper.Kubectl("",
-		"--namespace", TestHelper.GetLinkerdNamespace(),
-		"get", "events", "-ojson",
-	)
-	if err != nil {
-		testutil.AnnotatedErrorf(t, "'kubectl get events' command failed",
-			"'kubectl get events' command failed with %s\n%s", err, out)
-	}
-
-	events, err := testutil.ParseEvents(out)
-	if err != nil {
-		testutil.AnnotatedError(t, "error parsing events", err)
-	}
-
-	var unknownEvents []string
-	for _, e := range events {
-		if e.Type == corev1.EventTypeNormal {
-			continue
-		}
-
-		evtStr := fmt.Sprintf("Reason: [%s] Object: [%s] Message: [%s]", e.Reason, e.InvolvedObject.Name, e.Message)
-		if !knownEventWarningsRegex.MatchString(e.Message) {
-			unknownEvents = append(unknownEvents, evtStr)
-		}
-	}
-
-	if len(unknownEvents) > 0 {
-		testutil.AnnotatedErrorf(t, "found unexpected warning events",
-			"found unexpected warning events:\n%s", strings.Join(unknownEvents, "\n"))
+	for err := range testutil.FetchAndCheckEvents(TestHelper) {
+		testutil.AnnotatedError(t, "Error checking events", err)
 	}
 }
 

@@ -195,6 +195,10 @@ const (
 	// to always require identity on inbound ports
 	ProxyRequireIdentityOnInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-require-identity-inbound-ports"
 
+	// ProxyEnableGatewayAnnotation can be used to configure the proxy
+	// to operate as a gateway, routing requests that target the inbound router.
+	ProxyEnableGatewayAnnotation = ProxyConfigAnnotationsPrefix + "/enable-gateway"
+
 	// ProxyDisableIdentityAnnotation can be used to disable identity on the injected proxy.
 	ProxyDisableIdentityAnnotation = ProxyConfigAnnotationsPrefix + "/disable-identity"
 
@@ -204,6 +208,9 @@ const (
 	// ProxyEnableDebugAnnotation is set to true if the debug container is
 	// injected.
 	ProxyEnableDebugAnnotation = ProxyConfigAnnotationsPrefix + "/enable-debug-sidecar"
+
+	// CloseWaitTimeoutAnnotation configures nf_conntrack_tcp_timeout_close_wait.
+	CloseWaitTimeoutAnnotation = ProxyConfigAnnotationsPrefix + "/close-wait-timeout"
 
 	// ProxyTraceCollectorSvcAddrAnnotation can be used to enable tracing on a proxy.
 	// It takes the collector service name (e.g. oc-collector.tracing:55678) as
@@ -294,8 +301,14 @@ const (
 	// TapServiceName is the name of the tap APIService
 	TapServiceName = "linkerd-tap"
 
+	// TapAPIRegistrationServiceName is the name of the tap APIService registration resource
+	TapAPIRegistrationServiceName = "v1alpha1.tap.linkerd.io"
+
 	// SmiMetricsServiceName is the name of the SMI metrics APIService
 	SmiMetricsServiceName = "linkerd-smi-metrics"
+
+	// SmiMetricsAPIRegistrationServiceName is the name of the SMI metrics APIService registration resource
+	SmiMetricsAPIRegistrationServiceName = "v1alpha1.metrics.smi-spec.io"
 
 	// AdmissionWebhookLabel indicates whether admission webhooks are enabled for a namespace
 	AdmissionWebhookLabel = ProxyConfigAnnotationsPrefix + "/admission-webhooks"
@@ -368,6 +381,25 @@ const (
 	// of a mirroring operation (can be a namespace or a service)
 	MirroredResourceLabel = SvcMirrorPrefix + "/mirrored-service"
 
+	// MirroredGatewayLabel indicates that this is a mirrored gateway
+	MirroredGatewayLabel = SvcMirrorPrefix + "/mirrored-gateway"
+
+	// MirroredGatewayProbePeriod specifies the probe period for the gateway mirror
+	MirroredGatewayProbePeriod = SvcMirrorPrefix + "/mirrored-gateway-probe-period"
+
+	// MirroredGatewayProbePath specifies the probe path for the gateway mirror
+	MirroredGatewayProbePath = SvcMirrorPrefix + "/mirrored-gateway-probe-path"
+
+	// MirroredGatewayRemoteName specifies the name of the remote gateway that has been mirrored
+	MirroredGatewayRemoteName = SvcMirrorPrefix + "/mirrored-gateway-remote-name"
+
+	// MirroredGatewayRemoteNameSpace specifies the namespace of the remote gateway that has been mirrored
+	MirroredGatewayRemoteNameSpace = SvcMirrorPrefix + "/mirrored-gateway-remote-namespace"
+
+	// MulticlusterGatewayAnnotation indicates that this service is a
+	// gateway
+	MulticlusterGatewayAnnotation = SvcMirrorPrefix + "/multicluster-gateway"
+
 	// RemoteClusterNameLabel put on a local mirrored service, it
 	// allows us to associate a mirrored service with a remote cluster
 	RemoteClusterNameLabel = SvcMirrorPrefix + "/cluster-name"
@@ -400,9 +432,6 @@ const (
 	// GatewayIdentity can be found on the remote gateway service
 	GatewayIdentity = SvcMirrorPrefix + "/gateway-identity"
 
-	// GatewayProbePort the port on which the gateway can be probed
-	GatewayProbePort = SvcMirrorPrefix + "/probe-port"
-
 	// GatewayProbePeriod the interval at which the health of the gateway should be probed
 	GatewayProbePeriod = SvcMirrorPrefix + "/probe-period"
 
@@ -414,7 +443,10 @@ const (
 	ConfigKeyName = "kubeconfig"
 
 	// GatewayPortName is the name of the incoming port of the gateway
-	GatewayPortName = "incoming-port"
+	GatewayPortName = "mc-gateway"
+
+	// ProbePortName is the name of the probe port of the gateway
+	ProbePortName = "mc-probe"
 
 	// ServiceMirrorLabel is the value used in the controller component label
 	ServiceMirrorLabel = "servicemirror"

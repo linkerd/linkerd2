@@ -1,12 +1,12 @@
 dependencies:
+- name: grafana
+  repository: file://../add-ons/grafana
+  version: 0.1.0
 - name: prometheus
   repository: file://../add-ons/prometheus
   version: 0.1.0
 - name: partials
   repository: file://../partials
-  version: 0.1.0
-- name: grafana
-  repository: file://../add-ons/grafana
   version: 0.1.0
 - name: tracing
   repository: file://../add-ons/tracing

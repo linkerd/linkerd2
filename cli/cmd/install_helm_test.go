@@ -86,19 +86,23 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
   },
   "proxyInjector":{
     "keyPEM":"test-proxy-injector-key-pem",
-    "crtPEM":"test-proxy-injector-crt-pem"
+	"crtPEM":"test-proxy-injector-crt-pem",
+	"caBundle":"test-proxy-injector-ca-bundle"
   },
   "profileValidator":{
     "keyPEM":"test-profile-validator-key-pem",
-    "crtPEM":"test-profile-validator-crt-pem"
+    "crtPEM":"test-profile-validator-crt-pem",
+	"caBundle":"test-profile-validator-ca-bundle"
   },
   "tap":{
     "keyPEM":"test-tap-key-pem",
-    "crtPEM":"test-tap-crt-pem"
+    "crtPEM":"test-tap-crt-pem",
+	"caBundle":"test-tap-ca-bundle"
   },
   "smiMetrics":{
 	  "keyPEM":"test-smi-metrics-key-pem",
 	  "crtPEM":"test-smi-metrics-crt-pem",
+	  "caBundle":"test-smi-metrics-ca-bundle"
   }
 }`
 

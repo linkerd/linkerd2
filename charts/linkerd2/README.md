@@ -19,7 +19,8 @@ The identity component of Linkerd requires setting up a trust anchor
 certificate, and an issuer certificate with its key. These need to be provided
 to Helm by the user (unlike when using the `linkerd install` CLI which can
 generate these automatically). You can provide your own, or follow [these
-instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new ones.
+instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new
+ones.
 
 Note that the provided certificates must be ECDSA certficates.
 
@@ -80,7 +81,8 @@ helm install \
 
 ## Configuration
 
-The following table lists the configurable parameters of the Linkerd2 chart and their default values.
+The following table lists the configurable parameters of the Linkerd2 chart and
+their default values.
 
 | Parameter                                   | Description                                                                                                                                                                           | Default                              |
 |:--------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------|
@@ -145,12 +147,24 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | `identity.issuer.tls.keyPEM`                | Key for the issuer certificate (ECDSA). It must be provided during install.                                                                                                           |                                      |
 | `installNamespace`                          | Set to false when installing Linkerd in a custom namespace. See the [Linkerd documentation](https://linkerd.io/2/tasks/install-helm/#customizing-the-namespace) for more information. | `true`                               |
 | `omitWebhookSideEffects`                    | Omit the `sideEffects` flag in the webhook manifests                                                                                                                                  | `false`                              |
+| `proxyInjector.externalSecret`              | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below).                                                 | false                              |
 | `proxyInjector.crtPEM`                      | Certificate for the proxy injector. If not provided then Helm will generate one.                                                                                                      |                                      |
-| `proxyInjector.keyPEM`                      | Certificate key for the proxy injector. If not provided then Helm will generate one.                                                                                                  |                                      |
+| `proxyInjector.keyPEM`                      | Certificate key for the proxy injector. If not provided then Helm will generate one.                                                                                                      |                                      |
+| `proxyInjector.caBundle`                    | Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated.        |   |
+| `profileValidator.externalSecret`           | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below).                            | false                                      |
 | `profileValidator.crtPEM`                   | Certificate for the service profile validator. If not provided then Helm will generate one.                                                                                           |                                      |
 | `profileValidator.keyPEM`                   | Certificate key for the service profile validator. If not provided then Helm will generate one.                                                                                       |                                      |
+| `profileValidator.caBundle`                 | Bundle of CA certificates for service profile validator. If not provided then Helm will use the certificate generated  for `profileValidator.crtPEM`. If `profileValidator.externalSecret` is set to true, this value must be set, as no certificate will be generated.         |  |
+| `smiMetrics.enabled`                        | Enable collection of SMI metrics by setting to `true`. Default is `false`
+| `smiMetrics.externalSecret`                 | Do not create a secret resource for the SMI metrics component.  If this is set to `true`, the value `smiMetrics.caBundle` must be set (see below).                                           | false |
+| `smiMetrics.image`                          | The image and tag to use for the SMI metrics component.    | `deislabs/smi-metrics:v0.2.1` |
+| `smiMetrics.crtPEM`                         | Certificate for the SMI metrics component. If not provided then Helm will generate one.                                                                                                                                 ||
+| `smiMetrics.keyPEM`                         | Certificate key for the SMI metrics component. If not provided then Helm will generate one.                                                                                                                             ||
+| `smiMetrics.caBundle`                       | Bundle of CA certificates for the SMI metrics component. If not provided then Helm will use the certificate generated  for `smiMetrics.crtPEM`. If `smiMetrics.externalSecret` is set to true, this value must be set, as no certificate will be generated.                       ||
+| `tap.externalSecret`                        | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below).                                                  | false                                |
 | `tap.crtPEM`                                | Certificate for the Tap component. If not provided then Helm will generate one.                                                                                                       |                                      |
 | `tap.keyPEM`                                | Certificate key for Tap component. If not provided then Helm will generate one.                                                                                                       |                                      |
+| `tap.caBundle`                              | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated.                       ||
 | `webhookFailurePolicy`                      | Failure policy for the proxy injector                                                                                                                                                 | `Ignore`                             |
 | `webImage`                                  | Docker image for the web container                                                                                                                                                    | `gcr.io/linkerd-io/web`              |
 | `enforcedHostRegexp`                        | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information                                   | `""`                                 |
@@ -165,7 +179,7 @@ The following table lists the configurable parameters for the Grafana Add-On.
 |:--------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------|
 | `grafana.enabled`                     | Flag to enable grafana instance to be installed                                                                                                                                                | `true`
 | `grafana.name`                | Name of the grafana instance Service                                                                                                                                                 | `linkerd-grafana`                             |
-| `grafana.image`                | Docker image for the grafana instance                                                                                                                                                 | `gcr.io/linkerd-io/grafana`                             |
+| `grafana.image.name`                | Docker image name for the grafana instance                                                                                                                                                 | `gcr.io/linkerd-io/grafana`                             |
 | `grafana.resources.cpu.limit`       | Maximum amount of CPU units that the grafana container can use                                                                                                                     ||
 | `grafana.resources.cpu.request`     | Amount of CPU units that the gafana container requests                                                                                                                            ||
 | `grafana.resources.memory.limit`    | Maximum amount of memory that grafana container can use                                                                                                                        ||
@@ -217,11 +231,10 @@ The following table lists the configurable parameters for the Tracing Add-On.
 ## Get involved
 
 * Check out Linkerd's source code at [Github][linkerd2].
-* Join Linkerd's [user mailing list][linkerd-users],
-[developer mailing list][linkerd-dev], and [announcements mailing list][linkerd-announce].
+* Join Linkerd's [user mailing list][linkerd-users], [developer mailing
+  list][linkerd-dev], and [announcements mailing list][linkerd-announce].
 * Follow [@linkerd][twitter] on Twitter.
 * Join the [Linkerd Slack][slack].
-
 
 [cncf]: https://www.cncf.io/
 [getting-started]: https://linkerd.io/2/getting-started/

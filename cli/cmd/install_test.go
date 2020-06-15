@@ -54,7 +54,6 @@ func TestRender(t *testing.T) {
 	metaConfig.Global.LinkerdNamespace = "Namespace"
 	metaValues := &charts.Values{
 		ControllerImage:             "ControllerImage",
-		ControllerImageVersion:      "ControllerImageVersion",
 		WebImage:                    "WebImage",
 		ControllerLogLevel:          "ControllerLogLevel",
 		ControllerUID:               2103,
@@ -71,6 +70,7 @@ func TestRender(t *testing.T) {
 			ImagePullPolicy:          "ImagePullPolicy",
 			CliVersion:               "CliVersion",
 			ControllerComponentLabel: "ControllerComponentLabel",
+			ControllerImageVersion:   "ControllerImageVersion",
 			ControllerNamespaceLabel: "ControllerNamespaceLabel",
 			WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
 			CreatedByAnnotation:      "CreatedByAnnotation",
@@ -506,10 +506,14 @@ func fakeHeartbeatSchedule() string {
 func addFakeTLSSecrets(values *charts.Values) {
 	values.ProxyInjector.CrtPEM = "proxy injector crt"
 	values.ProxyInjector.KeyPEM = "proxy injector key"
-	values.ProfileValidator.CrtPEM = "proxy injector crt"
-	values.ProfileValidator.KeyPEM = "proxy injector key"
+	values.ProxyInjector.CaBundle = "proxy injector CA bundle"
+	values.ProfileValidator.CrtPEM = "profile validator crt"
+	values.ProfileValidator.KeyPEM = "profile validator key"
+	values.ProfileValidator.CaBundle = "profile validator CA bundle"
 	values.Tap.CrtPEM = "tap crt"
 	values.Tap.KeyPEM = "tap key"
+	values.Tap.CaBundle = "tap CA bundle"
 	values.SMIMetrics.CrtPEM = "smi metrics crt"
 	values.SMIMetrics.KeyPEM = "smi metrics key"
+	values.SMIMetrics.CaBundle = "smi metrics CA bundle"
 }

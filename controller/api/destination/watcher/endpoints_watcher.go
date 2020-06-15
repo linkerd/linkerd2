@@ -19,6 +19,15 @@ import (
 const (
 	kubeSystem = "kube-system"
 	podIPIndex = "ip"
+
+	// metrics labels
+	service                = "service"
+	namespace              = "namespace"
+	targetGatewayNamespace = "target_gateway_namespace"
+	targetGateway          = "target_gateway"
+	targetCluster          = "target_cluster"
+	targetService          = "target_service"
+	targetServiceNamespace = "target_service_namespace"
 )
 
 // TODO: prom metrics for all the queues/caches
@@ -450,6 +459,30 @@ func (pp *portPublisher) updateEndpoints(endpoints *corev1.Endpoints) {
 	pp.metrics.setExists(true)
 }
 
+func metricLabels(endpoints *corev1.Endpoints) map[string]string {
+	labels := map[string]string{service: endpoints.Name, namespace: endpoints.Namespace}
+
+	gateway, hasRemoteGateway := endpoints.Labels[consts.RemoteGatewayNameLabel]
+	gatewayNs, hasRemoteGatwayNs := endpoints.Labels[consts.RemoteGatewayNsLabel]
+	remoteClusterName, hasRemoteClusterName := endpoints.Labels[consts.RemoteClusterNameLabel]
+	serviceFqn, hasServiceFqn := endpoints.Annotations[consts.RemoteServiceFqName]
+
+	if hasRemoteGateway && hasRemoteGatwayNs && hasRemoteClusterName && hasServiceFqn {
+		// this means we are looking at Endpoints created for the purpose of mirroring
+		// an out of cluster service.
+		labels[targetGatewayNamespace] = gatewayNs
+		labels[targetGateway] = gateway
+		labels[targetCluster] = remoteClusterName
+
+		fqParts := strings.Split(serviceFqn, ".")
+		if len(fqParts) >= 2 {
+			labels[targetService] = fqParts[0]
+			labels[targetServiceNamespace] = fqParts[1]
+		}
+	}
+	return labels
+}
+
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
 	addresses := make(map[ID]Address)
 	for _, subset := range endpoints.Subsets {
@@ -504,7 +537,7 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 	}
 	return AddressSet{
 		Addresses: addresses,
-		Labels:    map[string]string{"service": endpoints.Name, "namespace": endpoints.Namespace},
+		Labels:    metricLabels(endpoints),
 	}
 }
 

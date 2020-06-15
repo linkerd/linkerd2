@@ -33,8 +33,9 @@ const (
 )
 
 type upgradeOptions struct {
-	manifests string
-	force     bool
+	addOnOverwrite bool
+	manifests      string
+	force          bool
 	*installOptions
 
 	verifyTLS func(tls *charts.TLS, service string) error
@@ -67,7 +68,10 @@ func (options *upgradeOptions) upgradeOnlyFlagSet() *pflag.FlagSet {
 		&options.force, "force", options.force,
 		"Force upgrade operation even when issuer certificate does not work with the trust anchors of all proxies",
 	)
-
+	flags.BoolVar(
+		&options.addOnOverwrite, "addon-overwrite", options.addOnOverwrite,
+		"Overwrite (instead of merge) existing add-ons config with file in --addon-config (or reset to defaults if no new config is passed)",
+	)
 	return flags
 }
 
@@ -161,7 +165,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	}
 
 	// We need a Kubernetes client to fetch configs and issuer secrets.
-	var k kubernetes.Interface
+	var k *k8s.KubernetesAPI
 	var err error
 	if options.manifests != "" {
 		readers, err := read(options.manifests)
@@ -205,7 +209,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	return nil
 }
 
-func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Interface, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
+func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesAPI, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
@@ -346,25 +350,29 @@ func (options *upgradeOptions) validateAndBuild(stage string, k kubernetes.Inter
 
 	values.Stage = stage
 
-	// Update Add-Ons Configuration from the linkerd-value cm
-	cmRawValues, _ := k8s.GetAddOnsConfigMap(k, controlPlaneNamespace)
+	if !options.addOnOverwrite {
+		// Update Add-Ons Configuration from the linkerd-value cm
+		cmRawValues, _ := k8s.GetAddOnsConfigMap(k, controlPlaneNamespace)
+		if cmRawValues != nil {
+			//Cm is present now get the data
+			cmData, ok := cmRawValues["values"]
+			if !ok {
+				return nil, nil, fmt.Errorf("values subpath not found in %s configmap", k8s.AddOnsConfigMapName)
+			}
+			rawValues, err := yaml.Marshal(values)
+			if err != nil {
+				return nil, nil, err
+			}
 
-	if cmRawValues != nil {
-		//Cm is present now get the data
-		cmData := cmRawValues["values"]
-		rawValues, err := yaml.Marshal(values)
-		if err != nil {
-			return nil, nil, err
-		}
+			// over-write add-on values with cmValues
+			// Merge Add-On Values with Values
+			if rawValues, err = mergeRaw(rawValues, []byte(cmData)); err != nil {
+				return nil, nil, err
+			}
 
-		// over-write add-on values with cmValues
-		// Merge Add-On Values with Values
-		if rawValues, err = mergeRaw(rawValues, []byte(cmData)); err != nil {
-			return nil, nil, err
-		}
-
-		if err = yaml.Unmarshal(rawValues, &values); err != nil {
-			return nil, nil, err
+			if err = yaml.Unmarshal(rawValues, &values); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 
@@ -414,7 +422,66 @@ func repairConfigs(configs *pb.All) {
 	}
 }
 
-func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+func injectCABundle(k *k8s.KubernetesAPI, webhook string, value *charts.TLS) error {
+
+	var err error
+
+	switch webhook {
+	case k8s.ProxyInjectorWebhookServiceName:
+		err = injectCABundleFromMutatingWebhook(k, k8s.ProxyInjectorWebhookConfigName, value)
+	case k8s.SPValidatorWebhookServiceName:
+		err = injectCABundleFromValidatingWebhook(k, k8s.SPValidatorWebhookConfigName, value)
+	case k8s.TapServiceName:
+		err = injectCABundleFromAPIService(k, k8s.TapAPIRegistrationServiceName, value)
+	case k8s.SmiMetricsServiceName:
+		err = injectCABundleFromAPIService(k, k8s.SmiMetricsAPIRegistrationServiceName, value)
+	default:
+		err = fmt.Errorf("unknown webhook for retrieving CA bundle: %s", webhook)
+	}
+
+	// anything other than the resource not being found: propagate error back up the stack.
+	if !kerrors.IsNotFound(err) {
+		return err
+	}
+
+	// if the resource is missing, simply use the existing cert.
+	value.CaBundle = value.CrtPEM
+	return nil
+}
+
+func injectCABundleFromMutatingWebhook(k kubernetes.Interface, resource string, value *charts.TLS) error {
+	webhookConf, err := k.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(resource, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	// note: this assumes that there will ever only be one service defined per webhook configuration
+	value.CaBundle = string(webhookConf.Webhooks[0].ClientConfig.CABundle)
+
+	return nil
+}
+
+func injectCABundleFromValidatingWebhook(k kubernetes.Interface, resource string, value *charts.TLS) error {
+	webhookConf, err := k.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(resource, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	value.CaBundle = string(webhookConf.Webhooks[0].ClientConfig.CABundle)
+	return nil
+}
+
+func injectCABundleFromAPIService(k *k8s.KubernetesAPI, resource string, value *charts.TLS) error {
+	apiService, err := k.Apiregistration.ApiregistrationV1().APIServices().Get(resource, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	value.CaBundle = string(apiService.Spec.CABundle)
+	return nil
+}
+
+func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(webhookSecretName(webhook), metav1.GetOptions{})
@@ -427,6 +494,10 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 		CrtPEM: string(secret.Data["crt.pem"]),
 	}
 
+	if err := injectCABundle(k, webhook, value); err != nil {
+		return nil, err
+	}
+
 	if err := options.verifyTLS(value, webhook); err != nil {
 		return nil, err
 	}
@@ -434,7 +505,7 @@ func fetchTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOpti
 	return value, nil
 }
 
-func fetchK8sTLSSecret(k kubernetes.Interface, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+func fetchK8sTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(webhookSecretName(webhook), metav1.GetOptions{})
@@ -445,6 +516,10 @@ func fetchK8sTLSSecret(k kubernetes.Interface, webhook string, options *upgradeO
 	value := &charts.TLS{
 		KeyPEM: string(secret.Data["tls.key"]),
 		CrtPEM: string(secret.Data["tls.crt"]),
+	}
+
+	if err := injectCABundle(k, webhook, value); err != nil {
+		return nil, err
 	}
 
 	if err := options.verifyTLS(value, webhook); err != nil {
@@ -545,7 +620,7 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 				IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
 				CrtExpiry:           *issuerData.Expiry,
 				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-				TLS: &charts.TLS{
+				TLS: &charts.IssuerTLS{
 					KeyPEM: issuerData.IssuerKey,
 					CrtPEM: issuerData.IssuerCrt,
 				},

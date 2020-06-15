@@ -1,30 +1,61 @@
+{{if .Values.serviceMirror -}}
+---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-service-mirror
-  namespace: {{.Values.namespace}}
+  name: linkerd-service-mirror-access-local-resources
   labels:
     {{.Values.controllerComponentLabel}}: linkerd-service-mirror
 rules:
 - apiGroups: [""]
-  resources: ["endpoints", "services", "secrets", "namespaces"]
+  resources: ["endpoints", "services"]
   verbs: ["list", "get", "watch", "create", "delete", "update"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["create","list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-service-mirror
-  namespace: {{.Values.namespace}}
+  name: linkerd-service-mirror-access-local-resources
   labels:
     {{.Values.controllerComponentLabel}}: linkerd-service-mirror
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: linkerd-service-mirror
+  name: linkerd-service-mirror-access-local-resources
 subjects:
 - kind: ServiceAccount
   name: linkerd-service-mirror
   namespace: {{.Values.namespace}}
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-read-remote-creds
+  namespace: {{.Values.namespace}}
+  labels:
+      {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["list", "get", "watch"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-service-mirror-read-remote-creds
+  namespace: {{.Values.namespace}}
+  labels:
+      {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: linkerd-service-mirror-read-remote-creds
+subjects:
+  - kind: ServiceAccount
+    name: linkerd-service-mirror
+    namespace: {{.Values.namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
@@ -57,7 +88,8 @@ spec:
       - args:
         - service-mirror
         - -log-level={{.Values.logLevel}}
-        - -event-requeue-limit={{.Values.eventRequeueLimit}}
+        - -event-requeue-limit={{.Values.serviceMirrorRetryLimit}}
+        - -namespace={{.Values.namespace}}
         image: {{.Values.controllerImage}}:{{.Values.controllerImageVersion}}
         name: service-mirror
         securityContext:
@@ -66,3 +98,4 @@ spec:
         - containerPort: 9999
           name: admin-http
       serviceAccountName: linkerd-service-mirror
+{{end -}}

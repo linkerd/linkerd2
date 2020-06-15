@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"testing"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -38,7 +39,6 @@ type helm struct {
 	chart              string
 	stableChart        string
 	releaseName        string
-	tillerNs           string
 	upgradeFromVersion string
 }
 
@@ -61,6 +61,39 @@ var LinkerdDeployReplicas = map[string]deploySpec{
 	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 }
 
+// NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
+// This helper was created to be able to reuse this package without hard restrictions
+// as seen in `NewTestHelper()` which is primarily used with integration tests
+// See - https://github.com/linkerd/linkerd2/issues/4530
+func NewGenericTestHelper(
+	linkerd,
+	namespace,
+	upgradeFromVersion,
+	clusterDomain,
+	helmPath,
+	helmChart,
+	helmStableChart,
+	helmReleaseName string,
+	externalIssuer,
+	uninstall bool,
+) *TestHelper {
+	return &TestHelper{
+		linkerd:            linkerd,
+		namespace:          namespace,
+		upgradeFromVersion: upgradeFromVersion,
+		helm: helm{
+			path:               helmPath,
+			chart:              helmChart,
+			stableChart:        helmStableChart,
+			releaseName:        helmReleaseName,
+			upgradeFromVersion: upgradeFromVersion,
+		},
+		clusterDomain:  clusterDomain,
+		externalIssuer: externalIssuer,
+		uninstall:      uninstall,
+	}
+}
+
 // NewTestHelper creates a new instance of TestHelper for the current test run.
 // The new TestHelper can be configured via command line flags.
 func NewTestHelper() *TestHelper {
@@ -76,7 +109,6 @@ func NewTestHelper() *TestHelper {
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
 	helmStableChart := flag.String("helm-stable-chart", "linkerd/linkerd2", "path to linkerd2's stable Helm chart")
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
-	tillerNs := flag.String("tiller-ns", "kube-system", "namespace under which Tiller will be installed")
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
 	clusterDomain := flag.String("cluster-domain", "cluster.local", "when specified, the install test uses a custom cluster domain")
 	externalIssuer := flag.Bool("external-issuer", false, "when specified, the install test uses it to install linkerd with --identity-external-issuer=true")
@@ -118,7 +150,6 @@ func NewTestHelper() *TestHelper {
 			chart:              *helmChart,
 			stableChart:        *helmStableChart,
 			releaseName:        *helmReleaseName,
-			tillerNs:           *tillerNs,
 			upgradeFromVersion: *upgradeHelmFromVersion,
 		},
 		clusterDomain:  *clusterDomain,
@@ -266,7 +297,6 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 		"upgrade",
 		h.helm.releaseName,
 		"--kube-context", h.k8sContext,
-		"--tiller-namespace", h.helm.tillerNs,
 		"--set", "global.namespace=" + h.namespace,
 		chart,
 	}, arg...)
@@ -277,11 +307,10 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, error) {
 	withParams := append([]string{
 		"install",
-		"--kube-context", h.k8sContext,
-		"--tiller-namespace", h.helm.tillerNs,
-		"--name", h.helm.releaseName,
-		"--set", "global.namespace=" + h.namespace,
+		h.helm.releaseName,
 		chart,
+		"--kube-context", h.k8sContext,
+		"--set", "global.namespace=" + h.namespace,
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
 }
@@ -486,4 +515,24 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	}
 
 	return events, nil
+}
+
+// Run calls `m.Run()`, shows unexpected logs/events,
+// and returns the exit code for the tests
+func Run(m *testing.M, helper *TestHelper) int {
+	code := m.Run()
+	if code != 0 {
+		_, errs1 := FetchAndCheckLogs(helper)
+		for _, err := range errs1 {
+			fmt.Println(err)
+		}
+		errs2 := FetchAndCheckEvents(helper)
+		for _, err := range errs2 {
+			fmt.Println(err)
+		}
+		if len(errs1) == 0 && len(errs2) == 0 {
+			fmt.Println("No unexpected log entries or events found")
+		}
+	}
+	return code
 }

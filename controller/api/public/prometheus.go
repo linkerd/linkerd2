@@ -38,7 +38,7 @@ const (
 	dstNamespaceLabel      = model.LabelName("dst_namespace")
 	gatewayNameLabel       = model.LabelName("gateway_name")
 	gatewayNamespaceLabel  = model.LabelName("gateway_namespace")
-	remoteClusterNameLabel = model.LabelName("remote_cluster_name")
+	remoteClusterNameLabel = model.LabelName("target_cluster_name")
 )
 
 func extractSampleValue(sample *model.Sample) uint64 {

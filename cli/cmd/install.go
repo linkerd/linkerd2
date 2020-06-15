@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -553,7 +552,7 @@ func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
 
 	flags.StringVar(
 		&options.addOnConfig, "addon-config", options.addOnConfig,
-		"A path to a configuration file of add-ons",
+		"A path to a configuration file of add-ons. If add-on config already exists, this new config gets merged with the existing one (unless --addon-overwrite is used)",
 	)
 
 	return flags
@@ -646,7 +645,7 @@ func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
 	flags.VisitAll(func(f *pflag.Flag) {
 		if f.Changed {
 			switch f.Name {
-			case "ignore-cluster", "control-plane-version", "proxy-version", "identity-issuer-certificate-file", "identity-issuer-key-file", "identity-trust-anchors-file":
+			case "ignore-cluster", "control-plane-version", "proxy-version", "identity-issuer-certificate-file", "identity-issuer-key-file", "identity-trust-anchors-file", "addon-config":
 				// These flags don't make sense to record.
 			default:
 				options.recordedFlags = append(options.recordedFlags, &pb.Install_Flag{
@@ -752,7 +751,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Configs.Proxy = proxyJSON
 	installValues.Configs.Install = installJSON
 	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
-	installValues.ControllerImageVersion = configs.GetGlobal().GetVersion()
+	installValues.Global.ControllerImageVersion = configs.GetGlobal().GetVersion()
 	installValues.ControllerLogLevel = options.controllerLogLevel
 	installValues.ControllerReplicas = options.controllerReplicas
 	installValues.ControllerUID = options.controllerUID
@@ -761,7 +760,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.EnablePodAntiAffinity = options.highAvailability
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
-	installValues.Grafana["image"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+	installValues.Grafana["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	if options.prometheusImage != "" {
 		installValues.Prometheus["image"] = options.prometheusImage
 	}
@@ -847,7 +846,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 	for _, addOn := range addOns {
 		addOnCharts[addOn.Name()] = &charts.Chart{
 			Name:      addOn.Name(),
-			Dir:       filepath.Join(addOnChartsPath, addOn.Name()),
+			Dir:       addOnChartsPath + "/" + addOn.Name(),
 			Namespace: controlPlaneNamespace,
 			RawValues: append(addOn.Values(), rawValues...),
 			Files: []*chartutil.BufferedFile{&chartutil.BufferedFile{
@@ -1161,7 +1160,7 @@ func (idopts *installIdentityOptions) genValues() (*identityWithAnchorsAndTrustD
 				IssuanceLifetime:    idopts.issuanceLifetime.String(),
 				CrtExpiry:           root.Cred.Crt.Certificate.NotAfter,
 				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-				TLS: &l5dcharts.TLS{
+				TLS: &l5dcharts.IssuerTLS{
 					KeyPEM: root.Cred.EncodePrivateKeyPEM(),
 					CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
 				},
@@ -1225,7 +1224,7 @@ func (idopts *installIdentityOptions) readValues() (*identityWithAnchorsAndTrust
 				IssuanceLifetime:    idopts.issuanceLifetime.String(),
 				CrtExpiry:           creds.Crt.Certificate.NotAfter,
 				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-				TLS: &l5dcharts.TLS{
+				TLS: &l5dcharts.IssuerTLS{
 					KeyPEM: creds.EncodePrivateKeyPEM(),
 					CrtPEM: creds.EncodeCertificatePEM(),
 				},
