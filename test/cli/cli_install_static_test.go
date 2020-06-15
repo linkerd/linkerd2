@@ -22,11 +22,11 @@ func TestMain(m *testing.M) {
 	}
 
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
-	runTests := flag.Bool("integration-tests", false, "must be provided to run the integration tests")
+	runTests := flag.Bool("cli-tests", false, "must be provided to run the cli tests")
 	flag.Parse()
 
 	if !*runTests {
-		exit(0, "integration tests not enabled: enable with -integration-tests")
+		exit(0, "cli tests not enabled: enable with -cli-tests")
 	}
 
 	if *linkerd == "" {

@@ -101,7 +101,7 @@ jobs:
         cp image-archives\cli\windows\linkerd $HOME\linkerd.exe
     - name: Run CLI Integration tests
       run: |
-        go test --failfast --mod=readonly ".\test\cli" --linkerd=$HOME\linkerd.exe --integration-tests -v
+        go test --failfast --mod=readonly ".\test\cli" --linkerd=$HOME\linkerd.exe --cli-tests -v
   kind_integration_tests:
     strategy:
       matrix:
