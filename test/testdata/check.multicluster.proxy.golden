@@ -75,8 +75,8 @@ linkerd-grafana
 √ grafana add-on config map exists
 √ grafana pod is running
 
-linkerd-multicluster
---------------------
+linkerd-multicluster-source
+---------------------------
 √ service mirror controller is running
 √ service mirror controller ClusterRoles exist
 √ service mirror controller ClusterRoleBindings exist
@@ -85,5 +85,7 @@ linkerd-multicluster
 √ service mirror controller ServiceAccounts exist
 √ service mirror controller has required permissions
 √ multicluster daisy chaining is avoided
+√ all mirror services have endpoints
+√ all gateway mirrors have endpoints
 
 Status check results are √
