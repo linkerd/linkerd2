@@ -2434,6 +2434,8 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   values: |-
+    global:
+      grafanaUrl: ""
     grafana:
       enabled: false
     prometheus:
@@ -2864,29 +2866,3 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - name: tls
-        secret:
-          secretName: linkerd-tap-tls
-
----
-###
-### linkerd add-ons configuration
-###
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config-addons
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-data:
-  values: |-
-    global:
-      grafanaUrl: ""
-    grafana:
-      enabled: false
-    tracing:
-      enabled: false

@@ -1638,9 +1638,12 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   values: |-
+    global:
+      grafanaUrl: ""
     grafana:
       enabled: true
-      image: gcr.io/linkerd-io/grafana
+      image:
+        name: gcr.io/linkerd-io/grafana
       name: linkerd-grafana
     prometheus:
       args:
@@ -1930,40 +1933,18 @@ spec:
       - emptyDir: {}
         name: data
       - configMap:
-          name: linkerd-config
-        name: config
+          items:
+          - key: grafana.ini
+            path: grafana.ini
+          - key: datasources.yaml
+            path: provisioning/datasources/datasources.yaml
+          - key: dashboards.yaml
+            path: provisioning/dashboards/dashboards.yaml
+          name: linkerd-grafana-config
+        name: grafana-config
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
-      - name: tls
-        secret:
-          secretName: linkerd-tap-tls
-
----
-###
-### linkerd add-ons configuration
-###
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config-addons
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-data:
-  values: |-
-    global:
-      grafanaUrl: ""
-    grafana:
-      enabled: true
-      image:
-        name: gcr.io/linkerd-io/grafana
-      name: linkerd-grafana
-    tracing:
-      enabled: false
 ---
 ###
 ### Prometheus
