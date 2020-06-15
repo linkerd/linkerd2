@@ -29,6 +29,18 @@ type probeMetrics struct {
 	unregister func()
 }
 
+var endpointRepairCounter *prometheus.CounterVec
+
+func init() {
+	endpointRepairCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "service_mirror_endpoint_repairs",
+			Help: "Increments when the service mirror controller attempts to repair mirror endpoints",
+		},
+		[]string{gatewayNameLabel, gatewayNamespaceLabel, gatewayClusterName},
+	)
+}
+
 func newProbeMetricVecs() probeMetricVecs {
 	labelNames := []string{gatewayNameLabel, gatewayNamespaceLabel, gatewayClusterName}
 
