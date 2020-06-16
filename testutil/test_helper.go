@@ -71,7 +71,6 @@ func NewGenericTestHelper(
 	namespace,
 	upgradeFromVersion,
 	clusterDomain,
-	k8sContext,
 	helmPath,
 	helmChart,
 	helmStableChart,
@@ -79,8 +78,9 @@ func NewGenericTestHelper(
 	externalIssuer,
 	uninstall bool,
 	httpClient http.Client,
-) (*TestHelper, error) {
-	h := &TestHelper{
+	kubernetesHelper KubernetesHelper,
+) *TestHelper {
+	return &TestHelper{
 		linkerd:            linkerd,
 		version:            version,
 		namespace:          namespace,
@@ -92,19 +92,12 @@ func NewGenericTestHelper(
 			releaseName:        helmReleaseName,
 			upgradeFromVersion: upgradeFromVersion,
 		},
-		clusterDomain:  clusterDomain,
-		externalIssuer: externalIssuer,
-		uninstall:      uninstall,
-		httpClient:     httpClient,
+		clusterDomain:    clusterDomain,
+		externalIssuer:   externalIssuer,
+		uninstall:        uninstall,
+		httpClient:       httpClient,
+		KubernetesHelper: kubernetesHelper,
 	}
-
-	kubernetesHelper, err := NewKubernetesHelper(k8sContext, h.RetryFor)
-	if err != nil {
-		return nil, fmt.Errorf("error creating kubernetes helper: %s", err.Error())
-	}
-
-	h.KubernetesHelper = *kubernetesHelper
-	return h, nil
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
