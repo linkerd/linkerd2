@@ -21,13 +21,13 @@ require (
 	github.com/go-openapi/spec v0.19.3
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
-	github.com/golang/protobuf v1.3.2
+	github.com/golang/protobuf v1.4.2
 	github.com/gorilla/websocket v1.4.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/huandu/xstrings v1.2.0 // indirect
 	github.com/imdario/mergo v0.3.7
 	github.com/julienschmidt/httprouter v1.2.0
-	github.com/linkerd/linkerd2-proxy-api v0.1.12
+	github.com/linkerd/linkerd2-proxy-api v0.1.13-0.20200616212153-2ac143ef3cac
 	github.com/linkerd/linkerd2-proxy-init v1.3.3
 	github.com/mattn/go-isatty v0.0.9
 	github.com/mattn/go-runewidth v0.0.2
@@ -47,7 +47,7 @@ require (
 	go.opencensus.io v0.22.0
 	golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
 	golang.org/x/tools v0.0.0-20191009213438-b090f1f24028
-	google.golang.org/grpc v1.26.0
+	google.golang.org/grpc v1.29.1
 	k8s.io/api v0.17.4
 	k8s.io/apiextensions-apiserver v0.17.4
 	k8s.io/apimachinery v0.17.4
