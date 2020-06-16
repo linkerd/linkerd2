@@ -182,8 +182,8 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return b, reports, err
 	}
 	if b, _ := report.Injectable(); !b {
-		if err := throwInjectError(report); err.Error() != "" {
-			return bytes, reports, fmt.Errorf("failed to inject %s%s%s - %s", report.Kind, slash, report.Name, err)
+		if errs := throwInjectError(report); len(errs) > 0 {
+			return bytes, reports, fmt.Errorf("failed to inject %s%s%s - %v", report.Kind, slash, report.Name, errs)
 		}
 		return bytes, reports, nil
 	}
@@ -535,8 +535,9 @@ func overwriteRegistry(image, newRegistry string) string {
 	return registry + imageName
 }
 
-func throwInjectError(report *inject.Report) error {
-	err := errors.New("")
+func throwInjectError(report *inject.Report) []error {
+
+	errs := []error{}
 
 	const (
 		disabledAutomountServiceAccountToken = "disabled_automount_service_account_token_account"
@@ -545,20 +546,20 @@ func throwInjectError(report *inject.Report) error {
 		udpPortsEnabled                      = "udp_ports_enabled"
 	)
 	if !report.AutomountServiceAccountToken {
-		err = fmt.Errorf("%s%s, ", err, inject.Reasons[disabledAutomountServiceAccountToken])
+		errs = append(errs, errors.New(inject.Reasons[disabledAutomountServiceAccountToken]))
 	}
 
 	if report.HostNetwork {
-		err = fmt.Errorf("%s%s, ", err, inject.Reasons[hostNetworkEnabled])
+		errs = append(errs, errors.New(inject.Reasons[hostNetworkEnabled]))
 	}
 
 	if report.Sidecar {
-		err = fmt.Errorf("%s%s, ", err, inject.Reasons[sidecarExists])
+		errs = append(errs, errors.New(inject.Reasons[sidecarExists]))
 	}
 
 	if report.UDP {
-		err = fmt.Errorf("%s%s, ", err, inject.Reasons[udpPortsEnabled])
+		errs = append(errs, errors.New(inject.Reasons[udpPortsEnabled]))
 	}
 
-	return err
+	return errs
 }

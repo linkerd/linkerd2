@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,15 +29,13 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 	reportBuf := &bytes.Buffer{}
 
 	for _, input := range inputs {
-		err := processYAML(input, postInjectBuf, reportBuf, rt)
-		if err != nil {
-			if err.Error() != "" { // This check is required because `processYAML` initilizes an error with an empty string for the sake of accumulating error messages
-				fmt.Fprintf(errWriter, "Error transforming resources: %v\n", err)
-				return 1
-			}
+		errs := processYAML(input, postInjectBuf, reportBuf, rt)
+		if len(errs) > 0 {
+			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", errs)
+			return 1
 		}
 
-		_, err = io.Copy(outWriter, postInjectBuf)
+		_, err := io.Copy(outWriter, postInjectBuf)
 
 		// print error report after yaml output, for better visibility
 		io.Copy(errWriter, reportBuf)
@@ -52,12 +49,12 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 }
 
 // processYAML takes an input stream of YAML, outputting injected/uninjected YAML to out.
-func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) error {
+func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) []error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 
 	reports := []inject.Report{}
 
-	errs := errors.New("")
+	errs := []error{}
 
 	// Iterate over all YAML objects in the input
 	for {
@@ -67,7 +64,7 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 			break
 		}
 		if err != nil {
-			return err
+			return []error{err}
 		}
 
 		var result []byte
@@ -75,7 +72,7 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 
 		isList, err := kindIsList(bytes)
 		if err != nil {
-			return err
+			return []error{err}
 		}
 		if isList {
 			result, irs, err = processList(bytes, rt)
@@ -83,11 +80,11 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 			result, irs, err = rt.transform(bytes)
 		}
 		if err != nil {
-			errs = fmt.Errorf("%w\n%s", errs, err)
+			errs = append(errs, err)
 		}
 		reports = append(reports, irs...)
 
-		if errs.Error() == "" {
+		if len(errs) == 0 {
 			out.Write(result)
 			out.Write([]byte("---\n"))
 		}
