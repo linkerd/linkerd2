@@ -208,9 +208,12 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	if conf.requireIdentityOnInboundPorts() != "" && conf.identityContext() == nil {
 		return nil, fmt.Errorf("%s cannot be set when identity is disabled", k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
 	}
-	for _, network := range strings.Split(conf.destinationGetNetworks(), ",") {
-		if _, _, err := net.ParseCIDR(network); err != nil {
-			return nil, fmt.Errorf("cannot parse destination get networks: %s", err)
+
+	if conf.destinationGetNetworks() != "" {
+		for _, network := range strings.Split(conf.destinationGetNetworks(), ",") {
+			if _, _, err := net.ParseCIDR(network); err != nil {
+				return nil, fmt.Errorf("cannot parse destination get networks: %s", err)
+			}
 		}
 	}
 
