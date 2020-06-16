@@ -3,10 +3,9 @@ package servicemirror
 import (
 	"fmt"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
