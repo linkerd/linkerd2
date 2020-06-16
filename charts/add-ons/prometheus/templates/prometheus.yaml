@@ -15,10 +15,13 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   prometheus.yml: |-
-    {{ if .Values.globalConfig -}}
     global:
+      scrape_interval: 10s
+      scrape_timeout: 10s
+      evaluation_interval: 10s
+      {{ if .Values.globalConfig -}}
       {{- toYaml .Values.globalConfig | trim | nindent 6 }}
-    {{- end}}
+      {{- end}}
 
     rule_files:
     - /etc/prometheus/*_rules.yml
@@ -224,10 +227,14 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
       - args:
+        - --storage.tsdb.path=/data
+        - --storage.tsdb.retention.time=6h
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --log.level={{lower .Values.logLevel}}
         {{- range $key, $value := .Values.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}
-        image: {{.Values.image}}
+        image: {{ default "prom/prometheus:v2.15.2" .Values.image }}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:

@@ -29,19 +29,8 @@ func TestNewValues(t *testing.T) {
 		HeartbeatSchedule:           "0 0 * * *",
 		InstallNamespace:            true,
 		Prometheus: Prometheus{
-			"enabled": true,
-			"image":   "prom/prometheus:v2.15.2",
-			"args": map[string]interface{}{
-				"log.level":                   "info",
-				"config.file":                 "/etc/prometheus/prometheus.yml",
-				"storage.tsdb.path":           "/data",
-				"storage.tsdb.retention.time": "6h",
-			},
-			"globalConfig": map[string]interface{}{
-				"evaluation_interval": "10s",
-				"scrape_interval":     "10s",
-				"scrape_timeout":      "10s",
-			},
+			"enabled":  true,
+			"logLevel": "info",
 		},
 		Global: &Global{
 			Namespace:                "linkerd",
@@ -224,19 +213,8 @@ func TestNewValues(t *testing.T) {
 		}
 
 		expected.Prometheus = Prometheus{
-			"enabled": true,
-			"image":   "prom/prometheus:v2.15.2",
-			"args": map[string]interface{}{
-				"log.level":                   "info",
-				"config.file":                 "/etc/prometheus/prometheus.yml",
-				"storage.tsdb.path":           "/data",
-				"storage.tsdb.retention.time": "6h",
-			},
-			"globalConfig": map[string]interface{}{
-				"evaluation_interval": "10s",
-				"scrape_interval":     "10s",
-				"scrape_timeout":      "10s",
-			},
+			"enabled":  true,
+			"logLevel": "info",
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
 					"limit":   "4",

@@ -204,17 +204,14 @@ grafana:
 
 prometheus:
   enabled: true
-  image: prom/prometheus:v2.15.2
-  args:
-    storage.tsdb.path: /data
-    storage.tsdb.retention.time: 6h
-    config.file: /etc/prometheus/prometheus.yml
-    log.level: *controller_log_level
-  globalConfig:
-    scrape_interval: 10s
-    scrape_timeout: 10s
-    evaluation_interval: 10s
-  # resources: 
+  logLevel: *controller_log_level
+  # image: prom/prometheus:v2.15.3
+  # args:
+  #  storage.tsdb.retention.time: 6h
+  #  log.level: debug
+  # globalConfig:
+  #   scrape_interval: 10s
+  #   scrape_timeout: 10s
   # scrapeConfigs:
   # - job_name: 'kubernetes-nodes'
   #   scheme: https
@@ -241,6 +238,7 @@ prometheus:
   # - name: recording-rules
   #   subPath: recording_rules.yml
   #   configMap: linkerd-prometheus-rules
+  # resources:
 
 tracing:
   enabled: false
