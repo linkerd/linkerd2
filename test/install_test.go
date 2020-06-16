@@ -247,20 +247,29 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	// test `linkerd upgrade --from-manifests`
 	if TestHelper.UpgradeFromVersion() != "" {
-		manifests, err := TestHelper.Kubectl("",
-			"--namespace", TestHelper.GetLinkerdNamespace(),
-			"get", "configmaps/"+k8s.ConfigConfigMapName, "secrets/"+k8s.IdentityIssuerSecretName,
-			"-oyaml",
-		)
+		resources := []string{}
+		resources = append(resources, "configmaps/"+k8s.ConfigConfigMapName, "secrets/"+k8s.IdentityIssuerSecretName)
+
+		// If `linkerd-config-addons` exists, add it to the resources to get
+		_, err := TestHelper.Kubectl("", "--namespace", TestHelper.GetLinkerdNamespace(), "get", "configmaps/"+k8s.AddOnsConfigMapName)
+		if err == nil {
+			resources = append(resources, "configmaps/"+k8s.AddOnsConfigMapName)
+		}
+
+		args := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
+		args = append(args, "-oyaml")
+
+		manifests, err := TestHelper.Kubectl("", args...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-				"'kubectl get' command failed with %s\n%s", err, out)
+				"'kubectl get' command failed with %s\n%s\n%s", err, manifests, args)
 		}
+
 		exec = append(exec, "--from-manifests", "-")
 		upgradeFromManifests, stderr, err := TestHelper.PipeToLinkerdRun(manifests, exec...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'linkerd upgrade --from-manifests' command failed",
-				"'linkerd upgrade --from-manifests' command failed with %s\n%s\n%s", err, stderr, upgradeFromManifests)
+				"'linkerd upgrade --from-manifests' command failed with %s\n%s\n%s\n%s", err, stderr, upgradeFromManifests, manifests)
 		}
 
 		if out != upgradeFromManifests {

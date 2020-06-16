@@ -7,9 +7,13 @@
 # proper messages
 set +e
 
-# Returns the latest stable verson
-latest_stable() {
-  curl -s https://versioncheck.linkerd.io/version.json | grep -o "stable-[0-9]*.[0-9]*.[0-9]*"
+edge_install_url="https://run.linkerd.io/install-edge"
+stable_install_url="https://run.linkerd.io/install"
+
+# Returns the latest version for the release channel
+# $1: release channel to check
+latest_release_channel() {
+    curl -s https://versioncheck.linkerd.io/version.json | grep -o "$1-[0-9]*.[0-9]*.[0-9]*"
 }
 
 # init_test_run parses input params, initializes global vars, and checks for
@@ -38,21 +42,33 @@ init_test_run() {
 
 # These 3 functions are the primary entrypoints into running integration tests.
 # They each expect a fresh Kubernetes cluster:
-# 1. upgrade_integration_tests
-# 2. helm_upgrade_integration_tests
-# 3. helm_integration_tests
-# 4. uninstall_integration_tests
-# 5. custom_domain_integration_tests
-# 6. external_issuer_integration_tests
+# 1. upgrade_stable_integration_tests
+# 2. upgrade_edge_integration_tests
+# 3. helm_upgrade_integration_tests
+# 4. helm_integration_tests
+# 5. uninstall_integration_tests
+# 6. custom_domain_integration_tests
+# 7. external_issuer_integration_tests
 
-upgrade_integration_tests() {
+upgrade_stable_integration_tests() {
     # run upgrade test:
     # 1. install latest stable
     # 2. upgrade to HEAD
     # 3. if failed, exit script to avoid leaving behind stale resources which will
     # fail subsequent tests. `cleanup` is not called if this test failed so that
     # there is a chance to debug the problem
-    run_upgrade_test "$linkerd_namespace"-upgrade
+    run_upgrade_test "stable" "$stable_install_url"
+    cleanup
+}
+
+upgrade_edge_integration_tests() {
+    # run upgrade test:
+    # 1. install latest edge
+    # 2. upgrade to HEAD
+    # 3. if failed, exit script to avoid leaving behind stale resources which will
+    # fail subsequent tests. `cleanup` is not called if this test failed so that
+    # there is a chance to debug the problem
+    run_upgrade_test "edge" "$edge_install_url"
     cleanup
 }
 
@@ -158,50 +174,56 @@ run_test(){
     GO111MODULE=on go test --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --k8s-context="$k8s_context" --integration-tests "$@" || exit 1
 }
 
-# Install the latest stable release.
-# $1 - namespace to use for the stable release
-install_stable() {
+# Install a specific Linkerd version.
+# $1 - URL to use to download specific Linkerd version
+# $2 - namespace to use for the version
+# $3 - Linkerd version
+install_version() {
     tmp=$(mktemp -d -t l5dbin.XXX)
 
-    curl -s https://run.linkerd.io/install | HOME=$tmp sh > /dev/null 2>&1
+    local install_url=$1
+    curl -s "$install_url" | HOME=$tmp sh > /dev/null 2>&1
 
     local linkerd_path=$tmp/.linkerd2/bin/linkerd
-    local stable_namespace=$1
-    local test_app_namespace=$stable_namespace-upgrade-test
+    local upgrade_namespace=$2
+    local test_app_namespace=$upgrade_namespace-upgrade-test
 
     (
         set -x
-        "$linkerd_path" install --linkerd-namespace="$stable_namespace" | kubectl --context="$k8s_context" apply -f - 2>&1
+        "$linkerd_path" install --linkerd-namespace="$upgrade_namespace" | kubectl --context="$k8s_context" apply -f - 2>&1
     )
-    exit_on_err 'install_stable() - installing stable failed'
+    exit_on_err "install_version() - installing $3 failed"
 
     (
         set -x
-        "$linkerd_path" check --linkerd-namespace="$stable_namespace" 2>&1
+        "$linkerd_path" check --linkerd-namespace="$upgrade_namespace" 2>&1
     )
-    exit_on_err 'install_stable() - linkerd check failed'
+    exit_on_err 'install_version() - linkerd check failed'
 
     #Now we need to install the app that will be used to verify that upgrade does not break anything
     kubectl --context="$k8s_context" create namespace "$test_app_namespace" > /dev/null 2>&1
     kubectl --context="$k8s_context" label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
     (
         set -x
-        "$linkerd_path" inject --linkerd-namespace="$stable_namespace" "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$k8s_context" apply --namespace="$test_app_namespace" -f - 2>&1
+        "$linkerd_path" inject --linkerd-namespace="$upgrade_namespace" "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$k8s_context" apply --namespace="$test_app_namespace" -f - 2>&1
     )
-    exit_on_err 'install_stable() - linkerd inject failed'
+    exit_on_err 'install_version() - linkerd inject failed'
 }
 
 # Run the upgrade test by upgrading the most-recent stable release to the HEAD of
 # this branch.
 # $1 - namespace to use for the stable release
 run_upgrade_test() {
-    local stable_namespace
-    local stable_version
-    stable_namespace=$1
-    stable_version=$(latest_stable)
+    local release_channel
+    local upgrade_version
+    local upgrade_namespace
 
-    install_stable "$stable_namespace"
-    run_test "$test_directory/install_test.go" --upgrade-from-version="$stable_version" --linkerd-namespace="$stable_namespace"
+    release_channel=$1
+    upgrade_version=$(latest_release_channel "$release_channel")
+    upgrade_namespace="$linkerd_namespace"-upgrade-"$release_channel"
+
+    install_version "$2" "$upgrade_namespace" "$upgrade_version"
+    run_test "$test_directory/install_test.go" --upgrade-from-version="$upgrade_version" --linkerd-namespace="$upgrade_namespace"
 }
 
 setup_helm() {
