@@ -382,8 +382,12 @@ status:
 			k8sAPI.Sync(nil)
 
 			err = fakeGrpcServer.TapByResource(&exp.req, &stream)
-			if !reflect.DeepEqual(err, exp.err) {
-				t.Fatalf("TapByResource returned unexpected: [%s], expected: [%s]", err, exp.err)
+			if err != nil || exp.err != nil {
+				code := status.Code(err)
+				expCode := status.Code(exp.err)
+				if code != expCode {
+					t.Fatalf("TapByResource returned unexpected: [%s], expected: [%s]", code, expCode)
+				}
 			}
 
 			if exp.requireID != "" {
