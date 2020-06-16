@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"reflect"
 	"regexp"
 	"sort"
@@ -46,6 +47,7 @@ var (
 		k8s.ProxyAdminPortAnnotation,
 		k8s.ProxyControlPortAnnotation,
 		k8s.ProxyDisableIdentityAnnotation,
+		k8s.ProxyDestinationGetNetworks,
 		k8s.ProxyDisableTapAnnotation,
 		k8s.ProxyEnableDebugAnnotation,
 		k8s.ProxyEnableExternalProfilesAnnotation,
@@ -205,6 +207,11 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 
 	if conf.requireIdentityOnInboundPorts() != "" && conf.identityContext() == nil {
 		return nil, fmt.Errorf("%s cannot be set when identity is disabled", k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
+	}
+	for _, network := range strings.Split(conf.destinationGetNetworks(), ",") {
+		if _, _, err := net.ParseCIDR(network); err != nil {
+			return nil, fmt.Errorf("cannot parse destination get networks: %s", err)
+		}
 	}
 
 	clusterDomain := conf.configs.GetGlobal().GetClusterDomain()
@@ -500,6 +507,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		WaitBeforeExitSeconds:         conf.proxyWaitBeforeExitSeconds(),
 		IsGateway:                     conf.isGateway(),
 		RequireIdentityOnInboundPorts: conf.requireIdentityOnInboundPorts(),
+		DestinationGetNetworks:        conf.destinationGetNetworks(),
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -805,6 +813,14 @@ func (conf *ResourceConfig) tapDisabled() bool {
 
 func (conf *ResourceConfig) requireIdentityOnInboundPorts() string {
 	return conf.getOverride(k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
+}
+
+func (conf *ResourceConfig) destinationGetNetworks() string {
+	if nets := conf.getOverride(k8s.ProxyDestinationGetNetworks); nets != "" {
+		return nets
+	}
+
+	return conf.configs.GetProxy().DestinationGetNetworks
 }
 
 func (conf *ResourceConfig) isGateway() bool {

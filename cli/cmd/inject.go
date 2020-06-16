@@ -437,6 +437,12 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 		overrideAnnotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation] = strings.Join(options.requireIdentityOnInboundPorts, ",")
 	}
 
+	if len(options.destinationGetNetworks) > 0 {
+		nets := strings.Join(options.destinationGetNetworks, ",")
+		configs.Proxy.DestinationGetNetworks = nets
+		overrideAnnotations[k8s.ProxyDestinationGetNetworks] = nets
+	}
+
 	if options.disableTap {
 		overrideAnnotations[k8s.ProxyDisableTapAnnotation] = strconv.FormatBool(true)
 	}
