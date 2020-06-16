@@ -2454,7 +2454,6 @@ data:
         scrape_interval: 10s
         scrape_timeout: 10s
       image: prom/prometheus:v2.15.2
-      name: linkerd-prometheus
       remoteWrite:
       - url: http://cortex-service.default:9009/api/prom/push
       ruleConfigMapMounts:

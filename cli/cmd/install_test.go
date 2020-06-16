@@ -131,7 +131,6 @@ func TestRender(t *testing.T) {
 		Prometheus: charts.Prometheus{
 			"enabled": true,
 			"image":   "PrometheusImage",
-			"name":    "linkerd-prometheus",
 		},
 		Tracing: map[string]interface{}{
 			"enabled": false,

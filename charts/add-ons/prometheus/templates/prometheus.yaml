@@ -6,7 +6,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: {{.Values.name}}-config
+  name: linkerd-prometheus-config
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: prometheus
@@ -171,7 +171,7 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: {{.Values.name}}
+  name: linkerd-prometheus
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: prometheus
@@ -188,7 +188,7 @@ spec:
     targetPort: 9090
 ---
 {{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set .Values.global.proxy "component" .Values.name -}}
+{{ $_ := set .Values.global.proxy "component" "linkerd-prometheus" -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -201,7 +201,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: prometheus
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-  name: {{.Values.name}}
+  name: linkerd-prometheus
   namespace: {{.Values.global.namespace}}
 spec:
   replicas: 1
@@ -268,7 +268,7 @@ spec:
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
-      serviceAccountName: {{.Values.name}}
+      serviceAccountName: linkerd-prometheus
       volumes:
     {{- range .Values.ruleConfigMapMounts }}
       - name: {{ .name }}
@@ -278,7 +278,7 @@ spec:
       - emptyDir: {}
         name: data
       - configMap:
-          name: {{.Values.name}}-config
+          name: linkerd-prometheus-config
         name: prometheus-config
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}

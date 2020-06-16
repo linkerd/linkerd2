@@ -6,7 +6,7 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{.Values.global.namespace}}-{{.Values.name}}
+  name: linkerd-{{.Values.global.namespace}}-prometheus
   labels:
     {{.Values.global.controllerComponentLabel}}: prometheus
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
@@ -18,23 +18,23 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{.Values.global.namespace}}-{{.Values.name}}
+  name: linkerd-{{.Values.global.namespace}}-prometheus
   labels:
     {{.Values.global.controllerComponentLabel}}: prometheus
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{.Values.global.namespace}}-{{.Values.name}}
+  name: linkerd-{{.Values.global.namespace}}-prometheus
 subjects:
 - kind: ServiceAccount
-  name: {{.Values.name}}
+  name: linkerd-prometheus
   namespace: {{.Values.global.namespace}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: {{.Values.name}}
+  name: linkerd-prometheus
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: prometheus

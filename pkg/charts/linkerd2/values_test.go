@@ -30,7 +30,6 @@ func TestNewValues(t *testing.T) {
 		InstallNamespace:            true,
 		Prometheus: Prometheus{
 			"enabled": true,
-			"name":    "linkerd-prometheus",
 			"image":   "prom/prometheus:v2.15.2",
 			"args": map[string]interface{}{
 				"log.level":                   "info",
@@ -226,7 +225,6 @@ func TestNewValues(t *testing.T) {
 
 		expected.Prometheus = Prometheus{
 			"enabled": true,
-			"name":    "linkerd-prometheus",
 			"image":   "prom/prometheus:v2.15.2",
 			"args": map[string]interface{}{
 				"log.level":                   "info",

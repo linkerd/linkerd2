@@ -2457,7 +2457,6 @@ data:
         scrape_interval: 10s
         scrape_timeout: 10s
       image: prom/prometheus:v2.15.2
-      name: linkerd-prometheus
     tracing:
       enabled: false
 ---

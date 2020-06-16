@@ -204,7 +204,6 @@ grafana:
 
 prometheus:
   enabled: true
-  name: linkerd-prometheus
   image: prom/prometheus:v2.15.2
   args:
     storage.tsdb.path: /data
