@@ -2430,7 +2430,6 @@ data:
     prometheus:
       enabled: true
       image: PrometheusImage
-      name: linkerd-prometheus
     tracing:
       enabled: false
 ---
