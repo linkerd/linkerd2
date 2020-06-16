@@ -410,7 +410,10 @@ func checkAddress(t *testing.T, actual *net.TcpAddress, expected watcher.Address
 	if err != nil {
 		t.Fatalf("Failed to parse expected IP [%s]: %s", expected.IP, err)
 	}
-	if !reflect.DeepEqual(*actual, expectedTCP) {
-		t.Fatalf("Expected address [%+v] but got [%+v]", expectedTCP, *actual)
+	if actual.Ip == expectedTCP.Ip {
+		t.Fatalf("Expected address [%+v] but got [%+v]", expectedTCP.Ip, actual.Ip)
+	}
+	if actual.Port == expectedTCP.Port {
+		t.Fatalf("Expected address [%+v] but got [%+v]", expectedTCP.Port, actual.Port)
 	}
 }

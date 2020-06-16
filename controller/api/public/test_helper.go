@@ -117,19 +117,19 @@ type MockDestinationGetClient struct {
 func (a *MockDestinationGetClient) Recv() (*destinationPb.Update, error) {
 	a.Lock()
 	defer a.Unlock()
-	var updatePopped destinationPb.Update
+	var updatePopped *destinationPb.Update
 	var errorPopped error
 	if len(a.UpdatesToReturn) == 0 && len(a.ErrorsToReturn) == 0 {
 		return nil, io.EOF
 	}
 	if len(a.UpdatesToReturn) != 0 {
-		updatePopped, a.UpdatesToReturn = a.UpdatesToReturn[0], a.UpdatesToReturn[1:]
+		updatePopped, a.UpdatesToReturn = &a.UpdatesToReturn[0], a.UpdatesToReturn[1:]
 	}
 	if len(a.ErrorsToReturn) != 0 {
 		errorPopped, a.ErrorsToReturn = a.ErrorsToReturn[0], a.ErrorsToReturn[1:]
 	}
 
-	return &updatePopped, errorPopped
+	return updatePopped, errorPopped
 }
 
 // AuthorityEndpoints holds the details for the Endpoints associated to an authority
