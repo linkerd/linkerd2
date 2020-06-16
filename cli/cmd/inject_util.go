@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,7 +32,7 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 	for _, input := range inputs {
 		errs := processYAML(input, postInjectBuf, reportBuf, rt)
 		if len(errs) > 0 {
-			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", errs)
+			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", concatErrors(errs))
 			return 1
 		}
 
@@ -226,4 +227,15 @@ func walk(path string) ([]io.Reader, error) {
 	}
 
 	return in, nil
+}
+
+// a helper function to concatenate the items in a []error
+// into a single error
+func concatErrors(errs []error) error {
+	message := ""
+
+	for _, err := range errs {
+		message = fmt.Sprintf("%s\n%s", message, err.Error())
+	}
+	return errors.New(message)
 }
