@@ -1,1 +1,3 @@
-Error transforming resources: [failed to inject deployment/web - [hostNetwork is enabled]]
+Error transforming resources: 
+failed to inject deployment/web : 
+hostNetwork is enabled

@@ -1,1 +1,3 @@
-Error transforming resources: [failed to inject deployment/web - [pod has a sidecar injected already]]
+Error transforming resources: 
+failed to inject deployment/web : 
+pod has a sidecar injected already
