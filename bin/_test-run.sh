@@ -222,6 +222,11 @@ run_upgrade_test() {
     upgrade_version=$(latest_release_channel "$release_channel")
     upgrade_namespace="$linkerd_namespace"-upgrade-"$release_channel"
 
+    if [ -z "$upgrade_version" ]; then
+      echo 'error getting upgrade_version'
+      exit 1
+    fi
+
     install_version "$2" "$upgrade_namespace" "$upgrade_version"
     run_test "$test_directory/install_test.go" --upgrade-from-version="$upgrade_version" --linkerd-namespace="$upgrade_namespace"
 }
@@ -240,7 +245,14 @@ run_helm_upgrade_test() {
 
     local release_channel=$1
     local stable_version
-    stable_version=$(latest_release_channel "$release_channel")
+    stable_version=$(latest_release_channel "foo")
+
+    echo "stable_version: $stable_version"
+
+    if [ -z "$stable_version" ]; then
+      echo 'error getting stable_version'
+      exit 1
+    fi
 
     run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace-helm" \
         --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-stable-chart='linkerd/linkerd2' --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
