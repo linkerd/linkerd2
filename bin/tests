@@ -10,17 +10,18 @@ if [ -n "$test_name" ]; then
   config=$(get_test_config "$test_name")
   start_test "$test_name" "$config"
 else
-  echo '==================RUNNING ALL TESTS=================='
+  printf '==================RUNNING ALL TESTS==================
+Note: cluster-domain requires a specific cluster configuration and is skipped by default\n\n'
 
-  for test_name in "${test_names[@]}"; do
+  for test_name in "${default_test_names[@]}"; do
     config=$(get_test_config "$test_name")
     start_test "$test_name" "$config"
   done
 
   if [ $exit_code -eq 0 ]; then
-  echo '=== PASS: all tests passed'
+  printf '\n=== PASS: all tests passed\n'
   else
-    echo '=== FAIL: at least one test failed'
+    printf '\n=== FAIL: at least one test failed\n'
   fi
 
   exit $exit_code

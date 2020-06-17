@@ -6,7 +6,8 @@ set +e
 
 ##### Test setup helpers #####
 
-export test_names=(custom-domain deep external-issuer helm helm-upgrade uninstall upgrade-edge upgrade-stable)
+export default_test_names=(deep external-issuer helm helm-upgrade uninstall upgrade-edge upgrade-stable)
+export all_test_names=(custom-domain "${default_test_names[*]}")
 
 handle_input() {
   export images=''
@@ -20,7 +21,9 @@ handle_input() {
       -h|--help)
         echo "Run Linkerd integration tests.
 
-Optionally specify one of the following tests: [${test_names[*]}]
+Optionally specify a test with the --name flag: [${all_test_names[*]}]
+
+Note: The custom-domain test requires a cluster configuration with a custom cluster domain (see test/configs/cluster-domain.yaml)
 
 Usage:
     ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--name test-name] [--skip-kind-create] /path/to/linkerd
@@ -287,10 +290,25 @@ setup_helm() {
   exit_on_err 'error setting up Helm'
 }
 
+helm_cleanup() {
+  (
+    set -e
+    # `helm delete` deletes $linkerd_namespace-helm
+    "$helm_path" --kube-context="$context" delete "$helm_release_name"
+    # `helm delete` doesn't wait for resources to be deleted, so we wait explicitly.
+    # We wait for the namespace to be gone so the following call to `cleanup` doesn't fail when it attempts to delete
+    # the same namespace that is already being deleted here (error thrown by the NamespaceLifecycle controller).
+    # We don't have that problem with global resources, so no need to wait for them to be gone.
+    kubectl wait --for=delete ns/linkerd --timeout=120s
+  )
+  exit_on_err 'error cleaning up Helm'
+}
+
 run_helm_test() {
   setup_helm
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
   --helm-release="$helm_release_name"
+  helm_cleanup
 }
 
 run_helm-upgrade_test() {
@@ -300,6 +318,7 @@ run_helm-upgrade_test() {
   setup_helm
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
   --helm-stable-chart='linkerd/linkerd2' --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
+  helm_cleanup
 }
 
 run_uninstall_test() {
