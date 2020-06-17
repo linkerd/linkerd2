@@ -359,7 +359,6 @@ func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet
 	flags.StringVar(&options.proxyCPULimit, "proxy-cpu-limit", options.proxyCPULimit, "Maximum amount of CPU units that the proxy sidecar can use")
 	flags.StringVar(&options.proxyMemoryLimit, "proxy-memory-limit", options.proxyMemoryLimit, "Maximum amount of Memory that the proxy sidecar can use")
 	flags.BoolVar(&options.enableExternalProfiles, "enable-external-profiles", options.enableExternalProfiles, "Enable service profiles for non-Kubernetes services")
-	flags.StringSliceVar(&options.destinationGetNetworks, "destination-get-networks", options.destinationGetNetworks, "Network ranges for which the Linkerd proxy does destination lookups by IP address")
 
 	// Deprecated flags
 	flags.StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
