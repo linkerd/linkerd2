@@ -125,7 +125,11 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 		testAppNamespace := TestHelper.GetTestNamespace("upgrade-test")
 		for _, deploy := range []string{"emoji", "voting", "web"} {
 			if err := TestHelper.CheckPods(testAppNamespace, deploy, 1); err != nil {
-				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				if rce, ok := err.(*testutil.RestartCountError); ok {
+					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+				} else {
+					testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				}
 			}
 
 			if err := TestHelper.CheckDeployment(testAppNamespace, deploy, 1); err != nil {
