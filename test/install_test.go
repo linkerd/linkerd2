@@ -655,7 +655,7 @@ func TestInject(t *testing.T) {
 }
 
 func TestServiceProfileDeploy(t *testing.T) {
-	bbProto, err := TestHelper.HTTPGetURL("https://raw.githubusercontent.com/BuoyantIO/bb/master/api.proto")
+	bbProto, err := TestHelper.HTTPGetURL("https://raw.githubusercontent.com/BuoyantIO/bb/55b78f210c98a7eb431c3f555cf0a406f0b12edf/api.proto")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "unexpected error",
 			"unexpected error: %v %s", err, bbProto)
