@@ -245,9 +245,7 @@ run_helm_upgrade_test() {
 
     local release_channel=$1
     local stable_version
-    stable_version=$(latest_release_channel "foo")
-
-    echo "stable_version: $stable_version"
+    stable_version=$(latest_release_channel "stable")
 
     if [ -z "$stable_version" ]; then
       echo 'error getting stable_version'
