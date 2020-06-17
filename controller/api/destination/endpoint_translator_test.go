@@ -413,6 +413,9 @@ func checkAddress(t *testing.T, actual *net.TcpAddress, expected watcher.Address
 	if actual.Ip.GetIpv4() != expectedTCP.Ip.GetIpv4() {
 		t.Fatalf("Expected IP [%+v] but got [%+v]", expectedTCP.Ip, actual.Ip)
 	}
+	if actual.Ip.GetIpv6() != expectedTCP.Ip.GetIpv6() {
+		t.Fatalf("Expected IP [%+v] but got [%+v]", expectedTCP.Ip, actual.Ip)
+	}
 	if actual.Port != expectedTCP.Port {
 		t.Fatalf("Expected port [%+v] but got [%+v]", expectedTCP.Port, actual.Port)
 	}
