@@ -698,6 +698,13 @@ func (conf *ResourceConfig) injectPodAnnotations(values *patch) {
 	}
 }
 
+func (conf *ResourceConfig) hasOverride(annotation string) bool {
+	_, hasPodOverride := conf.pod.meta.Annotations[annotation]
+	_, hasNsOverride := conf.nsAnnotations[annotation]
+
+	return hasPodOverride || hasNsOverride
+}
+
 func (conf *ResourceConfig) getOverride(annotation string) string {
 	if override := conf.pod.meta.Annotations[annotation]; override != "" {
 		return override
@@ -819,10 +826,9 @@ func (conf *ResourceConfig) requireIdentityOnInboundPorts() string {
 }
 
 func (conf *ResourceConfig) destinationGetNetworks() string {
-	if nets := conf.getOverride(k8s.ProxyDestinationGetNetworks); nets != "" {
-		return nets
+	if conf.hasOverride(k8s.ProxyDestinationGetNetworks) {
+		conf.getOverride(k8s.ProxyDestinationGetNetworks)
 	}
-
 	return conf.configs.GetProxy().DestinationGetNetworks
 }
 
