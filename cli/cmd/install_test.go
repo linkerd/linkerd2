@@ -84,6 +84,7 @@ func TestRender(t *testing.T) {
 			IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
 			IdentityTrustAnchorsPEM:  defaultValues.Global.IdentityTrustAnchorsPEM,
 			Proxy: &charts.Proxy{
+				DestinationGetNetworks: "DestinationGetNetworks",
 				Image: &charts.Image{
 					Name:       "ProxyImageName",
 					PullPolicy: "ImagePullPolicy",
