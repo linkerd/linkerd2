@@ -293,6 +293,46 @@ func TestConfigAccessors(t *testing.T) {
 				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
 			},
 		},
+		{id: "use empty string for dst networks",
+			nsAnnotations: map[string]string{
+				k8s.ProxyDestinationGetNetworks: "",
+			},
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       corev1.PodSpec{},
+				},
+			},
+			expected: expectedProxyConfigs{
+				identityContext:            &config.IdentityContext{},
+				image:                      "gcr.io/linkerd-io/proxy",
+				imagePullPolicy:            "IfNotPresent",
+				proxyVersion:               proxyVersion,
+				controlPort:                int32(9000),
+				inboundPort:                int32(6000),
+				adminPort:                  int32(6001),
+				outboundPort:               int32(6002),
+				proxyWaitBeforeExitSeconds: 0,
+				logLevel:                   "info,linkerd2_proxy=debug",
+				resourceRequirements: &l5dcharts.Resources{
+					CPU: l5dcharts.Constraints{
+						Limit:   "1",
+						Request: "200m",
+					},
+					Memory: l5dcharts.Constraints{
+						Limit:   "128",
+						Request: "64",
+					},
+				},
+				proxyUID:               int64(8888),
+				initImage:              "gcr.io/linkerd-io/proxy-init",
+				initImagePullPolicy:    "IfNotPresent",
+				initVersion:            version.ProxyInitVersion,
+				inboundSkipPorts:       "53,58-59",
+				outboundSkipPorts:      "9079-9080",
+				destinationGetNetworks: "",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
