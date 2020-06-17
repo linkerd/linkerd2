@@ -77,7 +77,7 @@ helm_upgrade_integration_tests() {
     helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2
     helm_release_name=$linkerd_namespace-test
 
-    run_helm_upgrade_test
+    run_helm_upgrade_test "stable"
     helm_cleanup
     # clean the data plane test resources
     cleanup
@@ -237,8 +237,11 @@ setup_helm() {
 
 run_helm_upgrade_test() {
     setup_helm
+
+    local release_channel=$1
     local stable_version
-    stable_version=$(latest_stable)
+    stable_version=$(latest_release_channel "$release_channel")
+
     run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace-helm" \
         --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-stable-chart='linkerd/linkerd2' --helm-release="$helm_release_name" --upgrade-helm-from-version="$stable_version"
 }
