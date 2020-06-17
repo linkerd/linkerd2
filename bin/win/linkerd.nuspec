@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>linkerd</id>
-    <version>${LINKERD_VERSION}</version>
+    <version>LINKERD_VERSION</version>
     
     <title>Linkerd</title>
     <authors>Linkerd</authors>
@@ -27,6 +27,6 @@
   </metadata>
 
   <files>
-    <file src="bin\win\tools\**" target="tools" />
+    <file src="tools\**" target="tools" />
     </files>
 </package>

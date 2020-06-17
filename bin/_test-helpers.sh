@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export test_names=(upgrade helm helm-upgrade uninstall deep external-issuer)
+export test_names=(custom-domain deep external-issuer helm helm-upgrade uninstall upgrade-edge upgrade-stable)
 
 handle_input() {
   export images=''
@@ -210,50 +210,71 @@ run_test(){
   GO111MODULE=on go test --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --k8s-context="$context" --integration-tests "$@" || exit 1
 }
 
-# Returns the latest stable verson
-latest_stable() {
-  curl -s https://versioncheck.linkerd.io/version.json | grep -o "stable-[0-9]*.[0-9]*.[0-9]*"
+# Returns the latest version for the release channel
+# $1: release channel to check
+latest_release_channel() {
+    curl -s https://versioncheck.linkerd.io/version.json | grep -o "$1-[0-9]*.[0-9]*.[0-9]*"
 }
 
-# Install the latest stable release.
-install_stable() {
-  tmp=$(mktemp -d -t l5dbin.XXX)
+# Install a specific Linkerd version.
+# $1 - URL to use to download specific Linkerd version
+# $2 - Linkerd version
+install_version() {
+    tmp=$(mktemp -d -t l5dbin.XXX)
 
-  curl -s https://run.linkerd.io/install | HOME=$tmp sh > /dev/null 2>&1
+    local install_url=$1
+    local version=$2
 
-  local linkerd_path=$tmp/.linkerd2/bin/linkerd
-  local test_app_namespace='upgrade-test'
+    curl -s "$install_url" | HOME=$tmp sh > /dev/null 2>&1
 
-  (
-    set -x
-    "$linkerd_path" install | kubectl --context="$context" apply -f - 2>&1
-  )
-  exit_on_err 'install_stable() - installing stable failed'
+    local linkerd_path=$tmp/.linkerd2/bin/linkerd
+    local test_app_namespace=upgrade-test
 
-  (
-    set -x
-    "$linkerd_path" check 2>&1
-  )
-  exit_on_err 'install_stable() - linkerd check failed'
+    (
+        set -x
+        "$linkerd_path" install | kubectl --context="$context" apply -f - 2>&1
+    )
+    exit_on_err "install_version() - installing $version failed"
 
-  # Now we need to install the app that will be used to verify that upgrade does not break anything
-  kubectl --context="$context" create namespace "$test_app_namespace" > /dev/null 2>&1
-  kubectl --context="$context" label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
-  (
-    set -x
-    "$linkerd_path" inject "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1
-  )
-  exit_on_err 'install_stable() - linkerd inject failed'
+    (
+        set -x
+        "$linkerd_path" check 2>&1
+    )
+    exit_on_err 'install_version() - linkerd check failed'
+
+    #Now we need to install the app that will be used to verify that upgrade does not break anything
+    kubectl --context="$context" create namespace "$test_app_namespace" > /dev/null 2>&1
+    kubectl --context="$context" label namespaces "$test_app_namespace" 'linkerd.io/is-test-data-plane'='true' > /dev/null 2>&1
+    (
+        set -x
+        "$linkerd_path" inject "$test_directory/testdata/upgrade_test.yaml" | kubectl --context="$context" apply --namespace="$test_app_namespace" -f - 2>&1
+    )
+    exit_on_err 'install_version() - linkerd inject failed'
 }
 
-# Run the upgrade test by upgrading the most-recent stable release to the HEAD
-# of this branch.
-run_upgrade_test() {
-  local stable_version
-  stable_version=$(latest_stable)
+upgrade_test() {
+  local release_channel=$1
+  local install_url=$2
 
-  install_stable
-  run_test "$test_directory/install_test.go" --upgrade-from-version="$stable_version"
+  local upgrade_version
+  upgrade_version=$(latest_release_channel "$release_channel")
+
+  install_version "$install_url" "$upgrade_version"
+  run_test "$test_directory/install_test.go" --upgrade-from-version="$upgrade_version"
+}
+
+# Run the upgrade-edge test by upgrading the most-recent edge release to the
+# HEAD of this branch.
+run_upgrade-edge_test() {
+  edge_install_url="https://run.linkerd.io/install-edge"
+  upgrade_test "edge" "$edge_install_url"
+}
+
+# Run the upgrade-stable test by upgrading the most-recent stable release to the
+# HEAD of this branch.
+run_upgrade-stable_test() {
+  stable_install_url="https://run.linkerd.io/install"
+  upgrade_test "stable" "$stable_install_url"
 }
 
 setup_helm() {
