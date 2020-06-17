@@ -437,6 +437,11 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = options.proxyLogLevel
 	}
 
+	if options.proxyLogFormat != "" {
+		configs.Proxy.LogFormat = options.proxyLogFormat
+		overrideAnnotations[k8s.ProxyLogFormatAnnotation] = options.proxyLogFormat
+	}
+
 	if options.disableIdentity {
 		configs.Global.IdentityContext = nil
 		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = strconv.FormatBool(true)

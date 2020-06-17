@@ -118,6 +118,7 @@ type (
 		DestinationGetNetworks        string        `json:"destinationGetNetworks"`
 		Image                         *Image        `json:"image"`
 		LogLevel                      string        `json:"logLevel"`
+		LogFormat                     string        `json:"logFormat"`
 		SAMountPath                   *SAMountPath  `json:"saMountPath"`
 		Ports                         *Ports        `json:"ports"`
 		Resources                     *Resources    `json:"resources"`

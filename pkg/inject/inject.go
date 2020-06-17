@@ -498,7 +498,8 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 			Version:    conf.proxyVersion(),
 			PullPolicy: conf.proxyImagePullPolicy(),
 		},
-		LogLevel: conf.proxyLogLevel(),
+		LogLevel:  conf.proxyLogLevel(),
+		LogFormat: conf.proxyLogFormat(),
 		Ports: &l5dcharts.Ports{
 			Admin:    conf.proxyAdminPort(),
 			Control:  conf.proxyControlPort(),
@@ -791,6 +792,14 @@ func (conf *ResourceConfig) proxyLogLevel() string {
 	}
 
 	return conf.configs.GetProxy().GetLogLevel().GetLevel()
+}
+
+func (conf *ResourceConfig) proxyLogFormat() string {
+	if override := conf.getOverride(k8s.ProxyLogFormatAnnotation); override != "" {
+		return override
+	}
+
+	return conf.configs.GetProxy().GetLogFormat()
 }
 
 func (conf *ResourceConfig) identityContext() *config.IdentityContext {
