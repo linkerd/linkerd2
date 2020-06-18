@@ -113,6 +113,10 @@ func (od OnDeleteCalled) String() string {
 	return fmt.Sprintf("OnDeleteCalled: {svc: %s}", formatService(od.svc))
 }
 
+func (re RepairEndpoints) String() string {
+	return "RepairEndpoints"
+}
+
 //Events for probe manager
 
 func (ps probeSpec) String() string {

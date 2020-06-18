@@ -3,6 +3,7 @@ package servicemirror
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	log "github.com/sirupsen/logrus"
@@ -21,16 +22,18 @@ type RemoteClusterConfigWatcher struct {
 	k8sAPI                 *k8s.API
 	clusterWatchers        map[string]*RemoteClusterServiceWatcher
 	requeueLimit           int
+	repairPeriod           time.Duration
 	sync.RWMutex
 }
 
 // NewRemoteClusterConfigWatcher Creates a new config watcher
-func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInformer cache.SharedIndexInformer, k8sAPI *k8s.API, requeueLimit int) *RemoteClusterConfigWatcher {
+func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInformer cache.SharedIndexInformer, k8sAPI *k8s.API, requeueLimit int, repairPeriod time.Duration) *RemoteClusterConfigWatcher {
 	rcw := &RemoteClusterConfigWatcher{
 		serviceMirrorNamespace: serviceMirrorNamespace,
 		k8sAPI:                 k8sAPI,
 		clusterWatchers:        map[string]*RemoteClusterServiceWatcher{},
 		requeueLimit:           requeueLimit,
+		repairPeriod:           repairPeriod,
 	}
 	secretsInformer.AddEventHandler(
 		cache.FilteringResourceEventHandler{
@@ -126,7 +129,7 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", config.ClusterName)
 	}
 
-	watcher, err := NewRemoteClusterServiceWatcher(rcw.serviceMirrorNamespace, rcw.k8sAPI, clientConfig, config.ClusterName, rcw.requeueLimit, config.ClusterDomain)
+	watcher, err := NewRemoteClusterServiceWatcher(rcw.serviceMirrorNamespace, rcw.k8sAPI, clientConfig, config.ClusterName, rcw.requeueLimit, rcw.repairPeriod, config.ClusterDomain)
 	if err != nil {
 		return err
 	}

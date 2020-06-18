@@ -168,7 +168,11 @@ func TestTrafficSplitCli(t *testing.T) {
 	// wait for deployments to start
 	for _, deploy := range []string{"backend", "failing", "slow-cooker"} {
 		if err := TestHelper.CheckPods(prefixedNs, deploy, 1); err != nil {
-			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			}
 		}
 
 		if err := TestHelper.CheckDeployment(prefixedNs, deploy, 1); err != nil {

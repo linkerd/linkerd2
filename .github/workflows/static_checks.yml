@@ -72,6 +72,22 @@ jobs:
       # https://github.com/koalaman/shellcheck/wiki/Checks
       run: |
         bin/shellcheck-all
+  psscript-analyzer:
+    name: PSScriptAnalyzer
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Checkout code
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
+    - name: Chocolatey - lint
+      # devblackops/github-action-psscriptanalyzer@v2.0.0
+      uses: devblackops/github-action-psscriptanalyzer@889a059
+      env:
+        # https://github.com/devblackops/github-action-psscriptanalyzer/pull/3/files
+        INPUT_FAILONWARNING: 1
+      with:
+        rootPath: bin/win/tools
+        failOnInfos: true
   markdown_lint:
     name: Markdown lint
     runs-on: ubuntu-18.04

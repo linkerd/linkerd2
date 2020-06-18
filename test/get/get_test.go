@@ -78,8 +78,11 @@ func TestCliGet(t *testing.T) {
 	// wait for pods to start
 	for deploy, replicas := range deployReplicas {
 		if err := TestHelper.CheckPods(prefixedNs, deploy, replicas); err != nil {
-			testutil.AnnotatedError(t, "CheckPods timed-out",
-				fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err))
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			}
 		}
 	}
 
