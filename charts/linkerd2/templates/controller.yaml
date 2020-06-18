@@ -104,6 +104,7 @@ spec:
       {{- if not (empty .Values.publicAPIProxyResources) }}
       {{- $r := merge .Values.publicAPIProxyResources .Values.global.proxy.resources }}
       {{- $_ := set $tree.Values.global.proxy "resources" $r }}
+      {{- end }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
