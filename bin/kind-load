@@ -58,7 +58,7 @@ cluster=${1:-"kind"}
 
 bindir=$( cd "${0%/*}" && pwd )
 
-if [ -z "$images" ]; then
+if [ -z "$images" ] || [ -n "$images_host" ]; then
   # shellcheck source=_tag.sh
   . "$bindir"/_tag.sh
   # shellcheck source=_docker.sh
@@ -75,7 +75,7 @@ for img in proxy controller web grafana cli-bin debug cni-plugin ; do
   if [ $images ]; then
     if [ "$images_host" ]; then
       mkdir -p image-archives
-      DOCKER_HOST=$images_host docker save "$DOCKER_REGISTRY/$img" > image-archives/$img.tar
+      DOCKER_HOST=$images_host docker save "$DOCKER_REGISTRY/$img:$TAG" > image-archives/$img.tar
     fi
     cmd=(image-archive "image-archives/$img.tar")
   else
