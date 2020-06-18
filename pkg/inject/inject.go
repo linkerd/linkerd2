@@ -210,7 +210,7 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	}
 
 	if conf.destinationGetNetworks() != "" {
-		for _, network := range strings.Split(conf.destinationGetNetworks(), ",") {
+		for _, network := range strings.Split(strings.Trim(conf.destinationGetNetworks(), ","), ",") {
 			if _, _, err := net.ParseCIDR(network); err != nil {
 				return nil, fmt.Errorf("cannot parse destination get networks: %s", err)
 			}
