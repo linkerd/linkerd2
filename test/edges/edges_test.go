@@ -83,7 +83,11 @@ func TestDirectEdges(t *testing.T) {
 	}
 
 	if err := TestHelper.CheckPods(testNamespace, "terminus", 1); err != nil {
-		testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		}
 	}
 
 	if err := TestHelper.CheckDeployment(testNamespace, "terminus", 1); err != nil {
@@ -121,7 +125,11 @@ func TestDirectEdges(t *testing.T) {
 	}
 
 	if err := TestHelper.CheckPods(testNamespace, "slow-cooker", 1); err != nil {
-		testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		}
 	}
 
 	if err := TestHelper.CheckDeployment(testNamespace, "slow-cooker", 1); err != nil {
