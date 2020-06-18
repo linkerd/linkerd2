@@ -12,7 +12,7 @@ to support multicluster gateways on EKS.
   target clusters when an IP address it not known.
 * Linkerd checks could fail when run from the dashboard. Thanks to @alex-berger
   for providing a fix!
-* The CLI will be published for Chocalatey (Windows) on future stable releases.
+* The CLI will be published for Chocolatey (Windows) on future stable releases.
 * Base images have been updated:
   * debian:buster-20200514-slim
   * grafana/grafana:7.0.3
