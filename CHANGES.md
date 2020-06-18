@@ -7,7 +7,7 @@ to the multicluster support functionality as well as other fixes.
 
 * Controller
   * Added an option to change the set of networks for which the proxy
-    can should do discovery by IP address
+    should do discovery by IP address
   * Upgraded the version of Grafana to 7.0.3
   * Improved multicluster support to be able to work with gateways that
     expose a hostname rather than a concrete IP address
