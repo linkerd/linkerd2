@@ -15,7 +15,7 @@ Usage: ${FUNCNAME[0]} TARGET_ARRAY RESOURCE_TYPE LINKERD_LABEL (FRIENDLY_NAME)" 
   # shellcheck disable=SC2034
   local i=0
   unset -v "$1"
-  while IFS= read -r "$1[i++]"; do :; done <<< "$(kubectl --context="$k8s_context" get "$2" -oname -l "linkerd.io/$3")"
+  while IFS= read -r "$1[i++]"; do :; done <<< "$(kubectl --context="$k8s_context" get -A "$2" -oname -l "linkerd.io/$3")"
   # ensure that the last element isn't empty
   eval "[[ \${$1[--i]} ]]" || unset "$1[i]" # ensures last element isn't empty
   # inform user if no results were returned from command
