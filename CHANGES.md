@@ -1,5 +1,26 @@
 # Changes
 
+## edge-20.6.3
+
+This edge release is our release candidate for 2.8.1. It includes improvements
+to the multicluster support functionality as well as other fixes.
+
+* Controller
+  * Added an option to change the set of networks for which the proxy
+    can should do discovery by IP address
+  * Upgraded the version of Grafana to 7.0.3
+  * Improved multicluster support to be able to work with gateways that
+    expose a hostname rather than a concrete IP address
+* Web UI
+  * Fixed a bug causing the Linkerd checks to fail when ran from the
+    dashboard (thanks @alex-berger!)
+* Internal
+  * Added an integration test for upgrading from edge to the current build
+  * Fixed a problem with the `install-pr` script, causing it to not be
+    able to find expected docker images
+  * Introduced CI steps for producing a Chocolatey package
+  * Changed web and base Docker images to use buster (thanks @joakimr-axis!)
+
 ## stable-2.8.0
 
 This release introduces new a multi-cluster extension to Linkerd, allowing it
