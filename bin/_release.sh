@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC2120
 # (disabling SC2120 so that we can use functions with optional args
 # see https://github.com/koalaman/shellcheck/wiki/SC2120#exceptions )
