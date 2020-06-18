@@ -4,9 +4,9 @@ go 1.14
 
 require (
 	contrib.go.opencensus.io/exporter/ocagent v0.6.0
-	github.com/Masterminds/semver v1.4.2 // indirect
-	github.com/Masterminds/sprig v2.17.1+incompatible // indirect
-	github.com/aokoli/goutils v1.1.0 // indirect
+	github.com/Masterminds/goutils v1.1.0 // indirect
+	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/briandowns/spinner v0.0.0-20190212173954-5cf08d0ac778
 	github.com/clarketm/json v1.13.4
 	github.com/containernetworking/cni v0.6.1-0.20180218032124-142cde0c766c
@@ -31,6 +31,7 @@ require (
 	github.com/linkerd/linkerd2-proxy-init v1.3.3
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mattn/go-runewidth v0.0.2
+	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
 	github.com/onsi/ginkgo v1.11.0 // indirect
 	github.com/onsi/gomega v1.8.1 // indirect
