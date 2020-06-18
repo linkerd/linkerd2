@@ -1,5 +1,22 @@
 # Changes
 
+## edge-20.6.3
+
+This edge release is a release candidate for stable-2.8.1. It includes a fix
+to support multicluster gateways on EKS.
+
+* The `config.linkerd.io/proxy-destination-get-networks` annotation configures
+  the networks for which a proxy can discover metadata. This is an advanced
+  configuration option that has security implications.
+* The multicluster service-mirror has been extended to resolve DNS names for
+  target clusters when an IP address it not known.
+* Linkerd checks could fail when run from the dashboard. Thanks to @alex-berger
+  for providing a fix!
+* The CLI will be published for Chocolatey (Windows) on future stable releases.
+* Base images have been updated:
+  * debian:buster-20200514-slim
+  * grafana/grafana:7.0.3
+
 ## stable-2.8.0
 
 This release introduces new a multi-cluster extension to Linkerd, allowing it
