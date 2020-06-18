@@ -98,15 +98,12 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
+      {{- $tree := deepCopy . }}      
       {{- if not (empty .Values.spValidatorProxyResources) }}
-      {{- $orig := .Values.global.proxy.resources }}
       {{- $r := merge .Values.spValidatorProxyResources .Values.global.proxy.resources }}
-      {{- $_ := set .Values.global.proxy "resources" $r }}
-      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{- $_ := set .Values.global.proxy "resources" $orig }}
-      {{- else }}
-      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- $_ := set $tree.Values.global.proxy "resources" $r }}
       {{- end }}
+      - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
