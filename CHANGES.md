@@ -2,24 +2,19 @@
 
 ## edge-20.6.3
 
-This edge release is our release candidate for 2.8.1. It includes improvements
-to the multicluster support functionality as well as other fixes.
+This edge release is a release candidate for stable-2.8.1. It includes a fix
+to support multicluster gateways on EKS.
 
-* Controller
-  * Added an option to change the set of networks for which the proxy
-    should do discovery by IP address
-  * Upgraded the version of Grafana to 7.0.3
-  * Improved multicluster support to be able to work with gateways that
-    expose a hostname rather than a concrete IP address
-* Web UI
-  * Fixed a bug causing the Linkerd checks to fail when ran from the
-    dashboard (thanks @alex-berger!)
-* Internal
-  * Added an integration test for upgrading from edge to the current build
-  * Fixed a problem with the `install-pr` script, causing it to not be
-    able to find expected docker images
-  * Introduced CI steps for producing a Chocolatey package
-  * Changed web and base Docker images to use buster (thanks @joakimr-axis!)
+* The `config.linkerd.io/proxy-destination-get-networks` annotation configures
+  the networks for which a proxy can discover metadata. This is an advanced
+  configuration option that has security implications.
+* The multicluster service-mirror has been extended to resolve DNS names for
+  target clusters when an IP address it not known.
+* Linkerd checks could fail when run from the dashboard. Thanks to @alex-berger
+  for providing a fix!
+* Base images have been updated:
+  * debian:buster-20200514-slim
+  * grafana/grafana:7.0.3
 
 ## stable-2.8.0
 
