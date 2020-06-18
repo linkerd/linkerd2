@@ -125,7 +125,11 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 		testAppNamespace := "upgrade-test"
 		for _, deploy := range []string{"emoji", "voting", "web"} {
 			if err := TestHelper.CheckPods(testAppNamespace, deploy, 1); err != nil {
-				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				if rce, ok := err.(*testutil.RestartCountError); ok {
+					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+				} else {
+					testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				}
 			}
 
 			if err := TestHelper.CheckDeployment(testAppNamespace, deploy, 1); err != nil {
@@ -655,7 +659,7 @@ func TestInject(t *testing.T) {
 }
 
 func TestServiceProfileDeploy(t *testing.T) {
-	bbProto, err := TestHelper.HTTPGetURL("https://raw.githubusercontent.com/BuoyantIO/bb/55b78f210c98a7eb431c3f555cf0a406f0b12edf/api.proto")
+	bbProto, err := TestHelper.HTTPGetURL("https://raw.githubusercontent.com/BuoyantIO/bb/v0.0.5/api.proto")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "unexpected error",
 			"unexpected error: %v %s", err, bbProto)

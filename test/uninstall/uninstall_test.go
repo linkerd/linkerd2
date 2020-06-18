@@ -51,8 +51,11 @@ func TestResourcesPostInstall(t *testing.T) {
 	// Tests Pods and Deployments
 	for deploy, spec := range testutil.LinkerdDeployReplicas {
 		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
-			testutil.AnnotatedFatal(t, "CheckPods timed-out",
-				fmt.Errorf("Error validating pods for deploy [%s]:\n%s", deploy, err))
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			}
 		}
 		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
 			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)

@@ -927,7 +927,8 @@ data:
         "imageName":"gcr.io/linkerd-io/debug",
         "pullPolicy":"IfNotPresent"
       },
-      "debugImageVersion": "test-debug-version"
+      "debugImageVersion": "test-debug-version",
+      "destinationGetNetworks": "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
     }
   install: |
     {
@@ -3283,6 +3284,10 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
+        # Force using the go-based DNS resolver instead of the OS' to avoid failures in some environments
+        # see https://github.com/grafana/grafana/issues/20096
+        - name: GODEBUG
+          value: netdns=go
         image: gcr.io/linkerd-io/grafana:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

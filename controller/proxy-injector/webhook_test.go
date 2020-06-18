@@ -43,6 +43,7 @@ var (
 			DisableExternalProfiles: false,
 			DebugImage:              &config.Image{ImageName: "gcr.io/linkerd-io/debug", PullPolicy: "IfNotPresent"},
 			DebugImageVersion:       "debug-image-version",
+			DestinationGetNetworks:  "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
 		},
 	}
 )

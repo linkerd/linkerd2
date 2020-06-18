@@ -67,6 +67,7 @@ var LinkerdDeployReplicas = map[string]deploySpec{
 // See - https://github.com/linkerd/linkerd2/issues/4530
 func NewGenericTestHelper(
 	linkerd,
+	version,
 	namespace,
 	upgradeFromVersion,
 	clusterDomain,
@@ -76,9 +77,12 @@ func NewGenericTestHelper(
 	helmReleaseName string,
 	externalIssuer,
 	uninstall bool,
+	httpClient http.Client,
+	kubernetesHelper KubernetesHelper,
 ) *TestHelper {
 	return &TestHelper{
 		linkerd:            linkerd,
+		version:            version,
 		namespace:          namespace,
 		upgradeFromVersion: upgradeFromVersion,
 		helm: helm{
@@ -88,9 +92,11 @@ func NewGenericTestHelper(
 			releaseName:        helmReleaseName,
 			upgradeFromVersion: upgradeFromVersion,
 		},
-		clusterDomain:  clusterDomain,
-		externalIssuer: externalIssuer,
-		uninstall:      uninstall,
+		clusterDomain:    clusterDomain,
+		externalIssuer:   externalIssuer,
+		uninstall:        uninstall,
+		httpClient:       httpClient,
+		KubernetesHelper: kubernetesHelper,
 	}
 }
 

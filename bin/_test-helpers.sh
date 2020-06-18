@@ -262,6 +262,11 @@ upgrade_test() {
   local upgrade_version
   upgrade_version=$(latest_release_channel "$release_channel")
 
+  if [ -z "$upgrade_version" ]; then
+    echo 'error getting upgrade_version'
+    exit 1
+  fi
+
   install_version "$install_url" "$upgrade_version"
   run_test "$test_directory/install_test.go" --upgrade-from-version="$upgrade_version"
 }
@@ -313,7 +318,12 @@ run_helm_test() {
 
 run_helm-upgrade_test() {
   local stable_version
-  stable_version=$(latest_stable)
+  stable_version=$(latest_release_channel "stable")
+
+  if [ -z "$stable_version" ]; then
+    echo 'error getting stable_version'
+    exit 1
+  fi
 
   setup_helm
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
