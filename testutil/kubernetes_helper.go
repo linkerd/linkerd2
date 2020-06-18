@@ -33,11 +33,11 @@ type KubernetesHelper struct {
 // See https://github.com/kubernetes/kubernetes/issues/89064
 // See https://github.com/containerd/containerd/issues/4068
 type RestartCountError struct {
-	s string
+	msg string
 }
 
 func (e *RestartCountError) Error() string {
-	return e.s
+	return e.msg
 }
 
 // NewKubernetesHelper creates a new instance of KubernetesHelper.
