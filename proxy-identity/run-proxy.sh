@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 set -eu
 
 if [ -z "${LINKERD2_PROXY_IDENTITY_DISABLED:-}" ]; then

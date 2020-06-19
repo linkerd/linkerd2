@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Override CI's `set -e` default, so we can catch errors manually and display
 # proper messages
