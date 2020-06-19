@@ -72,7 +72,7 @@ spec:
         - -prometheus-url=http://linkerd-prometheus.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090
         - -destination-addr=linkerd-dst.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8086
         - -controller-namespace={{.Values.global.namespace}}
-        - -log-level={{.Values.controllerLogLevel}}
+        - -log-level={{.Values.global.controllerLogLevel}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
