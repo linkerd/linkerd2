@@ -100,25 +100,20 @@ uninstall_integration_tests() {
 }
 
 deep_integration_tests() {
-    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace"
+    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace" --multicluster
     while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
     run_test "${tests[@]}" --linkerd-namespace="$linkerd_namespace"
     cleanup
 }
 
 custom_domain_integration_tests() {
-    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace" --cluster-domain='custom.domain'
+    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace" --cluster-domain='custom.domain' --multicluster
     cleanup
 }
 
 external_issuer_integration_tests() {
-    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace-external-issuer" --external-issuer=true
+    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace-external-issuer" --external-issuer=true --multicluster
     run_test "$test_directory/externalissuer/external_issuer_test.go" --linkerd-namespace="$linkerd_namespace-external-issuer" --external-issuer=true
-    cleanup
-}
-
-multicluster_integration_tests() {
-    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace-multi" --multicluster
     cleanup
 }
 
