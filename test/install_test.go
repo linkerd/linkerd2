@@ -370,7 +370,11 @@ func TestResourcesPostInstall(t *testing.T) {
 	// Tests Pods and Deployments
 	for deploy, spec := range testutil.LinkerdDeployReplicas {
 		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
-			testutil.AnnotatedFatalf(t, "CheckPods timed-out", "Error validating pods for deploy [%s]:\n%s", deploy, err)
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+			}
 		}
 		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
 			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
@@ -587,9 +591,12 @@ func TestInject(t *testing.T) {
 			}
 
 			for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
-				err = TestHelper.CheckPods(prefixedNs, deploy, 1)
-				if err != nil {
-					testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+				if err := TestHelper.CheckPods(prefixedNs, deploy, 1); err != nil {
+					if rce, ok := err.(*testutil.RestartCountError); ok {
+						testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+					} else {
+						testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+					}
 				}
 			}
 
@@ -672,8 +679,11 @@ func TestEvents(t *testing.T) {
 func TestRestarts(t *testing.T) {
 	for deploy, spec := range testutil.LinkerdDeployReplicas {
 		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
-			testutil.AnnotatedFatalf(t, fmt.Sprintf("error validating pods [%s]", deploy),
-				"error validating pods [%s]:\n%s", deploy, err)
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+			}
 		}
 	}
 }
