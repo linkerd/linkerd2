@@ -391,7 +391,7 @@ func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
 
-	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion(), true)
+	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
 }
 
 func TestUpgradeHelm(t *testing.T) {
@@ -435,7 +435,7 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string, compareOutput bool) {
+func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string) {
 	var cmd []string
 	var golden string
 	if stage == "proxy" {
@@ -461,10 +461,6 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", stderr, out)
 		}
 
-		if !compareOutput {
-			return nil
-		}
-
 		err = TestHelper.ValidateOutput(out, golden)
 		if err != nil {
 			return fmt.Errorf("received unexpected output\n%s", err.Error())
@@ -479,11 +475,11 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 // TODO: run this after a `linkerd install config`
 func TestCheckConfigPostInstall(t *testing.T) {
-	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "", true)
+	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "")
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	testCheckCommand(t, "", TestHelper.GetVersion(), "", "", true)
+	testCheckCommand(t, "", TestHelper.GetVersion(), "", "")
 }
 
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
@@ -660,7 +656,7 @@ func TestCheckProxy(t *testing.T) {
 		tc := tc // pin
 		t.Run(tc.ns, func(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
-			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "", true)
+			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "")
 		})
 	}
 }
