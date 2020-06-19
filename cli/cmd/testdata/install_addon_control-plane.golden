@@ -92,7 +92,7 @@ spec:
       containers:
       - args:
         - identity
-        - -log-level=
+        - -log-level=info
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -316,7 +316,7 @@ spec:
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
         - -controller-namespace=linkerd
-        - -log-level=
+        - -log-level=info
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -535,7 +535,7 @@ spec:
         - -addr=:8086
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
-        - -log-level=
+        - -log-level=info
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -733,7 +733,7 @@ spec:
             - "heartbeat"
             - "-prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090"
             - "-controller-namespace=linkerd"
-            - "-log-level="
+            - "-log-level=info"
             securityContext:
               runAsUser: 2103
 ---
@@ -803,7 +803,7 @@ spec:
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -jaeger-addr=linkerd-jaeger.linkerd.svc.cluster.local:16686
         - -controller-namespace=linkerd
-        - -log-level=
+        - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
         image: gcr.io/linkerd-io/web:install-control-plane-version
         imagePullPolicy: IfNotPresent
@@ -999,7 +999,7 @@ spec:
       containers:
       - args:
         - proxy-injector
-        - -log-level=
+        - -log-level=info
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1238,7 +1238,7 @@ spec:
       containers:
       - args:
         - sp-validator
-        - -log-level=
+        - -log-level=info
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1459,7 +1459,7 @@ spec:
       - args:
         - tap
         - -controller-namespace=linkerd
-        - -log-level=
+        - -log-level=info
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
