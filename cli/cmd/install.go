@@ -193,6 +193,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
 			proxyImage:             defaults.Global.Proxy.Image.Name,
+			destinationGetNetworks: strings.Split(defaults.Global.Proxy.DestinationGetNetworks, ","),
 			initImage:              defaults.Global.ProxyInit.Image.Name,
 			initImageVersion:       version.ProxyInitVersion,
 			debugImage:             defaults.DebugContainer.Image.Name,
@@ -761,6 +762,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.SMIMetrics.Enabled = options.smiMetricsEnabled
 
 	installValues.Global.Proxy = &l5dcharts.Proxy{
+		DestinationGetNetworks: strings.Join(options.destinationGetNetworks, ","),
 		EnableExternalProfiles: options.enableExternalProfiles,
 		Image: &l5dcharts.Image{
 			Name:       registryOverride(options.proxyImage, options.dockerRegistry),
@@ -966,6 +968,7 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 		LogLevel: &pb.LogLevel{
 			Level: options.proxyLogLevel,
 		},
+		DestinationGetNetworks:  strings.Join(options.destinationGetNetworks, ","),
 		DisableExternalProfiles: !options.enableExternalProfiles,
 		ProxyVersion:            options.proxyVersion,
 		ProxyInitImageVersion:   options.initImageVersion,

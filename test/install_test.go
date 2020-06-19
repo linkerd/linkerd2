@@ -125,7 +125,11 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 		testAppNamespace := TestHelper.GetTestNamespace("upgrade-test")
 		for _, deploy := range []string{"emoji", "voting", "web"} {
 			if err := TestHelper.CheckPods(testAppNamespace, deploy, 1); err != nil {
-				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				if rce, ok := err.(*testutil.RestartCountError); ok {
+					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+				} else {
+					testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				}
 			}
 
 			if err := TestHelper.CheckDeployment(testAppNamespace, deploy, 1); err != nil {
@@ -247,20 +251,29 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	// test `linkerd upgrade --from-manifests`
 	if TestHelper.UpgradeFromVersion() != "" {
-		manifests, err := TestHelper.Kubectl("",
-			"--namespace", TestHelper.GetLinkerdNamespace(),
-			"get", "configmaps/"+k8s.ConfigConfigMapName, "secrets/"+k8s.IdentityIssuerSecretName,
-			"-oyaml",
-		)
+		resources := []string{}
+		resources = append(resources, "configmaps/"+k8s.ConfigConfigMapName, "secrets/"+k8s.IdentityIssuerSecretName)
+
+		// If `linkerd-config-addons` exists, add it to the resources to get
+		_, err := TestHelper.Kubectl("", "--namespace", TestHelper.GetLinkerdNamespace(), "get", "configmaps/"+k8s.AddOnsConfigMapName)
+		if err == nil {
+			resources = append(resources, "configmaps/"+k8s.AddOnsConfigMapName)
+		}
+
+		args := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
+		args = append(args, "-oyaml")
+
+		manifests, err := TestHelper.Kubectl("", args...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-				"'kubectl get' command failed with %s\n%s", err, out)
+				"'kubectl get' command failed with %s\n%s\n%s", err, manifests, args)
 		}
+
 		exec = append(exec, "--from-manifests", "-")
 		upgradeFromManifests, stderr, err := TestHelper.PipeToLinkerdRun(manifests, exec...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'linkerd upgrade --from-manifests' command failed",
-				"'linkerd upgrade --from-manifests' command failed with %s\n%s\n%s", err, stderr, upgradeFromManifests)
+				"'linkerd upgrade --from-manifests' command failed with %s\n%s\n%s\n%s", err, stderr, upgradeFromManifests, manifests)
 		}
 
 		if out != upgradeFromManifests {
@@ -646,7 +659,7 @@ func TestInject(t *testing.T) {
 }
 
 func TestServiceProfileDeploy(t *testing.T) {
-	bbProto, err := TestHelper.HTTPGetURL("https://raw.githubusercontent.com/BuoyantIO/bb/master/api.proto")
+	bbProto, err := TestHelper.HTTPGetURL("https://raw.githubusercontent.com/BuoyantIO/bb/v0.0.5/api.proto")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "unexpected error",
 			"unexpected error: %v %s", err, bbProto)

@@ -101,6 +101,7 @@ type (
 		DisableIdentity               bool          `json:"disableIdentity"`
 		DisableTap                    bool          `json:"disableTap"`
 		EnableExternalProfiles        bool          `json:"enableExternalProfiles"`
+		DestinationGetNetworks        string        `json:"destinationGetNetworks"`
 		Image                         *Image        `json:"image"`
 		LogLevel                      string        `json:"logLevel"`
 		SAMountPath                   *SAMountPath  `json:"saMountPath"`

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"regexp"
 	"strings"
@@ -226,6 +227,7 @@ type proxyConfigOptions struct {
 	debugImageVersion             string
 	dockerRegistry                string
 	imagePullPolicy               string
+	destinationGetNetworks        []string
 	ignoreInboundPorts            []string
 	ignoreOutboundPorts           []string
 	proxyUID                      int64
@@ -249,6 +251,12 @@ type proxyConfigOptions struct {
 }
 
 func (options *proxyConfigOptions) validate() error {
+
+	for _, network := range options.destinationGetNetworks {
+		if _, _, err := net.ParseCIDR(network); err != nil {
+			return fmt.Errorf("cannot parse destination get networks: %s", err)
+		}
+	}
 
 	if options.disableIdentity && len(options.requireIdentityOnInboundPorts) > 0 {
 		return errors.New("Identity must be enabled when  --require-identity-on-inbound-ports is specified")

@@ -81,6 +81,7 @@ func TestRender(t *testing.T) {
 			IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
 			IdentityTrustAnchorsPEM:  defaultValues.Global.IdentityTrustAnchorsPEM,
 			Proxy: &charts.Proxy{
+				DestinationGetNetworks: "DestinationGetNetworks",
 				Image: &charts.Image{
 					Name:       "ProxyImageName",
 					PullPolicy: "ImagePullPolicy",
@@ -236,6 +237,14 @@ func TestRender(t *testing.T) {
 	withAddOnControlPlaneStageValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withAddOnControlPlaneStageValues)
 
+	withCustomDestinationGetNets, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withCustomDestinationGetNets.destinationGetNetworks = []string{"10.0.0.0/8", "172.0.0.0/8"}
+	withCustomDestinationGetNetsValues, _, _ := withCustomDestinationGetNets.validateAndBuild("", nil)
+	addFakeTLSSecrets(withCustomDestinationGetNetsValues)
+
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
@@ -254,6 +263,7 @@ func TestRender(t *testing.T) {
 		{withCustomRegistryValues, "install_custom_registry.golden"},
 		{withAddOnConfigStageValues, "install_addon_config.golden"},
 		{withAddOnControlPlaneStageValues, "install_addon_control-plane.golden"},
+		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden"},
 	}
 
 	for i, tc := range testCases {
@@ -320,6 +330,24 @@ func TestValidate(t *testing.T) {
 
 		if err := opts.validate(); err != nil {
 			t.Fatalf("Unexpected error: %s", err)
+		}
+	})
+
+	t.Run("Rejects invalid destination networks", func(t *testing.T) {
+		options, err := testInstallOptions()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+
+		options.destinationGetNetworks = []string{"wrong"}
+		expected := "cannot parse destination get networks: invalid CIDR address: wrong"
+
+		err = options.validate()
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != expected {
+			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, err)
 		}
 	})
 
