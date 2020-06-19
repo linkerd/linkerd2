@@ -201,6 +201,10 @@ func isInjectAnnotationValid(annotation string) bool {
 	return true
 }
 
+// ThrowInjectError errors out `inject` when the report contains errors
+// related to automountServiceAccountToken, hostNetwork, existing sidecar,
+// or udp ports
+// See - https://github.com/linkerd/linkerd2/issues/4214
 func (r *Report) ThrowInjectError() []error {
 
 	errs := []error{}
