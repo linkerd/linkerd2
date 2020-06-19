@@ -1,6 +1,7 @@
 package inject
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -198,4 +199,27 @@ func isInjectAnnotationValid(annotation string) bool {
 		return false
 	}
 	return true
+}
+
+func (r *Report) ThrowInjectError() []error {
+
+	errs := []error{}
+
+	if !r.AutomountServiceAccountToken {
+		errs = append(errs, errors.New(Reasons[disabledAutomountServiceAccountToken]))
+	}
+
+	if r.HostNetwork {
+		errs = append(errs, errors.New(Reasons[hostNetworkEnabled]))
+	}
+
+	if r.Sidecar {
+		errs = append(errs, errors.New(Reasons[sidecarExists]))
+	}
+
+	if r.UDP {
+		errs = append(errs, errors.New(Reasons[udpPortsEnabled]))
+	}
+
+	return errs
 }
