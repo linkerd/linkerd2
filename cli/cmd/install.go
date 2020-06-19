@@ -43,7 +43,6 @@ type (
 		controlPlaneVersion         string
 		controllerReplicas          uint
 		controllerLogLevel          string
-		prometheusImage             string
 		highAvailability            bool
 		controllerUID               int64
 		disableH2Upgrade            bool
@@ -179,8 +178,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		clusterDomain:               defaults.Global.ClusterDomain,
 		controlPlaneVersion:         version.Version,
 		controllerReplicas:          defaults.ControllerReplicas,
-		controllerLogLevel:          defaults.ControllerLogLevel,
-		prometheusImage:             defaults.Prometheus["image"].(string),
+		controllerLogLevel:          defaults.Global.ControllerLogLevel,
 		highAvailability:            defaults.Global.HighAvailability,
 		controllerUID:               defaults.ControllerUID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
@@ -456,11 +454,6 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		"Log level for the controller and web components",
 	)
 
-	flags.StringVar(
-		&options.prometheusImage, "prometheus-image", options.prometheusImage,
-		"Custom Prometheus image name",
-	)
-
 	flags.BoolVar(
 		&options.highAvailability, "ha", options.highAvailability,
 		"Enable HA deployment config for the control plane (default false)",
@@ -675,10 +668,6 @@ func (options *installOptions) validate() error {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
-	if options.prometheusImage != "" && !alphaNumDashDotSlashColonUnderscore.MatchString(options.prometheusImage) {
-		return fmt.Errorf("%s is not a valid prometheus image", options.prometheusImage)
-	}
-
 	if err := options.proxyConfigOptions.validate(); err != nil {
 		return err
 	}
@@ -752,7 +741,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Configs.Install = installJSON
 	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
 	installValues.Global.ControllerImageVersion = configs.GetGlobal().GetVersion()
-	installValues.ControllerLogLevel = options.controllerLogLevel
+	installValues.Global.ControllerLogLevel = options.controllerLogLevel
 	installValues.ControllerReplicas = options.controllerReplicas
 	installValues.ControllerUID = options.controllerUID
 	installValues.Global.ControlPlaneTracing = options.controlPlaneTracing
@@ -761,13 +750,9 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.Grafana["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
-	if options.prometheusImage != "" {
-		installValues.Prometheus["image"] = options.prometheusImage
-	}
 	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.Global.CNIEnabled = options.cniEnabled
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
-	installValues.Prometheus["args"].(map[string]interface{})["log.level"] = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat

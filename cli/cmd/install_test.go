@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 )
 
@@ -55,7 +54,6 @@ func TestRender(t *testing.T) {
 	metaValues := &charts.Values{
 		ControllerImage:             "ControllerImage",
 		WebImage:                    "WebImage",
-		ControllerLogLevel:          "ControllerLogLevel",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
@@ -70,6 +68,7 @@ func TestRender(t *testing.T) {
 			ImagePullPolicy:          "ImagePullPolicy",
 			CliVersion:               "CliVersion",
 			ControllerComponentLabel: "ControllerComponentLabel",
+			ControllerLogLevel:       "ControllerLogLevel",
 			ControllerImageVersion:   "ControllerImageVersion",
 			ControllerNamespaceLabel: "ControllerNamespaceLabel",
 			WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
@@ -339,31 +338,6 @@ func TestValidate(t *testing.T) {
 		}
 		if err.Error() != expected {
 			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, err)
-		}
-	})
-
-	t.Run("Ensure log level input is converted to lower case before passing to prometheus", func(t *testing.T) {
-		underTest, err := testInstallOptions()
-		if err != nil {
-			t.Fatalf("Unexpected error: %v\n", err)
-		}
-
-		underTest.controllerLogLevel = "DEBUG"
-		expected := "debug"
-
-		testValues := new(pb.All)
-		testValues.Global = new(pb.Global)
-		testValues.Proxy = new(pb.Proxy)
-		testValues.Install = new(pb.Install)
-
-		actual, err := underTest.buildValuesWithoutIdentity(testValues)
-
-		if err != nil {
-			t.Fatalf("Unexpected error occurred %s", err)
-		}
-
-		if actual.Prometheus["args"].(map[string]interface{})["log.level"] != expected {
-			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, actual.Prometheus["args"].(map[string]interface{})["log.level"])
 		}
 	})
 

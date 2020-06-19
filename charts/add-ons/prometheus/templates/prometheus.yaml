@@ -19,7 +19,7 @@ data:
       scrape_interval: 10s
       scrape_timeout: 10s
       evaluation_interval: 10s
-      {{ if .Values.globalConfig -}}
+      {{- if .Values.globalConfig -}}
       {{- toYaml .Values.globalConfig | trim | nindent 6 }}
       {{- end}}
 
@@ -230,7 +230,7 @@ spec:
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
         - --config.file=/etc/prometheus/prometheus.yml
-        - --log.level={{lower .Values.logLevel}}
+        - --log.level={{lower (default .Values.global.controllerLogLevel .Values.logLevel)}}
         {{- range $key, $value := .Values.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}

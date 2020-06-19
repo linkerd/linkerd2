@@ -6,6 +6,7 @@
 global:
   clusterDomain: &cluster_domain cluster.local
   imagePullPolicy: &image_pull_policy IfNotPresent
+  controllerLogLevel: &controller_log_level info
 
   # control plane trace configuration
   controlPlaneTracing: false
@@ -91,7 +92,6 @@ webhookFailurePolicy: Ignore
 
 # controller configuration
 controllerImage: gcr.io/linkerd-io/controller
-controllerLogLevel: &controller_log_level info
 controllerReplicas: 1
 controllerUID: 2103
 
@@ -204,7 +204,6 @@ grafana:
 
 prometheus:
   enabled: true
-  logLevel: *controller_log_level
   # image: prom/prometheus:v2.15.3
   # args:
   #  storage.tsdb.retention.time: 6h

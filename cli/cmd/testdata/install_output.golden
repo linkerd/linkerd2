@@ -881,7 +881,7 @@ spec:
       containers:
       - args:
         - identity
-        - -log-level=ControllerLogLevel
+        - -log-level=
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1104,7 +1104,7 @@ spec:
         - -prometheus-url=http://linkerd-prometheus.Namespace.svc.cluster.local:9090
         - -destination-addr=linkerd-dst.Namespace.svc.cluster.local:8086
         - -controller-namespace=Namespace
-        - -log-level=ControllerLogLevel
+        - -log-level=
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1322,7 +1322,7 @@ spec:
         - -addr=:8086
         - -controller-namespace=Namespace
         - -enable-h2-upgrade=true
-        - -log-level=ControllerLogLevel
+        - -log-level=
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1519,7 +1519,7 @@ spec:
             - "heartbeat"
             - "-prometheus-url=http://linkerd-prometheus.Namespace.svc.cluster.local:9090"
             - "-controller-namespace=Namespace"
-            - "-log-level=ControllerLogLevel"
+            - "-log-level="
             securityContext:
               runAsUser: 2103
 ---
@@ -1588,7 +1588,7 @@ spec:
         - -api-addr=linkerd-controller-api.Namespace.svc.cluster.local:8085
         - -grafana-addr=linkerd-grafana.Namespace.svc.cluster.local:3000
         - -controller-namespace=Namespace
-        - -log-level=ControllerLogLevel
+        - -log-level=
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.Namespace\.svc\.cluster\.local|linkerd-web\.Namespace\.svc|\[::1\])(:\d+)?$
         image: WebImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
@@ -1783,7 +1783,7 @@ spec:
       containers:
       - args:
         - proxy-injector
-        - -log-level=ControllerLogLevel
+        - -log-level=
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -2021,7 +2021,7 @@ spec:
       containers:
       - args:
         - sp-validator
-        - -log-level=ControllerLogLevel
+        - -log-level=
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -2241,7 +2241,7 @@ spec:
       - args:
         - tap
         - -controller-namespace=Namespace
-        - -log-level=ControllerLogLevel
+        - -log-level=
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -2787,7 +2787,10 @@ metadata:
     CreatedByAnnotation: CliVersion
 data:
   prometheus.yml: |-
-    
+    global:
+      scrape_interval: 10s
+      scrape_timeout: 10s
+      evaluation_interval: 10s
 
     rule_files:
     - /etc/prometheus/*_rules.yml
@@ -2971,6 +2974,10 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - args:
+        - --storage.tsdb.path=/data
+        - --storage.tsdb.retention.time=6h
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --log.level=controllerloglevel
         image: PrometheusImage
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

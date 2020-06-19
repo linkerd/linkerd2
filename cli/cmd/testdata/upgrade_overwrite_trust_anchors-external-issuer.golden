@@ -867,7 +867,7 @@ spec:
       containers:
       - args:
         - identity
-        - -log-level=info
+        - -log-level=
         image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1091,7 +1091,7 @@ spec:
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
         - -controller-namespace=linkerd
-        - -log-level=info
+        - -log-level=
         image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1310,7 +1310,7 @@ spec:
         - -addr=:8086
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
-        - -log-level=info
+        - -log-level=
         image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1508,7 +1508,7 @@ spec:
             - "heartbeat"
             - "-prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090"
             - "-controller-namespace=linkerd"
-            - "-log-level=info"
+            - "-log-level="
             securityContext:
               runAsUser: 2103
 ---
@@ -1577,7 +1577,7 @@ spec:
         - -api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -controller-namespace=linkerd
-        - -log-level=info
+        - -log-level=
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
         image: gcr.io/linkerd-io/web:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
@@ -1773,7 +1773,7 @@ spec:
       containers:
       - args:
         - proxy-injector
-        - -log-level=info
+        - -log-level=
         image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2012,7 +2012,7 @@ spec:
       containers:
       - args:
         - sp-validator
-        - -log-level=info
+        - -log-level=
         image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2233,7 +2233,7 @@ spec:
       - args:
         - tap
         - -controller-namespace=linkerd
-        - -log-level=info
+        - -log-level=
         image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2421,17 +2421,7 @@ data:
         name: gcr.io/linkerd-io/grafana
       name: linkerd-grafana
     prometheus:
-      args:
-        config.file: /etc/prometheus/prometheus.yml
-        log.level: info
-        storage.tsdb.path: /data
-        storage.tsdb.retention.time: 6h
       enabled: true
-      globalConfig:
-        evaluation_interval: 10s
-        scrape_interval: 10s
-        scrape_timeout: 10s
-      image: prom/prometheus:v2.15.2
     tracing:
       enabled: false
 ---
@@ -2791,9 +2781,9 @@ metadata:
 data:
   prometheus.yml: |-
     global:
-      evaluation_interval: 10s
       scrape_interval: 10s
       scrape_timeout: 10s
+      evaluation_interval: 10s
 
     rule_files:
     - /etc/prometheus/*_rules.yml
@@ -2977,10 +2967,10 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - args:
-        - --config.file=/etc/prometheus/prometheus.yml
-        - --log.level=info
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --log.level=info
         image: prom/prometheus:v2.15.2
         imagePullPolicy: IfNotPresent
         livenessProbe:

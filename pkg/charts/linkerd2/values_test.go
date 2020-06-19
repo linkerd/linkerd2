@@ -18,7 +18,6 @@ func TestNewValues(t *testing.T) {
 		ControllerImage:             "gcr.io/linkerd-io/controller",
 		WebImage:                    "gcr.io/linkerd-io/web",
 		ControllerReplicas:          1,
-		ControllerLogLevel:          "info",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		EnablePodAntiAffinity:       false,
@@ -29,8 +28,7 @@ func TestNewValues(t *testing.T) {
 		HeartbeatSchedule:           "0 0 * * *",
 		InstallNamespace:            true,
 		Prometheus: Prometheus{
-			"enabled":  true,
-			"logLevel": "info",
+			"enabled": true,
 		},
 		Global: &Global{
 			Namespace:                "linkerd",
@@ -38,6 +36,7 @@ func TestNewValues(t *testing.T) {
 			ImagePullPolicy:          "IfNotPresent",
 			CliVersion:               "linkerd/cli dev-undefined",
 			ControllerComponentLabel: "linkerd.io/control-plane-component",
+			ControllerLogLevel:       "info",
 			ControllerImageVersion:   testVersion,
 			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
 			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
@@ -213,8 +212,7 @@ func TestNewValues(t *testing.T) {
 		}
 
 		expected.Prometheus = Prometheus{
-			"enabled":  true,
-			"logLevel": "info",
+			"enabled": true,
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
 					"limit":   "4",
