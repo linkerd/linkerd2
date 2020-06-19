@@ -66,14 +66,16 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 )
 
-replace (
-	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.6.0
-	github.com/codegangsta/cli => github.com/urfave/cli v1.22.4
-	github.com/containerd/containerd v1.3.0-0.20190507210959-7c1e88399ec0 => github.com/containerd/containerd v1.3.0
-	github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c => github.com/docker/docker v1.13.0
-	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc8
-	github.com/tonistiigi/fifo => github.com/containerd/fifo v0.0.0
-	github.com/uber-go/atomic => go.uber.org/atomic v1.6.0
-	github.com/wercker/stern => github.com/linkerd/stern v0.0.0-20200331220320-37779ceb2c32
-	google.golang.org/cloud => cloud.google.com/go v0.0.0
-)
+replace github.com/wercker/stern => github.com/linkerd/stern v0.0.0-20200331220320-37779ceb2c32
+
+// replace (
+// 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.6.0
+// 	github.com/codegangsta/cli => github.com/urfave/cli v1.22.4
+// 	github.com/containerd/containerd v1.3.0-0.20190507210959-7c1e88399ec0 => github.com/containerd/containerd v1.3.0
+// 	github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c => github.com/docker/docker v1.13.0
+// 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc8
+// 	github.com/tonistiigi/fifo => github.com/containerd/fifo v0.0.0
+// 	github.com/uber-go/atomic => go.uber.org/atomic v1.6.0
+// 	github.com/wercker/stern => github.com/linkerd/stern v0.0.0-20200331220320-37779ceb2c32
+// 	google.golang.org/cloud => cloud.google.com/go v0.0.0
+// )
