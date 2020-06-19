@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This file is a collection of helper functions for running integration tests.
 # It is used primarily by `bin/test-run` and ci.
