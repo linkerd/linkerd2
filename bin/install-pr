@@ -80,11 +80,11 @@ cd "$dir" || exit
 echo "### Downloading images ###"
 
 curl -L -o archive.zip -H "$auth" "$archive"
-unzip -o archive.zip
+unzip -o archive.zip -d image-archives/
 
 echo "### Loading images into Docker ###"
 
-image=$(docker load -i cli-bin.tar | sed 's/Loaded image: //')
+image=$(docker load -i image-archives/cli-bin.tar | sed 's/Loaded image: //')
 tag=$(echo "$image" | cut -f 2 -d ":")
 
 if [ $is_kind ]
@@ -99,7 +99,7 @@ then
 else
   for image in cni-plugin controller debug grafana proxy web
   do
-    image=$(docker load -i "$image.tar" | sed 's/Loaded image: //')
+    image=$(docker load -i "image-archives/$image.tar" | sed 's/Loaded image: //')
     docker push "$image"
   done
 fi

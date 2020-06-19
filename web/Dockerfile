@@ -1,5 +1,5 @@
 ## bundle web assets
-FROM node:14-stretch as webpack-bundle
+FROM node:14-buster as webpack-bundle
 RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
 
 ENV PATH /root/.yarn/bin:$PATH
@@ -32,7 +32,7 @@ COPY pkg pkg
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -o web/web -ldflags "-s -w" ./web
 
 ## package it all up
-FROM debian:stretch-20190812-slim
+FROM debian:buster-20200514-slim
 WORKDIR /linkerd
 
 COPY LICENSE .

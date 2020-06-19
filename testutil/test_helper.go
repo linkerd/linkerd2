@@ -61,6 +61,45 @@ var LinkerdDeployReplicas = map[string]deploySpec{
 	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
 }
 
+// NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
+// This helper was created to be able to reuse this package without hard restrictions
+// as seen in `NewTestHelper()` which is primarily used with integration tests
+// See - https://github.com/linkerd/linkerd2/issues/4530
+func NewGenericTestHelper(
+	linkerd,
+	version,
+	namespace,
+	upgradeFromVersion,
+	clusterDomain,
+	helmPath,
+	helmChart,
+	helmStableChart,
+	helmReleaseName string,
+	externalIssuer,
+	uninstall bool,
+	httpClient http.Client,
+	kubernetesHelper KubernetesHelper,
+) *TestHelper {
+	return &TestHelper{
+		linkerd:            linkerd,
+		version:            version,
+		namespace:          namespace,
+		upgradeFromVersion: upgradeFromVersion,
+		helm: helm{
+			path:               helmPath,
+			chart:              helmChart,
+			stableChart:        helmStableChart,
+			releaseName:        helmReleaseName,
+			upgradeFromVersion: upgradeFromVersion,
+		},
+		clusterDomain:    clusterDomain,
+		externalIssuer:   externalIssuer,
+		uninstall:        uninstall,
+		httpClient:       httpClient,
+		KubernetesHelper: kubernetesHelper,
+	}
+}
+
 // NewTestHelper creates a new instance of TestHelper for the current test run.
 // The new TestHelper can be configured via command line flags.
 func NewTestHelper() *TestHelper {
