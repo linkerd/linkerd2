@@ -803,15 +803,6 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	return installValues, nil
 }
 
-func toPromLogLevel(level string) string {
-	switch level {
-	case "panic", "fatal":
-		return "error"
-	default:
-		return level
-	}
-}
-
 func render(w io.Writer, values *l5dcharts.Values) error {
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
