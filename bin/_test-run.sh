@@ -87,6 +87,8 @@ helm_integration_tests() {
     helm_path=$bindir/helm
     helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2
     helm_release_name=$linkerd_namespace-test
+    helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2-multicluster
+    helm_multicluster_release_name=$linkerd_namespace-test-multicluster
 
     run_helm_test
     helm_cleanup
@@ -258,7 +260,8 @@ run_helm_upgrade_test() {
 run_helm_test() {
     setup_helm
     run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace-helm" \
-        --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-release="$helm_release_name"
+        --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-release="$helm_release_name" \
+        --multicluster-helm-chart="$helm_multicluster_chart" --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
 }
 
 helm_cleanup() {

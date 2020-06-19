@@ -394,22 +394,32 @@ func TestInstallMulticluster(t *testing.T) {
 	if !TestHelper.Multicluster() {
 		return
 	}
+	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
+		println(fmt.Sprint(TestHelper.GetVersion()))
+		flags := []string{
+			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
+			"--set", "controllerImageVersion=" + TestHelper.GetVersion(),
+		}
+		if stdout, stderr, err := TestHelper.HelmInstallMulticluster(TestHelper.GetMulticlusterHelmChart(), flags...); err != nil {
+			testutil.AnnotatedFatalf(t, "'helm install' command failed",
+				"'helm install' command failed\n%s\n%s", stdout, stderr)
+		}
+	} else {
+		exec := append([]string{"multicluster"}, []string{
+			"install",
+			"--namespace", TestHelper.GetMulticlusterNamespace(),
+		}...)
+		out, stderr, err := TestHelper.LinkerdRun(exec...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
+				"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
+		}
 
-	exec := append([]string{"multicluster"}, []string{
-		"install",
-		"--log-level", "debug",
-		"--namespace", TestHelper.GetMulticlusterNamespace(),
-	}...)
-	out, stderr, err := TestHelper.LinkerdRun(exec...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
-			"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
-	}
-
-	out, err = TestHelper.KubectlApply(out, "")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"'kubectl apply' command failed\n%s", out)
+		out, err = TestHelper.KubectlApply(out, "")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"'kubectl apply' command failed\n%s", out)
+		}
 	}
 }
 
