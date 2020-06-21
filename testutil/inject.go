@@ -5,7 +5,9 @@ import (
 	"strings"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
+	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -67,7 +69,7 @@ func ValidateInject(actual, fixtureFile string, h *TestHelper) error {
 		return err
 	}
 
-	fixture, err := testutil.ReadFile("testdata/" + fixtureFile)
+	fixture, err := ReadFile("testdata/" + fixtureFile)
 	if err != nil {
 		return err
 	}
@@ -79,6 +81,18 @@ func ValidateInject(actual, fixtureFile string, h *TestHelper) error {
 	if actualPatched != fixturePatched {
 		return fmt.Errorf(
 			"Expected:\n%s\nActual:\n%s", fixturePatched, actualPatched)
+	}
+
+	return nil
+}
+
+// GetProxyContainer get the proxy containers
+func GetProxyContainer(containers []v1.Container) *v1.Container {
+	for _, c := range containers {
+		container := c
+		if container.Name == k8s.ProxyContainerName {
+			return &container
+		}
 	}
 
 	return nil

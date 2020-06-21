@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -144,7 +143,7 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 	}
 
 	containers := pods[0].Spec.Containers
-	proxyContainer := getProxyContainer(containers)
+	proxyContainer := testutil.GetProxyContainer(containers)
 
 	// Match the pod configuration with the namespace level overrides
 	if proxyContainer.Resources.Requests["memory"] != resource.MustParse(nsProxyMemReq) {
@@ -327,19 +326,7 @@ func TestInjectAutoPod(t *testing.T) {
 	}
 
 	containers := pods[0].Spec.Containers
-	if proxyContainer := getProxyContainer(containers); proxyContainer == nil {
+	if proxyContainer := testutil.GetProxyContainer(containers); proxyContainer == nil {
 		testutil.Fatalf(t, "pod in namespaces %s wasn't injected", ns)
 	}
-}
-
-// Get Proxy Container from Containers
-func getProxyContainer(containers []v1.Container) *v1.Container {
-	for _, c := range containers {
-		container := c
-		if container.Name == k8s.ProxyContainerName {
-			return &container
-		}
-	}
-
-	return nil
 }
