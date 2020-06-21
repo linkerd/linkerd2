@@ -3,14 +3,12 @@ package inject
 import (
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -45,7 +43,7 @@ func TestInjectManual(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v: %s", stderr, err)
 	}
 
-	err = validateInject(out, "injected_default.golden")
+	err = testutil.ValidateInject(out, "injected_default.golden", TestHelper)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
 	}
@@ -84,7 +82,7 @@ func TestInjectManualParams(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v: %s", stderr, err)
 	}
 
-	err = validateInject(out, "injected_params.golden")
+	err = testutil.ValidateInject(out, "injected_params.golden", TestHelper)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
 	}
@@ -332,43 +330,6 @@ func TestInjectAutoPod(t *testing.T) {
 	if proxyContainer := getProxyContainer(containers); proxyContainer == nil {
 		testutil.Fatalf(t, "pod in namespaces %s wasn't injected", ns)
 	}
-}
-
-func useTestImageTag(in string) (string, error) {
-	patchOps := []string{
-		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/metadata/annotations/linkerd.io~1created-by", "value": "linkerd/cli %s"}`, TestHelper.GetVersion()),
-		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/metadata/annotations/linkerd.io~1proxy-version", "value": "%s"}`, TestHelper.GetVersion()),
-		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/spec/initContainers/0/image", "value": "init-image:%s"}`, version.ProxyInitVersion),
-	}
-
-	patchJSON := fmt.Sprintf("[%s]", strings.Join(patchOps, ","))
-	return applyPatch(in, []byte(patchJSON))
-}
-
-// validateInject is similar to `TestHelper.ValidateOutput`, but it pins the
-// image tag used in some annotations and that of the proxy-init container,
-// which vary from build to build.
-func validateInject(actual, fixtureFile string) error {
-	actualPatched, err := useTestImageTag(actual)
-	if err != nil {
-		return err
-	}
-
-	fixture, err := testutil.ReadFile("testdata/" + fixtureFile)
-	if err != nil {
-		return err
-	}
-	fixturePatched, err := useTestImageTag(fixture)
-	if err != nil {
-		return err
-	}
-
-	if actualPatched != fixturePatched {
-		return fmt.Errorf(
-			"Expected:\n%s\nActual:\n%s", fixturePatched, actualPatched)
-	}
-
-	return nil
 }
 
 // Get Proxy Container from Containers
