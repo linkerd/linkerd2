@@ -9,11 +9,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
-	"sigs.k8s.io/yaml"
 )
 
 //////////////////////
@@ -124,7 +122,7 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 		k8s.ProxyCPURequestAnnotation: podProxyCPUReq,
 	}
 
-	patchedYAML, err := patchDeploy(injectYAML, deployName, podAnnotations)
+	patchedYAML, err := testutil.PatchDeploy(injectYAML, deployName, podAnnotations)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to patch inject test YAML",
 			"failed to patch inject test YAML in namespace %s for deploy/%s: %s", ns, deployName, err)
@@ -197,7 +195,7 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 				name = fmt.Sprintf("%s-%s", name, podAnnotation)
 			}
 
-			patchedYAML, err := patchDeploy(injectYAML, name, podAnnotations)
+			patchedYAML, err := testutil.PatchDeploy(injectYAML, name, podAnnotations)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to patch inject test YAML in namespace %s for deploy/%s", ns, name),
 					"failed to patch inject test YAML in namespace %s for deploy/%s: %s", ns, name, err)
@@ -334,43 +332,6 @@ func TestInjectAutoPod(t *testing.T) {
 	if proxyContainer := getProxyContainer(containers); proxyContainer == nil {
 		testutil.Fatalf(t, "pod in namespaces %s wasn't injected", ns)
 	}
-}
-
-func applyPatch(in string, patchJSON []byte) (string, error) {
-	patch, err := jsonpatch.DecodePatch(patchJSON)
-	if err != nil {
-		return "", err
-	}
-	json, err := yaml.YAMLToJSON([]byte(in))
-	if err != nil {
-		return "", err
-	}
-	patched, err := patch.Apply(json)
-	if err != nil {
-		return "", err
-	}
-	return string(patched), nil
-}
-
-func patchDeploy(in string, name string, annotations map[string]string) (string, error) {
-	ops := []string{
-		fmt.Sprintf(`{"op": "replace", "path": "/metadata/name", "value": "%s"}`, name),
-		fmt.Sprintf(`{"op": "replace", "path": "/spec/selector/matchLabels/app", "value": "%s"}`, name),
-		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/metadata/labels/app", "value": "%s"}`, name),
-	}
-
-	if len(annotations) > 0 {
-		ops = append(ops, `{"op": "add", "path": "/spec/template/metadata/annotations", "value": {}}`)
-		for k, v := range annotations {
-			ops = append(ops,
-				fmt.Sprintf(`{"op": "add", "path": "/spec/template/metadata/annotations/%s", "value": "%s"}`, strings.Replace(k, "/", "~1", -1), v),
-			)
-		}
-	}
-
-	patchJSON := []byte(fmt.Sprintf("[%s]", strings.Join(ops, ",")))
-
-	return applyPatch(in, patchJSON)
 }
 
 func useTestImageTag(in string) (string, error) {
