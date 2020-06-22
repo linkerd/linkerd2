@@ -276,6 +276,9 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list"]
+- apiGroups: ["apiregistration.k8s.io"]
+  resources: ["apiservices"]
+  verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -506,7 +509,7 @@ webhooks:
       name: linkerd-proxy-injector
       namespace: Namespace
       path: "/"
-    caBundle: cHJveHkgaW5qZWN0b3IgY3J0
+    caBundle: cHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxl
   failurePolicy: WebhookFailurePolicy
   rules:
   - operations: [ "CREATE" ]
@@ -569,8 +572,8 @@ metadata:
     CreatedByAnnotation: CliVersion
 type: Opaque
 data:
-  crt.pem: cHJveHkgaW5qZWN0b3IgY3J0
-  key.pem: cHJveHkgaW5qZWN0b3Iga2V5
+  crt.pem: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  key.pem: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -592,7 +595,7 @@ webhooks:
       name: linkerd-sp-validator
       namespace: Namespace
       path: "/"
-    caBundle: cHJveHkgaW5qZWN0b3IgY3J0
+    caBundle: cHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxl
   failurePolicy: WebhookFailurePolicy
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
@@ -723,7 +726,7 @@ spec:
   service:
     name: linkerd-tap
     namespace: Namespace
-  caBundle: dGFwIGNydA==
+  caBundle: dGFwIENBIGJ1bmRsZQ==
 ---
 ###
 ### Control Plane PSP
@@ -951,7 +954,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+          value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1172,7 +1175,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+          value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1390,7 +1393,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: localhost.:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+          value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1657,7 +1660,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+          value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2022,7 +2025,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+          value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2223,7 +2226,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+          value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2459,7 +2462,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+          value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2683,7 +2686,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+          value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2827,9 +2830,12 @@ metadata:
     CreatedByAnnotation: CliVersion
 data:
   values: |-
+    global:
+      grafanaUrl: ""
     grafana:
       enabled: true
-      image: gcr.io/linkerd-io/grafana
+      image:
+        name: gcr.io/linkerd-io/grafana
       name: linkerd-grafana
     tracing:
       enabled: false
@@ -2968,6 +2974,10 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
+        # Force using the go-based DNS resolver instead of the OS' to avoid failures in some environments
+        # see https://github.com/grafana/grafana/issues/20096
+        - name: GODEBUG
+          value: netdns=go
         image: gcr.io/linkerd-io/grafana:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -2997,7 +3007,7 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+          value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR

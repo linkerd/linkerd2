@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -24,6 +25,19 @@ type KubernetesHelper struct {
 	k8sContext string
 	clientset  *kubernetes.Clientset
 	retryFor   func(time.Duration, func() error) error
+}
+
+// RestartCountError is returned by CheckPods() whenever a pod has restarted exactly one time.
+// Consumers should log this type of error instead of failing the test.
+// This is to alleviate CI flakiness stemming from a containerd bug.
+// See https://github.com/kubernetes/kubernetes/issues/89064
+// See https://github.com/containerd/containerd/issues/4068
+type RestartCountError struct {
+	msg string
+}
+
+func (e *RestartCountError) Error() string {
+	return e.msg
 }
 
 // NewKubernetesHelper creates a new instance of KubernetesHelper.
@@ -208,9 +222,13 @@ func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, re
 
 	for _, pod := range checkedPods {
 		for _, status := range append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) {
-			if status.RestartCount != 0 {
-				return fmt.Errorf("Container [%s] in pod [%s] in namespace [%s] has restart count [%d]",
-					status.Name, pod.Name, pod.Namespace, status.RestartCount)
+			errStr := fmt.Sprintf("Container [%s] in pod [%s] in namespace [%s] has restart count [%d]",
+				status.Name, pod.Name, pod.Namespace, status.RestartCount)
+			if status.RestartCount == 1 {
+				return &RestartCountError{errStr}
+			}
+			if status.RestartCount > 1 {
+				return errors.New(errStr)
 			}
 		}
 	}

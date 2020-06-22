@@ -16,7 +16,7 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(m.Run())
+	os.Exit(testutil.Run(m, TestHelper))
 }
 
 //////////////////////
@@ -41,7 +41,11 @@ func TestEgressHttp(t *testing.T) {
 
 	err = TestHelper.CheckPods(prefixedNs, "egress-test", 1)
 	if err != nil {
-		testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		}
 	}
 
 	testCase := func(url, methodToUse string) {

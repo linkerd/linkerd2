@@ -3,6 +3,7 @@ package servicemirror
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	log "github.com/sirupsen/logrus"
@@ -14,30 +15,27 @@ import (
 	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
 )
 
-// ProbeEventSink is an interface for a type that can send events to the probe manager
-type ProbeEventSink interface {
-	send(event interface{})
-}
-
 // RemoteClusterConfigWatcher watches for secrets of type MirrorSecretType
 // and upon the detection of such secret created starts a RemoteClusterServiceWatcher
 type RemoteClusterConfigWatcher struct {
-	k8sAPI          *k8s.API
-	clusterWatchers map[string]*RemoteClusterServiceWatcher
-	requeueLimit    int
+	serviceMirrorNamespace string
+	k8sAPI                 *k8s.API
+	clusterWatchers        map[string]*RemoteClusterServiceWatcher
+	requeueLimit           int
+	repairPeriod           time.Duration
 	sync.RWMutex
-	probeEventsSink ProbeEventSink
 }
 
 // NewRemoteClusterConfigWatcher Creates a new config watcher
-func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int, probeEventsSink ProbeEventSink) *RemoteClusterConfigWatcher {
+func NewRemoteClusterConfigWatcher(serviceMirrorNamespace string, secretsInformer cache.SharedIndexInformer, k8sAPI *k8s.API, requeueLimit int, repairPeriod time.Duration) *RemoteClusterConfigWatcher {
 	rcw := &RemoteClusterConfigWatcher{
-		k8sAPI:          k8sAPI,
-		clusterWatchers: map[string]*RemoteClusterServiceWatcher{},
-		requeueLimit:    requeueLimit,
-		probeEventsSink: probeEventsSink,
+		serviceMirrorNamespace: serviceMirrorNamespace,
+		k8sAPI:                 k8sAPI,
+		clusterWatchers:        map[string]*RemoteClusterServiceWatcher{},
+		requeueLimit:           requeueLimit,
+		repairPeriod:           repairPeriod,
 	}
-	k8sAPI.Secret().Informer().AddEventHandler(
+	secretsInformer.AddEventHandler(
 		cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				switch object := obj.(type) {
@@ -58,7 +56,7 @@ func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int, probeEvent
 				AddFunc: func(obj interface{}) {
 					secret := obj.(*corev1.Secret)
 					if err := rcw.registerRemoteCluster(secret); err != nil {
-						log.Errorf("Cannot register remote cluster: %s", err)
+						log.Errorf("Cannot register target cluster: %s", err)
 					}
 				},
 				DeleteFunc: func(obj interface{}) {
@@ -76,7 +74,7 @@ func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int, probeEvent
 						}
 					}
 					if err := rcw.unregisterRemoteCluster(secret, true); err != nil {
-						log.Errorf("Cannot unregister remote cluster: %s", err)
+						log.Errorf("Cannot unregister target cluster: %s", err)
 					}
 				},
 				UpdateFunc: func(old, new interface{}) {
@@ -85,12 +83,12 @@ func NewRemoteClusterConfigWatcher(k8sAPI *k8s.API, requeueLimit int, probeEvent
 
 					if oldSecret.ResourceVersion != newSecret.ResourceVersion {
 						if err := rcw.unregisterRemoteCluster(oldSecret, false); err != nil {
-							log.Errorf("Cannot unregister remote cluster: %s", err)
+							log.Errorf("Cannot unregister target cluster: %s", err)
 							return
 						}
 
 						if err := rcw.registerRemoteCluster(newSecret); err != nil {
-							log.Errorf("Cannot register remote cluster: %s", err)
+							log.Errorf("Cannot register target cluster: %s", err)
 						}
 
 					}
@@ -131,13 +129,15 @@ func (rcw *RemoteClusterConfigWatcher) registerRemoteCluster(secret *corev1.Secr
 		return fmt.Errorf("there is already a cluster with name %s being watcher. Please delete its config before attempting to register a new one", config.ClusterName)
 	}
 
-	watcher, err := NewRemoteClusterServiceWatcher(rcw.k8sAPI, clientConfig, config.ClusterName, rcw.requeueLimit, config.ClusterDomain, rcw.probeEventsSink)
+	watcher, err := NewRemoteClusterServiceWatcher(rcw.serviceMirrorNamespace, rcw.k8sAPI, clientConfig, config.ClusterName, rcw.requeueLimit, rcw.repairPeriod, config.ClusterDomain)
 	if err != nil {
 		return err
 	}
 
 	rcw.clusterWatchers[config.ClusterName] = watcher
-	watcher.Start()
+	if err := watcher.Start(); err != nil {
+		return err
+	}
 	return nil
 
 }

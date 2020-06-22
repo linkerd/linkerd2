@@ -19,6 +19,9 @@ global:
 
   identityTrustDomain: *cluster_domain
 
+  # url of external grafana instance.
+  grafanaUrl: ""
+
   # proxy configuration
   proxy:
     enableExternalProfiles: false
@@ -49,6 +52,7 @@ global:
     # for more info on container lifecycle hooks.
     waitBeforeExitSeconds: 0
     requireIdentityOnInboundPorts: ""
+    destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 
   # proxy-init configuration
   proxyInit:
@@ -57,7 +61,7 @@ global:
     image:
       name: gcr.io/linkerd-io/proxy-init
       pullPolicy: *image_pull_policy
-      version: v1.3.2
+      version: v1.3.3
     resources:
       cpu:
         limit: 100m
@@ -65,6 +69,7 @@ global:
       memory:
         limit: 50Mi
         request: 10Mi
+    closeWaitTimeoutSecs: 0
 
   # control plane annotations - do not edit
   createdByAnnotation: linkerd.io/created-by
@@ -148,24 +153,36 @@ prometheusRuleConfigMapMounts: []
 
 # proxy injector configuration
 proxyInjector:
+  externalSecret: false
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
+
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
 
 # service profile validator configuration
 profileValidator:
+  externalSecret: false
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
+
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
 
 # tap configuration
 tap:
+  externalSecret: false
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
+
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
 
 # web configuration
 webImage: gcr.io/linkerd-io/web
@@ -184,18 +201,23 @@ nodeSelector:
 
 smiMetrics:
   enabled: false
+  externalSecret: false
   image: deislabs/smi-metrics:v0.2.1
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
 
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
+
 # Configuration for Add-ons
 
 grafana:
   enabled: true
   name: linkerd-grafana
-  image: gcr.io/linkerd-io/grafana
+  image:
+    name: gcr.io/linkerd-io/grafana
   # resources:
 
 tracing:

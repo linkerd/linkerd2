@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+
+set -eu
+
+bindir=$( cd "${0%/*}" && pwd )
+
+"$bindir"/markdownlint ./*.md
+"$bindir"/markdownlint ./**/*.md --ignore node_modules/

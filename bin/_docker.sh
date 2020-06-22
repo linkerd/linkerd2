@@ -1,7 +1,10 @@
+#!/usr/bin/env bash
+
 set -eu
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
+# shellcheck source=_log.sh
 . "$bindir"/_log.sh
 
 # TODO this should be set to the canonical public docker registry; we can override this
@@ -32,8 +35,6 @@ docker_build() {
     file=$1
     shift
 
-    extra="$@"
-
     output=/dev/null
     if [ -n "$DOCKER_TRACE" ]; then
         output=/dev/stderr
@@ -41,11 +42,11 @@ docker_build() {
 
     rootdir=$( cd "$bindir"/.. && pwd )
 
-    log_debug "  :; docker build $rootdir -t $repo:$tag -f $file $extra"
+    log_debug "  :; docker build $rootdir -t $repo:$tag -f $file $*"
     docker build "$rootdir" \
         -t "$repo:$tag" \
         -f "$file" \
-        $extra \
+        "$@" \
         > "$output"
 
     echo "$repo:$tag"

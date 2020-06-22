@@ -16,7 +16,6 @@ func TestNewValues(t *testing.T) {
 	expected := &Values{
 		Stage:                         "",
 		ControllerImage:               "gcr.io/linkerd-io/controller",
-		ControllerImageVersion:        testVersion,
 		WebImage:                      "gcr.io/linkerd-io/web",
 		PrometheusImage:               "prom/prometheus:v2.15.2",
 		ControllerReplicas:            1,
@@ -40,6 +39,7 @@ func TestNewValues(t *testing.T) {
 			ImagePullPolicy:          "IfNotPresent",
 			CliVersion:               "linkerd/cli dev-undefined",
 			ControllerComponentLabel: "linkerd.io/control-plane-component",
+			ControllerImageVersion:   testVersion,
 			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
 			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
 			CreatedByAnnotation:      "linkerd.io/created-by",
@@ -79,8 +79,9 @@ func TestNewValues(t *testing.T) {
 					CollectorSvcAddr:    "",
 					CollectorSvcAccount: "default",
 				},
-				UID:                   2102,
-				WaitBeforeExitSeconds: 0,
+				UID:                    2102,
+				WaitBeforeExitSeconds:  0,
+				DestinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
 			},
 			ProxyInit: &ProxyInit{
 				Image: &Image{
@@ -105,7 +106,7 @@ func TestNewValues(t *testing.T) {
 				ClockSkewAllowance:  "20s",
 				IssuanceLifetime:    "86400s",
 				CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
-				TLS:                 &TLS{},
+				TLS:                 &IssuerTLS{},
 				Scheme:              "linkerd.io/tls",
 			},
 		},
@@ -134,14 +135,16 @@ func TestNewValues(t *testing.T) {
 		Grafana: Grafana{
 			"enabled": true,
 			"name":    "linkerd-grafana",
-			"image":   "gcr.io/linkerd-io/grafana",
+			"image": map[string]interface{}{
+				"name": "gcr.io/linkerd-io/grafana",
+			},
 		},
 	}
 
 	// pin the versions to ensure consistent test result.
 	// in non-test environment, the default versions are read from the
 	// values.yaml.
-	actual.ControllerImageVersion = testVersion
+	actual.Global.ControllerImageVersion = testVersion
 	actual.Global.Proxy.Image.Version = testVersion
 	actual.Global.ProxyInit.Image.Version = testVersion
 	actual.DebugContainer.Image.Version = testVersion
@@ -190,7 +193,9 @@ func TestNewValues(t *testing.T) {
 		expected.Grafana = Grafana{
 			"enabled": true,
 			"name":    "linkerd-grafana",
-			"image":   "gcr.io/linkerd-io/grafana",
+			"image": map[string]interface{}{
+				"name": "gcr.io/linkerd-io/grafana",
+			},
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
 					"limit":   controllerResources.CPU.Limit,
@@ -239,11 +244,10 @@ func TestNewValues(t *testing.T) {
 		// pin the versions to ensure consistent test result.
 		// in non-test environment, the default versions are read from the
 		// values.yaml.
-		actual.ControllerImageVersion = testVersion
+		actual.Global.ControllerImageVersion = testVersion
 		actual.Global.Proxy.Image.Version = testVersion
 		actual.Global.ProxyInit.Image.Version = testVersion
 		actual.DebugContainer.Image.Version = testVersion
-
 		// Make Add-On Values nil to not have to check for their defaults
 		actual.Tracing = nil
 

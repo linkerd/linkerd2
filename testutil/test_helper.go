@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"testing"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -58,6 +59,45 @@ var LinkerdDeployReplicas = map[string]deploySpec{
 	"linkerd-sp-validator":   {1, []string{"sp-validator"}},
 	"linkerd-web":            {1, []string{"web"}},
 	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
+}
+
+// NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
+// This helper was created to be able to reuse this package without hard restrictions
+// as seen in `NewTestHelper()` which is primarily used with integration tests
+// See - https://github.com/linkerd/linkerd2/issues/4530
+func NewGenericTestHelper(
+	linkerd,
+	version,
+	namespace,
+	upgradeFromVersion,
+	clusterDomain,
+	helmPath,
+	helmChart,
+	helmStableChart,
+	helmReleaseName string,
+	externalIssuer,
+	uninstall bool,
+	httpClient http.Client,
+	kubernetesHelper KubernetesHelper,
+) *TestHelper {
+	return &TestHelper{
+		linkerd:            linkerd,
+		version:            version,
+		namespace:          namespace,
+		upgradeFromVersion: upgradeFromVersion,
+		helm: helm{
+			path:               helmPath,
+			chart:              helmChart,
+			stableChart:        helmStableChart,
+			releaseName:        helmReleaseName,
+			upgradeFromVersion: upgradeFromVersion,
+		},
+		clusterDomain:    clusterDomain,
+		externalIssuer:   externalIssuer,
+		uninstall:        uninstall,
+		httpClient:       httpClient,
+		KubernetesHelper: kubernetesHelper,
+	}
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -481,4 +521,24 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	}
 
 	return events, nil
+}
+
+// Run calls `m.Run()`, shows unexpected logs/events,
+// and returns the exit code for the tests
+func Run(m *testing.M, helper *TestHelper) int {
+	code := m.Run()
+	if code != 0 {
+		_, errs1 := FetchAndCheckLogs(helper)
+		for _, err := range errs1 {
+			fmt.Println(err)
+		}
+		errs2 := FetchAndCheckEvents(helper)
+		for _, err := range errs2 {
+			fmt.Println(err)
+		}
+		if len(errs1) == 0 && len(errs2) == 0 {
+			fmt.Println("No unexpected log entries or events found")
+		}
+	}
+	return code
 }

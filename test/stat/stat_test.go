@@ -19,7 +19,7 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(m.Run())
+	os.Exit(testutil.Run(m, TestHelper))
 }
 
 //////////////////////

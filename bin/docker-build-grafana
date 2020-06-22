@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eu
 
@@ -10,7 +10,9 @@ fi
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 
+# shellcheck source=_docker.sh
 . "$bindir"/_docker.sh
+# shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
 
 dockerfile=$rootdir/grafana/Dockerfile

@@ -21,7 +21,6 @@ type (
 	Values struct {
 		Stage                         string                         `json:"stage"`
 		ControllerImage               string                         `json:"controllerImage"`
-		ControllerImageVersion        string                         `json:"controllerImageVersion"`
 		WebImage                      string                         `json:"webImage"`
 		PrometheusImage               string                         `json:"prometheusImage"`
 		ControllerReplicas            uint                           `json:"controllerReplicas"`
@@ -72,6 +71,7 @@ type (
 		ImagePullPolicy          string `json:"imagePullPolicy"`
 		CliVersion               string `json:"cliVersion"`
 		ControllerComponentLabel string `json:"controllerComponentLabel"`
+		ControllerImageVersion   string `json:"controllerImageVersion"`
 		ControllerNamespaceLabel string `json:"controllerNamespaceLabel"`
 		WorkloadNamespaceLabel   string `json:"workloadNamespaceLabel"`
 		CreatedByAnnotation      string `json:"createdByAnnotation"`
@@ -84,6 +84,7 @@ type (
 		ControlPlaneTracing      bool   `json:"controlPlaneTracing"`
 		IdentityTrustAnchorsPEM  string `json:"identityTrustAnchorsPEM"`
 		IdentityTrustDomain      string `json:"identityTrustDomain"`
+		GrafanaURL               string `json:"grafanaUrl"`
 
 		Proxy     *Proxy     `json:"proxy"`
 		ProxyInit *ProxyInit `json:"proxyInit"`
@@ -103,6 +104,7 @@ type (
 		DisableIdentity               bool          `json:"disableIdentity"`
 		DisableTap                    bool          `json:"disableTap"`
 		EnableExternalProfiles        bool          `json:"enableExternalProfiles"`
+		DestinationGetNetworks        string        `json:"destinationGetNetworks"`
 		Image                         *Image        `json:"image"`
 		LogLevel                      string        `json:"logLevel"`
 		SAMountPath                   *SAMountPath  `json:"saMountPath"`
@@ -111,17 +113,19 @@ type (
 		Trace                         *Trace        `json:"trace"`
 		UID                           int64         `json:"uid"`
 		WaitBeforeExitSeconds         uint64        `json:"waitBeforeExitSeconds"`
+		IsGateway                     bool          `json:"isGateway"`
 		RequireIdentityOnInboundPorts string        `json:"requireIdentityOnInboundPorts"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
 	ProxyInit struct {
-		Capabilities        *Capabilities `json:"capabilities"`
-		IgnoreInboundPorts  string        `json:"ignoreInboundPorts"`
-		IgnoreOutboundPorts string        `json:"ignoreOutboundPorts"`
-		Image               *Image        `json:"image"`
-		SAMountPath         *SAMountPath  `json:"saMountPath"`
-		Resources           *Resources    `json:"resources"`
+		Capabilities         *Capabilities `json:"capabilities"`
+		IgnoreInboundPorts   string        `json:"ignoreInboundPorts"`
+		IgnoreOutboundPorts  string        `json:"ignoreOutboundPorts"`
+		Image                *Image        `json:"image"`
+		SAMountPath          *SAMountPath  `json:"saMountPath"`
+		Resources            *Resources    `json:"resources"`
+		CloseWaitTimeoutSecs int64         `json:"closeWaitTimeoutSecs"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar
@@ -183,12 +187,12 @@ type (
 
 	// Issuer has the Helm variables of the identity issuer
 	Issuer struct {
-		Scheme              string    `json:"scheme"`
-		ClockSkewAllowance  string    `json:"clockSkewAllowance"`
-		IssuanceLifetime    string    `json:"issuanceLifetime"`
-		CrtExpiryAnnotation string    `json:"crtExpiryAnnotation"`
-		CrtExpiry           time.Time `json:"crtExpiry"`
-		TLS                 *TLS      `json:"tls"`
+		Scheme              string     `json:"scheme"`
+		ClockSkewAllowance  string     `json:"clockSkewAllowance"`
+		IssuanceLifetime    string     `json:"issuanceLifetime"`
+		CrtExpiryAnnotation string     `json:"crtExpiryAnnotation"`
+		CrtExpiry           time.Time  `json:"crtExpiry"`
+		TLS                 *IssuerTLS `json:"tls"`
 	}
 
 	// PrometheusRuleConfigMapMount is a user supplied prometheus rule config maps.
@@ -223,6 +227,15 @@ type (
 	// TLS has a pair of PEM-encoded key and certificate variables used in the
 	// Helm templates
 	TLS struct {
+		ExternalSecret bool   `json:"externalSecret"`
+		KeyPEM         string `json:"keyPEM"`
+		CrtPEM         string `json:"crtPEM"`
+		CaBundle       string `json:"caBundle"`
+	}
+
+	// IssuerTLS is a stripped down version of TLS that lacks the integral caBundle.
+	// It is tracked separately in the field 'global.IdentityTrustAnchorsPEM'
+	IssuerTLS struct {
 		KeyPEM string `json:"keyPEM"`
 		CrtPEM string `json:"crtPEM"`
 	}

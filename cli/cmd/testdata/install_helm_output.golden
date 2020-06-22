@@ -288,6 +288,9 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list"]
+- apiGroups: ["apiregistration.k8s.io"]
+  resources: ["apiservices"]
+  verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -526,7 +529,7 @@ webhooks:
       name: linkerd-proxy-injector
       namespace: linkerd
       path: "/"
-    caBundle: dGVzdC1wcm94eS1pbmplY3Rvci1jcnQtcGVt
+    caBundle: dGVzdC1wcm94eS1pbmplY3Rvci1jYS1idW5kbGU=
   failurePolicy: Ignore
   rules:
   - operations: [ "CREATE" ]
@@ -614,7 +617,7 @@ webhooks:
       name: linkerd-sp-validator
       namespace: linkerd
       path: "/"
-    caBundle: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jcnQtcGVt
+    caBundle: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jYS1idW5kbGU=
   failurePolicy: Ignore
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
@@ -747,7 +750,7 @@ spec:
   service:
     name: linkerd-tap
     namespace: linkerd
-  caBundle: dGVzdC10YXAtY3J0LXBlbQ==
+  caBundle: dGVzdC10YXAtY2EtYnVuZGxl
 ---
 # Source: linkerd2/templates/psp.yaml
 ---
@@ -924,7 +927,8 @@ data:
         "imageName":"gcr.io/linkerd-io/debug",
         "pullPolicy":"IfNotPresent"
       },
-      "debugImageVersion": "test-debug-version"
+      "debugImageVersion": "test-debug-version",
+      "destinationGetNetworks": "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
     }
   install: |
     {
@@ -2876,9 +2880,12 @@ metadata:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
   values: |-
+    global:
+      grafanaUrl: ""
     grafana:
       enabled: true
-      image: gcr.io/linkerd-io/grafana
+      image:
+        name: gcr.io/linkerd-io/grafana
       name: linkerd-grafana
     tracing:
       enabled: false
@@ -3021,6 +3028,10 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
+        # Force using the go-based DNS resolver instead of the OS' to avoid failures in some environments
+        # see https://github.com/grafana/grafana/issues/20096
+        - name: GODEBUG
+          value: netdns=go
         image: gcr.io/linkerd-io/grafana:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

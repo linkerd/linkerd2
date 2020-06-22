@@ -1,9 +1,9 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 set -eu
 
 gen() {
-    for f in $@; do
+    for f in "$@"; do
         bin/protoc -I proto --go_out=plugins=grpc,paths=source_relative:controller/gen "$f"
     done
 }

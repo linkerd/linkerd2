@@ -284,7 +284,15 @@ func writeStatsToBuffer(rows []*pb.StatTable_PodGroup_Row, w *tabwriter.Writer, 
 	}
 
 	for _, r := range rows {
-		if isPodOwnerResource(r.Resource.Type) && !options.unmeshed && r.GetMeshedPodCount() == 0 {
+
+		// Skip unmeshed pods if the unmeshed option isn't enabled.
+		if !options.unmeshed && r.GetMeshedPodCount() == 0 &&
+			// Skip only if the resource can own pods
+			isPodOwnerResource(r.Resource.Type) &&
+			// Skip only if --from isn't specified (unmeshed resources can show
+			// stats in --from mode because metrics are collected on the client
+			// side).
+			options.fromResource == "" {
 			continue
 		}
 

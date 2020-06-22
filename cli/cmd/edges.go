@@ -23,7 +23,7 @@ type edgesOptions struct {
 
 func newEdgesOptions() *edgesOptions {
 	return &edgesOptions{
-		namespace:     getDefaultNamespace(),
+		namespace:     defaultNamespace,
 		outputFormat:  tableOutput,
 		allNamespaces: false,
 	}

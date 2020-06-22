@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stdout, "Skiping as --external-issuer=false")
 		os.Exit(0)
 	}
-	os.Exit(m.Run())
+	os.Exit(testutil.Run(m, TestHelper))
 }
 
 func TestExternalIssuer(t *testing.T) {
@@ -53,11 +53,19 @@ func verifyInstallApp(t *testing.T) {
 	}
 
 	if err := TestHelper.CheckPods(prefixedNs, TestAppBackendDeploymentName, 1); err != nil {
-		testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		}
 	}
 
 	if err := TestHelper.CheckPods(prefixedNs, "slow-cooker", 1); err != nil {
-		testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		}
 	}
 }
 

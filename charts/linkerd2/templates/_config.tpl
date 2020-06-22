@@ -61,7 +61,8 @@
     "imageName":"{{.Values.debugContainer.image.name}}",
     "pullPolicy":"{{.Values.debugContainer.image.pullPolicy}}"
   },
-  "debugImageVersion": "{{.Values.debugContainer.image.version}}"
+  "debugImageVersion": "{{.Values.debugContainer.image.version}}",
+  "destinationGetNetworks": "{{.Values.global.proxy.destinationGetNetworks}}"
 }
 {{- end -}}
 

@@ -33,7 +33,7 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(m.Run())
+	os.Exit(testutil.Run(m, TestHelper))
 }
 
 //////////////////////
@@ -126,7 +126,11 @@ func TestTracing(t *testing.T) {
 		tracingNs:   "jaeger",
 	} {
 		if err := TestHelper.CheckPods(ns, deploy, 1); err != nil {
-			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			}
 		}
 
 		if err := TestHelper.CheckDeployment(ns, deploy, 1); err != nil {

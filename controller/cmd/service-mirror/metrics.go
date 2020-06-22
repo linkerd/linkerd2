@@ -9,13 +9,12 @@ import (
 const (
 	gatewayNameLabel      = "gateway_name"
 	gatewayNamespaceLabel = "gateway_namespace"
-	gatewayClusterName    = "remote_cluster_name"
+	gatewayClusterName    = "target_cluster_name"
 	eventTypeLabelName    = "event_type"
 	probeSuccessfulLabel  = "probe_successful"
 )
 
 type probeMetricVecs struct {
-	services  *prometheus.GaugeVec
 	alive     *prometheus.GaugeVec
 	latencies *prometheus.HistogramVec
 	enqueues  *prometheus.CounterVec
@@ -24,11 +23,22 @@ type probeMetricVecs struct {
 }
 
 type probeMetrics struct {
-	services   prometheus.Gauge
 	alive      prometheus.Gauge
 	latencies  prometheus.Observer
 	probes     *prometheus.CounterVec
 	unregister func()
+}
+
+var endpointRepairCounter *prometheus.CounterVec
+
+func init() {
+	endpointRepairCounter = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "service_mirror_endpoint_repairs",
+			Help: "Increments when the service mirror controller attempts to repair mirror endpoints",
+		},
+		[]string{gatewayNameLabel, gatewayNamespaceLabel, gatewayClusterName},
+	)
 }
 
 func newProbeMetricVecs() probeMetricVecs {
@@ -58,14 +68,6 @@ func newProbeMetricVecs() probeMetricVecs {
 		[]string{eventTypeLabelName},
 	)
 
-	services := promauto.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "num_mirrored_services",
-			Help: "A gauge for the current number of mirrored services associated with a gateway",
-		},
-		labelNames,
-	)
-
 	alive := promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "gateway_alive",
@@ -77,7 +79,7 @@ func newProbeMetricVecs() probeMetricVecs {
 	latencies := promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: "gateway_probe_latency_ms",
-			Help: "A histogram of latencies to a remote gateway.",
+			Help: "A histogram of latencies to a gateway in a target cluster.",
 			Buckets: []float64{
 				1, 2, 3, 4, 5,
 				10, 20, 30, 40, 50,
@@ -89,7 +91,6 @@ func newProbeMetricVecs() probeMetricVecs {
 		labelNames)
 
 	return probeMetricVecs{
-		services:  services,
 		alive:     alive,
 		latencies: latencies,
 		enqueues:  enqueues,
@@ -110,7 +111,6 @@ func (mv probeMetricVecs) newWorkerMetrics(gatewayNamespace, gatewayName, remote
 		return nil, err
 	}
 	return &probeMetrics{
-		services:  mv.services.With(labels),
 		alive:     mv.alive.With(labels),
 		latencies: mv.latencies.With(labels),
 		probes:    curriedProbes,
@@ -127,9 +127,6 @@ func (mv probeMetricVecs) unregister(gatewayNamespace, gatewayName, remoteCluste
 		gatewayClusterName:    remoteClusterName,
 	}
 
-	if !mv.services.Delete(labels) {
-		logging.Warnf("unable to delete num_mirrored_services metric with labels %s", labels)
-	}
 	if !mv.alive.Delete(labels) {
 		logging.Warnf("unable to delete gateway_alive metric with labels %s", labels)
 	}

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 # A wrapper for interacting with minikube.
 #
@@ -16,6 +16,6 @@ else
 fi
 
 # Rewrite Windows style paths "C:\\whatever\\whatever" to "/mnt/c/whatever/whatever".
-eval $("${MINIKUBE_EXE}" docker-env --shell=bash | sed "s|C:\\\|/mnt/c/|g" | sed "s|\\\|/|g")
+eval "$("${MINIKUBE_EXE}" docker-env --shell=bash | sed 's|C:\\|/mnt/c/|g;s|\\|/|g')"
 
-exec $@
+exec "$@"

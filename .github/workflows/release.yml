@@ -78,7 +78,7 @@ jobs:
   kind_integration_tests:
     strategy:
       matrix:
-        integration_test: [deep, upgrade, helm, helm_upgrade, uninstall, custom_domain, external_issuer]
+        integration_test: [deep, upgrade_stable, upgrade_edge, helm, helm_upgrade, uninstall, custom_domain, external_issuer]
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -126,17 +126,10 @@ jobs:
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
     - name: Setup default KinD cluster
       if: matrix.integration_test != 'custom_domain'
-      # engineerd/setup-kind@v0.3.0
-      uses: engineerd/setup-kind@d0e9be1
-      with:
-        version: "v0.7.0"
+      run: bin/kind create cluster --wait 300s
     - name: Setup custom_domain KinD cluster
       if: matrix.integration_test == 'custom_domain'
-      # engineerd/setup-kind@v0.3.0
-      uses: engineerd/setup-kind@d0e9be1
-      with:
-        config: test/testdata/custom_cluster_domain_config.yaml
-        version: "v0.7.0"
+      run: bin/kind create cluster --wait 300s --config test/testdata/custom_cluster_domain_config.yaml
     - name: Load image archives into the local KinD cluster
       env:
         PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
@@ -209,11 +202,40 @@ jobs:
       run: |
         export TAG="$($HOME/.linkerd version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
+  choco_pack:
+    # only runs for stable tags. The conditionals are at each step level instead of the job level
+    # otherwise the jobs below that depend on this one won't run
+    name: Pack Chocolatey release
+    needs: [kind_integration_tests, cloud_integration_tests]
+    runs-on: windows-2019
+    steps:
+    - name: Checkout code
+      if: startsWith(github.ref, 'refs/tags/stable')
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
+    - name: Chocolatey - update nuspec
+      if: startsWith(github.ref, 'refs/tags/stable')
+      run: |
+        $LINKERD_VERSION=$env:GITHUB_REF.Substring(17)
+        (Get-Content bin\win\linkerd.nuspec).replace('LINKERD_VERSION', $LINKERD_VERSION) | Set-Content bin\win\linkerd.nuspec
+    - name: Chocolatey - pack
+      if: startsWith(github.ref, 'refs/tags/stable')
+      # crazy-max/ghaction-chocolatey@v1.2.2
+      uses: crazy-max/ghaction-chocolatey@55c9188
+      with:
+        args: pack bin/win/linkerd.nuspec
+    - name: Chocolatey - upload package
+      if: startsWith(github.ref, 'refs/tags/stable')
+      # actions/upload-artifact@v2.01
+      uses: actions/upload-artifact@97b7dac
+      with:
+        name: choco
+        path: ./linkerd.*.nupkg
   gh_release:
     name: Create GH release
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')
     runs-on: ubuntu-18.04
-    needs: [kind_integration_tests, cloud_integration_tests]
+    needs: [choco_pack]
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -224,8 +246,17 @@ jobs:
         . bin/_release.sh
         echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
         extract_release_notes NOTES.md
+    - name: Download choco package
+      if: startsWith(github.ref, 'refs/tags/stable')
+      # actions/download-artifact@v1
+      uses: actions/download-artifact@18f0f59
+      with:
+        name: choco
     - name: Pull CLI binaries
-      run : bin/docker-pull-binaries $TAG
+      run : |
+        bin/docker-pull-binaries $TAG
+        VERSION=${TAG#"stable-"}
+        mv choco/linkerd.*.nupkg target/release/linkerd2-cli-stable-$VERSION.nupkg || true
     - name: Create release
       id: create_release
       # softprops/action-gh-release@v1
@@ -234,7 +265,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         draft: false
-        prelease: false
+        prerelease: false
         body_path: NOTES.md
         files: |
           ./target/release/linkerd2-cli-*-darwin
@@ -243,6 +274,7 @@ jobs:
           ./target/release/linkerd2-cli-*-linux.sha256
           ./target/release/linkerd2-cli-*-windows.exe
           ./target/release/linkerd2-cli-*-windows.exe.sha256
+          ./target/release/linkerd2-cli-*.nupkg
   website_publish:
     name: Linkerd website publish
     if: startsWith(github.ref, 'refs/tags/stable') || startsWith(github.ref, 'refs/tags/edge')

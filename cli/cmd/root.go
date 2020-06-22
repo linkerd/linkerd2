@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"regexp"
 	"strings"
@@ -20,10 +21,10 @@ import (
 )
 
 const (
-	defaultNamespace      = "linkerd"
-	defaultCNINamespace   = "linkerd-cni"
-	defaultClusterDomain  = "cluster.local"
-	defaultDockerRegistry = "gcr.io/linkerd-io"
+	defaultLinkerdNamespace = "linkerd"
+	defaultCNINamespace     = "linkerd-cni"
+	defaultClusterDomain    = "cluster.local"
+	defaultDockerRegistry   = "gcr.io/linkerd-io"
 
 	jsonOutput  = "json"
 	tableOutput = "table"
@@ -47,6 +48,7 @@ var (
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	kubeconfigPath        string
 	kubeContext           string
+	defaultNamespace      string // Default namespace taken from current kubectl context
 	impersonate           string
 	impersonateGroup      []string
 	verbose               bool
@@ -85,7 +87,7 @@ var RootCmd = &cobra.Command{
 		}
 
 		controlPlaneNamespaceFromEnv := os.Getenv("LINKERD_NAMESPACE")
-		if controlPlaneNamespace == defaultNamespace && controlPlaneNamespaceFromEnv != "" {
+		if controlPlaneNamespace == defaultLinkerdNamespace && controlPlaneNamespaceFromEnv != "" {
 			controlPlaneNamespace = controlPlaneNamespaceFromEnv
 		}
 
@@ -98,7 +100,8 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
+	defaultNamespace = getDefaultNamespace()
+	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
 	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
@@ -129,8 +132,7 @@ func init() {
 	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
-	RootCmd.AddCommand(newCmdInstallServiceMirror())
-	RootCmd.AddCommand(newCmdCluster())
+	RootCmd.AddCommand(newCmdMulticluster())
 	RootCmd.AddCommand(newCmdUninstall())
 }
 
@@ -142,7 +144,7 @@ type statOptionsBase struct {
 
 func newStatOptionsBase() *statOptionsBase {
 	return &statOptionsBase{
-		namespace:    getDefaultNamespace(),
+		namespace:    defaultNamespace,
 		timeWindow:   "1m",
 		outputFormat: tableOutput,
 	}
@@ -206,7 +208,7 @@ func getDefaultNamespace() string {
 	ns, _, err := kubeCfg.Namespace()
 
 	if err != nil {
-		log.Errorf("failed to set namespace from config context:%v", err)
+		log.Errorf("could not set namespace from kubectl context: ensure a valid KUBECONFIG path has been set")
 		return corev1.NamespaceDefault
 	}
 
@@ -225,6 +227,7 @@ type proxyConfigOptions struct {
 	debugImageVersion             string
 	dockerRegistry                string
 	imagePullPolicy               string
+	destinationGetNetworks        []string
 	ignoreInboundPorts            []string
 	ignoreOutboundPorts           []string
 	proxyUID                      int64
@@ -248,6 +251,12 @@ type proxyConfigOptions struct {
 }
 
 func (options *proxyConfigOptions) validate() error {
+
+	for _, network := range options.destinationGetNetworks {
+		if _, _, err := net.ParseCIDR(network); err != nil {
+			return fmt.Errorf("cannot parse destination get networks: %s", err)
+		}
+	}
 
 	if options.disableIdentity && len(options.requireIdentityOnInboundPorts) > 0 {
 		return errors.New("Identity must be enabled when  --require-identity-on-inbound-ports is specified")

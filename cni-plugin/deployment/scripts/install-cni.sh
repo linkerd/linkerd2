@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Copyright (c) 2018 Tigera, Inc. All rights reserved.
 # Copyright 2018 Istio Authors
 # Modifications copyright (c) Linkerd authors
@@ -65,7 +65,7 @@ cleanup() {
 
   if [ -e "${CNI_CONF_PATH}" ]; then
     echo "Removing linkerd-cni config: ${CNI_CONF_PATH}"
-    CNI_CONF_DATA=$(cat "${CNI_CONF_PATH}" | jq 'del( .plugins[]? | select( .type == "linkerd-cni" ))')
+    CNI_CONF_DATA=$(jq 'del( .plugins[]? | select( .type == "linkerd-cni" ))' "${CNI_CONF_PATH}")
     echo "${CNI_CONF_DATA}" > "${CNI_CONF_PATH}"
 
     if [ "${CNI_CONF_PATH}" = "${CONTAINER_MOUNT_PREFIX}${DEST_CNI_NET_DIR}/01-linkerd-cni.conf" ]; then
@@ -130,10 +130,10 @@ if [ -f "${SERVICE_ACCOUNT_PATH}/token" ]; then
     echo 'KUBERNETES_SERVICE_PORT not set'; exit 1;
   fi
 
-  if [ "${SKIP_TLS_VERIFY}" = "true" ]; then
+  if [ "${SKIP_TLS_VERIFY}" = 'true' ]; then
     TLS_CFG='insecure-skip-tls-verify: true'
   elif [ -f "${KUBE_CA_FILE}" ]; then
-    TLS_CFG="certificate-authority-data: $(cat "${KUBE_CA_FILE}" | base64 | tr -d '\n')"
+    TLS_CFG="certificate-authority-data: $(base64 "${KUBE_CA_FILE}" | tr -d '\n')"
   fi
 
   # Write a kubeconfig file for the CNI plugin. Do this
@@ -166,8 +166,8 @@ EOF
 fi
 
 # Insert any of the supported "auto" parameters.
-grep "__KUBERNETES_SERVICE_HOST__" ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_HOST__/"${KUBERNETES_SERVICE_HOST}"/g ${TMP_CONF}
-grep "__KUBERNETES_SERVICE_PORT__" ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_PORT__/"${KUBERNETES_SERVICE_PORT}"/g ${TMP_CONF}
+grep '__KUBERNETES_SERVICE_HOST__' ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_HOST__/"${KUBERNETES_SERVICE_HOST}"/g ${TMP_CONF}
+grep '__KUBERNETES_SERVICE_PORT__' ${TMP_CONF} && sed -i s/__KUBERNETES_SERVICE_PORT__/"${KUBERNETES_SERVICE_PORT}"/g ${TMP_CONF}
 sed -i s/__KUBERNETES_NODE_NAME__/"${KUBERNETES_NODE_NAME:-$(hostname)}"/g ${TMP_CONF}
 sed -i s/__KUBECONFIG_FILENAME__/"${KUBECONFIG_FILE_NAME}"/g ${TMP_CONF}
 sed -i s/__CNI_MTU__/"${CNI_MTU:-1500}"/g ${TMP_CONF}
@@ -187,14 +187,14 @@ CNI_CONF_FILE="${CNI_CONF_PATH}"
 if [ -e "${CNI_CONF_FILE}" ]; then
   # Add the linkerd-cni plugin to the existing list
   CNI_TMP_CONF_DATA=$(cat "${TMP_CONF}")
-  CNI_CONF_DATA=$(cat "${CNI_CONF_FILE}" | jq --argjson CNI_TMP_CONF_DATA "$CNI_TMP_CONF_DATA" -f /linkerd/filter.jq)
+  CNI_CONF_DATA=$(jq --argjson CNI_TMP_CONF_DATA "$CNI_TMP_CONF_DATA" -f /linkerd/filter.jq "${CNI_CONF_FILE}")
   echo "${CNI_CONF_DATA}" > ${TMP_CONF}
 fi
 
 # If the old config filename ends with .conf, rename it to .conflist, because it has changed to be a list
-filename=$(basename -- "${CNI_CONF_PATH}")
+filename=${CNI_CONF_PATH##*/}
 extension="${filename##*.}"
-if [ "${filename}" != "01-linkerd-cni.conf" ] && [ "${extension}" = "conf" ]; then
+if [ "${filename}" != '01-linkerd-cni.conf' ] && [ "${extension}" = 'conf' ]; then
   echo "Renaming ${CNI_CONF_PATH} extension to .conflist"
   CNI_CONF_PATH="${CNI_CONF_PATH}list"
 fi
@@ -214,7 +214,7 @@ echo "Created CNI config ${CNI_CONF_PATH}"
 # This prevents Kubernetes from restarting the pod repeatedly.
 should_sleep=${SLEEP:-"true"}
 echo "Done configuring CNI. Sleep=$should_sleep"
-while [ "${should_sleep}" = "true"  ]; do
+while [ "${should_sleep}" = 'true'  ]; do
   sleep infinity &
   wait $!
 done
