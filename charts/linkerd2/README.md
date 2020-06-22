@@ -209,7 +209,7 @@ The following table lists the configurable parameters for the Grafana Add-On.
 | `grafana.resources.cpu.request`     | Amount of CPU units that the gafana container requests                                                                                                                            ||
 | `grafana.resources.memory.limit`    | Maximum amount of memory that grafana container can use                                                                                                                        ||
 | `grafana.resources.memory.request`  | Amount of memory that the grafana container requests                                                                                                                               ||
-| `proxyResources`                    | Structure analog to the `resources` fields above, but overriding the resources of the linkerd proxy injected into the grafana pod.   | values in `global.proxy.resources` |
+| `grafana.proxy.resources`           | Structure analog to the `resources` fields above, but overriding the resources of the linkerd proxy injected into the grafana pod.   | values in `global.proxy.resources` of the linkerd2 chart. |
 
 ### Tracing Add-On
 

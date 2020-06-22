@@ -579,16 +579,25 @@ func TestComponentProxyResources(t *testing.T) {
 	for _, expected := range expectedResources {
 		resourceReqs, err := TestHelper.GetResources("linkerd-proxy", expected.pod, TestHelper.GetLinkerdNamespace())
 		if err != nil {
-			t.Fatalf("Error retrieving resource requirements for %s: %s", expected.pod, err)
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "Error retrieving resource requirements for %s: %s", expected.pod, err)
+			t.Fatalf()
 		}
 
 		cpuLimitStr := resourceReqs.Limits.Cpu().String()
 		if cpuLimitStr != expected.cpuLimit {
-			t.Fatalf("unexpected %s CPU limit: expected %s, was %s", expected.pod, expected.cpuLimit, cpuLimitStr)
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s CPU limit: expected %s, was %s", expected.pod, expected.cpuLimit, cpuLimitStr)
 		}
 		cpuRequestStr := resourceReqs.Requests.Cpu().String()
 		if cpuRequestStr != expected.cpuRequest {
-			t.Fatalf("unexpected %s CPU limit: expected %s, was %s", expected.pod, expected.cpuRequest, cpuRequestStr)
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s CPU request: expected %s, was %s", expected.pod, expected.cpuRequest, cpuRequestStr)
+		}
+		memLimitStr := resourceReqs.Limits.Memory().String()
+		if memLimitStr != expected.memLimit {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s memory limit: expected %s, was %s", expected.pod, expected.memLimit, memLimitStr)
+		}
+		memRequestStr := resourceReqs.Requests.Memory().String()
+		if memRequestStr != expected.memRequest {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s memory request: expected %s, was %s", expected.pod, expected.memRequest, memRequestStr)
 		}
 	}
 }

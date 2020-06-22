@@ -1,4 +1,0 @@
-
-# must be present to avoid access to non-existing element of the Values tree
-proxy:
-  resources:
