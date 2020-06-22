@@ -1,7 +1,5 @@
-global:
-  prometheusUrl: http://cortex-service.default:9009/api/prom
-
 prometheus:
+  image: linkedin.io/prom
   args:
     log.format: json
   globalConfig:

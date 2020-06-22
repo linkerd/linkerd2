@@ -16,9 +16,6 @@ metadata:
 data:
   prometheus.yml: |-
     global:
-      scrape_interval: 10s
-      scrape_timeout: 10s
-      evaluation_interval: 10s
       {{- if .Values.globalConfig -}}
       {{- toYaml .Values.globalConfig | trim | nindent 6 }}
       {{- end}}
@@ -28,10 +25,6 @@ data:
     - /etc/prometheus/*_rules.yaml
 
     scrape_configs:
-    - job_name: 'prometheus'
-      static_configs:
-      - targets: ['localhost:9090']
-
     - job_name: 'grafana'
       kubernetes_sd_configs:
       - role: pod
@@ -42,33 +35,6 @@ data:
         - __meta_kubernetes_pod_container_name
         action: keep
         regex: ^grafana$
-
-    #  Required for: https://grafana.com/grafana/dashboards/315
-    - job_name: 'kubernetes-nodes-cadvisor'
-      scheme: https
-      tls_config:
-        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        insecure_skip_verify: true
-      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-
-      kubernetes_sd_configs:
-      - role: node
-      relabel_configs:
-      - action: labelmap
-        regex: __meta_kubernetes_node_label_(.+)
-      - target_label: __address__
-        replacement: kubernetes.default.svc:443
-      - source_labels: [__meta_kubernetes_node_name]
-        regex: (.+)
-        target_label: __metrics_path__
-        replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
-      metric_relabel_configs:
-      - source_labels: [__name__]
-        regex: '(container|machine)_(cpu|memory|network|fs)_(.+)'
-        action: keep
-      - source_labels: [__name__]
-        regex: 'container_memory_failures_total' # unneeded large metric
-        action: drop
 
     - job_name: 'linkerd-controller'
       kubernetes_sd_configs:
@@ -81,19 +47,6 @@ data:
         - __meta_kubernetes_pod_container_port_name
         action: keep
         regex: (.*);admin-http$
-      - source_labels: [__meta_kubernetes_pod_container_name]
-        action: replace
-        target_label: component
-
-    - job_name: 'linkerd-service-mirror'
-      kubernetes_sd_configs:
-      - role: pod
-      relabel_configs:
-      - source_labels:
-        - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
-        - __meta_kubernetes_pod_container_port_name
-        action: keep
-        regex: linkerd-service-mirror;admin-http$
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component
@@ -151,8 +104,8 @@ data:
         regex: __tmp_pod_label_(.+)
 
     {{- if .Values.scrapeConfigs }}
-    {{ toYaml .Values.scrapeConfigs | trim | nindent 4 }}
-    {{ end }}
+    {{- toYaml .Values.scrapeConfigs | trim | nindent 4 }}
+    {{- end }}
 
     {{-  if (or .Values.alertManagers .Values.alertRelabelConfigs) }}
     alerting:
@@ -227,10 +180,6 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
       - args:
-        - --storage.tsdb.path=/data
-        - --storage.tsdb.retention.time=6h
-        - --config.file=/etc/prometheus/prometheus.yml
-        - --log.level={{lower (default .Values.global.controllerLogLevel .Values.logLevel)}}
         {{- range $key, $value := .Values.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}
