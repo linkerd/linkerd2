@@ -580,7 +580,6 @@ func TestComponentProxyResources(t *testing.T) {
 		resourceReqs, err := TestHelper.GetResources("linkerd-proxy", expected.pod, TestHelper.GetLinkerdNamespace())
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "Error retrieving resource requirements for %s: %s", expected.pod, err)
-			t.Fatalf()
 		}
 
 		cpuLimitStr := resourceReqs.Limits.Cpu().String()
