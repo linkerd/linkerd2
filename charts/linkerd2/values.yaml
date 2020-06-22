@@ -268,7 +268,8 @@ grafana:
   # set resource requests and limits for grafana and its linkerd proxy respectively
   # see global.proxy.resources in the linkerd2 chart for details.
   # resources:
-  #proxy.resources:
+  # proxy:
+  #   resources:
 
 tracing:
   enabled: false
