@@ -5,10 +5,11 @@ tmp.discovery
 **/cmake-*
 **/CMakeLists.txt
 *.iml
-web/web
 **/node_modules
+web/web
 web/app/dist
 web/app/yarn-error.log
+vendor
 .gorun
 **/*.gogen*
 **/*.swp
