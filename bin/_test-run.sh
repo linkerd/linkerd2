@@ -27,7 +27,7 @@ init_test_run() {
   fi
 
   bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
-  test_directory=$bindir/../test
+  test_directory=$bindir/../test/integration
   linkerd_version=$($linkerd_path version --client --short)
   linkerd_namespace=${2:-l5d-integration}
   k8s_context=${3:-''}

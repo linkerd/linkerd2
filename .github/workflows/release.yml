@@ -75,6 +75,33 @@ jobs:
         bin/docker-retag-all $TAG master
         bin/docker-push master
   # todo: Keep in sync with `kind_integration.yml`
+  cli_windows_static_integration_tests:
+    name: Integration tests (windows)
+    runs-on: windows-latest
+    needs: [docker_build]
+    steps:
+    - name: Checkout code
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
+    - name: Try to load cached Go modules
+      # actions/cache@v1.1.2
+      uses: actions/cache@70655ec
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Download image archives
+      # actions/download-artifact@v1
+      uses: actions/download-artifact@18f0f59
+      with:
+        name: image-archives
+    - name: Install CLI
+      run: |
+        cp image-archives\cli\windows\linkerd $HOME\linkerd.exe
+    - name: Run CLI Integration tests
+      run: |
+        go test --failfast --mod=readonly ".\test\cli" --linkerd=$HOME\linkerd.exe --cli-tests -v
   kind_integration_tests:
     strategy:
       matrix:
@@ -129,7 +156,7 @@ jobs:
       run: bin/kind create cluster --wait 300s
     - name: Setup custom_domain KinD cluster
       if: matrix.integration_test == 'custom_domain'
-      run: bin/kind create cluster --wait 300s --config test/testdata/custom_cluster_domain_config.yaml
+      run: bin/kind create cluster --wait 300s --config test/integration/testdata/custom_cluster_domain_config.yaml
     - name: Load image archives into the local KinD cluster
       env:
         PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
