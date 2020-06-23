@@ -32,7 +32,7 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 	for _, input := range inputs {
 		errs := processYAML(input, postInjectBuf, reportBuf, rt)
 		if len(errs) > 0 {
-			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", concatErrors(errs))
+			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", concatErrors(errs, "\n"))
 			return 1
 		}
 
@@ -231,11 +231,12 @@ func walk(path string) ([]io.Reader, error) {
 
 // a helper function to concatenate the items in a []error
 // into a single error
-func concatErrors(errs []error) error {
-	message := ""
+func concatErrors(errs []error, delimiter string) error {
+	message, errs := errs[0].Error(), errs[1:] // pop the first element of the errs
+	// this is done so that the first error message is not prefixed by the delimiter
 
 	for _, err := range errs {
-		message = fmt.Sprintf("%s\n%s", message, err.Error())
+		message = fmt.Sprintf("%s%s%s", message, delimiter, err.Error())
 	}
 	return errors.New(message)
 }
