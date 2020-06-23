@@ -9,7 +9,6 @@ web/web
 **/node_modules
 web/app/dist
 web/app/yarn-error.log
-.gorun
 **/*.gogen*
 **/*.swp
 charts/**/charts
