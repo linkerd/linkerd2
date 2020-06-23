@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eu
 
@@ -11,11 +11,15 @@ Usage: ${FUNCNAME[0]} TARGET_ARRAY RESOURCE_TYPE LINKERD_LABEL (FRIENDLY_NAME)" 
     return
   }
 
-  local -n res=$1
-  while IFS= read -r line; do res+=("$line"); done <<< "$(kubectl --context="$k8s_context" get "$2" -oname -l "linkerd.io/$3")"
-  if [ -z "${res[*]}" ]; then
-    echo "no ${4:-$2} found" >&2
-  fi
+  # We are using the variable i even if shellsheck does not see it
+  # shellcheck disable=SC2034
+  local i=0
+  unset -v "$1"
+  while IFS= read -r "$1[i++]"; do :; done <<< "$(kubectl --context="$k8s_context" get -A "$2" -oname -l "linkerd.io/$3")"
+  # ensure that the last element isn't empty
+  eval "[[ \${$1[--i]} ]]" || unset "$1[i]" # ensures last element isn't empty
+  # inform user if no results were returned from command
+  [ -z "$(eval "[[ \${$1[0]} ]]")" ] && echo "no ${4:-$2} found" >&2
 }
 
 # Initialize empty arrays

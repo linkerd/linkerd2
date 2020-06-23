@@ -125,7 +125,11 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 		testAppNamespace := TestHelper.GetTestNamespace("upgrade-test")
 		for _, deploy := range []string{"emoji", "voting", "web"} {
 			if err := TestHelper.CheckPods(testAppNamespace, deploy, 1); err != nil {
-				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				if rce, ok := err.(*testutil.RestartCountError); ok {
+					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+				} else {
+					testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				}
 			}
 
 			if err := TestHelper.CheckDeployment(testAppNamespace, deploy, 1); err != nil {
@@ -247,15 +251,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	// test `linkerd upgrade --from-manifests`
 	if TestHelper.UpgradeFromVersion() != "" {
-		resources := []string{}
-		resources = append(resources, "configmaps/"+k8s.ConfigConfigMapName, "secrets/"+k8s.IdentityIssuerSecretName)
-
-		// If `linkerd-config-addons` exists, add it to the resources to get
-		_, err := TestHelper.Kubectl("", "--namespace", TestHelper.GetLinkerdNamespace(), "get", "configmaps/"+k8s.AddOnsConfigMapName)
-		if err == nil {
-			resources = append(resources, "configmaps/"+k8s.AddOnsConfigMapName)
-		}
-
+		resources := []string{"configmaps/" + k8s.ConfigConfigMapName, "configmaps/" + k8s.AddOnsConfigMapName, "secrets/" + k8s.IdentityIssuerSecretName}
 		args := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
 		args = append(args, "-oyaml")
 
@@ -374,7 +370,11 @@ func TestResourcesPostInstall(t *testing.T) {
 	// Tests Pods and Deployments
 	for deploy, spec := range testutil.LinkerdDeployReplicas {
 		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
-			testutil.AnnotatedFatalf(t, "CheckPods timed-out", "Error validating pods for deploy [%s]:\n%s", deploy, err)
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+			}
 		}
 		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
 			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
@@ -387,44 +387,13 @@ func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
 
-	// TODO: remove when 2.8.0 is released
-	_, err := TestHelper.Kubectl("",
-		"--namespace", TestHelper.GetLinkerdNamespace(),
-		"create", "serviceaccount", "linkerd-smi-metrics",
-	)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "linkerd-smi-metrics SA creation failed",
-			"linkerd-smi-metrics SA creation failed: %s", err)
-	}
-	_, err = TestHelper.Kubectl("",
-		"--namespace", TestHelper.GetLinkerdNamespace(),
-		"label", "serviceaccount", "linkerd-smi-metrics",
-		"linkerd.io/control-plane-ns="+TestHelper.GetLinkerdNamespace(),
-	)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "linkerd-smi-metrics SA labeling failed",
-			"linkerd-smi-metrics SA labeling failed: %s", err)
-	}
-
-	// TODO: once 2.8 comes out, Replace compareOutput with true to make sure check outputs are correct
-	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion(), false)
+	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
 }
 
 func TestUpgradeHelm(t *testing.T) {
 	if TestHelper.UpgradeHelmFromVersion() == "" {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
-
-	// TODO: remove when 2.8.0 is released
-	_, err := TestHelper.Kubectl("",
-		"--namespace", TestHelper.GetLinkerdNamespace(),
-		"delete", "serviceaccount", "linkerd-smi-metrics",
-	)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "linkerd-smi-metrics SA deletion failed",
-			"linkerd-smi-metrics SA deletion failed: %s", err)
-	}
-	time.Sleep(3 * time.Second)
 
 	args := []string{
 		"--reset-values",
@@ -462,7 +431,7 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string, compareOutput bool) {
+func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string) {
 	var cmd []string
 	var golden string
 	if stage == "proxy" {
@@ -488,10 +457,6 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", stderr, out)
 		}
 
-		if !compareOutput {
-			return nil
-		}
-
 		err = TestHelper.ValidateOutput(out, golden)
 		if err != nil {
 			return fmt.Errorf("received unexpected output\n%s", err.Error())
@@ -506,11 +471,11 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 // TODO: run this after a `linkerd install config`
 func TestCheckConfigPostInstall(t *testing.T) {
-	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "", true)
+	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "")
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	testCheckCommand(t, "", TestHelper.GetVersion(), "", "", true)
+	testCheckCommand(t, "", TestHelper.GetVersion(), "", "")
 }
 
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
@@ -626,9 +591,12 @@ func TestInject(t *testing.T) {
 			}
 
 			for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
-				err = TestHelper.CheckPods(prefixedNs, deploy, 1)
-				if err != nil {
-					testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+				if err := TestHelper.CheckPods(prefixedNs, deploy, 1); err != nil {
+					if rce, ok := err.(*testutil.RestartCountError); ok {
+						testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+					} else {
+						testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+					}
 				}
 			}
 
@@ -655,7 +623,7 @@ func TestInject(t *testing.T) {
 }
 
 func TestServiceProfileDeploy(t *testing.T) {
-	bbProto, err := TestHelper.HTTPGetURL("https://raw.githubusercontent.com/BuoyantIO/bb/55b78f210c98a7eb431c3f555cf0a406f0b12edf/api.proto")
+	bbProto, err := TestHelper.HTTPGetURL("https://raw.githubusercontent.com/BuoyantIO/bb/v0.0.5/api.proto")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "unexpected error",
 			"unexpected error: %v %s", err, bbProto)
@@ -687,7 +655,7 @@ func TestCheckProxy(t *testing.T) {
 		tc := tc // pin
 		t.Run(tc.ns, func(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
-			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "", true)
+			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "")
 		})
 	}
 }
@@ -711,8 +679,11 @@ func TestEvents(t *testing.T) {
 func TestRestarts(t *testing.T) {
 	for deploy, spec := range testutil.LinkerdDeployReplicas {
 		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
-			testutil.AnnotatedFatalf(t, fmt.Sprintf("error validating pods [%s]", deploy),
-				"error validating pods [%s]:\n%s", deploy, err)
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+			}
 		}
 	}
 }

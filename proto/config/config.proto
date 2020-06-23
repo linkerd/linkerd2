@@ -53,6 +53,8 @@ message Proxy {
 
   Image debug_image = 15;
   string debug_image_version = 16;
+   
+  string destination_get_networks = 17;
 }
 
 message Image {

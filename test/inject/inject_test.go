@@ -3,17 +3,12 @@ package inject
 import (
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
-	"sigs.k8s.io/yaml"
 )
 
 //////////////////////
@@ -47,7 +42,7 @@ func TestInjectManual(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v: %s", stderr, err)
 	}
 
-	err = validateInject(out, "injected_default.golden")
+	err = testutil.ValidateInject(out, "injected_default.golden", TestHelper)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
 	}
@@ -86,7 +81,7 @@ func TestInjectManualParams(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v: %s", stderr, err)
 	}
 
-	err = validateInject(out, "injected_params.golden")
+	err = testutil.ValidateInject(out, "injected_params.golden", TestHelper)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
 	}
@@ -124,7 +119,7 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 		k8s.ProxyCPURequestAnnotation: podProxyCPUReq,
 	}
 
-	patchedYAML, err := patchDeploy(injectYAML, deployName, podAnnotations)
+	patchedYAML, err := testutil.PatchDeploy(injectYAML, deployName, podAnnotations)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to patch inject test YAML",
 			"failed to patch inject test YAML in namespace %s for deploy/%s: %s", ns, deployName, err)
@@ -148,7 +143,7 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 	}
 
 	containers := pods[0].Spec.Containers
-	proxyContainer := getProxyContainer(containers)
+	proxyContainer := testutil.GetProxyContainer(containers)
 
 	// Match the pod configuration with the namespace level overrides
 	if proxyContainer.Resources.Requests["memory"] != resource.MustParse(nsProxyMemReq) {
@@ -197,7 +192,7 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 				name = fmt.Sprintf("%s-%s", name, podAnnotation)
 			}
 
-			patchedYAML, err := patchDeploy(injectYAML, name, podAnnotations)
+			patchedYAML, err := testutil.PatchDeploy(injectYAML, name, podAnnotations)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to patch inject test YAML in namespace %s for deploy/%s", ns, name),
 					"failed to patch inject test YAML in namespace %s for deploy/%s: %s", ns, name, err)
@@ -331,93 +326,7 @@ func TestInjectAutoPod(t *testing.T) {
 	}
 
 	containers := pods[0].Spec.Containers
-	if proxyContainer := getProxyContainer(containers); proxyContainer == nil {
+	if proxyContainer := testutil.GetProxyContainer(containers); proxyContainer == nil {
 		testutil.Fatalf(t, "pod in namespaces %s wasn't injected", ns)
 	}
-}
-
-func applyPatch(in string, patchJSON []byte) (string, error) {
-	patch, err := jsonpatch.DecodePatch(patchJSON)
-	if err != nil {
-		return "", err
-	}
-	json, err := yaml.YAMLToJSON([]byte(in))
-	if err != nil {
-		return "", err
-	}
-	patched, err := patch.Apply(json)
-	if err != nil {
-		return "", err
-	}
-	return string(patched), nil
-}
-
-func patchDeploy(in string, name string, annotations map[string]string) (string, error) {
-	ops := []string{
-		fmt.Sprintf(`{"op": "replace", "path": "/metadata/name", "value": "%s"}`, name),
-		fmt.Sprintf(`{"op": "replace", "path": "/spec/selector/matchLabels/app", "value": "%s"}`, name),
-		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/metadata/labels/app", "value": "%s"}`, name),
-	}
-
-	if len(annotations) > 0 {
-		ops = append(ops, `{"op": "add", "path": "/spec/template/metadata/annotations", "value": {}}`)
-		for k, v := range annotations {
-			ops = append(ops,
-				fmt.Sprintf(`{"op": "add", "path": "/spec/template/metadata/annotations/%s", "value": "%s"}`, strings.Replace(k, "/", "~1", -1), v),
-			)
-		}
-	}
-
-	patchJSON := []byte(fmt.Sprintf("[%s]", strings.Join(ops, ",")))
-
-	return applyPatch(in, patchJSON)
-}
-
-func useTestImageTag(in string) (string, error) {
-	patchOps := []string{
-		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/metadata/annotations/linkerd.io~1created-by", "value": "linkerd/cli %s"}`, TestHelper.GetVersion()),
-		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/metadata/annotations/linkerd.io~1proxy-version", "value": "%s"}`, TestHelper.GetVersion()),
-		fmt.Sprintf(`{"op": "replace", "path": "/spec/template/spec/initContainers/0/image", "value": "init-image:%s"}`, version.ProxyInitVersion),
-	}
-
-	patchJSON := fmt.Sprintf("[%s]", strings.Join(patchOps, ","))
-	return applyPatch(in, []byte(patchJSON))
-}
-
-// validateInject is similar to `TestHelper.ValidateOutput`, but it pins the
-// image tag used in some annotations and that of the proxy-init container,
-// which vary from build to build.
-func validateInject(actual, fixtureFile string) error {
-	actualPatched, err := useTestImageTag(actual)
-	if err != nil {
-		return err
-	}
-
-	fixture, err := testutil.ReadFile("testdata/" + fixtureFile)
-	if err != nil {
-		return err
-	}
-	fixturePatched, err := useTestImageTag(fixture)
-	if err != nil {
-		return err
-	}
-
-	if actualPatched != fixturePatched {
-		return fmt.Errorf(
-			"Expected:\n%s\nActual:\n%s", fixturePatched, actualPatched)
-	}
-
-	return nil
-}
-
-// Get Proxy Container from Containers
-func getProxyContainer(containers []v1.Container) *v1.Container {
-	for _, c := range containers {
-		container := c
-		if container.Name == k8s.ProxyContainerName {
-			return &container
-		}
-	}
-
-	return nil
 }

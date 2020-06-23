@@ -53,11 +53,19 @@ func verifyInstallApp(t *testing.T) {
 	}
 
 	if err := TestHelper.CheckPods(prefixedNs, TestAppBackendDeploymentName, 1); err != nil {
-		testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		}
 	}
 
 	if err := TestHelper.CheckPods(prefixedNs, "slow-cooker", 1); err != nil {
-		testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		}
 	}
 }
 

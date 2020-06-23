@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Copyright (c) 2018 Tigera, Inc. All rights reserved.
 # Copyright 2018 Istio Authors
 # Modifications copyright (c) Linkerd authors
