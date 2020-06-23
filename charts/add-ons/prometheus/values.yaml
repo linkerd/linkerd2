@@ -3,7 +3,7 @@ args:
   storage.tsdb.path: /data
   storage.tsdb.retention.time: 6h
   config.file: /etc/prometheus/prometheus.yml
-  log.level: debug
+  log.level: info
 globalConfig:
   scrape_interval: 10s
   scrape_timeout: 10s
