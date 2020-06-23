@@ -4,16 +4,13 @@
 
 This release fixes multicluster gateways support on EKS.
 
-* The `config.linkerd.io/proxy-destination-get-networks` annotation configures
-  the networks for which a proxy can discover metadata. This is an advanced
-  configuration option that has security implications.
 * The multicluster service-mirror has been extended to resolve DNS names for
-  target clusters when an IP address it not known.
+  target clusters when an IP address is not known.
 * Linkerd checks could fail when run from the dashboard. Thanks to @alex-berger
   for providing a fix!
 * Have the service mirror controller check in `linkerd check` retry on failures.
 * As of this version we're including a Chocolatey package (Windows) next to the
-  other binaries in the release assets in Github.
+  other binaries in the release assets in GitHub.
 * Base images have been updated:
   * debian:buster-20200514-slim
   * grafana/grafana:7.0.3
