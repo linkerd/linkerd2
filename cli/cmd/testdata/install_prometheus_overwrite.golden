@@ -3001,7 +3001,7 @@ spec:
       - args:
         - --config.file=/etc/prometheus/prometheus.yml
         - --log.format=json
-        - --log.level=debug
+        - --log.level=info
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
         image: linkedin.io/prom

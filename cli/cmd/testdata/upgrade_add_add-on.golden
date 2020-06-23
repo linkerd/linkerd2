@@ -3009,7 +3009,7 @@ spec:
       containers:
       - args:
         - --config.file=/etc/prometheus/prometheus.yml
-        - --log.level=debug
+        - --log.level=info
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
         image: prom/prometheus:v2.15.2
