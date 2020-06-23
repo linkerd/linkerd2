@@ -16,4 +16,3 @@ target
 web/app/dist
 web/app/yarn-error.log
 vendor
-.gorun

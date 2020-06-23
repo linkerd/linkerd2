@@ -10,7 +10,6 @@ web/web
 web/app/dist
 web/app/yarn-error.log
 vendor
-.gorun
 **/*.gogen*
 **/*.swp
 charts/**/charts

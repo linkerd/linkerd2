@@ -16,3 +16,6 @@ SECURITY_AUDIT.pdf	@olix0r
 # Hema & Zahari understand the CNI best:
 /charts/linkerd2-cni	@hemakl @zaharidichev
 /cni-plugin		@hemakl @zaharidichev
+
+# The Dockerfile is changed with go.mod changes.
+/cni-plugin/Dockerfile @linkerd/maintainers
