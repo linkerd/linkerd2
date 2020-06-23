@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 bindir=$( cd "${0%/*}" && pwd )
 

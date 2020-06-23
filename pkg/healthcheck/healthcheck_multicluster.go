@@ -64,9 +64,10 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 			id: LinkerdMulticlusterSourceChecks,
 			checkers: []checker{
 				{
-					description: "service mirror controller is running",
-					hintAnchor:  "l5d-multicluster-service-mirror-running",
-					fatal:       true,
+					description:   "service mirror controller is running",
+					hintAnchor:    "l5d-multicluster-service-mirror-running",
+					retryDeadline: hc.RetryDeadline,
+					fatal:         true,
 					check: func(context.Context) error {
 						return hc.checkServiceMirrorController()
 					},

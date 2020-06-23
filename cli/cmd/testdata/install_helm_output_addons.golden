@@ -927,7 +927,8 @@ data:
         "imageName":"gcr.io/linkerd-io/debug",
         "pullPolicy":"IfNotPresent"
       },
-      "debugImageVersion": "test-debug-version"
+      "debugImageVersion": "test-debug-version",
+      "destinationGetNetworks": "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
     }
   install: |
     {
