@@ -32,7 +32,7 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 	for _, input := range inputs {
 		errs := processYAML(input, postInjectBuf, reportBuf, rt)
 		if len(errs) > 0 {
-			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", concatErrors(errs, "\n"))
+			fmt.Fprintf(errWriter, "Error transforming resources:\n%v", concatErrors(errs, "\n"))
 			return 1
 		}
 
