@@ -1975,6 +1975,7 @@ data:
     - job_name: 'prometheus'
       static_configs:
       - targets: ['localhost:9090']
+
     - job_name: 'grafana'
       kubernetes_sd_configs:
       - role: pod
@@ -1985,6 +1986,7 @@ data:
         - __meta_kubernetes_pod_container_name
         action: keep
         regex: ^grafana$
+
     #  Required for: https://grafana.com/grafana/dashboards/315
     - job_name: 'kubernetes-nodes-cadvisor'
       scheme: https
@@ -2010,6 +2012,7 @@ data:
       - source_labels: [__name__]
         regex: 'container_memory_failures_total' # unneeded large metric
         action: drop
+
     - job_name: 'linkerd-controller'
       kubernetes_sd_configs:
       - role: pod
@@ -2024,6 +2027,7 @@ data:
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component
+
     - job_name: 'linkerd-service-mirror'
       kubernetes_sd_configs:
       - role: pod
@@ -2036,6 +2040,7 @@ data:
       - source_labels: [__meta_kubernetes_pod_container_name]
         action: replace
         target_label: component
+
     - job_name: 'linkerd-proxy'
       kubernetes_sd_configs:
       - role: pod
