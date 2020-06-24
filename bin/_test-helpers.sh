@@ -311,8 +311,11 @@ helm_cleanup() {
 
 run_helm_test() {
   setup_helm
+  helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2-multicluster
+  helm_multicluster_release_name="multicluster-test"
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
-  --helm-release="$helm_release_name"
+  --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
+  --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
   helm_cleanup
 }
 
@@ -336,18 +339,18 @@ run_uninstall_test() {
 }
 
 run_deep_test() {
-  run_test "$test_directory/install_test.go"
+  run_test "$test_directory/install_test.go" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   run_test "${tests[@]}"
 }
 
 run_external-issuer_test() {
-  run_test "$test_directory/install_test.go" --external-issuer=true
+  run_test "$test_directory/install_test.go" --external-issuer=true --multicluster
   run_test "$test_directory/externalissuer/external_issuer_test.go" --external-issuer=true
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install_test.go" --cluster-domain='custom.domain'
+  run_test "$test_directory/install_test.go" --cluster-domain='custom.domain' --multicluster
 }
 
 # exit_on_err should be called right after a command to check the result status

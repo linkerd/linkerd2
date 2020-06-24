@@ -41,6 +41,10 @@ var (
 		"linkerd-tap",
 	}
 
+	multiclusterSvcs = []string{
+		"linkerd-gateway",
+	}
+
 	injectionCases = []struct {
 		ns          string
 		annotations map[string]string
@@ -251,15 +255,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	// test `linkerd upgrade --from-manifests`
 	if TestHelper.UpgradeFromVersion() != "" {
-		resources := []string{}
-		resources = append(resources, "configmaps/"+k8s.ConfigConfigMapName, "secrets/"+k8s.IdentityIssuerSecretName)
-
-		// If `linkerd-config-addons` exists, add it to the resources to get
-		_, err := TestHelper.Kubectl("", "--namespace", TestHelper.GetLinkerdNamespace(), "get", "configmaps/"+k8s.AddOnsConfigMapName)
-		if err == nil {
-			resources = append(resources, "configmaps/"+k8s.AddOnsConfigMapName)
-		}
-
+		resources := []string{"configmaps/" + k8s.ConfigConfigMapName, "configmaps/" + k8s.AddOnsConfigMapName, "secrets/" + k8s.IdentityIssuerSecretName}
 		args := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
 		args = append(args, "-oyaml")
 
@@ -359,31 +355,78 @@ func TestInstallHelm(t *testing.T) {
 	}
 }
 
-func TestResourcesPostInstall(t *testing.T) {
+func testResourcesPostInstall(namespace string, services []string, deploys map[string]testutil.DeploySpec, t *testing.T) {
 	// Tests Namespace
-	err := TestHelper.CheckIfNamespaceExists(TestHelper.GetLinkerdNamespace())
+	err := TestHelper.CheckIfNamespaceExists(namespace)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output",
 			"received unexpected output\n%s", err)
 	}
 
 	// Tests Services
-	for _, svc := range linkerdSvcs {
-		if err := TestHelper.CheckService(TestHelper.GetLinkerdNamespace(), svc); err != nil {
+	for _, svc := range services {
+		if err := TestHelper.CheckService(namespace, svc); err != nil {
 			testutil.AnnotatedErrorf(t, fmt.Sprintf("error validating service [%s]", svc),
 				"error validating service [%s]:\n%s", svc, err)
 		}
 	}
 
 	// Tests Pods and Deployments
-	for deploy, spec := range testutil.LinkerdDeployReplicas {
-		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
-			testutil.AnnotatedFatalf(t, "CheckPods timed-out", "Error validating pods for deploy [%s]:\n%s", deploy, err)
+	for deploy, spec := range deploys {
+		if err := TestHelper.CheckPods(namespace, deploy, spec.Replicas); err != nil {
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+			}
 		}
-		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+		if err := TestHelper.CheckDeployment(namespace, deploy, spec.Replicas); err != nil {
 			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}
+}
+
+func TestControlPlaneResourcesPostInstall(t *testing.T) {
+	testResourcesPostInstall(TestHelper.GetLinkerdNamespace(), linkerdSvcs, testutil.LinkerdDeployReplicas, t)
+}
+
+func TestInstallMulticluster(t *testing.T) {
+	if !TestHelper.Multicluster() {
+		return
+	}
+	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
+		flags := []string{
+			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
+			"--set", "controllerImageVersion=" + TestHelper.GetVersion(),
+		}
+		if stdout, stderr, err := TestHelper.HelmInstallMulticluster(TestHelper.GetMulticlusterHelmChart(), flags...); err != nil {
+			testutil.AnnotatedFatalf(t, "'helm install' command failed",
+				"'helm install' command failed\n%s\n%s", stdout, stderr)
+		}
+	} else {
+		exec := append([]string{"multicluster"}, []string{
+			"install",
+			"--namespace", TestHelper.GetMulticlusterNamespace(),
+		}...)
+		out, stderr, err := TestHelper.LinkerdRun(exec...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
+				"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
+		}
+
+		out, err = TestHelper.KubectlApply(out, "")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+				"'kubectl apply' command failed\n%s", out)
+		}
+	}
+}
+
+func TestMulticlusterResourcesPostInstall(t *testing.T) {
+	if !TestHelper.Multicluster() {
+		return
+	}
+	testResourcesPostInstall(TestHelper.GetMulticlusterNamespace(), multiclusterSvcs, testutil.MulticlusterDeployReplicas, t)
 }
 
 func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
@@ -391,27 +434,7 @@ func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
 
-	// TODO: remove when 2.8.0 is released
-	_, err := TestHelper.Kubectl("",
-		"--namespace", TestHelper.GetLinkerdNamespace(),
-		"create", "serviceaccount", "linkerd-smi-metrics",
-	)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "linkerd-smi-metrics SA creation failed",
-			"linkerd-smi-metrics SA creation failed: %s", err)
-	}
-	_, err = TestHelper.Kubectl("",
-		"--namespace", TestHelper.GetLinkerdNamespace(),
-		"label", "serviceaccount", "linkerd-smi-metrics",
-		"linkerd.io/control-plane-ns="+TestHelper.GetLinkerdNamespace(),
-	)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "linkerd-smi-metrics SA labeling failed",
-			"linkerd-smi-metrics SA labeling failed: %s", err)
-	}
-
-	// TODO: once 2.8 comes out, Replace compareOutput with true to make sure check outputs are correct
-	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion(), false)
+	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
 }
 
 func TestUpgradeHelm(t *testing.T) {
@@ -419,19 +442,38 @@ func TestUpgradeHelm(t *testing.T) {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
 
-	// TODO: remove when 2.8.0 is released
-	_, err := TestHelper.Kubectl("",
-		"--namespace", TestHelper.GetLinkerdNamespace(),
-		"delete", "serviceaccount", "linkerd-smi-metrics",
-	)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "linkerd-smi-metrics SA deletion failed",
-			"linkerd-smi-metrics SA deletion failed: %s", err)
-	}
-	time.Sleep(3 * time.Second)
-
 	args := []string{
-		"--reset-values",
+		// implicit as at least one value is set manually: "--reset-values",
+		// (see https://medium.com/@kcatstack/understand-helm-upgrade-flags-reset-values-reuse-values-6e58ac8f127e )
+
+		// Also ensure that the CPU requests are fairly small (<100m) in order
+		// to avoid squeeze-out of other pods in CI tests.
+
+		"--set", "global.proxy.resources.cpu.limit=200m",
+		"--set", "global.proxy.resources.cpu.request=20m",
+		"--set", "global.proxy.resources.memory.limit=200Mi",
+		"--set", "global.proxy.resources.memory.request=100Mi",
+		// actually sets the value for the controller pod
+		"--set", "publicAPIProxyResources.cpu.limit=1010m",
+		"--set", "publicAPIProxyResources.memory.request=101Mi",
+		"--set", "destinationProxyResources.cpu.limit=1020m",
+		"--set", "destinationProxyResources.memory.request=102Mi",
+		"--set", "grafana.proxy.resources.cpu.limit=1030m",
+		"--set", "grafana.proxy.resources.memory.request=103Mi",
+		"--set", "identityProxyResources.cpu.limit=1040m",
+		"--set", "identityProxyResources.memory.request=104Mi",
+		"--set", "prometheusProxyResources.cpu.limit=1050m",
+		"--set", "prometheusProxyResources.memory.request=105Mi",
+		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
+		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
+		"--set", "smiMetricsProxyResources.cpu.limit=1070m",
+		"--set", "smiMetricsProxyResources.memory.request=107Mi",
+		"--set", "spValidatorProxyResources.cpu.limit=1080m",
+		"--set", "spValidatorProxyResources.memory.request=108Mi",
+		"--set", "tapProxyResources.cpu.limit=1090m",
+		"--set", "tapProxyResources.memory.request=109Mi",
+		"--set", "webProxyResources.cpu.limit=1100m",
+		"--set", "webProxyResources.memory.request=110Mi",
 		"--atomic",
 		"--wait",
 	}
@@ -458,6 +500,119 @@ func TestRetrieveUidPostUpgrade(t *testing.T) {
 	}
 }
 
+type expectedData struct {
+	pod        string
+	cpuLimit   string
+	cpuRequest string
+	memLimit   string
+	memRequest string
+}
+
+var expectedResources = []expectedData{
+	{
+		pod:        "linkerd-controller",
+		cpuLimit:   "1010m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "101Mi",
+	},
+	{
+		pod:        "linkerd-destination",
+		cpuLimit:   "1020m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "102Mi",
+	},
+	{
+		pod:        "linkerd-grafana",
+		cpuLimit:   "1030m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "103Mi",
+	},
+	{
+		pod:        "linkerd-identity",
+		cpuLimit:   "1040m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "104Mi",
+	},
+	{
+		pod:        "linkerd-prometheus",
+		cpuLimit:   "1050m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "105Mi",
+	},
+	{
+		pod:        "linkerd-proxy-injector",
+		cpuLimit:   "1060m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "106Mi",
+	},
+	/*	 not used in default case
+	{
+		pod:        "linkerd-smi-metrics",
+		cpuLimit:   "1070m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "1007i",
+	},
+	*/
+	{
+		pod:        "linkerd-sp-validator",
+		cpuLimit:   "1080m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "108Mi",
+	},
+	{
+		pod:        "linkerd-tap",
+		cpuLimit:   "1090m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "109Mi",
+	},
+	{
+		pod:        "linkerd-web",
+		cpuLimit:   "1100m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "110Mi",
+	},
+}
+
+func TestComponentProxyResources(t *testing.T) {
+	if TestHelper.UpgradeHelmFromVersion() == "" {
+		t.Skip("Skipping as this is not a helm upgrade test")
+	}
+
+	for _, expected := range expectedResources {
+		resourceReqs, err := TestHelper.GetResources("linkerd-proxy", expected.pod, TestHelper.GetLinkerdNamespace())
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "Error retrieving resource requirements for %s: %s", expected.pod, err)
+		}
+
+		cpuLimitStr := resourceReqs.Limits.Cpu().String()
+		if cpuLimitStr != expected.cpuLimit {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s CPU limit: expected %s, was %s", expected.pod, expected.cpuLimit, cpuLimitStr)
+		}
+		cpuRequestStr := resourceReqs.Requests.Cpu().String()
+		if cpuRequestStr != expected.cpuRequest {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s CPU request: expected %s, was %s", expected.pod, expected.cpuRequest, cpuRequestStr)
+		}
+		memLimitStr := resourceReqs.Limits.Memory().String()
+		if memLimitStr != expected.memLimit {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s memory limit: expected %s, was %s", expected.pod, expected.memLimit, memLimitStr)
+		}
+		memRequestStr := resourceReqs.Requests.Memory().String()
+		if memRequestStr != expected.memRequest {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s memory request: expected %s, was %s", expected.pod, expected.memRequest, memRequestStr)
+		}
+	}
+}
+
 func TestVersionPostInstall(t *testing.T) {
 	err := TestHelper.CheckVersion(TestHelper.GetVersion())
 	if err != nil {
@@ -466,18 +621,26 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string, compareOutput bool) {
+func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string) {
 	var cmd []string
 	var golden string
 	if stage == "proxy" {
 		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=0"}
-		golden = "check.proxy.golden"
+		if TestHelper.Multicluster() {
+			golden = "check.multicluster.proxy.golden"
+		} else {
+			golden = "check.proxy.golden"
+		}
 	} else if stage == "config" {
 		cmd = []string{"check", "config", "--expected-version", expectedVersion, "--wait=0"}
 		golden = "check.config.golden"
 	} else {
 		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=0"}
-		golden = "check.golden"
+		if TestHelper.Multicluster() {
+			golden = "check.multicluster.golden"
+		} else {
+			golden = "check.golden"
+		}
 	}
 
 	timeout := time.Minute
@@ -490,10 +653,6 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 		if err != nil {
 			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", stderr, out)
-		}
-
-		if !compareOutput {
-			return nil
 		}
 
 		err = TestHelper.ValidateOutput(out, golden)
@@ -510,11 +669,11 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 // TODO: run this after a `linkerd install config`
 func TestCheckConfigPostInstall(t *testing.T) {
-	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "", true)
+	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "")
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	testCheckCommand(t, "", TestHelper.GetVersion(), "", "", true)
+	testCheckCommand(t, "", TestHelper.GetVersion(), "", "")
 }
 
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
@@ -630,9 +789,12 @@ func TestInject(t *testing.T) {
 			}
 
 			for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
-				err = TestHelper.CheckPods(prefixedNs, deploy, 1)
-				if err != nil {
-					testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+				if err := TestHelper.CheckPods(prefixedNs, deploy, 1); err != nil {
+					if rce, ok := err.(*testutil.RestartCountError); ok {
+						testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+					} else {
+						testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+					}
 				}
 			}
 
@@ -691,7 +853,7 @@ func TestCheckProxy(t *testing.T) {
 		tc := tc // pin
 		t.Run(tc.ns, func(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
-			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "", true)
+			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "")
 		})
 	}
 }
@@ -707,7 +869,7 @@ func TestLogs(t *testing.T) {
 }
 
 func TestEvents(t *testing.T) {
-	for err := range testutil.FetchAndCheckEvents(TestHelper) {
+	for _, err := range testutil.FetchAndCheckEvents(TestHelper) {
 		testutil.AnnotatedError(t, "Error checking events", err)
 	}
 }
@@ -715,8 +877,35 @@ func TestEvents(t *testing.T) {
 func TestRestarts(t *testing.T) {
 	for deploy, spec := range testutil.LinkerdDeployReplicas {
 		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
-			testutil.AnnotatedFatalf(t, fmt.Sprintf("error validating pods [%s]", deploy),
-				"error validating pods [%s]:\n%s", deploy, err)
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
+			}
 		}
+	}
+}
+
+//TODO Put that in test_cleanup when we have adequate resource labels
+func TestUninstallMulticluster(t *testing.T) {
+	if !TestHelper.Multicluster() {
+		return
+	}
+
+	exec := append([]string{"multicluster"}, []string{
+		"install",
+		"--log-level", "debug",
+		"--namespace", TestHelper.GetMulticlusterNamespace(),
+	}...)
+	out, stderr, err := TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
+			"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
+	}
+
+	out, err = TestHelper.Kubectl(out, []string{"delete", "-f", "-"}...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl delete' command failed",
+			"'kubectl apply' command failed\n%s", out)
 	}
 }
