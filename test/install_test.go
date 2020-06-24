@@ -396,7 +396,37 @@ func TestUpgradeHelm(t *testing.T) {
 	}
 
 	args := []string{
-		"--reset-values",
+		// implicit as at least one value is set manually: "--reset-values",
+		// (see https://medium.com/@kcatstack/understand-helm-upgrade-flags-reset-values-reuse-values-6e58ac8f127e )
+
+		// Also ensure that the CPU requests are fairly small (<100m) in order
+		// to avoid squeeze-out of other pods in CI tests.
+
+		"--set", "global.proxy.resources.cpu.limit=200m",
+		"--set", "global.proxy.resources.cpu.request=20m",
+		"--set", "global.proxy.resources.memory.limit=200Mi",
+		"--set", "global.proxy.resources.memory.request=100Mi",
+		// actually sets the value for the controller pod
+		"--set", "publicAPIProxyResources.cpu.limit=1010m",
+		"--set", "publicAPIProxyResources.memory.request=101Mi",
+		"--set", "destinationProxyResources.cpu.limit=1020m",
+		"--set", "destinationProxyResources.memory.request=102Mi",
+		"--set", "grafana.proxy.resources.cpu.limit=1030m",
+		"--set", "grafana.proxy.resources.memory.request=103Mi",
+		"--set", "identityProxyResources.cpu.limit=1040m",
+		"--set", "identityProxyResources.memory.request=104Mi",
+		"--set", "prometheusProxyResources.cpu.limit=1050m",
+		"--set", "prometheusProxyResources.memory.request=105Mi",
+		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
+		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
+		"--set", "smiMetricsProxyResources.cpu.limit=1070m",
+		"--set", "smiMetricsProxyResources.memory.request=107Mi",
+		"--set", "spValidatorProxyResources.cpu.limit=1080m",
+		"--set", "spValidatorProxyResources.memory.request=108Mi",
+		"--set", "tapProxyResources.cpu.limit=1090m",
+		"--set", "tapProxyResources.memory.request=109Mi",
+		"--set", "webProxyResources.cpu.limit=1100m",
+		"--set", "webProxyResources.memory.request=110Mi",
 		"--atomic",
 		"--wait",
 	}
@@ -419,6 +449,119 @@ func TestRetrieveUidPostUpgrade(t *testing.T) {
 				"linkerd-config's uid after upgrade [%s] doesn't match its value before the upgrade [%s]",
 				newConfigMapUID, configMapUID,
 			)
+		}
+	}
+}
+
+type expectedData struct {
+	pod        string
+	cpuLimit   string
+	cpuRequest string
+	memLimit   string
+	memRequest string
+}
+
+var expectedResources = []expectedData{
+	{
+		pod:        "linkerd-controller",
+		cpuLimit:   "1010m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "101Mi",
+	},
+	{
+		pod:        "linkerd-destination",
+		cpuLimit:   "1020m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "102Mi",
+	},
+	{
+		pod:        "linkerd-grafana",
+		cpuLimit:   "1030m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "103Mi",
+	},
+	{
+		pod:        "linkerd-identity",
+		cpuLimit:   "1040m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "104Mi",
+	},
+	{
+		pod:        "linkerd-prometheus",
+		cpuLimit:   "1050m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "105Mi",
+	},
+	{
+		pod:        "linkerd-proxy-injector",
+		cpuLimit:   "1060m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "106Mi",
+	},
+	/*	 not used in default case
+	{
+		pod:        "linkerd-smi-metrics",
+		cpuLimit:   "1070m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "1007i",
+	},
+	*/
+	{
+		pod:        "linkerd-sp-validator",
+		cpuLimit:   "1080m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "108Mi",
+	},
+	{
+		pod:        "linkerd-tap",
+		cpuLimit:   "1090m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "109Mi",
+	},
+	{
+		pod:        "linkerd-web",
+		cpuLimit:   "1100m",
+		cpuRequest: "20m",
+		memLimit:   "200Mi",
+		memRequest: "110Mi",
+	},
+}
+
+func TestComponentProxyResources(t *testing.T) {
+	if TestHelper.UpgradeHelmFromVersion() == "" {
+		t.Skip("Skipping as this is not a helm upgrade test")
+	}
+
+	for _, expected := range expectedResources {
+		resourceReqs, err := TestHelper.GetResources("linkerd-proxy", expected.pod, TestHelper.GetLinkerdNamespace())
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "Error retrieving resource requirements for %s: %s", expected.pod, err)
+		}
+
+		cpuLimitStr := resourceReqs.Limits.Cpu().String()
+		if cpuLimitStr != expected.cpuLimit {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s CPU limit: expected %s, was %s", expected.pod, expected.cpuLimit, cpuLimitStr)
+		}
+		cpuRequestStr := resourceReqs.Requests.Cpu().String()
+		if cpuRequestStr != expected.cpuRequest {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s CPU request: expected %s, was %s", expected.pod, expected.cpuRequest, cpuRequestStr)
+		}
+		memLimitStr := resourceReqs.Limits.Memory().String()
+		if memLimitStr != expected.memLimit {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s memory limit: expected %s, was %s", expected.pod, expected.memLimit, memLimitStr)
+		}
+		memRequestStr := resourceReqs.Requests.Memory().String()
+		if memRequestStr != expected.memRequest {
+			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "unexpected %s memory request: expected %s, was %s", expected.pod, expected.memRequest, memRequestStr)
 		}
 	}
 }
@@ -671,7 +814,7 @@ func TestLogs(t *testing.T) {
 }
 
 func TestEvents(t *testing.T) {
-	for err := range testutil.FetchAndCheckEvents(TestHelper) {
+	for _, err := range testutil.FetchAndCheckEvents(TestHelper) {
 		testutil.AnnotatedError(t, "Error checking events", err)
 	}
 }
