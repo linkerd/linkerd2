@@ -1,6 +1,7 @@
 package inject
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -20,6 +21,7 @@ const (
 	invalidInjectAnnotationWorkload      = "invalid_inject_annotation_at_workload"
 	invalidInjectAnnotationNamespace     = "invalid_inject_annotation_at_ns"
 	disabledAutomountServiceAccountToken = "disabled_automount_service_account_token_account"
+	udpPortsEnabled                      = "udp_ports_enabled"
 )
 
 var (
@@ -33,6 +35,7 @@ var (
 		invalidInjectAnnotationWorkload:      fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
 		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
 		disabledAutomountServiceAccountToken: fmt.Sprintf("automountServiceAccountToken set to \"false\""),
+		udpPortsEnabled:                      "UDP port(s) configured on pod spec",
 	}
 )
 
@@ -196,4 +199,31 @@ func isInjectAnnotationValid(annotation string) bool {
 		return false
 	}
 	return true
+}
+
+// ThrowInjectError errors out `inject` when the report contains errors
+// related to automountServiceAccountToken, hostNetwork, existing sidecar,
+// or udp ports
+// See - https://github.com/linkerd/linkerd2/issues/4214
+func (r *Report) ThrowInjectError() []error {
+
+	errs := []error{}
+
+	if !r.AutomountServiceAccountToken {
+		errs = append(errs, errors.New(Reasons[disabledAutomountServiceAccountToken]))
+	}
+
+	if r.HostNetwork {
+		errs = append(errs, errors.New(Reasons[hostNetworkEnabled]))
+	}
+
+	if r.Sidecar {
+		errs = append(errs, errors.New(Reasons[sidecarExists]))
+	}
+
+	if r.UDP {
+		errs = append(errs, errors.New(Reasons[udpPortsEnabled]))
+	}
+
+	return errs
 }
