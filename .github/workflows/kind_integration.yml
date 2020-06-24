@@ -6,7 +6,7 @@ on:
     - '*.md'
     - '**/*.md'
     branches:
-    - master
+    - main
 env:
   GH_ANNOTATION: true
 jobs:

@@ -1,9 +1,0 @@
-
-‼ "hostNetwork: true" detected in deployment/web
-√ pods do not have a 3rd party proxy or initContainer already injected
-√ pods are not annotated to disable injection
-‼ no supported objects found
-√ pod specs do not include UDP ports
-
-deployment "web" skipped
-

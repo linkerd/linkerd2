@@ -171,13 +171,6 @@ func TestUninjectAndInject(t *testing.T) {
 			testInjectConfig: defaultConfig,
 		},
 		{
-			inputFileName:    "inject_emojivoto_deployment_hostNetwork_true.input.yml",
-			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_true.input.yml",
-			reportFileName:   "inject_emojivoto_deployment_hostNetwork_true.report",
-			injectProxy:      true,
-			testInjectConfig: defaultConfig,
-		},
-		{
 			inputFileName:    "inject_emojivoto_deployment_capabilities.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_capabilities.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
@@ -244,13 +237,6 @@ func TestUninjectAndInject(t *testing.T) {
 			inputFileName:    "inject_emojivoto_already_injected.input.yml",
 			goldenFileName:   "inject_emojivoto_already_injected.golden.yml",
 			reportFileName:   "inject_emojivoto_already_injected.report",
-			injectProxy:      true,
-			testInjectConfig: defaultConfig,
-		},
-		{
-			inputFileName:    "inject_emojivoto_istio.input.yml",
-			goldenFileName:   "inject_emojivoto_istio.input.yml",
-			reportFileName:   "inject_emojivoto_istio.report",
 			injectProxy:      true,
 			testInjectConfig: defaultConfig,
 		},
@@ -428,6 +414,20 @@ func TestRunInjectCmd(t *testing.T) {
 			stdErrGoldenFileName: "inject_emojivoto_deployment_automountServiceAccountToken_false.golden.stderr",
 			exitCode:             1,
 			injectProxy:          false,
+		},
+		{
+			inputFileName:        "inject_emojivoto_istio.input.yml",
+			stdOutGoldenFileName: "inject_emojivoto_istio.golden.yml",
+			stdErrGoldenFileName: "inject_emojivoto_istio.golden.stderr",
+			exitCode:             1,
+			injectProxy:          true,
+		},
+		{
+			inputFileName:        "inject_emojivoto_deployment_hostNetwork_true.input.yml",
+			stdOutGoldenFileName: "inject_emojivoto_deployment_hostNetwork_true.golden.yml",
+			stdErrGoldenFileName: "inject_emojivoto_deployment_hostNetwork_true.golden.stderr",
+			exitCode:             1,
+			injectProxy:          true,
 		},
 	}
 

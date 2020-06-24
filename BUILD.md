@@ -56,7 +56,7 @@ written in Go. The dashboard UI is a React application.
 
 ## Components
 
-![Linkerd2 Components](https://g.gravizo.com/source/svg/linkerd2_components?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
+![Linkerd2 Components](https://g.gravizo.com/source/svg/linkerd2_components?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmain%2FBUILD.md)
 
 <!-- markdownlint-disable no-inline-html -->
 <details>
@@ -432,7 +432,7 @@ the templates.
 
 ## Build Architecture
 
-![Build Architecture](https://g.gravizo.com/source/svg/build_architecture?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
+![Build Architecture](https://g.gravizo.com/source/svg/build_architecture?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmain%2FBUILD.md)
 
 <!-- markdownlint-disable no-inline-html -->
 <details>
