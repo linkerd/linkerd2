@@ -395,7 +395,6 @@ func TestInstallMulticluster(t *testing.T) {
 		return
 	}
 	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
-		println(fmt.Sprint(TestHelper.GetVersion()))
 		flags := []string{
 			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
 			"--set", "controllerImageVersion=" + TestHelper.GetVersion(),
