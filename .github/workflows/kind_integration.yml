@@ -68,8 +68,8 @@ jobs:
         name: image-archives
         path: /home/runner/archives
   # todo: Keep in sync with `release.yml`
-  cli_windows_static_integration_tests:
-    name: Integration tests (windows)
+  windows_static_cli_tests:
+    name: Static CLI tests (windows)
     runs-on: windows-latest
     needs: [docker_build]
     steps:
