@@ -310,12 +310,9 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, udpDesc)))
 	}
 
-	if len(automountServiceAccountTokenFalse) > 0 {
-		output.Write([]byte(fmt.Sprintf("%s \"automountServiceAccountToken: false\" detected in %s\n", warnStatus, strings.Join(automountServiceAccountTokenFalse, ", "))))
-	} else if verbose {
+	if len(automountServiceAccountTokenFalse) == 0 && verbose {
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, automountServiceAccountTokenDesc)))
 	}
-
 	//
 	// Summary
 	//
