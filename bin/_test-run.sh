@@ -87,6 +87,8 @@ helm_integration_tests() {
     helm_path=$bindir/helm
     helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2
     helm_release_name=$linkerd_namespace-test
+    helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2-multicluster
+    helm_multicluster_release_name=$linkerd_namespace-test-multicluster
 
     run_helm_test
     helm_cleanup
@@ -100,19 +102,19 @@ uninstall_integration_tests() {
 }
 
 deep_integration_tests() {
-    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace"
+    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace" --multicluster
     while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
     run_test "${tests[@]}" --linkerd-namespace="$linkerd_namespace"
     cleanup
 }
 
 custom_domain_integration_tests() {
-    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace" --cluster-domain='custom.domain'
+    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace" --cluster-domain='custom.domain' --multicluster
     cleanup
 }
 
 external_issuer_integration_tests() {
-    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace-external-issuer" --external-issuer=true
+    run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace-external-issuer" --external-issuer=true --multicluster
     run_test "$test_directory/externalissuer/external_issuer_test.go" --linkerd-namespace="$linkerd_namespace-external-issuer" --external-issuer=true
     cleanup
 }
@@ -258,7 +260,8 @@ run_helm_upgrade_test() {
 run_helm_test() {
     setup_helm
     run_test "$test_directory/install_test.go" --linkerd-namespace="$linkerd_namespace-helm" \
-        --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-release="$helm_release_name"
+        --helm-path="$helm_path" --helm-chart="$helm_chart" --helm-release="$helm_release_name" \
+        --multicluster-helm-chart="$helm_multicluster_chart" --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
 }
 
 helm_cleanup() {
