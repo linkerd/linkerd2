@@ -78,7 +78,7 @@ jobs:
   kind_integration_tests:
     strategy:
       matrix:
-        integration_test: [deep, upgrade_stable, upgrade_edge, helm, helm_upgrade, uninstall, custom_domain, external_issuer]
+        integration_test: [custom-domain, deep, external-issuer, helm, helm-upgrade, uninstall, upgrade-edge, upgrade-stable]
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -197,7 +197,7 @@ jobs:
         export PATH="`pwd`/bin:$PATH"
         echo "$GITCOOKIE_SH" | bash
         version="$($HOME/.linkerd version --client --short | tr -cd '[:alnum:]-')"
-        bin/test-run $HOME/.linkerd
+        bin/tests --skip-kind-create "$HOME/.linkerd"
     - name: CNI tests
       run: |
         export TAG="$($HOME/.linkerd version --client --short)"
