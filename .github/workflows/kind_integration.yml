@@ -6,7 +6,7 @@ on:
     - '*.md'
     - '**/*.md'
     branches:
-    - master
+    - main
 env:
   GH_ANNOTATION: true
 jobs:
@@ -68,7 +68,7 @@ jobs:
   kind_integration_tests:
     strategy:
       matrix:
-        integration_test: [deep, upgrade_stable, upgrade_edge, helm, helm_upgrade, uninstall, custom_domain, external_issuer]
+        integration_test: [custom-domain, deep, external-issuer, helm, helm-upgrade, uninstall, upgrade-edge, upgrade-stable]
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -121,39 +121,15 @@ jobs:
       run: |
         # Copy the CLI out of the local cli-bin container.
         container_id=$(docker create "$DOCKER_REGISTRY/cli-bin:$TAG")
-        docker cp $container_id:/out/linkerd-linux $HOME/.linkerd
+        docker cp $container_id:/out/linkerd-linux "$HOME/.linkerd"
 
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
-    - name: Setup default KinD cluster
-      if: matrix.integration_test != 'custom_domain'
-      run: bin/kind create cluster --wait 300s
-    - name: Setup custom_domain KinD cluster
-      if: matrix.integration_test == 'custom_domain'
-      run: bin/kind create cluster --wait 300s --config test/testdata/custom_cluster_domain_config.yaml
-    - name: Load image archives into the local KinD cluster
+    - name: Run integration tests
       if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
-      env:
-        PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
-        PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.15.2
       run: |
-        # Fetch images from the Packet host and load them into the local KinD cluster
-        bin/kind-load --images --images-host ssh://linkerd-docker
-
-        # Load proxy-init and prometheus images into KinD while it is
-        # available. Allow these commands to fail since they will be cached
-        # for the next run.
-        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROXY_INIT_IMAGE_NAME) 2>&1 || true
-        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROMETHEUS_IMAGE_NAME) 2>&1 || true
-    - name: Load image archives into the local KinD cluster (Forked repositories)
+        bin/tests --images --images-host ssh://linkerd-docker --name ${{ matrix.integration_test }} "$HOME/.linkerd"
+    - name: Run integration tests (Forked repositories)
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: |
-        bin/kind-load --images
-    - name: Run integration tests
-      run: |
-        # Export `init_test_run` and `*_integration_tests` into the
-        # environment.
-        . bin/_test-run.sh
-
-        init_test_run $HOME/.linkerd
-        ${{ matrix.integration_test }}_integration_tests
+        bin/tests --images --name ${{ matrix.integration_test }} "$HOME/.linkerd"

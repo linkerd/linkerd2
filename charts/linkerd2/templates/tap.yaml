@@ -109,7 +109,12 @@ spec:
           readOnly: true
         - mountPath: /var/run/linkerd/config
           name: config
-      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- $tree := deepCopy . }}      
+      {{- if not (empty .Values.tapProxyResources) }}
+      {{- $r := merge .Values.tapProxyResources .Values.global.proxy.resources }}
+      {{- $_ := set $tree.Values.global.proxy "resources" $r }}
+      {{- end }}
+      - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}

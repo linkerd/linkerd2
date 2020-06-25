@@ -29,8 +29,8 @@ const (
 	injectDisabledDesc               = "pods are not annotated to disable injection"
 	unsupportedDesc                  = "at least one resource injected"
 	udpDesc                          = "pod specs do not include UDP ports"
+	automountServiceAccountTokenDesc = "pods do not have automountServiceAccountToken set to \"false\""
 	slash                            = "/"
-	automountServiceAccountTokenDesc = "cannot enable mTLS when automountServiceAccountToken set to \"false\""
 )
 
 type resourceTransformerInject struct {
@@ -182,8 +182,8 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return b, reports, err
 	}
 	if b, _ := report.Injectable(); !b {
-		if !report.AutomountServiceAccountToken {
-			return bytes, reports, errors.New(automountServiceAccountTokenDesc)
+		if errs := report.ThrowInjectError(); len(errs) > 0 {
+			return bytes, reports, fmt.Errorf("failed to inject %s%s%s: %v", report.Kind, slash, report.Name, concatErrors(errs, ", "))
 		}
 		return bytes, reports, nil
 	}
@@ -233,6 +233,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	sidecar := []string{}
 	udp := []string{}
 	injectDisabled := []string{}
+	automountServiceAccountTokenFalse := []string{}
 	warningsPrinted := verbose
 
 	for _, r := range reports {
@@ -257,6 +258,11 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 		if r.InjectDisabled {
 			injectDisabled = append(injectDisabled, r.ResName())
+			warningsPrinted = true
+		}
+
+		if !r.AutomountServiceAccountToken {
+			automountServiceAccountTokenFalse = append(automountServiceAccountTokenFalse, r.ResName())
 			warningsPrinted = true
 		}
 	}
@@ -304,6 +310,9 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, udpDesc)))
 	}
 
+	if len(automountServiceAccountTokenFalse) == 0 && verbose {
+		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, automountServiceAccountTokenDesc)))
+	}
 	//
 	// Summary
 	//

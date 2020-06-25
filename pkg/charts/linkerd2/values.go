@@ -50,9 +50,20 @@ type (
 		PrometheusResources    *Resources `json:"prometheusResources"`
 		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
 		PublicAPIResources     *Resources `json:"publicAPIResources"`
+		SMIMetricsResources    *Resources `json:"smiMetricsResources"`
 		SPValidatorResources   *Resources `json:"spValidatorResources"`
 		TapResources           *Resources `json:"tapResources"`
 		WebResources           *Resources `json:"webResources"`
+
+		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
+		IdentityProxyResources      *Resources `json:"identityProxyResources"`
+		PrometheusProxyResources    *Resources `json:"prometheusProxyResources"`
+		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
+		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
+		SMIMetricsProxyResources    *Resources `json:"smiMetricsProxyResources"`
+		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
+		TapProxyResources           *Resources `json:"tapProxyResources"`
+		WebProxyResources           *Resources `json:"webProxyResources"`
 
 		// Addon Structures
 		Grafana    Grafana    `json:"grafana"`

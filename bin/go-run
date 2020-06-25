@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 set -eu
 cd "$(pwd -P)"
@@ -12,6 +12,7 @@ fi
 
 version=$("$bindir"/root-tag)
 ldflags="-X github.com/linkerd/linkerd2/pkg/version.Version=$version"
-GO111MODULE=on go build -v -mod=readonly -race -o .gorun -ldflags "$ldflags" "./$1"
+mkdir -p target
+GO111MODULE=on go build -v -mod=readonly -race -o ./target/go-run -ldflags "$ldflags" "./$1"
 shift
-exec ./.gorun "$@"
+exec ./target/go-run "$@"

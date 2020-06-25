@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This test script deploys the following:
 # - 1 Linkerd control-plane
@@ -76,7 +76,7 @@ linkerd_namespace=${2:-l5d-scale}
 # Deploy Books
 #
 
-BOOKS_BACKEND=$(curl -s https://raw.githubusercontent.com/BuoyantIO/booksapp/master/k8s/mysql-backend.yml)
+BOOKS_BACKEND=$(curl -s https://raw.githubusercontent.com/BuoyantIO/booksapp/main/k8s/mysql-backend.yml)
 
 AUTHORS_SP=$(curl -s https://run.linkerd.io/booksapp/authors.swagger)
 BOOKS_SP=$(curl -s https://run.linkerd.io/booksapp/books.swagger)
@@ -93,7 +93,7 @@ for ((i=1; i <= NAMESPACES; i++)); do
     echo "$WEBAPP_SP"  | bin/linkerd profile -n "$booksns" webapp  --open-api - | kubectl apply -f -
 done
 
-BOOKS_APP=$(curl -s https://raw.githubusercontent.com/BuoyantIO/booksapp/master/k8s/mysql-app.yml)
+BOOKS_APP=$(curl -s https://raw.githubusercontent.com/BuoyantIO/booksapp/main/k8s/mysql-app.yml)
 
 # add "-sleep=10ms" param to the traffic app (~100rps)
 traffic_param="        - \"webapp:7000\""
