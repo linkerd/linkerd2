@@ -286,6 +286,8 @@ prometheus:
   #   subPath: recording_rules.yml
   #   configMap: linkerd-prometheus-rules
   # resources:
+  # proxy:
+  #   resources:
 
 tracing:
   enabled: false
