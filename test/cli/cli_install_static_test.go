@@ -34,8 +34,8 @@ func TestMain(m *testing.M) {
 		exit(1, "-linkerd flag is required")
 	}
 
-	TestHelper = testutil.NewGenericTestHelper(*linkerd, "", "l5d", "", "", "", "", "", "", false, false, *http.DefaultClient, testutil.KubernetesHelper{})
-	os.Exit(testutil.Run(m, TestHelper))
+	TestHelper = testutil.NewGenericTestHelper(*linkerd, "", "l5d", "", "", "", "", "", "", "", "", false, false, false, *http.DefaultClient, testutil.KubernetesHelper{})
+	os.Exit(m.Run())
 }
 
 func TestCliInstall(t *testing.T) {
