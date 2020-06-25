@@ -185,12 +185,12 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 			}
 		}
 
-		podList = append(podList, &item)
+		podList = append(podList, item)
 	}
 
 	rsp := pb.ListPodsResponse{Pods: podList}
 
-	log.Debugf("ListPods response: %+v", rsp)
+	log.Debugf("ListPods response: %s", rsp.String())
 
 	return &rsp, nil
 }

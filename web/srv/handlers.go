@@ -57,7 +57,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 		params.ErrorMessage = err.Error()
 		log.Error(err)
 	} else {
-		params.Data = *version
+		params.Data = version
 	}
 
 	err = h.render(w, "app.tmpl.html", "base", params)
