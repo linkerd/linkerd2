@@ -36,8 +36,7 @@ const (
 )
 
 // dashboardOptions holds values for command line flags that apply to the dashboard
-// command. All fields in this struct should have corresponding flags added in
-// the newCmdDashboard func later in this file.
+// command.
 type dashboardOptions struct {
 	host string
 	port int
@@ -46,7 +45,9 @@ type dashboardOptions struct {
 }
 
 // newDashboardOptions initializes dashboard options with default
-// host, port and which dashboard to show.
+// values for host, port, and which dashboard to show. Also, set
+// max wait time duration for 300 seconds for the dashboard to
+// become available
 //
 // These options may be overridden on the CLI at run-time
 func newDashboardOptions() *dashboardOptions {
@@ -58,7 +59,9 @@ func newDashboardOptions() *dashboardOptions {
 	}
 }
 
-// newCmdDashboard creates a new cobra command `dashboard` which contains commands for visualizing linkerd's dashboards
+// newCmdDashboard creates a new cobra command `dashboard` which contains commands for visualizing linkerd's dashboards.
+// After validating flag values, it will use the Kubernetes API to portforward requests to the Grafana and Web Deployments
+// until the process gets killed/canceled
 func newCmdDashboard() *cobra.Command {
 	options := newDashboardOptions()
 

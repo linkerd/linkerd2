@@ -14,14 +14,14 @@ const (
 	adminHTTPPortName string = "admin-http"
 )
 
-// diagnosticsOptions holds values for command line flags that apply to the dashboard
-// command. All fields in this struct should have corresponding flags added in
-// the newDiagnosticsOptions func later in this file.
+// diagnosticsOptions holds values for command line flags that apply to the diagnostics
+// command.
 type diagnosticsOptions struct {
 	wait time.Duration
 }
 
-// newDiagnosticsOptions initializes dashboard options with default wait time.
+// newDiagnosticsOptions initializes diagnostics options setting
+// the max wait time duration as 30 seconds to fetch diagnostics
 //
 // This option may be overridden on the CLI at run-time
 func newDiagnosticsOptions() *diagnosticsOptions {
