@@ -1,5 +1,18 @@
 # Changes
 
+## edge-20.6.4
+
+This edge release moves the proxy onto a new version of the Tokio runtime. This
+allows us to more easily integrate with the ecosystem and may yield performance
+benefits as well.
+
+* Upgraded the proxy's underlying Tokio runtime and its related libraries
+* Added support for PKCS8 formatted ECDSA private keys
+* Added support for Helm configuration of per-component proxy resources requests
+  and limits (thanks @cypherfox!)
+* Updated the `linkerd inject` command to throw an error while injecting
+  non-compliant pods (thanks @mayankshah1607)
+
 ## stable-2.8.1
 
 This release fixes multicluster gateways support on EKS.
