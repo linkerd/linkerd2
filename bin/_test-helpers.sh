@@ -101,7 +101,7 @@ test_setup() {
   bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
   export bindir
 
-  export test_directory="$bindir"/../test
+  export test_directory="$bindir"/../test/integration
 
   check_linkerd_binary
 }
