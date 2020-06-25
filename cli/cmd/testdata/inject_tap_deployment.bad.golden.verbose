@@ -1,1 +1,2 @@
-Error transforming resources: --manual must be set when injecting control plane components
+Error transforming resources:
+--manual must be set when injecting control plane components

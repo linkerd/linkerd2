@@ -5,7 +5,7 @@ set the title and description of this PR to the git commit message subject and
 body, respectively. If so, you may delete these instructions and submit your PR.
 
 If this is your first time, please read our contributor guide:
-https://github.com/linkerd/linkerd2/blob/master/CONTRIBUTING.md
+https://github.com/linkerd/linkerd2/blob/main/CONTRIBUTING.md
 
 The title and description of your Pull Request should match the git commit
 subject and body, respectively. Git commit messages are structured as follows:
@@ -47,5 +47,5 @@ Note the git commit message subject becomes the pull request title.
 
 For more details around git commits, see the section on Committing in our
 contributor guide:
-https://github.com/linkerd/linkerd2/blob/master/CONTRIBUTING.md#committing
+https://github.com/linkerd/linkerd2/blob/main/CONTRIBUTING.md#committing
 -->

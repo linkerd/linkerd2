@@ -1,5 +1,21 @@
 # Changes
 
+## stable-2.8.1
+
+This release fixes multicluster gateways support on EKS.
+
+* The multicluster service-mirror has been extended to resolve DNS names for
+  target clusters when an IP address is not known.
+* Linkerd checks could fail when run from the dashboard. Thanks to @alex-berger
+  for providing a fix!
+* Have the service mirror controller check in `linkerd check` retry on failures.
+* As of this version we're including a Chocolatey package (Windows) next to the
+  other binaries in the release assets in GitHub.
+* Base images have been updated:
+  * debian:buster-20200514-slim
+  * grafana/grafana:7.0.3
+* The shell scripts under `bin` continued to be improved, thanks to @joakimr-axis!
+
 ## edge-20.6.3
 
 This edge release is a release candidate for stable-2.8.1. It includes a fix

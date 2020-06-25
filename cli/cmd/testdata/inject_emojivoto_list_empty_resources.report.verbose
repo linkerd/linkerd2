@@ -4,6 +4,7 @@
 √ pods are not annotated to disable injection
 √ at least one resource injected
 √ pod specs do not include UDP ports
+√ pods do not have automountServiceAccountToken set to "false"
 
 deployment "web" injected
 deployment "emoji" injected
