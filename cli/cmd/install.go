@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -598,7 +600,7 @@ func (options *installOptions) installPersistentFlagSet() *pflag.FlagSet {
 func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Values) error {
 
 	if options.addOnConfig != "" {
-		addOnValues, err := ioutil.ReadFile(options.addOnConfig)
+		addOnValues, err := readFile(options.addOnConfig)
 		if err != nil {
 			return err
 		}
@@ -1260,4 +1262,34 @@ func toIdentityContext(idvals *identityWithAnchorsAndTrustDomain) *pb.IdentityCo
 		ClockSkewAllowance: ptypes.DurationProto(csa),
 		Scheme:             idvals.Identity.Issuer.Scheme,
 	}
+}
+
+// Read a resource file from a path or URL
+func readFile(path string) ([]byte, error) {
+	if isValidURL(path) {
+		resp, err := http.Get(path)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("unable to read URL %q, server reported %s, status code=%d", path, resp.Status, resp.StatusCode)
+		}
+
+		// Save to a buffer, so that response can be closed here
+		buf := new(bytes.Buffer)
+		_, err = buf.ReadFrom(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		resp.Body.Close()
+		return buf.Bytes(), nil
+	}
+
+	in, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return in, nil
+
 }
