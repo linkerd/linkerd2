@@ -14,6 +14,10 @@ env:
 - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
   value: "{{.Values.global.proxy.destinationGetNetworks}}"
 {{ end -}}
+{{ if .Values.global.proxy.DNSCanonicalizeTimeoutSeconds -}}
+- name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
+  value: {{.Values.global.proxy.DNSCanonicalizeTimeoutSeconds}}
+{{ end -}}  
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.global.proxy.ports.control}}
 - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR

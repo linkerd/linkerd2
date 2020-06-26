@@ -202,6 +202,10 @@ const (
 	// destination lookups on IP addresses from the specified network ranges
 	ProxyDestinationGetNetworks = ProxyConfigAnnotationsPrefix + "/proxy-destination-get-networks"
 
+	// ProxyDNSCanonicalizeTimeoutSeconds can be used to configure the proxy's timeout
+	// when canonicalizing DNS
+	ProxyDNSCanonicalizeTimeoutSeconds = ProxyConfigAnnotationsPrefix + "/proxy-dns-canonicalize-timeout"
+
 	// ProxyEnableGatewayAnnotation can be used to configure the proxy
 	// to operate as a gateway, routing requests that target the inbound router.
 	ProxyEnableGatewayAnnotation = ProxyConfigAnnotationsPrefix + "/enable-gateway"

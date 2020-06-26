@@ -128,6 +128,7 @@ type (
 		WaitBeforeExitSeconds         uint64        `json:"waitBeforeExitSeconds"`
 		IsGateway                     bool          `json:"isGateway"`
 		RequireIdentityOnInboundPorts string        `json:"requireIdentityOnInboundPorts"`
+		DNSCanonicalizeTimeoutSeconds uint64        `json:"DNSCanonicalizeTimeoutSeconds"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

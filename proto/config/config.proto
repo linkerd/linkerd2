@@ -57,6 +57,8 @@ message Proxy {
   string destination_get_networks = 17;
 
   string log_format = 18;
+
+  uint64 dns_canonicalize_timeout_seconds = 19;
 }
 
 message Image {

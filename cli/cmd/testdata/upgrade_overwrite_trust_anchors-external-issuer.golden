@@ -843,7 +843,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"UPGRADE-CONTROL-PLANE-VERSION","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"kubernetes.io/tls"},"autoInjectContext":null,"omitWebhookSideEffects":false,"clusterDomain":"cluster.local"}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"UPGRADE-PROXY-VERSION","proxyInitImageVersion":"v1.3.3","debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION","destinationGetNetworks":"DST-GET-NETWORKS","logFormat":"plain"}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"UPGRADE-PROXY-VERSION","proxyInitImageVersion":"v1.3.3","debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION","destinationGetNetworks":"DST-GET-NETWORKS","logFormat":"plain","dnsCanonicalizeTimeoutSeconds":"0"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
 ---
@@ -943,6 +943,8 @@ spec:
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
+          value: 100
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1167,6 +1169,8 @@ spec:
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
+          value: 100
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1388,6 +1392,8 @@ spec:
           value: localhost.:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
+          value: 100
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1658,6 +1664,8 @@ spec:
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
+          value: 100
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2030,6 +2038,8 @@ spec:
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
+          value: 100
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2234,6 +2244,8 @@ spec:
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
+          value: 100
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2473,6 +2485,8 @@ spec:
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
+          value: 100
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2700,6 +2714,8 @@ spec:
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
+          value: 100
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -3024,6 +3040,8 @@ spec:
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
+          value: 100
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR

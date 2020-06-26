@@ -48,6 +48,7 @@ var (
 		k8s.ProxyControlPortAnnotation,
 		k8s.ProxyDisableIdentityAnnotation,
 		k8s.ProxyDestinationGetNetworks,
+		k8s.ProxyDNSCanonicalizeTimeoutSeconds,
 		k8s.ProxyDisableTapAnnotation,
 		k8s.ProxyEnableDebugAnnotation,
 		k8s.ProxyEnableExternalProfilesAnnotation,
@@ -512,6 +513,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		IsGateway:                     conf.isGateway(),
 		RequireIdentityOnInboundPorts: conf.requireIdentityOnInboundPorts(),
 		DestinationGetNetworks:        conf.destinationGetNetworks(),
+		DNSCanonicalizeTimeoutSeconds: conf.getDNSCanonicalizeTimeoutSeconds(),
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -837,6 +839,28 @@ func (conf *ResourceConfig) destinationGetNetworks() string {
 	}
 
 	return conf.configs.GetProxy().DestinationGetNetworks
+}
+
+func (conf *ResourceConfig) getDNSCanonicalizeTimeoutSeconds() uint64 {
+	if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyDNSCanonicalizeTimeoutSeconds]; hasPodOverride {
+		DNSCanonicalizeTimeoutSeconds, err := strconv.ParseUint(podOverride, 10, 64)
+		if nil != err {
+			log.Warnf("unrecognized value used for the %s annotation, uint64 is expected: %s",
+				k8s.ProxyDNSCanonicalizeTimeoutSeconds, podOverride)
+		}
+		return DNSCanonicalizeTimeoutSeconds
+	}
+
+	if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyDNSCanonicalizeTimeoutSeconds]; hasNsOverride {
+		DNSCanonicalizeTimeoutSeconds, err := strconv.ParseUint(nsOverride, 10, 64)
+		if nil != err {
+			log.Warnf("unrecognized value used for the %s annotation, uint64 is expected: %s",
+				k8s.ProxyDNSCanonicalizeTimeoutSeconds, nsOverride)
+		}
+		return DNSCanonicalizeTimeoutSeconds
+	}
+
+	return conf.configs.GetProxy().DnsCanonicalizeTimeoutSeconds
 }
 
 func (conf *ResourceConfig) isGateway() bool {
