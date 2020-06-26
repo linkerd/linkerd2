@@ -78,7 +78,7 @@ jobs:
   windows_static_cli_tests:
     name: Static CLI tests (windows)
     runs-on: windows-latest
-    needs: [docker_build]
+    needs: [docker_push]
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -94,7 +94,7 @@ jobs:
     - name: Install linkerd CLI
       id: install_cli
       run: |
-        $image="gcr.io/linkerd-io/cli-bin:main"
+        $image="gcr.io/linkerd-io/cli-bin:$TAG"
         docker pull $image
         $id = (docker create $image)
         docker cp "${id}:/out/linkerd-windows" "$HOME\linkerd.exe"
