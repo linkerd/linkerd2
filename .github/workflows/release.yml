@@ -91,14 +91,13 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    - name: Download image archives
-      # actions/download-artifact@v1
-      uses: actions/download-artifact@18f0f59
-      with:
-        name: image-archives
-    - name: Install CLI
+    - name: Install linkerd CLI
+      id: install_cli
       run: |
-        cp image-archives\cli\windows\linkerd $HOME\linkerd.exe
+        $image="gcr.io/linkerd-io/cli-bin:main"
+        docker pull $image
+        $id = (docker create $image)
+        docker cp "${id}:/out/linkerd-windows" "$HOME\linkerd.exe"
     - name: Run CLI Integration tests
       run: |
         go test --failfast --mod=readonly ".\test\cli" --linkerd=$HOME\linkerd.exe --cli-tests -v
