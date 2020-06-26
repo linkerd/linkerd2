@@ -348,6 +348,7 @@ type Options struct {
 	SourceCluster         bool
 	TargetCluster         bool
 	MultiCluster          bool
+	PublicAPIClientChecks bool
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -646,6 +647,9 @@ func (hc *HealthChecker) allCategories() []category {
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
 					check: func(context.Context) error {
+						if hc.PublicAPIClientChecks {
+							return &SkipError{Reason: "skipping for public api instantiation triggered checks"}
+						}
 						// do not save this into hc.controlPlanePods, as this check may
 						// succeed prior to all expected control plane pods being up
 						controlPlanePods, err := hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)

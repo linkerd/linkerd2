@@ -50,13 +50,13 @@ func checkPublicAPIClientOrRetryOrExit(retryDeadline time.Time, apiChecks bool) 
 		checks = append(checks, healthcheck.LinkerdAPIChecks)
 	}
 
-	hc := newHealthChecker(checks, retryDeadline)
+	hc := newHealthChecker(checks, retryDeadline, true)
 
 	hc.RunChecks(exitOnError)
 	return hc.PublicAPIClient()
 }
 
-func newHealthChecker(checks []healthcheck.CategoryID, retryDeadline time.Time) *healthcheck.HealthChecker {
+func newHealthChecker(checks []healthcheck.CategoryID, retryDeadline time.Time, publicAPIClientChecks bool) *healthcheck.HealthChecker {
 	return healthcheck.NewHealthChecker(checks, &healthcheck.Options{
 		ControlPlaneNamespace: controlPlaneNamespace,
 		KubeConfig:            kubeconfigPath,
@@ -65,6 +65,7 @@ func newHealthChecker(checks []healthcheck.CategoryID, retryDeadline time.Time) 
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         retryDeadline,
+		PublicAPIClientChecks: publicAPIClientChecks,
 	})
 }
 
