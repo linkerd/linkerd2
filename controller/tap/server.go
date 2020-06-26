@@ -103,7 +103,7 @@ func (s *GRPCTapServer) TapByResource(req *public.TapByResourceRequest, stream p
 		return status.Errorf(codes.NotFound, "no pods found for %s/%s", resType, resName)
 	}
 
-	log.Infof("Tapping %d pods for target: %+v", len(pods), *res)
+	log.Infof("Tapping %d pods for target: %s", len(pods), res.String())
 
 	events := make(chan *public.TapEvent)
 

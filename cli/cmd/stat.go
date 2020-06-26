@@ -652,7 +652,7 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 		return nil, err
 	}
 
-	var toRes, fromRes pb.Resource
+	var toRes, fromRes *pb.Resource
 	if options.toResource != "" {
 		toRes, err = util.BuildResource(options.toNamespace, options.toResource)
 		if err != nil {
@@ -681,14 +681,18 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 				Namespace:     options.namespace,
 				AllNamespaces: options.allNamespaces,
 			},
-			ToName:        toRes.Name,
-			ToType:        toRes.Type,
 			ToNamespace:   options.toNamespace,
-			FromName:      fromRes.Name,
-			FromType:      fromRes.Type,
 			FromNamespace: options.fromNamespace,
 			TCPStats:      true,
 			LabelSelector: options.labelSelector,
+		}
+		if fromRes != nil {
+			requestParams.FromName = fromRes.Name
+			requestParams.FromType = fromRes.Type
+		}
+		if toRes != nil {
+			requestParams.ToName = toRes.Name
+			requestParams.ToType = toRes.Type
 		}
 
 		req, err := util.BuildStatSummaryRequest(requestParams)
