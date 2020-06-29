@@ -24,6 +24,7 @@ func TestNewValues(t *testing.T) {
 		PrometheusExtraArgs:           map[string]string{},
 		PrometheusAlertmanagers:       []interface{}{},
 		PrometheusRuleConfigMapMounts: []PrometheusRuleConfigMapMount{},
+		PrometheusPersistence:         Persistence{false, "", "ReadWriteOnce", "8Gi"},
 		ControllerUID:                 2103,
 		EnableH2Upgrade:               true,
 		EnablePodAntiAffinity:         false,

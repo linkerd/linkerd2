@@ -29,6 +29,7 @@ type (
 		PrometheusExtraArgs           map[string]string              `json:"prometheusExtraArgs"`
 		PrometheusAlertmanagers       []interface{}                  `json:"prometheusAlertmanagers"`
 		PrometheusRuleConfigMapMounts []PrometheusRuleConfigMapMount `json:"prometheusRuleConfigMapMounts"`
+		PrometheusPersistence         Persistence                    `json:"prometheusPersistence"`
 		ControllerUID                 int64                          `json:"controllerUID"`
 		EnableH2Upgrade               bool                           `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity         bool                           `json:"enablePodAntiAffinity"`
@@ -206,7 +207,15 @@ type (
 		TLS                 *IssuerTLS `json:"tls"`
 	}
 
-	// PrometheusRuleConfigMapMount is a user supplied prometheus rule config maps.
+	// Persistence represents PVC configuration.
+	Persistence struct {
+		Enabled      bool   `json:"enabled"`
+		StorageClass string `json:"storageClass"`
+		AccessMode   string `json:"accessMode"`
+		Size         string `json:"size"`
+	}
+
+	// PrometheusRuleConfigMapMount is a user supplied prometheus rule config map.
 	PrometheusRuleConfigMapMount struct {
 		Name      string `json:"name"`
 		SubPath   string `json:"subPath"`
