@@ -40,6 +40,7 @@ type Values struct {
 	ServiceMirrorUID               int64  `json:"serviceMirrorUID"`
 	RemoteMirrorServiceAccount     bool   `json:"remoteMirrorServiceAccount"`
 	RemoteMirrorServiceAccountName string `json:"remoteMirrorServiceAccountName"`
+	TargetClusterName              string `json:"targetClusterName"`
 }
 
 // NewValues returns a new instance of the Values type.

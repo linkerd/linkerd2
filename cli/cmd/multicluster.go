@@ -54,23 +54,23 @@ type (
 		gatewayProbeSeconds     uint32
 		gatewayProbePort        uint32
 		namespace               string
-		serviceMirror           bool
-		serviceMirrorRetryLimit uint32
-		logLevel                string
 		gatewayNginxImage       string
 		gatewayNginxVersion     string
-		controlPlaneVersion     string
 		dockerRegistry          string
 		remoteMirrorCredentials bool
 	}
 
 	linkOptions struct {
-		namespace          string
-		clusterName        string
-		apiServerAddress   string
-		serviceAccountName string
-		gatewayName        string
-		gatewayNamespace   string
+		namespace               string
+		clusterName             string
+		apiServerAddress        string
+		serviceAccountName      string
+		gatewayName             string
+		gatewayNamespace        string
+		serviceMirrorRetryLimit uint32
+		logLevel                string
+		controlPlaneVersion     string
+		dockerRegistry          string
 	}
 
 	exportServiceOptions struct {
@@ -93,20 +93,27 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 
 	return &multiclusterInstallOptions{
 		gateway:                 defaults.Gateway,
-		gatewayPort:             defaults.GatewayPort,
-		gatewayProbeSeconds:     defaults.GatewayProbeSeconds,
-		gatewayProbePort:        defaults.GatewayProbePort,
 		namespace:               defaults.Namespace,
-		serviceMirror:           defaults.ServiceMirror,
-		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
-		logLevel:                defaults.LogLevel,
 		gatewayNginxImage:       defaults.GatewayNginxImage,
 		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
-		controlPlaneVersion:     version.Version,
 		dockerRegistry:          defaultDockerRegistry,
 		remoteMirrorCredentials: true,
 	}, nil
+}
 
+func newLinkOptionsWithDefault() (*linkOptions, error) {
+	defaults, err := mccharts.NewValues()
+	if err != nil {
+		return nil, err
+	}
+
+	return &linkOptions{
+		controlPlaneVersion:     version.Version,
+		namespace:               defaults.Namespace,
+		dockerRegistry:          defaultDockerRegistry,
+		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
+		logLevel:                defaults.LogLevel,
+	}, nil
 }
 
 func getLinkerdConfigMap() (*configPb.All, error) {
@@ -123,15 +130,7 @@ func getLinkerdConfigMap() (*configPb.All, error) {
 	return global, nil
 }
 
-func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multicluster.Values, error) {
-
-	global, err := getLinkerdConfigMap()
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			return nil, errors.New("you need Linkerd to be installed in order to install multicluster addons")
-		}
-		return nil, err
-	}
+func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 
 	if !alphaNumDashDot.MatchString(opts.controlPlaneVersion) {
 		return nil, fmt.Errorf("%s is not a valid version", opts.controlPlaneVersion)
@@ -154,8 +153,37 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 		return nil, err
 	}
 
-	if opts.gatewayProbePort == defaults.GatewayLocalProbePort {
-		return nil, fmt.Errorf("The probe port needs to be different from %d which is the multicluster probe port", opts.gatewayProbePort)
+	defaults.TargetClusterName = opts.clusterName
+	defaults.Namespace = opts.namespace
+	defaults.ServiceMirrorRetryLimit = opts.serviceMirrorRetryLimit
+	defaults.LogLevel = opts.logLevel
+	defaults.ControllerImageVersion = opts.controlPlaneVersion
+	defaults.ControllerImage = fmt.Sprintf("%s/controller", opts.dockerRegistry)
+
+	return defaults, nil
+}
+
+func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multicluster.Values, error) {
+
+	global, err := getLinkerdConfigMap()
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return nil, errors.New("you need Linkerd to be installed in order to install multicluster addons")
+		}
+		return nil, err
+	}
+
+	if opts.namespace == "" {
+		return nil, errors.New("you need to specify a namespace")
+	}
+
+	if opts.namespace == controlPlaneNamespace {
+		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
+	}
+
+	defaults, err := mccharts.NewValues()
+	if err != nil {
+		return nil, err
 	}
 
 	defaults.Namespace = opts.namespace
@@ -163,17 +191,12 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	defaults.GatewayPort = opts.gatewayPort
 	defaults.GatewayProbeSeconds = opts.gatewayProbeSeconds
 	defaults.GatewayProbePort = opts.gatewayProbePort
-	defaults.ServiceMirror = opts.serviceMirror
-	defaults.ServiceMirrorRetryLimit = opts.serviceMirrorRetryLimit
-	defaults.LogLevel = opts.logLevel
 	defaults.GatewayNginxImage = opts.gatewayNginxImage
 	defaults.GatewayNginxImageVersion = opts.gatewayNginxVersion
 	defaults.IdentityTrustDomain = global.Global.IdentityContext.TrustDomain
 	defaults.LinkerdNamespace = controlPlaneNamespace
 	defaults.ProxyOutboundPort = global.Proxy.OutboundPort.Port
 	defaults.LinkerdVersion = version.Version
-	defaults.ControllerImageVersion = opts.controlPlaneVersion
-	defaults.ControllerImage = fmt.Sprintf("%s/controller", opts.dockerRegistry)
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
 
 	return defaults, nil
@@ -368,12 +391,8 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().Uint32Var(&options.gatewayPort, "gateway-port", options.gatewayPort, "The port on the gateway used for all incoming traffic")
 	cmd.Flags().Uint32Var(&options.gatewayProbeSeconds, "gateway-probe-seconds", options.gatewayProbeSeconds, "The interval at which the gateway will be checked for being alive in seconds")
 	cmd.Flags().Uint32Var(&options.gatewayProbePort, "gateway-probe-port", options.gatewayProbePort, "The liveness check port of the gateway")
-	cmd.Flags().BoolVar(&options.serviceMirror, "service-mirror", options.serviceMirror, "If the service-mirror component should be installed")
-	cmd.Flags().Uint32Var(&options.serviceMirrorRetryLimit, "service-mirror-retry-limit", options.serviceMirrorRetryLimit, "The number of times a failed update from the target cluster is allowed to be retried")
-	cmd.Flags().StringVar(&options.logLevel, "log-level", options.logLevel, "Log level for the Multicluster components")
 	cmd.Flags().StringVar(&options.gatewayNginxImage, "gateway-nginx-image", options.gatewayNginxImage, "The nginx image to be used")
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
-	cmd.Flags().StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	cmd.Flags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
 	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported servivces")
 
@@ -392,7 +411,11 @@ func newMulticlusterInstallCommand() *cobra.Command {
 }
 
 func newLinkCommand() *cobra.Command {
-	opts := linkOptions{}
+	opts, err := newLinkOptionsWithDefault()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		os.Exit(1)
+	}
 
 	cmd := &cobra.Command{
 		Use:   "link",
@@ -537,9 +560,41 @@ func newLinkCommand() *cobra.Command {
 				return err
 			}
 
-			fmt.Println(string(credsOut))
-			fmt.Println("---")
-			fmt.Println(string(linkOut))
+			values, err := buildServiceMirrorValues(opts)
+
+			if err != nil {
+				return err
+			}
+
+			// Render raw values and create chart config
+			rawValues, err := yaml.Marshal(values)
+			if err != nil {
+				return err
+			}
+
+			files := []*chartutil.BufferedFile{
+				{Name: chartutil.ChartfileName},
+				{Name: "templates/service-mirror.yaml"},
+			}
+
+			chart := &charts.Chart{
+				Name:      helmMulticlusterDefaultChartName,
+				Dir:       helmMulticlusterDefaultChartName,
+				Namespace: controlPlaneNamespace,
+				RawValues: rawValues,
+				Files:     files,
+			}
+			serviceMirrorOut, err := chart.RenderNoPartials()
+			if err != nil {
+				return err
+			}
+
+			stdout.Write(credsOut)
+			stdout.Write([]byte("---\n"))
+			stdout.Write(linkOut)
+			stdout.Write([]byte("---\n"))
+			stdout.Write(serviceMirrorOut.Bytes())
+			stdout.Write([]byte("---\n"))
 
 			return nil
 		},
@@ -549,8 +604,11 @@ func newLinkCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "Cluster name")
 	cmd.Flags().StringVar(&opts.apiServerAddress, "api-server-address", "", "The api server address of the target cluster")
 	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", defaultServiceAccountName, "The name of the service account associated with the credentials")
+	cmd.Flags().StringVar(&opts.controlPlaneVersion, "control-plane-version", opts.controlPlaneVersion, "(Development) Tag to be used for the control plane component images")
 	cmd.Flags().StringVar(&opts.gatewayName, "gateway-name", defaultGatewayName, "The name of the gateway service")
 	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", defaultMulticlusterNamespace, "The namespace of the gateway service")
+	cmd.Flags().Uint32Var(&opts.serviceMirrorRetryLimit, "service-mirror-retry-limit", opts.serviceMirrorRetryLimit, "The number of times a failed update from the target cluster is allowed to be retried")
+	cmd.Flags().StringVar(&opts.logLevel, "log-level", opts.logLevel, "Log level for the Multicluster components")
 
 	return cmd
 }
