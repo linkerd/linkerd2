@@ -117,14 +117,8 @@ func (re RepairEndpoints) String() string {
 	return "RepairEndpoints"
 }
 
-//Events for probe manager
-
-func (ps probeSpec) String() string {
-	return fmt.Sprintf("ProbeSpec: {path: %s, port: %d, period: %d}", ps.path, ps.port, ps.periodInSeconds)
-}
-
 func (gmc GatewayMirrorCreated) String() string {
-	return fmt.Sprintf("GatewayMirrorCreated: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s, probeSpec: %s}", gmc.gatewayName, gmc.gatewayNamespace, gmc.clusterName, gmc.probeSpec)
+	return fmt.Sprintf("GatewayMirrorCreated: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s, probeSpec: %s}", gmc.gatewayName, gmc.gatewayNamespace, gmc.clusterName, gmc.ProbeSpec)
 }
 
 func (gmd GatewayMirrorDeleted) String() string {
@@ -132,5 +126,5 @@ func (gmd GatewayMirrorDeleted) String() string {
 }
 
 func (gmu GatewayMirrorUpdated) String() string {
-	return fmt.Sprintf("GatewayMirrorUpdated: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s, probeSpec: %s}", gmu.gatewayName, gmu.gatewayNamespace, gmu.clusterName, gmu.probeSpec)
+	return fmt.Sprintf("GatewayMirrorUpdated: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s, probeSpec: %s}", gmu.gatewayName, gmu.gatewayNamespace, gmu.clusterName, gmu.ProbeSpec)
 }

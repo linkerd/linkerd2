@@ -18,6 +18,7 @@ import (
 	mccharts "github.com/linkerd/linkerd2/pkg/charts/multicluster"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	mc "github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -34,6 +35,7 @@ import (
 
 const (
 	defaultMulticlusterNamespace     = "linkerd-multicluster"
+	defaultGatewayName               = "linkerd-gateway"
 	helmMulticlusterDefaultChartName = "linkerd2-multicluster"
 	tokenKey                         = "token"
 	defaultServiceAccountName        = "linkerd-service-mirror-remote-access-default"
@@ -67,6 +69,8 @@ type (
 		clusterName        string
 		apiServerAddress   string
 		serviceAccountName string
+		gatewayName        string
+		gatewayNamespace   string
 	}
 
 	exportServiceOptions struct {
@@ -338,6 +342,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 				{Name: "templates/gateway.yaml"},
 				{Name: "templates/service-mirror.yaml"},
 				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
+				{Name: "templates/link-crd.yaml"},
 			}
 
 			chart := &charts.Chart{
@@ -497,11 +502,44 @@ func newLinkCommand() *cobra.Command {
 				},
 			}
 
-			out, err := yaml.Marshal(creds)
+			credsOut, err := yaml.Marshal(creds)
 			if err != nil {
 				return err
 			}
-			fmt.Println(string(out))
+
+			gateway, err := k.CoreV1().Services(opts.gatewayNamespace).Get(opts.gatewayName, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+
+			gatewayAddresses := []string{}
+			for _, ingress := range gateway.Status.LoadBalancer.Ingress {
+				gatewayAddresses = append(gatewayAddresses, ingress.IP)
+			}
+
+			probeSpec, err := mc.ExtractProbeSpec(gateway)
+			if err != nil {
+				return err
+			}
+
+			link := mc.Link{
+				TargetClusterName:             opts.clusterName,
+				TargetClusterDomain:           configMap.Global.ClusterDomain,
+				TargetClusterLinkerdNamespace: controlPlaneNamespace,
+				ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
+				GatewayAddress:                strings.Join(gatewayAddresses, ","),
+				GatewayIdentity:               gateway.Annotations[k8s.GatewayIdentity],
+				ProbeSpec:                     probeSpec,
+			}
+
+			linkOut, err := yaml.Marshal(link.ToUnstructured(opts.clusterName, opts.namespace).Object)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(string(credsOut))
+			fmt.Println("---")
+			fmt.Println(string(linkOut))
 
 			return nil
 		},
@@ -511,6 +549,8 @@ func newLinkCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "Cluster name")
 	cmd.Flags().StringVar(&opts.apiServerAddress, "api-server-address", "", "The api server address of the target cluster")
 	cmd.Flags().StringVar(&opts.serviceAccountName, "service-account-name", defaultServiceAccountName, "The name of the service account associated with the credentials")
+	cmd.Flags().StringVar(&opts.gatewayName, "gateway-name", defaultGatewayName, "The name of the gateway service")
+	cmd.Flags().StringVar(&opts.gatewayNamespace, "gateway-namespace", defaultMulticlusterNamespace, "The namespace of the gateway service")
 
 	return cmd
 }
