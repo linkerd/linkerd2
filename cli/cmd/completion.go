@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// newCmdCompletion creates a new cobra command `completion` which contains commands for
+// enabling linkerd auto completion
 func newCmdCompletion() *cobra.Command {
 	example := `  # bash <= 3.2
   source /dev/stdin <<< "$(linkerd completion bash)"
@@ -50,6 +52,7 @@ func newCmdCompletion() *cobra.Command {
 	return cmd
 }
 
+// getCompletion will return the auto completion shell script, if supported
 func getCompletion(sh string, parent *cobra.Command) (string, error) {
 	var err error
 	var buf bytes.Buffer

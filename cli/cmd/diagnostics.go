@@ -14,16 +14,23 @@ const (
 	adminHTTPPortName string = "admin-http"
 )
 
+// diagnosticsOptions holds values for command line flags that apply to the diagnostics
+// command.
 type diagnosticsOptions struct {
 	wait time.Duration
 }
 
+// newDiagnosticsOptions initializes diagnostics options setting
+// the max wait time duration as 30 seconds to fetch diagnostics
+//
+// This option may be overridden on the CLI at run-time
 func newDiagnosticsOptions() *diagnosticsOptions {
 	return &diagnosticsOptions{
 		wait: 30 * time.Second,
 	}
 }
 
+// newCmdDashboard creates a new cobra command `diagnostics` which contains commands to fetch control plane container's metrics
 func newCmdDiagnostics() *cobra.Command {
 	options := newDiagnosticsOptions()
 
