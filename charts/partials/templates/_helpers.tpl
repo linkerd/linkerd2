@@ -55,7 +55,7 @@ For example "11,22,55" will become{"port":11},{"port":22},
 {{- $ports := splitList "," . -}}
 {{- $last := sub (len $ports) 1 -}}
 {{- range $i,$port := $ports -}}
-{"port":{{$port}}}{{ternary "," "" (ne $i $last)}}
+{"portRange":"{{$port}}"}{{ternary "," "" (ne $i $last)}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
