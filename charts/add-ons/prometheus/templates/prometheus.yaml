@@ -204,6 +204,10 @@ metadata:
   namespace: {{.Values.global.namespace}}
 spec:
   replicas: 1
+  {{- if .Values.persistence }}
+  strategy:
+    type: Recreate
+  {{- end }}
   selector:
     matchLabels:
       {{.Values.global.controllerComponentLabel}}: prometheus
@@ -221,6 +225,8 @@ spec:
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
+      securityContext:
+        fsGroup: 65534
       containers:
       - args:
         {{- range $key, $value := .Values.args}}
@@ -248,7 +254,9 @@ spec:
         {{- include "partials.resources" .Values.resources | nindent 8 }}
         {{- end }}
         securityContext:
+          runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
         volumeMounts:
       {{- range .Values.ruleConfigMapMounts }}
         - name: {{ .name }}
@@ -281,8 +289,13 @@ spec:
         configMap:
           name: {{ .configMap }}
     {{- end }}
-      - emptyDir: {}
-        name: data
+      - name: data
+    {{- if .Values.persistence }}
+        persistentVolumeClaim:
+          claimName: linkerd-prometheus
+    {{- else }}
+        emptyDir: {}
+    {{- end }}
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
@@ -290,3 +303,25 @@ spec:
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
+{{- if .Values.persistence }}
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
+    {{.Values.global.controllerComponentLabel}}: prometheus
+  name: linkerd-prometheus
+  namespace: {{.Values.global.namespace}}
+spec:
+  accessModes:
+    - {{ .Values.persistence.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size | quote }}
+{{- if .Values.persistence.storageClass }}
+  storageClassName: "{{ .Values.persistence.storageClass }}"
+{{- end }}
+{{- end }}

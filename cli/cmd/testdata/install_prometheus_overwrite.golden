@@ -3040,6 +3040,8 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
+      securityContext:
+        fsGroup: 65534
       containers:
       - args:
         - --config.file=/etc/prometheus/prometheus.yml
@@ -3066,7 +3068,9 @@ spec:
           initialDelaySeconds: 30
           timeoutSeconds: 30
         securityContext:
+          runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
         volumeMounts:
         - name: alerting-rules
           mountPath: /etc/prometheus/alerting_rules.yml
@@ -3215,8 +3219,8 @@ spec:
       - name: recording-rules
         configMap:
           name: linkerd-prometheus-rules
-      - emptyDir: {}
-        name: data
+      - name: data
+        emptyDir: {}
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config

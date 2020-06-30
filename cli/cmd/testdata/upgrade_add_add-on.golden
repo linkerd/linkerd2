@@ -3005,6 +3005,8 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
+      securityContext:
+        fsGroup: 65534
       containers:
       - args:
         - --config.file=/etc/prometheus/prometheus.yml
@@ -3030,7 +3032,9 @@ spec:
           initialDelaySeconds: 30
           timeoutSeconds: 30
         securityContext:
+          runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
         volumeMounts:
         - mountPath: /data
           name: data
@@ -3167,8 +3171,8 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-prometheus
       volumes:
-      - emptyDir: {}
-        name: data
+      - name: data
+        emptyDir: {}
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config

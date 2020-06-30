@@ -47,7 +47,6 @@ type (
 		DestinationResources   *Resources `json:"destinationResources"`
 		HeartbeatResources     *Resources `json:"heartbeatResources"`
 		IdentityResources      *Resources `json:"identityResources"`
-		PrometheusResources    *Resources `json:"prometheusResources"`
 		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
 		PublicAPIResources     *Resources `json:"publicAPIResources"`
 		SMIMetricsResources    *Resources `json:"smiMetricsResources"`
@@ -57,7 +56,6 @@ type (
 
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
-		PrometheusProxyResources    *Resources `json:"prometheusProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
 		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
 		SMIMetricsProxyResources    *Resources `json:"smiMetricsProxyResources"`
@@ -201,13 +199,6 @@ type (
 		CrtExpiryAnnotation string     `json:"crtExpiryAnnotation"`
 		CrtExpiry           time.Time  `json:"crtExpiry"`
 		TLS                 *IssuerTLS `json:"tls"`
-	}
-
-	// PrometheusRuleConfigMapMount is a user supplied prometheus rule config maps.
-	PrometheusRuleConfigMapMount struct {
-		Name      string `json:"name"`
-		SubPath   string `json:"subPath"`
-		ConfigMap string `json:"configMap"`
 	}
 
 	// ProxyInjector has all the proxy injector's Helm variables

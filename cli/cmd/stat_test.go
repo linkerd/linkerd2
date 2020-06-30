@@ -212,7 +212,7 @@ func testStatCall(exp paramsExp, resourceType string, t *testing.T) {
 		response = public.GenStatTsResponse("foo-split", resourceType, exp.resNs, true, true)
 	}
 
-	mockClient.StatSummaryResponseToReturn = &response
+	mockClient.StatSummaryResponseToReturn = response
 
 	args := []string{"ns"}
 	if resourceType == k8s.TrafficSplit {

@@ -3288,6 +3288,8 @@ spec:
     spec:
       nodeSelector:
         null
+      securityContext:
+        fsGroup: 65534
       containers:
       - args:
         image: prom/prometheus:v2.15.2
@@ -3316,7 +3318,9 @@ spec:
             cpu: "300m"
             memory: "300Mi"
         securityContext:
+          runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
         volumeMounts:
         - mountPath: /data
           name: data
@@ -3448,8 +3452,8 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-prometheus
       volumes:
-      - emptyDir: {}
-        name: data
+      - name: data
+        emptyDir: {}
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
