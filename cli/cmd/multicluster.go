@@ -93,6 +93,9 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 
 	return &multiclusterInstallOptions{
 		gateway:                 defaults.Gateway,
+		gatewayPort:             defaults.GatewayPort,
+		gatewayProbeSeconds:     defaults.GatewayProbeSeconds,
+		gatewayProbePort:        defaults.GatewayProbePort,
 		namespace:               defaults.Namespace,
 		gatewayNginxImage:       defaults.GatewayNginxImage,
 		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
@@ -363,7 +366,6 @@ func newMulticlusterInstallCommand() *cobra.Command {
 				{Name: chartutil.ChartfileName},
 				{Name: "templates/namespace.yaml"},
 				{Name: "templates/gateway.yaml"},
-				{Name: "templates/service-mirror.yaml"},
 				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
 				{Name: "templates/link-crd.yaml"},
 			}

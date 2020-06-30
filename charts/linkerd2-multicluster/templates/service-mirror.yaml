@@ -39,7 +39,10 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
-    resourceNames: ["{{.Values.targetClusterName}}"]
+    resourceNames: ["cluster-credentials-{{.Values.targetClusterName}}"]
+    verbs: ["list", "get", "watch"]
+  - apiGroups: ["multicluster.linkerd.io"]
+    resources: ["links"]
     verbs: ["list", "get", "watch"]
 ---
 kind: RoleBinding

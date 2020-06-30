@@ -70,7 +70,7 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		return Link{}, err
 	}
 
-	targetClusterLinkerdNamespace, err := stringField(specObj, "targetClusterLinkerdDomain")
+	targetClusterLinkerdNamespace, err := stringField(specObj, "targetClusterLinkerdNamespace")
 	if err != nil {
 		return Link{}, err
 	}
@@ -117,6 +117,7 @@ func (l Link) ToUnstructured(name, namespace string) unstructured.Unstructured {
 				"targetClusterLinkerdNamespace": l.TargetClusterLinkerdNamespace,
 				"clusterCredentialsSecret":      l.ClusterCredentialsSecret,
 				"gatewayAddress":                l.GatewayAddress,
+				"gatewayIdentity":               l.GatewayIdentity,
 				"probeSpec": map[string]interface{}{
 					"path":   l.ProbeSpec.Path,
 					"port":   fmt.Sprintf("%d", l.ProbeSpec.Port),
