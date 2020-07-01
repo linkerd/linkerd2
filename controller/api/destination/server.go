@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"encoding/json"
+
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -100,6 +102,12 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		log,
 	)
 
+	var token contextToken
+	b := dest.GetContextToken()
+	if err := json.Unmarshal([]byte(b), &token); err != nil {
+		log.Debugf("Error: %v", err)
+	}
+	log.Debugf("Context token: [ogToken=%s] [tokenStruct=%s] [ns=%s], [nodeName=%s]", dest.GetContextToken(), token, token.Ns, token.NodeName)
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
@@ -236,6 +244,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 ////////////
 /// util ///
 ////////////
+
+type contextToken struct {
+	Ns       string `json:"ns,omitempty"`
+	NodeName string `json:"nodeName,omitempty"`
+}
 
 func nsFromToken(token string) string {
 	// ns:<namespace>
