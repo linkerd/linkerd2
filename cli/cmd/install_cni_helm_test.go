@@ -19,20 +19,15 @@ func TestRenderCniHelm(t *testing.T) {
 	// the golden file is generated using the following `helm template` command:
 	// bin/helm template --set namespace="linkerd-test" --set controllerNamespaceLabel="linkerd.io/control-plane-ns-test" --set cniResourceAnnotation="linkerd.io/cni-resource-test" --set inboundProxyPort=1234 --set outboundProxyPort=5678 --set createdByAnnotation="linkerd.io/created-by-test" --set cniPluginImage="gcr.io/linkerd-io/cni-plugin-test" --set cniPluginVersion="test-version" --set logLevel="debug" --set proxyUID=1111 --set destCNINetDir="/etc/cni/net.d-test" --set destCNIBinDir="/opt/cni/bin-test" --set useWaitFlag=true --set cliVersion=test-version charts/linkerd2-cni
 
-	t.Run("Cni Install", func(t *testing.T) {
+	t.Run("Cni Install with defaults", func(t *testing.T) {
 		chartCni := chartCniPlugin(t)
-		testRenderCniHelm(t, chartCni, "install_cni_helm_output.golden")
+		testRenderCniHelm(t, chartCni, &pb.Config{}, "install_cni_helm_default_output.golden")
 	})
 
-}
-
-func testRenderCniHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
-	var (
-		chartName = "linkerd2-cni"
-		namespace = "linkerd-test"
-	)
-	overrideJSON :=
-		`{
+	t.Run("Cni Install with overriden values", func(t *testing.T) {
+		chartCni := chartCniPlugin(t)
+		overrideJSON :=
+			`{
 			"namespace": "linkerd-test",
   			"cniResourceLabel": "linkerd.io/cni-resource-test",
   			"inboundProxyPort": 1234,
@@ -48,7 +43,17 @@ func testRenderCniHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 			"cliVersion": "test-version"
 		}`
 
-	overrideConfig := &pb.Config{Raw: overrideJSON}
+		overrideConfig := &pb.Config{Raw: overrideJSON}
+		testRenderCniHelm(t, chartCni, overrideConfig, "install_cni_helm_override_output.golden")
+	})
+
+}
+
+func testRenderCniHelm(t *testing.T, chart *pb.Chart, overrideConfig *pb.Config, goldenFileName string) {
+	var (
+		chartName = "linkerd2-cni"
+		namespace = "linkerd-test"
+	)
 
 	releaseOptions := renderutil.Options{
 		ReleaseOptions: chartutil.ReleaseOptions{
