@@ -22,6 +22,10 @@ jobs:
     - name: Checkout code
       # actions/checkout@v2
       uses: actions/checkout@722adc6
+    - name: Set environment variables from scripts
+      run: |
+        . bin/_tag.sh
+        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
     - name: Setup SSH config for Packet
       run: |
         mkdir -p ~/.ssh/
@@ -37,6 +41,33 @@ jobs:
       run: |
         export PATH="`pwd`/bin:$PATH"
         bin/docker-build
+    - name: Create artifact with CLI and image archives
+      env:
+        ARCHIVES: /home/runner/archives
+      run: |
+        mkdir -p $ARCHIVES
+
+        for image in proxy controller web cni-plugin debug cli-bin grafana; do
+          docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar || tee save_fail &
+        done
+
+        # save cli's as artifacts
+        cp -r ./target/cli $ARCHIVES/cli
+
+        # Wait for `docker save` background processes to complete. Exit early
+        # if any job failed.
+        wait < <(jobs -p)
+        test -f save_fail && exit 1 || true
+    # `with.path` values do not support environment variables yet, so an
+    # absolute path is used here.
+    #
+    # https://github.com/actions/upload-artifact/issues/8
+    - name: Upload artifact
+      # actions/upload-artifact@v1
+      uses: actions/upload-artifact@3446296
+      with:
+        name: image-archives
+        path: /home/runner/archives
   # todo: Keep in sync with `cloud_integration.yml`
   docker_push:
     name: Docker push
@@ -78,7 +109,7 @@ jobs:
   windows_static_cli_tests:
     name: Static CLI tests (windows)
     runs-on: windows-latest
-    needs: [docker_push]
+    needs: [docker_build]
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -91,13 +122,14 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    - name: Install linkerd CLI
-      id: install_cli
+    - name: Download image archives
+      # actions/download-artifact@v1
+      uses: actions/download-artifact@18f0f59
+      with:
+        name: image-archives
+    - name: Install CLI
       run: |
-        $image="gcr.io/linkerd-io/cli-bin:$TAG"
-        docker pull $image
-        $id = (docker create $image)
-        docker cp "${id}:/out/linkerd-windows" "$HOME\linkerd.exe"
+        cp image-archives\cli\windows\linkerd $HOME\linkerd.exe
     - name: Run CLI Integration tests
       run: |
         go test --failfast --mod=readonly ".\test\cli" --linkerd=$HOME\linkerd.exe --cli-tests -v
