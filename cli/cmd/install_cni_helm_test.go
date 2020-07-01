@@ -24,7 +24,7 @@ func TestRenderCniHelm(t *testing.T) {
 		testRenderCniHelm(t, chartCni, &pb.Config{}, "install_cni_helm_default_output.golden")
 	})
 
-	t.Run("Cni Install with overriden values", func(t *testing.T) {
+	t.Run("Cni Install with overridden values", func(t *testing.T) {
 		chartCni := chartCniPlugin(t)
 		overrideJSON :=
 			`{
