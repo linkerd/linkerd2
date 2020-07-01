@@ -26,8 +26,21 @@
   },
   {
     "op": "add",
+    "path": "/spec/volumes",
+    "value": []
+  },
+  {
+    "op": "add",
     "path": "/spec/initContainers",
     "value": []
+  },
+  {
+    "op": "add",
+    "path": "/spec/volumes/-",
+    "value": {
+      "emptyDir": {},
+      "name": "linkerd-proxy-init-xtables-lock"
+    }
   },
   {
     "op": "add",
@@ -69,13 +82,15 @@
         "runAsNonRoot": false,
         "runAsUser": 0
       },
-      "terminationMessagePolicy": "FallbackToLogsOnError"
+      "terminationMessagePolicy": "FallbackToLogsOnError",
+      "volumeMounts": [
+        {
+          "mountPath": "/run",
+          "name": "linkerd-proxy-init-xtables-lock",
+          "subPath": "xtables.lock"
+        }
+      ]
     }
-  },
-  {
-    "op": "add",
-    "path": "/spec/volumes",
-    "value": []
   },
   {
     "op": "add",

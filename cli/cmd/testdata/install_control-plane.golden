@@ -243,6 +243,10 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          subPath: xtables.lock
       serviceAccountName: linkerd-identity
       volumes:
       - configMap:
@@ -251,6 +255,8 @@ spec:
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -467,11 +473,17 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          subPath: xtables.lock
       serviceAccountName: linkerd-controller
       volumes:
       - configMap:
           name: linkerd-config
         name: config
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -688,11 +700,17 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          subPath: xtables.lock
       serviceAccountName: linkerd-destination
       volumes:
       - configMap:
           name: linkerd-config
         name: config
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -958,11 +976,17 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          subPath: xtables.lock
       serviceAccountName: linkerd-web
       volumes:
       - configMap:
           name: linkerd-config
         name: config
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1332,6 +1356,10 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          subPath: xtables.lock
       serviceAccountName: linkerd-prometheus
       volumes:
       - name: data
@@ -1339,6 +1367,8 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1534,6 +1564,10 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          subPath: xtables.lock
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
@@ -1542,6 +1576,8 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-tls
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -1773,11 +1809,17 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          subPath: xtables.lock
       serviceAccountName: linkerd-sp-validator
       volumes:
       - name: tls
         secret:
           secretName: linkerd-sp-validator-tls
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -2000,11 +2042,17 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          subPath: xtables.lock
       serviceAccountName: linkerd-tap
       volumes:
       - configMap:
           name: linkerd-config
         name: config
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
@@ -2311,6 +2359,10 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          subPath: xtables.lock
       serviceAccountName: linkerd-grafana
       volumes:
       - emptyDir: {}
@@ -2325,6 +2377,8 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity

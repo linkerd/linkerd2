@@ -50,10 +50,13 @@ securityContext:
   runAsNonRoot: false
   runAsUser: 0
 terminationMessagePolicy: FallbackToLogsOnError
-{{- if .Values.global.proxyInit.saMountPath }}
 volumeMounts:
+- mountPath: {{.Values.global.proxyInit.xtMountPath.mountPath}}
+  name: {{.Values.global.proxyInit.xtMountPath.name}}
+  subPath: {{.Values.global.proxyInit.xtMountPath.subPath}}
+{{- if .Values.global.proxyInit.saMountPath }}
 - mountPath: {{.Values.global.proxyInit.saMountPath.mountPath}}
   name: {{.Values.global.proxyInit.saMountPath.name}}
   readOnly: {{.Values.global.proxyInit.saMountPath.readOnly}}
-{{- end -}}
+{{- end -}}  
 {{- end -}}
