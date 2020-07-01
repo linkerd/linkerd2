@@ -46,18 +46,10 @@ jobs:
         ARCHIVES: /home/runner/archives
       run: |
         mkdir -p $ARCHIVES
-
-        for image in proxy controller web cni-plugin debug cli-bin grafana; do
-          docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar || tee save_fail &
-        done
+        docker save "$DOCKER_REGISTRY/cli-bin:$TAG" > $ARCHIVES/cli-bin.tar || tee save_fail &
 
         # save cli's as artifacts
         cp -r ./target/cli $ARCHIVES/cli
-
-        # Wait for `docker save` background processes to complete. Exit early
-        # if any job failed.
-        wait < <(jobs -p)
-        test -f save_fail && exit 1 || true
     # `with.path` values do not support environment variables yet, so an
     # absolute path is used here.
     #
@@ -105,7 +97,6 @@ jobs:
         bin/docker-push $TAG
         bin/docker-retag-all $TAG main
         bin/docker-push main
-  # todo: Keep in sync with `kind_integration.yml`
   windows_static_cli_tests:
     name: Static CLI tests (windows)
     runs-on: windows-latest
@@ -133,6 +124,7 @@ jobs:
     - name: Run CLI Integration tests
       run: |
         go test --failfast --mod=readonly ".\test\cli" --linkerd=$HOME\linkerd.exe --cli-tests -v
+  # todo: Keep in sync with `kind_integration.yml`
   kind_integration_tests:
     strategy:
       matrix:
