@@ -272,7 +272,7 @@ func (m *MockProm) TargetsMetadata(ctx context.Context, matchTarget string, metr
 
 // GenStatSummaryResponse generates a mock Public API StatSummaryResponse
 // object.
-func GenStatSummaryResponse(resName, resType string, resNs []string, counts *PodCounts, basicStats bool, tcpStats bool) pb.StatSummaryResponse {
+func GenStatSummaryResponse(resName, resType string, resNs []string, counts *PodCounts, basicStats bool, tcpStats bool) *pb.StatSummaryResponse {
 	rows := []*pb.StatTable_PodGroup_Row{}
 	for _, ns := range resNs {
 		statTableRow := &pb.StatTable_PodGroup_Row{
@@ -313,7 +313,7 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 		rows = append(rows, statTableRow)
 	}
 
-	resp := pb.StatSummaryResponse{
+	resp := &pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 			Ok: &pb.StatSummaryResponse_Ok{
 				StatTables: []*pb.StatTable{
@@ -334,7 +334,7 @@ func GenStatSummaryResponse(resName, resType string, resNs []string, counts *Pod
 
 // GenStatTsResponse generates a mock Public API StatSummaryResponse
 // object in response to a request for trafficsplit stats.
-func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool, tsStats bool) pb.StatSummaryResponse {
+func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool, tsStats bool) *pb.StatSummaryResponse {
 	leaves := map[string]string{
 		"service-1": "900m",
 		"service-2": "100m",
@@ -378,7 +378,7 @@ func GenStatTsResponse(resName, resType string, resNs []string, basicStats bool,
 	// sort rows before returning in order to have a consistent order for tests
 	rows = sortTrafficSplitRows(rows)
 
-	resp := pb.StatSummaryResponse{
+	resp := &pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 			Ok: &pb.StatSummaryResponse_Ok{
 				StatTables: []*pb.StatTable{
@@ -457,7 +457,7 @@ var linkerdEdgeRows = []*mockEdgeRow{
 
 // GenEdgesResponse generates a mock Public API EdgesResponse
 // object.
-func GenEdgesResponse(resourceType string, edgeRowNamespace string) pb.EdgesResponse {
+func GenEdgesResponse(resourceType string, edgeRowNamespace string) *pb.EdgesResponse {
 	edgeRows := emojivotoEdgeRows
 
 	if edgeRowNamespace == "linkerd" {
@@ -490,7 +490,7 @@ func GenEdgesResponse(resourceType string, edgeRowNamespace string) pb.EdgesResp
 	// sorting to retain consistent order for tests
 	edges = sortEdgeRows(edges)
 
-	resp := pb.EdgesResponse{
+	resp := &pb.EdgesResponse{
 		Response: &pb.EdgesResponse_Ok_{
 			Ok: &pb.EdgesResponse_Ok{
 				Edges: edges,
@@ -501,7 +501,7 @@ func GenEdgesResponse(resourceType string, edgeRowNamespace string) pb.EdgesResp
 }
 
 // GenTopRoutesResponse generates a mock Public API TopRoutesResponse object.
-func GenTopRoutesResponse(routes []string, counts []uint64, outbound bool, authority string) pb.TopRoutesResponse {
+func GenTopRoutesResponse(routes []string, counts []uint64, outbound bool, authority string) *pb.TopRoutesResponse {
 	rows := []*pb.RouteTable_Row{}
 	for i, route := range routes {
 		row := &pb.RouteTable_Row{
@@ -538,7 +538,7 @@ func GenTopRoutesResponse(routes []string, counts []uint64, outbound bool, autho
 	}
 	rows = append(rows, defaultRow)
 
-	resp := pb.TopRoutesResponse{
+	resp := &pb.TopRoutesResponse{
 		Response: &pb.TopRoutesResponse_Ok_{
 			Ok: &pb.TopRoutesResponse_Ok{
 				Routes: []*pb.RouteTable{
