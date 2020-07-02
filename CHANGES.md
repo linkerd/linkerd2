@@ -2,6 +2,16 @@
 
 ## edge-20.6.4
 
+This edge release improves messaging for retries when pods are unschedulable,
+adds a feature to persist prometheus data as an option to storing the data in
+memory, and upgrades the protobuf version to v1.4.2
+
+* Add better messaging during scheduling errors on retry for HA installations
+* Add option to persist prometheus data (thanks @naseemkullah!)
+* Upgrades generated protobuf files to v1.4.2
+
+## edge-20.6.4
+
 This edge release moves the proxy onto a new version of the Tokio runtime. This
 allows us to more easily integrate with the ecosystem and may yield performance
 benefits as well.
