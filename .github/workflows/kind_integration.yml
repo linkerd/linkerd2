@@ -91,7 +91,7 @@ jobs:
         name: image-archives
     - name: Run CLI Integration tests
       run: |
-        go test --failfast --mod=readonly ".\test\cli" --linkerd=image-archives\linkerd-windows.exe --cli-tests -v
+        go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
   kind_integration_tests:
     strategy:
       matrix:
