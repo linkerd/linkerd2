@@ -1,6 +1,6 @@
 # Changes
 
-## edge-20.6.4
+## edge-20.7.1
 
 This edge release improves messaging for retries when pods are unschedulable,
 adds a feature to persist prometheus data as an option to storing the data in
