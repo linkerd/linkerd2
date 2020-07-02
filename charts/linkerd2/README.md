@@ -22,7 +22,7 @@ generate these automatically). You can provide your own, or follow [these
 instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new
 ones.
 
-Note that the provided certificates must be ECDSA certficates.
+Note that the provided certificates must be ECDSA certificates.
 
 ## Adding Linkerd's Helm repository
 

@@ -132,7 +132,7 @@ const (
 	// config.
 	ProxyInitImageAnnotation = ProxyConfigAnnotationsPrefix + "/init-image"
 
-	// ProxyInitImageVersionAnnotation can be used to overrided the proxy-init image version
+	// ProxyInitImageVersionAnnotation can be used to override the proxy-init image version
 	ProxyInitImageVersionAnnotation = ProxyConfigAnnotationsPrefix + "/init-image-version"
 
 	// DebugImageAnnotation can be used to override the debugImage config.
