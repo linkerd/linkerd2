@@ -44,7 +44,7 @@ jobs:
         mkdir -p $ARCHIVES
 
         # save windows cli into artifacts
-        cp -r ./target/cli/windows/linkerd $ARCHIVES/cli/windows/linkerd.exe
+        cp -r ./target/cli/windows/linkerd $ARCHIVES/linkerd-windows.exe
     # `with.path` values do not support environment variables yet, so an
     # absolute path is used here.
     #
@@ -116,7 +116,7 @@ jobs:
         name: image-archives
     - name: Run CLI Integration tests
       run: |
-        go test --failfast --mod=readonly ".\test\cli" --linkerd=image-archives\cli\windows\linkerd.exe --cli-tests -v
+        go test --failfast --mod=readonly ".\test\cli" --linkerd=image-archives\linkerd-windows.exe --cli-tests -v
   # todo: Keep in sync with `kind_integration.yml`
   kind_integration_tests:
     strategy:

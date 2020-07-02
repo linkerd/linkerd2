@@ -51,7 +51,7 @@ jobs:
         done
 
         # save windows cli into artifacts
-        cp -r ./target/cli/windows/linkerd $ARCHIVES/cli/windows/linkerd.exe
+        cp -r ./target/cli/windows/linkerd $ARCHIVES/linkerd-windows.exe
 
         # Wait for `docker save` background processes to complete. Exit early
         # if any job failed.
@@ -91,7 +91,7 @@ jobs:
         name: image-archives
     - name: Run CLI Integration tests
       run: |
-        go test --failfast --mod=readonly ".\test\cli" --linkerd=image-archives\cli\windows\linkerd.exe --cli-tests -v  
+        go test --failfast --mod=readonly ".\test\cli" --linkerd=image-archives\linkerd-windows.exe --cli-tests -v
   kind_integration_tests:
     strategy:
       matrix:
