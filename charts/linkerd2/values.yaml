@@ -11,7 +11,7 @@ global:
   controlPlaneTracing: false
 
   # control plane version. See Proxy section for proxy version
-  linkerdVersion: &linkerd_version dev-f00c17e5-zaharidichev
+  linkerdVersion: &linkerd_version linkerdVersionValue
 
   namespace: linkerd
 
