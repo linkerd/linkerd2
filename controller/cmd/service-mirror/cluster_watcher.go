@@ -912,7 +912,7 @@ func (rcsw *RemoteClusterServiceWatcher) affectedMirroredServicesForGatewayUpdat
 	affectedServices := []*corev1.Service{}
 	for _, srv := range services {
 		ver, ok := srv.Annotations[consts.RemoteGatewayResourceVersionAnnotation]
-		if ok && ver != latestResourceVersion {
+		if !ok || ver != latestResourceVersion {
 			affectedServices = append(affectedServices, srv)
 		}
 	}
