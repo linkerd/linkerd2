@@ -37,6 +37,24 @@ jobs:
       run: |
         export PATH="`pwd`/bin:$PATH"
         bin/docker-build
+    - name: Create artifact with Windows CLI binary
+      env:
+        ARCHIVES: /home/runner/archives
+      run: |
+        mkdir -p $ARCHIVES
+
+        # save windows cli into artifacts
+        cp -r ./target/cli/windows/linkerd $ARCHIVES/linkerd-windows.exe
+    # `with.path` values do not support environment variables yet, so an
+    # absolute path is used here.
+    #
+    # https://github.com/actions/upload-artifact/issues/8
+    - name: Upload artifact
+      # actions/upload-artifact@v1
+      uses: actions/upload-artifact@3446296
+      with:
+        name: image-archives
+        path: /home/runner/archives
   # todo: Keep in sync with `cloud_integration.yml`
   docker_push:
     name: Docker push
@@ -74,6 +92,31 @@ jobs:
         bin/docker-push $TAG
         bin/docker-retag-all $TAG main
         bin/docker-push main
+  # todo: Keep in sync with `kind_integration.yml`
+  windows_static_cli_tests:
+    name: Static CLI tests (windows)
+    runs-on: windows-latest
+    needs: [docker_build]
+    steps:
+    - name: Checkout code
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
+    - name: Try to load cached Go modules
+      # actions/cache@v1.1.2
+      uses: actions/cache@70655ec
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Download image archives
+      # actions/download-artifact@v1
+      uses: actions/download-artifact@18f0f59
+      with:
+        name: image-archives
+    - name: Run CLI Integration tests
+      run: |
+        go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
   # todo: Keep in sync with `kind_integration.yml`
   kind_integration_tests:
     strategy:
