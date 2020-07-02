@@ -67,7 +67,6 @@ jobs:
       with:
         name: image-archives
         path: /home/runner/archives
-  # todo: Keep in sync with `release.yml`
   windows_static_cli_tests:
     name: Static CLI tests (windows)
     runs-on: windows-latest
@@ -92,6 +91,7 @@ jobs:
     - name: Run CLI Integration tests
       run: |
         go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
+  # todo: Keep in sync with `release.yml`
   kind_integration_tests:
     strategy:
       matrix:
