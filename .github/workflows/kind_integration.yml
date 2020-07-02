@@ -67,6 +67,7 @@ jobs:
       with:
         name: image-archives
         path: /home/runner/archives
+  # todo: Keep in sync with `release.yml`
   windows_static_cli_tests:
     name: Static CLI tests (windows)
     runs-on: windows-latest
