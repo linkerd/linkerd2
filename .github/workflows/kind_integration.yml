@@ -50,8 +50,8 @@ jobs:
           docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar || tee save_fail &
         done
 
-        # save cli's as artifacts
-        cp -r ./target/cli $ARCHIVES/cli
+        # save windows cli into artifacts
+        cp -r ./target/cli/windows/linkerd $ARCHIVES/cli/windows/linkerd.exe
 
         # Wait for `docker save` background processes to complete. Exit early
         # if any job failed.
@@ -89,12 +89,9 @@ jobs:
       uses: actions/download-artifact@18f0f59
       with:
         name: image-archives
-    - name: Install CLI
-      run: |
-        cp image-archives\cli\windows\linkerd $HOME\linkerd.exe
     - name: Run CLI Integration tests
       run: |
-        go test --failfast --mod=readonly ".\test\cli" --linkerd=$HOME\linkerd.exe --cli-tests -v
+        go test --failfast --mod=readonly ".\test\cli" --linkerd=image-archives\cli\windows\linkerd.exe --cli-tests -v  
   kind_integration_tests:
     strategy:
       matrix:
