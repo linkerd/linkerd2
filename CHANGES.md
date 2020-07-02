@@ -2,23 +2,29 @@
 
 ## edge-20.7.1
 
-This edge release improves messaging for retries when pods are unschedulable,
-adds new functionality to persist prometheus data and configure the proxy log
-format using annotations and helm charts, fixes a bug in the helm chart for
-the Linkerd CNI Plugin, and enables the use of URLs with the `--addon-config`
-installation flag
+This edge release introduces the option to persist prometheus data to a volume,
+instead of memory, so that historical metrics are available when prometheus is
+restarted. Also in this release are improvements to control plane check
+conditions for CLI commands, a fix to correctly resolve the CNI image version
+when using helm, support for using URLs with add-ons, proxy improvements under
+concurrency, and functionality to configure the proxy log format by annotation
+or in the helm chart.
 
-* Controller
-  * Adds better messaging during scheduling errors on retry for HA installations
-* CLI
-  * Adds option to persist prometheus data (thanks @naseemkullah!)
-  * Adds support for passing a URL to the `--addon-config` flag, so you can now
-  use a file or an URL for installing add ons
-* Helm
-  * Fixes a bug in the CNI helm chart by correcting a helm value field name
-* Proxy
-  * Improves tail latencies by increasing the default buffer size to reduce
-    contention in high-concurrency situations
+* Some commands like `linkerd stat` would fail if any control plane components
+  were unhealthy, even when other replicas are healthy. The check conditions
+  for these commands have been improved
+* The helm chart can now configure persistent storage for Prometheus
+  (thanks @naseemkullah!)
+* The proxy log output format can now be configured to `plain` or `json` using
+  the `config.linkerd.io/proxy-log-format` annotation or the
+  `global.proxy.logFormat` value in the helm chart
+  (thanks again @naseemkullah!)
+* `linkerd install --addon-config=` now supports URLs in addition to local
+  files
+* The CNI Helm chart used the incorrect variable name to determine the image
+  tag. This is now controlled by `cniPluginVersion` in the helm chart
+* The proxy's default buffer size has been increased, which reduces latency when
+  the proxy has many concurrent clients
 
 ## edge-20.6.4
 
