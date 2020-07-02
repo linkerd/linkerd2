@@ -51,6 +51,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.fake-ns.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS

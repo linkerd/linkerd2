@@ -59,7 +59,8 @@ func TestNewValues(t *testing.T) {
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
-				LogLevel: "warn,linkerd=info",
+				LogLevel:  "warn,linkerd=info",
+				LogFormat: "plain",
 				Ports: &Ports{
 					Admin:    4191,
 					Control:  4190,

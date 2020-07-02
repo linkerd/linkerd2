@@ -208,6 +208,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			ignoreOutboundPorts:    nil,
 			proxyUID:               defaults.Global.Proxy.UID,
 			proxyLogLevel:          defaults.Global.Proxy.LogLevel,
+			proxyLogFormat:         defaults.Global.Proxy.LogFormat,
 			proxyControlPort:       uint(defaults.Global.Proxy.Ports.Control),
 			proxyAdminPort:         uint(defaults.Global.Proxy.Ports.Admin),
 			proxyInboundPort:       uint(defaults.Global.Proxy.Ports.Inbound),
@@ -786,7 +787,8 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 			PullPolicy: options.imagePullPolicy,
 			Version:    options.proxyVersion,
 		},
-		LogLevel: options.proxyLogLevel,
+		LogLevel:  options.proxyLogLevel,
+		LogFormat: options.proxyLogFormat,
 		Ports: &l5dcharts.Ports{
 			Admin:    int32(options.proxyAdminPort),
 			Control:  int32(options.proxyControlPort),
@@ -985,6 +987,7 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 		LogLevel: &pb.LogLevel{
 			Level: options.proxyLogLevel,
 		},
+		LogFormat:               options.proxyLogFormat,
 		DestinationGetNetworks:  strings.Join(options.destinationGetNetworks, ","),
 		DisableExternalProfiles: !options.enableExternalProfiles,
 		ProxyVersion:            options.proxyVersion,
