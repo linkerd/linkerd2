@@ -184,6 +184,9 @@ const (
 	// ProxyLogLevelAnnotation can be used to override the log level config.
 	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-level"
 
+	// ProxyLogFormatAnnotation can be used to override the log format config.
+	ProxyLogFormatAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-format"
+
 	// ProxyEnableExternalProfilesAnnotation can be used to override the
 	// disableExternalProfilesAnnotation config.
 	ProxyEnableExternalProfilesAnnotation = ProxyConfigAnnotationsPrefix + "/enable-external-profiles"

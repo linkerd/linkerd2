@@ -26,6 +26,7 @@ type expectedProxyConfigs struct {
 	outboundPort                  int32
 	proxyWaitBeforeExitSeconds    uint64
 	logLevel                      string
+	logFormat                     string
 	resourceRequirements          *l5dcharts.Resources
 	proxyUID                      int64
 	initImage                     string
@@ -67,6 +68,7 @@ func TestConfigAccessors(t *testing.T) {
 		},
 		ProxyUid:                8888,
 		LogLevel:                &config.LogLevel{Level: "info,linkerd2_proxy=debug"},
+		LogFormat:               "plain",
 		DisableExternalProfiles: false,
 		ProxyVersion:            proxyVersion,
 		DestinationGetNetworks:  "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
@@ -108,6 +110,7 @@ func TestConfigAccessors(t *testing.T) {
 							k8s.ProxyMemoryLimitAnnotation:                   "256",
 							k8s.ProxyUIDAnnotation:                           "8500",
 							k8s.ProxyLogLevelAnnotation:                      "debug,linkerd2_proxy=debug",
+							k8s.ProxyLogFormatAnnotation:                     "json",
 							k8s.ProxyEnableExternalProfilesAnnotation:        "false",
 							k8s.ProxyVersionOverrideAnnotation:               proxyVersionOverride,
 							k8s.ProxyTraceCollectorSvcAddrAnnotation:         "oc-collector.tracing:55678",
@@ -130,6 +133,7 @@ func TestConfigAccessors(t *testing.T) {
 				outboundPort:               int32(5002),
 				proxyWaitBeforeExitSeconds: 123,
 				logLevel:                   "debug,linkerd2_proxy=debug",
+				logFormat:                  "json",
 				resourceRequirements: &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1500m",
@@ -172,6 +176,7 @@ func TestConfigAccessors(t *testing.T) {
 				outboundPort:               int32(6002),
 				proxyWaitBeforeExitSeconds: 0,
 				logLevel:                   "info,linkerd2_proxy=debug",
+				logFormat:                  "plain",
 				resourceRequirements: &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1",
@@ -209,6 +214,7 @@ func TestConfigAccessors(t *testing.T) {
 				k8s.ProxyMemoryLimitAnnotation:              "256",
 				k8s.ProxyUIDAnnotation:                      "8500",
 				k8s.ProxyLogLevelAnnotation:                 "debug,linkerd2_proxy=debug",
+				k8s.ProxyLogFormatAnnotation:                "json",
 				k8s.ProxyEnableExternalProfilesAnnotation:   "false",
 				k8s.ProxyVersionOverrideAnnotation:          proxyVersionOverride,
 				k8s.ProxyTraceCollectorSvcAddrAnnotation:    "oc-collector.tracing:55678",
@@ -230,6 +236,7 @@ func TestConfigAccessors(t *testing.T) {
 				outboundPort:               int32(5002),
 				proxyWaitBeforeExitSeconds: 123,
 				logLevel:                   "debug,linkerd2_proxy=debug",
+				logFormat:                  "json",
 				resourceRequirements: &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1500m",
@@ -274,6 +281,7 @@ func TestConfigAccessors(t *testing.T) {
 				outboundPort:               int32(6002),
 				proxyWaitBeforeExitSeconds: 0,
 				logLevel:                   "info,linkerd2_proxy=debug",
+				logFormat:                  "plain",
 				resourceRequirements: &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1",
@@ -314,6 +322,7 @@ func TestConfigAccessors(t *testing.T) {
 				outboundPort:               int32(6002),
 				proxyWaitBeforeExitSeconds: 0,
 				logLevel:                   "info,linkerd2_proxy=debug",
+				logFormat:                  "plain",
 				resourceRequirements: &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1",
