@@ -3,12 +3,22 @@
 ## edge-20.7.1
 
 This edge release improves messaging for retries when pods are unschedulable,
-adds a feature to persist prometheus data as an option to storing the data in
-memory, and upgrades the protobuf version to v1.4.2
+adds new functionality to persist prometheus data and configure the proxy log
+format using annotations and helm charts, fixes a bug in the helm chart for
+the Linkerd CNI Plugin, and enables the use of URLs with the `--addon-config`
+installation flag
 
-* Add better messaging during scheduling errors on retry for HA installations
-* Add option to persist prometheus data (thanks @naseemkullah!)
-* Upgrades generated protobuf files to v1.4.2
+* Controller
+  * Adds better messaging during scheduling errors on retry for HA installations
+* CLI
+  * Adds option to persist prometheus data (thanks @naseemkullah!)
+  * Adds support for passing a URL to the `--addon-config` flag, so you can now
+  use a file or an URL for installing add ons
+* Helm
+  * Fixes a bug in the CNI helm chart by correcting a helm value field name
+* Proxy
+  * Improves tail latencies by increasing the default buffer size to reduce
+    contention in high-concurrency situations
 
 ## edge-20.6.4
 
