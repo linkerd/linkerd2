@@ -599,7 +599,16 @@ func (options *installOptions) installPersistentFlagSet() *pflag.FlagSet {
 func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Values) error {
 
 	if options.addOnConfig != "" {
-		addOnValues, err := ioutil.ReadFile(options.addOnConfig)
+		addOnValues, err := read(options.addOnConfig)
+		if err != nil {
+			return err
+		}
+
+		if len(addOnValues) != 1 {
+			return fmt.Errorf("Excepted a single configuration file, but got 0 or many")
+		}
+
+		addOnValuesRaw, err := ioutil.ReadAll(addOnValues[0])
 		if err != nil {
 			return err
 		}
@@ -608,8 +617,9 @@ func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Val
 		if err != nil {
 			return err
 		}
+
 		// Merge Add-On Values with Values
-		finalValues, err := mergeRaw(rawValues, addOnValues)
+		finalValues, err := mergeRaw(rawValues, addOnValuesRaw)
 		if err != nil {
 			return err
 		}
