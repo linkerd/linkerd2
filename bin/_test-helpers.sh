@@ -339,10 +339,12 @@ run_uninstall_test() {
 }
 
 run_deep_test() {
-  run_test "$test_directory/install_test.go" --multicluster
+  run_test "$test_directory/install_test.go"
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
-    run_test "$test"
+    if [[ "$test" != 'github.com/linkerd/linkerd2/test/integration/tracing' ]]; then
+      run_test "$test"
+    fi
   done
 }
 

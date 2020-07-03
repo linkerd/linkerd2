@@ -1,0 +1,11 @@
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: linkerd-tap.linkerd.svc.cluster.local
+  namespace: linkerd
+spec:
+  routes:
+  - name: route5
+    isRetryable: true
+    condition:
+      pathRegex: "*"
