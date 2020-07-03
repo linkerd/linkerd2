@@ -180,7 +180,7 @@ func extractProbeSpec(svc *corev1.Service) (*multicluster.ProbeSpec, error) {
 
 	return &multicluster.ProbeSpec{
 		Path:   path,
-		Port:   uint32(probePort),
+		Port:   probePort,
 		Period: time.Duration(probePeriodSeconds) * time.Second,
 	}, nil
 

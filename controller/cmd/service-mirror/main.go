@@ -41,6 +41,12 @@ func Main(args []string) {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
+	// We create two different kubernetes API clients for the local cluster:
+	// k8sAPI is used as a dynamic client for unstrcutured access to Link custom
+	// resources.
+	//
+	// controllerK8sAPI is used by the cluster watcher to manage
+	// mirror resources such as services, namespaces, and endpoints.
 	k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", []string{}, 0)
 	//TODO: Use can-i to check for required permissions
 	if err != nil {
@@ -73,34 +79,35 @@ func Main(args []string) {
 		log.Fatalf("Failed to watch Link %s: %s", linkName, err)
 	}
 	results := linkWatch.ResultChan()
-	for {
-		select {
-		case event := <-results:
-			switch obj := event.Object.(type) {
-			case *dynamic.Unstructured:
-				if obj.GetName() == linkName {
-					switch event.Type {
-					case watch.Added, watch.Modified:
-						link, err := multicluster.NewLink(*obj)
-						if err != nil {
-							log.Errorf("Failed to parse link %s: %s", linkName, err)
-							continue
-						}
-						log.Infof("Got updated link %s: %+v", linkName, link)
-						creds, err := loadCredentials(link, *namespace, k8sAPI)
-						if err != nil {
-							log.Errorf("Failed to load remote cluster credentials: %s", err)
-						}
-						restartClusterWatcher(link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod)
-					case watch.Deleted:
-						log.Infof("Link %s deleted", linkName)
-					default:
-						log.Infof("Ignoring event type %s", event.Type)
+
+	// Each time the link resource is updated, reload the config and restart the
+	// cluster watcher.
+	for event := range results {
+		switch obj := event.Object.(type) {
+		case *dynamic.Unstructured:
+			if obj.GetName() == linkName {
+				switch event.Type {
+				case watch.Added, watch.Modified:
+					link, err := multicluster.NewLink(*obj)
+					if err != nil {
+						log.Errorf("Failed to parse link %s: %s", linkName, err)
+						continue
 					}
+					log.Infof("Got updated link %s: %+v", linkName, link)
+					creds, err := loadCredentials(link, *namespace, k8sAPI)
+					if err != nil {
+						log.Errorf("Failed to load remote cluster credentials: %s", err)
+					}
+					restartClusterWatcher(link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod)
+				case watch.Deleted:
+					log.Infof("Link %s deleted", linkName)
+					// TODO: should we delete all mirror resources?
+				default:
+					log.Infof("Ignoring event type %s", event.Type)
 				}
-			default:
-				log.Errorf("Unknown object type detected: %+v", obj)
 			}
+		default:
+			log.Errorf("Unknown object type detected: %+v", obj)
 		}
 	}
 }

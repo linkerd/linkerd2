@@ -12,14 +12,19 @@ import (
 )
 
 type (
-	// ProbeSpec x
+	// ProbeSpec defines how a gateway should be queried for health. Once per
+	// period, the probe workers will send an HTTP request to the remote gateway
+	// on the given  port with the given path and expect a HTTP 200 response.
 	ProbeSpec struct {
 		Path   string
 		Port   uint32
 		Period time.Duration
 	}
 
-	// Link x
+	// Link is an internal representation of the link.multicluster.linkerd.io
+	// custom resource.  It defines a multicluster link to a gateway in a
+	// target cluster and is configures the behavior of a service mirror
+	// controller.
 	Link struct {
 		TargetClusterName             string
 		TargetClusterDomain           string
@@ -35,6 +40,8 @@ func (ps ProbeSpec) String() string {
 	return fmt.Sprintf("ProbeSpec: {path: %s, port: %d, period: %s}", ps.Path, ps.Port, ps.Period)
 }
 
+// NewLink parses an unstructured link.multicluster.linkerd.io resource and
+// converts it to a structured internal representation.
 func NewLink(u unstructured.Unstructured) (Link, error) {
 
 	spec, ok := u.Object["spec"]
@@ -101,6 +108,8 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 	}, nil
 }
 
+// ToUnstructured converts a Link struct into an unstructured resource that can
+// be used by a kubernetes dynamic client.
 func (l Link) ToUnstructured(name, namespace string) unstructured.Unstructured {
 	return unstructured.Unstructured{
 
@@ -128,6 +137,7 @@ func (l Link) ToUnstructured(name, namespace string) unstructured.Unstructured {
 	}
 }
 
+// ExtractProbeSpec parses the ProbSpec from a gateway service's annotations.
 func ExtractProbeSpec(gateway *corev1.Service) (ProbeSpec, error) {
 	path := gateway.Annotations[consts.GatewayProbePath]
 	if path == "" {
