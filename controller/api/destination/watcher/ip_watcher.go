@@ -53,7 +53,7 @@ func NewIPWatcher(k8sAPI *k8s.API, endpoints *EndpointsWatcher, log *logging.Ent
 		}),
 	}
 
-	k8sAPI.Svc().Informer().AddIndexers(cache.Indexers{podIPIndex: func(obj interface{}) ([]string, error) {
+	k8sAPI.Svc().Informer().AddIndexers(cache.Indexers{PodIPIndex: func(obj interface{}) ([]string, error) {
 		if svc, ok := obj.(*corev1.Service); ok {
 			return []string{svc.Spec.ClusterIP}, nil
 		}
@@ -199,7 +199,7 @@ func (iw *IPWatcher) getOrNewServiceSubscriptions(clusterIP string) *serviceSubs
 			log:       iw.log.WithField("clusterIP", clusterIP),
 		}
 
-		objs, err := iw.k8sAPI.Svc().Informer().GetIndexer().ByIndex(podIPIndex, clusterIP)
+		objs, err := iw.k8sAPI.Svc().Informer().GetIndexer().ByIndex(PodIPIndex, clusterIP)
 		if err != nil {
 			iw.log.Error(err)
 		} else {
@@ -215,7 +215,7 @@ func (iw *IPWatcher) getOrNewServiceSubscriptions(clusterIP string) *serviceSubs
 				}
 			}
 		}
-		objs, err = iw.k8sAPI.Pod().Informer().GetIndexer().ByIndex(podIPIndex, clusterIP)
+		objs, err = iw.k8sAPI.Pod().Informer().GetIndexer().ByIndex(PodIPIndex, clusterIP)
 		if err != nil {
 			iw.log.Error(err)
 		} else {

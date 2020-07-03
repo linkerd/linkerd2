@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type (
@@ -23,6 +24,7 @@ type (
 		profiles      *watcher.ProfileWatcher
 		trafficSplits *watcher.TrafficSplitWatcher
 		ips           *watcher.IPWatcher
+		k8sAPI        *k8s.API
 
 		enableH2Upgrade     bool
 		controllerNS        string
@@ -69,6 +71,7 @@ func NewServer(
 		profiles,
 		trafficSplits,
 		ips,
+		k8sAPI,
 		enableH2Upgrade,
 		controllerNS,
 		identityTrustDomain,
@@ -164,16 +167,35 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		return status.Errorf(codes.InvalidArgument, "invalid authority: %s", err)
 	}
 
-	if ip := net.ParseIP(host); ip != nil {
-		// TODO handle lookup by IP address
-		log.Debug("Lookup of IP addresses is not supported for profiles")
-		return status.Errorf(codes.InvalidArgument, "cannot discover profiles for IP addresses")
-	}
+	var service watcher.ServiceID
+	var path string
 
-	service, _, err := parseK8sServiceName(host, s.clusterDomain)
-	if err != nil {
-		log.Debugf("Invalid service %s", dest.GetPath())
-		return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
+	if ip := net.ParseIP(host); ip != nil {
+		objs, err := s.k8sAPI.Svc().Informer().GetIndexer().ByIndex(watcher.PodIPIndex, ip.String())
+		if err != nil {
+			return status.Errorf(codes.Unknown, "error getting service from IP address: %s", err)
+		}
+		switch {
+		case len(objs) > 1:
+			return status.Errorf(codes.FailedPrecondition, "service cluster IP address conflict: %v, %v", objs[0], objs[1])
+		case len(objs) == 1:
+			if svc, ok := objs[0].(*corev1.Service); ok {
+				service = watcher.ServiceID{
+					Name:      svc.Name,
+					Namespace: svc.Namespace,
+				}
+				path = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
+			}
+		case len(objs) == 0:
+			return status.Errorf(codes.InvalidArgument, "IP address {%s} does not correspond to a service", ip.String())
+		}
+	} else {
+		service, _, err = parseK8sServiceName(host, s.clusterDomain)
+		if err != nil {
+			log.Debugf("Invalid service %s", dest.GetPath())
+			return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
+		}
+		path = dest.GetPath()
 	}
 
 	// The adaptor merges profile updates with traffic split updates and
@@ -183,7 +205,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// Subscribe the adaptor to traffic split updates.
 	err = s.trafficSplits.Subscribe(service, tsAdaptor)
 	if err != nil {
-		log.Warnf("Failed to subscribe to traffic split for %s: %s", dest.GetPath(), err)
+		log.Warnf("Failed to subscribe to traffic split for %s: %s", path, err)
 		return err
 	}
 	defer s.trafficSplits.Unsubscribe(service, tsAdaptor)
@@ -198,28 +220,28 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// up to the fallbackProfileListener to merge updates from the primary and
 	// secondary listeners and send the appropriate updates to the stream.
 	if dest.GetContextToken() != "" {
-		profile, err := profileID(dest.GetPath(), dest.GetContextToken(), s.clusterDomain)
+		profile, err := profileID(path, dest.GetContextToken(), s.clusterDomain)
 		if err != nil {
-			log.Debugf("Invalid service %s", dest.GetPath())
+			log.Debugf("Invalid service %s", path)
 			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 		}
 
 		err = s.profiles.Subscribe(profile, primary)
 		if err != nil {
-			log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
+			log.Warnf("Failed to subscribe to profile %s: %s", path, err)
 			return err
 		}
 		defer s.profiles.Unsubscribe(profile, primary)
 	}
 
-	profile, err := profileID(dest.GetPath(), "", s.clusterDomain)
+	profile, err := profileID(path, "", s.clusterDomain)
 	if err != nil {
-		log.Debugf("Invalid service %s", dest.GetPath())
+		log.Debugf("Invalid service %s", path)
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 	}
 	err = s.profiles.Subscribe(profile, secondary)
 	if err != nil {
-		log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
+		log.Warnf("Failed to subscribe to profile %s: %s", path, err)
 		return err
 	}
 	defer s.profiles.Unsubscribe(profile, secondary)

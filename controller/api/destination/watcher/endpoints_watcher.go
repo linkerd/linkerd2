@@ -18,7 +18,7 @@ import (
 
 const (
 	kubeSystem = "kube-system"
-	podIPIndex = "ip"
+	PodIPIndex = "ip"
 
 	// metrics labels
 	service                = "service"
@@ -132,7 +132,7 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry) *EndpointsWatcher 
 		}),
 	}
 
-	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{podIPIndex: func(obj interface{}) ([]string, error) {
+	k8sAPI.Pod().Informer().AddIndexers(cache.Indexers{PodIPIndex: func(obj interface{}) ([]string, error) {
 		if pod, ok := obj.(*corev1.Pod); ok {
 			return []string{pod.Status.PodIP}, nil
 		}
