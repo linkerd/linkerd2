@@ -136,6 +136,7 @@ func NewServer(
 	server.router.GET("/", handler.handleIndex)
 	server.router.GET("/controlplane", handler.handleIndex)
 	server.router.GET("/namespaces", handler.handleIndex)
+	server.router.GET("/gateways", handler.handleIndex)
 
 	// paths for a list of resources by namespace
 	server.router.GET("/namespaces/:namespace/daemonsets", handler.handleIndex)

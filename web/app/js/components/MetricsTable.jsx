@@ -111,10 +111,56 @@ const trafficSplitDetailColumns = [
   },
 ];
 
+const gatewayColumns = [
+  {
+    title: 'ClusterName',
+    dataIndex: 'clusterName',
+    isNumeric: false,
+    render: d => !d.clusterName ? '---' : d.clusterName,
+    sorter: d => !d.clusterName ? '---' : d.clusterName,
+  },
+  {
+    title: 'Alive',
+    dataIndex: 'alive',
+    isNumeric: false,
+    render: d => !d.alive ? 'FALSE' : 'TRUE',
+    sorter: d => d.alive,
+  },
+  {
+    title: 'Paired Services',
+    dataIndex: 'pairedServices',
+    isNumeric: false,
+    render: d => d.pairedServices,
+    sorter: d => d.pairedServices,
+  },
+  {
+    title: 'P50 Latency',
+    dataIndex: 'P50',
+    isNumeric: true,
+    render: d => metricToFormatter.LATENCY(d.P50),
+    sorter: d => d.P50,
+  },
+  {
+    title: 'P95 Latency',
+    dataIndex: 'P95',
+    isNumeric: true,
+    render: d => metricToFormatter.LATENCY(d.P95),
+    sorter: d => d.P95,
+  },
+  {
+    title: 'P99 Latency',
+    dataIndex: 'P99',
+    isNumeric: true,
+    render: d => metricToFormatter.LATENCY(d.P99),
+    sorter: d => d.P99,
+  },
+];
+
 const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, grafana, jaeger) => {
   const isAuthorityTable = resource === 'authority';
   const isTrafficSplitTable = resource === 'trafficsplit';
   const isMultiResourceTable = resource === 'multi_resource';
+  const isGatewayTable = resource === 'gateway';
   const getResourceDisplayName = isMultiResourceTable ? displayName : d => d.name;
 
   const nsColumn = [
@@ -213,11 +259,13 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
   }
   if (isTcpTable) {
     columns = columns.concat(tcpStatColumns);
+  } else if (isGatewayTable) {
+    columns = columns.concat(gatewayColumns);
   } else {
     columns = columns.concat(httpStatColumns);
   }
 
-  if (!isAuthorityTable && !isTrafficSplitTable) {
+  if (!isAuthorityTable && !isTrafficSplitTable && !isGatewayTable) {
     columns.splice(1, 0, meshedColumn);
   }
 

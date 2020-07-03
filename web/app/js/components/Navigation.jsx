@@ -457,6 +457,9 @@ class NavigationBase extends React.Component {
           { this.menuItem('/controlplane', 'Control Plane',
             <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />) }
 
+          { this.menuItem('/gateways', 'Gateway',
+            <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />) }
+
         </MenuList>
 
         <Divider />
