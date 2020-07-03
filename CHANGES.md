@@ -2,13 +2,9 @@
 
 ## edge-20.7.1
 
-This edge release introduces the option to persist prometheus data to a volume,
+This edge release features the option to persist prometheus data to a volume
 instead of memory, so that historical metrics are available when prometheus is
-restarted. Also in this release are improvements to control plane check
-conditions for CLI commands, a fix to correctly resolve the CNI image version
-when using helm, support for using URLs with add-ons, proxy improvements under
-concurrency, and functionality to configure the proxy log format by annotation
-or in the helm chart.
+restarted. Additional changes are outlined in the bullet points below.
 
 * Some commands like `linkerd stat` would fail if any control plane components
   were unhealthy, even when other replicas are healthy. The check conditions
