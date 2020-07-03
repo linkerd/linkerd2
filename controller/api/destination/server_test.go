@@ -111,6 +111,7 @@ spec:
 		profiles,
 		trafficSplits,
 		ips,
+		k8sAPI,
 		false,
 		"linkerd",
 		"trust.domain",
@@ -291,4 +292,61 @@ func updateAddAddress(t *testing.T, update *pb.Update) []string {
 		ips = append(ips, addr.ProxyAddressToString(ip.GetAddr()))
 	}
 	return ips
+}
+
+func makeServer1(t *testing.T) *server {
+	k8sAPI, err := k8s.NewFakeAPI(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: service
+  namespace: ns
+spec:
+  clusterIP: 192.168.210.92
+  type: ClusterIP
+  ports:
+    - port: 1234`,
+	)
+	if err != nil {
+		t.Fatalf("NewFakeAPI returned an error: %s", err)
+	}
+	log := logging.WithField("test", t.Name())
+
+	k8sAPI.Sync(nil)
+
+	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log)
+	profiles := watcher.NewProfileWatcher(k8sAPI, log)
+	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
+	ips := watcher.NewIPWatcher(k8sAPI, endpoints, log)
+
+	return &server{
+		endpoints,
+		profiles,
+		trafficSplits,
+		ips,
+		k8sAPI,
+		false,
+		"linkerd",
+		"trust.domain",
+		"mycluster.local",
+		log,
+		make(<-chan struct{}),
+	}
+}
+
+func TestGetProfiles1(t *testing.T) {
+	t.Run("Returns server profile", func(t *testing.T) {
+		server := makeServer(t)
+
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+
+		stream.Cancel()
+		err := server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "192.168.210.92:1234"}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+	})
 }
