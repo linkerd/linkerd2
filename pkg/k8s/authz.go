@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	authV1 "k8s.io/api/authorization/v1"
-	discovery "k8s.io/api/discovery/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 )
@@ -108,37 +106,41 @@ func ServiceProfilesAccess(k8sClient kubernetes.Interface) error {
 }
 
 // EndpointSliceAccess verifies whether the K8s cluster has
-// access to EndpointSlice resources
-func EndpointSliceAccess(k8sClient kubernetes.Interface) error {
-	gv := discovery.SchemeGroupVersion.String()
-	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(gv)
-	if err != nil {
-		return err
-	}
+// access to EndpointSlice resources.
+//TODO: Uncomment function and change return type once EndpointSlices
+// are supported and made opt-in through install flag
+func EndpointSliceAccess(k8sClient kubernetes.Interface) bool {
+	// gv := discovery.SchemeGroupVersion.String()
+	// res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(gv)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if res.GroupVersion == gv {
-		for _, apiRes := range res.APIResources {
-			if apiRes.Kind == "EndpointSlice" {
-				return checkEndpointSlicesExist(k8sClient)
-			}
-		}
-	}
+	// if res.GroupVersion == gv {
+	// 	for _, apiRes := range res.APIResources {
+	// 		if apiRes.Kind == "EndpointSlice" {
+	// 			return checkEndpointSlicesExist(k8sClient)
+	// 		}
+	// 	}
+	// }
 
-	return errors.New("EndpointSlice resource not found")
+	// return errors.New("EndpointSlice resource not found")
+	return false
 }
 
-func checkEndpointSlicesExist(k8sclient kubernetes.Interface) error {
-	sliceList, err := k8sclient.DiscoveryV1beta1().EndpointSlices("").List(metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	if len(sliceList.Items) > 0 {
-		return nil
-	}
-
-	return errors.New("no EndpointSlice resources exist in the cluster")
-}
+//TODO: Uncomment function once EndpointSlices are supported and opt-in
+//func checkEndpointSlicesExist(k8sclient kubernetes.Interface) error {
+//	sliceList, err := k8sclient.DiscoveryV1beta1().EndpointSlices("").List(metav1.ListOptions{})
+//	if err != nil {
+//		return err
+//	}
+//
+//	if len(sliceList.Items) > 0 {
+//		return nil
+//	}
+//
+//	return errors.New("no EndpointSlice resources exist in the cluster")
+//}
 
 // ClusterAccess verifies whether k8sClient is authorized to access all pods in
 // all namespaces in the cluster.
