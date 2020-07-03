@@ -193,6 +193,7 @@ func NewServer(
 	server.router.GET("/api/edges", handler.handleAPIEdges)
 	server.router.GET("/api/check", handler.handleAPICheck)
 	server.router.GET("/api/resource-definition", handler.handleAPIResourceDefinition)
+	server.router.GET("/api/gateways", handler.handleAPIGateways)
 
 	// grafana proxy
 	server.handleAllOperationsForPath("/grafana/*grafanapath", handler.handleGrafana)

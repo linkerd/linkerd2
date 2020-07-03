@@ -21,8 +21,9 @@ import (
 */
 
 var (
-	defaultMetricTimeWindow    = "1m"
-	metricTimeWindowLowerBound = time.Second * 15 //the window value needs to equal or larger than that
+	defaultMetricTimeWindow      = "1m"
+	metricTimeWindowLowerBound   = time.Second * 15 //the window value needs to equal or larger than that
+	defaultMulticlusterNamespace = "linkerd-multicluster"
 
 	// ValidTargets specifies resource types allowed as a target:
 	// target resource on an inbound query
@@ -114,6 +115,14 @@ type TapRequestParams struct {
 	Path          string
 	Extract       bool
 	LabelSelector string
+}
+
+// GatewayRequestParams conttains parameters that are used to build a
+// GatewayRequest
+type GatewayRequestParams struct {
+	RemoteClusterName string
+	GatewayNamespace  string
+	TimeWindow        string
 }
 
 // GRPCError generates a gRPC error code, as defined in
@@ -266,6 +275,28 @@ func BuildEdgesRequest(p EdgesRequestParams) (*pb.EdgesRequest, error) {
 	}
 
 	return edgesRequest, nil
+}
+
+// BuildGatewayRequest builds a Public API GatewayRequest from a
+// GatewayRequestParams
+func BuildGatewayRequest(p GatewayRequestParams) (*pb.GatewaysRequest, error) {
+	window := defaultMetricTimeWindow
+	if p.TimeWindow != "" {
+		_, err := time.ParseDuration(p.TimeWindow)
+		if err != nil {
+			return nil, err
+		}
+		window = p.TimeWindow
+	}
+	multiClusterNameSpace := p.GatewayNamespace
+	if multiClusterNameSpace == "" {
+		multiClusterNameSpace = defaultMulticlusterNamespace
+	}
+	gatewayRequest := &pb.GatewaysRequest{
+		TimeWindow:       window,
+		GatewayNamespace: multiClusterNameSpace,
+	}
+	return gatewayRequest, nil
 }
 
 // BuildTopRoutesRequest builds a Public API TopRoutesRequest from a
