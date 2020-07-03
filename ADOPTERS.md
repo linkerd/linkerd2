@@ -6,6 +6,7 @@
 - [Attest](https://www.askattest.com)
 - [Buoyant](https://buoyant.io)
 - [Candide](https://candidegardening.com)
+- [Celonis](https://celonis.com)
 - [Commonbond](https://www.commonbond.co/)
 - [CloverHealth](https://www.cloverhealth.com/)
 - [Expedia](https://www.expedia.com)
