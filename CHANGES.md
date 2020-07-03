@@ -17,8 +17,8 @@ restarted. Additional changes are outlined in the bullet points below.
   (thanks again @naseemkullah!)
 * `linkerd install --addon-config=` now supports URLs in addition to local
   files
-* The CNI Helm chart used the incorrect variable name to determine the image
-  tag. This is now controlled by `cniPluginVersion` in the helm chart
+* The CNI Helm chart used the incorrect variable name to determine the `createdBy`
+  version tag. This is now controlled by `cniPluginVersion` in the helm chart
 * The proxy's default buffer size has been increased, which reduces latency when
   the proxy has many concurrent clients
 
