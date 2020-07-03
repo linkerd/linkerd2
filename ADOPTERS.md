@@ -22,6 +22,7 @@
 - [PlayStudios Asia](https://www.playstudios.asia)
 - [Projector](https://projector.com)
 - [Studyo](https://studyo.co)
+- [Sue](https://sue.nl)
 - [Transit](https://transit.app)
 - [Vernacular.ai](https://vernacular.ai/)
 - [HomeChoice](https://www.homechoice.co.za/)
