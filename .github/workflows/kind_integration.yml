@@ -50,6 +50,9 @@ jobs:
           docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar || tee save_fail &
         done
 
+        # save windows cli into artifacts
+        cp -r ./target/cli/windows/linkerd $ARCHIVES/linkerd-windows.exe
+
         # Wait for `docker save` background processes to complete. Exit early
         # if any job failed.
         wait < <(jobs -p)
@@ -64,6 +67,31 @@ jobs:
       with:
         name: image-archives
         path: /home/runner/archives
+  # todo: Keep in sync with `release.yml`
+  windows_static_cli_tests:
+    name: Static CLI tests (windows)
+    runs-on: windows-latest
+    needs: [docker_build]
+    steps:
+    - name: Checkout code
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
+    - name: Try to load cached Go modules
+      # actions/cache@v1.1.2
+      uses: actions/cache@70655ec
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Download image archives
+      # actions/download-artifact@v1
+      uses: actions/download-artifact@18f0f59
+      with:
+        name: image-archives
+    - name: Run CLI Integration tests
+      run: |
+        go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
   # todo: Keep in sync with `release.yml`
   kind_integration_tests:
     strategy:

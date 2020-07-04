@@ -31,6 +31,7 @@ global:
       pullPolicy: *image_pull_policy
       version: *linkerd_version
     logLevel: warn,linkerd=info
+    logFormat: plain
     ports:
       admin: 4191
       control: 4190

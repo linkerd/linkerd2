@@ -1,5 +1,27 @@
 # Changes
 
+## edge-20.7.1
+
+This edge release features the option to persist prometheus data to a volume
+instead of memory, so that historical metrics are available when prometheus is
+restarted. Additional changes are outlined in the bullet points below.
+
+* Some commands like `linkerd stat` would fail if any control plane components
+  were unhealthy, even when other replicas are healthy. The check conditions
+  for these commands have been improved
+* The helm chart can now configure persistent storage for Prometheus
+  (thanks @naseemkullah!)
+* The proxy log output format can now be configured to `plain` or `json` using
+  the `config.linkerd.io/proxy-log-format` annotation or the
+  `global.proxy.logFormat` value in the helm chart
+  (thanks again @naseemkullah!)
+* `linkerd install --addon-config=` now supports URLs in addition to local
+  files
+* The CNI Helm chart used the incorrect variable name to determine the `createdBy`
+  version tag. This is now controlled by `cniPluginVersion` in the helm chart
+* The proxy's default buffer size has been increased, which reduces latency when
+  the proxy has many concurrent clients
+
 ## edge-20.6.4
 
 This edge release moves the proxy onto a new version of the Tokio runtime. This

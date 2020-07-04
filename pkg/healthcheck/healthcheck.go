@@ -640,10 +640,11 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description:   "no unschedulable pods",
-					hintAnchor:    "l5d-existence-unschedulable-pods",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
+					description:         "no unschedulable pods",
+					hintAnchor:          "l5d-existence-unschedulable-pods",
+					retryDeadline:       hc.RetryDeadline,
+					surfaceErrorOnRetry: true,
+					warning:             true,
 					check: func(context.Context) error {
 						// do not save this into hc.controlPlanePods, as this check may
 						// succeed prior to all expected control plane pods being up

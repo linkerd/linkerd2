@@ -231,6 +231,7 @@ type proxyConfigOptions struct {
 	ignoreOutboundPorts           []string
 	proxyUID                      int64
 	proxyLogLevel                 string
+	proxyLogFormat                string
 	proxyInboundPort              uint
 	proxyOutboundPort             uint
 	proxyControlPort              uint

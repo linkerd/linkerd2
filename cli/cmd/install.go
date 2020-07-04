@@ -204,6 +204,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			ignoreOutboundPorts:    nil,
 			proxyUID:               defaults.Global.Proxy.UID,
 			proxyLogLevel:          defaults.Global.Proxy.LogLevel,
+			proxyLogFormat:         defaults.Global.Proxy.LogFormat,
 			proxyControlPort:       uint(defaults.Global.Proxy.Ports.Control),
 			proxyAdminPort:         uint(defaults.Global.Proxy.Ports.Admin),
 			proxyInboundPort:       uint(defaults.Global.Proxy.Ports.Inbound),
@@ -589,7 +590,16 @@ func (options *installOptions) installPersistentFlagSet() *pflag.FlagSet {
 func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Values) error {
 
 	if options.addOnConfig != "" {
-		addOnValues, err := ioutil.ReadFile(options.addOnConfig)
+		addOnValues, err := read(options.addOnConfig)
+		if err != nil {
+			return err
+		}
+
+		if len(addOnValues) != 1 {
+			return fmt.Errorf("Excepted a single configuration file, but got 0 or many")
+		}
+
+		addOnValuesRaw, err := ioutil.ReadAll(addOnValues[0])
 		if err != nil {
 			return err
 		}
@@ -598,8 +608,9 @@ func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Val
 		if err != nil {
 			return err
 		}
+
 		// Merge Add-On Values with Values
-		finalValues, err := mergeRaw(rawValues, addOnValues)
+		finalValues, err := mergeRaw(rawValues, addOnValuesRaw)
 		if err != nil {
 			return err
 		}
@@ -769,7 +780,8 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 			PullPolicy: options.imagePullPolicy,
 			Version:    options.proxyVersion,
 		},
-		LogLevel: options.proxyLogLevel,
+		LogLevel:  options.proxyLogLevel,
+		LogFormat: options.proxyLogFormat,
 		Ports: &l5dcharts.Ports{
 			Admin:    int32(options.proxyAdminPort),
 			Control:  int32(options.proxyControlPort),
@@ -964,6 +976,7 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 		LogLevel: &pb.LogLevel{
 			Level: options.proxyLogLevel,
 		},
+		LogFormat:               options.proxyLogFormat,
 		DestinationGetNetworks:  strings.Join(options.destinationGetNetworks, ","),
 		DisableExternalProfiles: !options.enableExternalProfiles,
 		ProxyVersion:            options.proxyVersion,
