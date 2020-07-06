@@ -140,6 +140,7 @@ check_cluster() {
 delete_cluster() {
   local name=$1
   "$bindir"/kind delete cluster --name "$name" 2>&1
+  exit_on_err 'error deleting cluster'
 }
 
 cleanup_cluster() {
@@ -183,6 +184,8 @@ start_test() {
   fi
   check_cluster
   run_"$name"_test
+  exit_on_err "error calling 'run_${name}_test'"
+
   if [ -z "$skip_kind_create" ]; then
     delete_cluster "$name"
   else
@@ -194,7 +197,7 @@ get_test_config() {
   local name=$1
   config=''
   case $name in
-    cluster-domain)
+    custom-domain)
       config='cluster-domain'
       ;;
     *)
@@ -349,7 +352,7 @@ run_external-issuer_test() {
   run_test "$test_directory/externalissuer/external_issuer_test.go" --external-issuer=true
 }
 
-run_cluster-domain_test() {
+run_custom-domain_test() {
   run_test "$test_directory/install_test.go" --cluster-domain='custom.domain' --multicluster
 }
 
