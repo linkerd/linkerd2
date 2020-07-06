@@ -192,6 +192,10 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Log level for the proxy",
 		},
 		{
+			Name:        k8s.ProxyLogFormatAnnotation,
+			Description: "Log format (plain or json) for the proxy",
+		},
+		{
 			Name:        k8s.ProxyEnableExternalProfilesAnnotation,
 			Description: "Enable service profiles for non-Kubernetes services",
 		},

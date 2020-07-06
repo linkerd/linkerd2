@@ -29,6 +29,7 @@ type (
 		PrometheusExtraArgs           map[string]string              `json:"prometheusExtraArgs"`
 		PrometheusAlertmanagers       []interface{}                  `json:"prometheusAlertmanagers"`
 		PrometheusRuleConfigMapMounts []PrometheusRuleConfigMapMount `json:"prometheusRuleConfigMapMounts"`
+		PrometheusPersistence         Persistence                    `json:"prometheusPersistence"`
 		ControllerUID                 int64                          `json:"controllerUID"`
 		EnableH2Upgrade               bool                           `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity         bool                           `json:"enablePodAntiAffinity"`
@@ -55,9 +56,20 @@ type (
 		PrometheusResources    *Resources `json:"prometheusResources"`
 		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
 		PublicAPIResources     *Resources `json:"publicAPIResources"`
+		SMIMetricsResources    *Resources `json:"smiMetricsResources"`
 		SPValidatorResources   *Resources `json:"spValidatorResources"`
 		TapResources           *Resources `json:"tapResources"`
 		WebResources           *Resources `json:"webResources"`
+
+		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
+		IdentityProxyResources      *Resources `json:"identityProxyResources"`
+		PrometheusProxyResources    *Resources `json:"prometheusProxyResources"`
+		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
+		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
+		SMIMetricsProxyResources    *Resources `json:"smiMetricsProxyResources"`
+		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
+		TapProxyResources           *Resources `json:"tapProxyResources"`
+		WebProxyResources           *Resources `json:"webProxyResources"`
 
 		// Addon Structures
 		Tracing Tracing `json:"tracing"`
@@ -104,8 +116,10 @@ type (
 		DisableIdentity               bool          `json:"disableIdentity"`
 		DisableTap                    bool          `json:"disableTap"`
 		EnableExternalProfiles        bool          `json:"enableExternalProfiles"`
+		DestinationGetNetworks        string        `json:"destinationGetNetworks"`
 		Image                         *Image        `json:"image"`
 		LogLevel                      string        `json:"logLevel"`
+		LogFormat                     string        `json:"logFormat"`
 		SAMountPath                   *SAMountPath  `json:"saMountPath"`
 		Ports                         *Ports        `json:"ports"`
 		Resources                     *Resources    `json:"resources"`
@@ -194,7 +208,15 @@ type (
 		TLS                 *IssuerTLS `json:"tls"`
 	}
 
-	// PrometheusRuleConfigMapMount is a user supplied prometheus rule config maps.
+	// Persistence represents PVC configuration.
+	Persistence struct {
+		Enabled      bool   `json:"enabled"`
+		StorageClass string `json:"storageClass"`
+		AccessMode   string `json:"accessMode"`
+		Size         string `json:"size"`
+	}
+
+	// PrometheusRuleConfigMapMount is a user supplied prometheus rule config map.
 	PrometheusRuleConfigMapMount struct {
 		Name      string `json:"name"`
 		SubPath   string `json:"subPath"`

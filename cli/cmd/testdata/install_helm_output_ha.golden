@@ -288,6 +288,9 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list"]
+- apiGroups: ["apiregistration.k8s.io"]
+  resources: ["apiservices"]
+  verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -917,6 +920,7 @@ data:
       "logLevel":{
         "level": "warn,linkerd=info"
       },
+      "logFormat": "plain",
       "disableExternalProfiles": true,
       "proxyVersion": "test-proxy-version",
       "proxyInitImageVersion": "test-proxy-init-version",
@@ -924,7 +928,8 @@ data:
         "imageName":"gcr.io/linkerd-io/debug",
         "pullPolicy":"IfNotPresent"
       },
-      "debugImageVersion": "test-debug-version"
+      "debugImageVersion": "test-debug-version",
+      "destinationGetNetworks": "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
     }
   install: |
     {
@@ -1068,6 +1073,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1319,6 +1326,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1567,6 +1576,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: localhost.:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1850,6 +1861,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2179,6 +2192,8 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
+      securityContext:
+        fsGroup: 65534
       containers:
       - args:
         - --storage.tsdb.path=/data
@@ -2211,7 +2226,9 @@ spec:
             cpu: "300m"
             memory: "300Mi"
         securityContext:
+          runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
         volumeMounts:
         - mountPath: /data
           name: data
@@ -2222,6 +2239,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2343,8 +2362,8 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-prometheus
       volumes:
-      - emptyDir: {}
-        name: data
+      - name: data
+        emptyDir: {}
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
@@ -2454,6 +2473,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2721,6 +2742,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2976,6 +2999,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -3280,6 +3305,10 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
+        # Force using the go-based DNS resolver instead of the OS' to avoid failures in some environments
+        # see https://github.com/grafana/grafana/issues/20096
+        - name: GODEBUG
+          value: netdns=go
         image: gcr.io/linkerd-io/grafana:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -3313,6 +3342,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS

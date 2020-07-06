@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>linkerd</id>
-    <version>${LINKERD_VERSION}</version>
+    <version>LINKERD_VERSION</version>
     
     <title>Linkerd</title>
     <authors>Linkerd</authors>
@@ -17,7 +17,7 @@
     </description>
 
     <projectUrl>https://github.com/linkerd/linkerd2</projectUrl>
-    <licenseUrl>https://github.com/linkerd/linkerd2/blob/master/LICENSE</licenseUrl>
+    <licenseUrl>https://github.com/linkerd/linkerd2/blob/main/LICENSE</licenseUrl>
     <releaseNotes>https://github.com/linkerd/linkerd2/releases</releaseNotes>
     <docsUrl>https://linkerd.io/docs</docsUrl>
 
@@ -27,6 +27,6 @@
   </metadata>
 
   <files>
-    <file src="bin\win\tools\**" target="tools" />
+    <file src="tools\**" target="tools" />
     </files>
 </package>

@@ -15,8 +15,8 @@ import (
 
 type statSumExpected struct {
 	expectedStatRPC
-	req              pb.StatSummaryRequest  // the request we would like to test
-	expectedResponse pb.StatSummaryResponse // the stat response we expect
+	req              *pb.StatSummaryRequest  // the request we would like to test
+	expectedResponse *pb.StatSummaryResponse // the stat response we expect
 }
 
 func prometheusMetric(resName string, resType string) model.Vector {
@@ -62,8 +62,8 @@ func genTrafficSplitPromSample(resName, resNs string) *model.Sample {
 	}
 }
 
-func genEmptyResponse() pb.StatSummaryResponse {
-	return pb.StatSummaryResponse{
+func genEmptyResponse() *pb.StatSummaryResponse {
+	return &pb.StatSummaryResponse{
 		Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 			Ok: &pb.StatSummaryResponse_Ok{
 				StatTables: []*pb.StatTable{
@@ -85,7 +85,7 @@ func testStatSummary(t *testing.T, expectations []statSumExpected) {
 			t.Fatalf("Error creating mock grpc server: %s", err)
 		}
 
-		rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
+		rsp, err := fakeGrpcServer.StatSummary(context.TODO(), exp.req)
 		if err != exp.err {
 			t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 		}
@@ -167,7 +167,7 @@ status:
 					},
 					mockPromResponse: prometheusMetric("emoji", "pod"),
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
@@ -209,7 +209,7 @@ status:
 					},
 					mockPromResponse: prometheusMetric("emoji", "pod"),
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
@@ -254,7 +254,7 @@ status:
 					},
 					mockPromResponse: prometheusMetric("emoji", "pod"),
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
@@ -377,7 +377,7 @@ status:
 					},
 					mockPromResponse: prometheusMetric("emoji", "deployment"),
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
@@ -453,7 +453,7 @@ status:
 					},
 					mockPromResponse: prometheusMetric("emoji", "daemonset"),
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
@@ -529,7 +529,7 @@ status:
 					},
 					mockPromResponse: prometheusMetric("emoji", "k8s_job"),
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
@@ -624,7 +624,7 @@ status:
 					},
 					mockPromResponse: prometheusMetric("redis", "statefulset"),
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
@@ -701,7 +701,7 @@ spec:
 						genTrafficSplitPromSample("service-2", "default"),
 					},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "default",
@@ -746,7 +746,7 @@ status:
 						`sum(increase(tcp_write_bytes_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod)`,
 					},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Name:      "emojivoto-1",
@@ -795,7 +795,7 @@ status:
 						`sum(increase(response_total{direction="inbound", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 					},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Name:      "emojivoto-1",
@@ -843,7 +843,7 @@ status:
 						`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="emojivoto", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
 					},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Name:      "emojivoto-1",
@@ -895,7 +895,7 @@ status:
 						`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 					},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Name:      "emojivoto-1",
@@ -952,7 +952,7 @@ status:
 						`sum(increase(response_total{direction="outbound", dst_namespace="totallydifferent", dst_pod="emojivoto-2", namespace="emojivoto", pod="emojivoto-1"}[1m])) by (namespace, pod, classification, tls)`,
 					},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Name:      "emojivoto-1",
@@ -1020,7 +1020,7 @@ status:
 						`sum(increase(response_total{direction="outbound", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
 					},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Name:      "",
@@ -1088,7 +1088,7 @@ status:
 						`sum(increase(response_total{direction="outbound", dst_namespace="emojivoto", dst_pod="emojivoto-1", namespace="totallydifferent", pod="emojivoto-2"}[1m])) by (dst_namespace, dst_pod, classification, tls)`,
 					},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Name:      "emojivoto-1",
@@ -1198,7 +1198,7 @@ status:
 					},
 					mockPromResponse: prometheusMetric("emoji-deploy", "deployment"),
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
@@ -1208,7 +1208,7 @@ status:
 					TimeWindow: "1m",
 				},
 
-				expectedResponse: pb.StatSummaryResponse{
+				expectedResponse: &pb.StatSummaryResponse{
 					Response: &pb.StatSummaryResponse_Ok_{ // https://github.com/golang/protobuf/issues/205
 						Ok: &pb.StatSummaryResponse_Ok{
 							StatTables: []*pb.StatTable{
@@ -1377,7 +1377,7 @@ status:
 				expectedStatRPC: expectedStatRPC{
 					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: badtype"),
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Type: "badtype",
@@ -1389,7 +1389,7 @@ status:
 				expectedStatRPC: expectedStatRPC{
 					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: deployments"),
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Type: "deployments",
@@ -1401,7 +1401,7 @@ status:
 				expectedStatRPC: expectedStatRPC{
 					err: errors.New("rpc error: code = Unimplemented desc = unimplemented resource type: po"),
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Type: "po",
@@ -1421,7 +1421,7 @@ status:
 				[]string{},
 			)
 
-			_, err := fakeGrpcServer.StatSummary(context.TODO(), &exp.req)
+			_, err := fakeGrpcServer.StatSummary(context.TODO(), exp.req)
 			if err != nil || exp.err != nil {
 				if (err == nil && exp.err != nil) ||
 					(err != nil && exp.err == nil) ||
@@ -1448,10 +1448,10 @@ status:
 
 		invalidRequests := []statSumExpected{
 			{
-				req: pb.StatSummaryRequest{},
+				req: &pb.StatSummaryRequest{},
 			},
 			{
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Type: pkgK8s.Service,
@@ -1460,7 +1460,7 @@ status:
 				},
 			},
 			{
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Type: pkgK8s.Service,
@@ -1474,7 +1474,7 @@ status:
 				},
 			},
 			{
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Type: pkgK8s.Pod,
@@ -1490,7 +1490,7 @@ status:
 		}
 
 		for _, invalid := range invalidRequests {
-			rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &invalid.req)
+			rsp, err := fakeGrpcServer.StatSummary(context.TODO(), invalid.req)
 
 			if err != nil || rsp.GetError() == nil {
 				t.Fatalf("Expected validation error on StatSummaryResponse, got %v, %v", rsp, err)
@@ -1499,7 +1499,7 @@ status:
 
 		validRequests := []statSumExpected{
 			{
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Type: pkgK8s.Pod,
@@ -1513,7 +1513,7 @@ status:
 				},
 			},
 			{
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Type: pkgK8s.Service,
@@ -1529,7 +1529,7 @@ status:
 		}
 
 		for _, valid := range validRequests {
-			rsp, err := fakeGrpcServer.StatSummary(context.TODO(), &valid.req)
+			rsp, err := fakeGrpcServer.StatSummary(context.TODO(), valid.req)
 
 			if err != nil || rsp.GetError() != nil {
 				t.Fatalf("Did not expect validation error on StatSummaryResponse, got %v, %v", rsp, err)
@@ -1574,7 +1574,7 @@ status:
 							`sum(increase(response_total{direction="inbound", namespace="emojivoto"}[])) by (namespace, pod, classification, tls)`,
 						},
 					},
-					req: pb.StatSummaryRequest{
+					req: &pb.StatSummaryRequest{
 						Selector: &pb.ResourceSelection{
 							Resource: &pb.Resource{
 								Namespace: "emojivoto",
@@ -1692,7 +1692,7 @@ status:
 `},
 						mockPromResponse: prometheusMetric("emoji", "deployment"),
 					},
-					req: pb.StatSummaryRequest{
+					req: &pb.StatSummaryRequest{
 						Selector: &pb.ResourceSelection{
 							Resource: &pb.Resource{
 								Namespace: "emojivoto",
@@ -1741,7 +1741,7 @@ status:
 						`sum(increase(response_total{direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
 					},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "linkerd",
@@ -1785,7 +1785,7 @@ status:
 						`sum(increase(response_total{deployment="emojivoto", direction="outbound"}[1m])) by (dst_namespace, authority, classification, tls)`,
 					},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "linkerd",
@@ -1836,7 +1836,7 @@ status:
 						`sum(increase(response_total{authority="10.1.1.239:9995", direction="inbound", namespace="linkerd"}[1m])) by (namespace, authority, classification, tls)`,
 					},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "linkerd",
@@ -1874,7 +1874,7 @@ status:
 					mockPromResponse:          model.Vector{},
 					expectedPrometheusQueries: []string{},
 				},
-				req: pb.StatSummaryRequest{
+				req: &pb.StatSummaryRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",

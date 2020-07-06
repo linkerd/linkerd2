@@ -162,7 +162,7 @@ func buildToResource(namespace, to string) *public.Resource {
 
 	}
 	log.Debugf("Using to resource: %v", toResource)
-	return &toResource
+	return toResource
 }
 
 func renderTrafficMetrics(metrics *v1alpha1.TrafficMetrics, allNamespaces bool, w io.Writer) {

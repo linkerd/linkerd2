@@ -6,15 +6,19 @@
 - [Attest](https://www.askattest.com)
 - [Buoyant](https://buoyant.io)
 - [Candide](https://candidegardening.com)
+- [Celonis](https://celonis.com)
+- [CloverHealth](https://www.cloverhealth.com/)
 - [Commonbond](https://www.commonbond.co/)
 - [Expedia](https://www.expedia.com)
 - [Facelift](https://www.facelift-bbt.com/en)
 - [finleap connect](https://connect.finleap.com/)
+- [HomeChoice](https://www.homechoice.co.za/)
 - [In Loco](https://inloco.com.br/en/)
 - [Just Football](https://justfootball.io)
 - [Kairos](https://kairos.com)
 - [Kurio](https://kurio.id)
 - [LeadIQ](https://leadiq.com)
+- [MattePaint](https://www.mattepaint.com/)
 - [Mulligan Funding](https://www.mulliganfunding.com/)
 - [National Information Solutions Cooperative (NISC)](https://nisc.coop/)
 - [Nordstrom](https://nordstrom.com/)
@@ -22,10 +26,10 @@
 - [PlayStudios Asia](https://www.playstudios.asia)
 - [Projector](https://projector.com)
 - [Studyo](https://studyo.co)
+- [Sue](https://sue.nl)
 - [Transit](https://transit.app)
 - [Vernacular.ai](https://vernacular.ai/)
-- [HomeChoice](https://www.homechoice.co.za/)
-- [MattePaint](https://www.mattepaint.com/)
+- [YouMail](https://www.youmail.com)
 
 If you're using Linkerd 2.x and aren't on this list, please [submit a pull
-request](https://github.com/linkerd/linkerd2/pulls)!
+request](https://github.com/linkerd/linkerd2/edit/main/ADOPTERS.md)!

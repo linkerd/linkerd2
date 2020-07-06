@@ -30,6 +30,7 @@ global:
       pullPolicy: *image_pull_policy
       version: *linkerd_version
     logLevel: warn,linkerd=info
+    logFormat: plain
     ports:
       admin: 4191
       control: 4190
@@ -52,6 +53,7 @@ global:
     # for more info on container lifecycle hooks.
     waitBeforeExitSeconds: 0
     requireIdentityOnInboundPorts: ""
+    destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 
   # proxy-init configuration
   proxyInit:
@@ -95,6 +97,14 @@ controllerLogLevel: &controller_log_level info
 controllerReplicas: 1
 controllerUID: 2103
 
+
+# destination configuration
+# set resources for the sp-validator and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#destinationResources:
+#destinationProxyResources:
+
+
 # web dashboard configuration
 dashboard:
   replicas: 1
@@ -128,6 +138,11 @@ identity:
       # PEM-encoded ECDSA private key
       keyPEM: |
 
+# set resources for identity and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#identityResources:
+#identityProxyResources:
+
 # heartbeat configuration
 disableHeartBeat: false
 heartbeatSchedule: "0 0 * * *"
@@ -135,6 +150,10 @@ heartbeatSchedule: "0 0 * * *"
 # prometheus configuration
 prometheusImage: prom/prometheus:v2.15.2
 prometheusLogLevel: *controller_log_level
+# set resources for prometheus and prometheus linkerd proxy respectively
+# see global.proxy.resources for details.
+#prometheusResources:
+#prometheusProxyResources:
 prometheusExtraArgs: {}
   # log.format: json
 prometheusAlertmanagers: []
@@ -149,6 +168,15 @@ prometheusRuleConfigMapMounts: []
   # - name: recording-rules
   #   subPath: recording_rules.yml
   #   configMap: linkerd-prometheus-rules
+prometheusPersistence:
+  ### WARNING: prometheusPersistence is experimental and has not been tested/vetted by the Linkerd team.
+  ### As such, please refer to https://linkerd.io/2/tasks/exporting-metrics/ for the recommended approach to metrics data retention.
+  # if enabled, creates a persistent volume claim for prometheus data
+  # https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 8Gi
 
 # proxy injector configuration
 proxyInjector:
@@ -161,6 +189,11 @@ proxyInjector:
   # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
   caBundle: |
 
+# set resources for proxy injector and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#proxyInjectorResources:
+#proxyInjectorProxyResources:
+
 # service profile validator configuration
 profileValidator:
   externalSecret: false
@@ -171,6 +204,16 @@ profileValidator:
 
   # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
   caBundle: |
+
+# set resources for the sp-validator and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#spValidatorResources:
+#spValidatorProxyResources:
+
+# set resources for controllers public API and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#publicAPIResources:
+#publicAPIProxyResources:
 
 # tap configuration
 tap:
@@ -183,8 +226,18 @@ tap:
   # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
   caBundle: |
 
+# set resources for tap and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#tapResources:
+#tapProxyResources:
+
 # web configuration
 webImage: gcr.io/linkerd-io/web
+# set resources for web UI and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#webResources:
+#webProxyResources:
+
 
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:
@@ -210,6 +263,11 @@ smiMetrics:
   # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
   caBundle: |
 
+# set resources for smi-metrics and its linkerd proxy respectively
+# see global.proxy.resources for details.
+#smiMetricsResources:
+#smiMetricsProxyResources:
+
 # Configuration for Add-ons
 
 grafana:
@@ -217,7 +275,11 @@ grafana:
   name: linkerd-grafana
   image:
     name: gcr.io/linkerd-io/grafana
+  # set resource requests and limits for grafana and its linkerd proxy respectively
+  # see global.proxy.resources in the linkerd2 chart for details.
   # resources:
+  # proxy:
+  #   resources:
 
 tracing:
   enabled: false

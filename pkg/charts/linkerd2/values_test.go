@@ -24,6 +24,7 @@ func TestNewValues(t *testing.T) {
 		PrometheusExtraArgs:           map[string]string{},
 		PrometheusAlertmanagers:       []interface{}{},
 		PrometheusRuleConfigMapMounts: []PrometheusRuleConfigMapMount{},
+		PrometheusPersistence:         Persistence{false, "", "ReadWriteOnce", "8Gi"},
 		ControllerUID:                 2103,
 		EnableH2Upgrade:               true,
 		EnablePodAntiAffinity:         false,
@@ -58,7 +59,8 @@ func TestNewValues(t *testing.T) {
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
-				LogLevel: "warn,linkerd=info",
+				LogLevel:  "warn,linkerd=info",
+				LogFormat: "plain",
 				Ports: &Ports{
 					Admin:    4191,
 					Control:  4190,
@@ -79,8 +81,9 @@ func TestNewValues(t *testing.T) {
 					CollectorSvcAddr:    "",
 					CollectorSvcAccount: "default",
 				},
-				UID:                   2102,
-				WaitBeforeExitSeconds: 0,
+				UID:                    2102,
+				WaitBeforeExitSeconds:  0,
+				DestinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
 			},
 			ProxyInit: &ProxyInit{
 				Image: &Image{

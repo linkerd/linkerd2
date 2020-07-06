@@ -1,5 +1,73 @@
 # Changes
 
+## edge-20.7.1
+
+This edge release features the option to persist prometheus data to a volume
+instead of memory, so that historical metrics are available when prometheus is
+restarted. Additional changes are outlined in the bullet points below.
+
+* Some commands like `linkerd stat` would fail if any control plane components
+  were unhealthy, even when other replicas are healthy. The check conditions
+  for these commands have been improved
+* The helm chart can now configure persistent storage for Prometheus
+  (thanks @naseemkullah!)
+* The proxy log output format can now be configured to `plain` or `json` using
+  the `config.linkerd.io/proxy-log-format` annotation or the
+  `global.proxy.logFormat` value in the helm chart
+  (thanks again @naseemkullah!)
+* `linkerd install --addon-config=` now supports URLs in addition to local
+  files
+* The CNI Helm chart used the incorrect variable name to determine the `createdBy`
+  version tag. This is now controlled by `cniPluginVersion` in the helm chart
+* The proxy's default buffer size has been increased, which reduces latency when
+  the proxy has many concurrent clients
+
+## edge-20.6.4
+
+This edge release moves the proxy onto a new version of the Tokio runtime. This
+allows us to more easily integrate with the ecosystem and may yield performance
+benefits as well.
+
+* Upgraded the proxy's underlying Tokio runtime and its related libraries
+* Added support for PKCS8 formatted ECDSA private keys
+* Added support for Helm configuration of per-component proxy resources requests
+  and limits (thanks @cypherfox!)
+* Updated the `linkerd inject` command to throw an error while injecting
+  non-compliant pods (thanks @mayankshah1607)
+
+## stable-2.8.1
+
+This release fixes multicluster gateways support on EKS.
+
+* The multicluster service-mirror has been extended to resolve DNS names for
+  target clusters when an IP address is not known.
+* Linkerd checks could fail when run from the dashboard. Thanks to @alex-berger
+  for providing a fix!
+* Have the service mirror controller check in `linkerd check` retry on failures.
+* As of this version we're including a Chocolatey package (Windows) next to the
+  other binaries in the release assets in GitHub.
+* Base images have been updated:
+  * debian:buster-20200514-slim
+  * grafana/grafana:7.0.3
+* The shell scripts under `bin` continued to be improved, thanks to @joakimr-axis!
+
+## edge-20.6.3
+
+This edge release is a release candidate for stable-2.8.1. It includes a fix
+to support multicluster gateways on EKS.
+
+* The `config.linkerd.io/proxy-destination-get-networks` annotation configures
+  the networks for which a proxy can discover metadata. This is an advanced
+  configuration option that has security implications.
+* The multicluster service-mirror has been extended to resolve DNS names for
+  target clusters when an IP address it not known.
+* Linkerd checks could fail when run from the dashboard. Thanks to @alex-berger
+  for providing a fix!
+* The CLI will be published for Chocolatey (Windows) on future stable releases.
+* Base images have been updated:
+  * debian:buster-20200514-slim
+  * grafana/grafana:7.0.3
+
 ## stable-2.8.0
 
 This release introduces new a multi-cluster extension to Linkerd, allowing it

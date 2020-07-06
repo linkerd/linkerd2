@@ -168,8 +168,8 @@ var booksJConfig = append(booksServiceConfig, booksJobConfig)
 
 type topRoutesExpected struct {
 	expectedStatRPC
-	req              pb.TopRoutesRequest  // the request we would like to test
-	expectedResponse pb.TopRoutesResponse // the routes response we expect
+	req              *pb.TopRoutesRequest  // the request we would like to test
+	expectedResponse *pb.TopRoutesResponse // the routes response we expect
 }
 
 func routesMetric(routes []string) model.Vector {
@@ -213,7 +213,7 @@ func testTopRoutes(t *testing.T, expectations []topRoutesExpected) {
 				t.Fatalf("Error creating mock grpc server: %s", err)
 			}
 
-			rsp, err := fakeGrpcServer.TopRoutes(context.TODO(), &exp.req)
+			rsp, err := fakeGrpcServer.TopRoutes(context.TODO(), exp.req)
 			if err != exp.err {
 				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 			}
@@ -266,7 +266,7 @@ func TestTopRoutes(t *testing.T) {
 					},
 					k8sConfigs: booksConfig,
 				},
-				req: pb.TopRoutesRequest{
+				req: &pb.TopRoutesRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "default",
@@ -302,7 +302,7 @@ func TestTopRoutes(t *testing.T) {
 					},
 					k8sConfigs: booksConfig,
 				},
-				req: pb.TopRoutesRequest{
+				req: &pb.TopRoutesRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "default",
@@ -338,7 +338,7 @@ func TestTopRoutes(t *testing.T) {
 					},
 					k8sConfigs: booksDSConfig,
 				},
-				req: pb.TopRoutesRequest{
+				req: &pb.TopRoutesRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "default",
@@ -371,7 +371,7 @@ func TestTopRoutes(t *testing.T) {
 					},
 					k8sConfigs: booksJConfig,
 				},
-				req: pb.TopRoutesRequest{
+				req: &pb.TopRoutesRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "default",
@@ -404,7 +404,7 @@ func TestTopRoutes(t *testing.T) {
 					},
 					k8sConfigs: booksSSConfig,
 				},
-				req: pb.TopRoutesRequest{
+				req: &pb.TopRoutesRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "default",
@@ -438,7 +438,7 @@ func TestTopRoutes(t *testing.T) {
 					},
 					k8sConfigs: booksConfig,
 				},
-				req: pb.TopRoutesRequest{
+				req: &pb.TopRoutesRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "default",
@@ -477,7 +477,7 @@ func TestTopRoutes(t *testing.T) {
 					},
 					k8sConfigs: booksConfig,
 				},
-				req: pb.TopRoutesRequest{
+				req: &pb.TopRoutesRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "default",

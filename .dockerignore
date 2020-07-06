@@ -4,6 +4,7 @@
 **/cmake-*
 **/CMakeLists.txt
 *.iml
+**/node_modules
 bin
 !bin/fetch-proxy
 !bin/web
@@ -12,7 +13,6 @@ Dockerfile*
 **/target
 target
 !target/docker-build
-web/app/node_modules
 web/app/dist
 web/app/yarn-error.log
 vendor

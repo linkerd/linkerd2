@@ -18,8 +18,8 @@ const (
 
 type edgesExpected struct {
 	expectedStatRPC
-	req              pb.EdgesRequest  // the request we would like to test
-	expectedResponse pb.EdgesResponse // the edges response we expect
+	req              *pb.EdgesRequest  // the request we would like to test
+	expectedResponse *pb.EdgesResponse // the edges response we expect
 }
 
 func genInboundPromSample(resourceNamespace, resourceName, clientID string) *model.Sample {
@@ -57,7 +57,7 @@ func testEdges(t *testing.T, expectations []edgesExpected) {
 			t.Fatalf("Error creating mock grpc server: %s", err)
 		}
 
-		rsp, err := fakeGrpcServer.Edges(context.TODO(), &exp.req)
+		rsp, err := fakeGrpcServer.Edges(context.TODO(), exp.req)
 		if err != exp.err {
 			t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 		}
@@ -112,7 +112,7 @@ func TestEdges(t *testing.T) {
 					err:              nil,
 					mockPromResponse: mockPromResponse,
 				},
-				req: pb.EdgesRequest{
+				req: &pb.EdgesRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "emojivoto",
@@ -133,7 +133,7 @@ func TestEdges(t *testing.T) {
 					err:              nil,
 					mockPromResponse: mockPromResponse,
 				},
-				req: pb.EdgesRequest{
+				req: &pb.EdgesRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Namespace: "linkerd",
@@ -154,7 +154,7 @@ func TestEdges(t *testing.T) {
 					err:              nil,
 					mockPromResponse: mockPromResponse,
 				},
-				req: pb.EdgesRequest{
+				req: &pb.EdgesRequest{
 					Selector: &pb.ResourceSelection{
 						Resource: &pb.Resource{
 							Type: pkgK8s.Deployment,

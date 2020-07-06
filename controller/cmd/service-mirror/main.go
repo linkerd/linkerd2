@@ -55,6 +55,7 @@ func Main(args []string) {
 	requeueLimit := cmd.Int("event-requeue-limit", 3, "requeue limit for events")
 	metricsAddr := cmd.String("metrics-addr", ":9999", "address to serve scrapable metrics on")
 	namespace := cmd.String("namespace", "", "address to serve scrapable metrics on")
+	repairPeriod := cmd.Duration("endpoint-refresh-period", 1*time.Minute, "frequency to refresh endpoint resolution")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -88,7 +89,7 @@ func Main(args []string) {
 	probeManager.Start()
 
 	k8sAPI.Sync(nil)
-	watcher := NewRemoteClusterConfigWatcher(*namespace, secretsInformer, k8sAPI, *requeueLimit)
+	watcher := NewRemoteClusterConfigWatcher(*namespace, secretsInformer, k8sAPI, *requeueLimit, *repairPeriod)
 	log.Info("Started cluster config watcher")
 
 	go admin.StartServer(*metricsAddr)

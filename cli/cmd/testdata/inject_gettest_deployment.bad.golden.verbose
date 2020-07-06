@@ -1,1 +1,2 @@
-Error transforming resources: error converting YAML to JSON: yaml: line 14: did not find expected key
+Error transforming resources:
+error converting YAML to JSON: yaml: line 14: did not find expected key

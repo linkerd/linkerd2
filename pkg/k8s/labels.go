@@ -184,6 +184,9 @@ const (
 	// ProxyLogLevelAnnotation can be used to override the log level config.
 	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-level"
 
+	// ProxyLogFormatAnnotation can be used to override the log format config.
+	ProxyLogFormatAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-format"
+
 	// ProxyEnableExternalProfilesAnnotation can be used to override the
 	// disableExternalProfilesAnnotation config.
 	ProxyEnableExternalProfilesAnnotation = ProxyConfigAnnotationsPrefix + "/enable-external-profiles"
@@ -194,6 +197,10 @@ const (
 	// ProxyRequireIdentityOnInboundPortsAnnotation can be used to configure the proxy
 	// to always require identity on inbound ports
 	ProxyRequireIdentityOnInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-require-identity-inbound-ports"
+
+	// ProxyDestinationGetNetworks can be used to configure the proxy to do
+	// destination lookups on IP addresses from the specified network ranges
+	ProxyDestinationGetNetworks = ProxyConfigAnnotationsPrefix + "/proxy-destination-get-networks"
 
 	// ProxyEnableGatewayAnnotation can be used to configure the proxy
 	// to operate as a gateway, routing requests that target the inbound router.

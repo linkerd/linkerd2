@@ -121,6 +121,10 @@ spec:
       - env:
         - name: GF_PATHS_DATA
           value: /data
+        # Force using the go-based DNS resolver instead of the OS' to avoid failures in some environments
+        # see https://github.com/grafana/grafana/issues/20096
+        - name: GODEBUG
+          value: netdns=go
         image: {{.Values.image.name}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
@@ -147,7 +151,14 @@ spec:
         - mountPath: /etc/grafana
           name: grafana-config
           readOnly: true
-      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- $tree := deepCopy . }}      
+      {{- if not (empty .Values.proxy) }}
+      {{- if not (empty .Values.proxy.resources) }}
+      {{- $r := merge .Values.proxy.resources .Values.global.proxy.resources }}
+      {{- $_ := set $tree.Values.global.proxy "resources" $r }}
+      {{- end }}
+      {{- end }}
+      - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}

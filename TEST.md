@@ -94,66 +94,67 @@ bin/shellcheck -x bin/*
 The `test/` directory contains a test suite that can be run to validate Linkerd
 functionality via a series of end-to-end tests.
 
-### Prerequisites
+### Prerequisites for default behavior
 
-The integration test suite operates on your currently configured Kubernetes
-cluster. Prior to running the test suite, verify that:
+The integration tests will configure their own KinD clusters by default. There
+are no prerequisites for this test path.
+
+### Prerequisites for existing cluster
+
+If integration tests should run on an existing Kubernetes cluster, then the
+`--skip-kind-create` flag should be passed. This will disable the tests from
+creating their own clusters and instead use the current Kubernetes context.
+
+In this case, ensure the following:
 
 - The Linkerd docker images you're trying to test have been built and are
-  accessible to the Kubernetes cluster to which you are deploying
+  accessible to the Kubernetes cluster to which you are deploying (**note**: If
+  the existing cluster is a KinD cluster, this includes running `bin/kind-load`
+  so that the images are available within the cluster)
 - The `kubectl` CLI has been configured to talk to that Kubernetes cluster
-- The namespace where the tests will install Linkerd does not already exist; by
-  default the namespace `l5d-integration` is used
 
 ### Running tests
 
-You can use the `bin/test-run` script to run the full suite of tests.
+You can use the `bin/tests` script to run one or all of the tests in the test
+suite.
 
-The `bin/test-run` script requires an absolute path to a `linkerd` binary to
-test as the first argument. You can optionally pass the namespace where Linkerd
-will be installed as the second argument.
+The `bin/tests` script requires an absolute path to a `linkerd` binary to test.
+
+Optional flags can be passed that change the testing behavior:
+
+- `--name`: Pass an argument with this flag to specify a specific test that
+  should be run; all tests are run in the absence of this flag. Valid test names
+  are included in the `bin/tests --help` output
+- `--skip-kind-create`: Skip KinD cluster creation for each test and use an
+  existing Kubernetes cluster
+- `--images`: (Primarily for CI) Loads images from the `image-archive/`
+  directory into the KinD clusters created for each test
+- `--images-host`: (Primarily for CI) Pass an argument with this flag to be used
+  as the remote docker instance from which images are first retrieved
+
+View full help text:
 
 ```bash
-$ bin/test-run
-usage: test-run /path/to/linkerd [namespace]
+bin/tests --help
 ```
 
-It's also possible to run tests individually, using the `go test` command. All
-of the tests are located in the `test/` directory, either at the root or in
-subdirectories. The root `test/install_test.go` test installs Linkerd, so that
-must be run before any of the subdirectory tests (the `bin/test-run` script does
-this for you). The subdirectory tests are intended to be run independently of
-each other, and in the future they may be run in parallel.
-
-To run an individual test (e.g. the "get" test), first run the root test, and
-then run the subdirectory test. For instance:
+Run individual test:
 
 ```bash
-go test -v ./test -integration-tests -linkerd /path/to/linkerd
-go test -v ./test/get -integration-tests -linkerd /path/to/linkerd
+bin/tests --name upgrade /path/to/linkerd
 ```
 
 #### Testing against the installed version of the CLI
 
 You can run tests using your installed version of the `linkerd` CLI. For
-example, to run the full suite of tests using your installed CLI in the
-"specialtest" namespace, run:
+example, to run the full suite of tests using your installed CLI, run:
 
 ```bash
-bin/test-run `which linkerd` specialtest
+bin/tests `which linkerd`
 ```
 
-That will create multiple namespaces in your Kubernetes cluster:
-
-```bash
-$ kubectl get ns | grep specialtest
-specialtest               Active    4m
-specialtest-egress-test   Active    2m
-specialtest-get-test      Active    1m
-...
-```
-
-To cleanup the namespaces after the test has finished, run:
+If using an existing cluster to run tests, the resources can be cleaned up
+manually with:
 
 ```bash
 bin/test-cleanup
@@ -161,18 +162,12 @@ bin/test-cleanup
 
 #### Testing against a locally-built version of the CLI
 
-You can also test a locally-built version of the `linkerd` CLI. Note, however,
-that this requires that you build the corresponding Linkerd docker images and
-publish them to a docker registry that's accessible from the Kubernetes cluster
-where you're running the tests. As a result, local testing mostly applies to
-[minikube](https://github.com/kubernetes/minikube), since you can build the
-images directly into minikube's local docker registry, as described below.
+You can also test a locally-built version of the `linkerd` CLI.
 
-To test your current branch on minikube, first build all of the Linkerd images
-in your minikube environment, by running:
+First build all of the Linkerd images by running:
 
 ```bash
-DOCKER_TRACE=1 bin/mkube bin/docker-build
+DOCKER_TRACE=1 bin/docker-build
 ```
 
 That command also copies the corresponding `linkerd` binaries into the
@@ -180,24 +175,12 @@ That command also copies the corresponding `linkerd` binaries into the
 binaries when running tests. To run tests using your local binary, run:
 
 ```bash
-bin/test-run `pwd`/bin/linkerd
+bin/tests $PWD/bin/linkerd
 ```
 
-That will create multiple namespaces in your Kubernetes cluster:
-
-```bash
-$ kubectl get ns | grep l5d-integration
-l5d-integration                  Active    4m
-l5d-integration-egress-test      Active    2m
-l5d-integration-get-test         Active    1m
-...
-```
-
-To cleanup the namespaces after the test has finished, run:
-
-```bash
-bin/test-cleanup
-```
+**Note**: As stated above, if running tests in an existing KinD cluster by
+passing `--skip-kind-create`, `bin/kind-load` must be run so that the images are
+available to the cluster
 
 #### Testing the dashboard
 
