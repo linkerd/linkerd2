@@ -1060,10 +1060,10 @@ spec:
       containers:
       - args:
         - public-api
-        - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
         - -controller-namespace=linkerd
         - -log-level=info
+        - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
