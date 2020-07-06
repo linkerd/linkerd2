@@ -109,7 +109,7 @@ func ServiceProfilesAccess(k8sClient kubernetes.Interface) error {
 // access to EndpointSlice resources.
 //TODO: Uncomment function and change return type once EndpointSlices
 // are supported and made opt-in through install flag
-func EndpointSliceAccess(k8sClient kubernetes.Interface) bool {
+func EndpointSliceAccess(k8sClient kubernetes.Interface) error {
 	// gv := discovery.SchemeGroupVersion.String()
 	// res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(gv)
 	// if err != nil {
@@ -125,7 +125,7 @@ func EndpointSliceAccess(k8sClient kubernetes.Interface) bool {
 	// }
 
 	// return errors.New("EndpointSlice resource not found")
-	return false
+	return errors.New("EndpointSlice not supported")
 }
 
 //TODO: Uncomment function once EndpointSlices are supported and opt-in

@@ -51,6 +51,7 @@ func NewServer(
 	controllerNS string,
 	identityTrustDomain string,
 	enableH2Upgrade bool,
+	enableEndpointSlices bool,
 	k8sAPI *k8s.API,
 	clusterDomain string,
 	shutdown <-chan struct{},
@@ -59,7 +60,7 @@ func NewServer(
 		"addr":      addr,
 		"component": "server",
 	})
-	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log)
+	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
 	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 	ips := watcher.NewIPWatcher(k8sAPI, endpoints, log)
