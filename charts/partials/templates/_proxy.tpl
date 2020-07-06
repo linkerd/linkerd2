@@ -3,15 +3,17 @@ env:
 {{ if .Values.global.proxy.requireIdentityOnInboundPorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_IDENTITY
   value: "{{.Values.global.proxy.requireIdentityOnInboundPorts}}"
-{{ end -}}  
+{{ end -}}
 - name: LINKERD2_PROXY_LOG
   value: {{.Values.global.proxy.logLevel}}
+- name: LINKERD2_PROXY_LOG_FORMAT
+  value: {{.Values.global.proxy.logFormat | default "plain"}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
   value: {{ternary "localhost.:8086" (printf "linkerd-dst.%s.svc.%s:8086" .Values.global.namespace .Values.global.clusterDomain) (eq .Values.global.proxy.component "linkerd-destination")}}
 {{ if .Values.global.proxy.destinationGetNetworks -}}
 - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
   value: "{{.Values.global.proxy.destinationGetNetworks}}"
-{{ end -}}  
+{{ end -}}
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.global.proxy.ports.control}}
 - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -23,7 +25,7 @@ env:
 {{ if .Values.global.proxy.isGateway -}}
 - name: LINKERD2_PROXY_INBOUND_GATEWAY_SUFFIXES
   value: {{printf "svc.%s." .Values.global.clusterDomain}}
-{{ end -}}  
+{{ end -}}
 - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
   value: {{printf "svc.%s." .Values.global.clusterDomain}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES

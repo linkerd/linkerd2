@@ -81,9 +81,9 @@ func TestTapToServiceProfile(t *testing.T) {
 	}
 	ts := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			for _, event := range []pb.TapEvent{event1, event2} {
+			for _, event := range []*pb.TapEvent{event1, event2} {
 				event := event // pin
-				err = protohttp.WriteProtoToHTTPResponse(w, &event)
+				err = protohttp.WriteProtoToHTTPResponse(w, event)
 				if err != nil {
 					t.Fatalf("Unexpected error: %v", err)
 				}

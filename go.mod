@@ -20,14 +20,14 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.3
 	github.com/gobwas/glob v0.2.3 // indirect
-	github.com/golang/protobuf v1.3.2
+	github.com/golang/protobuf v1.4.2
 	github.com/gorilla/websocket v1.4.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/huandu/xstrings v1.2.0 // indirect
 	github.com/imdario/mergo v0.3.7
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/kr/pretty v0.2.0 // indirect
-	github.com/linkerd/linkerd2-proxy-api v0.1.12
+	github.com/linkerd/linkerd2-proxy-api v0.1.13
 	github.com/linkerd/linkerd2-proxy-init v1.3.3
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mattn/go-runewidth v0.0.2
@@ -53,7 +53,8 @@ require (
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 	golang.org/x/sys v0.0.0-20200124204421-9fbb57f87de9 // indirect
 	golang.org/x/tools v0.0.0-20191009213438-b090f1f24028
-	google.golang.org/grpc v1.26.0
+	google.golang.org/grpc v1.29.1
+	google.golang.org/protobuf v1.24.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	k8s.io/api v0.17.4
 	k8s.io/apiextensions-apiserver v0.17.4

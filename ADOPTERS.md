@@ -6,10 +6,12 @@
 - [Attest](https://www.askattest.com)
 - [Buoyant](https://buoyant.io)
 - [Candide](https://candidegardening.com)
+- [CloverHealth](https://www.cloverhealth.com/)
 - [Commonbond](https://www.commonbond.co/)
 - [Expedia](https://www.expedia.com)
 - [Facelift](https://www.facelift-bbt.com/en)
 - [finleap connect](https://connect.finleap.com/)
+- [HomeChoice](https://www.homechoice.co.za/)
 - [In Loco](https://inloco.com.br/en/)
 - [Just Football](https://justfootball.io)
 - [Kairos](https://kairos.com)
@@ -25,8 +27,7 @@
 - [Sue](https://sue.nl)
 - [Transit](https://transit.app)
 - [Vernacular.ai](https://vernacular.ai/)
-- [HomeChoice](https://www.homechoice.co.za/)
 - [YouMail](https://www.youmail.com)
 
 If you're using Linkerd 2.x and aren't on this list, please [submit a pull
-request](https://github.com/linkerd/linkerd2/pulls)!
+request](https://github.com/linkerd/linkerd2/edit/main/ADOPTERS.md)!

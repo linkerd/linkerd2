@@ -6,7 +6,7 @@ on:
     - '*.md'
     - '**/*.md'
     branches:
-    - master
+    - main
 env:
   GH_ANNOTATION: true
 jobs:
@@ -50,6 +50,9 @@ jobs:
           docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar || tee save_fail &
         done
 
+        # save windows cli into artifacts
+        cp -r ./target/cli/windows/linkerd $ARCHIVES/linkerd-windows.exe
+
         # Wait for `docker save` background processes to complete. Exit early
         # if any job failed.
         wait < <(jobs -p)
@@ -65,10 +68,35 @@ jobs:
         name: image-archives
         path: /home/runner/archives
   # todo: Keep in sync with `release.yml`
+  windows_static_cli_tests:
+    name: Static CLI tests (windows)
+    runs-on: windows-latest
+    needs: [docker_build]
+    steps:
+    - name: Checkout code
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
+    - name: Try to load cached Go modules
+      # actions/cache@v1.1.2
+      uses: actions/cache@70655ec
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Download image archives
+      # actions/download-artifact@v1
+      uses: actions/download-artifact@18f0f59
+      with:
+        name: image-archives
+    - name: Run CLI Integration tests
+      run: |
+        go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
+  # todo: Keep in sync with `release.yml`
   kind_integration_tests:
     strategy:
       matrix:
-        integration_test: [deep, upgrade_stable, upgrade_edge, helm, helm_upgrade, uninstall, custom_domain, external_issuer]
+        integration_test: [custom-domain, deep, external-issuer, helm, helm-upgrade, uninstall, upgrade-edge, upgrade-stable]
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -121,39 +149,15 @@ jobs:
       run: |
         # Copy the CLI out of the local cli-bin container.
         container_id=$(docker create "$DOCKER_REGISTRY/cli-bin:$TAG")
-        docker cp $container_id:/out/linkerd-linux $HOME/.linkerd
+        docker cp $container_id:/out/linkerd-linux "$HOME/.linkerd"
 
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
-    - name: Setup default KinD cluster
-      if: matrix.integration_test != 'custom_domain'
-      run: bin/kind create cluster --wait 300s
-    - name: Setup custom_domain KinD cluster
-      if: matrix.integration_test == 'custom_domain'
-      run: bin/kind create cluster --wait 300s --config test/testdata/custom_cluster_domain_config.yaml
-    - name: Load image archives into the local KinD cluster
+    - name: Run integration tests
       if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
-      env:
-        PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
-        PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.15.2
       run: |
-        # Fetch images from the Packet host and load them into the local KinD cluster
-        bin/kind-load --images --images-host ssh://linkerd-docker
-
-        # Load proxy-init and prometheus images into KinD while it is
-        # available. Allow these commands to fail since they will be cached
-        # for the next run.
-        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROXY_INIT_IMAGE_NAME) 2>&1 || true
-        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROMETHEUS_IMAGE_NAME) 2>&1 || true
-    - name: Load image archives into the local KinD cluster (Forked repositories)
+        bin/tests --images --images-host ssh://linkerd-docker --name ${{ matrix.integration_test }} "$HOME/.linkerd"
+    - name: Run integration tests (Forked repositories)
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: |
-        bin/kind-load --images
-    - name: Run integration tests
-      run: |
-        # Export `init_test_run` and `*_integration_tests` into the
-        # environment.
-        . bin/_test-run.sh
-
-        init_test_run $HOME/.linkerd
-        ${{ matrix.integration_test }}_integration_tests
+        bin/tests --images --name ${{ matrix.integration_test }} "$HOME/.linkerd"

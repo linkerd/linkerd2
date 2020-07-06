@@ -840,7 +840,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":true,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"},"autoInjectContext":null,"omitWebhookSideEffects":false,"clusterDomain":"cluster.local"}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxyInitImageVersion":"v1.3.3","debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version","destinationGetNetworks":"10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxyInitImageVersion":"v1.3.3","debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version","destinationGetNetworks":"10.0.0.0/8,172.16.0.0/12,192.168.0.0/16","logFormat":"plain"}
   install: |
     {"cliVersion":"dev-undefined","flags":[{"name":"linkerd-cni-enabled","value":"true"}]}
 ---
@@ -948,6 +948,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1137,6 +1139,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1323,6 +1327,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: localhost.:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1558,6 +1564,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1855,6 +1863,8 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
+      securityContext:
+        fsGroup: 65534
       containers:
       - args:
         - --storage.tsdb.path=/data
@@ -1880,7 +1890,9 @@ spec:
           initialDelaySeconds: 30
           timeoutSeconds: 30
         securityContext:
+          runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
         volumeMounts:
         - mountPath: /data
           name: data
@@ -1891,6 +1903,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1982,8 +1996,8 @@ spec:
           name: linkerd-identity-end-entity
       serviceAccountName: linkerd-prometheus
       volumes:
-      - emptyDir: {}
-        name: data
+      - name: data
+        emptyDir: {}
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
@@ -2060,6 +2074,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2264,6 +2280,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2456,6 +2474,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2745,6 +2765,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS

@@ -30,6 +30,7 @@ global:
       pullPolicy: *image_pull_policy
       version: *linkerd_version
     logLevel: warn,linkerd=info
+    logFormat: plain
     ports:
       admin: 4191
       control: 4190
@@ -167,6 +168,15 @@ prometheusRuleConfigMapMounts: []
   # - name: recording-rules
   #   subPath: recording_rules.yml
   #   configMap: linkerd-prometheus-rules
+prometheusPersistence:
+  ### WARNING: prometheusPersistence is experimental and has not been tested/vetted by the Linkerd team.
+  ### As such, please refer to https://linkerd.io/2/tasks/exporting-metrics/ for the recommended approach to metrics data retention.
+  # if enabled, creates a persistent volume claim for prometheus data
+  # https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 8Gi
 
 # proxy injector configuration
 proxyInjector:
