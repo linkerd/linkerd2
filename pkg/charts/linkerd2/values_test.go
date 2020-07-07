@@ -115,7 +115,6 @@ func TestNewValues(t *testing.T) {
 		NodeSelector: map[string]string{
 			"beta.kubernetes.io/os": "linux",
 		},
-
 		Dashboard: &Dashboard{
 			Replicas: 1,
 		},
