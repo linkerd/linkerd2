@@ -230,9 +230,7 @@ func chartControlPlane(t *testing.T, ha bool, addOnConfig string, ignoreOutbound
 }
 
 func buildAddOnChart(t *testing.T, addon l5dcharts.AddOn, chartPartials *pb.Chart) *pb.Chart {
-
 	rawValues := readValuesFile(t, filepath.Join("add-ons", addon.Name()))
-
 	addOnChart := pb.Chart{
 		Metadata: &pb.Metadata{
 			Name: addon.Name(),
