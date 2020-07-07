@@ -168,12 +168,12 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	var path string
 
 	if ip := net.ParseIP(host); ip != nil {
-		svc, exists := s.ips.GetSvc(ip.String())
-		if exists {
-			path = fmt.Sprintf("%s.%s.svc.%s", svc.Name, svc.Namespace, s.clusterDomain)
-		} else {
-			return status.Errorf(codes.InvalidArgument, "IP address %s is not a service", ip.String())
+		svc, err := s.ips.GetSvc(ip.String())
+		if err != nil {
+			return err
 		}
+		service = *svc
+		path = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
 	} else {
 		service, _, err = parseK8sServiceName(host, s.clusterDomain)
 		if err != nil {
