@@ -7,7 +7,7 @@ set +e
 ##### Test setup helpers #####
 
 export default_test_names=(deep external-issuer helm helm-upgrade uninstall upgrade-edge upgrade-stable)
-export all_test_names=(custom-domain "${default_test_names[*]}")
+export all_test_names=(cluster-domain "${default_test_names[*]}")
 
 handle_input() {
   export images=''
@@ -23,7 +23,7 @@ handle_input() {
 
 Optionally specify a test with the --name flag: [${all_test_names[*]}]
 
-Note: The custom-domain test requires a cluster configuration with a custom cluster domain (see test/configs/cluster-domain.yaml)
+Note: The cluster-domain test requires a cluster configuration with a custom cluster domain (see test/configs/cluster-domain.yaml)
 
 Usage:
     ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--name test-name] [--skip-kind-create] /path/to/linkerd
@@ -140,6 +140,7 @@ check_cluster() {
 delete_cluster() {
   local name=$1
   "$bindir"/kind delete cluster --name "$name" 2>&1
+  exit_on_err 'error deleting cluster'
 }
 
 cleanup_cluster() {
@@ -183,6 +184,8 @@ start_test() {
   fi
   check_cluster
   run_"$name"_test
+  exit_on_err "error calling 'run_${name}_test'"
+
   if [ -z "$skip_kind_create" ]; then
     delete_cluster "$name"
   else
