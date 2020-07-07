@@ -3261,7 +3261,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Rule group evaulation problems/s",
+      "title": "Rule group evaluation problems/s",
       "tooltip": {
         "msResolution": false,
         "shared": true,

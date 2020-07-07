@@ -583,7 +583,7 @@ func newMockGrpcServer(exp expectedStatRPC) (*MockProm, *grpcServer, error) {
 }
 
 func (exp expectedStatRPC) verifyPromQueries(mockProm *MockProm) error {
-	// if exp.expectedPrometheusQueries is an empty slice we still wanna check no queries were executed.
+	// if exp.expectedPrometheusQueries is an empty slice we still want to check no queries were executed.
 	if exp.expectedPrometheusQueries != nil {
 		sort.Strings(exp.expectedPrometheusQueries)
 		sort.Strings(mockProm.QueriesExecuted)
