@@ -171,7 +171,6 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		svc, exists := s.ips.GetSvc(ip.String())
 		if exists {
 			path = fmt.Sprintf("%s.%s.svc.%s", svc.Name, svc.Namespace, s.clusterDomain)
-			fmt.Printf("path: %s\n", path)
 		} else {
 			return status.Errorf(codes.InvalidArgument, "IP address %s is not a service", ip.String())
 		}
