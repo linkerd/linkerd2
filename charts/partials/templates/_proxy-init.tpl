@@ -56,7 +56,6 @@ volumeMounts:
 {{- if not .Values.global.cniEnabled }}
 - mountPath: {{.Values.global.proxyInit.xtMountPath.mountPath}}
   name: {{.Values.global.proxyInit.xtMountPath.name}}
-  subPath: {{.Values.global.proxyInit.xtMountPath.subPath}}
 {{- end -}}
 {{- if .Values.global.proxyInit.saMountPath }}
 - mountPath: {{.Values.global.proxyInit.saMountPath.mountPath}}

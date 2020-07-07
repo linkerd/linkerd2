@@ -180,7 +180,6 @@ type (
 		Name      string `json:"name"`
 		MountPath string `json:"mountPath"`
 		ReadOnly  bool   `json:"readOnly"`
-		SubPath   string `json:"subPath"`
 	}
 
 	// Resources represents the computational resources setup for a given container

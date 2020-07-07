@@ -160,7 +160,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-          subPath: xtables.lock
       volumes:
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
@@ -330,7 +329,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-          subPath: xtables.lock
       volumes:
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock

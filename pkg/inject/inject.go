@@ -607,7 +607,6 @@ func (conf *ResourceConfig) injectProxyInit(values *patch) {
 		XTMountPath: &l5dcharts.VolumeMountPath{
 			MountPath: k8s.MountPathXtablesLock,
 			Name:      k8s.InitXtablesLockVolumeMountName,
-			SubPath:   k8s.MountSubPathXtablesLock,
 		},
 	}
 

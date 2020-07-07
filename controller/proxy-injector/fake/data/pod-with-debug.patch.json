@@ -85,8 +85,7 @@
       "volumeMounts": [
         {
           "mountPath": "/run",
-          "name": "linkerd-proxy-init-xtables-lock",
-          "subPath": "xtables.lock"
+          "name": "linkerd-proxy-init-xtables-lock"
         }
       ]
     }

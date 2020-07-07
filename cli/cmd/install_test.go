@@ -119,7 +119,6 @@ func TestRender(t *testing.T) {
 				},
 				XTMountPath: &charts.VolumeMountPath{
 					MountPath: "/run",
-					SubPath:   "xtables.lock",
 					Name:      "linkerd-proxy-init-xtables-lock",
 				},
 			},

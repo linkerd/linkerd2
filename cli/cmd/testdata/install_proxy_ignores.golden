@@ -1079,7 +1079,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-          subPath: xtables.lock
       serviceAccountName: linkerd-identity
       volumes:
       - configMap:
@@ -1309,7 +1308,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-          subPath: xtables.lock
       serviceAccountName: linkerd-controller
       volumes:
       - configMap:
@@ -1536,7 +1534,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-          subPath: xtables.lock
       serviceAccountName: linkerd-destination
       volumes:
       - configMap:
@@ -1812,7 +1809,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-          subPath: xtables.lock
       serviceAccountName: linkerd-web
       volumes:
       - configMap:
@@ -2192,7 +2188,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-          subPath: xtables.lock
       serviceAccountName: linkerd-prometheus
       volumes:
       - name: data
@@ -2400,7 +2395,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-          subPath: xtables.lock
       serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
@@ -2645,7 +2639,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-          subPath: xtables.lock
       serviceAccountName: linkerd-sp-validator
       volumes:
       - name: tls
@@ -2878,7 +2871,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-          subPath: xtables.lock
       serviceAccountName: linkerd-tap
       volumes:
       - configMap:
@@ -3208,7 +3200,6 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-          subPath: xtables.lock
       serviceAccountName: linkerd-grafana
       volumes:
       - emptyDir: {}

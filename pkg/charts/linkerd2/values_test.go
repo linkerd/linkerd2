@@ -103,7 +103,6 @@ func TestNewValues(t *testing.T) {
 				},
 				XTMountPath: &VolumeMountPath{
 					Name:      "linkerd-proxy-init-xtables-lock",
-					SubPath:   "xtables.lock",
 					MountPath: "/run",
 				},
 			},

@@ -74,7 +74,6 @@ global:
     xtMountPath:
       mountPath: /run
       name: linkerd-proxy-init-xtables-lock
-      subPath: xtables.lock
 
   # control plane annotations - do not edit
   createdByAnnotation: linkerd.io/created-by

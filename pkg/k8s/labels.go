@@ -358,10 +358,6 @@ const (
 	// This is necessary for xtables-legacy support
 	MountPathXtablesLock = "/run"
 
-	// MountSubPathXtablesLock is the file name which the proxy init container uses for xtables
-	// This is necessary for xtables-legacy support
-	MountSubPathXtablesLock = "xtables.lock"
-
 	// IdentityServiceAccountTokenPath is the path to the kubernetes service
 	// account token used by proxies to provision identity.
 	//
