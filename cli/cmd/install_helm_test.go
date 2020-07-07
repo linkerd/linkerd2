@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/helm/pkg/chartutil"
@@ -229,6 +230,12 @@ func chartControlPlane(t *testing.T, ha bool, addOnConfig string, ignoreOutbound
 }
 
 func buildAddOnChart(t *testing.T, addon l5dcharts.AddOn, chartPartials *pb.Chart) *pb.Chart {
+
+	rawValues, err := readValuesFile(t, filepath.Join("add-ons", addon.Name()))
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
 	addOnChart := pb.Chart{
 		Metadata: &pb.Metadata{
 			Name: addon.Name(),
@@ -238,6 +245,9 @@ func buildAddOnChart(t *testing.T, addon l5dcharts.AddOn, chartPartials *pb.Char
 		},
 		Dependencies: []*pb.Chart{
 			chartPartials,
+		},
+		Values: &pb.Config{
+			Raw: string(rawValues),
 		},
 	}
 
@@ -289,4 +299,18 @@ func readTestValues(t *testing.T, ha bool, ignoreOutboundPorts string, ignoreInb
 	values.Global.ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
 
 	return yaml.Marshal(values)
+}
+
+// readValues reads values.yaml file from the given path
+func readValuesFile(t *testing.T, path string) ([]byte, error) {
+
+	valuesFiles := []*chartutil.BufferedFile{
+		{Name: chartutil.ValuesfileName},
+	}
+
+	if err := charts.FilesReader(path + "/", valuesFiles); err != nil {
+		return nil, err
+	}
+
+	return valuesFiles[0].Data, nil
 }
