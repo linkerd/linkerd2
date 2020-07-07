@@ -302,6 +302,8 @@ func helmOverridesEdge(root *tls.CA) []string {
 		"--set", "controllerLogLevel=debug",
 		"--set", "global.linkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "global.proxy.image.version=" + TestHelper.GetVersion(),
+		// these ports will get verified in test/integration/inject
+		"--set", "global.proxyInit.ignoreInboundPorts=1234\\,5678",
 		"--set", "global.identityTrustDomain=cluster.local",
 		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),

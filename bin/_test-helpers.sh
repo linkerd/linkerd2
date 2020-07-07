@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer helm helm-upgrade uninstall upgrade-edge upgrade-stable)
+export default_test_names=(deep helm-deep external-issuer uninstall upgrade-edge upgrade-stable helm-upgrade )
 export all_test_names=(custom-domain "${default_test_names[*]}")
 
 handle_input() {
@@ -309,16 +309,6 @@ helm_cleanup() {
   exit_on_err 'error cleaning up Helm'
 }
 
-run_helm_test() {
-  setup_helm
-  helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2-multicluster
-  helm_multicluster_release_name="multicluster-test"
-  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
-  --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
-  --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
-  helm_cleanup
-}
-
 run_helm-upgrade_test() {
   local stable_version
   stable_version=$(latest_release_channel "stable")
@@ -342,6 +332,22 @@ run_deep_test() {
   run_test "$test_directory/install_test.go" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   run_test "${tests[@]}"
+}
+
+run_helm-deep_test() {
+  setup_helm
+  helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2-multicluster
+  helm_multicluster_release_name="multicluster-test"
+  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
+  --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
+  --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
+  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  for test in "${tests[@]}"; do
+    if [[ "$test" != 'github.com/linkerd/linkerd2/test/integration/tracing' ]]; then
+      run_test "$test"
+    fi
+  done
+  helm_cleanup
 }
 
 run_external-issuer_test() {
