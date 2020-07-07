@@ -111,7 +111,6 @@ spec:
 		profiles,
 		trafficSplits,
 		ips,
-		k8sAPI,
 		false,
 		"linkerd",
 		"trust.domain",
@@ -300,7 +299,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: service
-  namespace: ns
 spec:
   clusterIP: 192.168.210.92
   type: ClusterIP
@@ -324,7 +322,6 @@ spec:
 		profiles,
 		trafficSplits,
 		ips,
-		k8sAPI,
 		false,
 		"linkerd",
 		"trust.domain",

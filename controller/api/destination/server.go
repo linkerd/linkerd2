@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
-	corev1 "k8s.io/api/core/v1"
 )
 
 type (
@@ -24,7 +23,6 @@ type (
 		profiles      *watcher.ProfileWatcher
 		trafficSplits *watcher.TrafficSplitWatcher
 		ips           *watcher.IPWatcher
-		k8sAPI        *k8s.API
 
 		enableH2Upgrade     bool
 		controllerNS        string
@@ -71,7 +69,6 @@ func NewServer(
 		profiles,
 		trafficSplits,
 		ips,
-		k8sAPI,
 		enableH2Upgrade,
 		controllerNS,
 		identityTrustDomain,
@@ -171,23 +168,12 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	var path string
 
 	if ip := net.ParseIP(host); ip != nil {
-		objs, err := s.k8sAPI.Svc().Informer().GetIndexer().ByIndex(watcher.PodIPIndex, ip.String())
-		if err != nil {
-			return status.Errorf(codes.Unknown, "error getting service from IP address: %s", err)
-		}
-		switch {
-		case len(objs) > 1:
-			return status.Errorf(codes.FailedPrecondition, "service cluster IP address conflict: %v, %v", objs[0], objs[1])
-		case len(objs) == 1:
-			if svc, ok := objs[0].(*corev1.Service); ok {
-				service = watcher.ServiceID{
-					Name:      svc.Name,
-					Namespace: svc.Namespace,
-				}
-				path = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
-			}
-		case len(objs) == 0:
-			return status.Errorf(codes.InvalidArgument, "IP address {%s} does not correspond to a service", ip.String())
+		svc, exists := s.ips.GetSvc(ip.String())
+		if exists {
+			path = fmt.Sprintf("%s.%s.svc.%s", svc.Name, svc.Namespace, s.clusterDomain)
+			fmt.Printf("path: %s\n", path)
+		} else {
+			return status.Errorf(codes.InvalidArgument, "IP address %s is not a service", ip.String())
 		}
 	} else {
 		service, _, err = parseK8sServiceName(host, s.clusterDomain)
