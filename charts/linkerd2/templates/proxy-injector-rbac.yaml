@@ -65,10 +65,10 @@ metadata:
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.proxyInjector.crtPEM)) (empty .Values.proxyInjector.crtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.proxyInjector.keyPEM)) (empty .Values.proxyInjector.keyPEM) }}
+  tls.crt: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.proxyInjector.crtPEM)) (empty .Values.proxyInjector.crtPEM) }}
+  tls.key: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.proxyInjector.keyPEM)) (empty .Values.proxyInjector.keyPEM) }}
 ---
 {{- end }}
 apiVersion: admissionregistration.k8s.io/v1beta1

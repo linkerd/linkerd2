@@ -342,10 +342,10 @@ const (
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
 
 	// MountPathTLSKeyPEM is the path at which the TLS key PEM file is mounted.
-	MountPathTLSKeyPEM = MountPathBase + "/tls/key.pem"
+	MountPathTLSKeyPEM = MountPathBase + "/tls/tls.key"
 
 	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
-	MountPathTLSCrtPEM = MountPathBase + "/tls/crt.pem"
+	MountPathTLSCrtPEM = MountPathBase + "/tls/tls.crt"
 
 	// IdentityServiceAccountTokenPath is the path to the kubernetes service
 	// account token used by proxies to provision identity.
