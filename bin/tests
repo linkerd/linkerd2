@@ -11,7 +11,7 @@ if [ -n "$test_name" ]; then
   start_test "$test_name" "$config"
 else
   printf '==================RUNNING ALL TESTS==================
-Note: custom-domain requires a specific cluster configuration and is skipped by default\n\n'
+Note: cluster-domain requires a specific cluster configuration and is skipped by default\n\n'
 
   for test_name in "${default_test_names[@]}"; do
     config=$(get_test_config "$test_name")
