@@ -201,6 +201,42 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
+	t.Run("Returns profile by IP address", func(t *testing.T) {
+		server := makeServer(t)
+
+		getStream := &bufferingGetStream{
+			updates:          []*pb.Update{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		getProfileStream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+
+		// See note above on pre-emptive cancellation
+		getStream.Cancel()
+		getProfileStream.Cancel()
+
+		// The mock server must have its IP watcher initialized with this Get
+		// call here. This is required because without it, there is no "ip"
+		// Indexer set. Without this indexer, the GetProfile call with fail.
+		// This does not happen in a real server because the IP watcher will
+		// already have established watches on IP addresses and the required
+		// indexer will exist.
+		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "172.17.0.12:8989"}, getStream)
+		if err != nil {
+			t.Fatalf("Failed to Get for destination: %s", err)
+		}
+		err = server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "172.17.0.12:8989"}, getProfileStream)
+		if err != nil {
+			t.Fatalf("Failed to GetProfile for destination: %s", err)
+		}
+		err = server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "172.17.1.12:8989"}, getProfileStream)
+		if err == nil {
+			t.Fatal("Expected IP address to not be a service")
+		}
+	})
+
 	t.Run("Returns server profile", func(t *testing.T) {
 		server := makeServer(t)
 
@@ -291,59 +327,4 @@ func updateAddAddress(t *testing.T, update *pb.Update) []string {
 		ips = append(ips, addr.ProxyAddressToString(ip.GetAddr()))
 	}
 	return ips
-}
-
-func makeServer1(t *testing.T) *server {
-	k8sAPI, err := k8s.NewFakeAPI(`
-apiVersion: v1
-kind: Service
-metadata:
-  name: service
-spec:
-  clusterIP: 192.168.210.92
-  type: ClusterIP
-  ports:
-    - port: 1234`,
-	)
-	if err != nil {
-		t.Fatalf("NewFakeAPI returned an error: %s", err)
-	}
-	log := logging.WithField("test", t.Name())
-
-	k8sAPI.Sync(nil)
-
-	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log)
-	profiles := watcher.NewProfileWatcher(k8sAPI, log)
-	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
-	ips := watcher.NewIPWatcher(k8sAPI, endpoints, log)
-
-	return &server{
-		endpoints,
-		profiles,
-		trafficSplits,
-		ips,
-		false,
-		"linkerd",
-		"trust.domain",
-		"mycluster.local",
-		log,
-		make(<-chan struct{}),
-	}
-}
-
-func TestGetProfiles1(t *testing.T) {
-	t.Run("Returns server profile", func(t *testing.T) {
-		server := makeServer(t)
-
-		stream := &bufferingGetProfileStream{
-			updates:          []*pb.DestinationProfile{},
-			MockServerStream: util.NewMockServerStream(),
-		}
-
-		stream.Cancel()
-		err := server.GetProfile(&pb.GetDestination{Scheme: "k8s", Path: "192.168.210.92:1234"}, stream)
-		if err != nil {
-			t.Fatalf("Got error: %s", err)
-		}
-	})
 }
