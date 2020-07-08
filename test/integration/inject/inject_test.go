@@ -312,6 +312,7 @@ func TestInjectAutoPod(t *testing.T) {
 			"--incoming-proxy-port", "4143",
 			"--outgoing-proxy-port", "4140",
 			"--proxy-uid", "2102",
+			// 1234,5678 were added at install time in `install_test.go`'s helmOverridesEdge()
 			"--inbound-ports-to-ignore", "4190,4191,1234,5678",
 		},
 		Resources: v1.ResourceRequirements{

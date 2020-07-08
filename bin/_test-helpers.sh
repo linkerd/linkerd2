@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep helm-deep external-issuer uninstall upgrade-edge upgrade-stable helm-upgrade )
+export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
 export all_test_names=(cluster-domain "${default_test_names[*]}")
 
 handle_input() {
