@@ -235,7 +235,7 @@ spec:
         {{- range $key, $value := .Values.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}
-        image: {{ default "prom/prometheus:v2.15.2" .Values.image }}
+        image: {{.Values.image}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:
