@@ -144,7 +144,7 @@ for ((i=1; i <= NAMESPACES; i++)); do
 done
 
 #
-# Lifecyle / bb
+# Lifecycle / bb
 #
 
 LIFECYCLE=$(curl -s https://raw.githubusercontent.com/linkerd/linkerd-examples/master/lifecycle/lifecycle.yml)

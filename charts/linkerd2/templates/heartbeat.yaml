@@ -30,6 +30,9 @@ spec:
           annotations:
             {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
         spec:
+          {{- if .Values.tolerations -}}
+          {{- include "linkerd.tolerations" . | nindent 10 }}
+          {{- end -}}
           {{- include "linkerd.node-selector" . | nindent 10 }}
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never

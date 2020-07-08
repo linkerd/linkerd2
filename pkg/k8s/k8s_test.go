@@ -20,7 +20,7 @@ func TestGetConfig(t *testing.T) {
 	t.Run("Returns error if configuration cannot be found", func(t *testing.T) {
 		_, err := GetConfig("/this/doest./not/exist.config", "")
 		if err == nil {
-			t.Fatalf("Expecting error when config file doesnt exist, got nothing")
+			t.Fatalf("Expecting error when config file does not exist, got nothing")
 		}
 	})
 }

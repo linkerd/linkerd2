@@ -620,7 +620,7 @@ func (conf *ResourceConfig) injectProxyInit(values *patch) {
 }
 
 func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
-	// Probably always true, but wanna be super-safe
+	// Probably always true, but want to be super-safe
 	if containers := conf.pod.spec.Containers; len(containers) > 0 {
 		for _, vm := range containers[0].VolumeMounts {
 			if vm.MountPath == k8s.MountPathServiceAccount {
