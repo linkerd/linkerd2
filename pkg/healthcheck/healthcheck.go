@@ -2132,7 +2132,7 @@ func validateDataPlanePods(pods []*pb.Pod, targetNamespace string) error {
 	}
 
 	for _, pod := range pods {
-		if pod.Status != "Running" {
+		if pod.Status != "Running" && pod.Status != "Evicted" {
 			return fmt.Errorf("The \"%s\" pod is not running",
 				pod.Name)
 		}
