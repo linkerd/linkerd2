@@ -22,7 +22,7 @@ generate these automatically). You can provide your own, or follow [these
 instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new
 ones.
 
-Note that the provided certificates must be ECDSA certficates.
+Note that the provided certificates must be ECDSA certificates.
 
 ## Adding Linkerd's Helm repository
 
@@ -198,6 +198,8 @@ their default values.
 | `webResources`                              | CPU and Memory resources required by web UI (see `global.proxy.resources` for sub-fields)             |   |
 | `webProxyResources`                         | CPU and Memory resources required by proxy injected into web UI pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
 | `enforcedHostRegexp`                        | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information                                   | `""`                                 |
+| `nodeSelector`                        | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information                                   | `beta.kubernetes.io/os: linux`                                 |
+| `tolerations`                        | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information                                   |                                  |
 
 ## Add-Ons Configuration
 

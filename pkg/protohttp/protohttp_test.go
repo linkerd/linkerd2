@@ -409,7 +409,7 @@ func TestNewStreamingWriter(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns an error if writer doesnt support streaming", func(t *testing.T) {
+	t.Run("Returns an error if writer does not support streaming", func(t *testing.T) {
 		_, err := NewStreamingWriter(&nonStreamingResponseWriter{})
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")

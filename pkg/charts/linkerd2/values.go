@@ -48,6 +48,7 @@ type (
 		ProfileValidator              *ProfileValidator              `json:"profileValidator"`
 		Tap                           *Tap                           `json:"tap"`
 		NodeSelector                  map[string]string              `json:"nodeSelector"`
+		Tolerations                   []interface{}                  `json:"tolerations"`
 		SMIMetrics                    *SMIMetrics                    `json:"smiMetrics"`
 
 		DestinationResources   *Resources `json:"destinationResources"`

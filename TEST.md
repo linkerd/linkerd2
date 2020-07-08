@@ -186,7 +186,7 @@ available to the cluster
 
 We use [WebdriverIO](https://webdriver.io/) to test how the web dashboard looks
 and operates locally in Chrome. For cross-browser testing, we use
-[SauceLabs](https://saucelabs.com/), which runs simulataneous tests on different
+[SauceLabs](https://saucelabs.com/), which runs simultaneous tests on different
 browsers in the cloud.
 
 If you're new to the repo, make sure you've installed web dependencies via
@@ -292,7 +292,7 @@ godoc github.com/linkerd/linkerd2/testutil | less
 The scale tests deploy a single Linkerd control-plane, and then scale up
 multiple sample apps across multiple replicas across multiple namespaces.
 
-Prequisites:
+Prerequisites:
 
 - a `linkerd` CLI binary
 - Linkerd Docker images associated with the `linkerd` CLI binary
