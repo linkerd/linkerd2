@@ -176,22 +176,24 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			service = *svc
 			path = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
 		} else {
-			primary, secondary := newFallbackProfileListener(translator)
+			// primary, secondary := newFallbackProfileListener(translator)
 
-			if dest.GetContextToken() != "" {
-				err = s.profiles.Subscribe(nil, primary)
-				if err != nil {
-					log.Warnf("Failed to subscribe to profile %s: %s", path, err)
-					return err
-				}
-				defer s.profiles.Unsubscribe(nil, primary)
-			}
-			err = s.profiles.Subscribe(nil, secondary)
-			if err != nil {
-				log.Warnf("Failed to subscribe to profile %s: %s", path, err)
-				return err
-			}
-			defer s.profiles.Unsubscribe(nil, secondary)
+			// if dest.GetContextToken() != "" {
+			// 	err = s.profiles.Subscribe(nil, primary)
+			// 	if err != nil {
+			// 		log.Warnf("Failed to subscribe to profile %s: %s", path, err)
+			// 		return err
+			// 	}
+			// 	defer s.profiles.Unsubscribe(nil, primary)
+			// }
+			// err = s.profiles.Subscribe(nil, secondary)
+			// if err != nil {
+			// 	log.Warnf("Failed to subscribe to profile %s: %s", path, err)
+			// 	return err
+			// }
+			// defer s.profiles.Unsubscribe(nil, secondary)
+
+			translator.Update(nil)
 
 			select {
 			case <-s.shutdown:
