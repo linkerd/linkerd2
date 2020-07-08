@@ -23,7 +23,7 @@ import (
 type tapExpected struct {
 	err       error
 	k8sRes    []string
-	req       public.TapByResourceRequest
+	req       *public.TapByResourceRequest
 	requireID string
 }
 
@@ -53,7 +53,7 @@ func TestTapByResource(t *testing.T) {
 		{
 			err:    status.Error(codes.InvalidArgument, "TapByResource received nil target ResourceSelection"),
 			k8sRes: []string{},
-			req:    public.TapByResourceRequest{},
+			req:    &public.TapByResourceRequest{},
 		},
 		{
 			err: status.Errorf(codes.Unimplemented, "unexpected match specified: any:<> "),
@@ -73,7 +73,7 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: public.TapByResourceRequest{
+			req: &public.TapByResourceRequest{
 				Target: &public.ResourceSelection{
 					Resource: &public.Resource{
 						Namespace: "emojivoto",
@@ -103,7 +103,7 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: public.TapByResourceRequest{
+			req: &public.TapByResourceRequest{
 				Target: &public.ResourceSelection{
 					Resource: &public.Resource{
 						Namespace: "emojivoto",
@@ -116,7 +116,7 @@ status:
 		{
 			err:    status.Errorf(codes.Unimplemented, "unimplemented resource type: bad-type"),
 			k8sRes: []string{},
-			req: public.TapByResourceRequest{
+			req: &public.TapByResourceRequest{
 				Target: &public.ResourceSelection{
 					Resource: &public.Resource{
 						Namespace: "emojivoto",
@@ -143,7 +143,7 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: public.TapByResourceRequest{
+			req: &public.TapByResourceRequest{
 				Target: &public.ResourceSelection{
 					Resource: &public.Resource{
 						Namespace: "emojivoto",
@@ -170,7 +170,7 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: public.TapByResourceRequest{
+			req: &public.TapByResourceRequest{
 				Target: &public.ResourceSelection{
 					Resource: &public.Resource{
 						Namespace: "emojivoto",
@@ -199,7 +199,7 @@ status:
   podIP: 127.0.0.1
     `,
 			},
-			req: public.TapByResourceRequest{
+			req: &public.TapByResourceRequest{
 				Target: &public.ResourceSelection{
 					Resource: &public.Resource{
 						Namespace: "emojivoto",
@@ -233,7 +233,7 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: public.TapByResourceRequest{
+			req: &public.TapByResourceRequest{
 				Target: &public.ResourceSelection{
 					Resource: &public.Resource{
 						Namespace: "emojivoto",
@@ -269,7 +269,7 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: public.TapByResourceRequest{
+			req: &public.TapByResourceRequest{
 				Target: &public.ResourceSelection{
 					Resource: &public.Resource{
 						Namespace: "emojivoto",
@@ -310,7 +310,7 @@ status:
   podIP: 127.0.0.1
 `,
 			},
-			req: public.TapByResourceRequest{
+			req: &public.TapByResourceRequest{
 				Target: &public.ResourceSelection{
 					Resource: &public.Resource{
 						Namespace: "",
@@ -331,7 +331,6 @@ status:
 	for i, exp := range expectations {
 		exp := exp // pin
 		t.Run(fmt.Sprintf("%d: Returns expected response", i), func(t *testing.T) {
-
 			k8sAPI, err := k8s.NewFakeAPI(exp.k8sRes...)
 			if err != nil {
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
@@ -381,9 +380,13 @@ status:
 
 			k8sAPI.Sync(nil)
 
-			err = fakeGrpcServer.TapByResource(&exp.req, &stream)
-			if !reflect.DeepEqual(err, exp.err) {
-				t.Fatalf("TapByResource returned unexpected: [%s], expected: [%s]", err, exp.err)
+			err = fakeGrpcServer.TapByResource(exp.req, &stream)
+			if err != nil || exp.err != nil {
+				code := status.Code(err)
+				expCode := status.Code(exp.err)
+				if code != expCode {
+					t.Fatalf("TapByResource returned unexpected: [%s], expected: [%s]", code, expCode)
+				}
 			}
 
 			if exp.requireID != "" {

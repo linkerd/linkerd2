@@ -29,6 +29,7 @@ type (
 		PrometheusExtraArgs           map[string]string              `json:"prometheusExtraArgs"`
 		PrometheusAlertmanagers       []interface{}                  `json:"prometheusAlertmanagers"`
 		PrometheusRuleConfigMapMounts []PrometheusRuleConfigMapMount `json:"prometheusRuleConfigMapMounts"`
+		PrometheusPersistence         Persistence                    `json:"prometheusPersistence"`
 		ControllerUID                 int64                          `json:"controllerUID"`
 		EnableH2Upgrade               bool                           `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity         bool                           `json:"enablePodAntiAffinity"`
@@ -47,6 +48,7 @@ type (
 		ProfileValidator              *ProfileValidator              `json:"profileValidator"`
 		Tap                           *Tap                           `json:"tap"`
 		NodeSelector                  map[string]string              `json:"nodeSelector"`
+		Tolerations                   []interface{}                  `json:"tolerations"`
 		SMIMetrics                    *SMIMetrics                    `json:"smiMetrics"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
@@ -118,6 +120,7 @@ type (
 		DestinationGetNetworks        string        `json:"destinationGetNetworks"`
 		Image                         *Image        `json:"image"`
 		LogLevel                      string        `json:"logLevel"`
+		LogFormat                     string        `json:"logFormat"`
 		SAMountPath                   *SAMountPath  `json:"saMountPath"`
 		Ports                         *Ports        `json:"ports"`
 		Resources                     *Resources    `json:"resources"`
@@ -206,7 +209,15 @@ type (
 		TLS                 *IssuerTLS `json:"tls"`
 	}
 
-	// PrometheusRuleConfigMapMount is a user supplied prometheus rule config maps.
+	// Persistence represents PVC configuration.
+	Persistence struct {
+		Enabled      bool   `json:"enabled"`
+		StorageClass string `json:"storageClass"`
+		AccessMode   string `json:"accessMode"`
+		Size         string `json:"size"`
+	}
+
+	// PrometheusRuleConfigMapMount is a user supplied prometheus rule config map.
 	PrometheusRuleConfigMapMount struct {
 		Name      string `json:"name"`
 		SubPath   string `json:"subPath"`

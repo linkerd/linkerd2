@@ -132,7 +132,7 @@ const (
 	// config.
 	ProxyInitImageAnnotation = ProxyConfigAnnotationsPrefix + "/init-image"
 
-	// ProxyInitImageVersionAnnotation can be used to overrided the proxy-init image version
+	// ProxyInitImageVersionAnnotation can be used to override the proxy-init image version
 	ProxyInitImageVersionAnnotation = ProxyConfigAnnotationsPrefix + "/init-image-version"
 
 	// DebugImageAnnotation can be used to override the debugImage config.
@@ -183,6 +183,9 @@ const (
 
 	// ProxyLogLevelAnnotation can be used to override the log level config.
 	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-level"
+
+	// ProxyLogFormatAnnotation can be used to override the log format config.
+	ProxyLogFormatAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-format"
 
 	// ProxyEnableExternalProfilesAnnotation can be used to override the
 	// disableExternalProfilesAnnotation config.

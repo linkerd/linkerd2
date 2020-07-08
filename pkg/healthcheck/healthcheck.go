@@ -641,10 +641,11 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description:   "no unschedulable pods",
-					hintAnchor:    "l5d-existence-unschedulable-pods",
-					retryDeadline: hc.RetryDeadline,
-					fatal:         true,
+					description:         "no unschedulable pods",
+					hintAnchor:          "l5d-existence-unschedulable-pods",
+					retryDeadline:       hc.RetryDeadline,
+					surfaceErrorOnRetry: true,
+					warning:             true,
 					check: func(context.Context) error {
 						// do not save this into hc.controlPlanePods, as this check may
 						// succeed prior to all expected control plane pods being up
@@ -1444,7 +1445,7 @@ func (hc *HealthChecker) checkCertificatesConfig() (*tls.Cred, []*x509.Certifica
 		data, err = issuercerts.FetchIssuerData(hc.kubeAPI, idctx.TrustAnchorsPem, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(hc.kubeAPI, hc.ControlPlaneNamespace)
-		// ensure trust anchors in config matches whats in the secret
+		// ensure trust anchors in config matches what's in the secret
 		if data != nil && strings.TrimSpace(idctx.TrustAnchorsPem) != strings.TrimSpace(data.TrustAnchors) {
 			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
 			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)

@@ -53,27 +53,31 @@ func TestInvalidRequestArguments(t *testing.T) {
 	svc := NewService(&fakeValidator{"successful-result", nil}, nil, nil, nil, "", "", "")
 	svc.updateIssuer(&fakeIssuer{tls.Crt{}, nil})
 	fakeData := "fake-data"
-	invalidCsr := pb.CertifyRequest{
-		Identity:                  fakeData,
-		Token:                     []byte(fakeData),
-		CertificateSigningRequest: []byte(fakeData),
+	invalidCsr := func() *pb.CertifyRequest {
+		return &pb.CertifyRequest{
+			Identity:                  fakeData,
+			Token:                     []byte(fakeData),
+			CertificateSigningRequest: []byte(fakeData),
+		}
 	}
 
-	reqNoIdentitiy := invalidCsr
+	reqNoIdentitiy := invalidCsr()
 	reqNoIdentitiy.Identity = ""
-	reqNoToken := invalidCsr
+
+	reqNoToken := invalidCsr()
 	reqNoToken.Token = []byte{}
-	reqNoCsr := invalidCsr
+
+	reqNoCsr := invalidCsr()
 	reqNoCsr.CertificateSigningRequest = []byte{}
 
 	testCases := []struct {
 		input         *pb.CertifyRequest
 		expectedError string
 	}{
-		{&reqNoIdentitiy, "rpc error: code = InvalidArgument desc = missing identity"},
-		{&reqNoToken, "rpc error: code = InvalidArgument desc = missing token"},
-		{&reqNoCsr, "rpc error: code = InvalidArgument desc = missing certificate signing request"},
-		{&invalidCsr, "rpc error: code = InvalidArgument desc = asn1: structure error: tags don't match " +
+		{reqNoIdentitiy, "rpc error: code = InvalidArgument desc = missing identity"},
+		{reqNoToken, "rpc error: code = InvalidArgument desc = missing token"},
+		{reqNoCsr, "rpc error: code = InvalidArgument desc = missing certificate signing request"},
+		{invalidCsr(), "rpc error: code = InvalidArgument desc = asn1: structure error: tags don't match " +
 			"(16 vs {class:1 tag:6 length:97 isCompound:true}) " +
 			"{optional:false explicit:false application:false private:false defaultValue:<nil> " +
 			"tag:<nil> stringType:0 timeType:0 set:false omitEmpty:false} certificateRequest @2"},

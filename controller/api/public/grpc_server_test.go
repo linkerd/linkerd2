@@ -27,7 +27,7 @@ type listPodsExpected struct {
 type listServicesExpected struct {
 	err    error
 	k8sRes []string
-	res    pb.ListServicesResponse
+	res    *pb.ListServicesResponse
 }
 
 // sort Pods in ListPodResponses for easier comparison
@@ -438,7 +438,7 @@ func verifyPromQueries(mProm *MockProm, namespace string) error {
 		namespaceSelector, mProm.QueriesExecuted)
 }
 
-func listServiceResponsesEqual(a pb.ListServicesResponse, b pb.ListServicesResponse) bool {
+func listServiceResponsesEqual(a *pb.ListServicesResponse, b *pb.ListServicesResponse) bool {
 	if len(a.Services) != len(b.Services) {
 		return false
 	}
@@ -477,7 +477,7 @@ metadata:
   namespace: default
 `,
 				},
-				res: pb.ListServicesResponse{
+				res: &pb.ListServicesResponse{
 					Services: []*pb.Service{
 						{
 							Name:      "service-foo",
@@ -514,7 +514,7 @@ metadata:
 				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 			}
 
-			if !listServiceResponsesEqual(exp.res, *rsp) {
+			if !listServiceResponsesEqual(exp.res, rsp) {
 				t.Fatalf("Expected: %+v, Got: %+v", &exp.res, rsp)
 			}
 		}

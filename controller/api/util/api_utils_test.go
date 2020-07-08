@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -190,12 +191,17 @@ func TestBuildTopRoutesRequest(t *testing.T) {
 	})
 }
 
+type resourceExp struct {
+	namespace string
+	args      []string
+	resource  *pb.Resource
+}
+
+func (r *resourceExp) String() string {
+	return fmt.Sprintf("namespace: %s, args: %s, resource: %s", r.namespace, r.args, r.resource.String())
+}
+
 func TestBuildResource(t *testing.T) {
-	type resourceExp struct {
-		namespace string
-		args      []string
-		resource  pb.Resource
-	}
 
 	t.Run("Returns expected errors on invalid input", func(t *testing.T) {
 		msg := "cannot find Kubernetes canonical name from friendly name [invalid]"
@@ -222,7 +228,7 @@ func TestBuildResource(t *testing.T) {
 			{
 				namespace: "test-ns",
 				args:      []string{"deployments"},
-				resource: pb.Resource{
+				resource: &pb.Resource{
 					Namespace: "test-ns",
 					Type:      k8s.Deployment,
 					Name:      "",
@@ -231,7 +237,7 @@ func TestBuildResource(t *testing.T) {
 			{
 				namespace: "",
 				args:      []string{"deploy/foo"},
-				resource: pb.Resource{
+				resource: &pb.Resource{
 					Namespace: "",
 					Type:      k8s.Deployment,
 					Name:      "foo",
@@ -240,7 +246,7 @@ func TestBuildResource(t *testing.T) {
 			{
 				namespace: "foo-ns",
 				args:      []string{"po"},
-				resource: pb.Resource{
+				resource: &pb.Resource{
 					Namespace: "foo-ns",
 					Type:      k8s.Pod,
 					Name:      "",
@@ -249,7 +255,7 @@ func TestBuildResource(t *testing.T) {
 			{
 				namespace: "foo-ns",
 				args:      []string{"ns"},
-				resource: pb.Resource{
+				resource: &pb.Resource{
 					Namespace: "",
 					Type:      k8s.Namespace,
 					Name:      "",
@@ -258,7 +264,7 @@ func TestBuildResource(t *testing.T) {
 			{
 				namespace: "foo-ns",
 				args:      []string{"ns/foo-ns2"},
-				resource: pb.Resource{
+				resource: &pb.Resource{
 					Namespace: "",
 					Type:      k8s.Namespace,
 					Name:      "foo-ns2",
@@ -269,7 +275,7 @@ func TestBuildResource(t *testing.T) {
 		for _, exp := range expectations {
 			res, err := BuildResource(exp.namespace, exp.args[0])
 			if err != nil {
-				t.Fatalf("Unexpected error from BuildResource(%+v) => %s", exp, err)
+				t.Fatalf("Unexpected error from BuildResource(%s) => %s", exp.String(), err)
 			}
 
 			if !reflect.DeepEqual(exp.resource, res) {
@@ -280,12 +286,6 @@ func TestBuildResource(t *testing.T) {
 }
 
 func TestBuildResources(t *testing.T) {
-	type resourceExp struct {
-		namespace string
-		args      []string
-		resource  pb.Resource
-	}
-
 	t.Run("Rejects duped resources", func(t *testing.T) {
 		msg := "cannot supply duplicate resources"
 		expectations := []resourceExp{
@@ -343,7 +343,7 @@ func TestBuildResources(t *testing.T) {
 			{
 				namespace: "test-ns",
 				args:      []string{"deployments"},
-				resource: pb.Resource{
+				resource: &pb.Resource{
 					Namespace: "test-ns",
 					Type:      k8s.Deployment,
 					Name:      "",
@@ -352,7 +352,7 @@ func TestBuildResources(t *testing.T) {
 			{
 				namespace: "",
 				args:      []string{"deploy/foo"},
-				resource: pb.Resource{
+				resource: &pb.Resource{
 					Namespace: "",
 					Type:      k8s.Deployment,
 					Name:      "foo",
@@ -361,7 +361,7 @@ func TestBuildResources(t *testing.T) {
 			{
 				namespace: "foo-ns",
 				args:      []string{"po", "foo"},
-				resource: pb.Resource{
+				resource: &pb.Resource{
 					Namespace: "foo-ns",
 					Type:      k8s.Pod,
 					Name:      "foo",
@@ -370,7 +370,7 @@ func TestBuildResources(t *testing.T) {
 			{
 				namespace: "foo-ns",
 				args:      []string{"ns", "foo-ns2"},
-				resource: pb.Resource{
+				resource: &pb.Resource{
 					Namespace: "",
 					Type:      k8s.Namespace,
 					Name:      "foo-ns2",
@@ -379,7 +379,7 @@ func TestBuildResources(t *testing.T) {
 			{
 				namespace: "foo-ns",
 				args:      []string{"ns/foo-ns2"},
-				resource: pb.Resource{
+				resource: &pb.Resource{
 					Namespace: "",
 					Type:      k8s.Namespace,
 					Name:      "foo-ns2",
@@ -405,14 +405,14 @@ func TestK8sPodToPublicPod(t *testing.T) {
 		k8sPod    corev1.Pod
 		ownerKind string
 		ownerName string
-		publicPod pb.Pod
+		publicPod *pb.Pod
 	}
 
 	t.Run("Returns expected pods", func(t *testing.T) {
 		expectations := []podExp{
 			{
 				k8sPod: corev1.Pod{},
-				publicPod: pb.Pod{
+				publicPod: &pb.Pod{
 					Name: "/",
 				},
 			},
@@ -448,7 +448,7 @@ func TestK8sPodToPublicPod(t *testing.T) {
 				},
 				ownerKind: k8s.Deployment,
 				ownerName: "owner-name",
-				publicPod: pb.Pod{
+				publicPod: &pb.Pod{
 					Name:                "ns/name",
 					Owner:               &pb.Pod_Deployment{Deployment: "ns/owner-name"},
 					ResourceVersion:     "resource-version",

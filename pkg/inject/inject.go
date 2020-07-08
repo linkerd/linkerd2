@@ -498,7 +498,8 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 			Version:    conf.proxyVersion(),
 			PullPolicy: conf.proxyImagePullPolicy(),
 		},
-		LogLevel: conf.proxyLogLevel(),
+		LogLevel:  conf.proxyLogLevel(),
+		LogFormat: conf.proxyLogFormat(),
 		Ports: &l5dcharts.Ports{
 			Admin:    conf.proxyAdminPort(),
 			Control:  conf.proxyControlPort(),
@@ -619,7 +620,7 @@ func (conf *ResourceConfig) injectProxyInit(values *patch) {
 }
 
 func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
-	// Probably always true, but wanna be super-safe
+	// Probably always true, but want to be super-safe
 	if containers := conf.pod.spec.Containers; len(containers) > 0 {
 		for _, vm := range containers[0].VolumeMounts {
 			if vm.MountPath == k8s.MountPathServiceAccount {
@@ -791,6 +792,14 @@ func (conf *ResourceConfig) proxyLogLevel() string {
 	}
 
 	return conf.configs.GetProxy().GetLogLevel().GetLevel()
+}
+
+func (conf *ResourceConfig) proxyLogFormat() string {
+	if override := conf.getOverride(k8s.ProxyLogFormatAnnotation); override != "" {
+		return override
+	}
+
+	return conf.configs.GetProxy().GetLogFormat()
 }
 
 func (conf *ResourceConfig) identityContext() *config.IdentityContext {

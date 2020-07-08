@@ -52,7 +52,7 @@ func testRoutesCall(exp routesParamsExp, t *testing.T) {
 
 	response := public.GenTopRoutesResponse(exp.routes, exp.counts, exp.options.toResource != "", "foobar")
 
-	mockClient.TopRoutesResponseToReturn = &response
+	mockClient.TopRoutesResponseToReturn = response
 
 	req, err := buildTopRoutesRequest("deploy/foobar", exp.options)
 	if err != nil {

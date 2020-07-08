@@ -109,24 +109,10 @@ func TestCheckPreInstall(t *testing.T) {
 	}
 }
 
-func exerciseTestAppEndpoint(endpoint, namespace string) error {
-	testAppURL, err := TestHelper.URLFor(namespace, "web", 8080)
-	if err != nil {
-		return err
-	}
-	for i := 0; i < 30; i++ {
-		_, err := TestHelper.HTTPGetURL(testAppURL + endpoint)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
 		// make sure app is running
-		testAppNamespace := TestHelper.GetTestNamespace("upgrade-test")
+		testAppNamespace := "upgrade-test"
 		for _, deploy := range []string{"emoji", "voting", "web"} {
 			if err := TestHelper.CheckPods(testAppNamespace, deploy, 1); err != nil {
 				if rce, ok := err.(*testutil.RestartCountError); ok {
@@ -141,7 +127,7 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 			}
 		}
 
-		if err := exerciseTestAppEndpoint("/api/list", testAppNamespace); err != nil {
+		if err := testutil.ExerciseTestAppEndpoint("/api/list", testAppNamespace, TestHelper); err != nil {
 			testutil.AnnotatedFatalf(t, "error exercising test app endpoint before upgrade",
 				"error exercising test app endpoint before upgrade %s", err)
 		}
@@ -355,39 +341,8 @@ func TestInstallHelm(t *testing.T) {
 	}
 }
 
-func testResourcesPostInstall(namespace string, services []string, deploys map[string]testutil.DeploySpec, t *testing.T) {
-	// Tests Namespace
-	err := TestHelper.CheckIfNamespaceExists(namespace)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "received unexpected output",
-			"received unexpected output\n%s", err)
-	}
-
-	// Tests Services
-	for _, svc := range services {
-		if err := TestHelper.CheckService(namespace, svc); err != nil {
-			testutil.AnnotatedErrorf(t, fmt.Sprintf("error validating service [%s]", svc),
-				"error validating service [%s]:\n%s", svc, err)
-		}
-	}
-
-	// Tests Pods and Deployments
-	for deploy, spec := range deploys {
-		if err := TestHelper.CheckPods(namespace, deploy, spec.Replicas); err != nil {
-			if rce, ok := err.(*testutil.RestartCountError); ok {
-				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-			} else {
-				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
-			}
-		}
-		if err := TestHelper.CheckDeployment(namespace, deploy, spec.Replicas); err != nil {
-			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
-		}
-	}
-}
-
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
-	testResourcesPostInstall(TestHelper.GetLinkerdNamespace(), linkerdSvcs, testutil.LinkerdDeployReplicas, t)
+	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), linkerdSvcs, testutil.LinkerdDeployReplicas, TestHelper, t)
 }
 
 func TestInstallMulticluster(t *testing.T) {
@@ -426,7 +381,7 @@ func TestMulticlusterResourcesPostInstall(t *testing.T) {
 	if !TestHelper.Multicluster() {
 		return
 	}
-	testResourcesPostInstall(TestHelper.GetMulticlusterNamespace(), multiclusterSvcs, testutil.MulticlusterDeployReplicas, t)
+	testutil.TestResourcesPostInstall(TestHelper.GetMulticlusterNamespace(), multiclusterSvcs, testutil.MulticlusterDeployReplicas, TestHelper, t)
 }
 
 func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
@@ -678,8 +633,8 @@ func TestCheckPostInstall(t *testing.T) {
 
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
-		testAppNamespace := TestHelper.GetTestNamespace("upgrade-test")
-		if err := exerciseTestAppEndpoint("/api/vote?choice=:policeman:", testAppNamespace); err != nil {
+		testAppNamespace := "upgrade-test"
+		if err := testutil.ExerciseTestAppEndpoint("/api/vote?choice=:policeman:", testAppNamespace, TestHelper); err != nil {
 			testutil.AnnotatedFatalf(t, "error exercising test app endpoint after upgrade",
 				"error exercising test app endpoint after upgrade %s", err)
 		}

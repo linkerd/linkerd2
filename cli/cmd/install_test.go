@@ -66,6 +66,7 @@ func TestRender(t *testing.T) {
 		InstallNamespace:            true,
 		Identity:                    defaultValues.Identity,
 		NodeSelector:                defaultValues.NodeSelector,
+		Tolerations:                 defaultValues.Tolerations,
 		Global: &charts.Global{
 			Namespace:                "Namespace",
 			ClusterDomain:            "cluster.local",
@@ -90,7 +91,8 @@ func TestRender(t *testing.T) {
 					PullPolicy: "ImagePullPolicy",
 					Version:    "ProxyVersion",
 				},
-				LogLevel: "warn,linkerd=info",
+				LogLevel:  "warn,linkerd=info",
+				LogFormat: "plain",
 				Ports: &charts.Ports{
 					Admin:    4191,
 					Control:  4190,

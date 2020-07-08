@@ -21,7 +21,7 @@ const (
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
 	if !TestHelper.ExternalIssuer() {
-		fmt.Fprintln(os.Stdout, "Skiping as --external-issuer=false")
+		fmt.Fprintln(os.Stdout, "Skipping as --external-issuer=false")
 		os.Exit(0)
 	}
 	os.Exit(testutil.Run(m, TestHelper))
@@ -83,7 +83,7 @@ func checkAppWoks(t *testing.T, timeout time.Duration) error {
 
 		stat := rowStats[TestAppBackendDeploymentName]
 		if stat.Success != "100.00%" {
-			t.Fatalf("Expected no errors in test app but got [%s] succes rate", stat.Success)
+			t.Fatalf("Expected no errors in test app but got [%s] success rate", stat.Success)
 		}
 		return nil
 	})

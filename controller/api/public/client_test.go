@@ -77,7 +77,7 @@ func TestFromByteStreamToProtocolBuffers(t *testing.T) {
 		}
 
 		if !proto.Equal(&protobufMessageToBeFilledWithData, &versionInfo) {
-			t.Fatalf("mismatch, %+v != %+v", protobufMessageToBeFilledWithData, versionInfo)
+			t.Fatalf("mismatch, %s != %s", protobufMessageToBeFilledWithData.String(), versionInfo.String())
 		}
 	})
 

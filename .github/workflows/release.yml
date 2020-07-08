@@ -37,6 +37,24 @@ jobs:
       run: |
         export PATH="`pwd`/bin:$PATH"
         bin/docker-build
+    - name: Create artifact with Windows CLI binary
+      env:
+        ARCHIVES: /home/runner/archives
+      run: |
+        mkdir -p $ARCHIVES
+
+        # save windows cli into artifacts
+        cp -r ./target/cli/windows/linkerd $ARCHIVES/linkerd-windows.exe
+    # `with.path` values do not support environment variables yet, so an
+    # absolute path is used here.
+    #
+    # https://github.com/actions/upload-artifact/issues/8
+    - name: Upload artifact
+      # actions/upload-artifact@v1
+      uses: actions/upload-artifact@3446296
+      with:
+        name: image-archives
+        path: /home/runner/archives
   # todo: Keep in sync with `cloud_integration.yml`
   docker_push:
     name: Docker push
@@ -72,13 +90,38 @@ jobs:
         export PATH="`pwd`/bin:$PATH"
         bin/docker-push-deps
         bin/docker-push $TAG
-        bin/docker-retag-all $TAG master
-        bin/docker-push master
+        bin/docker-retag-all $TAG main
+        bin/docker-push main
+  # todo: Keep in sync with `kind_integration.yml`
+  windows_static_cli_tests:
+    name: Static CLI tests (windows)
+    runs-on: windows-latest
+    needs: [docker_build]
+    steps:
+    - name: Checkout code
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
+    - name: Try to load cached Go modules
+      # actions/cache@v1.1.2
+      uses: actions/cache@70655ec
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Download image archives
+      # actions/download-artifact@v1
+      uses: actions/download-artifact@18f0f59
+      with:
+        name: image-archives
+    - name: Run CLI Integration tests
+      run: |
+        go test --failfast --mod=readonly ".\test\cli" --linkerd=$PWD\image-archives\linkerd-windows.exe --cli-tests -v
   # todo: Keep in sync with `kind_integration.yml`
   kind_integration_tests:
     strategy:
       matrix:
-        integration_test: [deep, upgrade_stable, upgrade_edge, helm, helm_upgrade, uninstall, custom_domain, external_issuer]
+        integration_test: [cluster-domain, deep, external-issuer, helm, helm-upgrade, uninstall, upgrade-edge, upgrade-stable]
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
@@ -124,33 +167,8 @@ jobs:
 
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
-    - name: Setup default KinD cluster
-      if: matrix.integration_test != 'custom_domain'
-      run: bin/kind create cluster --wait 300s
-    - name: Setup custom_domain KinD cluster
-      if: matrix.integration_test == 'custom_domain'
-      run: bin/kind create cluster --wait 300s --config test/testdata/custom_cluster_domain_config.yaml
-    - name: Load image archives into the local KinD cluster
-      env:
-        PROXY_INIT_IMAGE_NAME: gcr.io/linkerd-io/proxy-init:v1.3.1
-        PROMETHEUS_IMAGE_NAME: prom/prometheus:v2.15.2
-      run: |
-        # Fetch images from the Packet host and load them into the local KinD cluster
-        bin/kind-load --images --images-host ssh://linkerd-docker
-
-        # Load proxy-init and prometheus images into KinD while it is
-        # available. Allow these commands to fail since they will be cached
-        # for the next run.
-        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROXY_INIT_IMAGE_NAME) 2>&1 || true
-        kind load image-archive <(DOCKER_HOST=ssh://linkerd-docker docker save $PROMETHEUS_IMAGE_NAME) 2>&1 || true
     - name: Run integration tests
-      run: |
-        # Export `init_test_run` and `*_integration_tests` into the
-        # environment.
-        . bin/_test-run.sh
-
-        init_test_run $HOME/.linkerd
-        ${{ matrix.integration_test }}_integration_tests
+      run: bin/tests --images --images-host ssh://linkerd-docker --name ${{ matrix.integration_test }} "$HOME/.linkerd"
   # todo: Keep in sync with `cloud_integration.yml`
   cloud_integration_tests:
     name: Cloud integration tests
@@ -197,7 +215,7 @@ jobs:
         export PATH="`pwd`/bin:$PATH"
         echo "$GITCOOKIE_SH" | bash
         version="$($HOME/.linkerd version --client --short | tr -cd '[:alnum:]-')"
-        bin/test-run $HOME/.linkerd
+        bin/tests --skip-kind-create "$HOME/.linkerd"
     - name: CNI tests
       run: |
         export TAG="$($HOME/.linkerd version --client --short)"

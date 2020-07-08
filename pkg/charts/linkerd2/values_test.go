@@ -24,6 +24,7 @@ func TestNewValues(t *testing.T) {
 		PrometheusExtraArgs:           map[string]string{},
 		PrometheusAlertmanagers:       []interface{}{},
 		PrometheusRuleConfigMapMounts: []PrometheusRuleConfigMapMount{},
+		PrometheusPersistence:         Persistence{false, "", "ReadWriteOnce", "8Gi"},
 		ControllerUID:                 2103,
 		EnableH2Upgrade:               true,
 		EnablePodAntiAffinity:         false,
@@ -58,7 +59,8 @@ func TestNewValues(t *testing.T) {
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
-				LogLevel: "warn,linkerd=info",
+				LogLevel:  "warn,linkerd=info",
+				LogFormat: "plain",
 				Ports: &Ports{
 					Admin:    4191,
 					Control:  4190,
@@ -113,7 +115,6 @@ func TestNewValues(t *testing.T) {
 		NodeSelector: map[string]string{
 			"beta.kubernetes.io/os": "linux",
 		},
-
 		Dashboard: &Dashboard{
 			Replicas: 1,
 		},

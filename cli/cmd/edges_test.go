@@ -102,7 +102,7 @@ func testEdgesCall(exp edgesParamsExp, t *testing.T) {
 	mockClient := &public.MockAPIClient{}
 	response := public.GenEdgesResponse(exp.resourceType, "all")
 
-	mockClient.EdgesResponseToReturn = &response
+	mockClient.EdgesResponseToReturn = response
 
 	args := []string{"deployment"}
 	reqs, err := buildEdgesRequests(args, exp.options)

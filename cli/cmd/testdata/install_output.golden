@@ -141,6 +141,9 @@ rules:
 - apiGroups: ["split.smi-spec.io"]
   resources: ["trafficsplits"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -951,6 +954,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1172,6 +1177,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1390,6 +1397,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: localhost.:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1657,6 +1666,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1986,6 +1997,8 @@ spec:
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
+      securityContext:
+        fsGroup: 65534
       containers:
       - args:
         - --storage.tsdb.path=/data
@@ -2011,7 +2024,9 @@ spec:
           initialDelaySeconds: 30
           timeoutSeconds: 30
         securityContext:
+          runAsNonRoot: true
           runAsUser: 65534
+          runAsGroup: 65534
         volumeMounts:
         - mountPath: /data
           name: data
@@ -2022,6 +2037,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2145,8 +2162,8 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
       serviceAccountName: linkerd-prometheus
       volumes:
-      - emptyDir: {}
-        name: data
+      - name: data
+        emptyDir: {}
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
@@ -2223,6 +2240,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2459,6 +2478,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2683,6 +2704,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -3004,6 +3027,8 @@ spec:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
+        - name: LINKERD2_PROXY_LOG_FORMAT
+          value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS

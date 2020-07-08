@@ -54,6 +54,7 @@
   "logLevel":{
     "level": "{{.Values.global.proxy.logLevel}}"
   },
+  "logFormat": "{{.Values.global.proxy.logFormat}}",
   "disableExternalProfiles": {{not .Values.global.proxy.enableExternalProfiles}},
   "proxyVersion": "{{.Values.global.proxy.image.version}}",
   "proxyInitImageVersion": "{{.Values.global.proxyInit.image.version}}",
