@@ -90,7 +90,7 @@ func TestProfileWatcherUpdates(t *testing.T) {
 
 			listener := NewBufferingProfileListener()
 
-			watcher.Subscribe(tt.id, listener)
+			watcher.Subscribe(&tt.id, listener)
 
 			actualProfiles := make([]*sp.ServiceProfileSpec, 0)
 
@@ -139,7 +139,7 @@ func TestProfileWatcherDeletes(t *testing.T) {
 
 			listener := NewDeletingProfileListener()
 
-			watcher.Subscribe(tt.id, listener)
+			watcher.Subscribe(&tt.id, listener)
 
 			watcher.deleteProfile(tt.objectToDelete)
 

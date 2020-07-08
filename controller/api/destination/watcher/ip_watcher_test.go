@@ -708,8 +708,11 @@ spec:
 		listener := newBufferingEndpointListener()
 
 		err = watcher.Subscribe(clusterIP, port, listener)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-		svc, err := watcher.GetSvc(clusterIP)
+		svc, _, err := watcher.GetSvc(clusterIP)
 		if err != nil {
 			t.Fatalf("Error getting service: %s", err)
 		}
@@ -721,8 +724,11 @@ spec:
 		}
 
 		badClusterIP := "10.256.0.2"
-		svc, err = watcher.GetSvc(badClusterIP)
-		if err == nil {
+		_, exists, err := watcher.GetSvc(badClusterIP)
+		if err != nil {
+			t.Fatalf("Error getting service: %s", err)
+		}
+		if exists {
 			t.Fatalf("Expected not to find service for [%s]", badClusterIP)
 		}
 	})

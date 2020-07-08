@@ -70,7 +70,7 @@ func NewProfileWatcher(k8sAPI *k8s.API, log *logging.Entry) *ProfileWatcher {
 // Subscribe to an authority.
 // The provided listener will be updated each time the service profile for the
 // given authority is changed.
-func (pw *ProfileWatcher) Subscribe(id ProfileID, listener ProfileUpdateListener) error {
+func (pw *ProfileWatcher) Subscribe(id *ProfileID, listener ProfileUpdateListener) error {
 	pw.log.Infof("Establishing watch on profile %s", id)
 
 	publisher := pw.getOrNewProfilePublisher(id, nil)
@@ -80,7 +80,7 @@ func (pw *ProfileWatcher) Subscribe(id ProfileID, listener ProfileUpdateListener
 }
 
 // Unsubscribe removes a listener from the subscribers list for this authority.
-func (pw *ProfileWatcher) Unsubscribe(id ProfileID, listener ProfileUpdateListener) error {
+func (pw *ProfileWatcher) Unsubscribe(id *ProfileID, listener ProfileUpdateListener) error {
 	pw.log.Infof("Stopping watch on profile %s", id)
 
 	publisher, ok := pw.getProfilePublisher(id)
@@ -98,7 +98,7 @@ func (pw *ProfileWatcher) addProfile(obj interface{}) {
 		Name:      profile.Name,
 	}
 
-	publisher := pw.getOrNewProfilePublisher(id, profile)
+	publisher := pw.getOrNewProfilePublisher(&id, profile)
 
 	publisher.update(profile)
 }
@@ -127,53 +127,76 @@ func (pw *ProfileWatcher) deleteProfile(obj interface{}) {
 		Name:      profile.Name,
 	}
 
-	publisher, ok := pw.getProfilePublisher(id)
+	publisher, ok := pw.getProfilePublisher(&id)
 	if ok {
 		publisher.update(nil)
 	}
 }
 
-func (pw *ProfileWatcher) getOrNewProfilePublisher(id ProfileID, profile *sp.ServiceProfile) *profilePublisher {
-	pw.Lock()
-	defer pw.Unlock()
+func (pw *ProfileWatcher) getOrNewProfilePublisher(id *ProfileID, profile *sp.ServiceProfile) *profilePublisher {
+	var publisher *profilePublisher
 
-	publisher, ok := pw.profiles[id]
-	if !ok {
-		if profile == nil {
-			var err error
-			profile, err = pw.profileLister.ServiceProfiles(id.Namespace).Get(id.Name)
-			if err != nil && !apierrors.IsNotFound(err) {
-				pw.log.Errorf("error getting service profile: %s", err)
+	if id != nil {
+		pw.Lock()
+		defer pw.Unlock()
+
+		var ok bool
+		publisher, ok = pw.profiles[*id]
+		if !ok {
+			if profile == nil {
+				var err error
+				profile, err = pw.profileLister.ServiceProfiles(id.Namespace).Get(id.Name)
+				if err != nil && !apierrors.IsNotFound(err) {
+					pw.log.Errorf("error getting service profile: %s", err)
+				}
+				if err != nil {
+					profile = nil
+				}
 			}
-			if err != nil {
-				profile = nil
+
+			publisher = &profilePublisher{
+				profile:   profile,
+				listeners: make([]ProfileUpdateListener, 0),
+				log: pw.log.WithFields(logging.Fields{
+					"component": "profile-publisher",
+					"ns":        id.Namespace,
+					"profile":   id.Name,
+				}),
+				profileMetrics: profileVecs.newMetrics(prometheus.Labels{
+					"namespace": id.Namespace,
+					"profile":   id.Name,
+				}),
 			}
+
+			pw.profiles[*id] = publisher
 		}
-
+	} else {
 		publisher = &profilePublisher{
-			profile:   profile,
+			profile:   nil,
 			listeners: make([]ProfileUpdateListener, 0),
 			log: pw.log.WithFields(logging.Fields{
 				"component": "profile-publisher",
-				"ns":        id.Namespace,
-				"profile":   id.Name,
+				"ns":        "",
+				"profile":   "",
 			}),
 			profileMetrics: profileVecs.newMetrics(prometheus.Labels{
-				"namespace": id.Namespace,
-				"profile":   id.Name,
+				"namespace": "",
+				"profile":   "",
 			}),
 		}
-		pw.profiles[id] = publisher
 	}
 
 	return publisher
 }
 
-func (pw *ProfileWatcher) getProfilePublisher(id ProfileID) (publisher *profilePublisher, ok bool) {
+func (pw *ProfileWatcher) getProfilePublisher(id *ProfileID) (*profilePublisher, bool) {
 	pw.RLock()
 	defer pw.RUnlock()
-	publisher, ok = pw.profiles[id]
-	return
+	if id != nil {
+		publisher, ok := pw.profiles[*id]
+		return publisher, ok
+	}
+	return nil, false
 }
 
 ////////////////////////

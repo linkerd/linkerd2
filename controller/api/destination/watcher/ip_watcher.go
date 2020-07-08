@@ -107,13 +107,13 @@ func (iw *IPWatcher) Unsubscribe(clusterIP string, port Port, listener EndpointU
 }
 
 // GetSvc returns the service that corresponds to an IP address if one exists.
-func (iw *IPWatcher) GetSvc(clusterIP string) (*ServiceID, error) {
+func (iw *IPWatcher) GetSvc(clusterIP string) (*ServiceID, bool, error) {
 	objs, err := iw.k8sAPI.Svc().Informer().GetIndexer().ByIndex(podIPIndex, clusterIP)
 	if err != nil {
-		return nil, status.Error(codes.Unknown, err.Error())
+		return nil, false, status.Error(codes.Unknown, err.Error())
 	}
 	if len(objs) > 1 {
-		return nil, status.Errorf(codes.FailedPrecondition, "Service cluster IP conflict: %v, %v", objs[0], objs[1])
+		return nil, false, status.Errorf(codes.FailedPrecondition, "Service cluster IP conflict: %v, %v", objs[0], objs[1])
 	}
 	if len(objs) == 1 {
 		if svc, ok := objs[0].(*corev1.Service); ok {
@@ -121,10 +121,10 @@ func (iw *IPWatcher) GetSvc(clusterIP string) (*ServiceID, error) {
 				Namespace: svc.Namespace,
 				Name:      svc.Name,
 			}
-			return service, nil
+			return service, true, nil
 		}
 	}
-	return nil, status.Errorf(codes.InvalidArgument, "IP address %s is not a service", clusterIP)
+	return nil, false, nil
 }
 
 func (iw *IPWatcher) addService(obj interface{}) {
