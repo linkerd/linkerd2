@@ -71,6 +71,9 @@ global:
         limit: 50Mi
         request: 10Mi
     closeWaitTimeoutSecs: 0
+    xtMountPath:
+      mountPath: /run
+      name: linkerd-proxy-init-xtables-lock
 
   # control plane annotations - do not edit
   createdByAnnotation: linkerd.io/created-by

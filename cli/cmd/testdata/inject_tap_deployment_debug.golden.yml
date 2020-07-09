@@ -213,6 +213,9 @@ spec:
           runAsNonRoot: false
           runAsUser: 0
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext: {}
@@ -228,6 +231,8 @@ spec:
         secret:
           defaultMode: 420
           secretName: linkerd-tap-tls
+      - emptyDir: {}
+        name: linkerd-proxy-init-xtables-lock
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity

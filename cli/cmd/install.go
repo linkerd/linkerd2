@@ -824,6 +824,10 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.ProxyInit.Image.Version = options.initImageVersion
 	installValues.Global.ProxyInit.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
 	installValues.Global.ProxyInit.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
+	installValues.Global.ProxyInit.XTMountPath = &l5dcharts.VolumeMountPath{
+		MountPath: k8s.MountPathXtablesLock,
+		Name:      k8s.InitXtablesLockVolumeMountName,
+	}
 
 	installValues.DebugContainer.Image.Name = registryOverride(options.debugImage, options.dockerRegistry)
 	installValues.DebugContainer.Image.PullPolicy = options.imagePullPolicy
