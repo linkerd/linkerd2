@@ -245,7 +245,7 @@ type proxyConfigOptions struct {
 	traceCollector                string
 	traceCollectorSvcAccount      string
 	waitBeforeExitSeconds         uint64
-	dnsCanonicalizeTimeoutSeconds uint64
+	DNSCanonicalizeTimeout        string
 	ignoreCluster                 bool // not validated by validate()
 	disableIdentity               bool
 	requireIdentityOnInboundPorts []string

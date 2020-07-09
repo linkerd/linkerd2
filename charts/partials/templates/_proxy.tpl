@@ -14,9 +14,9 @@ env:
 - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
   value: "{{.Values.global.proxy.destinationGetNetworks}}"
 {{ end -}}
-{{ if .Values.global.proxy.DNSCanonicalizeTimeoutSeconds -}}
+{{ if .Values.global.proxy.dnsCanonicalizeTimeout -}}
 - name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
-  value: {{.Values.global.proxy.DNSCanonicalizeTimeoutSeconds}}
+  value: "{{.Values.global.proxy.dnsCanonicalizeTimeout}}"
 {{ end -}}  
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.global.proxy.ports.control}}

@@ -81,10 +81,10 @@ func TestNewValues(t *testing.T) {
 					CollectorSvcAddr:    "",
 					CollectorSvcAccount: "default",
 				},
-				UID:                           2102,
-				WaitBeforeExitSeconds:         0,
-				DestinationGetNetworks:        "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-				DNSCanonicalizeTimeoutSeconds: 100,
+				UID:                    2102,
+				WaitBeforeExitSeconds:  0,
+				DestinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+				DNSCanonicalizeTimeout: "100ms",
 			},
 			ProxyInit: &ProxyInit{
 				Image: &Image{

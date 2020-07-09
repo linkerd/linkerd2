@@ -64,7 +64,7 @@
   },
   "debugImageVersion": "{{.Values.debugContainer.image.version}}",
   "destinationGetNetworks": "{{.Values.global.proxy.destinationGetNetworks}}",
-  "dnsCanonicalizeTimeoutSeconds": "{{.Values.global.proxy.DNSCanonicalizeTimeoutSeconds}}"
+  "dnsCanonicalizeTimeout": "{{.Values.global.proxy.dnsCanonicalizeTimeout}}"
 }
 {{- end -}}
 

@@ -58,7 +58,7 @@ message Proxy {
 
   string log_format = 18;
 
-  uint64 dns_canonicalize_timeout_seconds = 19;
+  string dns_canonicalize_timeout = 19;
 }
 
 message Image {
