@@ -29,7 +29,7 @@
 - [Sue](https://sue.nl)
 - [Transit](https://transit.app)
 - [Vernacular.ai](https://vernacular.ai/)
-- [xCloud |xbox game streaming](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
+- [xCloud](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
 - [YouMail](https://www.youmail.com)
 
 If you're using Linkerd 2.x and aren't on this list, please [submit a pull
