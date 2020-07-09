@@ -4,7 +4,7 @@
 
 This edge release moves Linkerd's bundled Prometheus into an add-on. This makes
 the Linkerd Prometheus more configurable, gives it a separate upgrade lifecycle
-from the rest of the control plane, and allows users to disable the bundled
+from the rest of the control plane, and will allow users to disable the bundled
 Prometheus instance. In addition, this release includes fixes for several
 issues, including a regression where the proxy would fail to report OpenCensus
 spans.
