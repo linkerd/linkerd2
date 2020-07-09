@@ -124,6 +124,7 @@ func (iw *IPWatcher) GetSvc(clusterIP string) (*ServiceID, error) {
 			return service, nil
 		}
 	}
+	// `clusterIP` does not map to a service that the indexer is aware of.
 	return nil, nil
 }
 

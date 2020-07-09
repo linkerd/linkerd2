@@ -164,10 +164,14 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		return status.Errorf(codes.InvalidArgument, "invalid authority: %s", err)
 	}
 
+	// The stream will subscribe to profile updates for `service`.
 	var service watcher.ServiceID
+	// If `host` is an IP address, path must be constructed from the namespace
+	// and name of the service that the address maps to.
 	var path string
 
 	if ip := net.ParseIP(host); ip != nil {
+		// Get the service that the IP address currently maps to.
 		svc, err := s.ips.GetSvc(ip.String())
 		if err != nil {
 			return err
@@ -176,6 +180,9 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			service = *svc
 			path = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
 		} else {
+			// If no service or error are returned, the IP address does not map
+			// to a service. Send the default profile and return the stream
+			// without subscribing for future updates.
 			translator.Update(nil)
 
 			select {
