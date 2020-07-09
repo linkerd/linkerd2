@@ -242,13 +242,13 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	// test `linkerd upgrade --from-manifests`
 	if TestHelper.UpgradeFromVersion() != "" {
 		resources := []string{"configmaps/" + k8s.ConfigConfigMapName, "configmaps/" + k8s.AddOnsConfigMapName, "secrets/" + k8s.IdentityIssuerSecretName}
-		args := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
-		args = append(args, "-oyaml")
+		kubeArgs := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
+		kubeArgs = append(kubeArgs, "-oyaml")
 
-		manifests, err := TestHelper.Kubectl("", args...)
+		manifests, err := TestHelper.Kubectl("", kubeArgs...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-				"'kubectl get' command failed with %s\n%s\n%s", err, manifests, args)
+				"'kubectl get' command failed with %s\n%s\n%s", err, manifests, kubeArgs)
 		}
 
 		exec = append(exec, "--from-manifests", "-")
