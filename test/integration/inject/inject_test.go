@@ -150,12 +150,12 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 
 	// Match the pod configuration with the namespace level overrides
 	if proxyContainer.Resources.Requests["memory"] != resource.MustParse(nsProxyMemReq) {
-		testutil.Fatalf(t, "proxy memory resource request falied to match with namespace level override")
+		testutil.Fatalf(t, "proxy memory resource request failed to match with namespace level override")
 	}
 
 	// Match with proxy level override
 	if proxyContainer.Resources.Requests["cpu"] != resource.MustParse(podProxyCPUReq) {
-		testutil.Fatalf(t, "proxy cpu resource request falied to match with pod level override")
+		testutil.Fatalf(t, "proxy cpu resource request failed to match with pod level override")
 	}
 }
 

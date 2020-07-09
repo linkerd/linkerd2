@@ -902,8 +902,8 @@ data:
       "controlPort":{
         "port": 4190
       },
-      "ignoreInboundPorts":[{"port":222}],
-      "ignoreOutboundPorts":[{"port":111}],
+      "ignoreInboundPorts":[{"portRange":"222"}],
+      "ignoreOutboundPorts":[{"portRange":"111"}],
       "inboundPort":{
         "port": 4143
       },

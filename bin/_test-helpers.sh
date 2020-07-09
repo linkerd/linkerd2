@@ -39,11 +39,11 @@ Examples:
     ${0##*/} --skip-kind-create /path/to/linkerd
 
     # Load images from tar files located under the 'image-archives' directory
-    # Note: This is primarly for CI
+    # Note: This is primarily for CI
     ${0##*/} --images /path/to/linkerd
 
     # Retrieve images from a remote docker instance and then load them into KinD
-    # Note: This is primarly for CI
+    # Note: This is primarily for CI
     ${0##*/} --images --images-host ssh://linkerd-docker /path/to/linkerd
 
 Available Commands:
