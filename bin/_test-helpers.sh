@@ -345,9 +345,7 @@ run_helm-deep_test() {
   --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
-    if [[ "$test" != 'github.com/linkerd/linkerd2/test/integration/tracing' ]]; then
-      run_test "$test"
-    fi
+    run_test "$test"
   done
   helm_cleanup
 }
