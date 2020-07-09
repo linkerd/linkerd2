@@ -21,9 +21,8 @@ import (
 */
 
 var (
-	defaultMetricTimeWindow      = "1m"
-	metricTimeWindowLowerBound   = time.Second * 15 //the window value needs to equal or larger than that
-	defaultMulticlusterNamespace = "linkerd-multicluster"
+	defaultMetricTimeWindow    = "1m"
+	metricTimeWindowLowerBound = time.Second * 15 //the window value needs to equal or larger than that
 
 	// ValidTargets specifies resource types allowed as a target:
 	// target resource on an inbound query
@@ -288,13 +287,10 @@ func BuildGatewayRequest(p GatewayRequestParams) (*pb.GatewaysRequest, error) {
 		}
 		window = p.TimeWindow
 	}
-	multiClusterNameSpace := p.GatewayNamespace
-	if multiClusterNameSpace == "" {
-		multiClusterNameSpace = defaultMulticlusterNamespace
-	}
 	gatewayRequest := &pb.GatewaysRequest{
-		TimeWindow:       window,
-		GatewayNamespace: multiClusterNameSpace,
+		TimeWindow:        window,
+		GatewayNamespace:  p.GatewayNamespace,
+		RemoteClusterName: p.RemoteClusterName,
 	}
 	return gatewayRequest, nil
 }
