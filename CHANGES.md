@@ -2,7 +2,7 @@
 
 ## edge-20.7.2
 
-This edge release moves Linkerd's buindled Prometheus into an add-on. This makes
+This edge release moves Linkerd's bundled Prometheus into an add-on. This makes
 the Linkerd Prometheus more configurable, gives it a separate upgrade lifecycle
 from the rest of the control plane, and allows users to disable the bundled
 Prometheus instance. In addition, the Destination service will now use the new
