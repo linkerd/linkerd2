@@ -5,32 +5,22 @@
 This edge release moves Linkerd's bundled Prometheus into an add-on. This makes
 the Linkerd Prometheus more configurable, gives it a separate upgrade lifecycle
 from the rest of the control plane, and allows users to disable the bundled
-Prometheus instance. In addition, the Destination service will now use the new
-Kubernetes `EndpointSlice` resource when available. Finally, this release
-includes fixes for several issues, including a regression where the proxy would
-fail to report OpenCensus spans.
+Prometheus instance. In addition, this release includes fixes for several
+issues, including a regression where the proxy would fail to report OpenCensus
+spans.
 
-* CLI
-  * Evicted data plane pods are no longer considered to be failed by `linkerd
-    check --proxy`
-* Controller
-  * Prometheus is now an add-on! As an add-on, Linkerd's bundled Prometheus is
-    still enabled by default, but it is now optional, and can be disabled or
-    configured
-  * The Destination service will now use the Kubernetes `EndpointSlice` resource
-    on clusters that support it (k8s v1.16+), improving performance (thanks
-    @Matei207!)
-* Internal
-  * Thanks to @Hellcatlk and @surajssd for adding new unit tests and spelling
-    fixes!
-* Helm
-  * Added support for custom tolerations for control plane resources (thanks 
-    @DesmondH0!)
-  * Fixed a bug where the proxy injector would fail to render skipped port lists
-    when installed with Helm
-* Proxy
-  * Fixed a regression where proxy spans were not reported to OpenCensus
-  * Internal improvements for lower latencies under high concurrency
+* Prometheus is now an optional add-on, enabled by default
+* Custom tolerations can now be specified for control plane resources when
+  installing with Helm (thanks @DesmondH0!)
+* Evicted data plane pods are no longer considered to be failed by `linkerd
+  check --proxy`, fixing an issue where the check would be retried indefinitely
+  as long as evicted pods are present
+* Fixed a regression where proxy spans were not reported to OpenCensus
+* Fixed a bug where the proxy injector would fail to render skipped port lists
+  when installed with Helm
+* Internal improvements to the proxy for lower latencies under high concurrency
+* Thanks to @Hellcatlk and @surajssd for adding new unit tests and spelling
+  fixes!
 
 ## edge-20.7.1
 
