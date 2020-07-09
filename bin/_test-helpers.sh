@@ -293,6 +293,7 @@ setup_helm() {
   helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2
   export helm_chart
   export helm_release_name='helm-test'
+  export helm_multicluster_release_name="multicluster-test"
   "$bindir"/helm-build
   "$helm_path" --kube-context="$context" repo add linkerd https://helm.linkerd.io/stable
   exit_on_err 'error setting up Helm'
@@ -301,7 +302,6 @@ setup_helm() {
 helm_cleanup() {
   (
     set -e
-    # `helm delete` deletes $linkerd_namespace-helm
     "$helm_path" --kube-context="$context" delete "$helm_release_name"
     # `helm delete` doesn't wait for resources to be deleted, so we wait explicitly.
     # We wait for the namespace to be gone so the following call to `cleanup` doesn't fail when it attempts to delete
@@ -340,7 +340,6 @@ run_deep_test() {
 run_helm-deep_test() {
   setup_helm
   helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2-multicluster
-  helm_multicluster_release_name="multicluster-test"
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
   --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
   --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
