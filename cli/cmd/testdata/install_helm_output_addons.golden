@@ -461,10 +461,10 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: dGVzdC1wcm94eS1pbmplY3Rvci1jcnQtcGVt
-  key.pem: dGVzdC1wcm94eS1pbmplY3Rvci1rZXktcGVt
+  tls.crt: dGVzdC1wcm94eS1pbmplY3Rvci1jcnQtcGVt
+  tls.key: dGVzdC1wcm94eS1pbmplY3Rvci1rZXktcGVt
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -549,10 +549,10 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jcnQtcGVt
-  key.pem: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1rZXktcGVt
+  tls.crt: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jcnQtcGVt
+  tls.key: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1rZXktcGVt
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -687,10 +687,10 @@ metadata:
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: dGVzdC10YXAtY3J0LXBlbQ==
-  key.pem: dGVzdC10YXAta2V5LXBlbQ==
+  tls.crt: dGVzdC10YXAtY3J0LXBlbQ==
+  tls.key: dGVzdC10YXAta2V5LXBlbQ==
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService

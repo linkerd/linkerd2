@@ -443,10 +443,10 @@ metadata:
     ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: cHJveHkgaW5qZWN0b3IgY3J0
-  key.pem: cHJveHkgaW5qZWN0b3Iga2V5
+  tls.crt: cHJveHkgaW5qZWN0b3IgY3J0
+  tls.key: cHJveHkgaW5qZWN0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -529,10 +529,10 @@ metadata:
     ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
-  key.pem: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
+  tls.crt: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  tls.key: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -665,10 +665,10 @@ metadata:
     ControllerNamespaceLabel: Namespace
   annotations:
     CreatedByAnnotation: CliVersion
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: dGFwIGNydA==
-  key.pem: dGFwIGtleQ==
+  tls.crt: dGFwIGNydA==
+  tls.key: dGFwIGtleQ==
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
