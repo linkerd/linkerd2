@@ -1,5 +1,27 @@
 # Changes
 
+## edge-20.7.2
+
+This edge release moves Linkerd's bundled Prometheus into an add-on. This makes
+the Linkerd Prometheus more configurable, gives it a separate upgrade lifecycle
+from the rest of the control plane, and will allow users to disable the bundled
+Prometheus instance. In addition, this release includes fixes for several
+issues, including a regression where the proxy would fail to report OpenCensus
+spans.
+
+* Prometheus is now an optional add-on, enabled by default
+* Custom tolerations can now be specified for control plane resources when
+  installing with Helm (thanks @DesmondH0!)
+* Evicted data plane pods are no longer considered to be failed by `linkerd
+  check --proxy`, fixing an issue where the check would be retried indefinitely
+  as long as evicted pods are present
+* Fixed a regression where proxy spans were not reported to OpenCensus
+* Fixed a bug where the proxy injector would fail to render skipped port lists
+  when installed with Helm
+* Internal improvements to the proxy for lower latencies under high concurrency
+* Thanks to @Hellcatlk and @surajssd for adding new unit tests and spelling
+  fixes!
+
 ## edge-20.7.1
 
 This edge release features the option to persist prometheus data to a volume
