@@ -345,9 +345,7 @@ run_deep_test() {
   run_test "$test_directory/install_test.go" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
-    if [[ "$test" != 'github.com/linkerd/linkerd2/test/integration/tracing' ]]; then
-      run_test "$test"
-    fi
+    run_test "$test"
   done
 }
 
