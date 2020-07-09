@@ -1,0 +1,13 @@
+{{if .Values.serviceMirror -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: probe-gateway-{{.Values.targetClusterName}}
+  namespace: {{.Values.namespace}}
+spec:
+  ports:
+  - name: mc-probe
+    port: {{.Values.gatewayProbePort}}
+    protocol: TCP
+{{end -}}

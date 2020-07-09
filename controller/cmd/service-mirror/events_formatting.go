@@ -51,46 +51,17 @@ func formatEndpoints(endp *corev1.Endpoints) string {
 	return fmt.Sprintf("Endpoints: {name: %s, namespace: %s, annotations: [%s], labels: [%s], subsets: [%s]}", endp.Name, endp.Namespace, formatMetadata(endp.Annotations), formatMetadata(endp.Labels), strings.Join(subsets, ","))
 }
 
-func (b ProbeConfig) String() string {
-	return fmt.Sprintf("ProbeConfig: {path: %s, port: %d, periodInSeconds: %d}", b.path, b.port, b.periodInSeconds)
-}
-
-func (b GatewaySpec) String() string {
-	return fmt.Sprintf("GatewaySpec: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s, addresses: [%s], incomingPort: %d, resourceVersion: %s, identity: %s, probeConfig: %s}", b.gatewayName, b.gatewayNamespace, b.clusterName, formatAddresses(b.addresses), b.incomingPort, b.resourceVersion, b.identity, b.ProbeConfig)
-}
-
-func (gtm gatewayMetadata) String() string {
-	return fmt.Sprintf("gatewayMetadata: {name: %s, namespace: %s}", gtm.Name, gtm.Namespace)
-}
-
 // Events for cluster watcher
 func (rsc RemoteServiceCreated) String() string {
-	return fmt.Sprintf("RemoteServiceCreated: {service: %s, gatewayData: %s}", formatService(rsc.service), rsc.gatewayData)
+	return fmt.Sprintf("RemoteServiceCreated: {service: %s}", formatService(rsc.service))
 }
 
 func (rsu RemoteServiceUpdated) String() string {
-	return fmt.Sprintf("RemoteServiceUpdated: {localService: %s, localEndpoints: %s, remoteUpdate: %s, gatewayData: %s}", formatService(rsu.localService), formatEndpoints(rsu.localEndpoints), formatService(rsu.remoteUpdate), rsu.gatewayData)
+	return fmt.Sprintf("RemoteServiceUpdated: {localService: %s, localEndpoints: %s, remoteUpdate: %s}", formatService(rsu.localService), formatEndpoints(rsu.localEndpoints), formatService(rsu.remoteUpdate))
 }
 
 func (rsd RemoteServiceDeleted) String() string {
 	return fmt.Sprintf("RemoteServiceDeleted: {name: %s, namespace: %s }", rsd.Name, rsd.Namespace)
-}
-
-func (rgd RemoteGatewayDeleted) String() string {
-	return fmt.Sprintf("RemoteGatewayDeleted: {gatewayData: %s}", rgd.gatewayData)
-}
-
-func (rgd *RemoteGatewayCreated) String() string {
-	return fmt.Sprintf("RemoteGatewayCreated: {gatewaySpec: %s}", rgd.gatewaySpec)
-}
-
-func (rgu RemoteGatewayUpdated) String() string {
-	var services []string
-
-	for _, s := range rgu.affectedServices {
-		services = append(services, formatService(s))
-	}
-	return fmt.Sprintf("RemoteGatewayUpdated: {gatewaySpec: %s, affectedServices: [%s]}", rgu.gatewaySpec, strings.Join(services, ","))
 }
 
 func (cgu ClusterUnregistered) String() string {
@@ -115,16 +86,4 @@ func (od OnDeleteCalled) String() string {
 
 func (re RepairEndpoints) String() string {
 	return "RepairEndpoints"
-}
-
-func (gmc GatewayMirrorCreated) String() string {
-	return fmt.Sprintf("GatewayMirrorCreated: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s, probeSpec: %s}", gmc.gatewayName, gmc.gatewayNamespace, gmc.clusterName, gmc.ProbeSpec)
-}
-
-func (gmd GatewayMirrorDeleted) String() string {
-	return fmt.Sprintf("GatewayMirrorDeleted: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s}", gmd.gatewayName, gmd.gatewayNamespace, gmd.clusterName)
-}
-
-func (gmu GatewayMirrorUpdated) String() string {
-	return fmt.Sprintf("GatewayMirrorUpdated: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s, probeSpec: %s}", gmu.gatewayName, gmu.gatewayNamespace, gmu.clusterName, gmu.ProbeSpec)
 }

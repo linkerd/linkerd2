@@ -547,12 +547,18 @@ func newLinkCommand() *cobra.Command {
 				return err
 			}
 
+			gatewayPort, err := extractGatewayPort(gateway)
+			if err != nil {
+				return err
+			}
+
 			link := mc.Link{
 				TargetClusterName:             opts.clusterName,
 				TargetClusterDomain:           configMap.Global.ClusterDomain,
 				TargetClusterLinkerdNamespace: controlPlaneNamespace,
 				ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
 				GatewayAddress:                strings.Join(gatewayAddresses, ","),
+				GatewayPort:                   gatewayPort,
 				GatewayIdentity:               gateway.Annotations[k8s.GatewayIdentity],
 				ProbeSpec:                     probeSpec,
 			}
@@ -577,6 +583,7 @@ func newLinkCommand() *cobra.Command {
 			files := []*chartutil.BufferedFile{
 				{Name: chartutil.ChartfileName},
 				{Name: "templates/service-mirror.yaml"},
+				{Name: "templates/gateway-mirror.yaml"},
 			}
 
 			chart := &charts.Chart{
@@ -896,14 +903,12 @@ func renderGateways(rows []*pb.GatewaysTable_Row, w io.Writer) {
 }
 
 var (
-	gatewayNameHeader      = "NAME"
-	gatewayNamespaceHeader = "NAMESPACE"
-	clusterNameHeader      = "CLUSTER"
-	aliveHeader            = "ALIVE"
-	pairedServicesHeader   = "NUM_SVC"
-	latencyP50Header       = "LATENCY_P50"
-	latencyP95Header       = "LATENCY_P95"
-	latencyP99Header       = "LATENCY_P99"
+	clusterNameHeader    = "CLUSTER"
+	aliveHeader          = "ALIVE"
+	pairedServicesHeader = "NUM_SVC"
+	latencyP50Header     = "LATENCY_P50"
+	latencyP95Header     = "LATENCY_P95"
+	latencyP99Header     = "LATENCY_P99"
 )
 
 func buildGatewaysTable() table.Table {
@@ -911,18 +916,6 @@ func buildGatewaysTable() table.Table {
 		table.Column{
 			Header:    clusterNameHeader,
 			Width:     7,
-			Flexible:  true,
-			LeftAlign: true,
-		},
-		table.Column{
-			Header:    gatewayNamespaceHeader,
-			Width:     9,
-			Flexible:  true,
-			LeftAlign: true,
-		},
-		table.Column{
-			Header:    gatewayNameHeader,
-			Width:     4,
 			Flexible:  true,
 			LeftAlign: true,
 		},
@@ -969,8 +962,6 @@ func gatewaysRowToTableRow(row *pb.GatewaysTable_Row) []string {
 	}
 	return []string{
 		row.ClusterName,
-		row.Namespace,
-		row.Name,
 		alive,
 		fmt.Sprint(row.PairedServices),
 		valueOrPlaceholder(fmt.Sprintf("%dms", row.LatencyMsP50)),
@@ -978,4 +969,13 @@ func gatewaysRowToTableRow(row *pb.GatewaysTable_Row) []string {
 		valueOrPlaceholder(fmt.Sprintf("%dms", row.LatencyMsP99)),
 	}
 
+}
+
+func extractGatewayPort(gateway *corev1.Service) (uint32, error) {
+	for _, port := range gateway.Spec.Ports {
+		if port.Name == k8s.GatewayPortName {
+			return uint32(port.Port), nil
+		}
+	}
+	return 0, fmt.Errorf("gateway service %s has no gateway port named %s", gateway.Name, k8s.GatewayPortName)
 }

@@ -23,7 +23,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var clusterWatcher *RemoteClusterServiceWatcher
+var (
+	clusterWatcher *RemoteClusterServiceWatcher
+	probeWorker    *ProbeWorker
+)
 
 // Main executes the service-mirror controller
 func Main(args []string) {
@@ -69,6 +72,7 @@ func Main(args []string) {
 	}
 	linkClient := k8sAPI.DynamicClient.Resource(gvr).Namespace(*namespace)
 
+	metrics := newProbeMetricVecs()
 	go admin.StartServer(*metricsAddr)
 
 	controllerK8sAPI.Sync(nil)
@@ -98,7 +102,7 @@ func Main(args []string) {
 					if err != nil {
 						log.Errorf("Failed to load remote cluster credentials: %s", err)
 					}
-					restartClusterWatcher(link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod)
+					restartClusterWatcher(link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics)
 				case watch.Deleted:
 					log.Infof("Link %s deleted", linkName)
 					// TODO: should we delete all mirror resources?
@@ -128,9 +132,13 @@ func restartClusterWatcher(
 	controllerK8sAPI *controllerK8s.API,
 	requeueLimit int,
 	repairPeriod time.Duration,
+	metrics probeMetricVecs,
 ) {
 	if clusterWatcher != nil {
 		clusterWatcher.Stop(false)
+	}
+	if probeWorker != nil {
+		probeWorker.Stop()
 	}
 
 	cfg, err := clientcmd.RESTConfigFromKubeConfig(creds.APIConfig)
@@ -143,10 +151,9 @@ func restartClusterWatcher(
 		namespace,
 		controllerK8sAPI,
 		cfg,
-		link.TargetClusterName,
+		&link,
 		requeueLimit,
 		repairPeriod,
-		link.TargetClusterDomain,
 	)
 	if err != nil {
 		log.Errorf("Unable to create cluster watcher: %s", err)
@@ -156,5 +163,13 @@ func restartClusterWatcher(
 	err = clusterWatcher.Start()
 	if err != nil {
 		log.Errorf("Failed to start cluster watcher: %s", err)
+		return
 	}
+
+	workerMetrics, err := metrics.newWorkerMetrics(link.TargetClusterName)
+	if err != nil {
+		log.Errorf("Failed to create metrics for cluster watcher: %s", err)
+	}
+	probeWorker = NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
+	go probeWorker.run()
 }

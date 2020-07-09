@@ -31,6 +31,7 @@ type (
 		TargetClusterLinkerdNamespace string
 		ClusterCredentialsSecret      string
 		GatewayAddress                string
+		GatewayPort                   uint32
 		GatewayIdentity               string
 		ProbeSpec                     ProbeSpec
 	}
@@ -92,6 +93,15 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		return Link{}, err
 	}
 
+	portStr, err := stringField(specObj, "gatewayPort")
+	if err != nil {
+		return Link{}, err
+	}
+	gatewayPort, err := strconv.ParseUint(portStr, 10, 32)
+	if err != nil {
+		return Link{}, err
+	}
+
 	gatewayIdentity, err := stringField(specObj, "gatewayIdentity")
 	if err != nil {
 		return Link{}, err
@@ -103,6 +113,7 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		TargetClusterLinkerdNamespace: targetClusterLinkerdNamespace,
 		ClusterCredentialsSecret:      clusterCredentialsSecret,
 		GatewayAddress:                gatewayAddress,
+		GatewayPort:                   uint32(gatewayPort),
 		GatewayIdentity:               gatewayIdentity,
 		ProbeSpec:                     probeSpec,
 	}, nil
@@ -126,6 +137,7 @@ func (l Link) ToUnstructured(name, namespace string) unstructured.Unstructured {
 				"targetClusterLinkerdNamespace": l.TargetClusterLinkerdNamespace,
 				"clusterCredentialsSecret":      l.ClusterCredentialsSecret,
 				"gatewayAddress":                l.GatewayAddress,
+				"gatewayPort":                   fmt.Sprintf("%d", l.GatewayPort),
 				"gatewayIdentity":               l.GatewayIdentity,
 				"probeSpec": map[string]interface{}{
 					"path":   l.ProbeSpec.Path,

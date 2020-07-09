@@ -74,19 +74,22 @@ kind: Deployment
 metadata:
   labels:
     {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+    app: linkerd-service-mirror-{{.Values.targetClusterName}}
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
   namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{.Values.controllerComponentLabel}}: linkerd-service-mirror-{{.Values.targetClusterName}}
+      {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+      app: linkerd-service-mirror-{{.Values.targetClusterName}}
   template:
     metadata:
       annotations:
         linkerd.io/inject: enabled
       labels:
-        {{.Values.controllerComponentLabel}}: linkerd-service-mirror-{{.Values.targetClusterName}}
+        {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+        app: linkerd-service-mirror-{{.Values.targetClusterName}}
     spec:
       containers:
       - args:

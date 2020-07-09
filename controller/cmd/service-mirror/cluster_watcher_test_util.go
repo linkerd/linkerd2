@@ -5,10 +5,12 @@ import (
 	"log"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/multicluster"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,10 +25,17 @@ const (
 	defaultProbePeriod = 60
 )
 
+var defaultProbeSpec = multicluster.ProbeSpec{
+	Path:   defaultProbePath,
+	Port:   defaultProbePort,
+	Period: time.Duration(defaultProbePeriod) * time.Second,
+}
+
 type testEnvironment struct {
 	events          []interface{}
 	remoteResources []string
 	localResources  []string
+	link            multicluster.Link
 }
 
 func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInterface) (*k8s.API, error) {
@@ -44,8 +53,7 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInt
 	localAPI.Sync(nil)
 
 	watcher := RemoteClusterServiceWatcher{
-		clusterName:     clusterName,
-		clusterDomain:   clusterDomain,
+		link:            &te.link,
 		remoteAPIClient: remoteAPI,
 		localAPIClient:  localAPI,
 		stopper:         nil,
@@ -72,11 +80,11 @@ var serviceCreateWithMissingGateway = &testEnvironment{
 	events: []interface{}{
 		&RemoteServiceCreated{
 			service: remoteService("service-one", "ns1", "missing-gateway", "missing-namespace", "111", nil),
-			gatewayData: gatewayMetadata{
-				Name:      "missing-gateway",
-				Namespace: "missing-namespace",
-			},
 		},
+	},
+	link: multicluster.Link{
+		TargetClusterName: clusterName,
+		GatewayAddress:    "",
 	},
 }
 
@@ -96,15 +104,14 @@ var createServiceWrongGatewaySpec = &testEnvironment{
 						Port:     666,
 					},
 				}),
-
-			gatewayData: gatewayMetadata{
-				Name:      "existing-gateway",
-				Namespace: "existing-namespace",
-			},
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "", "mc-wrong", 888, "", 111, "/path", 666),
+		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-wrong", 888, "", 111, "/path", 666),
+	},
+	link: multicluster.Link{
+		TargetClusterName: clusterName,
+		GatewayAddress:    "??????",
 	},
 }
 
@@ -123,14 +130,18 @@ var createServiceOkeGatewaySpec = &testEnvironment{
 					Port:     666,
 				},
 			}),
-			gatewayData: gatewayMetadata{
-				Name:      "existing-gateway",
-				Namespace: "existing-namespace",
-			},
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-gateway", 888, "gateway-identity", defaultProbePort, defaultProbePath, defaultProbePeriod),
+	},
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
 	},
 }
 
@@ -142,84 +153,16 @@ var deleteMirroredService = &testEnvironment{
 		},
 	},
 	localResources: []string{
-		mirroredServiceAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "", "", "", nil),
-		endpointsAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "", "", "gateway-identity", nil),
+		mirrorServiceAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", nil),
+		endpointsAsYaml("test-service-remote-to-delete-remote", "test-namespace-to-delete", "", "gateway-identity", nil),
 	},
-}
-
-var updateServiceToNewGateway = &testEnvironment{
-	events: []interface{}{
-		&RemoteServiceUpdated{
-			remoteUpdate: remoteService("test-service", "test-namespace", "gateway-new", "gateway-ns", "currentServiceResVersion", []corev1.ServicePort{
-				{
-					Name:     "port1",
-					Protocol: "TCP",
-					Port:     111,
-				},
-				{
-					Name:     "port2",
-					Protocol: "TCP",
-					Port:     222,
-				},
-			}),
-			localService: mirroredService("test-service-remote", "test-namespace", "gateway", "gateway-ns", "pastServiceResVersion", "pastGatewayResVersion", []corev1.ServicePort{
-				{
-					Name:     "port1",
-					Protocol: "TCP",
-					Port:     111,
-				},
-				{
-					Name:     "port2",
-					Protocol: "TCP",
-					Port:     222,
-				},
-			}),
-			localEndpoints: endpoints("test-service-remote", "test-namespace", "gateway", "gateway-ns", "192.0.2.127", "", []corev1.EndpointPort{
-				{
-					Name:     "port1",
-					Port:     888,
-					Protocol: "TCP",
-				},
-				{
-					Name:     "port2",
-					Port:     888,
-					Protocol: "TCP",
-				},
-			}),
-			gatewayData: gatewayMetadata{
-				Name:      "gateway-new",
-				Namespace: "gateway-ns",
-			},
-		},
-	},
-	remoteResources: []string{
-		gatewayAsYaml("gateway-new", "gateway-ns", "currentGatewayResVersion", "0.0.0.0", "", "mc-gateway", 999, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
-	},
-	localResources: []string{
-		mirroredServiceAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "past", "pastGatewayResVersion", []corev1.ServicePort{
-			{
-				Name:     "port1",
-				Protocol: "TCP",
-				Port:     111,
-			},
-			{
-				Name:     "port2",
-				Protocol: "TCP",
-				Port:     222,
-			},
-		}),
-		endpointsAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "192.0.2.127", "", []corev1.EndpointPort{
-			{
-				Name:     "port1",
-				Port:     888,
-				Protocol: "TCP",
-			},
-			{
-				Name:     "port2",
-				Port:     888,
-				Protocol: "TCP",
-			},
-		}),
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
 	},
 }
 
@@ -238,7 +181,7 @@ var updateServiceWithChangedPorts = &testEnvironment{
 					Port:     333,
 				},
 			}),
-			localService: mirroredService("test-service-remote", "test-namespace", "gateway", "gateway-ns", "pastServiceResVersion", "pastGatewayResVersion", []corev1.ServicePort{
+			localService: mirrorService("test-service-remote", "test-namespace", "pastServiceResVersion", []corev1.ServicePort{
 				{
 					Name:     "port1",
 					Protocol: "TCP",
@@ -250,7 +193,7 @@ var updateServiceWithChangedPorts = &testEnvironment{
 					Port:     222,
 				},
 			}),
-			localEndpoints: endpoints("test-service-remote", "test-namespace", "gateway", "gateway-ns", "192.0.2.127", "", []corev1.EndpointPort{
+			localEndpoints: endpoints("test-service-remote", "test-namespace", "192.0.2.127", "", []corev1.EndpointPort{
 				{
 					Name:     "port1",
 					Port:     888,
@@ -262,17 +205,13 @@ var updateServiceWithChangedPorts = &testEnvironment{
 					Protocol: "TCP",
 				},
 			}),
-			gatewayData: gatewayMetadata{
-				Name:      "gateway",
-				Namespace: "gateway-ns",
-			},
 		},
 	},
 	remoteResources: []string{
-		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "", "mc-gateway", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
+		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "192.0.2.127", "mc-gateway", 888, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
 	},
 	localResources: []string{
-		mirroredServiceAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "past", "pastGatewayResVersion", []corev1.ServicePort{
+		mirrorServiceAsYaml("test-service-remote", "test-namespace", "past", []corev1.ServicePort{
 			{
 				Name:     "port1",
 				Protocol: "TCP",
@@ -289,7 +228,7 @@ var updateServiceWithChangedPorts = &testEnvironment{
 				Port:     333,
 			},
 		}),
-		endpointsAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "192.0.2.127", "", []corev1.EndpointPort{
+		endpointsAsYaml("test-service-remote", "test-namespace", "192.0.2.127", "", []corev1.EndpointPort{
 			{
 				Name:     "port1",
 				Port:     888,
@@ -307,262 +246,13 @@ var updateServiceWithChangedPorts = &testEnvironment{
 			},
 		}),
 	},
-}
-
-var remoteGatewayUpdated = &testEnvironment{
-	events: []interface{}{
-		&RemoteGatewayUpdated{
-			gatewaySpec: GatewaySpec{
-				gatewayName:      "gateway",
-				gatewayNamespace: "gateway-ns",
-				clusterName:      "remote",
-				addresses:        []corev1.EndpointAddress{{IP: "0.0.0.0"}},
-				incomingPort:     999,
-				resourceVersion:  "currentGatewayResVersion",
-				ProbeConfig: &ProbeConfig{
-					path:            defaultProbePath,
-					port:            defaultProbePort,
-					periodInSeconds: defaultProbePeriod,
-				},
-			},
-			affectedServices: []*corev1.Service{
-				mirroredService("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
-					[]corev1.ServicePort{
-						{
-							Name:     "svc-1-port",
-							Protocol: "TCP",
-							Port:     8081,
-						},
-					}),
-
-				mirroredService("test-service-2-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion", []corev1.ServicePort{
-					{
-						Name:     "svc-2-port",
-						Protocol: "TCP",
-						Port:     8082,
-					},
-				}),
-			},
-		},
-	},
-	localResources: []string{
-		mirroredServiceAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
-			[]corev1.ServicePort{
-				{
-					Name:     "svc-1-port",
-					Protocol: "TCP",
-					Port:     8081,
-				},
-			}),
-		endpointsAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "",
-			[]corev1.EndpointPort{
-				{
-					Name:     "svc-1-port",
-					Port:     888,
-					Protocol: "TCP",
-				}}),
-		mirroredServiceAsYaml("test-service-2-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion", []corev1.ServicePort{
-			{
-				Name:     "svc-2-port",
-				Protocol: "TCP",
-				Port:     8082,
-			},
-		}),
-		endpointsAsYaml("test-service-2-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "",
-			[]corev1.EndpointPort{
-				{
-					Name:     "svc-2-port",
-					Port:     888,
-					Protocol: "TCP",
-				}}),
-	},
-}
-
-var remoteGatewayUpdatedWithHostnameAddress = &testEnvironment{
-	events: []interface{}{
-		&RepairEndpoints{},
-	},
-	remoteResources: []string{
-		gatewayAsYaml("gateway", "gateway-ns", "currentGatewayResVersion", "", "localhost", "mc-gateway", 999, "", defaultProbePort, defaultProbePath, defaultProbePeriod),
-	},
-}
-
-var gatewayAddressChanged = &testEnvironment{
-	events: []interface{}{
-		&RemoteGatewayUpdated{
-			gatewaySpec: GatewaySpec{
-				gatewayName:      "gateway",
-				gatewayNamespace: "gateway-ns",
-				clusterName:      "some-cluster",
-				addresses:        []corev1.EndpointAddress{{IP: "0.0.0.1"}},
-				incomingPort:     888,
-				resourceVersion:  "currentGatewayResVersion",
-				ProbeConfig: &ProbeConfig{
-					path:            "/p",
-					port:            1,
-					periodInSeconds: 222,
-				},
-			},
-			affectedServices: []*corev1.Service{
-				mirroredService("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
-					[]corev1.ServicePort{
-						{
-							Name:     "svc-1-port",
-							Protocol: "TCP",
-							Port:     8081,
-						},
-					}),
-				mirroredService("test-service-2-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion", []corev1.ServicePort{
-					{
-						Name:     "svc-2-port",
-						Protocol: "TCP",
-						Port:     8082,
-					},
-				}),
-			},
-		},
-	},
-	localResources: []string{
-		mirroredServiceAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
-			[]corev1.ServicePort{
-				{
-					Name:     "svc-1-port",
-					Protocol: "TCP",
-					Port:     8081,
-				},
-			}),
-		endpointsAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "",
-			[]corev1.EndpointPort{
-				{
-					Name:     "svc-1-port",
-					Port:     888,
-					Protocol: "TCP",
-				}}),
-		mirroredServiceAsYaml("test-service-2-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion", []corev1.ServicePort{
-			{
-				Name:     "svc-2-port",
-				Protocol: "TCP",
-				Port:     8082,
-			},
-		}),
-		endpointsAsYaml("test-service-2-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "",
-			[]corev1.EndpointPort{
-				{
-					Name:     "svc-2-port",
-					Port:     888,
-					Protocol: "TCP",
-				}}),
-	},
-}
-
-var gatewayIdentityChanged = &testEnvironment{
-	events: []interface{}{
-		&RemoteGatewayUpdated{
-			gatewaySpec: GatewaySpec{
-				gatewayName:      "gateway",
-				gatewayNamespace: "gateway-ns",
-				clusterName:      clusterName,
-				addresses:        []corev1.EndpointAddress{{IP: "0.0.0.0"}},
-				incomingPort:     888,
-				resourceVersion:  "currentGatewayResVersion",
-				identity:         "new-identity",
-				ProbeConfig: &ProbeConfig{
-					path:            defaultProbePath,
-					port:            defaultProbePort,
-					periodInSeconds: defaultProbePeriod,
-				},
-			},
-			affectedServices: []*corev1.Service{
-				mirroredService("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
-					[]corev1.ServicePort{
-						{
-							Name:     "svc-1-port",
-							Protocol: "TCP",
-							Port:     8081,
-						},
-					}),
-				mirroredService("test-service-2-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion", []corev1.ServicePort{
-					{
-						Name:     "svc-2-port",
-						Protocol: "TCP",
-						Port:     8082,
-					},
-				}),
-			},
-		},
-	},
-	localResources: []string{
-		mirroredServiceAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
-			[]corev1.ServicePort{
-				{
-					Name:     "svc-1-port",
-					Protocol: "TCP",
-					Port:     8081,
-				},
-			}),
-		endpointsAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "",
-			[]corev1.EndpointPort{
-				{
-					Name:     "svc-1-port",
-					Port:     888,
-					Protocol: "TCP",
-				}}),
-		mirroredServiceAsYaml("test-service-2-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion", []corev1.ServicePort{
-			{
-				Name:     "svc-2-port",
-				Protocol: "TCP",
-				Port:     8082,
-			},
-		}),
-		endpointsAsYaml("test-service-2-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "",
-			[]corev1.EndpointPort{
-				{
-					Name:     "svc-2-port",
-					Port:     888,
-					Protocol: "TCP",
-				}}),
-	},
-}
-
-var gatewayDeleted = &testEnvironment{
-	events: []interface{}{
-		&RemoteGatewayDeleted{
-			gatewayData: gatewayMetadata{
-				Name:      "gateway",
-				Namespace: "gateway-ns",
-			},
-		},
-	},
-	localResources: []string{
-		mirroredServiceAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion",
-			[]corev1.ServicePort{
-				{
-					Name:     "svc-1-port",
-					Protocol: "TCP",
-					Port:     8081,
-				},
-			}),
-		endpointsAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "",
-			[]corev1.EndpointPort{
-				{
-					Name:     "svc-1-port",
-					Port:     888,
-					Protocol: "TCP",
-				}}),
-		mirroredServiceAsYaml("test-service-2-remote", "test-namespace", "gateway", "gateway-ns", "", "pastGatewayResVersion", []corev1.ServicePort{
-			{
-				Name:     "svc-2-port",
-				Protocol: "TCP",
-				Port:     8082,
-			},
-		}),
-		endpointsAsYaml("test-service-2-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "",
-			[]corev1.EndpointPort{
-				{
-					Name:     "svc-2-port",
-					Port:     888,
-					Protocol: "TCP",
-				}}),
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
 	},
 }
 
@@ -571,10 +261,13 @@ var clusterUnregistered = &testEnvironment{
 		&ClusterUnregistered{},
 	},
 	localResources: []string{
-		mirroredServiceAsYaml("test-service-1-remote", "test-namespace", "", "", "", "", nil),
-		endpointsAsYaml("test-service-1-remote", "test-namespace", "", "", "", "", nil),
-		mirroredServiceAsYaml("test-service-2-remote", "test-namespace", "", "", "", "", nil),
-		endpointsAsYaml("test-service-2-remote", "test-namespace", "", "", "", "", nil),
+		mirrorServiceAsYaml("test-service-1-remote", "test-namespace", "", nil),
+		endpointsAsYaml("test-service-1-remote", "test-namespace", "", "", nil),
+		mirrorServiceAsYaml("test-service-2-remote", "test-namespace", "", nil),
+		endpointsAsYaml("test-service-2-remote", "test-namespace", "", "", nil),
+	},
+	link: multicluster.Link{
+		TargetClusterName: clusterName,
 	},
 }
 
@@ -583,13 +276,16 @@ var gcTriggered = &testEnvironment{
 		&OprhanedServicesGcTriggered{},
 	},
 	localResources: []string{
-		mirroredServiceAsYaml("test-service-1-remote", "test-namespace", "gateway", "gateway-ns", "", "", nil),
-		endpointsAsYaml("test-service-1-remote", "test-namespace", "", "", "", "", nil),
-		mirroredServiceAsYaml("test-service-2-remote", "test-namespace", "", "", "", "", nil),
-		endpointsAsYaml("test-service-2-remote", "test-namespace", "", "", "", "", nil),
+		mirrorServiceAsYaml("test-service-1-remote", "test-namespace", "", nil),
+		endpointsAsYaml("test-service-1-remote", "test-namespace", "", "", nil),
+		mirrorServiceAsYaml("test-service-2-remote", "test-namespace", "", nil),
+		endpointsAsYaml("test-service-2-remote", "test-namespace", "", "", nil),
 	},
 	remoteResources: []string{
 		remoteServiceAsYaml("test-service-1", "test-namespace", "gateway", "gateway-ns", "", nil),
+	},
+	link: multicluster.Link{
+		TargetClusterName: clusterName,
 	},
 }
 
@@ -597,6 +293,14 @@ func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 	return &testEnvironment{
 		events: []interface{}{
 			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "resVersion", nil)),
+		},
+		link: multicluster.Link{
+			TargetClusterName:   clusterName,
+			TargetClusterDomain: clusterDomain,
+			GatewayIdentity:     "gateway-identity",
+			GatewayAddress:      "192.0.2.127",
+			GatewayPort:         888,
+			ProbeSpec:           defaultProbeSpec,
 		},
 	}
 
@@ -608,8 +312,16 @@ func onAddOrUpdateRemoteServiceUpdated(isAdd bool) *testEnvironment {
 			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "currentResVersion", nil)),
 		},
 		localResources: []string{
-			mirroredServiceAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "pastResourceVersion", "gatewayResVersion", nil),
-			endpointsAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "", nil),
+			mirrorServiceAsYaml("test-service-remote", "test-namespace", "pastResourceVersion", nil),
+			endpointsAsYaml("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
+		},
+		link: multicluster.Link{
+			TargetClusterName:   clusterName,
+			TargetClusterDomain: clusterDomain,
+			GatewayIdentity:     "gateway-identity",
+			GatewayAddress:      "192.0.2.127",
+			GatewayPort:         888,
+			ProbeSpec:           defaultProbeSpec,
 		},
 	}
 }
@@ -620,8 +332,16 @@ func onAddOrUpdateSameResVersion(isAdd bool) *testEnvironment {
 			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "currentResVersion", nil)),
 		},
 		localResources: []string{
-			mirroredServiceAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "currentResVersion", "gatewayResVersion", nil),
-			endpointsAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "", nil),
+			mirrorServiceAsYaml("test-service-remote", "test-namespace", "currentResVersion", nil),
+			endpointsAsYaml("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
+		},
+		link: multicluster.Link{
+			TargetClusterName:   clusterName,
+			TargetClusterDomain: clusterDomain,
+			GatewayIdentity:     "gateway-identity",
+			GatewayAddress:      "192.0.2.127",
+			GatewayPort:         888,
+			ProbeSpec:           defaultProbeSpec,
 		},
 	}
 }
@@ -632,8 +352,16 @@ func serviceNotExportedAnymore(isAdd bool) *testEnvironment {
 			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "", "gateway-ns", "currentResVersion", nil)),
 		},
 		localResources: []string{
-			mirroredServiceAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "currentResVersion", "gatewayResVersion", nil),
-			endpointsAsYaml("test-service-remote", "test-namespace", "gateway", "gateway-ns", "0.0.0.0", "", nil),
+			mirrorServiceAsYaml("test-service-remote", "test-namespace", "currentResVersion", nil),
+			endpointsAsYaml("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
+		},
+		link: multicluster.Link{
+			TargetClusterName:   clusterName,
+			TargetClusterDomain: clusterDomain,
+			GatewayIdentity:     "gateway-identity",
+			GatewayAddress:      "192.0.2.127",
+			GatewayPort:         888,
+			ProbeSpec:           defaultProbeSpec,
 		},
 	}
 }
@@ -644,6 +372,14 @@ var onDeleteWithGatewayMetadata = &testEnvironment{
 			svc: remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "currentResVersion", nil),
 		},
 	},
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
+	},
 }
 
 var onDeleteNoGatewayMetadata = &testEnvironment{
@@ -651,6 +387,14 @@ var onDeleteNoGatewayMetadata = &testEnvironment{
 		&OnDeleteCalled{
 			svc: remoteService("gateway", "test-namespace", "", "", "currentResVersion", nil),
 		},
+	},
+	link: multicluster.Link{
+		TargetClusterName:   clusterName,
+		TargetClusterDomain: clusterDomain,
+		GatewayIdentity:     "gateway-identity",
+		GatewayAddress:      "192.0.2.127",
+		GatewayPort:         888,
+		ProbeSpec:           defaultProbeSpec,
 	},
 }
 
@@ -742,15 +486,11 @@ func remoteServiceAsYaml(name, namespace, gtwName, gtwNs, resourceVersion string
 	return string(bytes)
 }
 
-func mirroredService(name, namespace, gtwName, gtwNs, resourceVersion, gatewayResourceVersion string, ports []corev1.ServicePort) *corev1.Service {
+func mirrorService(name, namespace, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
 	annotations := make(map[string]string)
 	annotations[consts.RemoteResourceVersionAnnotation] = resourceVersion
 	annotations[consts.RemoteServiceFqName] = fmt.Sprintf("%s.%s.svc.cluster.local", strings.Replace(name, "-remote", "", 1), namespace)
 
-	if gatewayResourceVersion != "" {
-		annotations[consts.RemoteGatewayResourceVersionAnnotation] = gatewayResourceVersion
-
-	}
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -760,10 +500,8 @@ func mirroredService(name, namespace, gtwName, gtwNs, resourceVersion, gatewayRe
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
-				consts.RemoteClusterNameLabel: "remote",
+				consts.RemoteClusterNameLabel: clusterName,
 				consts.MirroredResourceLabel:  "true",
-				consts.RemoteGatewayNameLabel: gtwName,
-				consts.RemoteGatewayNsLabel:   gtwNs,
 			},
 			Annotations: annotations,
 		},
@@ -773,8 +511,8 @@ func mirroredService(name, namespace, gtwName, gtwNs, resourceVersion, gatewayRe
 	}
 }
 
-func mirroredServiceAsYaml(name, namespace, gtwName, gtwNs, resourceVersion, gatewayResourceVersion string, ports []corev1.ServicePort) string {
-	svc := mirroredService(name, namespace, gtwName, gtwNs, resourceVersion, gatewayResourceVersion, ports)
+func mirrorServiceAsYaml(name, namespace, resourceVersion string, ports []corev1.ServicePort) string {
+	svc := mirrorService(name, namespace, resourceVersion, ports)
 
 	bytes, err := yaml.Marshal(svc)
 	if err != nil {
@@ -825,8 +563,8 @@ func gateway(name, namespace, resourceVersion, ip, hostname, portName string, po
 	return &svc
 }
 
-func gatewayAsYaml(name, namespace, resourceVersion, ip, hostname, portName string, port int32, identity string, probePort int32, probePath string, probePeriod int) string {
-	gtw := gateway(name, namespace, resourceVersion, ip, hostname, portName, port, identity, probePort, probePath, probePeriod)
+func gatewayAsYaml(name, namespace, resourceVersion, ip, portName string, port int32, identity string, probePort int32, probePath string, probePeriod int) string {
+	gtw := gateway(name, namespace, resourceVersion, ip, "", portName, port, identity, probePort, probePath, probePeriod)
 
 	bytes, err := yaml.Marshal(gtw)
 	if err != nil {
@@ -835,7 +573,7 @@ func gatewayAsYaml(name, namespace, resourceVersion, ip, hostname, portName stri
 	return string(bytes)
 }
 
-func endpoints(name, namespace, gtwName, gtwNs, gatewayIP string, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
+func endpoints(name, namespace, gatewayIP string, gatewayIdentity string, ports []corev1.EndpointPort) *corev1.Endpoints {
 	var subsets []corev1.EndpointSubset
 	if gatewayIP != "" {
 		subsets = []corev1.EndpointSubset{
@@ -859,10 +597,8 @@ func endpoints(name, namespace, gtwName, gtwNs, gatewayIP string, gatewayIdentit
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
-				consts.RemoteClusterNameLabel: "remote",
+				consts.RemoteClusterNameLabel: clusterName,
 				consts.MirroredResourceLabel:  "true",
-				consts.RemoteGatewayNameLabel: gtwName,
-				consts.RemoteGatewayNsLabel:   gtwNs,
 			},
 			Annotations: map[string]string{
 				consts.RemoteServiceFqName: fmt.Sprintf("%s.%s.svc.cluster.local", strings.Replace(name, "-remote", "", 1), namespace),
@@ -878,8 +614,8 @@ func endpoints(name, namespace, gtwName, gtwNs, gatewayIP string, gatewayIdentit
 	return endpoints
 }
 
-func endpointsAsYaml(name, namespace, gtwName, gtwNs, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) string {
-	ep := endpoints(name, namespace, gtwName, gtwNs, gatewayIP, gatewayIdentity, ports)
+func endpointsAsYaml(name, namespace, gatewayIP, gatewayIdentity string, ports []corev1.EndpointPort) string {
+	ep := endpoints(name, namespace, gatewayIP, gatewayIdentity, ports)
 
 	bytes, err := yaml.Marshal(ep)
 	if err != nil {
