@@ -1,40 +1,9 @@
-{{- /*
-Copyright 2017 CNI authors
-Modifications copyright (c) Linkerd authors
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-This file was inspired by
-1) https://github.com/istio/cni/blob/c63a509539b5ed165a6617548c31b686f13c2133/deployments/kubernetes/install/manifests/istio-cni.yaml
-*/ -}}
-{{- if .Values.createNamespace -}}
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: {{.Values.namespace}}
-  annotations:
-    {{.Values.proxyInjectAnnotation}}: {{.Values.proxyInjectDisabled}}
-  labels:
-    {{.Values.cniResourceLabel}}: "true"
-    config.linkerd.io/admission-webhooks: disabled
----
-{{ end -}}
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
-  name: linkerd-{{.Values.namespace}}-cni
+  name: linkerd-other-cni
   labels:
-    {{.Values.cniResourceLabel}}: "true"
+    linkerd.io/cni-resource: "true"
 spec:
   allowPrivilegeEscalation: false
   fsGroup:
@@ -54,31 +23,31 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  namespace: other
   labels:
-    {{.Values.cniResourceLabel}}: "true"
+    linkerd.io/cni-resource: "true"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  namespace: other
   labels:
-    {{.Values.cniResourceLabel}}: "true"
+    linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: ['extensions', 'policy']
   resources: ['podsecuritypolicies']
   resourceNames:
-  - linkerd-{{.Values.namespace}}-cni
+  - linkerd-other-cni
   verbs: ['use']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  namespace: other
   labels:
-    {{.Values.cniResourceLabel}}: "true"
+    linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -86,14 +55,14 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  namespace: other
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: linkerd-cni
   labels:
-    {{.Values.cniResourceLabel}}: "true"
+    linkerd.io/cni-resource: "true"
 rules:
 - apiGroups: [""]
   resources: ["pods", "nodes", "namespaces"]
@@ -104,7 +73,7 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
   labels:
-    {{.Values.cniResourceLabel}}: "true"
+    linkerd.io/cni-resource: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -112,25 +81,25 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  namespace: other
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-cni-config
-  namespace: {{.Values.namespace}}
+  namespace: other
   labels:
-    {{.Values.cniResourceLabel}}: "true"
+    linkerd.io/cni-resource: "true"
 data:
-  dest_cni_net_dir: "{{.Values.destCNINetDir}}"
-  dest_cni_bin_dir: "{{.Values.destCNIBinDir}}"
+  dest_cni_net_dir: "/etc/kubernetes/cni/net.d"
+  dest_cni_bin_dir: "/opt/my-cni/bin"
   # The CNI network configuration to install on each node. The special
   # values in this config will be automatically populated.
   cni_network_config: |-
     {
       "name": "linkerd-cni",
       "type": "linkerd-cni",
-      "log_level": "{{.Values.logLevel}}",
+      "log_level": "debug",
       "policy": {
           "type": "k8s",
           "k8s_api_root": "https://__KUBERNETES_SERVICE_HOST__:__KUBERNETES_SERVICE_PORT__",
@@ -140,18 +109,14 @@ data:
           "kubeconfig": "__KUBECONFIG_FILEPATH__"
       },
       "linkerd": {
-        "incoming-proxy-port": {{.Values.inboundProxyPort}},
-        "outgoing-proxy-port": {{.Values.outboundProxyPort}},
-        "proxy-uid": {{.Values.proxyUID}},
-        "ports-to-redirect": [{{.Values.portsToRedirect}}],
-        "inbound-ports-to-ignore": [
-          {{- include "partials.splitStringList" .Values.ignoreInboundPorts -}}
-        ],
-        "outbound-ports-to-ignore": [
-          {{- include "partials.splitStringList" .Values.ignoreOutboundPorts -}}
-        ],
+        "incoming-proxy-port": 5143,
+        "outgoing-proxy-port": 5140,
+        "proxy-uid": 12102,
+        "ports-to-redirect": [],
+        "inbound-ports-to-ignore": ["5190","5191"],
+        "outbound-ports-to-ignore": [],
         "simulate": false,
-        "use-wait-flag": {{.Values.useWaitFlag}}
+        "use-wait-flag": false
       }
     }
 ---
@@ -159,12 +124,12 @@ kind: DaemonSet
 apiVersion: apps/v1
 metadata:
   name: linkerd-cni
-  namespace: {{.Values.namespace}}
+  namespace: other
   labels:
     k8s-app: linkerd-cni
-    {{.Values.cniResourceLabel}}: "true"
+    linkerd.io/cni-resource: "true"
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.cniPluginVersion) .Values.cliVersion}}
+    linkerd.io/created-by: linkerd/cli dev-undefined
 spec:
   selector:
     matchLabels:
@@ -178,22 +143,20 @@ spec:
       labels:
         k8s-app: linkerd-cni
       annotations:
-        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.cniPluginVersion) .Values.cliVersion}}
+        linkerd.io/created-by: linkerd/cli dev-undefined
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
       hostNetwork: true
       serviceAccountName: linkerd-cni
-      {{- if .Values.priorityClassName }}
-      priorityClassName: {{ .Values.priorityClassName }}
-      {{- end }}
+      priorityClassName: system-node-critical
       containers:
       # This container installs the linkerd CNI binaries
       # and CNI network config file on each node. The install
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: {{.Values.cniPluginImage}}:{{.Values.cniPluginVersion}}
+        image: my-docker-registry.io/awesome/cni-plugin-test-image:awesome-linkerd-version.1
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:
@@ -217,25 +180,15 @@ spec:
             exec:
               command: ["kill","-15","1"]
         volumeMounts:
-        {{- if ne .Values.destCNIBinDir .Values.destCNINetDir }}
-        - mountPath: /host{{.Values.destCNIBinDir}}
+        - mountPath: /host/opt/my-cni/bin
           name: cni-bin-dir
-        - mountPath: /host{{.Values.destCNINetDir}}
+        - mountPath: /host/etc/kubernetes/cni/net.d
           name: cni-net-dir
-        {{- else }}
-        - mountPath: /host{{.Values.destCNINetDir}}
-          name: cni-net-dir
-        {{- end }}
       volumes:
-      {{- if ne .Values.destCNIBinDir .Values.destCNINetDir }}
       - name: cni-bin-dir
         hostPath:
-          path: {{.Values.destCNIBinDir}}
+          path: /opt/my-cni/bin
       - name: cni-net-dir
         hostPath:
-          path: {{.Values.destCNINetDir}}
-      {{- else }}
-      - name: cni-net-dir
-        hostPath:
-          path: {{.Values.destCNINetDir}}
-      {{- end }}
+          path: /etc/kubernetes/cni/net.d
+---

@@ -34,6 +34,7 @@ type Values struct {
 	ProxyInjectAnnotation string `json:"proxyInjectAnnotation"`
 	ProxyInjectDisabled   string `json:"proxyInjectDisabled"`
 	PriorityClassName     string `json:"priorityClassName"`
+	CreateNamespace       bool   `json:"createNamespace"`
 }
 
 // NewValues returns a new instance of the Values type.
