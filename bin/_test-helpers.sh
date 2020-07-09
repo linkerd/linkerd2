@@ -334,7 +334,9 @@ run_uninstall_test() {
 run_deep_test() {
   run_test "$test_directory/install_test.go" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  run_test "${tests[@]}"
+  for test in "${tests[@]}"; do
+    run_test "$test"
+  done
 }
 
 run_helm-deep_test() {
