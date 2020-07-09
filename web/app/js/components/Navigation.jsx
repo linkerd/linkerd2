@@ -27,6 +27,7 @@ import Version from './Version.jsx';
 import _maxBy from 'lodash/maxBy';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faCloud } from '@fortawesome/free-solid-svg-icons/faCloud';
+import { faDungeon } from '@fortawesome/free-solid-svg-icons/faDungeon';
 import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons/faExternalLinkAlt';
 import { faFilter } from '@fortawesome/free-solid-svg-icons/faFilter';
 import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
@@ -458,7 +459,7 @@ class NavigationBase extends React.Component {
             <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />) }
 
           { this.menuItem('/gateways', 'Gateway',
-            <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />) }
+            <FontAwesomeIcon icon={faDungeon} className={classes.shrinkIcon} />) }
 
         </MenuList>
 
