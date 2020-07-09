@@ -712,9 +712,12 @@ spec:
 			t.Fatal(err)
 		}
 
-		svc, _, err := watcher.GetSvc(clusterIP)
+		svc, err := watcher.GetSvc(clusterIP)
 		if err != nil {
 			t.Fatalf("Error getting service: %s", err)
+		}
+		if svc == nil {
+			t.Fatalf("Expected to find service mapped to [%s]", clusterIP)
 		}
 		if svc.Name != name {
 			t.Fatalf("Expected service name to be [%s], but got [%s]", name, svc.Name)
@@ -724,12 +727,12 @@ spec:
 		}
 
 		badClusterIP := "10.256.0.2"
-		_, exists, err := watcher.GetSvc(badClusterIP)
+		svc, err = watcher.GetSvc(badClusterIP)
 		if err != nil {
 			t.Fatalf("Error getting service: %s", err)
 		}
-		if exists {
-			t.Fatalf("Expected not to find service for [%s]", badClusterIP)
+		if svc != nil {
+			t.Fatalf("Expected not to find service mapped to [%s]", badClusterIP)
 		}
 	})
 }

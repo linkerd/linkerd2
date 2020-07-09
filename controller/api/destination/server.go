@@ -168,11 +168,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	var path string
 
 	if ip := net.ParseIP(host); ip != nil {
-		svc, exists, err := s.ips.GetSvc(ip.String())
+		svc, err := s.ips.GetSvc(ip.String())
 		if err != nil {
 			return err
 		}
-		if exists {
+		if svc != nil {
 			service = *svc
 			path = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
 		} else {
@@ -223,12 +223,12 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 		}
 
-		err = s.profiles.Subscribe(&profile, primary)
+		err = s.profiles.Subscribe(profile, primary)
 		if err != nil {
 			log.Warnf("Failed to subscribe to profile %s: %s", path, err)
 			return err
 		}
-		defer s.profiles.Unsubscribe(&profile, primary)
+		defer s.profiles.Unsubscribe(profile, primary)
 	}
 
 	profile, err := profileID(path, "", s.clusterDomain)
@@ -236,12 +236,12 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		log.Debugf("Invalid service %s", path)
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 	}
-	err = s.profiles.Subscribe(&profile, secondary)
+	err = s.profiles.Subscribe(profile, secondary)
 	if err != nil {
 		log.Warnf("Failed to subscribe to profile %s: %s", path, err)
 		return err
 	}
-	defer s.profiles.Unsubscribe(&profile, secondary)
+	defer s.profiles.Unsubscribe(profile, secondary)
 
 	select {
 	case <-s.shutdown:
