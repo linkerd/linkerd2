@@ -2160,6 +2160,17 @@ func TestValidateDataPlanePods(t *testing.T) {
 		}
 	})
 
+	t.Run("Does not return an error if the pod is Evicted", func(t *testing.T) {
+		pods := []*pb.Pod{
+			{Name: "emoji-d9c7866bb-7v74n", Status: "Evicted", ProxyReady: true},
+		}
+
+		err := validateDataPlanePods(pods, "emojivoto")
+		if err != nil {
+			t.Fatalf("Expected no error, got %s", err)
+		}
+	})
+
 	t.Run("Returns an error if the proxy container is not ready", func(t *testing.T) {
 		pods := []*pb.Pod{
 			{Name: "emoji-d9c7866bb-7v74n", Status: "Running", ProxyReady: true},
