@@ -75,7 +75,7 @@ spec:
         - -addr=:8086
         - -controller-namespace={{.Values.global.namespace}}
         - -enable-h2-upgrade={{.Values.enableH2Upgrade}}
-        - -log-level={{.Values.controllerLogLevel}}
+        - -log-level={{.Values.global.controllerLogLevel}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}

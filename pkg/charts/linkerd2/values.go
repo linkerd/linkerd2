@@ -19,42 +19,35 @@ const (
 type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
-		Stage                         string                         `json:"stage"`
-		ControllerImage               string                         `json:"controllerImage"`
-		WebImage                      string                         `json:"webImage"`
-		PrometheusImage               string                         `json:"prometheusImage"`
-		ControllerReplicas            uint                           `json:"controllerReplicas"`
-		ControllerLogLevel            string                         `json:"controllerLogLevel"`
-		PrometheusLogLevel            string                         `json:"prometheusLogLevel"`
-		PrometheusExtraArgs           map[string]string              `json:"prometheusExtraArgs"`
-		PrometheusAlertmanagers       []interface{}                  `json:"prometheusAlertmanagers"`
-		PrometheusRuleConfigMapMounts []PrometheusRuleConfigMapMount `json:"prometheusRuleConfigMapMounts"`
-		PrometheusPersistence         Persistence                    `json:"prometheusPersistence"`
-		ControllerUID                 int64                          `json:"controllerUID"`
-		EnableH2Upgrade               bool                           `json:"enableH2Upgrade"`
-		EnablePodAntiAffinity         bool                           `json:"enablePodAntiAffinity"`
-		WebhookFailurePolicy          string                         `json:"webhookFailurePolicy"`
-		OmitWebhookSideEffects        bool                           `json:"omitWebhookSideEffects"`
-		RestrictDashboardPrivileges   bool                           `json:"restrictDashboardPrivileges"`
-		DisableHeartBeat              bool                           `json:"disableHeartBeat"`
-		HeartbeatSchedule             string                         `json:"heartbeatSchedule"`
-		InstallNamespace              bool                           `json:"installNamespace"`
-		Configs                       ConfigJSONs                    `json:"configs"`
-		Global                        *Global                        `json:"global"`
-		Identity                      *Identity                      `json:"identity"`
-		Dashboard                     *Dashboard                     `json:"dashboard"`
-		DebugContainer                *DebugContainer                `json:"debugContainer"`
-		ProxyInjector                 *ProxyInjector                 `json:"proxyInjector"`
-		ProfileValidator              *ProfileValidator              `json:"profileValidator"`
-		Tap                           *Tap                           `json:"tap"`
-		NodeSelector                  map[string]string              `json:"nodeSelector"`
-		Tolerations                   []interface{}                  `json:"tolerations"`
-		SMIMetrics                    *SMIMetrics                    `json:"smiMetrics"`
+		Stage                       string            `json:"stage"`
+		ControllerImage             string            `json:"controllerImage"`
+		ControllerImageVersion      string            `json:"controllerImageVersion"`
+		WebImage                    string            `json:"webImage"`
+		ControllerReplicas          uint              `json:"controllerReplicas"`
+		ControllerUID               int64             `json:"controllerUID"`
+		EnableH2Upgrade             bool              `json:"enableH2Upgrade"`
+		EnablePodAntiAffinity       bool              `json:"enablePodAntiAffinity"`
+		WebhookFailurePolicy        string            `json:"webhookFailurePolicy"`
+		OmitWebhookSideEffects      bool              `json:"omitWebhookSideEffects"`
+		RestrictDashboardPrivileges bool              `json:"restrictDashboardPrivileges"`
+		DisableHeartBeat            bool              `json:"disableHeartBeat"`
+		HeartbeatSchedule           string            `json:"heartbeatSchedule"`
+		InstallNamespace            bool              `json:"installNamespace"`
+		Configs                     ConfigJSONs       `json:"configs"`
+		Global                      *Global           `json:"global"`
+		Identity                    *Identity         `json:"identity"`
+		Dashboard                   *Dashboard        `json:"dashboard"`
+		DebugContainer              *DebugContainer   `json:"debugContainer"`
+		ProxyInjector               *ProxyInjector    `json:"proxyInjector"`
+		ProfileValidator            *ProfileValidator `json:"profileValidator"`
+		Tap                         *Tap              `json:"tap"`
+		NodeSelector                map[string]string `json:"nodeSelector"`
+		Tolerations                 []interface{}     `json:"tolerations"`
+		SMIMetrics                  *SMIMetrics       `json:"smiMetrics"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
 		HeartbeatResources     *Resources `json:"heartbeatResources"`
 		IdentityResources      *Resources `json:"identityResources"`
-		PrometheusResources    *Resources `json:"prometheusResources"`
 		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
 		PublicAPIResources     *Resources `json:"publicAPIResources"`
 		SMIMetricsResources    *Resources `json:"smiMetricsResources"`
@@ -64,7 +57,6 @@ type (
 
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
-		PrometheusProxyResources    *Resources `json:"prometheusProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
 		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
 		SMIMetricsProxyResources    *Resources `json:"smiMetricsProxyResources"`
@@ -73,8 +65,9 @@ type (
 		WebProxyResources           *Resources `json:"webProxyResources"`
 
 		// Addon Structures
-		Tracing Tracing `json:"tracing"`
-		Grafana Grafana `json:"grafana"`
+		Grafana    Grafana    `json:"grafana"`
+		Prometheus Prometheus `json:"prometheus"`
+		Tracing    Tracing    `json:"tracing"`
 	}
 
 	// Global values common across all charts
@@ -85,6 +78,7 @@ type (
 		CliVersion               string `json:"cliVersion"`
 		ControllerComponentLabel string `json:"controllerComponentLabel"`
 		ControllerImageVersion   string `json:"controllerImageVersion"`
+		ControllerLogLevel       string `json:"controllerLogLevel"`
 		ControllerNamespaceLabel string `json:"controllerNamespaceLabel"`
 		WorkloadNamespaceLabel   string `json:"workloadNamespaceLabel"`
 		CreatedByAnnotation      string `json:"createdByAnnotation"`
@@ -208,21 +202,6 @@ type (
 		CrtExpiryAnnotation string     `json:"crtExpiryAnnotation"`
 		CrtExpiry           time.Time  `json:"crtExpiry"`
 		TLS                 *IssuerTLS `json:"tls"`
-	}
-
-	// Persistence represents PVC configuration.
-	Persistence struct {
-		Enabled      bool   `json:"enabled"`
-		StorageClass string `json:"storageClass"`
-		AccessMode   string `json:"accessMode"`
-		Size         string `json:"size"`
-	}
-
-	// PrometheusRuleConfigMapMount is a user supplied prometheus rule config map.
-	PrometheusRuleConfigMapMount struct {
-		Name      string `json:"name"`
-		SubPath   string `json:"subPath"`
-		ConfigMap string `json:"configMap"`
 	}
 
 	// ProxyInjector has all the proxy injector's Helm variables
