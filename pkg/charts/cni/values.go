@@ -33,6 +33,7 @@ type Values struct {
 	UseWaitFlag           bool   `json:"useWaitFlag"`
 	ProxyInjectAnnotation string `json:"proxyInjectAnnotation"`
 	ProxyInjectDisabled   string `json:"proxyInjectDisabled"`
+	PriorityClassName     string `json:"priorityClassName"`
 }
 
 // NewValues returns a new instance of the Values type.

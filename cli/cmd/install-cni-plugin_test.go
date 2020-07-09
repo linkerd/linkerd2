@@ -27,6 +27,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		logLevel:            "debug",
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/opt/my-cni/bin",
+		priorityClassName:   "system-node-critical",
 	}
 
 	otherNamespace := "other"
@@ -45,6 +46,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		logLevel:            "debug",
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/etc/kubernetes/cni/net.d",
+		priorityClassName:   "system-node-critical",
 	}
 
 	testCases := []struct {
