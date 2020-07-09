@@ -21,7 +21,7 @@ fail to report OpenCensus spans.
     on clusters that support it (k8s v1.16+), improving performance (thanks
     @Matei207!)
 * Internal
-  * Thanks to @Hellcatlk and @surassjd for adding new unit tests and spelling
+  * Thanks to @Hellcatlk and @surajssd for adding new unit tests and spelling
     fixes!
 * Helm
   * Added support for custom tolerations for control plane resources (thanks 
