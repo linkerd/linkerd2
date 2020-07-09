@@ -1979,11 +1979,14 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-      serviceAccountName: linkerd-prometheus
+      serviceAccountName: linkerd-proxy-injector
       volumes:
       - configMap:
-          name: linkerd-prometheus-config
-        name: prometheus-config
+          name: linkerd-config
+        name: config
+      - name: tls
+        secret:
+          secretName: linkerd-proxy-injector-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2222,11 +2225,11 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-      serviceAccountName: linkerd-proxy-injector
+      serviceAccountName: linkerd-sp-validator
       volumes:
       - name: tls
         secret:
-          secretName: linkerd-proxy-injector-tls
+          secretName: linkerd-sp-validator-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2456,11 +2459,11 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-      serviceAccountName: linkerd-sp-validator
+      serviceAccountName: linkerd-tap
       volumes:
-      - name: tls
-        secret:
-          secretName: linkerd-sp-validator-tls
+      - configMap:
+          name: linkerd-config
+        name: config
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2905,13 +2908,13 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-      serviceAccountName: linkerd-tap
+      serviceAccountName: linkerd-prometheus
       volumes:
       - name: data
         emptyDir: {}
       - configMap:
-          name: linkerd-config
-        name: config
+          name: linkerd-prometheus-config
+        name: prometheus-config
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
