@@ -115,6 +115,10 @@ func TestRender(t *testing.T) {
 						Request: "10Mi",
 					},
 				},
+				XTMountPath: &charts.VolumeMountPath{
+					MountPath: "/run",
+					Name:      "linkerd-proxy-init-xtables-lock",
+				},
 			},
 		},
 		Configs: charts.ConfigJSONs{

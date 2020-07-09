@@ -106,34 +106,35 @@ type (
 
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
-		Capabilities                  *Capabilities `json:"capabilities"`
-		Component                     string        `json:"component"`
-		DisableIdentity               bool          `json:"disableIdentity"`
-		DisableTap                    bool          `json:"disableTap"`
-		EnableExternalProfiles        bool          `json:"enableExternalProfiles"`
-		DestinationGetNetworks        string        `json:"destinationGetNetworks"`
-		Image                         *Image        `json:"image"`
-		LogLevel                      string        `json:"logLevel"`
-		LogFormat                     string        `json:"logFormat"`
-		SAMountPath                   *SAMountPath  `json:"saMountPath"`
-		Ports                         *Ports        `json:"ports"`
-		Resources                     *Resources    `json:"resources"`
-		Trace                         *Trace        `json:"trace"`
-		UID                           int64         `json:"uid"`
-		WaitBeforeExitSeconds         uint64        `json:"waitBeforeExitSeconds"`
-		IsGateway                     bool          `json:"isGateway"`
-		RequireIdentityOnInboundPorts string        `json:"requireIdentityOnInboundPorts"`
+		Capabilities                  *Capabilities    `json:"capabilities"`
+		Component                     string           `json:"component"`
+		DisableIdentity               bool             `json:"disableIdentity"`
+		DisableTap                    bool             `json:"disableTap"`
+		EnableExternalProfiles        bool             `json:"enableExternalProfiles"`
+		DestinationGetNetworks        string           `json:"destinationGetNetworks"`
+		Image                         *Image           `json:"image"`
+		LogLevel                      string           `json:"logLevel"`
+		LogFormat                     string           `json:"logFormat"`
+		SAMountPath                   *VolumeMountPath `json:"saMountPath"`
+		Ports                         *Ports           `json:"ports"`
+		Resources                     *Resources       `json:"resources"`
+		Trace                         *Trace           `json:"trace"`
+		UID                           int64            `json:"uid"`
+		WaitBeforeExitSeconds         uint64           `json:"waitBeforeExitSeconds"`
+		IsGateway                     bool             `json:"isGateway"`
+		RequireIdentityOnInboundPorts string           `json:"requireIdentityOnInboundPorts"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
 	ProxyInit struct {
-		Capabilities         *Capabilities `json:"capabilities"`
-		IgnoreInboundPorts   string        `json:"ignoreInboundPorts"`
-		IgnoreOutboundPorts  string        `json:"ignoreOutboundPorts"`
-		Image                *Image        `json:"image"`
-		SAMountPath          *SAMountPath  `json:"saMountPath"`
-		Resources            *Resources    `json:"resources"`
-		CloseWaitTimeoutSecs int64         `json:"closeWaitTimeoutSecs"`
+		Capabilities         *Capabilities    `json:"capabilities"`
+		IgnoreInboundPorts   string           `json:"ignoreInboundPorts"`
+		IgnoreOutboundPorts  string           `json:"ignoreOutboundPorts"`
+		Image                *Image           `json:"image"`
+		SAMountPath          *VolumeMountPath `json:"saMountPath"`
+		XTMountPath          *VolumeMountPath `json:"xtMountPath"`
+		Resources            *Resources       `json:"resources"`
+		CloseWaitTimeoutSecs int64            `json:"closeWaitTimeoutSecs"`
 	}
 
 	// DebugContainer contains the fields to set the debugging sidecar
@@ -169,8 +170,8 @@ type (
 		Drop []string `json:"drop"`
 	}
 
-	// SAMountPath contains the details for ServiceAccount volume mount
-	SAMountPath struct {
+	// VolumeMountPath contains the details for volume mounts
+	VolumeMountPath struct {
 		Name      string `json:"name"`
 		MountPath string `json:"mountPath"`
 		ReadOnly  bool   `json:"readOnly"`
