@@ -182,7 +182,6 @@ var ExpectedServiceAccountNames = []string{
 	"linkerd-controller",
 	"linkerd-destination",
 	"linkerd-identity",
-	"linkerd-prometheus",
 	"linkerd-proxy-injector",
 	"linkerd-sp-validator",
 	"linkerd-web",
@@ -1445,7 +1444,7 @@ func (hc *HealthChecker) checkCertificatesConfig() (*tls.Cred, []*x509.Certifica
 		data, err = issuercerts.FetchIssuerData(hc.kubeAPI, idctx.TrustAnchorsPem, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(hc.kubeAPI, hc.ControlPlaneNamespace)
-		// ensure trust anchors in config matches whats in the secret
+		// ensure trust anchors in config matches what's in the secret
 		if data != nil && strings.TrimSpace(idctx.TrustAnchorsPem) != strings.TrimSpace(data.TrustAnchors) {
 			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
 			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
@@ -2132,7 +2131,7 @@ func validateDataPlanePods(pods []*pb.Pod, targetNamespace string) error {
 	}
 
 	for _, pod := range pods {
-		if pod.Status != "Running" {
+		if pod.Status != "Running" && pod.Status != "Evicted" {
 			return fmt.Errorf("The \"%s\" pod is not running",
 				pod.Name)
 		}

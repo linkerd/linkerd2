@@ -594,6 +594,11 @@ func K8sPodToPublicPod(pod corev1.Pod, ownerKind string, ownerName string) *pb.P
 	if pod.DeletionTimestamp != nil {
 		status = "Terminating"
 	}
+
+	if pod.Status.Reason == "Evicted" {
+		status = "Evicted"
+	}
+
 	controllerComponent := pod.Labels[k8s.ControllerComponentLabel]
 	controllerNS := pod.Labels[k8s.ControllerNSLabel]
 

@@ -285,7 +285,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 // These need to be updated (if there are changes) once a new stable is released
 func helmOverridesStable(root *tls.CA) []string {
 	return []string{
-		"--set", "controllerLogLevel=debug",
+		"--set", "global.controllerLogLevel=debug",
 		"--set", "global.linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
 		"--set", "global.proxy.image.version=" + TestHelper.UpgradeHelmFromVersion(),
 		"--set", "global.identityTrustDomain=cluster.local",
@@ -299,7 +299,7 @@ func helmOverridesStable(root *tls.CA) []string {
 // These need to correspond to the flags in the current edge
 func helmOverridesEdge(root *tls.CA) []string {
 	return []string{
-		"--set", "controllerLogLevel=debug",
+		"--set", "global.controllerLogLevel=debug",
 		"--set", "global.linkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "global.proxy.image.version=" + TestHelper.GetVersion(),
 		"--set", "global.identityTrustDomain=cluster.local",
@@ -417,8 +417,8 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "grafana.proxy.resources.memory.request=103Mi",
 		"--set", "identityProxyResources.cpu.limit=1040m",
 		"--set", "identityProxyResources.memory.request=104Mi",
-		"--set", "prometheusProxyResources.cpu.limit=1050m",
-		"--set", "prometheusProxyResources.memory.request=105Mi",
+		"--set", "prometheus.proxy.resources.cpu.limit=1050m",
+		"--set", "prometheus.proxy.resources.memory.request=105Mi",
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
 		"--set", "smiMetricsProxyResources.cpu.limit=1070m",

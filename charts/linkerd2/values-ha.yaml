@@ -46,13 +46,14 @@ grafana:
 heartbeatResources: *controller_resources
 
 # prometheus configuration
-prometheusResources:
-  cpu:
-    limit: "4"
-    request: 300m
-  memory:
-    limit: 8192Mi
-    request: 300Mi
+prometheus:
+  resources:
+    cpu:
+      limit: "4"
+      request: 300m
+    memory:
+      limit: 8192Mi
+      request: 300Mi
 
 # proxy injector configuration
 proxyInjectorResources: *controller_resources

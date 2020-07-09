@@ -69,7 +69,7 @@ export class ResourceDetailBase extends React.Component {
       resourceMetrics: [],
       podMetrics: [], // metrics for all pods whose owner is this resource
       upstreamMetrics: {}, // metrics for resources who send traffic to this resource
-      downstreamMetrics: {}, // metrics for resources who this resouce sends traffic to
+      downstreamMetrics: {}, // metrics for resources who this resource sends traffic to
       unmeshedSources: {},
       resourceIsMeshed: true,
       pendingRequests: false,

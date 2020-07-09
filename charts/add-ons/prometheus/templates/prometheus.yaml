@@ -15,15 +15,10 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   prometheus.yml: |-
-    {{- if .Values.prometheusAlertmanagers }}
-    alerting:
-      alertmanagers:
-        {{- toYaml .Values.prometheusAlertmanagers | trim | nindent 8 }}
-    {{- end }}
     global:
-      scrape_interval: 10s
-      scrape_timeout: 10s
-      evaluation_interval: 10s
+      {{- if .Values.globalConfig -}}
+      {{- toYaml .Values.globalConfig | trim | nindent 6 }}
+      {{- end}}
 
     rule_files:
     - /etc/prometheus/*_rules.yml
@@ -34,7 +29,6 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
-    {{ if .Values.grafana.enabled -}}
     - job_name: 'grafana'
       kubernetes_sd_configs:
       - role: pod
@@ -45,7 +39,6 @@ data:
         - __meta_kubernetes_pod_container_name
         action: keep
         regex: ^grafana$
-      {{- end}}
 
     #  Required for: https://grafana.com/grafana/dashboards/315
     - job_name: 'kubernetes-nodes-cadvisor'
@@ -54,7 +47,6 @@ data:
         ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         insecure_skip_verify: true
       bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-
       kubernetes_sd_configs:
       - role: node
       relabel_configs:
@@ -153,6 +145,27 @@ data:
       # Copy tmp labels into real labels
       - action: labelmap
         regex: __tmp_pod_label_(.+)
+
+    {{- if .Values.scrapeConfigs }}
+    {{- toYaml .Values.scrapeConfigs | trim | nindent 4 }}
+    {{- end }}
+
+    {{-  if (or .Values.alertManagers .Values.alertRelabelConfigs) }}
+    alerting:
+      alert_relabel_configs:
+        {{- if .Values.alertRelabelConfigs }}
+        {{- toYaml .Values.alertRelabelConfigs | trim | nindent 6 }}
+        {{- end }}
+      alertmanagers:
+        {{- if .Values.alertManagers }}
+        {{- toYaml .Values.alertManagers | trim | nindent 6 }}
+        {{- end }}
+    {{- end }}
+
+    {{- if .Values.remoteWrite }}
+    remote_write:
+      {{- toYaml .Values.remoteWrite | trim | nindent 4 }}
+    {{- end }}
 ---
 kind: Service
 apiVersion: v1
@@ -191,7 +204,7 @@ metadata:
   namespace: {{.Values.global.namespace}}
 spec:
   replicas: 1
-  {{- if .Values.prometheusPersistence.enabled }}
+  {{- if .Values.persistence }}
   strategy:
     type: Recreate
   {{- end }}
@@ -211,19 +224,18 @@ spec:
         {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       securityContext:
         fsGroup: 65534
       containers:
       - args:
-        - --storage.tsdb.path=/data
-        - --storage.tsdb.retention.time=6h
-        - --config.file=/etc/prometheus/prometheus.yml
-        - --log.level={{lower .Values.prometheusLogLevel}}
-        {{- range $key, $value := .Values.prometheusExtraArgs}}
+        {{- range $key, $value := .Values.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}
-        image: {{.Values.prometheusImage}}
+        image: {{.Values.image}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -241,15 +253,15 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        {{- if .Values.prometheusResources -}}
-        {{- include "partials.resources" .Values.prometheusResources | nindent 8 }}
+        {{- if .Values.resources -}}
+        {{- include "partials.resources" .Values.resources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsNonRoot: true
           runAsUser: 65534
           runAsGroup: 65534
         volumeMounts:
-      {{- range .Values.prometheusRuleConfigMapMounts }}
+      {{- range .Values.ruleConfigMapMounts }}
         - name: {{ .name }}
           mountPath: /etc/prometheus/{{ .subPath }}
           subPath: {{ .subPath }}
@@ -261,10 +273,12 @@ spec:
           name: prometheus-config
           subPath: prometheus.yml
           readOnly: true
-      {{- $tree := deepCopy . }}
-      {{- if not (empty .Values.prometheusProxyResources) }}
-      {{- $r := merge .Values.prometheusProxyResources .Values.global.proxy.resources }}
+      {{- $tree := deepCopy . }}      
+      {{- if not (empty .Values.proxy) }}
+      {{- if not (empty .Values.proxy.resources) }}
+      {{- $r := merge .Values.proxy.resources .Values.global.proxy.resources }}
       {{- $_ := set $tree.Values.global.proxy "resources" $r }}
+      {{- end }}
       {{- end }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
@@ -273,13 +287,13 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-prometheus
       volumes:
-    {{- range .Values.prometheusRuleConfigMapMounts }}
+    {{- range .Values.ruleConfigMapMounts }}
       - name: {{ .name }}
         configMap:
           name: {{ .configMap }}
     {{- end }}
       - name: data
-    {{- if .Values.prometheusPersistence.enabled }}
+    {{- if .Values.persistence }}
         persistentVolumeClaim:
           claimName: linkerd-prometheus
     {{- else }}
@@ -291,8 +305,11 @@ spec:
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
+      {{ if not .Values.global.cniEnabled -}}
+      - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
-{{- if .Values.prometheusPersistence.enabled }}
+{{- if .Values.persistence }}
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -306,11 +323,11 @@ metadata:
   namespace: {{.Values.global.namespace}}
 spec:
   accessModes:
-    - {{ .Values.prometheusPersistence.accessMode | quote }}
+    - {{ .Values.persistence.accessMode | quote }}
   resources:
     requests:
-      storage: {{ .Values.prometheusPersistence.size | quote }}
-{{- if .Values.prometheusPersistence.storageClass }}
-  storageClassName: "{{ .Values.prometheusPersistence.storageClass }}"
+      storage: {{ .Values.persistence.size | quote }}
+{{- if .Values.persistence.storageClass }}
+  storageClassName: "{{ .Values.persistence.storageClass }}"
 {{- end }}
 {{- end }}

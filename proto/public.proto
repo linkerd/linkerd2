@@ -335,7 +335,7 @@ message ResourceSelection {
   // A string-formatted Kubernetes label selector as passed to `kubectl get
   // --selector`.
   //
-  // XXX in the future this may be superceded by a data structure that more
+  // XXX in the future this may be superseded by a data structure that more
   // richly describes a parsed label selector.
   string label_selector = 2;
 }
@@ -486,7 +486,7 @@ message RouteTable {
 
 message GatewaysTable {
   repeated Row rows = 1;
-  
+
   message Row {
     string namespace = 1;
     string name = 2;
@@ -520,7 +520,7 @@ service Api {
   rpc StatSummary(StatSummaryRequest) returns (StatSummaryResponse) {}
 
   rpc Edges(EdgesRequest) returns (EdgesResponse) {}
-  
+
   rpc Gateways(GatewaysRequest) returns (GatewaysResponse) {}
 
   rpc TopRoutes(TopRoutesRequest) returns (TopRoutesResponse) {}
@@ -529,10 +529,10 @@ service Api {
 
   rpc ListServices(ListServicesRequest) returns (ListServicesResponse) {}
 
-  // Superceded by `TapByResource`.
+  // Superseded by `TapByResource`.
   rpc Tap(TapRequest) returns (stream TapEvent) { option deprecated = true; }
 
-  // Superceded by tap APIServer.
+  // Superseded by tap APIServer.
   rpc TapByResource(TapByResourceRequest) returns (stream TapEvent) { option deprecated = true; }
 
   rpc Version(Empty) returns (VersionInfo) {}
