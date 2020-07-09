@@ -328,6 +328,10 @@ func TestInjectAutoPod(t *testing.T) {
 		VolumeMounts: []v1.VolumeMount{
 			v1.VolumeMount{
 				ReadOnly:  true,
+				MountPath: "/run",
+			},
+			v1.VolumeMount{
+				ReadOnly:  true,
 				MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
 			},
 		},
