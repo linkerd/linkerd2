@@ -6,7 +6,7 @@ on:
     - '*.md'
     - '**/*.md'
     branches:
-    - master
+    - main
 jobs:
   go_unit_tests:
     name: Go unit tests

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/helm/pkg/chartutil"
@@ -86,19 +87,23 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
   },
   "proxyInjector":{
     "keyPEM":"test-proxy-injector-key-pem",
-    "crtPEM":"test-proxy-injector-crt-pem"
+	"crtPEM":"test-proxy-injector-crt-pem",
+	"caBundle":"test-proxy-injector-ca-bundle"
   },
   "profileValidator":{
     "keyPEM":"test-profile-validator-key-pem",
-    "crtPEM":"test-profile-validator-crt-pem"
+    "crtPEM":"test-profile-validator-crt-pem",
+	"caBundle":"test-profile-validator-ca-bundle"
   },
   "tap":{
     "keyPEM":"test-tap-key-pem",
-    "crtPEM":"test-tap-crt-pem"
+    "crtPEM":"test-tap-crt-pem",
+	"caBundle":"test-tap-ca-bundle"
   },
   "smiMetrics":{
 	  "keyPEM":"test-smi-metrics-key-pem",
 	  "crtPEM":"test-smi-metrics-crt-pem",
+	  "caBundle":"test-smi-metrics-ca-bundle"
   }
 }`
 
@@ -175,6 +180,7 @@ func chartControlPlane(t *testing.T, ha bool, addOnConfig string, ignoreOutbound
 		"templates/_affinity.tpl",
 		"templates/_addons.tpl",
 		"templates/_nodeselector.tpl",
+		"templates/_tolerations.tpl",
 		"templates/_validate.tpl",
 	}
 
@@ -225,6 +231,7 @@ func chartControlPlane(t *testing.T, ha bool, addOnConfig string, ignoreOutbound
 }
 
 func buildAddOnChart(t *testing.T, addon l5dcharts.AddOn, chartPartials *pb.Chart) *pb.Chart {
+	rawValues := readValuesFile(t, filepath.Join("add-ons", addon.Name()))
 	addOnChart := pb.Chart{
 		Metadata: &pb.Metadata{
 			Name: addon.Name(),
@@ -234,6 +241,9 @@ func buildAddOnChart(t *testing.T, addon l5dcharts.AddOn, chartPartials *pb.Char
 		},
 		Dependencies: []*pb.Chart{
 			chartPartials,
+		},
+		Values: &pb.Config{
+			Raw: string(rawValues),
 		},
 	}
 
@@ -285,4 +295,18 @@ func readTestValues(t *testing.T, ha bool, ignoreOutboundPorts string, ignoreInb
 	values.Global.ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
 
 	return yaml.Marshal(values)
+}
+
+// readValues reads values.yaml file from the given path
+func readValuesFile(t *testing.T, path string) []byte {
+
+	valuesFiles := []*chartutil.BufferedFile{
+		{Name: chartutil.ValuesfileName},
+	}
+
+	if err := charts.FilesReader(path+"/", valuesFiles); err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
+	return valuesFiles[0].Data
 }

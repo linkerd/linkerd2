@@ -2,14 +2,15 @@
 # Linkerd2-cni Helm Chart
 
 Linkerd is a *service mesh*, designed to give platform-wide observability,
-reliability, and security without requiring configuration or code changes.
-The Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of
-setting up your pod's network so  incoming and outgoing traffic is proxied
-through the data plane.
+reliability, and security without requiring configuration or code changes. The
+Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of setting
+up your pod's network so  incoming and outgoing traffic is proxied through the
+data plane.
 
 ## Configuration
 
-The following table lists the configurable parameters of the Linkerd2-cni chart and their default values.
+The following table lists the configurable parameters of the Linkerd2-cni chart
+and their default values.
 
 | Parameter                            | Description                                                           | Default                       |
 |--------------------------------------|-----------------------------------------------------------------------|-------------------------------|
@@ -29,4 +30,3 @@ The following table lists the configurable parameters of the Linkerd2-cni chart 
 |`portsToRedirect`                     | Ports to redirect to proxy                                            ||
 |`proxyUID`                            | User id under which the proxy shall be ran                            |`2102`|
 |`useWaitFlag`                         | Configures the CNI plugin to use the -w flag for the iptables command |`false`|
-

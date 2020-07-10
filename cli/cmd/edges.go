@@ -23,7 +23,7 @@ type edgesOptions struct {
 
 func newEdgesOptions() *edgesOptions {
 	return &edgesOptions{
-		namespace:     getDefaultNamespace(),
+		namespace:     defaultNamespace,
 		outputFormat:  tableOutput,
 		allNamespaces: false,
 	}
@@ -119,7 +119,7 @@ func newCmdEdges() *cobra.Command {
 
 // validateEdgesRequestInputs ensures that the resource type and output format are both supported
 // by the edges command, since the edges command does not support all k8s resource types.
-func validateEdgesRequestInputs(targets []pb.Resource, options *edgesOptions) error {
+func validateEdgesRequestInputs(targets []*pb.Resource, options *edgesOptions) error {
 	for _, target := range targets {
 		if target.Name != "" {
 			return fmt.Errorf("Edges cannot be returned for a specific resource name; remove %s from query", target.Name)

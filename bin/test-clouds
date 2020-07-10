@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #
 # Run integration tests on 4 cloud providers:
@@ -51,7 +51,7 @@ if [ "$#" -ne 1 ]; then
     exit 64
 fi
 
-for CLUSTER in AKS DO EKS GKE; do
+for CLUSTER in 'AKS' 'DO' 'EKS' 'GKE'; do
     if [ -z "${!CLUSTER}" ]; then
         echo "\$$CLUSTER not set" >&2
         exit 64
@@ -63,9 +63,9 @@ check_linkerd_binary
 
 printf '\nKicking off tests for:\n- %s\n- %s\n- %s\n- %s\n\n' "$AKS" "$DO" "$EKS" "$GKE"
 
-trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
+trap 'trap - SIGTERM && kill -- -$$' SIGINT SIGTERM EXIT
 for CLUSTER in $AKS $DO $EKS $GKE; do
-    bin/test-run $linkerd_path l5d-integration-cloud $CLUSTER | while IFS= read -r line; do printf '[%s] %s\n' "$CLUSTER" "$line"; done &
+    bin/test-run "$linkerd_path" l5d-integration-cloud "$CLUSTER" | while IFS= read -r line; do printf '[%s] %s\n' "$CLUSTER" "$line"; done &
 done
 
 wait

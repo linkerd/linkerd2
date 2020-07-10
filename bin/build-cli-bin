@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 set -eu
 
@@ -8,6 +8,7 @@ set -eu
 
 bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
+# shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
 
 case $(uname) in

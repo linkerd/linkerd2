@@ -40,6 +40,8 @@ items:
         - env:
           - name: LINKERD2_PROXY_LOG
             value: warn,linkerd=info
+          - name: LINKERD2_PROXY_LOG_FORMAT
+            value: plain
           - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
             value: linkerd-dst.linkerd.svc.cluster.local:8086
           - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -136,7 +138,7 @@ items:
           - "2102"
           - --inbound-ports-to-ignore
           - 4190,4191
-          image: gcr.io/linkerd-io/proxy-init:v1.3.2
+          image: gcr.io/linkerd-io/proxy-init:v1.3.3
           imagePullPolicy: IfNotPresent
           name: linkerd-init
           resources:
@@ -157,7 +159,12 @@ items:
             runAsNonRoot: false
             runAsUser: 0
           terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+          - mountPath: /run
+            name: linkerd-proxy-init-xtables-lock
         volumes:
+        - emptyDir: {}
+          name: linkerd-proxy-init-xtables-lock
         - emptyDir:
             medium: Memory
           name: linkerd-identity-end-entity
@@ -196,6 +203,8 @@ items:
         - env:
           - name: LINKERD2_PROXY_LOG
             value: warn,linkerd=info
+          - name: LINKERD2_PROXY_LOG_FORMAT
+            value: plain
           - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
             value: linkerd-dst.linkerd.svc.cluster.local:8086
           - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -292,7 +301,7 @@ items:
           - "2102"
           - --inbound-ports-to-ignore
           - 4190,4191
-          image: gcr.io/linkerd-io/proxy-init:v1.3.2
+          image: gcr.io/linkerd-io/proxy-init:v1.3.3
           imagePullPolicy: IfNotPresent
           name: linkerd-init
           resources:
@@ -313,7 +322,12 @@ items:
             runAsNonRoot: false
             runAsUser: 0
           terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+          - mountPath: /run
+            name: linkerd-proxy-init-xtables-lock
         volumes:
+        - emptyDir: {}
+          name: linkerd-proxy-init-xtables-lock
         - emptyDir:
             medium: Memory
           name: linkerd-identity-end-entity

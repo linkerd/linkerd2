@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+
+set -eu
+
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+
+# For more information on shellcheck failures:
+# https://github.com/koalaman/shellcheck/wiki/Checks
+
+# We want the word splitting for the shellcheck arguments
+# shellcheck disable=SC2046
+"$bindir"/shellcheck -x -P "$bindir" $(find "$rootdir" -type f \
+		! -path "$rootdir"/.git/hooks/\*.sample \
+		| while read -r f; do [ "$(file -b --mime-type "$f")" = 'text/x-shellscript' ] && printf '%s\0' "$f"; done | xargs -0)

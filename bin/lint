@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 set -eu
 
-lintversion=1.23.8
+lintversion=1.25.1
 
 cd "$(pwd -P)"
 
@@ -12,12 +12,11 @@ targetbin=$rootdir/target/bin
 
 cd "$rootdir"
 
-os=linux
 exe=
 if [ "$(uname -s)" = Darwin ]; then
-  os=darwin
+  # Darwin's uname doesn't support the -o flag so we short circuit here.
+  :;
 elif [ "$(uname -o)" = Msys ]; then
-  os=windows
   exe=.exe
 fi
 

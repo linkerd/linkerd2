@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 )
 
@@ -54,11 +53,7 @@ func TestRender(t *testing.T) {
 	metaConfig.Global.LinkerdNamespace = "Namespace"
 	metaValues := &charts.Values{
 		ControllerImage:             "ControllerImage",
-		ControllerImageVersion:      "ControllerImageVersion",
 		WebImage:                    "WebImage",
-		PrometheusImage:             "PrometheusImage",
-		ControllerLogLevel:          "ControllerLogLevel",
-		PrometheusLogLevel:          "PrometheusLogLevel",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
@@ -67,12 +62,15 @@ func TestRender(t *testing.T) {
 		InstallNamespace:            true,
 		Identity:                    defaultValues.Identity,
 		NodeSelector:                defaultValues.NodeSelector,
+		Tolerations:                 defaultValues.Tolerations,
 		Global: &charts.Global{
 			Namespace:                "Namespace",
 			ClusterDomain:            "cluster.local",
 			ImagePullPolicy:          "ImagePullPolicy",
 			CliVersion:               "CliVersion",
 			ControllerComponentLabel: "ControllerComponentLabel",
+			ControllerLogLevel:       "ControllerLogLevel",
+			ControllerImageVersion:   "ControllerImageVersion",
 			ControllerNamespaceLabel: "ControllerNamespaceLabel",
 			WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
 			CreatedByAnnotation:      "CreatedByAnnotation",
@@ -84,12 +82,14 @@ func TestRender(t *testing.T) {
 			IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
 			IdentityTrustAnchorsPEM:  defaultValues.Global.IdentityTrustAnchorsPEM,
 			Proxy: &charts.Proxy{
+				DestinationGetNetworks: "DestinationGetNetworks",
 				Image: &charts.Image{
 					Name:       "ProxyImageName",
 					PullPolicy: "ImagePullPolicy",
 					Version:    "ProxyVersion",
 				},
-				LogLevel: "warn,linkerd=info",
+				LogLevel:  "warn,linkerd=info",
+				LogFormat: "plain",
 				Ports: &charts.Ports{
 					Admin:    4191,
 					Control:  4190,
@@ -115,6 +115,10 @@ func TestRender(t *testing.T) {
 						Request: "10Mi",
 					},
 				},
+				XTMountPath: &charts.VolumeMountPath{
+					MountPath: "/run",
+					Name:      "linkerd-proxy-init-xtables-lock",
+				},
 			},
 		},
 		Configs: charts.ConfigJSONs{
@@ -129,6 +133,10 @@ func TestRender(t *testing.T) {
 		SMIMetrics:         defaultValues.SMIMetrics,
 		Dashboard: &charts.Dashboard{
 			Replicas: 1,
+		},
+		Prometheus: charts.Prometheus{
+			"enabled": true,
+			"image":   "PrometheusImage",
 		},
 		Tracing: map[string]interface{}{
 			"enabled": false,
@@ -235,6 +243,14 @@ func TestRender(t *testing.T) {
 	withAddOnControlPlaneStageValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withAddOnControlPlaneStageValues)
 
+	withCustomDestinationGetNets, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withCustomDestinationGetNets.destinationGetNetworks = []string{"10.0.0.0/8", "172.0.0.0/8"}
+	withCustomDestinationGetNetsValues, _, _ := withCustomDestinationGetNets.validateAndBuild("", nil)
+	addFakeTLSSecrets(withCustomDestinationGetNetsValues)
+
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
@@ -253,6 +269,7 @@ func TestRender(t *testing.T) {
 		{withCustomRegistryValues, "install_custom_registry.golden"},
 		{withAddOnConfigStageValues, "install_addon_config.golden"},
 		{withAddOnControlPlaneStageValues, "install_addon_control-plane.golden"},
+		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden"},
 	}
 
 	for i, tc := range testCases {
@@ -322,6 +339,24 @@ func TestValidate(t *testing.T) {
 		}
 	})
 
+	t.Run("Rejects invalid destination networks", func(t *testing.T) {
+		options, err := testInstallOptions()
+		if err != nil {
+			t.Fatalf("Unexpected error: %v\n", err)
+		}
+
+		options.destinationGetNetworks = []string{"wrong"}
+		expected := "cannot parse destination get networks: invalid CIDR address: wrong"
+
+		err = options.validate()
+		if err == nil {
+			t.Fatal("Expected error, got nothing")
+		}
+		if err.Error() != expected {
+			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, err)
+		}
+	})
+
 	t.Run("Rejects invalid controller log level", func(t *testing.T) {
 		options, err := testInstallOptions()
 		if err != nil {
@@ -337,31 +372,6 @@ func TestValidate(t *testing.T) {
 		}
 		if err.Error() != expected {
 			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, err)
-		}
-	})
-
-	t.Run("Ensure log level input is converted to lower case before passing to prometheus", func(t *testing.T) {
-		underTest, err := testInstallOptions()
-		if err != nil {
-			t.Fatalf("Unexpected error: %v\n", err)
-		}
-
-		underTest.controllerLogLevel = "DEBUG"
-		expected := "debug"
-
-		testValues := new(pb.All)
-		testValues.Global = new(pb.Global)
-		testValues.Proxy = new(pb.Proxy)
-		testValues.Install = new(pb.Install)
-
-		actual, err := underTest.buildValuesWithoutIdentity(testValues)
-
-		if err != nil {
-			t.Fatalf("Unexpected error occurred %s", err)
-		}
-
-		if actual.PrometheusLogLevel != expected {
-			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, actual.PrometheusLogLevel)
 		}
 	})
 
@@ -503,10 +513,14 @@ func fakeHeartbeatSchedule() string {
 func addFakeTLSSecrets(values *charts.Values) {
 	values.ProxyInjector.CrtPEM = "proxy injector crt"
 	values.ProxyInjector.KeyPEM = "proxy injector key"
-	values.ProfileValidator.CrtPEM = "proxy injector crt"
-	values.ProfileValidator.KeyPEM = "proxy injector key"
+	values.ProxyInjector.CaBundle = "proxy injector CA bundle"
+	values.ProfileValidator.CrtPEM = "profile validator crt"
+	values.ProfileValidator.KeyPEM = "profile validator key"
+	values.ProfileValidator.CaBundle = "profile validator CA bundle"
 	values.Tap.CrtPEM = "tap crt"
 	values.Tap.KeyPEM = "tap key"
+	values.Tap.CaBundle = "tap CA bundle"
 	values.SMIMetrics.CrtPEM = "smi metrics crt"
 	values.SMIMetrics.KeyPEM = "smi metrics key"
+	values.SMIMetrics.CaBundle = "smi metrics CA bundle"
 }

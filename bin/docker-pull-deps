@@ -1,11 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eu
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
+# shellcheck source=_docker.sh
 . "$bindir"/_docker.sh
+# shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
 
-docker_pull base       2019-09-04.01       || true
+docker_pull base       2020-06-08.01       || true
 docker_pull go-deps    "$(go_deps_sha)"    || true

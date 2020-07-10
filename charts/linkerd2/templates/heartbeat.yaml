@@ -12,7 +12,7 @@ metadata:
   labels:
     app.kubernetes.io/name: heartbeat
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: heartbeat
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
@@ -30,12 +30,15 @@ spec:
           annotations:
             {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
         spec:
+          {{- if .Values.tolerations -}}
+          {{- include "linkerd.tolerations" . | nindent 10 }}
+          {{- end -}}
           {{- include "linkerd.node-selector" . | nindent 10 }}
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
           containers:
           - name: heartbeat
-            image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+            image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
             imagePullPolicy: {{.Values.global.imagePullPolicy}}
             args:
             - "heartbeat"
@@ -44,7 +47,7 @@ spec:
             {{- if .Values.global.prometheusUrl }}
             - "-prometheus-url={{.Values.global.prometheusUrl}}"
             {{- else if .Values.prometheus.enabled }}
-            - "-prometheus-url=http://{{.Values.prometheus.name}}.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090"
+            - "-prometheus-url=http://linkerd-prometheus.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090"
             {{- end }}
             {{- if .Values.heartbeatResources -}}
             {{- include "partials.resources" .Values.heartbeatResources | nindent 12 }}

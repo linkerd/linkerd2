@@ -46,16 +46,16 @@ For example "11,22,55,44" will become "11","22","55","44"
 {{- end -}}
 
 {{/*
-Splits a coma separated list into a list of port objects.
-For example "11,22,55" will become{"port":11},{"port":22},
-{"port":55}
+Splits a coma separated list into a list of PortRange objects.
+For example "11,22,55" will become{"portRange":11},{"portRange":22},
+{"portRange":55}
 */}}
-{{- define "partials.splitStringListToPorts" -}}
+{{- define "partials.splitStringListToPortRanges" -}}
 {{- if gt (len .) 0 -}}
 {{- $ports := splitList "," . -}}
 {{- $last := sub (len $ports) 1 -}}
 {{- range $i,$port := $ports -}}
-{"port":{{$port}}}{{ternary "," "" (ne $i $last)}}
+{"portRange":"{{$port}}"}{{ternary "," "" (ne $i $last)}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

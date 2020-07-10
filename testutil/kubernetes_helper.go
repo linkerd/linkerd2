@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -24,6 +25,19 @@ type KubernetesHelper struct {
 	k8sContext string
 	clientset  *kubernetes.Clientset
 	retryFor   func(time.Duration, func() error) error
+}
+
+// RestartCountError is returned by CheckPods() whenever a pod has restarted exactly one time.
+// Consumers should log this type of error instead of failing the test.
+// This is to alleviate CI flakiness stemming from a containerd bug.
+// See https://github.com/kubernetes/kubernetes/issues/89064
+// See https://github.com/containerd/containerd/issues/4068
+type RestartCountError struct {
+	msg string
+}
+
+func (e *RestartCountError) Error() string {
+	return e.msg
 }
 
 // NewKubernetesHelper creates a new instance of KubernetesHelper.
@@ -163,12 +177,28 @@ func (h *KubernetesHelper) GetConfigUID(namespace string) (string, error) {
 	return string(cm.GetUID()), nil
 }
 
+// GetResources returns the resource limits and requests set on a deployment
+// of the set name in the given namespace
+func (h *KubernetesHelper) GetResources(containerName, deploymentName, namespace string) (corev1.ResourceRequirements, error) {
+	dep, err := h.clientset.AppsV1().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return corev1.ResourceRequirements{}, err
+	}
+
+	for _, container := range dep.Spec.Template.Spec.Containers {
+		if container.Name == containerName {
+			return container.Resources, nil
+		}
+	}
+	return corev1.ResourceRequirements{}, fmt.Errorf("container %s not found in deployment %s in namespace %s", containerName, deploymentName, namespace)
+}
+
 // CheckPods checks that a deployment in a namespace contains the expected
 // number of pods in the Running state, and that no pods have been restarted.
 func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, replicas int) error {
 	var checkedPods []corev1.Pod
 
-	err := h.retryFor(3*time.Minute, func() error {
+	err := h.retryFor(6*time.Minute, func() error {
 		checkedPods = []corev1.Pod{}
 		pods, err := h.clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 		if err != nil {
@@ -208,9 +238,13 @@ func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, re
 
 	for _, pod := range checkedPods {
 		for _, status := range append(pod.Status.ContainerStatuses, pod.Status.InitContainerStatuses...) {
-			if status.RestartCount != 0 {
-				return fmt.Errorf("Container [%s] in pod [%s] in namespace [%s] has restart count [%d]",
-					status.Name, pod.Name, pod.Namespace, status.RestartCount)
+			errStr := fmt.Sprintf("Container [%s] in pod [%s] in namespace [%s] has restart count [%d]",
+				status.Name, pod.Name, pod.Namespace, status.RestartCount)
+			if status.RestartCount == 1 {
+				return &RestartCountError{errStr}
+			}
+			if status.RestartCount > 1 {
+				return errors.New(errStr)
 			}
 		}
 	}

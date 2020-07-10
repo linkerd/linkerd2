@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Builds (or pulls) our go-deps docker image.
 
@@ -11,7 +11,9 @@ fi
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
+# shellcheck source=_docker.sh
 . "$bindir"/_docker.sh
+# shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
 
 tag=$(go_deps_sha)

@@ -30,10 +30,10 @@
     "port": {{.Values.global.proxy.ports.control}}
   },
   "ignoreInboundPorts":[
-    {{- include "partials.splitStringListToPorts" .Values.global.proxyInit.ignoreInboundPorts -}}
+    {{- include "partials.splitStringListToPortRanges" .Values.global.proxyInit.ignoreInboundPorts -}}
   ],
   "ignoreOutboundPorts":[
-    {{- include "partials.splitStringListToPorts" .Values.global.proxyInit.ignoreOutboundPorts -}}
+    {{- include "partials.splitStringListToPortRanges" .Values.global.proxyInit.ignoreOutboundPorts -}}
   ],
   "inboundPort":{
     "port": {{.Values.global.proxy.ports.inbound}}
@@ -54,6 +54,7 @@
   "logLevel":{
     "level": "{{.Values.global.proxy.logLevel}}"
   },
+  "logFormat": "{{.Values.global.proxy.logFormat}}",
   "disableExternalProfiles": {{not .Values.global.proxy.enableExternalProfiles}},
   "proxyVersion": "{{.Values.global.proxy.image.version}}",
   "proxyInitImageVersion": "{{.Values.global.proxyInit.image.version}}",
@@ -61,7 +62,8 @@
     "imageName":"{{.Values.debugContainer.image.name}}",
     "pullPolicy":"{{.Values.debugContainer.image.pullPolicy}}"
   },
-  "debugImageVersion": "{{.Values.debugContainer.image.version}}"
+  "debugImageVersion": "{{.Values.debugContainer.image.version}}",
+  "destinationGetNetworks": "{{.Values.global.proxy.destinationGetNetworks}}"
 }
 {{- end -}}
 

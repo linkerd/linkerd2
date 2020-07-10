@@ -19,9 +19,10 @@ The identity component of Linkerd requires setting up a trust anchor
 certificate, and an issuer certificate with its key. These need to be provided
 to Helm by the user (unlike when using the `linkerd install` CLI which can
 generate these automatically). You can provide your own, or follow [these
-instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new ones.
+instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new
+ones.
 
-Note that the provided certificates must be ECDSA certficates.
+Note that the provided certificates must be ECDSA certificates.
 
 ## Adding Linkerd's Helm repository
 
@@ -80,7 +81,8 @@ helm install \
 
 ## Configuration
 
-The following table lists the configurable parameters of the Linkerd2 chart and their default values.
+The following table lists the configurable parameters of the Linkerd2 chart and
+their default values.
 
 | Parameter                                   | Description                                                                                                                                                                           | Default                              |
 |:--------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------|
@@ -93,6 +95,8 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | `debugContainer.image.name`                 | Docker image for the debug container                                                                                                                                                  | `gcr.io/linkerd-io/debug`            |
 | `debugContainer.image.pullPolicy`           | Pull policy for the debug container Docker image                                                                                                                                      | `IfNotPresent`                       |
 | `debugContainer.image.version`              | Tag for the debug container Docker image                                                                                                                                              | latest version                       |
+| `destinationResources`                      | CPU and Memory resources required by destination (see `global.proxy.resources` for sub-fields)             |   |
+| `destinationProxyResources`                 | CPU and Memory resources required by proxy injected into destination pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
 | `disableHeartBeat`                          | Set to true to not start the heartbeat cronjob                                                                                                                                        | `false`                              |
 | `enableH2Upgrade`                           | Allow proxies to perform transparent HTTP/2 upgrading                                                                                                                                 | `true`                               |
 | `global.clusterDomain`                      | Kubernetes DNS Domain name to use                                                                                                                                                     | `cluster.local`                      |
@@ -106,11 +110,13 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | `global.linkerdNamespaceLabel`              | Control plane label. Do not edit                                                                                                                                                      | `linkerd.io/control-plane-component` |
 | `global.linkerdVersion`                     | Control plane version                                                                                                                                                                 | latest version                       |
 | `global.namespace`                          | Control plane namespace                                                                                                                                                               | `linkerd`                            |
+| `global.proxy.destinationGetNetworks`       | Network ranges for which the Linkerd proxy does destination lookups by IP address                                                                                                     | `10.0.0.0/8,172.16.0.0/12,192.168.0.0/16` |
 | `global.proxy.enableExternalProfiles`       | Enable service profiles for non-Kubernetes services                                                                                                                                   | `false`                              |
 | `global.proxy.image.name`                   | Docker image for the proxy                                                                                                                                                            | `gcr.io/linkerd-io/proxy`            |
 | `global.proxy.image.pullPolicy`             | Pull policy for the proxy container Docker image                                                                                                                                      | `IfNotPresent`                       |
 | `global.proxy.image.version`                | Tag for the proxy container Docker image                                                                                                                                              | latest version                       |
 | `global.proxy.logLevel`                     | Log level for the proxy                                                                                                                                                               | `warn,linkerd=info`                  |
+| `global.proxy.logFormat`                     | Log format (`plain` or `json`) for the proxy                                                                                                                                                               | `plain`                  |
 | `global.proxy.ports.admin`                  | Admin port for the proxy container                                                                                                                                                    | `4191`                               |
 | `global.proxy.ports.control`                | Control port for the proxy container                                                                                                                                                  | `4190`                               |
 | `global.proxy.ports.inbound`                | Inbound port for the proxy container                                                                                                                                                  | `4143`                               |
@@ -135,6 +141,7 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | `global.proxyInjectAnnotation`              | Annotation label to signal injection. Do not edit.                                                                                                                                    |                                      |
 | `global.proxyInjectDisabled`                | Annotation value to disable injection. Do not edit.                                                                                                                                   | `disabled`                           |
 | `grafanaImage`                              | Docker image for the Grafana container                                                                                                                                                | `gcr.io/linkerd-io/grafana`          |
+| `grafanaResources`                          | CPU and Memory resources required by grafana (see `global.proxy.resources` for sub-fields)             |   |
 | `heartbeatSchedule`                         | Config for the heartbeat cronjob                                                                                                                                                      | `0 0 * * *`                          |
 | `identity.issuer.clockSkewAllowance`        | Amount of time to allow for clock skew within a Linkerd cluster                                                                                                                       | `20s`                                |
 | `identity.issuer.crtExpiry`                 | Expiration timestamp for the issuer certificate. It must be provided during install                                                                                                   |                                      |
@@ -143,22 +150,45 @@ The following table lists the configurable parameters of the Linkerd2 chart and 
 | `identity.issuer.scheme`                    | Which scheme is used for the identity issuer secret format                                                                                                                            | `linkerd.io/tls`                     |
 | `identity.issuer.tls.crtPEM`                | Issuer certificate (ECDSA). It must be provided during install.                                                                                                                       |                                      |
 | `identity.issuer.tls.keyPEM`                | Key for the issuer certificate (ECDSA). It must be provided during install.                                                                                                           |                                      |
+| `identityResources`                         | CPU and Memory resources required by the identity controller (see `global.proxy.resources` for sub-fields)             |   |
+| `identityPoxyResources`                     | CPU and Memory resources required by proxy injected into identity pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
 | `installNamespace`                          | Set to false when installing Linkerd in a custom namespace. See the [Linkerd documentation](https://linkerd.io/2/tasks/install-helm/#customizing-the-namespace) for more information. | `true`                               |
 | `omitWebhookSideEffects`                    | Omit the `sideEffects` flag in the webhook manifests                                                                                                                                  | `false`                              |
-| `prometheusAlertmanagers`                   | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter.                                                                             | `[]`                                 |
-| `prometheusExtraArgs`                       | Extra command line options for Prometheus                                                                                                                                             | `{}`                                 |
-| `prometheusImage`                           | Docker image for the Prometheus container                                                                                                                                             | `prom/prometheus:v2.15.2`            |
-| `prometheusLogLevel`                        | Log level for Prometheus                                                                                                                                                              | `info`                               |
-| `prometheusRuleConfigMapMounts`             | Alerting/recording rule ConfigMap mounts (sub-path names must end in `_rules.yml` or `_rules.yaml`)                                                                                   | `[]`                                 |
+| `proxyInjector.externalSecret`              | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below).                                                 | false                              |
 | `proxyInjector.crtPEM`                      | Certificate for the proxy injector. If not provided then Helm will generate one.                                                                                                      |                                      |
-| `proxyInjector.keyPEM`                      | Certificate key for the proxy injector. If not provided then Helm will generate one.                                                                                                  |                                      |
+| `proxyInjector.keyPEM`                      | Certificate key for the proxy injector. If not provided then Helm will generate one.                                                                                                      |                                      |
+| `proxyInjector.caBundle`                    | Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated.        |   |
+| `proxyInjectorResources`                    | CPU and Memory resources required by the proxy injector (see `global.proxy.resources` for sub-fields)             |   |
+| `proxyInjectorProxyResources`               | CPU and Memory resources required by proxy injected into the proxy injector pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
+| `profileValidator.externalSecret`           | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below).                            | false                                      |
 | `profileValidator.crtPEM`                   | Certificate for the service profile validator. If not provided then Helm will generate one.                                                                                           |                                      |
 | `profileValidator.keyPEM`                   | Certificate key for the service profile validator. If not provided then Helm will generate one.                                                                                       |                                      |
+| `profileValidator.caBundle`                 | Bundle of CA certificates for service profile validator. If not provided then Helm will use the certificate generated  for `profileValidator.crtPEM`. If `profileValidator.externalSecret` is set to true, this value must be set, as no certificate will be generated.         |  |
+| `publicAPIResources`                        | CPU and Memory resources required by controllers publicAPI (see `global.proxy.resources` for sub-fields)             |   |
+| `publicAPIProxyResources`                   | CPU and Memory resources required by proxy injected into controllers public API pod (see `global.proxy.resources` for sub-fields)             |  values  `global.proxy.resources`   |
+| `smiMetrics.enabled`                        | Enable collection of SMI metrics by setting to `true`. Default is `false`
+| `smiMetrics.externalSecret`                 | Do not create a secret resource for the SMI metrics component.  If this is set to `true`, the value `smiMetrics.caBundle` must be set (see below).                                           | false |
+| `smiMetrics.image`                          | The image and tag to use for the SMI metrics component.    | `deislabs/smi-metrics:v0.2.1` |
+| `smiMetrics.crtPEM`                         | Certificate for the SMI metrics component. If not provided then Helm will generate one.                                                                                                                                 ||
+| `smiMetrics.keyPEM`                         | Certificate key for the SMI metrics component. If not provided then Helm will generate one.                                                                                                                             ||
+| `smiMetrics.caBundle`                       | Bundle of CA certificates for the SMI metrics component. If not provided then Helm will use the certificate generated  for `smiMetrics.crtPEM`. If `smiMetrics.externalSecret` is set to true, this value must be set, as no certificate will be generated.                       ||
+| `smiMetricsResources`                       | CPU and Memory resources required by SMI metrics (see `global.proxy.resources` for sub-fields)             |   |
+| `smiMetricsProxyResources`                  | CPU and Memory resources required by proxy injected into SMI metrics pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
+| `spValidatorResources`                      | CPU and Memory resources required by the SP validator (see `global.proxy.resources` for sub-fields)             |   |
+| `spValidatorProxyResources`                 | CPU and Memory resources required by proxy injected into the SP validator pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
+| `tap.externalSecret`                        | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below).                                                  | false                                |
 | `tap.crtPEM`                                | Certificate for the Tap component. If not provided then Helm will generate one.                                                                                                       |                                      |
 | `tap.keyPEM`                                | Certificate key for Tap component. If not provided then Helm will generate one.                                                                                                       |                                      |
+| `tap.caBundle`                              | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated.                       ||
+| `tapResources`                              | CPU and Memory resources required by tap (see `global.proxy.resources` for sub-fields)             |   |
+| `tapProxyResources`                         | CPU and Memory resources required by proxy injected into tap pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
 | `webhookFailurePolicy`                      | Failure policy for the proxy injector                                                                                                                                                 | `Ignore`                             |
 | `webImage`                                  | Docker image for the web container                                                                                                                                                    | `gcr.io/linkerd-io/web`              |
+| `webResources`                              | CPU and Memory resources required by web UI (see `global.proxy.resources` for sub-fields)             |   |
+| `webProxyResources`                         | CPU and Memory resources required by proxy injected into web UI pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
 | `enforcedHostRegexp`                        | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information                                   | `""`                                 |
+| `nodeSelector`                        | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information                                   | `beta.kubernetes.io/os: linux`                                 |
+| `tolerations`                        | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information                                   |                                  |
 
 ## Add-Ons Configuration
 
@@ -170,11 +200,38 @@ The following table lists the configurable parameters for the Grafana Add-On.
 |:--------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------|
 | `grafana.enabled`                     | Flag to enable grafana instance to be installed                                                                                                                                                | `true`
 | `grafana.name`                | Name of the grafana instance Service                                                                                                                                                 | `linkerd-grafana`                             |
-| `grafana.image`                | Docker image for the grafana instance                                                                                                                                                 | `gcr.io/linkerd-io/grafana`                             |
+| `grafana.image.name`                | Docker image name for the grafana instance                                                                                                                                                 | `gcr.io/linkerd-io/grafana`                             |
 | `grafana.resources.cpu.limit`       | Maximum amount of CPU units that the grafana container can use                                                                                                                     ||
 | `grafana.resources.cpu.request`     | Amount of CPU units that the gafana container requests                                                                                                                            ||
 | `grafana.resources.memory.limit`    | Maximum amount of memory that grafana container can use                                                                                                                        ||
 | `grafana.resources.memory.request`  | Amount of memory that the grafana container requests                                                                                                                               ||
+| `grafana.proxy.resources`           | Structure analog to the `resources` fields above, but overriding the resources of the linkerd proxy injected into the grafana pod.   | values in `global.proxy.resources` of the linkerd2 chart. |
+
+### Prometheus Add-On
+
+The following table lists the configurable parameters for the Prometheus Add-On.
+
+| Parameter                             | Description                                                                                                                                                                           | Default                              |
+|:--------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------|
+| `prometheus.enabled`                     | Flag to enable prometheus instance to be installed                                                                                                                                                | `true`                             |
+| `prometheus.alert_relabel_configs`                   | Alert relabeling is applied to alerts before they are sent to the Alertmanager.                                                                            | `[]`                                 |
+| `prometheus.alertManagers`                   | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter.                                                                             | `[]`                                 |
+| `prometheus.args`                       |  Command line options for Prometheus binary                                                                                                                                             | `storage.tsdb.path: /data, storage.tsdb.retention.time: 6h, config.file: /etc/prometheus/prometheus.yml, log.level: *controller_log_level`                                 |
+| `prometheus.globalConfig`             | The global configuration specifies parameters that are valid in all other configuration contexts.                                                                 | `scrape_interval: 10s, scrape_timeout: 10s, evaluation_interval: 10s`                                 |
+| `prometheus.image`                | Docker image for the prometheus instance                                                                                                                                                 | `prom/prometheus:v2.15.2`                             |
+| `prometheus.proxy.resources`                  | CPU and Memory resources required by proxy injected into prometheus pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
+| `prometheus.persistence.storageClass`        | Storage class used to create prometheus data PV.                                                                                                                                                                                                                        | `nil`                                |
+| `prometheus.persistence.accessMode`          | PVC access mode.                                                                                                                                                                                                                                                        | `ReadWriteOnce`                      |
+| `prometheus.persistence.size`                | Prometheus data volume size.                                                                                                                                                                                                                                            | `8Gi`                                |
+| `prometheus.resources.cpu.limit`       | Maximum amount of CPU units that the prometheus container can use                                                                                                                     ||
+| `prometheus.resources.cpu.request`     | Amount of CPU units that the prometheus container requests                                                                                                                            ||
+| `prometheus.resources.memory.limit`    | Maximum amount of memory that prometheus container can use                                                                                                                        ||
+| `prometheus.resources.memory.request`  | Amount of memory that the prometheus container requests                                                                                                                               ||
+| `prometheus.ruleConfigMapMounts`             | Alerting/recording rule ConfigMap mounts (sub-path names must end in `_rules.yml` or `_rules.yaml`)                                                                                   | `[]`                                 |
+| `prometheus.scrapeConfigs`             | A scrape_config section specifies a set of targets and parameters describing how to scrape them.                                                        | `[]`                                 |
+
+Most of the above configuration match directly with the official Prometheus
+configuration which can be found [here](https://prometheus.io/docs/prometheus/latest/configuration/configuration)
 
 ### Tracing Add-On
 
@@ -199,11 +256,10 @@ The following table lists the configurable parameters for the Tracing Add-On.
 ## Get involved
 
 * Check out Linkerd's source code at [Github][linkerd2].
-* Join Linkerd's [user mailing list][linkerd-users],
-[developer mailing list][linkerd-dev], and [announcements mailing list][linkerd-announce].
+* Join Linkerd's [user mailing list][linkerd-users], [developer mailing
+  list][linkerd-dev], and [announcements mailing list][linkerd-announce].
 * Follow [@linkerd][twitter] on Twitter.
 * Join the [Linkerd Slack][slack].
-
 
 [cncf]: https://www.cncf.io/
 [getting-started]: https://linkerd.io/2/getting-started/

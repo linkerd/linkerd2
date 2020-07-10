@@ -24,3 +24,8 @@ downwardAPI:
     path: "labels"
 name: podinfo
 {{- end -}}
+
+{{ define "partials.proxyInit.volumes.xtables" -}}
+emptyDir: {}
+name: linkerd-proxy-init-xtables-lock
+{{- end -}}

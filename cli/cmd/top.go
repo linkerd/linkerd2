@@ -259,7 +259,7 @@ const (
 
 func newTopOptions() *topOptions {
 	return &topOptions{
-		namespace:     getDefaultNamespace(),
+		namespace:     defaultNamespace,
 		toResource:    "",
 		toNamespace:   "",
 		maxRps:        maxRps,
@@ -402,7 +402,7 @@ func getTrafficByResourceFromAPI(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourc
 	//       processEvents() ->
 	//         requestCh ->
 	//           renderTable()
-	eventCh := make(chan pb.TapEvent)
+	eventCh := make(chan *pb.TapEvent)
 	requestCh := make(chan topRequest, 100)
 
 	// for closing:
@@ -427,10 +427,10 @@ func getTrafficByResourceFromAPI(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourc
 	return nil
 }
 
-func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- pb.TapEvent, closing chan<- struct{}) {
+func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- *pb.TapEvent, closing chan<- struct{}) {
 	for {
-		event := pb.TapEvent{}
-		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, &event)
+		event := &pb.TapEvent{}
+		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, event)
 		if err != nil {
 			if err == io.EOF {
 				fmt.Println("Tap stream terminated")
@@ -446,7 +446,7 @@ func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- pb.TapEvent, closing
 	}
 }
 
-func processEvents(eventCh <-chan pb.TapEvent, requestCh chan<- topRequest, done <-chan struct{}) {
+func processEvents(eventCh <-chan *pb.TapEvent, requestCh chan<- topRequest, done <-chan struct{}) {
 	outstandingRequests := make(map[topRequestID]topRequest)
 
 	for {
@@ -462,7 +462,7 @@ func processEvents(eventCh <-chan pb.TapEvent, requestCh chan<- topRequest, done
 			case *pb.TapEvent_Http_RequestInit_:
 				id.stream = ev.RequestInit.GetId().Stream
 				outstandingRequests[id] = topRequest{
-					event:   &event,
+					event:   event,
 					reqInit: ev.RequestInit,
 				}
 

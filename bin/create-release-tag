@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -o errexit
 set -o nounset
@@ -85,7 +85,7 @@ if [ $# -ne 1 ]; then
 fi
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
-# shellcheck source=bin/_release.sh
+# shellcheck source=_release.sh
 tmp=$(. "$bindir"/_release.sh; extract_release_notes)
 
 # Create a signed tag with the commit message.

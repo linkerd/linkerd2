@@ -53,7 +53,7 @@ metadata:
   labels:
     app.kubernetes.io/name: identity
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: identity
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   name: linkerd-identity
@@ -81,6 +81,9 @@ spec:
         {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- if .Values.enablePodAntiAffinity -}}
       {{- $local := dict "component" "identity" "label" .Values.global.controllerComponentLabel -}}
@@ -89,9 +92,9 @@ spec:
       containers:
       - args:
         - identity
-        - -log-level={{.Values.controllerLogLevel}}
+        - -log-level={{.Values.global.controllerLogLevel}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
-        image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+        image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -119,7 +122,12 @@ spec:
           name: config
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
-      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- $tree := deepCopy . }}      
+      {{- if not (empty .Values.identityProxyResources) }}
+      {{- $r := merge .Values.identityProxyResources .Values.global.proxy.resources }}
+      {{- $_ := set $tree.Values.global.proxy "resources" $r }}
+      {{- end }}
+      - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
@@ -134,6 +142,9 @@ spec:
           secretName: linkerd-identity-issuer
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      {{ if not .Values.global.cniEnabled -}}
+      - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{end -}}

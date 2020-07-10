@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -44,7 +43,6 @@ type (
 		controlPlaneVersion         string
 		controllerReplicas          uint
 		controllerLogLevel          string
-		prometheusImage             string
 		highAvailability            bool
 		controllerUID               int64
 		disableH2Upgrade            bool
@@ -129,7 +127,6 @@ var (
 		"templates/web-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
-		"templates/prometheus-rbac.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
 		"templates/tap-rbac.yaml",
@@ -146,7 +143,6 @@ var (
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
 		"templates/web.yaml",
-		"templates/prometheus.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
@@ -182,8 +178,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		clusterDomain:               defaults.Global.ClusterDomain,
 		controlPlaneVersion:         version.Version,
 		controllerReplicas:          defaults.ControllerReplicas,
-		controllerLogLevel:          defaults.ControllerLogLevel,
-		prometheusImage:             defaults.PrometheusImage,
+		controllerLogLevel:          defaults.Global.ControllerLogLevel,
 		highAvailability:            defaults.Global.HighAvailability,
 		controllerUID:               defaults.ControllerUID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
@@ -198,6 +193,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			proxyVersion:           version.Version,
 			ignoreCluster:          false,
 			proxyImage:             defaults.Global.Proxy.Image.Name,
+			destinationGetNetworks: strings.Split(defaults.Global.Proxy.DestinationGetNetworks, ","),
 			initImage:              defaults.Global.ProxyInit.Image.Name,
 			initImageVersion:       version.ProxyInitVersion,
 			debugImage:             defaults.DebugContainer.Image.Name,
@@ -208,6 +204,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			ignoreOutboundPorts:    nil,
 			proxyUID:               defaults.Global.Proxy.UID,
 			proxyLogLevel:          defaults.Global.Proxy.LogLevel,
+			proxyLogFormat:         defaults.Global.Proxy.LogFormat,
 			proxyControlPort:       uint(defaults.Global.Proxy.Ports.Control),
 			proxyAdminPort:         uint(defaults.Global.Proxy.Ports.Admin),
 			proxyInboundPort:       uint(defaults.Global.Proxy.Ports.Inbound),
@@ -459,11 +456,6 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		"Log level for the controller and web components",
 	)
 
-	flags.StringVar(
-		&options.prometheusImage, "prometheus-image", options.prometheusImage,
-		"Custom Prometheus image name",
-	)
-
 	flags.BoolVar(
 		&options.highAvailability, "ha", options.highAvailability,
 		"Enable HA deployment config for the control plane (default false)",
@@ -555,7 +547,7 @@ func (options *installOptions) allStageFlagSet() *pflag.FlagSet {
 
 	flags.StringVar(
 		&options.addOnConfig, "addon-config", options.addOnConfig,
-		"A path to a configuration file of add-ons",
+		"A path to a configuration file of add-ons. If add-on config already exists, this new config gets merged with the existing one (unless --addon-overwrite is used)",
 	)
 
 	return flags
@@ -598,7 +590,16 @@ func (options *installOptions) installPersistentFlagSet() *pflag.FlagSet {
 func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Values) error {
 
 	if options.addOnConfig != "" {
-		addOnValues, err := ioutil.ReadFile(options.addOnConfig)
+		addOnValues, err := read(options.addOnConfig)
+		if err != nil {
+			return err
+		}
+
+		if len(addOnValues) != 1 {
+			return fmt.Errorf("Excepted a single configuration file, but got 0 or many")
+		}
+
+		addOnValuesRaw, err := ioutil.ReadAll(addOnValues[0])
 		if err != nil {
 			return err
 		}
@@ -607,8 +608,9 @@ func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Val
 		if err != nil {
 			return err
 		}
+
 		// Merge Add-On Values with Values
-		finalValues, err := mergeRaw(rawValues, addOnValues)
+		finalValues, err := mergeRaw(rawValues, addOnValuesRaw)
 		if err != nil {
 			return err
 		}
@@ -648,7 +650,7 @@ func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
 	flags.VisitAll(func(f *pflag.Flag) {
 		if f.Changed {
 			switch f.Name {
-			case "ignore-cluster", "control-plane-version", "proxy-version", "identity-issuer-certificate-file", "identity-issuer-key-file", "identity-trust-anchors-file":
+			case "ignore-cluster", "control-plane-version", "proxy-version", "identity-issuer-certificate-file", "identity-issuer-key-file", "identity-trust-anchors-file", "addon-config":
 				// These flags don't make sense to record.
 			default:
 				options.recordedFlags = append(options.recordedFlags, &pb.Install_Flag{
@@ -676,10 +678,6 @@ func (options *installOptions) validate() error {
 
 	if _, err := log.ParseLevel(options.controllerLogLevel); err != nil {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
-	}
-
-	if options.prometheusImage != "" && !alphaNumDashDotSlashColonUnderscore.MatchString(options.prometheusImage) {
-		return fmt.Errorf("%s is not a valid prometheus image", options.prometheusImage)
 	}
 
 	if err := options.proxyConfigOptions.validate(); err != nil {
@@ -754,8 +752,8 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Configs.Proxy = proxyJSON
 	installValues.Configs.Install = installJSON
 	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
-	installValues.ControllerImageVersion = configs.GetGlobal().GetVersion()
-	installValues.ControllerLogLevel = options.controllerLogLevel
+	installValues.Global.ControllerImageVersion = configs.GetGlobal().GetVersion()
+	installValues.Global.ControllerLogLevel = options.controllerLogLevel
 	installValues.ControllerReplicas = options.controllerReplicas
 	installValues.ControllerUID = options.controllerUID
 	installValues.Global.ControlPlaneTracing = options.controlPlaneTracing
@@ -763,14 +761,10 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.EnablePodAntiAffinity = options.highAvailability
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
-	installValues.Grafana["image"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
-	if options.prometheusImage != "" {
-		installValues.PrometheusImage = options.prometheusImage
-	}
+	installValues.Grafana["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.Global.CNIEnabled = options.cniEnabled
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
-	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat
@@ -779,13 +773,15 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.SMIMetrics.Enabled = options.smiMetricsEnabled
 
 	installValues.Global.Proxy = &l5dcharts.Proxy{
+		DestinationGetNetworks: strings.Join(options.destinationGetNetworks, ","),
 		EnableExternalProfiles: options.enableExternalProfiles,
 		Image: &l5dcharts.Image{
 			Name:       registryOverride(options.proxyImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
 			Version:    options.proxyVersion,
 		},
-		LogLevel: options.proxyLogLevel,
+		LogLevel:  options.proxyLogLevel,
+		LogFormat: options.proxyLogFormat,
 		Ports: &l5dcharts.Ports{
 			Admin:    int32(options.proxyAdminPort),
 			Control:  int32(options.proxyControlPort),
@@ -811,21 +807,16 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.ProxyInit.Image.Version = options.initImageVersion
 	installValues.Global.ProxyInit.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
 	installValues.Global.ProxyInit.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
+	installValues.Global.ProxyInit.XTMountPath = &l5dcharts.VolumeMountPath{
+		MountPath: k8s.MountPathXtablesLock,
+		Name:      k8s.InitXtablesLockVolumeMountName,
+	}
 
 	installValues.DebugContainer.Image.Name = registryOverride(options.debugImage, options.dockerRegistry)
 	installValues.DebugContainer.Image.PullPolicy = options.imagePullPolicy
 	installValues.DebugContainer.Image.Version = options.debugImageVersion
 
 	return installValues, nil
-}
-
-func toPromLogLevel(level string) string {
-	switch level {
-	case "panic", "fatal":
-		return "error"
-	default:
-		return level
-	}
 }
 
 func render(w io.Writer, values *l5dcharts.Values) error {
@@ -849,12 +840,17 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 	for _, addOn := range addOns {
 		addOnCharts[addOn.Name()] = &charts.Chart{
 			Name:      addOn.Name(),
-			Dir:       filepath.Join(addOnChartsPath, addOn.Name()),
+			Dir:       addOnChartsPath + "/" + addOn.Name(),
 			Namespace: controlPlaneNamespace,
 			RawValues: append(addOn.Values(), rawValues...),
-			Files: []*chartutil.BufferedFile{&chartutil.BufferedFile{
-				Name: chartutil.ChartfileName,
-			}},
+			Files: []*chartutil.BufferedFile{
+				{
+					Name: chartutil.ChartfileName,
+				},
+				{
+					Name: chartutil.ValuesfileName,
+				},
+			},
 		}
 	}
 
@@ -984,6 +980,8 @@ func (options *installOptions) proxyConfig() *pb.Proxy {
 		LogLevel: &pb.LogLevel{
 			Level: options.proxyLogLevel,
 		},
+		LogFormat:               options.proxyLogFormat,
+		DestinationGetNetworks:  strings.Join(options.destinationGetNetworks, ","),
 		DisableExternalProfiles: !options.enableExternalProfiles,
 		ProxyVersion:            options.proxyVersion,
 		ProxyInitImageVersion:   options.initImageVersion,
@@ -1163,7 +1161,7 @@ func (idopts *installIdentityOptions) genValues() (*identityWithAnchorsAndTrustD
 				IssuanceLifetime:    idopts.issuanceLifetime.String(),
 				CrtExpiry:           root.Cred.Crt.Certificate.NotAfter,
 				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-				TLS: &l5dcharts.TLS{
+				TLS: &l5dcharts.IssuerTLS{
 					KeyPEM: root.Cred.EncodePrivateKeyPEM(),
 					CrtPEM: root.Cred.Crt.EncodeCertificatePEM(),
 				},
@@ -1227,7 +1225,7 @@ func (idopts *installIdentityOptions) readValues() (*identityWithAnchorsAndTrust
 				IssuanceLifetime:    idopts.issuanceLifetime.String(),
 				CrtExpiry:           creds.Crt.Certificate.NotAfter,
 				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
-				TLS: &l5dcharts.TLS{
+				TLS: &l5dcharts.IssuerTLS{
 					KeyPEM: creds.EncodePrivateKeyPEM(),
 					CrtPEM: creds.EncodeCertificatePEM(),
 				},

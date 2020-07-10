@@ -73,24 +73,24 @@ func (rsu RemoteServiceUpdated) String() string {
 }
 
 func (rsd RemoteServiceDeleted) String() string {
-	return fmt.Sprintf("RemoteServiceDeleted: {name: %s, namespace: %s, gatewayData: %s}", rsd.Name, rsd.Namespace, rsd.GatewayData)
+	return fmt.Sprintf("RemoteServiceDeleted: {name: %s, namespace: %s }", rsd.Name, rsd.Namespace)
 }
 
-func (rgd *RemoteGatewayDeleted) String() string {
+func (rgd RemoteGatewayDeleted) String() string {
 	return fmt.Sprintf("RemoteGatewayDeleted: {gatewayData: %s}", rgd.gatewayData)
+}
+
+func (rgd *RemoteGatewayCreated) String() string {
+	return fmt.Sprintf("RemoteGatewayCreated: {gatewaySpec: %s}", rgd.gatewaySpec)
 }
 
 func (rgu RemoteGatewayUpdated) String() string {
 	var services []string
 
 	for _, s := range rgu.affectedServices {
-		services = append(services, fmt.Sprint(s))
+		services = append(services, formatService(s))
 	}
 	return fmt.Sprintf("RemoteGatewayUpdated: {gatewaySpec: %s, affectedServices: [%s]}", rgu.gatewaySpec, strings.Join(services, ","))
-}
-
-func (cgu ConsiderGatewayUpdateDispatch) String() string {
-	return fmt.Sprintf("ConsiderGatewayUpdateDispatch: {maybeGateway: %s}", formatService(cgu.maybeGateway))
 }
 
 func (cgu ClusterUnregistered) String() string {
@@ -113,24 +113,24 @@ func (od OnDeleteCalled) String() string {
 	return fmt.Sprintf("OnDeleteCalled: {svc: %s}", formatService(od.svc))
 }
 
+func (re RepairEndpoints) String() string {
+	return "RepairEndpoints"
+}
+
 //Events for probe manager
 
-func (msu MirroredServiceUnpaired) String() string {
-	return fmt.Sprintf("MirroredServiceUnpaired: {serviceName: %s, serviceNamespace: %s, gatewayName: %s, gatewayNs: %s, clusterName: %s}", msu.serviceName, msu.serviceNamespace, msu.gatewayName, msu.gatewayNs, msu.clusterName)
+func (ps probeSpec) String() string {
+	return fmt.Sprintf("ProbeSpec: {path: %s, port: %d, period: %d}", ps.path, ps.port, ps.periodInSeconds)
 }
 
-func (msp MirroredServicePaired) String() string {
-	return fmt.Sprintf("MirroredServicePaired: {serviceName: %s, serviceNamespace: %s, gatewaySpec: %s}", msp.serviceName, msp.serviceNamespace, msp.GatewaySpec)
+func (gmc GatewayMirrorCreated) String() string {
+	return fmt.Sprintf("GatewayMirrorCreated: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s, probeSpec: %s}", gmc.gatewayName, gmc.gatewayNamespace, gmc.clusterName, gmc.probeSpec)
 }
 
-func (gtwd GatewayDeleted) String() string {
-	return fmt.Sprintf("GatewayDeleted: {gatewayName: %s, gatewayNs: %s, clusterName: %s}", gtwd.gatewayName, gtwd.gatewayNs, gtwd.clusterName)
+func (gmd GatewayMirrorDeleted) String() string {
+	return fmt.Sprintf("GatewayMirrorDeleted: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s}", gmd.gatewayName, gmd.gatewayNamespace, gmd.clusterName)
 }
 
-func (cnr ClusterNotRegistered) String() string {
-	return fmt.Sprintf("ClusterNotRegistered: {clusterName: %s}", cnr.clusterName)
-}
-
-func (gtwu GatewayUpdated) String() string {
-	return fmt.Sprintf("GatewayUpdated: {gatewaySpec: %s}", gtwu.GatewaySpec)
+func (gmu GatewayMirrorUpdated) String() string {
+	return fmt.Sprintf("GatewayMirrorUpdated: {gatewayName: %s, gatewayNamespace: %s, clusterName: %s, probeSpec: %s}", gmu.gatewayName, gmu.gatewayNamespace, gmu.clusterName, gmu.probeSpec)
 }

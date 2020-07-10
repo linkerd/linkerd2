@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	cfg "github.com/linkerd/linkerd2/controller/gen/config"
@@ -28,8 +29,8 @@ const (
 	injectDisabledDesc               = "pods are not annotated to disable injection"
 	unsupportedDesc                  = "at least one resource injected"
 	udpDesc                          = "pod specs do not include UDP ports"
+	automountServiceAccountTokenDesc = "pods do not have automountServiceAccountToken set to \"false\""
 	slash                            = "/"
-	automountServiceAccountTokenDesc = "cannot enable mTLS when automountServiceAccountToken set to \"false\""
 )
 
 type resourceTransformerInject struct {
@@ -38,6 +39,7 @@ type resourceTransformerInject struct {
 	configs             *cfg.All
 	overrideAnnotations map[string]string
 	enableDebugSidecar  bool
+	closeWaitTimeout    time.Duration
 }
 
 func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transformer *resourceTransformerInject) int {
@@ -47,6 +49,7 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transforme
 func newCmdInject() *cobra.Command {
 	options := &proxyConfigOptions{}
 	var manualOption, enableDebugSidecar bool
+	var closeWaitTimeout time.Duration
 
 	cmd := &cobra.Command{
 		Use:   "inject [flags] CONFIG-FILE",
@@ -90,6 +93,7 @@ sub-folders, or coming from stdin.`,
 				configs:             configs,
 				overrideAnnotations: overrideAnnotations,
 				enableDebugSidecar:  enableDebugSidecar,
+				closeWaitTimeout:    closeWaitTimeout,
 			}
 			exitCode := uninjectAndInject(in, stderr, stdout, transformer)
 			os.Exit(exitCode)
@@ -134,6 +138,10 @@ sub-folders, or coming from stdin.`,
 	flags.StringSliceVar(&options.requireIdentityOnInboundPorts, "require-identity-on-inbound-ports", options.requireIdentityOnInboundPorts,
 		"Inbound ports on which the proxy should require identity")
 
+	flags.DurationVar(
+		&closeWaitTimeout, "close-wait-timeout", closeWaitTimeout,
+		"Sets nf_conntrack_tcp_timeout_close_wait")
+
 	cmd.PersistentFlags().AddFlagSet(flags)
 
 	return cmd
@@ -154,6 +162,10 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		conf.AppendPodAnnotation(k8s.ProxyEnableDebugAnnotation, "true")
 	}
 
+	if rt.closeWaitTimeout != time.Duration(0) {
+		conf.AppendPodAnnotation(k8s.CloseWaitTimeoutAnnotation, rt.closeWaitTimeout.String())
+	}
+
 	report, err := conf.ParseMetaAndYAML(bytes)
 	if err != nil {
 		return nil, nil, err
@@ -170,8 +182,8 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 		return b, reports, err
 	}
 	if b, _ := report.Injectable(); !b {
-		if !report.AutomountServiceAccountToken {
-			return bytes, reports, errors.New(automountServiceAccountTokenDesc)
+		if errs := report.ThrowInjectError(); len(errs) > 0 {
+			return bytes, reports, fmt.Errorf("failed to inject %s%s%s: %v", report.Kind, slash, report.Name, concatErrors(errs, ", "))
 		}
 		return bytes, reports, nil
 	}
@@ -221,6 +233,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	sidecar := []string{}
 	udp := []string{}
 	injectDisabled := []string{}
+	automountServiceAccountTokenFalse := []string{}
 	warningsPrinted := verbose
 
 	for _, r := range reports {
@@ -245,6 +258,11 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 		if r.InjectDisabled {
 			injectDisabled = append(injectDisabled, r.ResName())
+			warningsPrinted = true
+		}
+
+		if !r.AutomountServiceAccountToken {
+			automountServiceAccountTokenFalse = append(automountServiceAccountTokenFalse, r.ResName())
 			warningsPrinted = true
 		}
 	}
@@ -292,6 +310,9 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, udpDesc)))
 	}
 
+	if len(automountServiceAccountTokenFalse) == 0 && verbose {
+		output.Write([]byte(fmt.Sprintf("%s %s\n", okStatus, automountServiceAccountTokenDesc)))
+	}
 	//
 	// Summary
 	//
@@ -414,6 +435,11 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	if options.proxyLogLevel != "" {
 		configs.Proxy.LogLevel = &cfg.LogLevel{Level: options.proxyLogLevel}
 		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = options.proxyLogLevel
+	}
+
+	if options.proxyLogFormat != "" {
+		configs.Proxy.LogFormat = options.proxyLogFormat
+		overrideAnnotations[k8s.ProxyLogFormatAnnotation] = options.proxyLogFormat
 	}
 
 	if options.disableIdentity {

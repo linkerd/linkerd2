@@ -116,9 +116,8 @@ func busyTest(t *testing.T, output string) {
 	}
 	ts := httptest.NewServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			for _, event := range []pb.TapEvent{event1, event2} {
-				event := event // pin
-				err = protohttp.WriteProtoToHTTPResponse(w, &event)
+			for _, event := range []*pb.TapEvent{event1, event2} {
+				err = protohttp.WriteProtoToHTTPResponse(w, event)
 				if err != nil {
 					t.Fatalf("Unexpected error: %v", err)
 				}

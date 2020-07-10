@@ -58,7 +58,7 @@ func TestGetPods(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns error if cant find pods in API", func(t *testing.T) {
+	t.Run("Returns error if can't find pods in API", func(t *testing.T) {
 		mockClient := &public.MockAPIClient{}
 		mockClient.ErrorToReturn = errors.New("expected")
 

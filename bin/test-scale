@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This test script deploys the following:
 # - 1 Linkerd control-plane
@@ -68,32 +68,32 @@ linkerd_namespace=${2:-l5d-scale}
 # Deploy Linkerd
 #
 
-"$linkerd_path" -l $linkerd_namespace install | kubectl apply -f -
-"$linkerd_path" -l $linkerd_namespace check --expected-version=$linkerd_version
-"$linkerd_path" -l $linkerd_namespace install-sp | kubectl apply -f -
+"$linkerd_path" -l "$linkerd_namespace" install | kubectl apply -f -
+"$linkerd_path" -l "$linkerd_namespace" check --expected-version="$linkerd_version"
+"$linkerd_path" -l "$linkerd_namespace" install-sp | kubectl apply -f -
 
 #
 # Deploy Books
 #
 
-BOOKS_BACKEND=$(curl -s https://raw.githubusercontent.com/BuoyantIO/booksapp/master/k8s/mysql-backend.yml)
+BOOKS_BACKEND=$(curl -s https://raw.githubusercontent.com/BuoyantIO/booksapp/main/k8s/mysql-backend.yml)
 
 AUTHORS_SP=$(curl -s https://run.linkerd.io/booksapp/authors.swagger)
 BOOKS_SP=$(curl -s https://run.linkerd.io/booksapp/books.swagger)
 WEBAPP_SP=$(curl -s https://run.linkerd.io/booksapp/webapp.swagger)
 
 # deploy books backend and service profiles to N namespaces
-for i in $(eval echo {1..$NAMESPACES}); do
+for ((i=1; i <= NAMESPACES; i++)); do
     booksns=$linkerd_namespace-books-$i
-    kubectl create ns $booksns
-    echo "$BOOKS_BACKEND" | kubectl apply -n $booksns -f -
+    kubectl create ns "$booksns"
+    echo "$BOOKS_BACKEND" | kubectl apply -n "$booksns" -f -
 
-    echo "$AUTHORS_SP" | bin/linkerd profile -n $booksns authors --open-api - | kubectl apply -f -
-    echo "$BOOKS_SP"   | bin/linkerd profile -n $booksns books   --open-api - | kubectl apply -f -
-    echo "$WEBAPP_SP"  | bin/linkerd profile -n $booksns webapp  --open-api - | kubectl apply -f -
+    echo "$AUTHORS_SP" | bin/linkerd profile -n "$booksns" authors --open-api - | kubectl apply -f -
+    echo "$BOOKS_SP"   | bin/linkerd profile -n "$booksns" books   --open-api - | kubectl apply -f -
+    echo "$WEBAPP_SP"  | bin/linkerd profile -n "$booksns" webapp  --open-api - | kubectl apply -f -
 done
 
-BOOKS_APP=$(curl -s https://raw.githubusercontent.com/BuoyantIO/booksapp/master/k8s/mysql-app.yml)
+BOOKS_APP=$(curl -s https://raw.githubusercontent.com/BuoyantIO/booksapp/main/k8s/mysql-app.yml)
 
 # add "-sleep=10ms" param to the traffic app (~100rps)
 traffic_param="        - \"webapp:7000\""
@@ -102,19 +102,19 @@ sleep_param=$(cat <<-END
         - "webapp:7000"
 END
 )
-BOOKS_APP=$(echo "${BOOKS_APP/$traffic_param/$sleep_param}")
+BOOKS_APP="${BOOKS_APP/$traffic_param/$sleep_param}"
 
 # inject
-BOOKS_APP=$(echo "$BOOKS_APP" | "$linkerd_path" -l $linkerd_namespace inject -)
+BOOKS_APP=$(echo "$BOOKS_APP" | "$linkerd_path" -l "$linkerd_namespace" inject -)
 
 # deploy books apps to N namespaces
-for i in $(eval echo {1..$NAMESPACES}); do
+for ((i=1; i <= NAMESPACES; i++)); do
     booksns=$linkerd_namespace-books-$i
     echo "waiting for $booksns mysql-init to complete..."
-    kubectl -n $booksns wait --for=condition=complete --timeout=5m job/mysql-init
+    kubectl -n "$booksns" wait --for=condition=complete --timeout=5m job/mysql-init
 
-    echo "$BOOKS_APP" | kubectl apply -n $booksns -f -
-    kubectl -n $booksns scale --replicas=$REPLICAS deploy/authors deploy/books deploy/webapp
+    echo "$BOOKS_APP" | kubectl apply -n "$booksns" -f -
+    kubectl -n "$booksns" scale --replicas=$REPLICAS deploy/authors deploy/books deploy/webapp
 done
 
 #
@@ -126,43 +126,43 @@ EMOJIVOTO=$(curl -s https://run.linkerd.io/emojivoto.yml)
 # delete namespace
 EMOJIVOTO=$(echo "$EMOJIVOTO" | tail -n +6)
 emojins='namespace: emojivoto'
-EMOJIVOTO=$(echo "${EMOJIVOTO//$emojins/}")
+EMOJIVOTO="${EMOJIVOTO//$emojins/}"
 emojins=.emojivoto:
 newns=:
-EMOJIVOTO=$(echo "${EMOJIVOTO//$emojins/$newns}")
+EMOJIVOTO="${EMOJIVOTO//$emojins/$newns}"
 
 # inject
-EMOJIVOTO=$(echo "$EMOJIVOTO" | "$linkerd_path" -l $linkerd_namespace inject -)
+EMOJIVOTO=$(echo "$EMOJIVOTO" | "$linkerd_path" -l "$linkerd_namespace" inject -)
 
-for i in $(eval echo {1..$NAMESPACES}); do
+for ((i=1; i <= NAMESPACES; i++)); do
     emojins=$linkerd_namespace-emoji-$i
 
-    kubectl create ns $emojins
-    echo "$EMOJIVOTO" | kubectl apply -n $emojins -f -
+    kubectl create ns "$emojins"
+    echo "$EMOJIVOTO" | kubectl apply -n "$emojins" -f -
 
-    kubectl -n $emojins scale --replicas=$REPLICAS deploy/emoji deploy/voting deploy/web
+    kubectl -n "$emojins" scale --replicas=$REPLICAS deploy/emoji deploy/voting deploy/web
 done
 
 #
-# Lifecyle / bb
+# Lifecycle / bb
 #
 
 LIFECYCLE=$(curl -s https://raw.githubusercontent.com/linkerd/linkerd-examples/master/lifecycle/lifecycle.yml)
 
 # inject
-LIFECYCLE=$(echo "$LIFECYCLE" | $linkerd_path -l $linkerd_namespace inject -)
+LIFECYCLE=$(echo "$LIFECYCLE" | $linkerd_path -l "$linkerd_namespace" inject -)
 
-for i in $(eval echo {1..$NAMESPACES}); do
+for ((i=1; i <= NAMESPACES; i++)); do
     lifecyclens=$linkerd_namespace-lifecycle-$i
 
-    kubectl create ns $lifecyclens
-    echo "$LIFECYCLE" | kubectl apply -n $lifecyclens -f -
+    kubectl create ns "$lifecyclens"
+    echo "$LIFECYCLE" | kubectl apply -n "$lifecyclens" -f -
 
-    kubectl -n $lifecyclens scale --replicas=$REPLICAS deploy/bb-broadcast deploy/bb-p2p deploy/bb-terminus
+    kubectl -n "$lifecyclens" scale --replicas=$REPLICAS deploy/bb-broadcast deploy/bb-p2p deploy/bb-terminus
 done
 
 #
 # Watch performance
 #
 
-watch "$linkerd_path" -l $linkerd_namespace stat ns
+watch "$linkerd_path" -l "$linkerd_namespace" stat ns

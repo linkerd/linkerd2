@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+
+set -eu
+
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+markdownlintbin="$rootdir/node_modules/.bin/markdownlint"
+
+markdownlint_version=0.23.1
+
+if [ ! -x "$markdownlintbin" ] || [ "$($markdownlintbin -V)" != $markdownlint_version ]; then
+    if ! [ -x "$(command -v npm)" ]; then
+        echo 'Error: npm required to install markdownlint command'
+        exit 1
+    fi
+    npm install markdownlint-cli@$markdownlint_version
+fi
+
+"$markdownlintbin" "$@"

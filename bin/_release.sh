@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC2120
 # (disabling SC2120 so that we can use functions with optional args
 # see https://github.com/koalaman/shellcheck/wiki/SC2120#exceptions )
@@ -19,7 +19,7 @@ extract_release_notes() {
 
   # Save commit message into temporary file.
   #
-  # Match each occurence of the regex and increment `n` by 1. While n == 1
+  # Match each occurrence of the regex and increment `n` by 1. While n == 1
   # (which is true only for the first section) print that line of `CHANGES.md`.
   # This ends up being the first section of release changes.
   awk '/^## (edge|stable)-[0-9]+\.[0-9]+\.[0-9]+/{n++} n==1' "$rootdir"/CHANGES.md > "$tmp"

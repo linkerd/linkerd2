@@ -6,7 +6,8 @@ import (
 )
 
 var (
-	tracingAddOn = "tracing"
+	// TracingAddOn represents the name of the tracing add-on
+	TracingAddOn = "tracing"
 )
 
 // Tracing is an add-on that installs the distributed tracing
@@ -15,7 +16,7 @@ type Tracing map[string]interface{}
 
 // Name returns the name of the Tracing add-on
 func (t Tracing) Name() string {
-	return tracingAddOn
+	return TracingAddOn
 }
 
 // Values returns the configuration values that were assigned for this add-on

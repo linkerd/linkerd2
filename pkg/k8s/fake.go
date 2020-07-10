@@ -34,29 +34,31 @@ import (
 
 // NewFakeAPI provides a mock KubernetesAPI backed by hard-coded resources
 func NewFakeAPI(configs ...string) (*KubernetesAPI, error) {
-	client, apiextClient, _, _, _, err := NewFakeClientSets(configs...)
+	client, apiextClient, apiregClient, _, _, err := NewFakeClientSets(configs...)
 	if err != nil {
 		return nil, err
 	}
 
 	return &KubernetesAPI{
-		Config:        &rest.Config{},
-		Interface:     client,
-		Apiextensions: apiextClient,
+		Config:          &rest.Config{},
+		Interface:       client,
+		Apiextensions:   apiextClient,
+		Apiregistration: apiregClient,
 	}, nil
 }
 
 // NewFakeAPIFromManifests reads from a slice of readers, each representing a
 // manifest or collection of manifests, and returns a mock KubernetesAPI.
 func NewFakeAPIFromManifests(readers []io.Reader) (*KubernetesAPI, error) {
-	client, apiextClient, _, _, _, err := newFakeClientSetsFromManifests(readers)
+	client, apiextClient, apiregClient, _, _, err := newFakeClientSetsFromManifests(readers)
 	if err != nil {
 		return nil, err
 	}
 
 	return &KubernetesAPI{
-		Interface:     client,
-		Apiextensions: apiextClient,
+		Interface:       client,
+		Apiextensions:   apiextClient,
+		Apiregistration: apiregClient,
 	}, nil
 }
 

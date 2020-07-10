@@ -163,7 +163,7 @@ metadata:
     k8s-app: linkerd-cni
     {{.Values.cniResourceLabel}}: "true"
   annotations:
-    {{.Values.createdByAnnotation}}: {{.Values.cliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.cniPluginVersion) .Values.cliVersion}}
 spec:
   selector:
     matchLabels:
@@ -177,7 +177,7 @@ spec:
       labels:
         k8s-app: linkerd-cni
       annotations:
-        {{.Values.createdByAnnotation}}: {{.Values.cliVersion}}
+        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.cniPluginVersion) .Values.cliVersion}}
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux

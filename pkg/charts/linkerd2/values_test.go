@@ -14,32 +14,30 @@ func TestNewValues(t *testing.T) {
 	testVersion := "linkerd-dev"
 
 	expected := &Values{
-		Stage:                         "",
-		ControllerImage:               "gcr.io/linkerd-io/controller",
-		ControllerImageVersion:        testVersion,
-		WebImage:                      "gcr.io/linkerd-io/web",
-		PrometheusImage:               "prom/prometheus:v2.15.2",
-		ControllerReplicas:            1,
-		ControllerLogLevel:            "info",
-		PrometheusLogLevel:            "info",
-		PrometheusExtraArgs:           map[string]string{},
-		PrometheusAlertmanagers:       []interface{}{},
-		PrometheusRuleConfigMapMounts: []PrometheusRuleConfigMapMount{},
-		ControllerUID:                 2103,
-		EnableH2Upgrade:               true,
-		EnablePodAntiAffinity:         false,
-		WebhookFailurePolicy:          "Ignore",
-		OmitWebhookSideEffects:        false,
-		RestrictDashboardPrivileges:   false,
-		DisableHeartBeat:              false,
-		HeartbeatSchedule:             "0 0 * * *",
-		InstallNamespace:              true,
+		Stage:                       "",
+		ControllerImage:             "gcr.io/linkerd-io/controller",
+		WebImage:                    "gcr.io/linkerd-io/web",
+		ControllerReplicas:          1,
+		ControllerUID:               2103,
+		EnableH2Upgrade:             true,
+		EnablePodAntiAffinity:       false,
+		WebhookFailurePolicy:        "Ignore",
+		OmitWebhookSideEffects:      false,
+		RestrictDashboardPrivileges: false,
+		DisableHeartBeat:            false,
+		HeartbeatSchedule:           "0 0 * * *",
+		InstallNamespace:            true,
+		Prometheus: Prometheus{
+			"enabled": true,
+		},
 		Global: &Global{
 			Namespace:                "linkerd",
 			ClusterDomain:            "cluster.local",
 			ImagePullPolicy:          "IfNotPresent",
 			CliVersion:               "linkerd/cli dev-undefined",
 			ControllerComponentLabel: "linkerd.io/control-plane-component",
+			ControllerLogLevel:       "info",
+			ControllerImageVersion:   testVersion,
 			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
 			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
 			CreatedByAnnotation:      "linkerd.io/created-by",
@@ -58,7 +56,8 @@ func TestNewValues(t *testing.T) {
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
-				LogLevel: "warn,linkerd=info",
+				LogLevel:  "warn,linkerd=info",
+				LogFormat: "plain",
 				Ports: &Ports{
 					Admin:    4191,
 					Control:  4190,
@@ -79,8 +78,9 @@ func TestNewValues(t *testing.T) {
 					CollectorSvcAddr:    "",
 					CollectorSvcAccount: "default",
 				},
-				UID:                   2102,
-				WaitBeforeExitSeconds: 0,
+				UID:                    2102,
+				WaitBeforeExitSeconds:  0,
+				DestinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
 			},
 			ProxyInit: &ProxyInit{
 				Image: &Image{
@@ -98,6 +98,10 @@ func TestNewValues(t *testing.T) {
 						Request: "10Mi",
 					},
 				},
+				XTMountPath: &VolumeMountPath{
+					Name:      "linkerd-proxy-init-xtables-lock",
+					MountPath: "/run",
+				},
 			},
 		},
 		Identity: &Identity{
@@ -105,14 +109,13 @@ func TestNewValues(t *testing.T) {
 				ClockSkewAllowance:  "20s",
 				IssuanceLifetime:    "86400s",
 				CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
-				TLS:                 &TLS{},
+				TLS:                 &IssuerTLS{},
 				Scheme:              "linkerd.io/tls",
 			},
 		},
 		NodeSelector: map[string]string{
 			"beta.kubernetes.io/os": "linux",
 		},
-
 		Dashboard: &Dashboard{
 			Replicas: 1,
 		},
@@ -134,14 +137,16 @@ func TestNewValues(t *testing.T) {
 		Grafana: Grafana{
 			"enabled": true,
 			"name":    "linkerd-grafana",
-			"image":   "gcr.io/linkerd-io/grafana",
+			"image": map[string]interface{}{
+				"name": "gcr.io/linkerd-io/grafana",
+			},
 		},
 	}
 
 	// pin the versions to ensure consistent test result.
 	// in non-test environment, the default versions are read from the
 	// values.yaml.
-	actual.ControllerImageVersion = testVersion
+	actual.Global.ControllerImageVersion = testVersion
 	actual.Global.Proxy.Image.Version = testVersion
 	actual.Global.ProxyInit.Image.Version = testVersion
 	actual.DebugContainer.Image.Version = testVersion
@@ -155,11 +160,6 @@ func TestNewValues(t *testing.T) {
 
 	t.Run("HA", func(t *testing.T) {
 		actual, err := NewValues(true)
-
-		// workaround for mergo, which resets these to []interface{}(nil)
-		// and []PrometheusRuleConfigMapMount(nil)
-		actual.PrometheusAlertmanagers = []interface{}{}
-		actual.PrometheusRuleConfigMapMounts = []PrometheusRuleConfigMapMount{}
 
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
@@ -190,7 +190,9 @@ func TestNewValues(t *testing.T) {
 		expected.Grafana = Grafana{
 			"enabled": true,
 			"name":    "linkerd-grafana",
-			"image":   "gcr.io/linkerd-io/grafana",
+			"image": map[string]interface{}{
+				"name": "gcr.io/linkerd-io/grafana",
+			},
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
 					"limit":   controllerResources.CPU.Limit,
@@ -214,14 +216,17 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 
-		expected.PrometheusResources = &Resources{
-			CPU: Constraints{
-				Limit:   "4",
-				Request: "300m",
-			},
-			Memory: Constraints{
-				Limit:   "8192Mi",
-				Request: "300Mi",
+		expected.Prometheus = Prometheus{
+			"enabled": true,
+			"resources": map[string]interface{}{
+				"cpu": map[string]interface{}{
+					"limit":   "4",
+					"request": "300m",
+				},
+				"memory": map[string]interface{}{
+					"limit":   "8192Mi",
+					"request": "300Mi",
+				},
 			},
 		}
 
@@ -239,11 +244,10 @@ func TestNewValues(t *testing.T) {
 		// pin the versions to ensure consistent test result.
 		// in non-test environment, the default versions are read from the
 		// values.yaml.
-		actual.ControllerImageVersion = testVersion
+		actual.Global.ControllerImageVersion = testVersion
 		actual.Global.Proxy.Image.Version = testVersion
 		actual.Global.ProxyInit.Image.Version = testVersion
 		actual.DebugContainer.Image.Version = testVersion
-
 		// Make Add-On Values nil to not have to check for their defaults
 		actual.Tracing = nil
 

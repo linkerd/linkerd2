@@ -15,19 +15,6 @@ import (
 const millisPerDecimilli = 10
 
 var (
-	defaultRetryBudget = pb.RetryBudget{
-		MinRetriesPerSecond: 10,
-		RetryRatio:          0.2,
-		Ttl: &duration.Duration{
-			Seconds: 10,
-		},
-	}
-
-	defaultServiceProfile = pb.DestinationProfile{
-		Routes:      []*pb.Route{},
-		RetryBudget: &defaultRetryBudget,
-	}
-
 	defaultRouteTimeout = 10 * time.Second
 )
 
@@ -46,7 +33,7 @@ func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.E
 
 func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
-		pt.stream.Send(&defaultServiceProfile)
+		pt.stream.Send(defaultServiceProfile())
 		return
 	}
 	destinationProfile, err := toServiceProfile(profile)
@@ -56,6 +43,23 @@ func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	}
 	pt.log.Debugf("Sending profile update: %+v", destinationProfile)
 	pt.stream.Send(destinationProfile)
+}
+
+func defaultServiceProfile() *pb.DestinationProfile {
+	return &pb.DestinationProfile{
+		Routes:      []*pb.Route{},
+		RetryBudget: defaultRetryBudget(),
+	}
+}
+
+func defaultRetryBudget() *pb.RetryBudget {
+	return &pb.RetryBudget{
+		MinRetriesPerSecond: 10,
+		RetryRatio:          0.2,
+		Ttl: &duration.Duration{
+			Seconds: 10,
+		},
+	}
 }
 
 func toDuration(d time.Duration) *duration.Duration {
@@ -76,7 +80,7 @@ func toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error
 		}
 		routes = append(routes, pbRoute)
 	}
-	budget := defaultRetryBudget
+	budget := defaultRetryBudget()
 	if profile.Spec.RetryBudget != nil {
 		budget.MinRetriesPerSecond = profile.Spec.RetryBudget.MinRetriesPerSecond
 		budget.RetryRatio = profile.Spec.RetryBudget.RetryRatio
@@ -88,7 +92,7 @@ func toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error
 	}
 	return &pb.DestinationProfile{
 		Routes:       routes,
-		RetryBudget:  &budget,
+		RetryBudget:  budget,
 		DstOverrides: toDstOverrides(profile.Spec.DstOverrides),
 	}, nil
 }

@@ -97,7 +97,7 @@ metadata:
   labels:
     app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: grafana
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   name: {{.Values.name}}
@@ -120,12 +120,19 @@ spec:
         {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
       - env:
         - name: GF_PATHS_DATA
           value: /data
-        image: {{.Values.image}}:{{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+        # Force using the go-based DNS resolver instead of the OS' to avoid failures in some environments
+        # see https://github.com/grafana/grafana/issues/20096
+        - name: GODEBUG
+          value: netdns=go
+        image: {{.Values.image.name}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -151,7 +158,14 @@ spec:
         - mountPath: /etc/grafana
           name: grafana-config
           readOnly: true
-      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- $tree := deepCopy . }}      
+      {{- if not (empty .Values.proxy) }}
+      {{- if not (empty .Values.proxy.resources) }}
+      {{- $r := merge .Values.proxy.resources .Values.global.proxy.resources }}
+      {{- $_ := set $tree.Values.global.proxy "resources" $r }}
+      {{- end }}
+      {{- end }}
+      - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
@@ -172,5 +186,8 @@ spec:
         name: grafana-config
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      {{ if not .Values.global.cniEnabled -}}
+      - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}

@@ -15,12 +15,20 @@ args:
 - --outbound-ports-to-ignore
 - {{.Values.global.proxyInit.ignoreOutboundPorts | quote}}
 {{- end }}
+{{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
+- --timeout-close-wait-secs
+- {{ .Values.global.proxyInit.closeWaitTimeoutSecs | quote}}
+{{- end }}
 image: {{.Values.global.proxyInit.image.name}}:{{.Values.global.proxyInit.image.version}}
 imagePullPolicy: {{.Values.global.proxyInit.image.pullPolicy}}
 name: linkerd-init
 {{ include "partials.resources" .Values.global.proxyInit.resources }}
 securityContext:
+  {{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
+  allowPrivilegeEscalation: true
+  {{- else }}
   allowPrivilegeEscalation: false
+  {{- end }}
   capabilities:
     add:
     - NET_ADMIN
@@ -33,15 +41,25 @@ securityContext:
     {{- include "partials.proxy-init.capabilities.drop" . | nindent 4 -}}
     {{- end }}
     {{- end }}
+  {{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
+  privileged: true
+  {{- else }}
   privileged: false
+  {{- end }}
   readOnlyRootFilesystem: true
   runAsNonRoot: false
   runAsUser: 0
 terminationMessagePolicy: FallbackToLogsOnError
-{{- if .Values.global.proxyInit.saMountPath }}
+{{- if or (not .Values.global.cniEnabled) .Values.global.proxyInit.saMountPath }}
 volumeMounts:
+{{- end -}}
+{{- if not .Values.global.cniEnabled }}
+- mountPath: {{.Values.global.proxyInit.xtMountPath.mountPath}}
+  name: {{.Values.global.proxyInit.xtMountPath.name}}
+{{- end -}}
+{{- if .Values.global.proxyInit.saMountPath }}
 - mountPath: {{.Values.global.proxyInit.saMountPath.mountPath}}
   name: {{.Values.global.proxyInit.saMountPath.name}}
   readOnly: {{.Values.global.proxyInit.saMountPath.readOnly}}
-{{- end -}}
+{{- end -}}  
 {{- end -}}

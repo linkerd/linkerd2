@@ -141,6 +141,9 @@ rules:
 - apiGroups: ["split.smi-spec.io"]
   resources: ["trafficsplits"]
   verbs: ["list", "get", "watch"]
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "get", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -276,6 +279,9 @@ rules:
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
   verbs: ["list"]
+- apiGroups: ["apiregistration.k8s.io"]
+  resources: ["apiservices"]
+  verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -377,47 +383,6 @@ spec:
     JSONPath: .spec.service
 ---
 ###
-### Prometheus RBAC
-###
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-linkerd-prometheus
-  labels:
-    linkerd.io/control-plane-component: prometheus
-    linkerd.io/control-plane-ns: linkerd
-rules:
-- apiGroups: [""]
-  resources: ["nodes", "nodes/proxy", "pods"]
-  verbs: ["get", "list", "watch"]
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: linkerd-linkerd-prometheus
-  labels:
-    linkerd.io/control-plane-component: prometheus
-    linkerd.io/control-plane-ns: linkerd
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: linkerd-linkerd-prometheus
-subjects:
-- kind: ServiceAccount
-  name: linkerd-prometheus
-  namespace: linkerd
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-prometheus
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: prometheus
-    linkerd.io/control-plane-ns: linkerd
----
-###
 ### Proxy Injector RBAC
 ###
 ---
@@ -506,7 +471,7 @@ webhooks:
       name: linkerd-proxy-injector
       namespace: linkerd
       path: "/"
-    caBundle: cHJveHkgaW5qZWN0b3IgY3J0
+    caBundle: cHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxl
   failurePolicy: Ignore
   rules:
   - operations: [ "CREATE" ]
@@ -569,8 +534,8 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 type: Opaque
 data:
-  crt.pem: cHJveHkgaW5qZWN0b3IgY3J0
-  key.pem: cHJveHkgaW5qZWN0b3Iga2V5
+  crt.pem: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  key.pem: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -592,7 +557,7 @@ webhooks:
       name: linkerd-sp-validator
       namespace: linkerd
       path: "/"
-    caBundle: cHJveHkgaW5qZWN0b3IgY3J0
+    caBundle: cHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxl
   failurePolicy: Ignore
   rules:
   - operations: [ "CREATE" , "UPDATE" ]
@@ -723,7 +688,7 @@ spec:
   service:
     name: linkerd-tap
     namespace: linkerd
-  caBundle: dGFwIGNydA==
+  caBundle: dGFwIENBIGJ1bmRsZQ==
 ---
 ###
 ### Control Plane PSP
@@ -837,4 +802,45 @@ metadata:
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
+    linkerd.io/control-plane-ns: linkerd
+---
+###
+### Prometheus RBAC
+###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-prometheus
+  labels:
+    linkerd.io/control-plane-component: prometheus
+    linkerd.io/control-plane-ns: linkerd
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "nodes/proxy", "pods"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-linkerd-prometheus
+  labels:
+    linkerd.io/control-plane-component: prometheus
+    linkerd.io/control-plane-ns: linkerd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: linkerd-linkerd-prometheus
+subjects:
+- kind: ServiceAccount
+  name: linkerd-prometheus
+  namespace: linkerd
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-prometheus
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: prometheus
     linkerd.io/control-plane-ns: linkerd

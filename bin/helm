@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 set -eu
 
-helmversion=v2.16.1
+helmversion=v3.2.1
 bindir=$( cd "${0%/*}" && pwd )
 targetbin=$( cd "$bindir"/.. && pwd )/target/bin
 helmbin=$targetbin/helm-$helmversion

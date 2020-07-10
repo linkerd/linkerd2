@@ -1,6 +1,8 @@
 env:
     - name: LINKERD2_PROXY_LOG
       value: warn,linkerd=info
+    - name: LINKERD2_PROXY_LOG_FORMAT
+      value: plain
     - name: LINKERD2_PROXY_CONTROL_URL
       value: tcp://linkerd-destination.linkerd.svc.cluster.local:8086
     - name: LINKERD2_PROXY_CONTROL_LISTENER
@@ -12,7 +14,7 @@ env:
     - name: LINKERD2_PROXY_INBOUND_LISTENER
       value: tcp://0.0.0.0:4143
     - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-      value: .
+      value: svc.cluster.local.
     - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
       value: .
     - name: LINKERD2_PROXY_POD_NAMESPACE

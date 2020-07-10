@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -20,11 +21,38 @@ func TestAddOnRender(t *testing.T) {
 	withTracingAddonValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withTracingAddonValues)
 
+	withTracingOverwrite, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withTracingOverwrite.addOnConfig = filepath.Join("testdata", "addon_config_overwrite.yaml")
+	withTracingOverwriteValues, _, _ := withTracingOverwrite.validateAndBuild("", nil)
+	addFakeTLSSecrets(withTracingOverwriteValues)
+
+	withExistingGrafana, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withExistingGrafana.addOnConfig = filepath.Join("testdata", "existing-grafana-config.yaml")
+	withExistingGrafanaValues, _, _ := withExistingGrafana.validateAndBuild("", nil)
+	addFakeTLSSecrets(withExistingGrafanaValues)
+
+	withPrometheusAddOnOverwrite, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	withPrometheusAddOnOverwrite.addOnConfig = filepath.Join("testdata", "prom-config.yaml")
+	withPrometheusAddOnOverwriteValues, _, _ := withPrometheusAddOnOverwrite.validateAndBuild("", nil)
+	addFakeTLSSecrets(withPrometheusAddOnOverwriteValues)
+
 	testCases := []struct {
 		values         *charts.Values
 		goldenFileName string
 	}{
 		{withTracingAddonValues, "install_tracing.golden"},
+		{withTracingOverwriteValues, "install_tracing_overwrite.golden"},
+		{withExistingGrafanaValues, "install_grafana_existing.golden"},
+		{withPrometheusAddOnOverwriteValues, "install_prometheus_overwrite.golden"},
 	}
 
 	for i, tc := range testCases {
@@ -43,7 +71,7 @@ func TestMergeRaw(t *testing.T) {
 	t.Run("Test Ovewriting of Values struct", func(*testing.T) {
 
 		initialValues := charts.Values{
-			PrometheusImage:        "initial-prometheus",
+			WebImage:               "initial-web",
 			EnableH2Upgrade:        true,
 			ControllerReplicas:     1,
 			OmitWebhookSideEffects: false,
@@ -55,14 +83,14 @@ func TestMergeRaw(t *testing.T) {
 		// partially by using omitempty, but then we don't have relevant checks in helm templates as they would
 		// be nil when omitempty is present.
 		rawOverwriteValues := `
-prometheusImage: override-prometheus
+webImage: override-web
 enableH2Upgrade: false
 controllerReplicas: 2
 omitWebhookSideEffects: true
 enablePodAntiAffinity: true`
 
 		expectedValues := charts.Values{
-			PrometheusImage:        "override-prometheus",
+			WebImage:               "override-web",
 			EnableH2Upgrade:        false,
 			ControllerReplicas:     2,
 			OmitWebhookSideEffects: true,

@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"testing"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -27,6 +28,7 @@ type TestHelper struct {
 	upgradeFromVersion string
 	clusterDomain      string
 	externalIssuer     bool
+	multicluster       bool
 	uninstall          bool
 	httpClient         http.Client
 	KubernetesHelper
@@ -34,22 +36,24 @@ type TestHelper struct {
 }
 
 type helm struct {
-	path               string
-	chart              string
-	stableChart        string
-	releaseName        string
-	tillerNs           string
-	upgradeFromVersion string
+	path                    string
+	chart                   string
+	multiclusterChart       string
+	stableChart             string
+	releaseName             string
+	multiclusterReleaseName string
+	upgradeFromVersion      string
 }
 
-type deploySpec struct {
+// DeploySpec is used to hold information about what deploys we should verify during testing
+type DeploySpec struct {
 	Replicas   int
 	Containers []string
 }
 
 // LinkerdDeployReplicas is a map containing the number of replicas for each Deployment and the main
 // container name
-var LinkerdDeployReplicas = map[string]deploySpec{
+var LinkerdDeployReplicas = map[string]DeploySpec{
 	"linkerd-controller":     {1, []string{"public-api"}},
 	"linkerd-destination":    {1, []string{"destination"}},
 	"linkerd-tap":            {1, []string{"tap"}},
@@ -59,6 +63,58 @@ var LinkerdDeployReplicas = map[string]deploySpec{
 	"linkerd-sp-validator":   {1, []string{"sp-validator"}},
 	"linkerd-web":            {1, []string{"web"}},
 	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
+}
+
+// NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
+// This helper was created to be able to reuse this package without hard restrictions
+// as seen in `NewTestHelper()` which is primarily used with integration tests
+// See - https://github.com/linkerd/linkerd2/issues/4530
+func NewGenericTestHelper(
+	linkerd,
+	version,
+	namespace,
+	upgradeFromVersion,
+	clusterDomain,
+	helmPath,
+	helmChart,
+	helmStableChart,
+	helmReleaseName,
+	helmMulticlusterReleaseName,
+	helmMulticlusterChart string,
+	externalIssuer,
+	multicluster,
+	uninstall bool,
+	httpClient http.Client,
+	kubernetesHelper KubernetesHelper,
+) *TestHelper {
+	return &TestHelper{
+		linkerd:            linkerd,
+		version:            version,
+		namespace:          namespace,
+		upgradeFromVersion: upgradeFromVersion,
+		helm: helm{
+			path:                    helmPath,
+			chart:                   helmChart,
+			multiclusterChart:       helmMulticlusterChart,
+			multiclusterReleaseName: helmMulticlusterReleaseName,
+			stableChart:             helmStableChart,
+			releaseName:             helmReleaseName,
+			upgradeFromVersion:      upgradeFromVersion,
+		},
+		clusterDomain:    clusterDomain,
+		externalIssuer:   externalIssuer,
+		uninstall:        uninstall,
+		httpClient:       httpClient,
+		multicluster:     multicluster,
+		KubernetesHelper: kubernetesHelper,
+	}
+}
+
+// MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
+// container name for multicluster components
+var MulticlusterDeployReplicas = map[string]DeploySpec{
+	"linkerd-gateway":        {1, []string{"nginx"}},
+	"linkerd-service-mirror": {1, []string{"service-mirror"}},
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -71,12 +127,14 @@ func NewTestHelper() *TestHelper {
 
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
-	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
+	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
+	multicluster := flag.Bool("multicluster", false, "when specified the multicluster install functionality is tested")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
+	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd2-multicluster", "path to linkerd2's multicluster Helm chart")
 	helmStableChart := flag.String("helm-stable-chart", "linkerd/linkerd2", "path to linkerd2's stable Helm chart")
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
-	tillerNs := flag.String("tiller-ns", "kube-system", "namespace under which Tiller will be installed")
+	multiclusterHelmReleaseName := flag.String("multicluster-helm-release", "", "install linkerd multicluster via Helm using this release name")
 	upgradeFromVersion := flag.String("upgrade-from-version", "", "when specified, the upgrade test uses it as the base version of the upgrade")
 	clusterDomain := flag.String("cluster-domain", "cluster.local", "when specified, the install test uses a custom cluster domain")
 	externalIssuer := flag.Bool("external-issuer", false, "when specified, the install test uses it to install linkerd with --identity-external-issuer=true")
@@ -113,13 +171,15 @@ func NewTestHelper() *TestHelper {
 		linkerd:            *linkerd,
 		namespace:          *namespace,
 		upgradeFromVersion: *upgradeFromVersion,
+		multicluster:       *multicluster,
 		helm: helm{
-			path:               *helmPath,
-			chart:              *helmChart,
-			stableChart:        *helmStableChart,
-			releaseName:        *helmReleaseName,
-			tillerNs:           *tillerNs,
-			upgradeFromVersion: *upgradeHelmFromVersion,
+			path:                    *helmPath,
+			chart:                   *helmChart,
+			multiclusterChart:       *multiclusterHelmChart,
+			stableChart:             *helmStableChart,
+			releaseName:             *helmReleaseName,
+			multiclusterReleaseName: *multiclusterHelmReleaseName,
+			upgradeFromVersion:      *upgradeHelmFromVersion,
 		},
 		clusterDomain:  *clusterDomain,
 		externalIssuer: *externalIssuer,
@@ -158,6 +218,12 @@ func (h *TestHelper) GetLinkerdNamespace() string {
 	return h.namespace
 }
 
+// GetMulticlusterNamespace returns the namespace where multicluster
+// components are installed.
+func (h *TestHelper) GetMulticlusterNamespace() string {
+	return fmt.Sprintf("%s-multicluster", h.GetLinkerdNamespace())
+}
+
 // GetTestNamespace returns the namespace for the given test. The test namespace
 // is prefixed with the linkerd namespace.
 func (h *TestHelper) GetTestNamespace(testName string) string {
@@ -169,9 +235,19 @@ func (h *TestHelper) GetHelmReleaseName() string {
 	return h.helm.releaseName
 }
 
+// GetMulticlusterHelmReleaseName returns the name of the Linkerd multicluster installation Helm release
+func (h *TestHelper) GetMulticlusterHelmReleaseName() string {
+	return h.helm.multiclusterReleaseName
+}
+
 // GetHelmChart returns the path to the Linkerd Helm chart
 func (h *TestHelper) GetHelmChart() string {
 	return h.helm.chart
+}
+
+// GetMulticlusterHelmChart returns the path to the Linkerd multicluster Helm chart
+func (h *TestHelper) GetMulticlusterHelmChart() string {
+	return h.helm.multiclusterChart
 }
 
 // GetHelmStableChart returns the path to the Linkerd Helm stable chart
@@ -187,6 +263,11 @@ func (h *TestHelper) UpgradeHelmFromVersion() string {
 // ExternalIssuer determines whether linkerd should be installed with --identity-external-issuer
 func (h *TestHelper) ExternalIssuer() bool {
 	return h.externalIssuer
+}
+
+// Multicluster determines whether multicluster components should be installed
+func (h *TestHelper) Multicluster() bool {
+	return h.multicluster
 }
 
 // Uninstall determines whether the "linkerd uninstall" integration test should be run
@@ -266,7 +347,6 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 		"upgrade",
 		h.helm.releaseName,
 		"--kube-context", h.k8sContext,
-		"--tiller-namespace", h.helm.tillerNs,
 		"--set", "global.namespace=" + h.namespace,
 		chart,
 	}, arg...)
@@ -277,11 +357,23 @@ func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, e
 func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, error) {
 	withParams := append([]string{
 		"install",
-		"--kube-context", h.k8sContext,
-		"--tiller-namespace", h.helm.tillerNs,
-		"--name", h.helm.releaseName,
-		"--set", "global.namespace=" + h.namespace,
+		h.helm.releaseName,
 		chart,
+		"--kube-context", h.k8sContext,
+		"--set", "global.namespace=" + h.namespace,
+	}, arg...)
+	return combinedOutput("", h.helm.path, withParams...)
+}
+
+// HelmInstallMulticluster runs the helm install subcommand for multicluster, with the provided arguments
+func (h *TestHelper) HelmInstallMulticluster(chart string, arg ...string) (string, string, error) {
+	withParams := append([]string{
+		"install",
+		h.helm.multiclusterReleaseName,
+		chart,
+		"--kube-context", h.k8sContext,
+		"--set", "namespace=" + h.GetMulticlusterNamespace(),
+		"--set", "linkerdNamespace=" + h.GetLinkerdNamespace(),
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
 }
@@ -486,4 +578,24 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	}
 
 	return events, nil
+}
+
+// Run calls `m.Run()`, shows unexpected logs/events,
+// and returns the exit code for the tests
+func Run(m *testing.M, helper *TestHelper) int {
+	code := m.Run()
+	if code != 0 {
+		_, errs1 := FetchAndCheckLogs(helper)
+		for _, err := range errs1 {
+			fmt.Println(err)
+		}
+		errs2 := FetchAndCheckEvents(helper)
+		for _, err := range errs2 {
+			fmt.Println(err)
+		}
+		if len(errs1) == 0 && len(errs2) == 0 {
+			fmt.Println("No unexpected log entries or events found")
+		}
+	}
+	return code
 }

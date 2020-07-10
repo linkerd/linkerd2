@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eo pipefail
 
@@ -58,12 +58,13 @@ cluster=${1:-"kind"}
 
 bindir=$( cd "${0%/*}" && pwd )
 
-# shellcheck source=bin/_tag.sh
-. "$bindir"/_tag.sh
-# shellcheck source=bin/_docker.sh
-. "$bindir"/_docker.sh
-
-TAG=${TAG:-$(head_root_tag)}
+if [ -z "$images" ] || [ -n "$images_host" ]; then
+  # shellcheck source=_tag.sh
+  . "$bindir"/_tag.sh
+  # shellcheck source=_docker.sh
+  . "$bindir"/_docker.sh
+  TAG=${TAG:-$(head_root_tag)}
+fi
 
 # This is really to load the kind binary synchronously, before
 # the parallel executions below attempt doing so

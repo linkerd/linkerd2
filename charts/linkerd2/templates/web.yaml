@@ -36,7 +36,7 @@ metadata:
   labels:
     app.kubernetes.io/name: web
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: web
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   name: linkerd-web
@@ -59,18 +59,23 @@ spec:
         {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
     spec:
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
       - args:
         - -api-addr=linkerd-controller-api.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8085
-        {{- if .Values.grafana.enabled }}
+        {{- if .Values.global.grafanaUrl }}
+        - -grafana-addr={{.Values.global.grafanaUrl}}
+        {{- else if .Values.grafana.enabled }}
         - -grafana-addr={{.Values.grafana.name}}.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:3000
         {{- end}}
         {{- if .Values.tracing.enabled }}
         - -jaeger-addr={{.Values.tracing.jaeger.name}}.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:16686
         {{- end}}
         - -controller-namespace={{.Values.global.namespace}}
-        - -log-level={{.Values.controllerLogLevel}}
+        - -log-level={{.Values.global.controllerLogLevel}}
         {{- if .Values.enforcedHostRegexp }}
         - -enforced-host={{.Values.enforcedHostRegexp}}
         {{- else -}}
@@ -79,7 +84,7 @@ spec:
         - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
         {{- end}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
-        image: {{.Values.webImage}}:{{default .Values.global.linkerdVersion .Values.controllerImageVersion}}
+        image: {{.Values.webImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -105,7 +110,12 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
-      - {{- include "partials.proxy" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{- $tree := deepCopy . }}      
+      {{- if not (empty .Values.webProxyResources) }}
+      {{- $r := merge .Values.webProxyResources .Values.global.proxy.resources }}
+      {{- $_ := set $tree.Values.global.proxy "resources" $r }}
+      {{- end }}
+      - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
@@ -117,5 +127,8 @@ spec:
         name: config
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      {{ if not .Values.global.cniEnabled -}}
+      - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}

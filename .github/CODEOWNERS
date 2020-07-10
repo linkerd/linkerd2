@@ -1,27 +1,21 @@
-CHANGES.md @wmorgan @klingerf @olix0r @admc
-GOVERNANCE.md @klingerf @olix0r
-MAINTAINERS.md @klingerf @olix0r
+# By default, the maintainers group is responsible for everything.
+*			@linkerd/maintainers
 
-/.github/workflows/ @alpeb @kleimkuhler
-/charts @alpeb @zaharidichev
+# These documents have special review requirements:
+/CHANGES.md		@adleong @olix0r
+/CODE_OF_CONDUCT.md	@olix0r
+/CONTRIBUTING.md	@olix0r
+/DCO    			@olix0r
+/GOVERNANCE.md		@olix0r
+/LICENSE			@olix0r
+/MAINTAINERS.md		@olix0r
+/README.md	    	@olix0r
+/SECURITY.md		@olix0r
+/SECURITY_AUDIT.pdf	@olix0r
 
-/charts/linkerd2-cni @hemakl @zaharidichev
-/charts/linkerd-service-mirror @zaharidichev
+# Hema & Zahari understand the CNI best:
+/charts/linkerd2-cni	@hemakl @zaharidichev
+/cni-plugin		@hemakl @zaharidichev
 
-/cli @alpeb @adleong @zaharidichev
-
-/cni-plugin @hemakl @zaharidichev
-
-/controller @adleong @alpeb @kleimkuhler
-
-/pkg @adleong @alpeb
-
-Dockerfile* @adleong @alpeb @klingerf @olix0r @siggy
-
-# These do not have clear owners today
-# /grafana
-# /proto
-# /proxy-identity
-# /test
-# /testutil
-# /web
+# The Dockerfile is changed with go.mod changes.
+/cni-plugin/Dockerfile @linkerd/maintainers
