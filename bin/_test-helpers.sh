@@ -332,6 +332,7 @@ run_uninstall_test() {
 }
 
 run_deep_test() {
+  local tests=()
   run_test "$test_directory/install_test.go" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
@@ -340,6 +341,7 @@ run_deep_test() {
 }
 
 run_helm-deep_test() {
+  local tests=()
   setup_helm
   helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2-multicluster
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
