@@ -326,11 +326,12 @@ func TestInjectAutoPod(t *testing.T) {
 			},
 		},
 		VolumeMounts: []v1.VolumeMount{
-			v1.VolumeMount{
-				ReadOnly:  true,
+			{
+				Name:      "linkerd-proxy-init-xtables-lock",
+				ReadOnly:  false,
 				MountPath: "/run",
 			},
-			v1.VolumeMount{
+			{
 				ReadOnly:  true,
 				MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
 			},
@@ -389,8 +390,8 @@ func TestInjectAutoPod(t *testing.T) {
 	if mounts := initContainer.VolumeMounts; len(mounts) == 0 {
 		testutil.AnnotatedFatalf(t, "init container doesn't have volume mounts", "init container doesn't have volume mounts: %#v", initContainer)
 	}
-	// Removed from comparison because it contains a random string
-	initContainer.VolumeMounts[0].Name = ""
+	// Removed token volume name from comparison because it contains a random string
+	initContainer.VolumeMounts[1].Name = ""
 	if !reflect.DeepEqual(expectedInitContainer, initContainer) {
 		testutil.AnnotatedFatalf(t, "malformed init container", "malformed init container:\nexpected:\n%#v\nactual:\n%#v", expectedInitContainer, initContainer)
 	}
