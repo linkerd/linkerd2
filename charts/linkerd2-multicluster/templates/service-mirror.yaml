@@ -6,6 +6,7 @@ metadata:
   name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
   labels:
     {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 rules:
 - apiGroups: [""]
   resources: ["endpoints", "services"]
@@ -20,6 +21,7 @@ metadata:
   name: linkerd-service-mirror-access-local-resources-{{.Values.targetClusterName}}
   labels:
     {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -36,6 +38,7 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
       {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
@@ -52,6 +55,7 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
       {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -68,13 +72,14 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
     {{.Values.controllerComponentLabel}}: linkerd-service-mirror
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     {{.Values.controllerComponentLabel}}: linkerd-service-mirror
-    app: linkerd-service-mirror-{{.Values.targetClusterName}}
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   name: linkerd-service-mirror-{{.Values.targetClusterName}}
   namespace: {{.Values.namespace}}
 spec:
@@ -82,14 +87,14 @@ spec:
   selector:
     matchLabels:
       {{.Values.controllerComponentLabel}}: linkerd-service-mirror
-      app: linkerd-service-mirror-{{.Values.targetClusterName}}
+      mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
   template:
     metadata:
       annotations:
         linkerd.io/inject: enabled
       labels:
         {{.Values.controllerComponentLabel}}: linkerd-service-mirror
-        app: linkerd-service-mirror-{{.Values.targetClusterName}}
+        mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
     spec:
       containers:
       - args:

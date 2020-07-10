@@ -5,6 +5,9 @@ kind: Service
 metadata:
   name: probe-gateway-{{.Values.targetClusterName}}
   namespace: {{.Values.namespace}}
+  labels:
+    mirror.linkerd.io/mirrored-gateway: "true"
+    mirror.linkerd.io/cluster-name: {{.Values.targetClusterName}}
 spec:
   ports:
   - name: mc-probe

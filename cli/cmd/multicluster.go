@@ -553,6 +553,8 @@ func newLinkCommand() *cobra.Command {
 			}
 
 			link := mc.Link{
+				Name:                          opts.clusterName,
+				Namespace:                     opts.namespace,
 				TargetClusterName:             opts.clusterName,
 				TargetClusterDomain:           configMap.Global.ClusterDomain,
 				TargetClusterLinkerdNamespace: controlPlaneNamespace,
@@ -563,7 +565,7 @@ func newLinkCommand() *cobra.Command {
 				ProbeSpec:                     probeSpec,
 			}
 
-			linkOut, err := yaml.Marshal(link.ToUnstructured(opts.clusterName, opts.namespace).Object)
+			linkOut, err := yaml.Marshal(link.ToUnstructured().Object)
 			if err != nil {
 				return err
 			}

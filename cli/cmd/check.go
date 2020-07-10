@@ -188,8 +188,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 			}
 			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 			checks = append(checks, healthcheck.LinkerdHAChecks)
-			checks = append(checks, healthcheck.LinkerdMulticlusterSourceChecks)
-			checks = append(checks, healthcheck.LinkerdMulticlusterTargetChecks)
+			checks = append(checks, healthcheck.LinkerdMulticlusterChecks)
 
 			checks = append(checks, healthcheck.AddOnCategories...)
 		}
@@ -208,8 +207,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		RetryDeadline:         time.Now().Add(options.wait),
 		CNIEnabled:            options.cniEnabled,
 		InstallManifest:       installManifest,
-		SourceCluster:         options.multicluster,
-		TargetCluster:         options.multicluster,
 	})
 
 	success := runChecks(wout, werr, hc, options.output)

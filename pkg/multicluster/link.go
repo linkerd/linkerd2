@@ -4,11 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 )
 
 type (
@@ -26,6 +31,8 @@ type (
 	// target cluster and is configures the behavior of a service mirror
 	// controller.
 	Link struct {
+		Name                          string
+		Namespace                     string
 		TargetClusterName             string
 		TargetClusterDomain           string
 		TargetClusterLinkerdNamespace string
@@ -36,6 +43,13 @@ type (
 		ProbeSpec                     ProbeSpec
 	}
 )
+
+// LinkGVR is the Group Version and Resource of the Link custom resource.
+var LinkGVR = schema.GroupVersionResource{
+	Group:    k8s.LinkAPIGroup,
+	Version:  k8s.LinkAPIVersion,
+	Resource: "links",
+}
 
 func (ps ProbeSpec) String() string {
 	return fmt.Sprintf("ProbeSpec: {path: %s, port: %d, period: %s}", ps.Path, ps.Port, ps.Period)
@@ -108,6 +122,8 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 	}
 
 	return Link{
+		Name:                          u.GetName(),
+		Namespace:                     u.GetNamespace(),
 		TargetClusterName:             targetClusterName,
 		TargetClusterDomain:           targetClusterDomain,
 		TargetClusterLinkerdNamespace: targetClusterLinkerdNamespace,
@@ -121,15 +137,15 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 
 // ToUnstructured converts a Link struct into an unstructured resource that can
 // be used by a kubernetes dynamic client.
-func (l Link) ToUnstructured(name, namespace string) unstructured.Unstructured {
+func (l Link) ToUnstructured() unstructured.Unstructured {
 	return unstructured.Unstructured{
 
 		Object: map[string]interface{}{
-			"apiVersion": "multicluster.linkerd.io/v1alpha1",
-			"kind":       "Link",
+			"apiVersion": k8s.LinkAPIGroupVersion,
+			"kind":       k8s.LinkKind,
 			"metadata": map[string]interface{}{
-				"name":      name,
-				"namespace": namespace,
+				"name":      l.Name,
+				"namespace": l.Namespace,
 			},
 			"spec": map[string]interface{}{
 				"targetClusterName":             l.TargetClusterName,
@@ -171,6 +187,37 @@ func ExtractProbeSpec(gateway *corev1.Service) (ProbeSpec, error) {
 		Port:   port,
 		Period: time.Duration(period) * time.Second,
 	}, nil
+}
+
+// GetLinks fetchs a list of all Link objects in the cluster.
+func GetLinks(client dynamic.Interface) ([]Link, error) {
+	list, err := client.Resource(LinkGVR).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	links := []Link{}
+	errs := []string{}
+	for _, u := range list.Items {
+		link, err := NewLink(u)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("failed to parse Link %s: %s", u.GetName(), err))
+		} else {
+			links = append(links, link)
+		}
+	}
+	if len(errs) > 0 {
+		return nil, errors.New(strings.Join(errs, "\n"))
+	}
+	return links, nil
+}
+
+// GetLink fetches a Link object from Kubernetes by name/namespace.
+func GetLink(client dynamic.Interface, namespace, name string) (Link, error) {
+	unstructured, err := client.Resource(LinkGVR).Namespace(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return Link{}, err
+	}
+	return NewLink(*unstructured)
 }
 
 func extractPort(port []corev1.ServicePort, portName string) (uint32, error) {

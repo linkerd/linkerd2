@@ -10,7 +10,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	dynamic "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -65,12 +64,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	gvr := schema.GroupVersionResource{
-		Group:    "multicluster.linkerd.io",
-		Version:  "v1alpha1",
-		Resource: "links",
-	}
-	linkClient := k8sAPI.DynamicClient.Resource(gvr).Namespace(*namespace)
+	linkClient := k8sAPI.DynamicClient.Resource(multicluster.LinkGVR).Namespace(*namespace)
 
 	metrics := newProbeMetricVecs()
 	go admin.StartServer(*metricsAddr)
