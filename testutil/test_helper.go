@@ -378,6 +378,16 @@ func (h *TestHelper) HelmInstallMulticluster(chart string, arg ...string) (strin
 	return combinedOutput("", h.helm.path, withParams...)
 }
 
+// HelmUninstallMulticluster runs the helm delete subcommand for multicluster
+func (h *TestHelper) HelmUninstallMulticluster(chart string) (string, string, error) {
+	withParams := []string{
+		"delete",
+		h.helm.multiclusterReleaseName,
+		"--kube-context", h.k8sContext,
+	}
+	return combinedOutput("", h.helm.path, withParams...)
+}
+
 // ValidateOutput validates a string against the contents of a file in the
 // test's testdata directory.
 func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
