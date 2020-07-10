@@ -208,6 +208,7 @@ jobs:
         preemptible: false
         create: true
         name: testing-${{ steps.install_cli.outputs.tag }}-${{ github.run_id }}
+        num_nodes: 2
     - name: Run integration tests
       env:
         GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
