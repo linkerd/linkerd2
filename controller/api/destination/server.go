@@ -164,16 +164,42 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		return status.Errorf(codes.InvalidArgument, "invalid authority: %s", err)
 	}
 
-	if ip := net.ParseIP(host); ip != nil {
-		// TODO handle lookup by IP address
-		log.Debug("Lookup of IP addresses is not supported for profiles")
-		return status.Errorf(codes.InvalidArgument, "cannot discover profiles for IP addresses")
-	}
+	// The stream will subscribe to profile updates for `service`.
+	var service watcher.ServiceID
+	// If `host` is an IP address, path must be constructed from the namespace
+	// and name of the service that the address maps to.
+	var path string
 
-	service, _, err := parseK8sServiceName(host, s.clusterDomain)
-	if err != nil {
-		log.Debugf("Invalid service %s", dest.GetPath())
-		return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
+	if ip := net.ParseIP(host); ip != nil {
+		// Get the service that the IP address currently maps to.
+		svc, err := s.ips.GetSvc(ip.String())
+		if err != nil {
+			return err
+		}
+		if svc != nil {
+			service = *svc
+			path = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
+		} else {
+			// If no service or error are returned, the IP address does not map
+			// to a service. Send the default profile and return the stream
+			// without subscribing for future updates.
+			translator.Update(nil)
+
+			select {
+			case <-s.shutdown:
+			case <-stream.Context().Done():
+				log.Debugf("GetProfile(%+v) cancelled", dest)
+			}
+
+			return nil
+		}
+	} else {
+		service, _, err = parseK8sServiceName(host, s.clusterDomain)
+		if err != nil {
+			log.Debugf("Invalid service %s", dest.GetPath())
+			return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
+		}
+		path = dest.GetPath()
 	}
 
 	// The adaptor merges profile updates with traffic split updates and
@@ -183,7 +209,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// Subscribe the adaptor to traffic split updates.
 	err = s.trafficSplits.Subscribe(service, tsAdaptor)
 	if err != nil {
-		log.Warnf("Failed to subscribe to traffic split for %s: %s", dest.GetPath(), err)
+		log.Warnf("Failed to subscribe to traffic split for %s: %s", path, err)
 		return err
 	}
 	defer s.trafficSplits.Unsubscribe(service, tsAdaptor)
@@ -198,28 +224,28 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// up to the fallbackProfileListener to merge updates from the primary and
 	// secondary listeners and send the appropriate updates to the stream.
 	if dest.GetContextToken() != "" {
-		profile, err := profileID(dest.GetPath(), dest.GetContextToken(), s.clusterDomain)
+		profile, err := profileID(path, dest.GetContextToken(), s.clusterDomain)
 		if err != nil {
-			log.Debugf("Invalid service %s", dest.GetPath())
+			log.Debugf("Invalid service %s", path)
 			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 		}
 
 		err = s.profiles.Subscribe(profile, primary)
 		if err != nil {
-			log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
+			log.Warnf("Failed to subscribe to profile %s: %s", path, err)
 			return err
 		}
 		defer s.profiles.Unsubscribe(profile, primary)
 	}
 
-	profile, err := profileID(dest.GetPath(), "", s.clusterDomain)
+	profile, err := profileID(path, "", s.clusterDomain)
 	if err != nil {
-		log.Debugf("Invalid service %s", dest.GetPath())
+		log.Debugf("Invalid service %s", path)
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 	}
 	err = s.profiles.Subscribe(profile, secondary)
 	if err != nil {
-		log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
+		log.Warnf("Failed to subscribe to profile %s: %s", path, err)
 		return err
 	}
 	defer s.profiles.Unsubscribe(profile, secondary)
