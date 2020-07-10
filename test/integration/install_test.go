@@ -66,6 +66,10 @@ var (
 			injectArgs: []string{},
 		},
 	}
+
+	//skippedInboundPorts lists some ports to be marked as skipped, which will
+	// be verified in test/integration/inject
+	skippedInboundPorts = "1234,5678"
 )
 
 //////////////////////
@@ -158,6 +162,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--controller-log-level", "debug",
 			"--proxy-log-level", "warn,linkerd2_proxy=debug",
 			"--proxy-version", TestHelper.GetVersion(),
+			"--skip-inbound-ports", skippedInboundPorts,
 		}
 	)
 
@@ -298,12 +303,13 @@ func helmOverridesStable(root *tls.CA) []string {
 
 // These need to correspond to the flags in the current edge
 func helmOverridesEdge(root *tls.CA) []string {
+	skippedInboundPortsEscaped := strings.Replace(skippedInboundPorts, ",", "\\,", 1)
 	return []string{
 		"--set", "global.controllerLogLevel=debug",
 		"--set", "global.linkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "global.proxy.image.version=" + TestHelper.GetVersion(),
 		// these ports will get verified in test/integration/inject
-		"--set", "global.proxyInit.ignoreInboundPorts=1234\\,5678",
+		"--set", "global.proxyInit.ignoreInboundPorts=" + skippedInboundPortsEscaped,
 		"--set", "global.identityTrustDomain=cluster.local",
 		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
