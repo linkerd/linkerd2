@@ -284,19 +284,21 @@ func runChecksTable(wout io.Writer, hc *healthcheck.HealthChecker) bool {
 	return success
 }
 
-type checkOutput struct {
+// CheckOutput holds the output of check results
+type CheckOutput struct {
 	Success    bool             `json:"success"`
-	Categories []*checkCategory `json:"categories"`
+	Categories []*CheckCategory `json:"categories"`
 }
 
-type checkCategory struct {
+// CheckCategory holds the results for each category of the checks
+type CheckCategory struct {
 	Name   string   `json:"categoryName"`
-	Checks []*check `json:"checks"`
+	Checks []*Check `json:"checks"`
 }
 
 // check is a user-facing version of `healthcheck.CheckResult`, for output via
 // `linkerd check -o json`.
-type check struct {
+type Check struct {
 	Description string      `json:"description"`
 	Hint        string      `json:"hint,omitempty"`
 	Error       string      `json:"error,omitempty"`
@@ -312,14 +314,14 @@ const (
 )
 
 func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker) bool {
-	var categories []*checkCategory
+	var categories []*CheckCategory
 
 	collectJSONOutput := func(result *healthcheck.CheckResult) {
 		categoryName := string(result.Category)
 		if categories == nil || categories[len(categories)-1].Name != categoryName {
-			categories = append(categories, &checkCategory{
+			categories = append(categories, &CheckCategory{
 				Name:   categoryName,
-				Checks: []*check{},
+				Checks: []*Check{},
 			})
 		}
 
@@ -334,7 +336,7 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker
 				}
 			}
 
-			currentCheck := &check{
+			currentCheck := &Check{
 				Description: result.Description,
 				Result:      status,
 			}
@@ -352,7 +354,7 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker
 
 	result := hc.RunChecks(collectJSONOutput)
 
-	outputJSON := checkOutput{
+	outputJSON := CheckOutput{
 		Success:    result,
 		Categories: categories,
 	}
