@@ -296,7 +296,7 @@ type CheckCategory struct {
 	Checks []*Check `json:"checks"`
 }
 
-// check is a user-facing version of `healthcheck.CheckResult`, for output via
+// Check is a user-facing version of `healthcheck.CheckResult`, for output via
 // `linkerd check -o json`.
 type Check struct {
 	Description string      `json:"description"`
