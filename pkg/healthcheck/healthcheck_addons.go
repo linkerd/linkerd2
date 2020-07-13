@@ -23,8 +23,8 @@ const (
 )
 
 var (
-	// ErrorKeyNotFound is returned when a key is not found in data
-	ErrorKeyNotFound error = errors.New("key not found")
+	// errorKeyNotFound is returned when a key is not found in data
+	errorKeyNotFound error = errors.New("key not found")
 
 	// AddOnCategories is the list of add-on category checks
 	AddOnCategories = []CategoryID{LinkerdAddOnChecks, LinkerdGrafanaAddOnChecks, LinkerdTracingAddOnChecks}
@@ -56,11 +56,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							name, err := getString(grafana, "name")
-							if err != nil && err != ErrorKeyNotFound {
+							if err != nil && err != errorKeyNotFound {
 								return err
 							}
 
-							if err == ErrorKeyNotFound {
+							if err == errorKeyNotFound {
 								// default name of grafana instance
 								name = "linkerd-grafana"
 							}
@@ -76,11 +76,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							name, err := getString(grafana, "name")
-							if err != nil && err != ErrorKeyNotFound {
+							if err != nil && err != errorKeyNotFound {
 								return err
 							}
 
-							if err == ErrorKeyNotFound {
+							if err == errorKeyNotFound {
 								// default name of grafana instance
 								name = "linkerd-grafana"
 							}
@@ -283,7 +283,7 @@ func getString(i interface{}, k string) (string, error) {
 
 	v, ok := m[k]
 	if !ok {
-		return "", ErrorKeyNotFound
+		return "", errorKeyNotFound
 	}
 
 	res, ok := v.(string)
