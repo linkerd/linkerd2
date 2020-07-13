@@ -261,6 +261,10 @@ const (
 	// InitContainerName is the name assigned to the injected init container.
 	InitContainerName = "linkerd-init"
 
+	// InitXtablesLockVolumeMountName is the name of the volumeMount used by proxy-init
+	// to handle iptables-legacy
+	InitXtablesLockVolumeMountName = "linkerd-proxy-init-xtables-lock"
+
 	// ProxyContainerName is the name assigned to the injected proxy container.
 	ProxyContainerName = "linkerd-proxy"
 
@@ -349,6 +353,10 @@ const (
 
 	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
 	MountPathTLSCrtPEM = MountPathBase + "/tls/crt.pem"
+
+	// MountPathXtablesLock is the path at which the proxy init container mounts xtables
+	// This is necessary for xtables-legacy support
+	MountPathXtablesLock = "/run"
 
 	// IdentityServiceAccountTokenPath is the path to the kubernetes service
 	// account token used by proxies to provision identity.

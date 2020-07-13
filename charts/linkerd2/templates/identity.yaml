@@ -92,7 +92,7 @@ spec:
       containers:
       - args:
         - identity
-        - -log-level={{.Values.controllerLogLevel}}
+        - -log-level={{.Values.global.controllerLogLevel}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
@@ -142,6 +142,9 @@ spec:
           secretName: linkerd-identity-issuer
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      {{ if not .Values.global.cniEnabled -}}
+      - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{end -}}

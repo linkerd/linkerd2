@@ -73,7 +73,7 @@ spec:
       containers:
       - args:
         - sp-validator
-        - -log-level={{.Values.controllerLogLevel}}
+        - -log-level={{.Values.global.controllerLogLevel}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
@@ -118,5 +118,8 @@ spec:
           secretName: linkerd-sp-validator-tls
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ end -}}
+      {{ if not .Values.global.cniEnabled -}}
+      - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}

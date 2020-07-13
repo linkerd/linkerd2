@@ -66,6 +66,10 @@ var (
 			injectArgs: []string{},
 		},
 	}
+
+	//skippedInboundPorts lists some ports to be marked as skipped, which will
+	// be verified in test/integration/inject
+	skippedInboundPorts = "1234,5678"
 )
 
 //////////////////////
@@ -158,6 +162,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--controller-log-level", "debug",
 			"--proxy-log-level", "warn,linkerd2_proxy=debug",
 			"--proxy-version", TestHelper.GetVersion(),
+			"--skip-inbound-ports", skippedInboundPorts,
 		}
 	)
 
@@ -242,13 +247,13 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	// test `linkerd upgrade --from-manifests`
 	if TestHelper.UpgradeFromVersion() != "" {
 		resources := []string{"configmaps/" + k8s.ConfigConfigMapName, "configmaps/" + k8s.AddOnsConfigMapName, "secrets/" + k8s.IdentityIssuerSecretName}
-		args := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
-		args = append(args, "-oyaml")
+		kubeArgs := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
+		kubeArgs = append(kubeArgs, "-oyaml")
 
-		manifests, err := TestHelper.Kubectl("", args...)
+		manifests, err := TestHelper.Kubectl("", kubeArgs...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-				"'kubectl get' command failed with %s\n%s\n%s", err, manifests, args)
+				"'kubectl get' command failed with %s\n%s\n%s", err, manifests, kubeArgs)
 		}
 
 		exec = append(exec, "--from-manifests", "-")
@@ -285,7 +290,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 // These need to be updated (if there are changes) once a new stable is released
 func helmOverridesStable(root *tls.CA) []string {
 	return []string{
-		"--set", "controllerLogLevel=debug",
+		"--set", "global.controllerLogLevel=debug",
 		"--set", "global.linkerdVersion=" + TestHelper.UpgradeHelmFromVersion(),
 		"--set", "global.proxy.image.version=" + TestHelper.UpgradeHelmFromVersion(),
 		"--set", "global.identityTrustDomain=cluster.local",
@@ -298,10 +303,13 @@ func helmOverridesStable(root *tls.CA) []string {
 
 // These need to correspond to the flags in the current edge
 func helmOverridesEdge(root *tls.CA) []string {
+	skippedInboundPortsEscaped := strings.Replace(skippedInboundPorts, ",", "\\,", 1)
 	return []string{
-		"--set", "controllerLogLevel=debug",
+		"--set", "global.controllerLogLevel=debug",
 		"--set", "global.linkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "global.proxy.image.version=" + TestHelper.GetVersion(),
+		// these ports will get verified in test/integration/inject
+		"--set", "global.proxyInit.ignoreInboundPorts=" + skippedInboundPortsEscaped,
 		"--set", "global.identityTrustDomain=cluster.local",
 		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
@@ -417,8 +425,8 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "grafana.proxy.resources.memory.request=103Mi",
 		"--set", "identityProxyResources.cpu.limit=1040m",
 		"--set", "identityProxyResources.memory.request=104Mi",
-		"--set", "prometheusProxyResources.cpu.limit=1050m",
-		"--set", "prometheusProxyResources.memory.request=105Mi",
+		"--set", "prometheus.proxy.resources.cpu.limit=1050m",
+		"--set", "prometheus.proxy.resources.memory.request=105Mi",
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
 		"--set", "smiMetricsProxyResources.cpu.limit=1070m",
@@ -847,20 +855,27 @@ func TestUninstallMulticluster(t *testing.T) {
 		return
 	}
 
-	exec := append([]string{"multicluster"}, []string{
-		"install",
-		"--log-level", "debug",
-		"--namespace", TestHelper.GetMulticlusterNamespace(),
-	}...)
-	out, stderr, err := TestHelper.LinkerdRun(exec...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
-			"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
-	}
+	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
+		if stdout, stderr, err := TestHelper.HelmUninstallMulticluster(TestHelper.GetMulticlusterHelmChart()); err != nil {
+			testutil.AnnotatedFatalf(t, "'helm delete' command failed",
+				"'helm delete' command failed\n%s\n%s", stdout, stderr)
+		}
+	} else {
+		exec := append([]string{"multicluster"}, []string{
+			"install",
+			"--log-level", "debug",
+			"--namespace", TestHelper.GetMulticlusterNamespace(),
+		}...)
+		out, stderr, err := TestHelper.LinkerdRun(exec...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
+				"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
+		}
 
-	out, err = TestHelper.Kubectl(out, []string{"delete", "-f", "-"}...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl delete' command failed",
-			"'kubectl apply' command failed\n%s", out)
+		out, err = TestHelper.Kubectl(out, []string{"delete", "-f", "-"}...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl delete' command failed",
+				"'kubectl apply' command failed\n%s", out)
+		}
 	}
 }

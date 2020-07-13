@@ -182,7 +182,6 @@ var ExpectedServiceAccountNames = []string{
 	"linkerd-controller",
 	"linkerd-destination",
 	"linkerd-identity",
-	"linkerd-prometheus",
 	"linkerd-proxy-injector",
 	"linkerd-sp-validator",
 	"linkerd-web",
