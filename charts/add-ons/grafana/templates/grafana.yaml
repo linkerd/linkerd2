@@ -6,7 +6,7 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: {{.Values.name}}-config
+  name: linkerd-grafana-config
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: grafana
@@ -66,7 +66,7 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: {{.Values.name}}
+  name: linkerd-grafana
   namespace: {{.Values.global.namespace}}
   labels:
     {{.Values.global.controllerComponentLabel}}: grafana
@@ -96,7 +96,7 @@ metadata:
     app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
     {{.Values.global.controllerComponentLabel}}: grafana
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-  name: {{.Values.name}}
+  name: linkerd-grafana
   namespace: {{.Values.global.namespace}}
 spec:
   replicas: 1
@@ -154,7 +154,7 @@ spec:
         - mountPath: /etc/grafana
           name: grafana-config
           readOnly: true
-      {{- $tree := deepCopy . }}      
+      {{- $tree := deepCopy . }}
       {{- if not (empty .Values.proxy) }}
       {{- if not (empty .Values.proxy.resources) }}
       {{- $r := merge .Values.proxy.resources .Values.global.proxy.resources }}
@@ -166,7 +166,7 @@ spec:
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
-      serviceAccountName: {{.Values.name}}
+      serviceAccountName: linkerd-grafana
       volumes:
       - emptyDir: {}
         name: data
@@ -178,7 +178,7 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-          name: {{.Values.name}}-config
+          name: linkerd-grafana-config
         name: grafana-config
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}

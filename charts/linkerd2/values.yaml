@@ -249,9 +249,9 @@ smiMetrics:
 
 grafana:
   enabled: true
-  name: linkerd-grafana
-  image:
-    name: gcr.io/linkerd-io/grafana
+  # name: linkerd-grafana
+  # image:
+  #   name: gcr.io/linkerd-io/grafana
   # set resource requests and limits for grafana and its linkerd proxy respectively
   # see global.proxy.resources in the linkerd2 chart for details.
   # resources:

@@ -766,7 +766,7 @@ subjects:
   name: linkerd-destination
   namespace: linkerd
 - kind: ServiceAccount
-  name: linkerd-grafana-overwrite
+  name: linkerd-grafana
   namespace: linkerd
 - kind: ServiceAccount
   name: linkerd-heartbeat
@@ -1619,7 +1619,7 @@ spec:
       containers:
       - args:
         - -api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
-        - -grafana-addr=linkerd-grafana-overwrite.linkerd.svc.cluster.local:3000
+        - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -controller-namespace=linkerd
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
@@ -2512,7 +2512,7 @@ data:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-grafana-overwrite
+  name: linkerd-grafana
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
@@ -2525,7 +2525,7 @@ metadata:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-grafana-overwrite-config
+  name: linkerd-grafana-config
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
@@ -2585,7 +2585,7 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-grafana-overwrite
+  name: linkerd-grafana
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
@@ -2612,7 +2612,7 @@ metadata:
     app.kubernetes.io/version: UPGRADE-CONTROL-PLANE-VERSION
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
-  name: linkerd-grafana-overwrite
+  name: linkerd-grafana
   namespace: linkerd
 spec:
   replicas: 1
@@ -2796,7 +2796,7 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-      serviceAccountName: linkerd-grafana-overwrite
+      serviceAccountName: linkerd-grafana
       volumes:
       - emptyDir: {}
         name: data
@@ -2808,7 +2808,7 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-          name: linkerd-grafana-overwrite-config
+          name: linkerd-grafana-config
         name: grafana-config
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
