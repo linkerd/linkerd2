@@ -55,13 +55,16 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-
-							// default name of grafana instance
-							name := "linkerd-grafana"
 							name, err := getString(grafana, "name")
 							if err != nil && err != ErrorKeyNotFound {
 								return err
 							}
+
+							if err == ErrorKeyNotFound {
+								// default name of grafana instance
+								name = "linkerd-grafana"
+							}
+
 							return hc.checkServiceAccounts([]string{name}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
@@ -72,13 +75,16 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-
-							// default name of grafana instance
-							name := "linkerd-grafana"
 							name, err := getString(grafana, "name")
 							if err != nil && err != ErrorKeyNotFound {
 								return err
 							}
+
+							if err == ErrorKeyNotFound {
+								// default name of grafana instance
+								name = "linkerd-grafana"
+							}
+
 							_, err = hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", name), metav1.GetOptions{})
 							if err != nil {
 								return err
