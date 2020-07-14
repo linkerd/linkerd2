@@ -19,6 +19,7 @@ var (
 		`.*linkerd-web-.*-.* web time=".*" level=error msg="Post http://linkerd-controller-api\..*\.svc\.cluster\.local:8085/api/v1/Version: context canceled"`,
 		`.*linkerd-proxy-injector-.*-.* proxy-injector time=".*" level=warning msg="failed to retrieve replicaset from indexer .*-smoke-test.*/smoke-test-.*-.*: replicaset\.apps \\"smoke-test-.*-.*\\" not found"`,
 		`.*linkerd-destination-.* destination time=".*" level=warning msg="failed to retrieve replicaset from indexer .* not found"`,
+		`.*linkerd-destination-.* destination time=".*" level=warning msg="context token ns:.* using old token format" addr=":8086" component=server`,
 	}, "|"))
 
 	knownProxyErrorsRegex = regexp.MustCompile(strings.Join([]string{

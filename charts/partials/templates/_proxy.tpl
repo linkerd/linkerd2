@@ -43,8 +43,13 @@ env:
   valueFrom:
     fieldRef:
       fieldPath: metadata.namespace
+- name: _pod_nodeName
+  valueFrom:
+     fieldRef:
+      fieldPath: spec.nodeName
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-  value: ns:$(_pod_ns)
+  value: |
+    {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
 {{ if eq .Values.global.proxy.component "linkerd-prometheus" -}}
 - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
   value: "10000"
