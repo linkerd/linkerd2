@@ -34,11 +34,12 @@ import (
 )
 
 const (
-	defaultMulticlusterNamespace     = "linkerd-multicluster"
-	defaultGatewayName               = "linkerd-gateway"
-	helmMulticlusterDefaultChartName = "linkerd2-multicluster"
-	tokenKey                         = "token"
-	defaultServiceAccountName        = "linkerd-service-mirror-remote-access-default"
+	defaultMulticlusterNamespace         = "linkerd-multicluster"
+	defaultGatewayName                   = "linkerd-gateway"
+	helmMulticlusterDefaultChartName     = "linkerd2-multicluster"
+	helmMulticlusterLinkDefaultChartName = "linkerd2-multicluster-link"
+	tokenKey                             = "token"
+	defaultServiceAccountName            = "linkerd-service-mirror-remote-access-default"
 )
 
 type (
@@ -589,8 +590,8 @@ func newLinkCommand() *cobra.Command {
 			}
 
 			chart := &charts.Chart{
-				Name:      helmMulticlusterDefaultChartName,
-				Dir:       helmMulticlusterDefaultChartName,
+				Name:      helmMulticlusterLinkDefaultChartName,
+				Dir:       helmMulticlusterLinkDefaultChartName,
 				Namespace: controlPlaneNamespace,
 				RawValues: rawValues,
 				Files:     files,

@@ -69,7 +69,7 @@ linkerd-grafana
 √ grafana pod is running
 
 linkerd-multicluster
----------------------------
+--------------------
 √ Link CRD exists
 
 Status check results are √

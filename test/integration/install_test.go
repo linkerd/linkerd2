@@ -863,7 +863,6 @@ func TestUninstallMulticluster(t *testing.T) {
 	} else {
 		exec := append([]string{"multicluster"}, []string{
 			"install",
-			"--log-level", "debug",
 			"--namespace", TestHelper.GetMulticlusterNamespace(),
 		}...)
 		out, stderr, err := TestHelper.LinkerdRun(exec...)
