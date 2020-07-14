@@ -9,7 +9,10 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const helmDefaultChartDir = "linkerd2-multicluster"
+const (
+	helmDefaultChartDir     = "linkerd2-multicluster"
+	helmDefaultLinkChartDir = "linkerd2-multicluster-link"
+)
 
 // Values contains the top-level elements in the Helm charts
 type Values struct {
@@ -43,9 +46,21 @@ type Values struct {
 	TargetClusterName              string `json:"targetClusterName"`
 }
 
-// NewValues returns a new instance of the Values type.
-func NewValues() (*Values, error) {
+// NewInstallValues returns a new instance of the Values type.
+func NewInstallValues() (*Values, error) {
 	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
+	v, err := readDefaults(chartDir)
+	if err != nil {
+		return nil, err
+	}
+
+	v.CliVersion = k8s.CreatedByAnnotationValue()
+	return v, nil
+}
+
+// NewLinkValues returns a new instance of the Values type.
+func NewLinkValues() (*Values, error) {
+	chartDir := fmt.Sprintf("%s/", helmDefaultLinkChartDir)
 	v, err := readDefaults(chartDir)
 	if err != nil {
 		return nil, err

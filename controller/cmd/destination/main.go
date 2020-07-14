@@ -35,14 +35,6 @@ func Main(args []string) {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sAPI, err := k8s.InitializeAPI(
-		*kubeConfigPath, true,
-		k8s.Endpoint, k8s.ES, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
-	)
-	if err != nil {
-		log.Fatalf("Failed to initialize K8s API: %s", err)
-	}
-
 	done := make(chan struct{})
 
 	lis, err := net.Listen("tcp", *addr)
@@ -75,11 +67,35 @@ func Main(args []string) {
 		}
 	}
 
+	enableEndpointSlices := global.GetEndpointSliceEnabled()
+
+	var k8sAPI *k8s.API
+	if enableEndpointSlices {
+		k8sAPI, err = k8s.InitializeAPI(
+			*kubeConfigPath, true,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
+		)
+	} else {
+		k8sAPI, err = k8s.InitializeAPI(
+			*kubeConfigPath, true,
+			k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
+		)
+	}
+	if err != nil {
+		log.Fatalf("Failed to initialize K8s API: %s", err)
+	}
+
+	err = consts.EndpointSliceAccess(k8sAPI.Client)
+	if enableEndpointSlices && err != nil {
+		log.Fatalf("Failed to start with EndpointSlices enabled: %s", err)
+	}
+
 	server := destination.NewServer(
 		*addr,
 		*controllerNamespace,
 		trustDomain,
 		*enableH2Upgrade,
+		enableEndpointSlices,
 		k8sAPI,
 		clusterDomain,
 		done,

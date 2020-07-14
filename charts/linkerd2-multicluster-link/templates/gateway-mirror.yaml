@@ -1,4 +1,3 @@
-{{if .Values.serviceMirror -}}
 ---
 apiVersion: v1
 kind: Service
@@ -13,4 +12,3 @@ spec:
   - name: mc-probe
     port: {{.Values.gatewayProbePort}}
     protocol: TCP
-{{end -}}

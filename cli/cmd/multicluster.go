@@ -87,7 +87,7 @@ type (
 )
 
 func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, error) {
-	defaults, err := mccharts.NewValues()
+	defaults, err := mccharts.NewInstallValues()
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 }
 
 func newLinkOptionsWithDefault() (*linkOptions, error) {
-	defaults, err := mccharts.NewValues()
+	defaults, err := mccharts.NewLinkValues()
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 		return nil, fmt.Errorf("--log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
-	defaults, err := mccharts.NewValues()
+	defaults, err := mccharts.NewLinkValues()
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
 	}
 
-	defaults, err := mccharts.NewValues()
+	defaults, err := mccharts.NewInstallValues()
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func buildMulticlusterAllowValues(opts *allowOptions) (*mccharts.Values, error) 
 		return nil, errors.New("you need to setup the multicluster addons in a namespace different than the Linkerd one")
 	}
 
-	defaults, err := mccharts.NewValues()
+	defaults, err := mccharts.NewInstallValues()
 	if err != nil {
 		return nil, err
 	}

@@ -140,8 +140,6 @@ func (bel *bufferingEndpointListenerWithResVersion) Remove(set AddressSet) {
 
 func (bel *bufferingEndpointListenerWithResVersion) NoEndpoints(exists bool) {}
 
-//TODO: Uncomment EndpointSlice related test cases
-// once EndpointSlices are opt-in and supported
 func TestEndpointsWatcher(t *testing.T) {
 	for _, tt := range []struct {
 		serviceType                      string
@@ -557,6 +555,55 @@ status:
 			expectedNoEndpoints:              false,
 			expectedNoEndpointsServiceExists: false,
 		},
+	} {
+		tt := tt // pin
+		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+
+			k8sAPI.Sync(nil)
+
+			listener := newBufferingEndpointListener()
+
+			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			if tt.expectedError && err == nil {
+				t.Fatal("Expected error but was ok")
+			}
+			if !tt.expectedError && err != nil {
+				t.Fatalf("Expected no error, got [%s]", err)
+			}
+
+			listener.ExpectAdded(tt.expectedAddresses, t)
+
+			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
+				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
+					tt.expectedNoEndpoints, listener.endpointsAreNotCalled())
+			}
+
+			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
+				t.Fatalf("Expected noEndpointsExist to be [%t], got [%t]",
+					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
+			}
+		})
+	}
+}
+
+func TestEndpointsWatcherWithEndpointSlices(t *testing.T) {
+	for _, tt := range []struct {
+		serviceType                      string
+		k8sConfigs                       []string
+		id                               ServiceID
+		hostname                         string
+		port                             Port
+		expectedAddresses                []string
+		expectedNoEndpoints              bool
+		expectedNoEndpointsServiceExists bool
+		expectedError                    bool
+	}{
 		{
 			serviceType: "local services with EndpointSlice",
 			k8sConfigs: []string{`
@@ -675,17 +722,14 @@ status:
 			},
 			id:   ServiceID{Name: "name-1", Namespace: "ns"},
 			port: 8989,
-			// expectedAddresses: []string{
-			// 	"172.17.0.12:8989",
-			// 	"172.17.0.19:8989",
-			// 	"172.17.0.20:8989",
-			// 	"172.17.0.21:8989",
-			// },
-			expectedAddresses: []string{},
-			//expectedNoEndpoints:              false,
-			expectedNoEndpoints: true,
-			//expectedNoEndpointsServiceExists: false,
-			expectedNoEndpointsServiceExists: true,
+			expectedAddresses: []string{
+				"172.17.0.12:8989",
+				"172.17.0.19:8989",
+				"172.17.0.20:8989",
+				"172.17.0.21:8989",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
 			expectedError:                    false,
 		},
 		{
@@ -772,14 +816,11 @@ status:
   podIP: 172.17.0.25
   phase: Running`,
 			},
-			id:   ServiceID{Name: "name-1", Namespace: "ns"},
-			port: 8989,
-			//expectedAddresses:                []string{"172.17.0.25:8989"},
-			expectedAddresses: []string{},
-			//expectedNoEndpoints:              false,
-			expectedNoEndpoints: true,
-			//expectedNoEndpointsServiceExists: false,
-			expectedNoEndpointsServiceExists: true,
+			id:                               ServiceID{Name: "name-1", Namespace: "ns"},
+			port:                             8989,
+			expectedAddresses:                []string{"172.17.0.25:8989"},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
 			expectedError:                    false,
 		},
 		{
@@ -978,15 +1019,12 @@ status:
   phase: Running
   podIP: 172.17.0.20`,
 			},
-			id:       ServiceID{Name: "name-1", Namespace: "ns"},
-			hostname: "name-1-3",
-			port:     6000,
-			//expectedAddresses:                []string{"172.17.0.20:6000"},
-			expectedAddresses: []string{},
-			//expectedNoEndpoints:              false,
-			expectedNoEndpoints: true,
-			//expectedNoEndpointsServiceExists: false,
-			expectedNoEndpointsServiceExists: true,
+			id:                               ServiceID{Name: "name-1", Namespace: "ns"},
+			hostname:                         "name-1-3",
+			port:                             6000,
+			expectedAddresses:                []string{"172.17.0.20:6000"},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
 			expectedError:                    false,
 		},
 		{
@@ -1133,8 +1171,7 @@ status:
 			expectedNoEndpoints:              true,
 			expectedNoEndpointsServiceExists: true,
 			expectedError:                    false,
-		},
-	} {
+		}} {
 		tt := tt // pin
 		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
 			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
@@ -1142,7 +1179,7 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
 
 			k8sAPI.Sync(nil)
 
@@ -1207,6 +1244,84 @@ status:
   phase: Running
   podIP: 172.17.0.12`}
 
+	for _, tt := range []struct {
+		serviceType      string
+		k8sConfigs       []string
+		id               ServiceID
+		hostname         string
+		port             Port
+		objectToDelete   interface{}
+		deletingServices bool
+	}{
+		{
+			serviceType:    "can delete endpoints",
+			k8sConfigs:     k8sConfigs,
+			id:             ServiceID{Name: "name1", Namespace: "ns"},
+			port:           8989,
+			hostname:       "name1-1",
+			objectToDelete: &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
+		},
+		{
+			serviceType:    "can delete endpoints when wrapped in a DeletedFinalStateUnknown",
+			k8sConfigs:     k8sConfigs,
+			id:             ServiceID{Name: "name1", Namespace: "ns"},
+			port:           8989,
+			hostname:       "name1-1",
+			objectToDelete: &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
+		},
+		{
+			serviceType:      "can delete services",
+			k8sConfigs:       k8sConfigs,
+			id:               ServiceID{Name: "name1", Namespace: "ns"},
+			port:             8989,
+			hostname:         "name1-1",
+			objectToDelete:   &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
+			deletingServices: true,
+		},
+		{
+			serviceType:      "can delete services when wrapped in a DeletedFinalStateUnknown",
+			k8sConfigs:       k8sConfigs,
+			id:               ServiceID{Name: "name1", Namespace: "ns"},
+			port:             8989,
+			hostname:         "name1-1",
+			objectToDelete:   &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
+			deletingServices: true,
+		},
+	} {
+
+		tt := tt // pin
+		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+
+			k8sAPI.Sync(nil)
+
+			listener := newBufferingEndpointListener()
+
+			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if tt.deletingServices {
+				watcher.deleteService(tt.objectToDelete)
+			} else {
+				watcher.deleteEndpoints(tt.objectToDelete)
+			}
+
+			if !listener.endpointsAreNotCalled() {
+				t.Fatal("Expected NoEndpoints to be Called")
+			}
+		})
+
+	}
+}
+
+func TestEndpointsWatcherDeletionWithEndpointSlices(t *testing.T) {
 	k8sConfigsWithES := []string{`
 kind: APIResourceList
 apiVersion: v1
@@ -1277,40 +1392,6 @@ status:
 		hasSliceAccess   bool
 	}{
 		{
-			serviceType:    "can delete endpoints",
-			k8sConfigs:     k8sConfigs,
-			id:             ServiceID{Name: "name1", Namespace: "ns"},
-			port:           8989,
-			hostname:       "name1-1",
-			objectToDelete: &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
-		},
-		{
-			serviceType:    "can delete endpoints when wrapped in a DeletedFinalStateUnknown",
-			k8sConfigs:     k8sConfigs,
-			id:             ServiceID{Name: "name1", Namespace: "ns"},
-			port:           8989,
-			hostname:       "name1-1",
-			objectToDelete: &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
-		},
-		{
-			serviceType:      "can delete services",
-			k8sConfigs:       k8sConfigs,
-			id:               ServiceID{Name: "name1", Namespace: "ns"},
-			port:             8989,
-			hostname:         "name1-1",
-			objectToDelete:   &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
-			deletingServices: true,
-		},
-		{
-			serviceType:      "can delete services when wrapped in a DeletedFinalStateUnknown",
-			k8sConfigs:       k8sConfigs,
-			id:               ServiceID{Name: "name1", Namespace: "ns"},
-			port:             8989,
-			hostname:         "name1-1",
-			objectToDelete:   &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "name1", Namespace: "ns"}},
-			deletingServices: true,
-		},
-		{
 			serviceType:    "can delete EndpointSlices",
 			k8sConfigs:     k8sConfigsWithES,
 			id:             ServiceID{Name: "name1", Namespace: "ns"},
@@ -1329,7 +1410,6 @@ status:
 			hasSliceAccess: true,
 		},
 	} {
-
 		tt := tt // pin
 		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
 			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
@@ -1337,7 +1417,7 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
 
 			k8sAPI.Sync(nil)
 
@@ -1348,19 +1428,12 @@ status:
 				t.Fatal(err)
 			}
 
-			if tt.deletingServices {
-				watcher.deleteService(tt.objectToDelete)
-			} else if tt.hasSliceAccess {
-				watcher.deleteEndpointSlice(tt.objectToDelete)
-			} else {
-				watcher.deleteEndpoints(tt.objectToDelete)
-			}
+			watcher.deleteEndpointSlice(tt.objectToDelete)
 
 			if !listener.endpointsAreNotCalled() {
 				t.Fatal("Expected NoEndpoints to be Called")
 			}
 		})
-
 	}
 }
 
@@ -1531,7 +1604,7 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
 
 			k8sAPI.Sync(nil)
 
@@ -1691,7 +1764,7 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
 
 			k8sAPI.Sync(nil)
 
@@ -1814,7 +1887,7 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
 
 			k8sAPI.Sync(nil)
 
