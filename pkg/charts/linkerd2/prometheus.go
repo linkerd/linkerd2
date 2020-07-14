@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	prometheusAddOn = "prometheus"
+	PrometheusAddOn = "prometheus"
 )
 
 // Prometheus is an add-on that installs the prometheus component
@@ -14,7 +14,7 @@ type Prometheus map[string]interface{}
 
 // Name returns the name of the Tracing add-on
 func (p Prometheus) Name() string {
-	return prometheusAddOn
+	return PrometheusAddOn
 }
 
 // Values returns the configuration values that were assigned for this add-on
