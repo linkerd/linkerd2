@@ -235,6 +235,10 @@ func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 		return fmt.Errorf(strings.Join(errors, "\n"))
 	}
 
+	if len(links) == 0 {
+		return &SkipError{Reason: "no links"}
+	}
+
 	return &VerboseSuccess{Message: strings.Join(links, "\n")}
 }
 
@@ -271,6 +275,11 @@ func (hc *HealthChecker) checkServiceMirrorController() error {
 	if len(errors) > 0 {
 		return joinErrors(errors, 2)
 	}
+
+	if len(clusterNames) == 0 {
+		return &SkipError{Reason: "no links"}
+	}
+
 	return &VerboseSuccess{Message: strings.Join(clusterNames, "\n")}
 }
 
@@ -329,6 +338,11 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 	if len(errors) > 0 {
 		return joinErrors(errors, 2)
 	}
+
+	if len(links) == 0 {
+		return &SkipError{Reason: "no links"}
+	}
+
 	return &VerboseSuccess{Message: strings.Join(links, "\n")}
 }
 
@@ -404,6 +418,10 @@ func (hc *HealthChecker) checkRemoteClusterAnchors() error {
 		return fmt.Errorf("Problematic clusters:\n    %s", strings.Join(errors, "\n    "))
 	}
 
+	if len(links) == 0 {
+		return &SkipError{Reason: "no links"}
+	}
+
 	return &VerboseSuccess{Message: strings.Join(links, "\n")}
 }
 
@@ -466,6 +484,11 @@ func (hc *HealthChecker) checkIfGatewayMirrorsHaveEndpoints(ctx context.Context)
 	if len(errors) > 0 {
 		return joinErrors(errors, 1)
 	}
+
+	if len(links) == 0 {
+		return &SkipError{Reason: "no links"}
+	}
+
 	return &VerboseSuccess{Message: strings.Join(links, "\n")}
 }
 
@@ -491,6 +514,11 @@ func (hc *HealthChecker) checkIfMirrorServicesHaveEndpoints() error {
 	if len(servicesWithNoEndpoints) > 0 {
 		return fmt.Errorf("Some mirror services do not have endpoints:\n    %s", strings.Join(servicesWithNoEndpoints, "\n    "))
 	}
+
+	if len(mirrorServices.Items) == 0 {
+		return &SkipError{Reason: "no mirror services"}
+	}
+
 	return nil
 }
 
@@ -520,6 +548,10 @@ func (hc *HealthChecker) checkForOrphanedServices() error {
 		if !hasLink {
 			errors = append(errors, fmt.Errorf("mirror service %s.%s is not part of any Link", svc.Name, svc.Namespace))
 		}
+	}
+
+	if len(mirrorServices.Items) == 0 {
+		return &SkipError{Reason: "no mirror services"}
 	}
 
 	if len(errors) > 0 {

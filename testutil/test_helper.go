@@ -113,8 +113,7 @@ func NewGenericTestHelper(
 // MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
 // container name for multicluster components
 var MulticlusterDeployReplicas = map[string]DeploySpec{
-	"linkerd-gateway":        {1, []string{"nginx"}},
-	"linkerd-service-mirror": {1, []string{"service-mirror"}},
+	"linkerd-gateway": {1, []string{"nginx"}},
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
