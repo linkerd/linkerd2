@@ -166,38 +166,56 @@ func TestHandleApiGateway(t *testing.T) {
 		apiClient: mockAPIClient,
 	}
 
-	recorder := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/gateways", nil)
-	handler.handleAPIGateways(recorder, req, httprouter.Params{})
-	resp := recorder.Result()
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("not expecting error reading response body but got: %v", err)
-	}
+	t.Run("Returns expected gateway response", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/gateways", nil)
+		handler.handleAPIGateways(recorder, req, httprouter.Params{})
+		resp := recorder.Result()
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("not expecting error reading response body but got: %v", err)
+		}
 
-	if recorder.Code != http.StatusOK {
-		t.Errorf("Incorrect StatusCode: %+v", recorder.Code)
-		t.Errorf("Expected              %+v", http.StatusOK)
-	}
+		if recorder.Code != http.StatusOK {
+			t.Errorf("Incorrect StatusCode: %+v", recorder.Code)
+			t.Errorf("Expected              %+v", http.StatusOK)
+		}
 
-	header := http.Header{
-		"Content-Type": []string{"application/json"},
-	}
-	if !reflect.DeepEqual(recorder.Header(), header) {
-		t.Errorf("Incorrect headers: %+v", recorder.Header())
-		t.Errorf("Expected:          %+v", header)
-	}
-	apiGatewayOutputGolden, err := ioutil.ReadFile("testdata/api_gateway_output.json")
-	if err != nil {
-		t.Fatalf("not expecting error reading api check output golden file but got: %v", err)
-	}
-	apiGatewayOutputGoldenCompact := &bytes.Buffer{}
-	err = json.Compact(apiGatewayOutputGoldenCompact, apiGatewayOutputGolden)
-	if err != nil {
-		t.Fatalf("not expecting error compacting api check output golden file but got: %v", err)
-	}
-	if !bytes.Equal(body, apiGatewayOutputGoldenCompact.Bytes()) {
-		t.Errorf("expecting response body to be\n %s\n but got\n %s", apiGatewayOutputGoldenCompact.Bytes(), body)
-	}
+		header := http.Header{
+			"Content-Type": []string{"application/json"},
+		}
+		if !reflect.DeepEqual(recorder.Header(), header) {
+			t.Errorf("Incorrect headers: %+v", recorder.Header())
+			t.Errorf("Expected:          %+v", header)
+		}
+		apiGatewayOutputGolden, err := ioutil.ReadFile("testdata/api_gateway_output.json")
+		if err != nil {
+			t.Fatalf("not expecting error reading api check output golden file but got: %v", err)
+		}
+		apiGatewayOutputGoldenCompact := &bytes.Buffer{}
+		err = json.Compact(apiGatewayOutputGoldenCompact, apiGatewayOutputGolden)
+		if err != nil {
+			t.Fatalf("not expecting error compacting api check output golden file but got: %v", err)
+		}
+		if !bytes.Equal(body, apiGatewayOutputGoldenCompact.Bytes()) {
+			t.Errorf("expecting response body to be\n %s\n but got\n %s", apiGatewayOutputGoldenCompact.Bytes(), body)
+		}
+	})
+
+	t.Run("Returns error when invalid timeWindow is passed", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/gateways?window=1t", nil)
+		handler.handleAPIGateways(recorder, req, httprouter.Params{})
+		resp := recorder.Result()
+		defer resp.Body.Close()
+		_, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("not expecting error reading response body but got: %v", err)
+		}
+		if recorder.Code == http.StatusOK {
+			t.Errorf("Incorrect StatusCode: %+v", recorder.Code)
+			t.Errorf("Expected              %+v", http.StatusInternalServerError)
+		}
+	})
 }

@@ -440,15 +440,19 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 }
 
 func (h *handler) handleAPIGateways(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	requestParams := util.GatewayRequestParams{
-		TimeWindow:        req.FormValue("window"),
-		GatewayNamespace:  req.FormValue("gatewayNamespace"),
-		RemoteClusterName: req.FormValue("remoteClusterName"),
+	window := req.FormValue("window")
+	if window == "" {
+		window = "1m"
 	}
-	gatewayRequest, err := util.BuildGatewayRequest(requestParams)
+	_, err := time.ParseDuration(window)
 	if err != nil {
 		renderJSONError(w, err, http.StatusInternalServerError)
 		return
+	}
+	gatewayRequest := &pb.GatewaysRequest{
+		TimeWindow:        window,
+		GatewayNamespace:  req.FormValue("gatewayNamespace"),
+		RemoteClusterName: req.FormValue("remoteClusterName"),
 	}
 	result, err := h.apiClient.Gateways(req.Context(), gatewayRequest)
 	if err != nil {

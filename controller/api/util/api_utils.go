@@ -276,25 +276,6 @@ func BuildEdgesRequest(p EdgesRequestParams) (*pb.EdgesRequest, error) {
 	return edgesRequest, nil
 }
 
-// BuildGatewayRequest builds a Public API GatewayRequest from a
-// GatewayRequestParams
-func BuildGatewayRequest(p GatewayRequestParams) (*pb.GatewaysRequest, error) {
-	window := defaultMetricTimeWindow
-	if p.TimeWindow != "" {
-		_, err := time.ParseDuration(p.TimeWindow)
-		if err != nil {
-			return nil, err
-		}
-		window = p.TimeWindow
-	}
-	gatewayRequest := &pb.GatewaysRequest{
-		TimeWindow:        window,
-		GatewayNamespace:  p.GatewayNamespace,
-		RemoteClusterName: p.RemoteClusterName,
-	}
-	return gatewayRequest, nil
-}
-
 // BuildTopRoutesRequest builds a Public API TopRoutesRequest from a
 // TopRoutesRequestParams.
 func BuildTopRoutesRequest(p TopRoutesRequestParams) (*pb.TopRoutesRequest, error) {
