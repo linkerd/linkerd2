@@ -1,7 +1,7 @@
 ARG RUNTIME_IMAGE=debian:buster-20200514-slim
 
 FROM debian:buster-20200514-slim as fetch
-RUN apt-get update && apt-get install -y ca-certificates curl
+RUN apt-get update && apt-get install -y ca-certificates curl jq
 WORKDIR /build
 COPY bin/fetch-proxy bin/fetch-proxy
 COPY .proxy-version proxy-version
