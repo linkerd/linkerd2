@@ -12,7 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
-	consts "github.com/linkerd/linkerd2/pkg/k8s"
+	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
 	log "github.com/sirupsen/logrus"
 )
@@ -35,14 +35,6 @@ func Main(args []string) {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sAPI, err := k8s.InitializeAPI(
-		*kubeConfigPath, true,
-		k8s.Endpoint, k8s.ES, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
-	)
-	if err != nil {
-		log.Fatalf("Failed to initialize K8s API: %s", err)
-	}
-
 	done := make(chan struct{})
 
 	lis, err := net.Listen("tcp", *addr)
@@ -50,7 +42,7 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	global, err := config.Global(consts.MountPathGlobalConfig)
+	global, err := config.Global(pkgK8s.MountPathGlobalConfig)
 
 	trustDomain := ""
 	if *disableIdentity {
@@ -75,11 +67,40 @@ func Main(args []string) {
 		}
 	}
 
+	// we need to create a separate client to check for EndpointSlice access in k8s cluster
+	// when slices are enabled and registered, k8sAPI is initialized with 'ES' resource
+	k8Client, err := pkgK8s.NewAPI(*kubeConfigPath, "", "", []string{}, 0)
+	if err != nil {
+		log.Fatalf("Failed to initialize K8s API Client: %s", err)
+	}
+	enableEndpointSlices := global.GetEndpointSliceEnabled()
+	err = pkgK8s.EndpointSliceAccess(k8Client)
+	if enableEndpointSlices && err != nil {
+		log.Fatalf("Failed to start with EndpointSlices enabled: %s", err)
+	}
+
+	var k8sAPI *k8s.API
+	if enableEndpointSlices {
+		k8sAPI, err = k8s.InitializeAPI(
+			*kubeConfigPath, true,
+			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
+		)
+	} else {
+		k8sAPI, err = k8s.InitializeAPI(
+			*kubeConfigPath, true,
+			k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
+		)
+	}
+	if err != nil {
+		log.Fatalf("Failed to initialize K8s API: %s", err)
+	}
+
 	server := destination.NewServer(
 		*addr,
 		*controllerNamespace,
 		trustDomain,
 		*enableH2Upgrade,
+		enableEndpointSlices,
 		k8sAPI,
 		clusterDomain,
 		done,
