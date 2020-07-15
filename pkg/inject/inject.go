@@ -68,6 +68,8 @@ var (
 		k8s.ProxyIgnoreInboundPortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
 		k8s.ProxyTraceCollectorSvcAddrAnnotation,
+		k8s.ProxyOutboundConnectTimeout,
+		k8s.ProxyInboundConnectTimeout,
 	}
 )
 
@@ -512,6 +514,8 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		IsGateway:                     conf.isGateway(),
 		RequireIdentityOnInboundPorts: conf.requireIdentityOnInboundPorts(),
 		DestinationGetNetworks:        conf.destinationGetNetworks(),
+		OutboundConnectTimeout:        conf.getOutboundConnectTimeout(),
+		InboundConnectTimeout:         conf.getInboundConnectTimeout(),
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -841,6 +845,30 @@ func (conf *ResourceConfig) destinationGetNetworks() string {
 	}
 
 	return conf.configs.GetProxy().DestinationGetNetworks
+}
+
+func (conf *ResourceConfig) getOutboundConnectTimeout() string {
+      if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyOutboundConnectTimeout]; hasPodOverride {
+          return podOverride
+      }
+
+      if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyOutboundConnectTimeout]; hasNsOverride {
+          return nsOverride
+      }
+
+	  return conf.configs.GetProxy().OutboundConnectTimeout
+}
+
+func (conf *ResourceConfig) getInboundConnectTimeout() string {
+      if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyInboundConnectTimeout]; hasPodOverride {
+          return podOverride
+      }
+
+      if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyInboundConnectTimeout]; hasNsOverride {
+          return nsOverride
+      }
+
+      return conf.configs.GetProxy().InboundConnectTimeout
 }
 
 func (conf *ResourceConfig) isGateway() bool {

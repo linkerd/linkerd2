@@ -31,6 +31,8 @@ global:
   # proxy configuration
   proxy:
     enableExternalProfiles: false
+    outboundConnectTimeout: 1000ms
+    inboundConnectTimeout: 100ms
     image:
       name: gcr.io/linkerd-io/proxy
       pullPolicy: *image_pull_policy

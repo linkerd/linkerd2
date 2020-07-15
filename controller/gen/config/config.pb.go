@@ -220,6 +220,8 @@ type Proxy struct {
 	DebugImageVersion       string                `protobuf:"bytes,16,opt,name=debug_image_version,json=debugImageVersion,proto3" json:"debug_image_version,omitempty"`
 	DestinationGetNetworks  string                `protobuf:"bytes,17,opt,name=destination_get_networks,json=destinationGetNetworks,proto3" json:"destination_get_networks,omitempty"`
 	LogFormat               string                `protobuf:"bytes,18,opt,name=log_format,json=logFormat,proto3" json:"log_format,omitempty"`
+	OutboundConnectTimeout  string                `protobuf:"bytes,19,opt,name=outbound_connect_timeout,json=outboundConnectTimeout,proto3" json:"outboundConnectTimeout,omitempty"`
+	InboundConnectTimeout   string                `protobuf:"bytes,20,opt,name=inbound_connect_timeout,json=inboundConnectTimeout,proto3" json:"inboundConnectTimeout,omitempty"`
 }
 
 func (x *Proxy) Reset() {
