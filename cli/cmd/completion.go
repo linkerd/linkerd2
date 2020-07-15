@@ -31,12 +31,11 @@ func newCmdCompletion() *cobra.Command {
   # zsh on osx / oh-my-zsh
   linkerd completion zsh > "${fpath[1]}/_linkerd"
 
-  # Fish:
+  # fish:
   linkerd completion fish | source
 
-  # fish  To load completions for each session, execute once:
-  linkerd completion fish > ~/.config/fish/completions/linkerd.fish
-`
+  # To load fish shell completions for each session, execute once:
+  linkerd completion fish > ~/.config/fish/completions/linkerd.fish`
 
 	cmd := &cobra.Command{
 		Use:       "completion [bash|zsh|fish]",
