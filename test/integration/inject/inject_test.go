@@ -3,11 +3,14 @@ package inject
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
 )
 
@@ -147,12 +150,12 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 
 	// Match the pod configuration with the namespace level overrides
 	if proxyContainer.Resources.Requests["memory"] != resource.MustParse(nsProxyMemReq) {
-		testutil.Fatalf(t, "proxy memory resource request falied to match with namespace level override")
+		testutil.Fatalf(t, "proxy memory resource request failed to match with namespace level override")
 	}
 
 	// Match with proxy level override
 	if proxyContainer.Resources.Requests["cpu"] != resource.MustParse(podProxyCPUReq) {
-		testutil.Fatalf(t, "proxy cpu resource request falied to match with pod level override")
+		testutil.Fatalf(t, "proxy cpu resource request failed to match with pod level override")
 	}
 }
 
@@ -299,6 +302,55 @@ func TestInjectAutoPod(t *testing.T) {
 		k8s.ProxyInjectAnnotation: k8s.ProxyInjectEnabled,
 	}
 
+	truthy := true
+	falsy := false
+	zero := int64(0)
+	expectedInitContainer := v1.Container{
+		Name:  k8s.InitContainerName,
+		Image: "gcr.io/linkerd-io/proxy-init:" + version.ProxyInitVersion,
+		Args: []string{
+			"--incoming-proxy-port", "4143",
+			"--outgoing-proxy-port", "4140",
+			"--proxy-uid", "2102",
+			// 1234,5678 were added at install time in `install_test.go`'s helmOverridesEdge()
+			"--inbound-ports-to-ignore", "4190,4191,1234,5678",
+		},
+		Resources: v1.ResourceRequirements{
+			Limits: v1.ResourceList{
+				v1.ResourceName("cpu"):    resource.MustParse("100m"),
+				v1.ResourceName("memory"): resource.MustParse("50Mi"),
+			},
+			Requests: v1.ResourceList{
+				v1.ResourceName("cpu"):    resource.MustParse("10m"),
+				v1.ResourceName("memory"): resource.MustParse("10Mi"),
+			},
+		},
+		VolumeMounts: []v1.VolumeMount{
+			{
+				Name:      "linkerd-proxy-init-xtables-lock",
+				ReadOnly:  false,
+				MountPath: "/run",
+			},
+			{
+				ReadOnly:  true,
+				MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+			},
+		},
+		TerminationMessagePath: "/dev/termination-log",
+		ImagePullPolicy:        "IfNotPresent",
+		SecurityContext: &v1.SecurityContext{
+			Capabilities: &v1.Capabilities{
+				Add: []v1.Capability{v1.Capability("NET_ADMIN"), v1.Capability("NET_RAW")},
+			},
+			Privileged:               &falsy,
+			RunAsUser:                &zero,
+			RunAsNonRoot:             &falsy,
+			AllowPrivilegeEscalation: &falsy,
+			ReadOnlyRootFilesystem:   &truthy,
+		},
+		TerminationMessagePolicy: v1.TerminationMessagePolicy("FallbackToLogsOnError"),
+	}
+
 	ns := TestHelper.GetTestNamespace(injectNS)
 	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ns, nsAnnotations)
 	if err != nil {
@@ -327,6 +379,21 @@ func TestInjectAutoPod(t *testing.T) {
 
 	containers := pods[0].Spec.Containers
 	if proxyContainer := testutil.GetProxyContainer(containers); proxyContainer == nil {
-		testutil.Fatalf(t, "pod in namespaces %s wasn't injected", ns)
+		testutil.Fatalf(t, "pod in namespace %s wasn't injected with the proxy container", ns)
 	}
+
+	initContainers := pods[0].Spec.InitContainers
+	if len(initContainers) == 0 {
+		testutil.Fatalf(t, "pod in namespace %s wasn't injected with the init container", ns)
+	}
+	initContainer := initContainers[0]
+	if mounts := initContainer.VolumeMounts; len(mounts) == 0 {
+		testutil.AnnotatedFatalf(t, "init container doesn't have volume mounts", "init container doesn't have volume mounts: %#v", initContainer)
+	}
+	// Removed token volume name from comparison because it contains a random string
+	initContainer.VolumeMounts[1].Name = ""
+	if !reflect.DeepEqual(expectedInitContainer, initContainer) {
+		testutil.AnnotatedFatalf(t, "malformed init container", "malformed init container:\nexpected:\n%#v\nactual:\n%#v", expectedInitContainer, initContainer)
+	}
+
 }

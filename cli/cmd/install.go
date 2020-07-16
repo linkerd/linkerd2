@@ -43,12 +43,12 @@ type (
 		controlPlaneVersion         string
 		controllerReplicas          uint
 		controllerLogLevel          string
-		prometheusImage             string
 		highAvailability            bool
 		controllerUID               int64
 		disableH2Upgrade            bool
 		disableHeartbeat            bool
 		cniEnabled                  bool
+		enableEndpointSlices        bool
 		skipChecks                  bool
 		omitWebhookSideEffects      bool
 		restrictDashboardPrivileges bool
@@ -128,7 +128,6 @@ var (
 		"templates/web-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
-		"templates/prometheus-rbac.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
 		"templates/tap-rbac.yaml",
@@ -145,7 +144,6 @@ var (
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
 		"templates/web.yaml",
-		"templates/prometheus.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
@@ -181,13 +179,13 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		clusterDomain:               defaults.Global.ClusterDomain,
 		controlPlaneVersion:         version.Version,
 		controllerReplicas:          defaults.ControllerReplicas,
-		controllerLogLevel:          defaults.ControllerLogLevel,
-		prometheusImage:             defaults.PrometheusImage,
+		controllerLogLevel:          defaults.Global.ControllerLogLevel,
 		highAvailability:            defaults.Global.HighAvailability,
 		controllerUID:               defaults.ControllerUID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
 		disableHeartbeat:            defaults.DisableHeartBeat,
 		cniEnabled:                  defaults.Global.CNIEnabled,
+		enableEndpointSlices:        defaults.Global.EnableEndpointSlices,
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
 		controlPlaneTracing:         defaults.Global.ControlPlaneTracing,
@@ -438,6 +436,12 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 		return nil, nil, err
 	}
 
+	if options.enableEndpointSlices {
+		if err = validateEndpointSlicesFeature(); err != nil {
+			return nil, nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
+		}
+	}
+
 	return values, configs, nil
 }
 
@@ -458,11 +462,6 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	flags.StringVar(
 		&options.controllerLogLevel, "controller-log-level", options.controllerLogLevel,
 		"Log level for the controller and web components",
-	)
-
-	flags.StringVar(
-		&options.prometheusImage, "prometheus-image", options.prometheusImage,
-		"Custom Prometheus image name",
 	)
 
 	flags.BoolVar(
@@ -514,6 +513,9 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.smiMetricsEnabled, "smi-metrics", options.smiMetricsEnabled,
 		"Enables installing the SMI-Metrics controller",
 	)
+
+	flags.BoolVar(&options.enableEndpointSlices, "enable-endpoint-slices", options.enableEndpointSlices,
+		"Enables the usage of EndpointSlice informers and resources for destination service")
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "Tag to be used for the control plane component images")
 	flags.StringVar(&options.smiMetricsImage, "smi-metrics-image", options.smiMetricsImage, "SMI Metrics image")
@@ -689,10 +691,6 @@ func (options *installOptions) validate() error {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
-	if options.prometheusImage != "" && !alphaNumDashDotSlashColonUnderscore.MatchString(options.prometheusImage) {
-		return fmt.Errorf("%s is not a valid prometheus image", options.prometheusImage)
-	}
-
 	if err := options.proxyConfigOptions.validate(); err != nil {
 		return err
 	}
@@ -701,6 +699,15 @@ func (options *installOptions) validate() error {
 	}
 
 	return nil
+}
+
+func validateEndpointSlicesFeature() error {
+	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return err
+	}
+
+	return k8s.EndpointSliceAccess(k8sAPI)
 }
 
 // buildValuesWithoutIdentity builds the values that will be used to render
@@ -766,7 +773,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Configs.Install = installJSON
 	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
 	installValues.Global.ControllerImageVersion = configs.GetGlobal().GetVersion()
-	installValues.ControllerLogLevel = options.controllerLogLevel
+	installValues.Global.ControllerLogLevel = options.controllerLogLevel
 	installValues.ControllerReplicas = options.controllerReplicas
 	installValues.ControllerUID = options.controllerUID
 	installValues.Global.ControlPlaneTracing = options.controlPlaneTracing
@@ -775,13 +782,10 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.Grafana["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
-	if options.prometheusImage != "" {
-		installValues.PrometheusImage = options.prometheusImage
-	}
 	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.Global.CNIEnabled = options.cniEnabled
+	installValues.Global.EnableEndpointSlices = options.enableEndpointSlices
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
-	installValues.PrometheusLogLevel = toPromLogLevel(strings.ToLower(options.controllerLogLevel))
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat
@@ -824,21 +828,16 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.ProxyInit.Image.Version = options.initImageVersion
 	installValues.Global.ProxyInit.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
 	installValues.Global.ProxyInit.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
+	installValues.Global.ProxyInit.XTMountPath = &l5dcharts.VolumeMountPath{
+		MountPath: k8s.MountPathXtablesLock,
+		Name:      k8s.InitXtablesLockVolumeMountName,
+	}
 
 	installValues.DebugContainer.Image.Name = registryOverride(options.debugImage, options.dockerRegistry)
 	installValues.DebugContainer.Image.PullPolicy = options.imagePullPolicy
 	installValues.DebugContainer.Image.Version = options.debugImageVersion
 
 	return installValues, nil
-}
-
-func toPromLogLevel(level string) string {
-	switch level {
-	case "panic", "fatal":
-		return "error"
-	default:
-		return level
-	}
 }
 
 func render(w io.Writer, values *l5dcharts.Values) error {
@@ -944,6 +943,7 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 	return &pb.Global{
 		LinkerdNamespace:       controlPlaneNamespace,
 		CniEnabled:             options.cniEnabled,
+		EndpointSliceEnabled:   options.enableEndpointSlices,
 		Version:                options.controlPlaneVersion,
 		IdentityContext:        identity,
 		OmitWebhookSideEffects: options.omitWebhookSideEffects,

@@ -34,6 +34,7 @@ import (
 	batchv1informers "k8s.io/client-go/informers/batch/v1"
 	batchv1beta1informers "k8s.io/client-go/informers/batch/v1beta1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
+	discoveryinformers "k8s.io/client-go/informers/discovery/v1beta1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -61,6 +62,7 @@ const (
 	TS
 	Node
 	Secret
+	ES // EndpointSlice resource
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -72,6 +74,7 @@ type API struct {
 	deploy   appv1informers.DeploymentInformer
 	ds       appv1informers.DaemonSetInformer
 	endpoint coreinformers.EndpointsInformer
+	es       discoveryinformers.EndpointSliceInformer
 	job      batchv1informers.JobInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
 	ns       coreinformers.NamespaceInformer
@@ -204,6 +207,9 @@ func NewAPI(
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
+		case ES:
+			api.es = sharedInformers.Discovery().V1beta1().EndpointSlices()
+			api.syncChecks = append(api.syncChecks, api.es.Informer().HasSynced)
 		case Job:
 			api.job = sharedInformers.Batch().V1().Jobs()
 			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
@@ -332,6 +338,14 @@ func (api *API) Endpoint() coreinformers.EndpointsInformer {
 		panic("Endpoint informer not configured")
 	}
 	return api.endpoint
+}
+
+// ES provides access to a shared informer and lister for EndpointSlices
+func (api *API) ES() discoveryinformers.EndpointSliceInformer {
+	if api.es == nil {
+		panic("EndpointSlices informer not configured")
+	}
+	return api.es
 }
 
 // CM provides access to a shared informer and lister for ConfigMaps.

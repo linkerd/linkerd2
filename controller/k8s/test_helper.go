@@ -32,6 +32,7 @@ func NewFakeAPI(configs ...string) (*API, error) {
 		Svc,
 		TS,
 		Node,
+		ES,
 	), nil
 }
 

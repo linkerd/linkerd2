@@ -460,6 +460,26 @@ func TestK8sPodToPublicPod(t *testing.T) {
 					PodIP:               "pod-ip",
 				},
 			},
+			{
+				k8sPod: corev1.Pod{
+					Status: corev1.PodStatus{
+						Phase:  "Failed",
+						Reason: "Evicted",
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								Name:  k8s.ProxyContainerName,
+								Ready: true,
+							},
+						},
+					},
+				},
+				ownerName: "owner-name",
+				publicPod: &pb.Pod{
+					Name:       "/",
+					Status:     "Evicted",
+					ProxyReady: true,
+				},
+			},
 		}
 
 		for _, exp := range expectations {

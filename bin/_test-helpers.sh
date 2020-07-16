@@ -6,8 +6,8 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer helm helm-upgrade uninstall upgrade-edge upgrade-stable)
-export all_test_names=(custom-domain "${default_test_names[*]}")
+export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
+export all_test_names=(cluster-domain "${default_test_names[*]}")
 
 handle_input() {
   export images=''
@@ -23,7 +23,7 @@ handle_input() {
 
 Optionally specify a test with the --name flag: [${all_test_names[*]}]
 
-Note: The custom-domain test requires a cluster configuration with a custom cluster domain (see test/configs/cluster-domain.yaml)
+Note: The cluster-domain test requires a cluster configuration with a custom cluster domain (see test/configs/cluster-domain.yaml)
 
 Usage:
     ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--name test-name] [--skip-kind-create] /path/to/linkerd
@@ -39,11 +39,11 @@ Examples:
     ${0##*/} --skip-kind-create /path/to/linkerd
 
     # Load images from tar files located under the 'image-archives' directory
-    # Note: This is primarly for CI
+    # Note: This is primarily for CI
     ${0##*/} --images /path/to/linkerd
 
     # Retrieve images from a remote docker instance and then load them into KinD
-    # Note: This is primarly for CI
+    # Note: This is primarily for CI
     ${0##*/} --images --images-host ssh://linkerd-docker /path/to/linkerd
 
 Available Commands:
@@ -140,6 +140,7 @@ check_cluster() {
 delete_cluster() {
   local name=$1
   "$bindir"/kind delete cluster --name "$name" 2>&1
+  exit_on_err 'error deleting cluster'
 }
 
 cleanup_cluster() {
@@ -183,6 +184,8 @@ start_test() {
   fi
   check_cluster
   run_"$name"_test
+  exit_on_err "error calling 'run_${name}_test'"
+
   if [ -z "$skip_kind_create" ]; then
     delete_cluster "$name"
   else
@@ -290,6 +293,7 @@ setup_helm() {
   helm_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2
   export helm_chart
   export helm_release_name='helm-test'
+  export helm_multicluster_release_name="multicluster-test"
   "$bindir"/helm-build
   "$helm_path" --kube-context="$context" repo add linkerd https://helm.linkerd.io/stable
   exit_on_err 'error setting up Helm'
@@ -298,7 +302,6 @@ setup_helm() {
 helm_cleanup() {
   (
     set -e
-    # `helm delete` deletes $linkerd_namespace-helm
     "$helm_path" --kube-context="$context" delete "$helm_release_name"
     # `helm delete` doesn't wait for resources to be deleted, so we wait explicitly.
     # We wait for the namespace to be gone so the following call to `cleanup` doesn't fail when it attempts to delete
@@ -307,16 +310,6 @@ helm_cleanup() {
     kubectl wait --for=delete ns/linkerd --timeout=120s
   )
   exit_on_err 'error cleaning up Helm'
-}
-
-run_helm_test() {
-  setup_helm
-  helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2-multicluster
-  helm_multicluster_release_name="multicluster-test"
-  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
-  --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
-  --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
-  helm_cleanup
 }
 
 run_helm-upgrade_test() {
@@ -339,9 +332,26 @@ run_uninstall_test() {
 }
 
 run_deep_test() {
+  local tests=()
   run_test "$test_directory/install_test.go" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  run_test "${tests[@]}"
+  for test in "${tests[@]}"; do
+    run_test "$test"
+  done
+}
+
+run_helm-deep_test() {
+  local tests=()
+  setup_helm
+  helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2-multicluster
+  run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
+  --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
+  --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
+  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  for test in "${tests[@]}"; do
+    run_test "$test"
+  done
+  helm_cleanup
 }
 
 run_external-issuer_test() {

@@ -6,6 +6,7 @@
 global:
   clusterDomain: &cluster_domain cluster.local
   imagePullPolicy: &image_pull_policy IfNotPresent
+  controllerLogLevel: &controller_log_level info
 
   # control plane trace configuration
   controlPlaneTracing: false
@@ -14,6 +15,11 @@ global:
   linkerdVersion: &linkerd_version linkerdVersionValue
 
   namespace: linkerd
+
+  # enables the use of EndpointSlice informers for the destination service;
+  # enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on;
+  # the feature is still experimental.
+  enableEndpointSlices: false
 
   identityTrustAnchorsPEM: |
 
@@ -71,6 +77,9 @@ global:
         limit: 50Mi
         request: 10Mi
     closeWaitTimeoutSecs: 0
+    xtMountPath:
+      mountPath: /run
+      name: linkerd-proxy-init-xtables-lock
 
   # control plane annotations - do not edit
   createdByAnnotation: linkerd.io/created-by
@@ -93,7 +102,6 @@ webhookFailurePolicy: Ignore
 
 # controller configuration
 controllerImage: gcr.io/linkerd-io/controller
-controllerLogLevel: &controller_log_level info
 controllerReplicas: 1
 controllerUID: 2103
 
@@ -146,37 +154,6 @@ identity:
 # heartbeat configuration
 disableHeartBeat: false
 heartbeatSchedule: "0 0 * * *"
-
-# prometheus configuration
-prometheusImage: prom/prometheus:v2.15.2
-prometheusLogLevel: *controller_log_level
-# set resources for prometheus and prometheus linkerd proxy respectively
-# see global.proxy.resources for details.
-#prometheusResources:
-#prometheusProxyResources:
-prometheusExtraArgs: {}
-  # log.format: json
-prometheusAlertmanagers: []
-  # - scheme: http
-  #   static_configs:
-  #   - targets:
-  #     - "alertmanager.linkerd.svc:9093"
-prometheusRuleConfigMapMounts: []
-  # - name: alerting-rules
-  #   subPath: alerting_rules.yml
-  #   configMap: linkerd-prometheus-rules
-  # - name: recording-rules
-  #   subPath: recording_rules.yml
-  #   configMap: linkerd-prometheus-rules
-prometheusPersistence:
-  ### WARNING: prometheusPersistence is experimental and has not been tested/vetted by the Linkerd team.
-  ### As such, please refer to https://linkerd.io/2/tasks/exporting-metrics/ for the recommended approach to metrics data retention.
-  # if enabled, creates a persistent volume claim for prometheus data
-  # https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
-  enabled: false
-  storageClass: ""
-  accessMode: ReadWriteOnce
-  size: 8Gi
 
 # proxy injector configuration
 proxyInjector:
@@ -251,6 +228,10 @@ installNamespace: true
 nodeSelector:
   beta.kubernetes.io/os: linux
 
+# Tolerations constraints for control-plane components
+# https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+#tolerations:
+
 smiMetrics:
   enabled: false
   externalSecret: false
@@ -269,6 +250,7 @@ smiMetrics:
 #smiMetricsProxyResources:
 
 # Configuration for Add-ons
+# Full configuration fields https://github.com/linkerd/linkerd2/tree/master/charts/linkerd2#add-ons-configuration
 
 grafana:
   enabled: true
@@ -277,6 +259,53 @@ grafana:
     name: gcr.io/linkerd-io/grafana
   # set resource requests and limits for grafana and its linkerd proxy respectively
   # see global.proxy.resources in the linkerd2 chart for details.
+  # resources:
+  # proxy:
+  #   resources:
+
+prometheus:
+  enabled: true
+  # image: prom/prometheus:v2.15.3
+  # args:
+  #  storage.tsdb.retention.time: 6h
+  #  log.level: debug
+  # globalConfig:
+  #   scrape_interval: 10s
+  #   scrape_timeout: 10s
+  # scrapeConfigs:
+  # - job_name: 'kubernetes-nodes'
+  #   scheme: https
+  #   tls_config:
+  #     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  #   bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+  #   kubernetes_sd_configs:
+  #   - role: node
+  #   relabel_configs:
+  #   - action: labelmap
+  #     regex: __meta_kubernetes_node_label_(.+)
+  # alertManagers:
+  # - scheme: http
+  #   static_configs:
+  #   - targets:
+  #     - "alertmanager.linkerd.svc:9093"
+  # alertRelabelConfigs:
+  # - action: labeldrop
+  #   regex: prometheus_replica
+  # ruleConfigMapMounts:
+  # - name: alerting-rules
+  #   subPath: alerting_rules.yml
+  #   configMap: linkerd-prometheus-rules
+  # - name: recording-rules
+  #   subPath: recording_rules.yml
+  #   configMap: linkerd-prometheus-rules
+  ### WARNING: persistence is experimental and has not been tested/vetted by the Linkerd team.
+  ### As such, please refer to https://linkerd.io/2/tasks/exporting-metrics/ for the recommended approach to metrics data retention.
+  # if enabled, creates a persistent volume claim for prometheus data
+  # https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
+  # persistence:
+  #   storageClass: ""
+  #   accessMode: ReadWriteOnce
+  #   size: 8Gi
   # resources:
   # proxy:
   #   resources:
