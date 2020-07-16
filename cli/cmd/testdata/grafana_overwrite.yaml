@@ -2,3 +2,4 @@ grafana:
   enabled: true
   image:
     name: linkerd-image-overwrite
+    tag: image-tag-overwrite

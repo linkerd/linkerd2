@@ -2499,6 +2499,7 @@ data:
       enabled: true
       image:
         name: linkerd-image-overwrite
+        tag: image-tag-overwrite
     prometheus:
       enabled: true
     tracing:
@@ -2642,7 +2643,7 @@ spec:
         # see https://github.com/grafana/grafana/issues/20096
         - name: GODEBUG
           value: netdns=go
-        image: linkerd-image-overwrite:UPGRADE-CONTROL-PLANE-VERSION
+        image: linkerd-image-overwrite:image-tag-overwrite
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
