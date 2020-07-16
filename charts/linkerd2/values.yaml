@@ -298,6 +298,33 @@ prometheus:
   # - name: recording-rules
   #   subPath: recording_rules.yml
   #   configMap: linkerd-prometheus-rules
+  ###
+  ### Sidecar containers allow access to the prometheus data directory,
+  ### e.g. for exporting data to non-prometheus systems.
+  # sidecarContainers:
+  # - name: sidecar
+  #   image: gcr.io/myproject/stackdriver-prometheus-sidecar
+  #   lifecycle:
+  #     # n.b. only valid on k8s >=1.19
+  #     type: Sidecar
+  #   imagePullPolicy: always
+  #   command:
+  #   - /bin/sh
+  #   - -c
+  #   - |
+  #     exec /bin/stackdriver-prometheus-sidecar \
+  #       --stackdriver.project-id=myproject \
+  #       --stackdriver.kubernetes.location=us-central1 \
+  #       --stackdriver.kubernetes.cluster-name=mycluster \
+  #       --prometheus.wal-directory=/data/wal \
+  #       --log.level=info
+  #     volumeMounts:
+  #     - mountPath: /data
+  #       name: data
+  #   ports:
+  #   - name: foo
+  #     containerPort: 9091
+  #     protocol: TCP
   ### WARNING: persistence is experimental and has not been tested/vetted by the Linkerd team.
   ### As such, please refer to https://linkerd.io/2/tasks/exporting-metrics/ for the recommended approach to metrics data retention.
   # if enabled, creates a persistent volume claim for prometheus data

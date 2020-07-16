@@ -229,6 +229,7 @@ The following table lists the configurable parameters for the Prometheus Add-On.
 | `prometheus.resources.memory.request`  | Amount of memory that the prometheus container requests                                                                                                                               ||
 | `prometheus.ruleConfigMapMounts`             | Alerting/recording rule ConfigMap mounts (sub-path names must end in `_rules.yml` or `_rules.yaml`)                                                                                   | `[]`                                 |
 | `prometheus.scrapeConfigs`             | A scrape_config section specifies a set of targets and parameters describing how to scrape them.                                                        | `[]`                                 |
+| `prometheus.sidecarContainers`         | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems | `[]`                                 |
 
 Most of the above configuration match directly with the official Prometheus
 configuration which can be found [here](https://prometheus.io/docs/prometheus/latest/configuration/configuration)
