@@ -2499,7 +2499,6 @@ data:
       enabled: true
       image:
         name: linkerd-image-overwrite
-      name: linkerd-grafana-overwrite
     prometheus:
       enabled: true
     tracing:
@@ -2534,7 +2533,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   grafana.ini: |-
-    instance_name = linkerd-grafana-overwrite
+    instance_name = linkerd-grafana
 
     [server]
     root_url = %(protocol)s://%(domain)s:/grafana/
@@ -2620,7 +2619,7 @@ spec:
     matchLabels:
       linkerd.io/control-plane-component: grafana
       linkerd.io/control-plane-ns: linkerd
-      linkerd.io/proxy-deployment: linkerd-grafana-overwrite
+      linkerd.io/proxy-deployment: linkerd-grafana
   template:
     metadata:
       annotations:
@@ -2631,7 +2630,7 @@ spec:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-grafana-overwrite
+        linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
