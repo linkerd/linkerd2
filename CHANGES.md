@@ -2,11 +2,8 @@
 
 ## edge-20.7.3
 
-This edge release introduces an install flag for EndpointSlices. With this flag,
-endpoint slices can be used as a resource in the destination service instead of
-the endpoints resource.
-
-* Introduce CLI and Helm install flag for EndpointSlices (thanks @Matei207!)
+* Add preliminary support for EndpointSlices which will be usable in future
+  releases (thanks @Matei207!)
 * Internal improvements to the CI process for testing Helm installations
 
 ## edge-20.7.2
