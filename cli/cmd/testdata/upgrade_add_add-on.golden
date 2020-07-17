@@ -2501,13 +2501,7 @@ data:
     prometheus:
       enabled: true
     tracing:
-      collector:
-        image: omnition/opencensus-collector:0.1.11
-        name: linkerd-collector
       enabled: true
-      jaeger:
-        image: jaegertracing/all-in-one:1.17.1
-        name: linkerd-jaeger
 ---
 ###
 ### Grafana RBAC

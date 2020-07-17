@@ -2491,9 +2491,6 @@ data:
         image: overwrite-collector-image
         name: overwrite-collector
       enabled: true
-      jaeger:
-        image: jaegertracing/all-in-one:1.17.1
-        name: linkerd-jaeger
 ---
 ###
 ### Grafana RBAC
