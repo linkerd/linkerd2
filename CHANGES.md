@@ -1,5 +1,14 @@
 # Changes
 
+## edge-20.7.3
+
+This edge release introduces an install flag for EndpointSlices. With this flag,
+endpoint slices can be used as a resource in the destination service instead of
+the endpoints resource.
+
+* Introduce CLI and Helm install flag for EndpointSlices (thanks @Matei207!)
+* Internal improvements to the CI process for testing Helm installations
+
 ## edge-20.7.2
 
 This edge release moves Linkerd's bundled Prometheus into an add-on. This makes
