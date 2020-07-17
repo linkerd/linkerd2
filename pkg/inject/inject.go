@@ -848,27 +848,27 @@ func (conf *ResourceConfig) destinationGetNetworks() string {
 }
 
 func (conf *ResourceConfig) getOutboundConnectTimeout() string {
-      if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyOutboundConnectTimeout]; hasPodOverride {
-          return podOverride
-      }
+	if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyOutboundConnectTimeout]; hasPodOverride {
+		return podOverride
+	}
 
-      if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyOutboundConnectTimeout]; hasNsOverride {
-          return nsOverride
-      }
+	if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyOutboundConnectTimeout]; hasNsOverride {
+		return nsOverride
+	}
 
-	  return conf.configs.GetProxy().OutboundConnectTimeout
+	return conf.configs.GetProxy().OutboundConnectTimeout
 }
 
 func (conf *ResourceConfig) getInboundConnectTimeout() string {
-      if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyInboundConnectTimeout]; hasPodOverride {
-          return podOverride
-      }
+	if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyInboundConnectTimeout]; hasPodOverride {
+		return podOverride
+	}
 
-      if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyInboundConnectTimeout]; hasNsOverride {
-          return nsOverride
-      }
+	if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyInboundConnectTimeout]; hasNsOverride {
+		return nsOverride
+	}
 
-      return conf.configs.GetProxy().InboundConnectTimeout
+	return conf.configs.GetProxy().InboundConnectTimeout
 }
 
 func (conf *ResourceConfig) isGateway() bool {
