@@ -66,10 +66,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 					check: func(context.Context) error {
 						if _, ok := hc.addOns[l5dcharts.PrometheusAddOn]; ok {
 							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get("linkerd-prometheus-config", metav1.GetOptions{})
-							if err != nil {
-								return err
-							}
-							return nil
+							return err
 						}
 						return &SkipError{Reason: "prometheus add-on not enabled"}
 					},

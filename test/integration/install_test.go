@@ -397,7 +397,7 @@ func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
 
-	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
+	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion(), false)
 }
 
 func TestUpgradeHelm(t *testing.T) {
@@ -584,7 +584,7 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string) {
+func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string, compareOutput bool) {
 	var cmd []string
 	var golden string
 	if stage == "proxy" {
@@ -604,6 +604,10 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		} else {
 			golden = "check.golden"
 		}
+	}
+
+	if !compareOutput {
+		return
 	}
 
 	timeout := time.Minute
@@ -632,11 +636,11 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 // TODO: run this after a `linkerd install config`
 func TestCheckConfigPostInstall(t *testing.T) {
-	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "")
+	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "", true)
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	testCheckCommand(t, "", TestHelper.GetVersion(), "", "")
+	testCheckCommand(t, "", TestHelper.GetVersion(), "", "", true)
 }
 
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
@@ -816,7 +820,7 @@ func TestCheckProxy(t *testing.T) {
 		tc := tc // pin
 		t.Run(tc.ns, func(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
-			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "")
+			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "", true)
 		})
 	}
 }
