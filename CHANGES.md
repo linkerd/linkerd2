@@ -1,5 +1,11 @@
 # Changes
 
+## edge-20.7.3
+
+* Add preliminary support for EndpointSlices which will be usable in future
+  releases (thanks @Matei207!)
+* Internal improvements to the CI process for testing Helm installations
+
 ## edge-20.7.2
 
 This edge release moves Linkerd's bundled Prometheus into an add-on. This makes
