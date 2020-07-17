@@ -8,30 +8,60 @@ on:
     - main
 env:
   GH_ANNOTATION: true
+  DOCKER_BUILDKIT: 1
 jobs:
-  # todo: Keep in sync with `release.yml`
   docker_build:
-    name: Docker build
     runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        target: [proxy, controller, web, cni-plugin, debug, cli-bin, grafana]
+    name: Docker build (${{ matrix.target }})
     steps:
     - name: Checkout code
       # actions/checkout@v2
       uses: actions/checkout@722adc6
-    - name: Setup SSH config for Packet
+    - name: Set environment variables from scripts
       run: |
-        mkdir -p ~/.ssh/
-        touch ~/.ssh/id && chmod 600 ~/.ssh/id
-        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
-        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
-        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        ssh linkerd-docker docker version
+        . bin/_tag.sh
+        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+
+        . bin/_docker.sh
+        echo ::set-env name=DOCKER_REGISTRY::$DOCKER_REGISTRY
+        echo ::set-env name=DOCKER_BUILDKIT_CACHE::${{ runner.temp }}/.buildx-cache
+    - name: Cache docker layers
+      # actions/cache@v2.0.0
+      uses: actions/cache@b820478
+      with:
+        path: ${{ env.DOCKER_BUILDKIT_CACHE }}
+        key: ${{ runner.os }}-buildx-${{ matrix.target }}-${{ env.TAG }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-${{ matrix.target }}-
     - name: Build docker images
       env:
-        DOCKER_HOST: ssh://linkerd-docker
         DOCKER_TRACE: 1
       run: |
         export PATH="`pwd`/bin:$PATH"
-        bin/docker-build
+        docker buildx create --driver docker-container --use
+        bin/docker-build-${{ matrix.target }}
+        # changes generate new images while the existing ones don't get removed
+        # so we manually do that to avoid bloating the cache
+        bin/docker-cache-prune
+    - name: Create artifact with CLI and image archives
+      env:
+        ARCHIVES: /home/runner/archives
+      run: |
+        mkdir -p $ARCHIVES
+        docker save "$DOCKER_REGISTRY/${{ matrix.target }}:$TAG" > $ARCHIVES/${{ matrix.target }}.tar
+    # `with.path` values do not support environment variables yet, so an
+    # absolute path is used here.
+    #
+    # https://github.com/actions/upload-artifact/issues/8
+    - name: Upload artifact
+      # actions/upload-artifact@v1
+      uses: actions/upload-artifact@3446296
+      with:
+        name: image-archives
+        path: /home/runner/archives
   # todo: Keep in sync with `release.yml`
   docker_push:
     name: Docker push
@@ -45,6 +75,16 @@ jobs:
       run: |
         . bin/_tag.sh
         echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+    - name: Download image archives
+      # actions/download-artifact@v1
+      uses: actions/download-artifact@18f0f59
+      with:
+        name: image-archives
+    - name: Load images into docker
+      run: |
+        for image in proxy controller web cni-plugin debug cli-bin grafana; do
+          docker load < image-archives/$image.tar
+        done
     - name: Configure gcloud
       # linkerd/linkerd2-action-gcloud@v1.0.1
       uses: linkerd/linkerd2-action-gcloud@308c4df
@@ -52,20 +92,9 @@ jobs:
         cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
         gcp_project: ${{ secrets.GCP_PROJECT }}
         gcp_zone: ${{ secrets.GCP_ZONE }}
-    - name: Docker SSH setup
-      run: |
-        mkdir -p ~/.ssh/
-        touch ~/.ssh/id && chmod 600 ~/.ssh/id
-        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
-        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
-        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        ssh linkerd-docker docker version
     - name: Push docker images to registry
-      env:
-        DOCKER_HOST: ssh://linkerd-docker
       run: |
         export PATH="`pwd`/bin:$PATH"
-        bin/docker-push-deps
         bin/docker-push $TAG
         bin/docker-retag-all $TAG main
         bin/docker-push main

@@ -9,10 +9,14 @@ on:
     - main
 env:
   GH_ANNOTATION: true
+  DOCKER_BUILDKIT: 1
 jobs:
   docker_build:
-    name: Docker build
     runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        target: [proxy, controller, web, cni-plugin, debug, cli-bin, grafana]
+    name: Docker build (${{ matrix.target }})
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -24,39 +28,35 @@ jobs:
 
         . bin/_docker.sh
         echo ::set-env name=DOCKER_REGISTRY::$DOCKER_REGISTRY
-    - name: Setup SSH config for Packet
-      if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
-      run: |
-        mkdir -p ~/.ssh/
-        touch ~/.ssh/id && chmod 600 ~/.ssh/id
-        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
-        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
-        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-        ssh linkerd-docker docker version
-        echo ::set-env name=DOCKER_HOST::ssh://linkerd-docker
+        echo ::set-env name=DOCKER_BUILDKIT_CACHE::${{ runner.temp }}/.buildx-cache
+    - name: Cache docker layers
+      # actions/cache@v2.0.0
+      uses: actions/cache@b820478
+      with:
+        path: ${{ env.DOCKER_BUILDKIT_CACHE }}
+        key: ${{ runner.os }}-buildx-${{ matrix.target }}-${{ env.TAG }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-${{ matrix.target }}-
     - name: Build docker images
       env:
         DOCKER_TRACE: 1
       run: |
         export PATH="`pwd`/bin:$PATH"
-        bin/docker-build
+        docker buildx create --driver docker-container --use
+        bin/docker-build-${{ matrix.target }}
+        # changes generate new images while the existing ones don't get removed
+        # so we manually do that to avoid bloating the cache
+        bin/docker-cache-prune
     - name: Create artifact with CLI and image archives
       env:
         ARCHIVES: /home/runner/archives
       run: |
         mkdir -p $ARCHIVES
-
-        for image in proxy controller web cni-plugin debug cli-bin grafana; do
-          docker save "$DOCKER_REGISTRY/$image:$TAG" > $ARCHIVES/$image.tar || tee save_fail &
-        done
-
+        docker save "$DOCKER_REGISTRY/${{ matrix.target }}:$TAG" > $ARCHIVES/${{ matrix.target }}.tar
         # save windows cli into artifacts
-        cp -r ./target/cli/windows/linkerd $ARCHIVES/linkerd-windows.exe
-
-        # Wait for `docker save` background processes to complete. Exit early
-        # if any job failed.
-        wait < <(jobs -p)
-        test -f save_fail && exit 1 || true
+        if [ '${{ matrix.target }}' == 'cli-bin' ]; then
+          cp -r ./target/cli/windows/linkerd $ARCHIVES/linkerd-windows.exe
+        fi
     # `with.path` values do not support environment variables yet, so an
     # absolute path is used here.
     #
@@ -119,31 +119,12 @@ jobs:
 
         . bin/_docker.sh
         echo ::set-env name=DOCKER_REGISTRY::$DOCKER_REGISTRY
-    - name: Setup SSH config for Packet
-      if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
-      run: |
-        mkdir -p ~/.ssh/
-        touch ~/.ssh/id && chmod 600 ~/.ssh/id
-        echo "${{ secrets.DOCKER_SSH_CONFIG }}"  > ~/.ssh/config
-        echo "${{ secrets.DOCKER_PRIVATE_KEY }}" > ~/.ssh/id
-        echo "${{ secrets.DOCKER_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-    - name: Download image archives (Forked repositories)
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+    - name: Download image archives
       # actions/download-artifact@v1
       uses: actions/download-artifact@18f0f59
       with:
         name: image-archives
     - name: Load cli-bin image into local docker images
-      if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
-      run: |
-        # `docker load` only accepts input from STDIN, so pipe the image
-        # archive into the command.
-        #
-        # In order to pipe the image archive, set `DOCKER_HOST` for a single
-        # command and `docker save` the CLI image from the Packet host.
-        DOCKER_HOST=ssh://linkerd-docker docker save "$DOCKER_REGISTRY/cli-bin:$TAG" | docker load
-    - name: Load cli-bin image into local docker images (Forked repositories)
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: docker load < image-archives/cli-bin.tar
     - name: Install CLI
       run: |
@@ -154,10 +135,5 @@ jobs:
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
     - name: Run integration tests
-      if: github.event_name == 'push' || !github.event.pull_request.head.repo.fork
-      run: |
-        bin/tests --images --images-host ssh://linkerd-docker --name ${{ matrix.integration_test }} "$HOME/.linkerd"
-    - name: Run integration tests (Forked repositories)
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
       run: |
         bin/tests --images --name ${{ matrix.integration_test }} "$HOME/.linkerd"
