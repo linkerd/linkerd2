@@ -2555,6 +2555,28 @@ data:
         scheme: https
         tls_config:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      sidecarContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          exec /bin/stackdriver-prometheus-sidecar \
+            --stackdriver.project-id=myproject \
+            --stackdriver.kubernetes.location=us-central1 \
+            --stackdriver.kubernetes.cluster-name=mycluster \
+            --prometheus.wal-directory=/data/wal \
+            --log.level=info
+          volumeMounts:
+          - mountPath: /data
+            name: data
+        imagePullPolicy: always
+        lifecycle:
+          type: Sidecar
+        name: sidecar
+        ports:
+        - containerPort: 9091
+          name: foo
+          protocol: TCP
     tracing:
       enabled: false
 ---
@@ -3139,6 +3161,27 @@ spec:
       securityContext:
         fsGroup: 65534
       containers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          exec /bin/stackdriver-prometheus-sidecar \
+            --stackdriver.project-id=myproject \
+            --stackdriver.kubernetes.location=us-central1 \
+            --stackdriver.kubernetes.cluster-name=mycluster \
+            --prometheus.wal-directory=/data/wal \
+            --log.level=info
+          volumeMounts:
+          - mountPath: /data
+            name: data
+        imagePullPolicy: always
+        lifecycle:
+          type: Sidecar
+        name: sidecar
+        ports:
+        - containerPort: 9091
+          name: foo
+          protocol: TCP
       - args:
         - --config.file=/etc/prometheus/prometheus.yml
         - --log.format=json
