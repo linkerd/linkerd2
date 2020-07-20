@@ -397,6 +397,7 @@ func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
 
+	// TODO: make checkOutput as true once 2.9 releases
 	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion(), false)
 }
 
