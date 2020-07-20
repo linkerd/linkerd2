@@ -125,14 +125,16 @@ jobs:
           ${{ runner.os }}-go-
     - name: Set environment variables from scripts
       run: |
-        . bin/_tag.sh
-        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
+        CMD="$PWD/target/release/linkerd2-cli-$TAG-linux"
+        echo "::set-env name=CMD::$CMD"
+        echo "::set-output name=tag::$TAG"
     - name: Run integration tests
       run: |
         bin/docker-pull-binaries $TAG
         # Validate the CLI version matches the current build tag.
-        [[ "$TAG" == "$(target/release/linkerd-cli-main-linux version --short --client)" ]]
-        bin/tests --images --name ${{ matrix.integration_test }} target/release/linkerd-cli-main-linux
+        [[ "$TAG" == "$($CMD version --short --client)" ]]
+        bin/tests --images --name ${{ matrix.integration_test }} "$CMD"
   # todo: Keep in sync with `cloud_integration.yml`
   cloud_integration_tests:
     name: Cloud integration tests
