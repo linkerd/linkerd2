@@ -129,7 +129,6 @@ var endpointsVecs = newEndpointsMetricsVecs()
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes. An EndpointsWatcher will
 // watch on Endpoints or EndpointSlice resources, depending on cluster configuration.
-//TODO: Allow EndpointSlice resources to be used once opt-in functionality is supported.
 func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlices bool) *EndpointsWatcher {
 	ew := &EndpointsWatcher{
 		publishers:           make(map[ServiceID]*servicePublisher),
@@ -161,7 +160,6 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlic
 			UpdateFunc: ew.updateEndpointSlice,
 		})
 	} else {
-		// ew.log.Debugf("Cluster does not have EndpointSlice access:%v", err)
 		ew.log.Debugf("Watching Endpoints resources")
 		k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpoints,
