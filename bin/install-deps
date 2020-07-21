@@ -1,25 +1,15 @@
-# Go dependencies
-#
-# Fetches all required Go dependencies. All Linkerd sources are omitted from the
-# resulting image so that artifacts may be built from source over this image.
-#
-# When this file is changed, run `bin/update-go-deps-shas`.
+#!/usr/bin/env sh
 
-FROM golang:1.14.2-alpine
+# This script is used in the multiple Dockerfiles for caching
+# some of the slow-to-build go dependencies.
 
-WORKDIR /linkerd-build
+set -eu
 
-COPY go.mod go.sum ./
+bindir=$( cd "${0%/*}" && pwd )
+rootdir=$( cd "$bindir"/.. && pwd )
+cd "$rootdir"
 
-RUN go mod download
-
-# Precompile key slow-to-build dependencies. This list doesn't need to be
-# complete for the build to work correctly; the completeness of this list
-# only affects the speed of incremental rebuilds of Dependent Dockerfiles.
-#
-# This list was derived from the output of `find /go/pkg -type f`
-# after building the controller.
-RUN CGO_ENABLED=0 GOOS=linux go install -mod=readonly \
+CGO_ENABLED=0 GOOS=linux go install -mod=readonly \
     github.com/golang/protobuf/jsonpb \
     github.com/grpc-ecosystem/go-grpc-prometheus \
     github.com/prometheus/client_golang/api \

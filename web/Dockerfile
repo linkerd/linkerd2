@@ -1,3 +1,11 @@
+# Precompile key slow-to-build dependencies
+FROM golang:1.14.2-alpine as go-deps
+WORKDIR /linkerd-build
+COPY go.mod go.sum ./
+COPY bin/install-deps bin/
+RUN go mod download
+RUN ./bin/install-deps
+
 ## bundle web assets
 FROM node:14-buster as webpack-bundle
 RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
@@ -21,7 +29,7 @@ COPY web/app ./web/app
 RUN ./bin/web build
 
 ## compile go server
-FROM gcr.io/linkerd-io/go-deps:1e43935d as golang
+FROM go-deps as golang
 WORKDIR /linkerd-build
 RUN mkdir -p web
 COPY web/main.go web
