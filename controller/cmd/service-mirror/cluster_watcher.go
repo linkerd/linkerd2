@@ -259,10 +259,7 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupOrphanedServices() error {
 // created. This piece of code is responsible for doing just that. It takes care of
 // services, endpoints and namespaces (if needed)
 func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
-	matchLabels := map[string]string{
-		consts.MirroredResourceLabel:  "true",
-		consts.RemoteClusterNameLabel: rcsw.link.TargetClusterName,
-	}
+	matchLabels := rcsw.getMirroredServiceLabels()
 
 	services, err := rcsw.localAPIClient.Svc().Lister().List(labels.Set(matchLabels).AsSelector())
 	if err != nil {
@@ -315,17 +312,11 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 // Deletes a locally mirrored service as it is not present on the remote cluster anymore
 func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceDeleted(ev *RemoteServiceDeleted) error {
 	localServiceName := rcsw.mirroredResourceName(ev.Name)
-	rcsw.log.Infof("Deleting mirrored service %s/%s and its corresponding Endpoints", ev.Namespace, localServiceName)
+	rcsw.log.Infof("Deleting mirrored service %s/%s", ev.Namespace, localServiceName)
 	var errors []error
 	if err := rcsw.localAPIClient.Client.CoreV1().Services(ev.Namespace).Delete(localServiceName, &metav1.DeleteOptions{}); err != nil {
 		if !kerrors.IsNotFound(err) {
 			errors = append(errors, fmt.Errorf("could not delete Service: %s/%s: %s", ev.Namespace, localServiceName, err))
-		}
-	}
-
-	if err := rcsw.localAPIClient.Client.CoreV1().Endpoints(ev.Namespace).Delete(localServiceName, &metav1.DeleteOptions{}); err != nil {
-		if !kerrors.IsNotFound(err) {
-			errors = append(errors, fmt.Errorf("could not delete Endpoints: %s/%s: %s", ev.Namespace, localServiceName, err))
 		}
 	}
 
@@ -350,11 +341,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 		},
 	}
 
-	if rcsw.link.GatewayIdentity != "" {
-		copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
-	} else {
-		delete(copiedEndpoints.Annotations, consts.RemoteGatewayIdentity)
-	}
+	copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(copiedEndpoints.Namespace).Update(copiedEndpoints); err != nil {
 		return RetryableError{[]error{err}}
@@ -646,6 +633,11 @@ func (rcsw *RemoteClusterServiceWatcher) Start() error {
 	)
 	go rcsw.processEvents()
 
+	// We need to issue a RepairEndpoints immediately to populate the gateway
+	// mirror endpoints.
+	ev := RepairEndpoints{}
+	rcsw.eventsQueue.Add(&ev)
+
 	go func() {
 		ticker := time.NewTicker(rcsw.repairPeriod)
 		for {
@@ -746,11 +738,7 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints() {
 			},
 		}
 
-		if rcsw.link.GatewayIdentity != "" {
-			updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
-		} else {
-			delete(updatedEndpoints.Annotations, consts.RemoteGatewayIdentity)
-		}
+		updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
 
 		_, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(updatedService)
 		if err != nil {
@@ -777,12 +765,12 @@ func (rcsw *RemoteClusterServiceWatcher) createOrUpdateEndpoints(ep *corev1.Endp
 		} else {
 			return err
 		}
-	} else {
-		// Exists so we should update it.
-		_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Update(ep)
-		if err != nil {
-			return err
-		}
 	}
+	// Exists so we should update it.
+	_, err = rcsw.localAPIClient.Client.CoreV1().Endpoints(ep.Namespace).Update(ep)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

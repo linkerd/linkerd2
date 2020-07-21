@@ -109,7 +109,6 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 				{
 					description: "all gateway mirrors are healthy",
 					hintAnchor:  "l5d-multicluster-gateways-endpoints",
-					warning:     true,
 					check: func(ctx context.Context) error {
 						if hc.Options.MultiCluster {
 							return hc.checkIfGatewayMirrorsHaveEndpoints(ctx)

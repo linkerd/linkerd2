@@ -51,15 +51,8 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 		}
 
 		if tc.expectedLocalEndpoints == nil {
-			// ensure the are no local endpoints
-			endpoints, err := localAPI.Client.CoreV1().Endpoints(corev1.NamespaceAll).List(metav1.ListOptions{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(endpoints.Items) > 0 {
-				t.Fatalf("Was expecting no local endpoints but instead found %d", len(endpoints.Items))
-
-			}
+			// In a real Kubernetes cluster, deleting the service is sufficient
+			// to delete the endpoints.
 		} else {
 			for _, expected := range tc.expectedLocalEndpoints {
 				actual, err := localAPI.Client.CoreV1().Endpoints(expected.Namespace).Get(expected.Name, metav1.GetOptions{})

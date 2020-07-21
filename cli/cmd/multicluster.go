@@ -542,6 +542,14 @@ func newLinkCommand() *cobra.Command {
 			for _, ingress := range gateway.Status.LoadBalancer.Ingress {
 				gatewayAddresses = append(gatewayAddresses, ingress.IP)
 			}
+			if len(gatewayAddresses) == 0 {
+				return fmt.Errorf("Gateway %s.%s has no ingress addresses", gateway.Name, gateway.Namespace)
+			}
+
+			gatewayIdentity, ok := gateway.Annotations[k8s.GatewayIdentity]
+			if !ok || gatewayIdentity == "" {
+				return fmt.Errorf("Gatway %s.%s has no %s annotation", gateway.Name, gateway.Namespace, k8s.GatewayIdentity)
+			}
 
 			probeSpec, err := mc.ExtractProbeSpec(gateway)
 			if err != nil {
@@ -562,7 +570,7 @@ func newLinkCommand() *cobra.Command {
 				ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
 				GatewayAddress:                strings.Join(gatewayAddresses, ","),
 				GatewayPort:                   gatewayPort,
-				GatewayIdentity:               gateway.Annotations[k8s.GatewayIdentity],
+				GatewayIdentity:               gatewayIdentity,
 				ProbeSpec:                     probeSpec,
 			}
 
