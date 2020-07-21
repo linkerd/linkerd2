@@ -341,6 +341,9 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceUpdated(ev *RemoteSe
 		},
 	}
 
+	if copiedEndpoints.Annotations == nil {
+		copiedEndpoints.Annotations = make(map[string]string)
+	}
 	copiedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
 
 	if _, err := rcsw.localAPIClient.Client.CoreV1().Endpoints(copiedEndpoints.Namespace).Update(copiedEndpoints); err != nil {
@@ -738,6 +741,9 @@ func (rcsw *RemoteClusterServiceWatcher) repairEndpoints() {
 			},
 		}
 
+		if updatedEndpoints.Annotations == nil {
+			updatedEndpoints.Annotations = make(map[string]string)
+		}
 		updatedEndpoints.Annotations[consts.RemoteGatewayIdentity] = rcsw.link.GatewayIdentity
 
 		_, err = rcsw.localAPIClient.Client.CoreV1().Services(updatedService.Namespace).Update(updatedService)
