@@ -607,10 +607,6 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		}
 	}
 
-	if !compareOutput {
-		return
-	}
-
 	timeout := time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
 		if cliVersionOverride != "" {
@@ -621,6 +617,10 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 		if err != nil {
 			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", stderr, out)
+		}
+
+		if !compareOutput {
+			return nil
 		}
 
 		err = TestHelper.ValidateOutput(out, golden)
