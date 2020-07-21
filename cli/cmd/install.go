@@ -438,7 +438,7 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 
 	if options.enableEndpointSlices {
 		if err = validateEndpointSlicesFeature(); err != nil {
-			return nil, nil, fmt.Errorf("--enableEndpointSlice=true not supported:%s", err)
+			return nil, nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
 		}
 	}
 

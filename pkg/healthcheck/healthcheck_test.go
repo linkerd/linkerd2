@@ -570,7 +570,7 @@ metadata:
 			},
 			[]string{
 				"linkerd-config control plane Namespace exists",
-				"linkerd-config control plane ClusterRoles exist: missing ClusterRoles: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-prometheus, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
+				"linkerd-config control plane ClusterRoles exist: missing ClusterRoles: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
 			},
 		},
 		{
@@ -632,7 +632,7 @@ metadata:
 			[]string{
 				"linkerd-config control plane Namespace exists",
 				"linkerd-config control plane ClusterRoles exist",
-				"linkerd-config control plane ClusterRoleBindings exist: missing ClusterRoleBindings: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-prometheus, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
+				"linkerd-config control plane ClusterRoleBindings exist: missing ClusterRoleBindings: linkerd-test-ns-controller, linkerd-test-ns-identity, linkerd-test-ns-proxy-injector, linkerd-test-ns-sp-validator, linkerd-test-ns-tap",
 			},
 		},
 		{
@@ -1995,8 +1995,8 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-grafana-5b7d796646-hh46d", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
-			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodFailed, false),
-			pod("linkerd-tap-6c878df6c8-2hmtd", corev1.PodRunning, true),
+			pod("linkerd-prometheus-74d6879cd6-bbdk6", corev1.PodRunning, true),
+			pod("linkerd-tap-6c878df6c8-2hmtd", corev1.PodFailed, false),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("linkerd-web-98c9ddbcd-7b5lh", corev1.PodRunning, true),
 		}
@@ -2005,7 +2005,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
-		if err.Error() != "No running pods for \"linkerd-prometheus\"" {
+		if err.Error() != "No running pods for \"linkerd-tap\"" {
 			t.Fatalf("Unexpected error message: %s", err.Error())
 		}
 	})

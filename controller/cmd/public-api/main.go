@@ -26,7 +26,7 @@ func Main(args []string) {
 
 	addr := cmd.String("addr", ":8085", "address to serve on")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
-	prometheusURL := cmd.String("prometheus-url", "http://127.0.0.1:9090", "prometheus url")
+	prometheusURL := cmd.String("prometheus-url", "", "prometheus url")
 	metricsAddr := cmd.String("metrics-addr", ":9995", "address to serve scrapable metrics on")
 	destinationAPIAddr := cmd.String("destination-addr", "127.0.0.1:8086", "address of destination service")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
@@ -53,9 +53,12 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	prometheusClient, err := promApi.NewClient(promApi.Config{Address: *prometheusURL})
-	if err != nil {
-		log.Fatal(err.Error())
+	var prometheusClient promApi.Client
+	if *prometheusURL != "" {
+		prometheusClient, err = promApi.NewClient(promApi.Config{Address: *prometheusURL})
+		if err != nil {
+			log.Fatal(err.Error())
+		}
 	}
 
 	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
