@@ -12,8 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tshark && \
     rm -rf /var/lib/apt/lists/*
 
-# Switching base image from stretch to buster, we need to use iptables-legacy
-# if no changes to how iptables is invoked are done.
+# We still rely on old iptables-legacy syntax.
 RUN update-alternatives --set iptables /usr/sbin/iptables-legacy \
     && update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 
