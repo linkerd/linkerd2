@@ -424,7 +424,6 @@ build_architecture
   digraph G {
     rankdir=LR;
 
-    "Dockerfile-base" [color=lightblue, style=filled, shape=rect];
     "Dockerfile-go-deps" [color=lightblue, style=filled, shape=rect];
     "Dockerfile-proxy" [color=lightblue, style=filled, shape=rect];
     "controller/Dockerfile" [color=lightblue, style=filled, shape=rect];
@@ -447,18 +446,13 @@ build_architecture
     "docker-build" -> "docker-build-proxy";
     "docker-build" -> "docker-build-web";
 
-    "docker-build-base" -> "_docker.sh";
-    "docker-build-base" -> "Dockerfile-base";
-
     "docker-build-cli-bin" -> "_docker.sh";
     "docker-build-cli-bin" -> "_tag.sh";
-    "docker-build-cli-bin" -> "docker-build-base";
     "docker-build-cli-bin" -> "docker-build-go-deps";
     "docker-build-cli-bin" -> "cli/Dockerfile-bin";
 
     "docker-build-controller" -> "_docker.sh";
     "docker-build-controller" -> "_tag.sh";
-    "docker-build-controller" -> "docker-build-base";
     "docker-build-controller" -> "docker-build-go-deps";
     "docker-build-controller" -> "controller/Dockerfile";
 
@@ -476,7 +470,6 @@ build_architecture
 
     "docker-build-web" -> "_docker.sh";
     "docker-build-web" -> "_tag.sh";
-    "docker-build-web" -> "docker-build-base";
     "docker-build-web" -> "docker-build-go-deps";
     "docker-build-web" -> "web/Dockerfile";
 
