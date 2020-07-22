@@ -304,10 +304,7 @@ prometheus:
   # sidecarContainers:
   # - name: sidecar
   #   image: gcr.io/myproject/stackdriver-prometheus-sidecar
-  #   lifecycle:
-  #     # n.b. only valid on k8s >=1.19
-  #     type: Sidecar
-  #   imagePullPolicy: always
+  #   imagePullPolicy: Always
   #   command:
   #   - /bin/sh
   #   - -c
