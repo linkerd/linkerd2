@@ -1,5 +1,13 @@
+# Precompile key slow-to-build dependencies
+FROM golang:1.14.2-alpine as go-deps
+WORKDIR /linkerd-build
+COPY go.mod go.sum ./
+COPY bin/install-deps bin/
+RUN go mod download
+RUN ./bin/install-deps
+
 ## compile controller service
-FROM gcr.io/linkerd-io/go-deps:1e43935d as golang
+FROM go-deps as golang
 WORKDIR /linkerd-build
 COPY controller/gen controller/gen
 COPY pkg pkg
