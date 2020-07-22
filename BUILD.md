@@ -424,7 +424,6 @@ build_architecture
   digraph G {
     rankdir=LR;
 
-    "Dockerfile-go-deps" [color=lightblue, style=filled, shape=rect];
     "Dockerfile-proxy" [color=lightblue, style=filled, shape=rect];
     "controller/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
@@ -434,7 +433,6 @@ build_architecture
     "_docker.sh" -> "_log.sh";
     "_gcp.sh";
     "_log.sh";
-    "_tag.sh" -> "Dockerfile-go-deps";
 
     "build-cli-bin" -> "_tag.sh";
     "build-cli-bin" -> "root-tag";
@@ -448,17 +446,11 @@ build_architecture
 
     "docker-build-cli-bin" -> "_docker.sh";
     "docker-build-cli-bin" -> "_tag.sh";
-    "docker-build-cli-bin" -> "docker-build-go-deps";
     "docker-build-cli-bin" -> "cli/Dockerfile-bin";
 
     "docker-build-controller" -> "_docker.sh";
     "docker-build-controller" -> "_tag.sh";
-    "docker-build-controller" -> "docker-build-go-deps";
     "docker-build-controller" -> "controller/Dockerfile";
-
-    "docker-build-go-deps" -> "_docker.sh";
-    "docker-build-go-deps" -> "_tag.sh";
-    "docker-build-go-deps" -> "Dockerfile-go-deps";
 
     "docker-build-grafana" -> "_docker.sh";
     "docker-build-grafana" -> "_tag.sh";
@@ -470,7 +462,6 @@ build_architecture
 
     "docker-build-web" -> "_docker.sh";
     "docker-build-web" -> "_tag.sh";
-    "docker-build-web" -> "docker-build-go-deps";
     "docker-build-web" -> "web/Dockerfile";
 
     "docker-images" -> "_docker.sh";
@@ -478,13 +469,7 @@ build_architecture
 
     "docker-pull" -> "_docker.sh";
 
-    "docker-pull-deps" -> "_docker.sh";
-    "docker-pull-deps" -> "_tag.sh";
-
     "docker-push" -> "_docker.sh";
-
-    "docker-push-deps" -> "_docker.sh";
-    "docker-push-deps" -> "_tag.sh";
 
     "docker-retag-all" -> "_docker.sh";
 
@@ -513,7 +498,6 @@ build_architecture
     "workflow.yml" -> "_tag.sh";
     "workflow.yml" -> "docker-build";
     "workflow.yml" -> "docker-push";
-    "workflow.yml" -> "docker-push-deps";
     "workflow.yml" -> "docker-retag-all";
     "workflow.yml" -> "lint";
 
