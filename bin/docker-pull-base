@@ -6,8 +6,5 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
 # shellcheck source=_docker.sh
 . "$bindir"/_docker.sh
-# shellcheck source=_tag.sh
-. "$bindir"/_tag.sh
 
-docker_push base         2020-06-08.01
-docker_push go-deps      "$(go_deps_sha)"
+docker_pull base       2020-06-08.01       || true
