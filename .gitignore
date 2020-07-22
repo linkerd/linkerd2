@@ -14,3 +14,4 @@ vendor
 **/*.swp
 charts/**/charts
 package-lock.json
+tags
