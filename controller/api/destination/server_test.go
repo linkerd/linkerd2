@@ -115,6 +115,7 @@ spec:
 		"linkerd",
 		"trust.domain",
 		"mycluster.local",
+		k8sAPI,
 		log,
 		make(<-chan struct{}),
 	}
