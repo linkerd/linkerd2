@@ -87,7 +87,7 @@ jobs:
         [[ "$TAG" == "$($CMD version --short --client)" ]]
         echo "Installed Linkerd CLI version: $TAG"
         echo "::set-env name=CMD::$CMD"
-        echo "::set-output name=tag::$TAG"
+        echo "::set-env name=TAG::$TAG"
     - name: Create GKE cluster
       # linkerd/linkerd2-action-gcloud@v1.0.1
       uses: linkerd/linkerd2-action-gcloud@308c4df
@@ -97,7 +97,7 @@ jobs:
         gcp_zone: ${{ secrets.GCP_ZONE }}
         preemptible: false
         create: true
-        name: testing-${{ steps.install_cli.outputs.tag }}-${{ github.run_id }}
+        name: testing-${{ env.TAG }}-${{ github.run_id }}
         num_nodes: 2
     - name: Run integration tests
       env:

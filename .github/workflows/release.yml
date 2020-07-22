@@ -9,6 +9,7 @@ on:
     - "*"
 env:
   GH_ANNOTATION: true
+  DOCKER_BUILDKIT: 1
 jobs:
   docker_build:
     runs-on: ubuntu-18.04
@@ -128,7 +129,7 @@ jobs:
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         CMD="$PWD/target/release/linkerd2-cli-$TAG-linux"
         echo "::set-env name=CMD::$CMD"
-        echo "::set-output name=tag::$TAG"
+        echo "::set-env name=TAG::$TAG"
     - name: Run integration tests
       run: |
         bin/docker-pull-binaries $TAG
