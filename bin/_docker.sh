@@ -14,6 +14,12 @@ export DOCKER_REGISTRY=${DOCKER_REGISTRY:-gcr.io/linkerd-io}
 # When set, causes docker's build output to be emitted to stderr.
 export DOCKER_TRACE=${DOCKER_TRACE:-}
 
+# When set, use `docker buildx` and use the github actions cache to store/retrieve images
+export DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-}
+
+# buildx cache directory. Needed if DOCKER_BUILDKIT is used
+export DOCKER_BUILDKIT_CACHE=${DOCKER_BUILDKIT_CACHE:-}
+
 docker_repo() {
     repo=$1
 
@@ -42,12 +48,27 @@ docker_build() {
 
     rootdir=$( cd "$bindir"/.. && pwd )
 
-    log_debug "  :; docker build $rootdir -t $repo:$tag -f $file $*"
-    docker build "$rootdir" \
-        -t "$repo:$tag" \
-        -f "$file" \
-        "$@" \
-        > "$output"
+    if [ -n "$DOCKER_BUILDKIT" ]; then
+      cache_params=""
+      if [ -n "$DOCKER_BUILDKIT_CACHE" ]; then
+        cache_params="--cache-from type=local,src=${DOCKER_BUILDKIT_CACHE} --cache-to type=local,dest=${DOCKER_BUILDKIT_CACHE},mode=max"
+      fi
+      log_debug "  :; docker buildx $rootdir $cache_params --load -t $repo:$tag -f $file $*"
+      # shellcheck disable=SC2086
+      docker buildx build "$rootdir" $cache_params \
+          --load \
+          -t "$repo:$tag" \
+          -f "$file" \
+          "$@" \
+          > "$output"
+    else
+      log_debug "  :; docker build $rootdir -t $repo:$tag -f $file $*"
+      docker build "$rootdir" \
+          -t "$repo:$tag" \
+          -f "$file" \
+          "$@" \
+          > "$output"
+    fi
 
     echo "$repo:$tag"
 }

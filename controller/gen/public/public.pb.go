@@ -1774,7 +1774,7 @@ type ResourceSelection struct {
 	// A string-formatted Kubernetes label selector as passed to `kubectl get
 	// --selector`.
 	//
-	// XXX in the future this may be superceded by a data structure that more
+	// XXX in the future this may be superseded by a data structure that more
 	// richly describes a parsed label selector.
 	LabelSelector string `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
 }
@@ -6474,10 +6474,10 @@ type ApiClient interface {
 	ListPods(ctx context.Context, in *ListPodsRequest, opts ...grpc.CallOption) (*ListPodsResponse, error)
 	ListServices(ctx context.Context, in *ListServicesRequest, opts ...grpc.CallOption) (*ListServicesResponse, error)
 	// Deprecated: Do not use.
-	// Superceded by `TapByResource`.
+	// Superseded by `TapByResource`.
 	Tap(ctx context.Context, in *TapRequest, opts ...grpc.CallOption) (Api_TapClient, error)
 	// Deprecated: Do not use.
-	// Superceded by tap APIServer.
+	// Superseded by tap APIServer.
 	TapByResource(ctx context.Context, in *TapByResourceRequest, opts ...grpc.CallOption) (Api_TapByResourceClient, error)
 	Version(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*VersionInfo, error)
 	SelfCheck(ctx context.Context, in *healthcheck.SelfCheckRequest, opts ...grpc.CallOption) (*healthcheck.SelfCheckResponse, error)
@@ -6648,10 +6648,10 @@ type ApiServer interface {
 	ListPods(context.Context, *ListPodsRequest) (*ListPodsResponse, error)
 	ListServices(context.Context, *ListServicesRequest) (*ListServicesResponse, error)
 	// Deprecated: Do not use.
-	// Superceded by `TapByResource`.
+	// Superseded by `TapByResource`.
 	Tap(*TapRequest, Api_TapServer) error
 	// Deprecated: Do not use.
-	// Superceded by tap APIServer.
+	// Superseded by tap APIServer.
 	TapByResource(*TapByResourceRequest, Api_TapByResourceServer) error
 	Version(context.Context, *Empty) (*VersionInfo, error)
 	SelfCheck(context.Context, *healthcheck.SelfCheckRequest) (*healthcheck.SelfCheckResponse, error)

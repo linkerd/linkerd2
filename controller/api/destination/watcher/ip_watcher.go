@@ -6,6 +6,8 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -102,6 +104,28 @@ func (iw *IPWatcher) Unsubscribe(clusterIP string, port Port, listener EndpointU
 		return
 	}
 	ss.unsubscribe(port, listener)
+}
+
+// GetSvc returns the service that corresponds to an IP address if one exists.
+func (iw *IPWatcher) GetSvc(clusterIP string) (*ServiceID, error) {
+	objs, err := iw.k8sAPI.Svc().Informer().GetIndexer().ByIndex(podIPIndex, clusterIP)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	if len(objs) > 1 {
+		return nil, status.Errorf(codes.FailedPrecondition, "Service cluster IP conflict: %v, %v", objs[0], objs[1])
+	}
+	if len(objs) == 1 {
+		if svc, ok := objs[0].(*corev1.Service); ok {
+			service := &ServiceID{
+				Namespace: svc.Namespace,
+				Name:      svc.Name,
+			}
+			return service, nil
+		}
+	}
+	// `clusterIP` does not map to a service that the indexer is aware of.
+	return nil, nil
 }
 
 func (iw *IPWatcher) addService(obj interface{}) {

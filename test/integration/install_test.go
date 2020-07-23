@@ -66,6 +66,10 @@ var (
 			injectArgs: []string{},
 		},
 	}
+
+	//skippedInboundPorts lists some ports to be marked as skipped, which will
+	// be verified in test/integration/inject
+	skippedInboundPorts = "1234,5678"
 )
 
 //////////////////////
@@ -158,6 +162,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--controller-log-level", "debug",
 			"--proxy-log-level", "warn,linkerd2_proxy=debug",
 			"--proxy-version", TestHelper.GetVersion(),
+			"--skip-inbound-ports", skippedInboundPorts,
 		}
 	)
 
@@ -298,10 +303,13 @@ func helmOverridesStable(root *tls.CA) []string {
 
 // These need to correspond to the flags in the current edge
 func helmOverridesEdge(root *tls.CA) []string {
+	skippedInboundPortsEscaped := strings.Replace(skippedInboundPorts, ",", "\\,", 1)
 	return []string{
 		"--set", "global.controllerLogLevel=debug",
 		"--set", "global.linkerdVersion=" + TestHelper.GetVersion(),
 		"--set", "global.proxy.image.version=" + TestHelper.GetVersion(),
+		// these ports will get verified in test/integration/inject
+		"--set", "global.proxyInit.ignoreInboundPorts=" + skippedInboundPortsEscaped,
 		"--set", "global.identityTrustDomain=cluster.local",
 		"--set", "global.identityTrustAnchorsPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
 		"--set", "identity.issuer.tls.crtPEM=" + root.Cred.Crt.EncodeCertificatePEM(),
@@ -389,7 +397,8 @@ func TestCheckHelmStableBeforeUpgrade(t *testing.T) {
 		t.Skip("Skipping as this is not a helm upgrade test")
 	}
 
-	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion())
+	// TODO: make checkOutput as true once 2.9 releases
+	testCheckCommand(t, "", TestHelper.UpgradeHelmFromVersion(), "", TestHelper.UpgradeHelmFromVersion(), false)
 }
 
 func TestUpgradeHelm(t *testing.T) {
@@ -576,7 +585,7 @@ func TestVersionPostInstall(t *testing.T) {
 	}
 }
 
-func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string) {
+func testCheckCommand(t *testing.T, stage string, expectedVersion string, namespace string, cliVersionOverride string, compareOutput bool) {
 	var cmd []string
 	var golden string
 	if stage == "proxy" {
@@ -610,6 +619,10 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", stderr, out)
 		}
 
+		if !compareOutput {
+			return nil
+		}
+
 		err = TestHelper.ValidateOutput(out, golden)
 		if err != nil {
 			return fmt.Errorf("received unexpected output\n%s", err.Error())
@@ -624,11 +637,11 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 
 // TODO: run this after a `linkerd install config`
 func TestCheckConfigPostInstall(t *testing.T) {
-	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "")
+	testCheckCommand(t, "config", TestHelper.GetVersion(), "", "", true)
 }
 
 func TestCheckPostInstall(t *testing.T) {
-	testCheckCommand(t, "", TestHelper.GetVersion(), "", "")
+	testCheckCommand(t, "", TestHelper.GetVersion(), "", "", true)
 }
 
 func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
@@ -808,7 +821,7 @@ func TestCheckProxy(t *testing.T) {
 		tc := tc // pin
 		t.Run(tc.ns, func(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
-			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "")
+			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "", true)
 		})
 	}
 }
@@ -847,20 +860,27 @@ func TestUninstallMulticluster(t *testing.T) {
 		return
 	}
 
-	exec := append([]string{"multicluster"}, []string{
-		"install",
-		"--log-level", "debug",
-		"--namespace", TestHelper.GetMulticlusterNamespace(),
-	}...)
-	out, stderr, err := TestHelper.LinkerdRun(exec...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
-			"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
-	}
+	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
+		if stdout, stderr, err := TestHelper.HelmUninstallMulticluster(TestHelper.GetMulticlusterHelmChart()); err != nil {
+			testutil.AnnotatedFatalf(t, "'helm delete' command failed",
+				"'helm delete' command failed\n%s\n%s", stdout, stderr)
+		}
+	} else {
+		exec := append([]string{"multicluster"}, []string{
+			"install",
+			"--log-level", "debug",
+			"--namespace", TestHelper.GetMulticlusterNamespace(),
+		}...)
+		out, stderr, err := TestHelper.LinkerdRun(exec...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
+				"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
+		}
 
-	out, err = TestHelper.Kubectl(out, []string{"delete", "-f", "-"}...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl delete' command failed",
-			"'kubectl apply' command failed\n%s", out)
+		out, err = TestHelper.Kubectl(out, []string{"delete", "-f", "-"}...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl delete' command failed",
+				"'kubectl apply' command failed\n%s", out)
+		}
 	}
 }

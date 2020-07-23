@@ -207,23 +207,27 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 		k8sClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling the Kubernetes API: %s", err)
 	}
 
-	promClientCheck := &healthcheckPb.CheckResult{
-		SubsystemName:    promClientSubsystemName,
-		CheckDescription: promClientCheckDescription,
-		Status:           healthcheckPb.CheckStatus_OK,
-	}
-	_, err = s.queryProm(ctx, fmt.Sprintf(podQuery, ""))
-	if err != nil {
-		promClientCheck.Status = healthcheckPb.CheckStatus_ERROR
-		promClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling Prometheus from the control plane: %s", err)
-	}
-
 	response := &healthcheckPb.SelfCheckResponse{
 		Results: []*healthcheckPb.CheckResult{
 			k8sClientCheck,
-			promClientCheck,
 		},
 	}
+
+	if s.prometheusAPI != nil {
+		promClientCheck := &healthcheckPb.CheckResult{
+			SubsystemName:    promClientSubsystemName,
+			CheckDescription: promClientCheckDescription,
+			Status:           healthcheckPb.CheckStatus_OK,
+		}
+		_, err = s.queryProm(ctx, fmt.Sprintf(podQuery, ""))
+		if err != nil {
+			promClientCheck.Status = healthcheckPb.CheckStatus_ERROR
+			promClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling Prometheus from the control plane: %s", err)
+		}
+
+		response.Results = append(response.Results, promClientCheck)
+	}
+
 	return response, nil
 }
 

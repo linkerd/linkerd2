@@ -88,6 +88,7 @@ type (
 		ProxyContainerName       string `json:"proxyContainerName"`
 		HighAvailability         bool   `json:"highAvailability"`
 		CNIEnabled               bool   `json:"cniEnabled"`
+		EnableEndpointSlices     bool   `json:"enableEndpointSlices"`
 		ControlPlaneTracing      bool   `json:"controlPlaneTracing"`
 		IdentityTrustAnchorsPEM  string `json:"identityTrustAnchorsPEM"`
 		IdentityTrustDomain      string `json:"identityTrustDomain"`

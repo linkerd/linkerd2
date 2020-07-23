@@ -2,6 +2,7 @@ package public
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -55,6 +56,10 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 	_, span := trace.StartSpan(ctx, "query.prometheus")
 	defer span.End()
 	span.AddAttributes(trace.StringAttribute("queryString", query))
+
+	if s.prometheusAPI == nil {
+		return nil, errors.New("No prometheus instance to connect")
+	}
 
 	// single data point (aka summary) query
 	res, warn, err := s.prometheusAPI.Query(ctx, query, time.Time{})

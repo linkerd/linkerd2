@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
-	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -70,8 +70,9 @@ type (
 		publishers map[ServiceID]*servicePublisher
 		k8sAPI     *k8s.API
 
-		log          *logging.Entry
-		sync.RWMutex // This mutex protects modification of the map itself.
+		log                  *logging.Entry
+		enableEndpointSlices bool
+		sync.RWMutex         // This mutex protects modification of the map itself.
 	}
 
 	// servicePublisher represents a service.  It keeps a map of portPublishers
@@ -84,9 +85,10 @@ type (
 	// requested, the address set will be filtered to only include addresses
 	// with the requested hostname.
 	servicePublisher struct {
-		id     ServiceID
-		log    *logging.Entry
-		k8sAPI *k8s.API
+		id                   ServiceID
+		log                  *logging.Entry
+		k8sAPI               *k8s.API
+		enableEndpointSlices bool
 
 		ports map[portAndHostname]*portPublisher
 		// All access to the servicePublisher and its portPublishers is explicitly synchronized by
@@ -100,12 +102,13 @@ type (
 	// publishes diffs to all listeners when updates come from either the
 	// endpoints API or the service API.
 	portPublisher struct {
-		id         ServiceID
-		targetPort namedPort
-		srcPort    Port
-		hostname   string
-		log        *logging.Entry
-		k8sAPI     *k8s.API
+		id                   ServiceID
+		targetPort           namedPort
+		srcPort              Port
+		hostname             string
+		log                  *logging.Entry
+		k8sAPI               *k8s.API
+		enableEndpointSlices bool
 
 		exists    bool
 		addresses AddressSet
@@ -126,11 +129,11 @@ var endpointsVecs = newEndpointsMetricsVecs()
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes. An EndpointsWatcher will
 // watch on Endpoints or EndpointSlice resources, depending on cluster configuration.
-//TODO: Allow EndpointSlice resources to be used once opt-in functionality is supported.
-func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry) *EndpointsWatcher {
+func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlices bool) *EndpointsWatcher {
 	ew := &EndpointsWatcher{
-		publishers: make(map[ServiceID]*servicePublisher),
-		k8sAPI:     k8sAPI,
+		publishers:           make(map[ServiceID]*servicePublisher),
+		k8sAPI:               k8sAPI,
+		enableEndpointSlices: enableEndpointSlices,
 		log: log.WithFields(logging.Fields{
 			"component": "endpoints-watcher",
 		}),
@@ -149,20 +152,19 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry) *EndpointsWatcher 
 		UpdateFunc: func(_, obj interface{}) { ew.addService(obj) },
 	})
 
-	if !pkgK8s.EndpointSliceAccess(k8sAPI.Client) {
-		// ew.log.Debugf("Cluster does not have EndpointSlice access:%v", err)
-		ew.log.Debugf("Watching Endpoints resources")
-		k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    ew.addEndpoints,
-			DeleteFunc: ew.deleteEndpoints,
-			UpdateFunc: func(_, obj interface{}) { ew.addEndpoints(obj) },
-		})
-	} else {
+	if ew.enableEndpointSlices {
 		ew.log.Debugf("Watching EndpointSlice resources")
 		k8sAPI.ES().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpointSlice,
 			DeleteFunc: ew.deleteEndpointSlice,
 			UpdateFunc: ew.updateEndpointSlice,
+		})
+	} else {
+		ew.log.Debugf("Watching Endpoints resources")
+		k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    ew.addEndpoints,
+			DeleteFunc: ew.deleteEndpoints,
+			UpdateFunc: func(_, obj interface{}) { ew.addEndpoints(obj) },
 		})
 	}
 	return ew
@@ -392,8 +394,9 @@ func (ew *EndpointsWatcher) getOrNewServicePublisher(id ServiceID) *servicePubli
 				"ns":        id.Namespace,
 				"svc":       id.Name,
 			}),
-			k8sAPI: ew.k8sAPI,
-			ports:  make(map[portAndHostname]*portPublisher),
+			k8sAPI:               ew.k8sAPI,
+			ports:                make(map[portAndHostname]*portPublisher),
+			enableEndpointSlices: ew.enableEndpointSlices,
 		}
 		ew.publishers[id] = sp
 	}
@@ -518,27 +521,18 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 	log := sp.log.WithField("port", srcPort)
 
 	port := &portPublisher{
-		listeners:  []EndpointUpdateListener{},
-		targetPort: targetPort,
-		srcPort:    srcPort,
-		hostname:   hostname,
-		exists:     exists,
-		k8sAPI:     sp.k8sAPI,
-		log:        log,
-		metrics:    endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname)),
+		listeners:            []EndpointUpdateListener{},
+		targetPort:           targetPort,
+		srcPort:              srcPort,
+		hostname:             hostname,
+		exists:               exists,
+		k8sAPI:               sp.k8sAPI,
+		log:                  log,
+		metrics:              endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname)),
+		enableEndpointSlices: sp.enableEndpointSlices,
 	}
 
-	if !pkgK8s.EndpointSliceAccess(sp.k8sAPI.Client) {
-		// sp.log.Debugf("No EndpointSlice access, using endpoints:%v", err)
-		endpoints, err := sp.k8sAPI.Endpoint().Lister().Endpoints(sp.id.Namespace).Get(sp.id.Name)
-		if err != nil && !apierrors.IsNotFound(err) {
-			sp.log.Errorf("error getting endpoints: %s", err)
-		}
-		if err == nil {
-			port.updateEndpoints(endpoints)
-		}
-	} else {
-		sp.log.Debugf("Using EndpointSlice")
+	if port.enableEndpointSlices {
 		matchLabels := map[string]string{discovery.LabelServiceName: sp.id.Name}
 		selector := k8slabels.Set(matchLabels).AsSelector()
 
@@ -550,6 +544,14 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 			for _, slice := range sliceList {
 				port.addEndpointSlice(slice)
 			}
+		}
+	} else {
+		endpoints, err := sp.k8sAPI.Endpoint().Lister().Endpoints(sp.id.Namespace).Get(sp.id.Name)
+		if err != nil && !apierrors.IsNotFound(err) {
+			sp.log.Errorf("error getting endpoints: %s", err)
+		}
+		if err == nil {
+			port.updateEndpoints(endpoints)
 		}
 	}
 
@@ -667,10 +669,10 @@ func metricLabels(resource interface{}) map[string]string {
 
 	labels := map[string]string{service: serviceName, namespace: ns}
 
-	gateway, hasRemoteGateway := resLabels[pkgK8s.RemoteGatewayNameLabel]
-	gatewayNs, hasRemoteGatwayNs := resLabels[pkgK8s.RemoteGatewayNsLabel]
-	remoteClusterName, hasRemoteClusterName := resLabels[pkgK8s.RemoteClusterNameLabel]
-	serviceFqn, hasServiceFqn := resAnnotations[pkgK8s.RemoteServiceFqName]
+	gateway, hasRemoteGateway := resLabels[consts.RemoteGatewayNameLabel]
+	gatewayNs, hasRemoteGatwayNs := resLabels[consts.RemoteGatewayNsLabel]
+	remoteClusterName, hasRemoteClusterName := resLabels[consts.RemoteClusterNameLabel]
+	serviceFqn, hasServiceFqn := resAnnotations[consts.RemoteServiceFqName]
 
 	if hasRemoteGateway && hasRemoteGatwayNs && hasRemoteClusterName && hasServiceFqn {
 		// this means we are looking at Endpoints created for the purpose of mirroring
@@ -712,11 +714,11 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 		if endpoint.TargetRef == nil {
 			for _, IPAddr := range endpoint.Addresses {
 				var authorityOverride string
-				if fqName, ok := es.Annotations[pkgK8s.RemoteServiceFqName]; ok {
+				if fqName, ok := es.Annotations[consts.RemoteServiceFqName]; ok {
 					authorityOverride = fmt.Sprintf("%s:%d", fqName, pp.srcPort)
 				}
 
-				identity := es.Annotations[pkgK8s.RemoteGatewayIdentity]
+				identity := es.Annotations[consts.RemoteGatewayIdentity]
 				address, id := pp.newServiceRefAddress(resolvedPort, IPAddr, serviceID.Name, es.Namespace)
 				address.Identity, address.AuthorityOverride = authorityOverride, identity
 				addresses[id] = address
@@ -754,11 +756,11 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 
 			if endpoint.TargetRef == nil {
 				var authorityOverride string
-				if fqName, ok := endpoints.Annotations[pkgK8s.RemoteServiceFqName]; ok {
+				if fqName, ok := endpoints.Annotations[consts.RemoteServiceFqName]; ok {
 					authorityOverride = fmt.Sprintf("%s:%d", fqName, pp.srcPort)
 				}
 
-				identity := endpoints.Annotations[pkgK8s.RemoteGatewayIdentity]
+				identity := endpoints.Annotations[consts.RemoteGatewayIdentity]
 				address, id := pp.newServiceRefAddress(resolvedPort, endpoint.IP, endpoints.Name, endpoints.Namespace)
 				address.Identity, address.AuthorityOverride = identity, authorityOverride
 
@@ -851,14 +853,7 @@ func (pp *portPublisher) resolveTargetPort(subset corev1.EndpointSubset) Port {
 func (pp *portPublisher) updatePort(targetPort namedPort) {
 	pp.targetPort = targetPort
 
-	if !pkgK8s.EndpointSliceAccess(pp.k8sAPI.Client) {
-		endpoints, err := pp.k8sAPI.Endpoint().Lister().Endpoints(pp.id.Namespace).Get(pp.id.Name)
-		if err == nil {
-			pp.updateEndpoints(endpoints)
-		} else {
-			pp.log.Errorf("Unable to get endpoints during port update: %s", err)
-		}
-	} else {
+	if pp.enableEndpointSlices {
 		matchLabels := map[string]string{discovery.LabelServiceName: pp.id.Name}
 		selector := k8slabels.Set(matchLabels).AsSelector()
 
@@ -870,6 +865,13 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 			}
 		} else {
 			pp.log.Errorf("Unable to get EndpointSlices during port update: %s", err)
+		}
+	} else {
+		endpoints, err := pp.k8sAPI.Endpoint().Lister().Endpoints(pp.id.Namespace).Get(pp.id.Name)
+		if err == nil {
+			pp.updateEndpoints(endpoints)
+		} else {
+			pp.log.Errorf("Unable to get endpoints during port update: %s", err)
 		}
 	}
 }
