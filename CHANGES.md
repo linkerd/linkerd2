@@ -2,7 +2,12 @@
 
 ## edge-20.7.4
 
-This edge release brings support for EndpointSlices.
+This edge release adds support for the new Kubernetes [EndpointSlice] resource
+to the Destination controller. Using the EndpointSlice API is more efficient
+for the Kubernetes control plane than using the Endpoints API. If the cluster
+supports EndpointSlices (a beta feature in Kubernetes 1.17), Linkerd can be
+installed with `--enable-endpoint-slices` flag to use this resource rather
+than the Endpoints API.
 
 * Added fish shell completions to the `linkerd` command (thanks @WLun001!)
 * Enabled the support for EndpointSlices (thanks @Matei207!)
