@@ -1,6 +1,3 @@
-controllerComponentLabel: linkerd.io/control-plane-component
-controllerImage: gcr.io/linkerd-io/controller
-controllerImageVersion: linkerdVersionValue
 createdByAnnotation: linkerd.io/created-by
 gateway: true
 gatewayLocalProbePath: /health-local
@@ -12,15 +9,9 @@ gatewayPort: 4143
 gatewayProbePath: /health
 gatewayProbePort: 4181
 gatewayProbeSeconds: 3
-identityTrustDomain: cluster.local
 installNamespace: true
-linkerdNamespace: linkerd
 linkerdVersion: linkerdVersionValue
 namespace: linkerd-multicluster
 proxyOutboundPort: 4140
-serviceMirror: true
-logLevel: info
-serviceMirrorRetryLimit: 3
-serviceMirrorUID: 2103
 remoteMirrorServiceAccount: true
 remoteMirrorServiceAccountName: linkerd-service-mirror-remote-access-default

@@ -6,30 +6,25 @@ import (
 	"sync"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/prometheus/client_golang/prometheus"
 	logging "github.com/sirupsen/logrus"
 )
 
 const httpGatewayTimeoutMillis = 50000
 
-type probeSpec struct {
-	path            string
-	port            uint32
-	periodInSeconds uint32
-}
-
 // ProbeWorker is responsible for monitoring gateways using a probe specification
 type ProbeWorker struct {
 	localGatewayName string
 	*sync.RWMutex
-	probeSpec *probeSpec
+	probeSpec *multicluster.ProbeSpec
 	stopCh    chan struct{}
 	metrics   *probeMetrics
 	log       *logging.Entry
 }
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
-func NewProbeWorker(localGatewayName string, spec *probeSpec, metrics *probeMetrics, probekey string) *ProbeWorker {
+func NewProbeWorker(localGatewayName string, spec *multicluster.ProbeSpec, metrics *probeMetrics, probekey string) *ProbeWorker {
 	return &ProbeWorker{
 		localGatewayName: localGatewayName,
 		RWMutex:          &sync.RWMutex{},
@@ -43,7 +38,7 @@ func NewProbeWorker(localGatewayName string, spec *probeSpec, metrics *probeMetr
 }
 
 // UpdateProbeSpec is used to update the probe specification when something about the gateway changes
-func (pw *ProbeWorker) UpdateProbeSpec(spec *probeSpec) {
+func (pw *ProbeWorker) UpdateProbeSpec(spec *multicluster.ProbeSpec) {
 	pw.Lock()
 	pw.probeSpec = spec
 	pw.Unlock()
@@ -63,9 +58,8 @@ func (pw *ProbeWorker) Start() {
 }
 
 func (pw *ProbeWorker) run() {
-	periodInMillis := pw.probeSpec.periodInSeconds * 1000
-	probeTickerPeriod := time.Duration(periodInMillis) * time.Millisecond
-	maxJitter := time.Duration(periodInMillis/10) * time.Millisecond // max jitter is 10% of period
+	probeTickerPeriod := pw.probeSpec.Period
+	maxJitter := pw.probeSpec.Period / 10 // max jitter is 10% of period
 	probeTicker := NewTicker(probeTickerPeriod, maxJitter)
 
 probeLoop:
@@ -90,7 +84,7 @@ func (pw *ProbeWorker) doProbe() {
 		Timeout: httpGatewayTimeoutMillis * time.Millisecond,
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/%s", pw.localGatewayName, pw.probeSpec.port, pw.probeSpec.path), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/%s", pw.localGatewayName, pw.probeSpec.Port, pw.probeSpec.Path), nil)
 	if err != nil {
 		pw.log.Errorf("Could not create a GET request to gateway: %s", err)
 		return

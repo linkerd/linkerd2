@@ -19,7 +19,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
+	"github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
@@ -188,11 +188,6 @@ var ExpectedServiceAccountNames = []string{
 	"linkerd-tap",
 }
 
-type expectedPolicy struct {
-	resources []string
-	verbs     []string
-}
-
 var (
 	retryWindow    = 5 * time.Second
 	requestTimeout = 30 * time.Second
@@ -344,8 +339,6 @@ type Options struct {
 	RetryDeadline         time.Time
 	CNIEnabled            bool
 	InstallManifest       string
-	SourceCluster         bool
-	TargetCluster         bool
 	MultiCluster          bool
 }
 
@@ -356,20 +349,19 @@ type HealthChecker struct {
 	*Options
 
 	// these fields are set in the process of running checks
-	kubeAPI              *k8s.KubernetesAPI
-	kubeVersion          *k8sVersion.Info
-	controlPlanePods     []corev1.Pod
-	apiClient            public.APIClient
-	latestVersions       version.Channels
-	serverVersion        string
-	linkerdConfig        *configPb.All
-	uuid                 string
-	issuerCert           *tls.Cred
-	trustAnchors         []*x509.Certificate
-	cniDaemonSet         *appsv1.DaemonSet
-	serviceMirrorNs      string
-	remoteClusterConfigs []*sm.WatchedClusterConfig
-	addOns               map[string]interface{}
+	kubeAPI          *k8s.KubernetesAPI
+	kubeVersion      *k8sVersion.Info
+	controlPlanePods []corev1.Pod
+	apiClient        public.APIClient
+	latestVersions   version.Channels
+	serverVersion    string
+	linkerdConfig    *configPb.All
+	uuid             string
+	issuerCert       *tls.Cred
+	trustAnchors     []*x509.Certificate
+	cniDaemonSet     *appsv1.DaemonSet
+	links            []multicluster.Link
+	addOns           map[string]interface{}
 }
 
 // NewHealthChecker returns an initialized HealthChecker
