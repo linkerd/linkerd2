@@ -1,5 +1,14 @@
 # Changes
 
+## edge-20.7.4
+
+This edge release brings support for EndpointSlices.
+
+* Added fish shell completions to the `linkerd` command (thanks @WLun001!)
+* Enabled the support for EndpointSlices (thanks @Matei207!)
+* Separated prometheus checks and made them runnable only when there the add-on
+  is enabled
+
 ## edge-20.7.3
 
 * Add preliminary support for EndpointSlices which will be usable in future
