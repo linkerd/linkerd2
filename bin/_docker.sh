@@ -20,6 +20,12 @@ export DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-}
 # buildx cache directory. Needed if DOCKER_BUILDKIT is used
 export DOCKER_BUILDKIT_CACHE=${DOCKER_BUILDKIT_CACHE:-}
 
+# When set together with DOCKER_BUILDKIT, it will build and push the multi architecture images to the registry
+export DOCKER_MULTIARCH=${DOCKER_MULTIARCH:-}
+
+# Default supported docker image architectures
+export SUPPORTED_ARCHS=linux/amd64,linux/arm64,linux/arm/v7
+
 docker_repo() {
     repo=$1
 
@@ -53,11 +59,18 @@ docker_build() {
       if [ -n "$DOCKER_BUILDKIT_CACHE" ]; then
         cache_params="--cache-from type=local,src=${DOCKER_BUILDKIT_CACHE} --cache-to type=local,dest=${DOCKER_BUILDKIT_CACHE},mode=max"
       fi
-      log_debug "  :; docker buildx $rootdir $cache_params --load -t $repo:$tag -f $file $*"
+
+      output_params="--load"
+      if [ -n "$DOCKER_MULTIARCH" ]; then
+        output_params="--push --platform $SUPPORTED_ARCHS"
+      fi
+
+      log_debug "  :; docker buildx $rootdir $cache_params $output_params -t $repo:$tag -f $file $*"
       # shellcheck disable=SC2086
       docker buildx build "$rootdir" $cache_params \
-          --load \
+          $output_params \
           -t "$repo:$tag" \
+          -t "$repo:main" \
           -f "$file" \
           "$@" \
           > "$output"
