@@ -383,7 +383,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 	if err := rcsw.mirrorNamespaceIfNecessary(remoteService.Namespace); err != nil {
 		return err
 	}
-	// here we always create both a service and endpoints, even if we cannot resolve the gateway
+
 	serviceToCreate := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        localServiceName,

@@ -22,7 +22,9 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -422,7 +424,7 @@ func newLinkCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "link",
-		Short: "Outputs a Kubernetes secret that allows a service mirror component to connect to this cluster",
+		Short: "Outputs resources that allow another cluster to mirror services from this one",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -632,6 +634,98 @@ func newLinkCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.dockerRegistry, "registry", opts.dockerRegistry, "Docker registry to pull service mirror controller image from")
 
 	return cmd
+}
+
+func newUnlinkCommand() *cobra.Command {
+	opts, err := newLinkOptionsWithDefault()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		os.Exit(1)
+	}
+
+	cmd := &cobra.Command{
+		Use:   "unlink",
+		Short: "Outputs link resources for deletion",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+
+			if opts.clusterName == "" {
+				return errors.New("You need to specify cluster name")
+			}
+
+			rules := clientcmd.NewDefaultClientConfigLoadingRules()
+			rules.ExplicitPath = kubeconfigPath
+			loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, &clientcmd.ConfigOverrides{})
+			config, err := loader.RawConfig()
+			if err != nil {
+				return err
+			}
+
+			if kubeContext != "" {
+				config.CurrentContext = kubeContext
+			}
+
+			k, err := k8s.NewAPI(kubeconfigPath, config.CurrentContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return err
+			}
+
+			_, err = mc.GetLink(k.DynamicClient, opts.namespace, opts.clusterName)
+			if err != nil {
+				return err
+			}
+
+			secret := newNamespacedKubernetesResource(corev1.SchemeGroupVersion.String(), "Secret", fmt.Sprintf("cluster-credentials-%s", opts.clusterName), opts.namespace)
+			gatewayMirror := newNamespacedKubernetesResource(corev1.SchemeGroupVersion.String(), "Service", fmt.Sprintf("probe-gateway-%s", opts.clusterName), opts.namespace)
+			link := newNamespacedKubernetesResource(k8s.LinkAPIGroupVersion, "Link", opts.clusterName, opts.namespace)
+			clusterRole := newKubernetesResource(rbac.SchemeGroupVersion.String(), "ClusterRole", fmt.Sprintf("linkerd-service-mirror-access-local-resources-%s", opts.clusterName))
+			clusterRoleBinding := newKubernetesResource(rbac.SchemeGroupVersion.String(), "ClusterRoleBinding", fmt.Sprintf("linkerd-service-mirror-access-local-resources-%s", opts.clusterName))
+			role := newNamespacedKubernetesResource(rbac.SchemeGroupVersion.String(), "Role", fmt.Sprintf("linkerd-service-mirror-read-remote-creds-%s", opts.clusterName), opts.namespace)
+			roleBinding := newNamespacedKubernetesResource(rbac.SchemeGroupVersion.String(), "RoleBinding", fmt.Sprintf("linkerd-service-mirror-read-remote-creds-%s", opts.clusterName), opts.namespace)
+			serviceAccount := newNamespacedKubernetesResource(corev1.SchemeGroupVersion.String(), "ServiceAccount", fmt.Sprintf("linkerd-service-mirror-%s", opts.clusterName), opts.namespace)
+			serviceMirror := newNamespacedKubernetesResource(appsv1.SchemeGroupVersion.String(), "Deployment", fmt.Sprintf("linkerd-service-mirror-%s", opts.clusterName), opts.namespace)
+
+			resources := []kubernetesResource{
+				secret, gatewayMirror, link, clusterRole, clusterRoleBinding,
+				role, roleBinding, serviceAccount, serviceMirror,
+			}
+
+			selector := fmt.Sprintf("%s=%s,%s=%s",
+				k8s.MirroredResourceLabel, "true",
+				k8s.RemoteClusterNameLabel, opts.clusterName,
+			)
+			svcList, err := k.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{LabelSelector: selector})
+			for _, svc := range svcList.Items {
+				resources = append(resources,
+					newNamespacedKubernetesResource(corev1.SchemeGroupVersion.String(), "Service", svc.Name, svc.Namespace),
+				)
+			}
+
+			for _, r := range resources {
+				r.renderResource(stdout)
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&opts.namespace, "namespace", defaultMulticlusterNamespace, "The namespace for the service account")
+	cmd.Flags().StringVar(&opts.clusterName, "cluster-name", "", "Cluster name")
+
+	return cmd
+}
+
+func newNamespacedKubernetesResource(apiVersion, kind, name, namespace string) kubernetesResource {
+	return kubernetesResource{
+		runtime.TypeMeta{
+			APIVersion: apiVersion,
+			Kind:       kind,
+		},
+		metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
 }
 
 type exportReport struct {
@@ -886,6 +980,7 @@ components on a cluster, manage credentials and link clusters together.`,
 	}
 
 	multiclusterCmd.AddCommand(newLinkCommand())
+	multiclusterCmd.AddCommand(newUnlinkCommand())
 	multiclusterCmd.AddCommand(newMulticlusterInstallCommand())
 	multiclusterCmd.AddCommand(newExportServiceCommand())
 	multiclusterCmd.AddCommand(newGatewaysCommand())
