@@ -1038,10 +1038,11 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description:   "control plane self-check",
-					hintAnchor:    "l5d-api-control-api",
-					fatal:         true,
-					retryDeadline: hc.RetryDeadline,
+					description:         "control plane self-check",
+					hintAnchor:          "l5d-api-control-api",
+					surfaceErrorOnRetry: false,
+					fatal:               true,
+					retryDeadline:       hc.RetryDeadline,
 					checkRPC: func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, error) {
 						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
 					},
@@ -1353,49 +1354,75 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer Ch
 	}
 }
 
+// runCheckRPC calls `c` which itself should make a gRPC call returning `*healthcheckPb.SelfCheckResponse`
+// (which can contain multiple responses) or error.
+// If that call returns an error, we send it to `observer` and return false.
+// Otherwise, we send to `observer` a success message with `c.description` and then proceed to check the
+// multiple responses contained in the response.
+// We keep on retrying the same call until all the responses have an OK status
+// (or until timeout/deadline is reached), sending a message to `observer` for each response,
+// while making sure no duplicate messages are sent.
 func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer CheckObserver) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	defer cancel()
-	checkRsp, err := c.checkRPC(ctx)
-	if se, ok := err.(*SkipError); ok {
-		log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
-		return true
-	}
-	if err != nil {
-		err = &CategoryError{categoryID, err}
-	}
-	observer(&CheckResult{
-		Category:    categoryID,
-		Description: c.description,
-		HintAnchor:  c.hintAnchor,
-		Warning:     c.warning,
-		Err:         err,
-	})
-	if err != nil {
-		return false
-	}
+	observedResults := []CheckResult{}
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
+		checkRsp, err := c.checkRPC(ctx)
+		if se, ok := err.(*SkipError); ok {
+			log.Debugf("Skipping check: %s. Reason: %s", c.description, se.Reason)
+			return true
+		}
 
-	for _, check := range checkRsp.Results {
-		var err error
-		if check.Status != healthcheckPb.CheckStatus_OK {
-			err = fmt.Errorf(check.FriendlyMessageToUser)
-		}
-		if err != nil {
-			err = &CategoryError{categoryID, err}
-		}
-		observer(&CheckResult{
+		checkResult := &CheckResult{
 			Category:    categoryID,
-			Description: fmt.Sprintf("[%s] %s", check.SubsystemName, check.CheckDescription),
+			Description: c.description,
 			HintAnchor:  c.hintAnchor,
 			Warning:     c.warning,
-			Err:         err,
-		})
-		if err != nil {
+		}
+
+		if vs, ok := err.(*VerboseSuccess); ok {
+			checkResult.Description = fmt.Sprintf("%s\n%s", checkResult.Description, vs.Message)
+		} else if err != nil {
+			// errors at the gRPC-call level are not retried
+			// but we do retry below if the response Status is not OK
+			checkResult.Err = &CategoryError{categoryID, err}
+			observer(checkResult)
 			return false
 		}
-	}
 
-	return true
+		// General description, only shown once.
+		// The following calls to `observer()` track specific result entries.
+		if !checkResult.alreadyObserved(observedResults) {
+			observer(checkResult)
+			observedResults = append(observedResults, *checkResult)
+		}
+
+		for _, check := range checkRsp.Results {
+			checkResult.Err = nil
+			checkResult.Description = fmt.Sprintf("[%s] %s", check.SubsystemName, check.CheckDescription)
+			if check.Status != healthcheckPb.CheckStatus_OK {
+				checkResult.Err = &CategoryError{categoryID, fmt.Errorf(check.FriendlyMessageToUser)}
+				checkResult.Retry = time.Now().Before(c.retryDeadline)
+				// only show the waiting message during retries,
+				// and send the underlying error on the last try
+				if !c.surfaceErrorOnRetry && checkResult.Retry {
+					checkResult.Err = errors.New("waiting for check to complete")
+				}
+				observer(checkResult)
+			} else if !checkResult.alreadyObserved(observedResults) {
+				observer(checkResult)
+			}
+			observedResults = append(observedResults, *checkResult)
+		}
+
+		if checkResult.Retry {
+			log.Debug("Retrying on error")
+			time.Sleep(retryWindow)
+			continue
+		}
+
+		return checkResult.Err == nil
+	}
 }
 
 func (hc *HealthChecker) controlPlaneComponentsSelector() string {
@@ -2023,6 +2050,15 @@ func (hc *HealthChecker) checkClockSkew() error {
 	}
 
 	return nil
+}
+
+func (cr *CheckResult) alreadyObserved(previousResults []CheckResult) bool {
+	for _, result := range previousResults {
+		if result.Description == cr.Description && result.Err == cr.Err {
+			return true
+		}
+	}
+	return false
 }
 
 // getPodStatuses returns a map of all Linkerd container statuses:
