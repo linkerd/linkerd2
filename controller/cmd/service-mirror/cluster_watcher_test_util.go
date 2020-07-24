@@ -511,10 +511,9 @@ func gateway(name, namespace, resourceVersion, ip, hostname, portName string, po
 			Namespace:       namespace,
 			ResourceVersion: resourceVersion,
 			Annotations: map[string]string{
-				consts.GatewayIdentity:               identity,
-				consts.GatewayProbePath:              probePath,
-				consts.GatewayProbePeriod:            fmt.Sprint(probePeriod),
-				consts.MulticlusterGatewayAnnotation: "true",
+				consts.GatewayIdentity:    identity,
+				consts.GatewayProbePath:   probePath,
+				consts.GatewayProbePeriod: fmt.Sprint(probePeriod),
 			},
 		},
 		Spec: corev1.ServiceSpec{

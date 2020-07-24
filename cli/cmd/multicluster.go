@@ -510,11 +510,6 @@ func newLinkCommand() *cobra.Command {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
 					Namespace: opts.namespace,
-					Annotations: map[string]string{
-						k8s.RemoteClusterNameLabel:                  opts.clusterName,
-						k8s.RemoteClusterDomainAnnotation:           configMap.Global.ClusterDomain,
-						k8s.RemoteClusterLinkerdNamespaceAnnotation: controlPlaneNamespace,
-					},
 				},
 				Data: map[string][]byte{
 					k8s.ConfigKeyName: kubeconfig,
