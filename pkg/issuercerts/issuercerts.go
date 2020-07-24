@@ -2,6 +2,7 @@ package issuercerts
 
 import (
 	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -131,14 +132,22 @@ func CheckCertAlgoRequirements(cert *x509.Certificate) error {
 			return fmt.Errorf("expected ecdsa.PublicKey but got something %v", cert.PublicKey)
 		}
 		if k.Params().BitSize != 256 {
-			return fmt.Errorf("must use P-256 curve for public key, instead P-%d was used", k.Params().BitSize)
+			return fmt.Errorf("if using ECDSA, must use P-256 curve for public key, instead P-%d was used", k.Params().BitSize)
+		}
+	} else if cert.PublicKeyAlgorithm == x509.RSA {
+		k, ok := cert.PublicKey.(*rsa.PublicKey)
+		if !ok {
+			return fmt.Errorf("expected rsa.PublicKey but got something %v", cert.PublicKey)
+		}
+		if k.N.BitLen() != 2048 {
+			return fmt.Errorf("if using RSA, must use 2048 bit public key, instead %d bit public key was used", k.N.BitLen())
 		}
 	} else {
-		return fmt.Errorf("must use ECDSA for public key algorithm, instead %s was used", cert.PublicKeyAlgorithm)
+		return fmt.Errorf("must use ECDSA or RSA for public key algorithm, instead %s was used", cert.PublicKeyAlgorithm)
 	}
 
-	if cert.SignatureAlgorithm != x509.ECDSAWithSHA256 {
-		return fmt.Errorf("must be signed by an ECDSA P-256 key, instead %s was used", cert.SignatureAlgorithm)
+	if cert.SignatureAlgorithm != x509.ECDSAWithSHA256 && cert.SignatureAlgorithm != x509.SHA256WithRSA {
+		return fmt.Errorf("must be signed by an ECDSA P-256 key or an RSA 2048 bit key, instead %s was used", cert.SignatureAlgorithm)
 	}
 	return nil
 }
