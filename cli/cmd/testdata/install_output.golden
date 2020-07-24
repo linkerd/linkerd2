@@ -3049,6 +3049,7 @@ spec:
       - args:
         - -api-addr=linkerd-controller-api.Namespace.svc.cluster.local:8085
         - -grafana-addr=linkerd-grafana.Namespace.svc.cluster.local:3000
+        - -jaeger-addr=linkerd-jaeger.Namespace.svc.cluster.local:16686
         - -controller-namespace=Namespace
         - -log-level=ControllerLogLevel
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.Namespace\.svc\.cluster\.local|linkerd-web\.Namespace\.svc|\[::1\])(:\d+)?$
