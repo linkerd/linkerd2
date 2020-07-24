@@ -1,5 +1,5 @@
 namespace: linkerd-cni
-createNamespace: true
+installNamespace: true
 cniResourceLabel: linkerd.io/cni-resource
 inboundProxyPort: 4143
 outboundProxyPort: 4140

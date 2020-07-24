@@ -17,7 +17,7 @@ limitations under the License.
 This file was inspired by
 1) https://github.com/istio/cni/blob/c63a509539b5ed165a6617548c31b686f13c2133/deployments/kubernetes/install/manifests/istio-cni.yaml
 */ -}}
-{{- if .Values.createNamespace -}}
+{{- if .Values.installNamespace -}}
 kind: Namespace
 apiVersion: v1
 metadata:

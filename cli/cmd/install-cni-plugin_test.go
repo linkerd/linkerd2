@@ -28,7 +28,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/opt/my-cni/bin",
 		priorityClassName:   "system-node-critical",
-		createNamespace:     true,
+		installNamespace:    true,
 	}
 
 	otherNamespace := "other"
@@ -48,7 +48,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/etc/kubernetes/cni/net.d",
 		priorityClassName:   "system-node-critical",
-		createNamespace:     true,
+		installNamespace:    true,
 	}
 
 	fullyConfiguredOptionsNoNamespace := &cniPluginOptions{
@@ -66,7 +66,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/opt/my-cni/bin",
 		priorityClassName:   "system-node-critical",
-		createNamespace:     false,
+		installNamespace:    false,
 	}
 
 	testCases := []struct {

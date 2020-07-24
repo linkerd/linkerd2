@@ -39,7 +39,7 @@ type cniPluginOptions struct {
 	destCNIBinDir       string
 	useWaitFlag         bool
 	priorityClassName   string
-	createNamespace     bool
+	installNamespace    bool
 }
 
 func (options *cniPluginOptions) validate() error {
@@ -105,7 +105,7 @@ assumes that the 'linkerd install' command will be executed with the
 	cmd.PersistentFlags().StringVar(&options.logLevel, "cni-log-level", options.logLevel, "Log level for the cni-plugin")
 	cmd.PersistentFlags().StringVar(&options.destCNINetDir, "dest-cni-net-dir", options.destCNINetDir, "Directory on the host where the CNI configuration will be placed")
 	cmd.PersistentFlags().StringVar(&options.priorityClassName, "priority-class-name", options.priorityClassName, "Pod priorityClassName for CNI daemonset's pods")
-	cmd.PersistentFlags().BoolVar(&options.createNamespace, "create-namespace", options.createNamespace, "Whether to create the CNI namespace or not")
+	cmd.PersistentFlags().BoolVar(&options.installNamespace, "install-namespace", options.installNamespace, "Whether to create the CNI namespace or not")
 	cmd.PersistentFlags().BoolVar(
 		&options.useWaitFlag,
 		"use-wait-flag",
@@ -136,7 +136,7 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 		destCNIBinDir:       defaults.DestCNIBinDir,
 		useWaitFlag:         defaults.UseWaitFlag,
 		priorityClassName:   defaults.PriorityClassName,
-		createNamespace:     defaults.CreateNamespace,
+		installNamespace:    defaults.InstallNamespace,
 	}, nil
 }
 
@@ -172,7 +172,7 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	installValues.UseWaitFlag = options.useWaitFlag
 	installValues.Namespace = cniNamespace
 	installValues.PriorityClassName = options.priorityClassName
-	installValues.CreateNamespace = options.createNamespace
+	installValues.InstallNamespace = options.installNamespace
 	return installValues, nil
 }
 
