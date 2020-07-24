@@ -139,7 +139,15 @@ func (cred *Cred) EncodePrivateKeyPEM() string {
 		panic(fmt.Sprintf("Invalid private key: %s", err))
 	}
 
-	return string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: b}))
+	var pemKey string
+	switch cred.PrivateKey.(type) {
+	case privateKeyEC:
+		pemKey = string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: b}))
+	case privateKeyRSA:
+		pemKey = string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: b}))
+	}
+
+	return pemKey
 }
 
 // EncodePrivateKeyP8 encodes the provided key to the PKCS#8 binary form.

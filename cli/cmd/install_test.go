@@ -426,7 +426,9 @@ func TestValidate(t *testing.T) {
 			{"expired", "failed to verify issuer certs stored on disk: not valid anymore. Expired on 1990-01-01T01:01:11Z"},
 			{"not-valid-yet", "failed to verify issuer certs stored on disk: not valid before: 2100-01-01T01:00:51Z"},
 			{"wrong-domain", "failed to verify issuer certs stored on disk: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"},
-			{"wrong-algo", "failed to verify issuer certs stored on disk: must use P-256 curve for public key, instead P-521 was used"},
+			{"wrong-algo", "failed to verify issuer certs stored on disk: if using ECDSA, must use P-256 curve for public key, instead P-521 was used"},
+			{"valid-rsa", ""},
+			{"wrong-rsa-bitnum", "failed to verify issuer certs stored on disk: if using RSA, must use 2048 bit public key, instead 1024 bit public key was used"},
 		}
 		for _, tc := range testCases {
 
