@@ -25,11 +25,14 @@ const (
 	defaultProbePeriod = 60
 )
 
-var defaultProbeSpec = multicluster.ProbeSpec{
-	Path:   defaultProbePath,
-	Port:   defaultProbePort,
-	Period: time.Duration(defaultProbePeriod) * time.Second,
-}
+var (
+	defaultProbeSpec = multicluster.ProbeSpec{
+		Path:   defaultProbePath,
+		Port:   defaultProbePort,
+		Period: time.Duration(defaultProbePeriod) * time.Second,
+	}
+	defaultSelector, _ = metav1.ParseToLabelSelector(consts.DefaultExportedServiceSelector)
+)
 
 type testEnvironment struct {
 	events          []interface{}
@@ -76,49 +79,12 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInt
 	return localAPI, nil
 }
 
-var serviceCreateWithMissingGateway = &testEnvironment{
+var createExportedService = &testEnvironment{
 	events: []interface{}{
 		&RemoteServiceCreated{
-			service: remoteService("service-one", "ns1", "missing-gateway", "missing-namespace", "111", nil),
-		},
-	},
-	link: multicluster.Link{
-		TargetClusterName: clusterName,
-		GatewayAddress:    "",
-	},
-}
-
-var createServiceWrongGatewaySpec = &testEnvironment{
-	events: []interface{}{
-		&RemoteServiceCreated{
-			service: remoteService("service-one", "ns1", "existing-gateway", "existing-namespace",
-				"111", []corev1.ServicePort{
-					{
-						Name:     "port1",
-						Protocol: "TCP",
-						Port:     555,
-					},
-					{
-						Name:     "port2",
-						Protocol: "TCP",
-						Port:     666,
-					},
-				}),
-		},
-	},
-	remoteResources: []string{
-		gatewayAsYaml("existing-gateway", "existing-namespace", "222", "192.0.2.127", "mc-wrong", 888, "", 111, "/path", 666),
-	},
-	link: multicluster.Link{
-		TargetClusterName: clusterName,
-		GatewayAddress:    "??????",
-	},
-}
-
-var createServiceOkeGatewaySpec = &testEnvironment{
-	events: []interface{}{
-		&RemoteServiceCreated{
-			service: remoteService("service-one", "ns1", "existing-gateway", "existing-namespace", "111", []corev1.ServicePort{
+			service: remoteService("service-one", "ns1", "111", map[string]string{
+				consts.DefaultExportedServiceSelector: "true",
+			}, []corev1.ServicePort{
 				{
 					Name:     "port1",
 					Protocol: "TCP",
@@ -142,10 +108,11 @@ var createServiceOkeGatewaySpec = &testEnvironment{
 		GatewayAddress:      "192.0.2.127",
 		GatewayPort:         888,
 		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
 	},
 }
 
-var deleteMirroredService = &testEnvironment{
+var deleteMirrorService = &testEnvironment{
 	events: []interface{}{
 		&RemoteServiceDeleted{
 			Name:      "test-service-remote-to-delete",
@@ -163,13 +130,16 @@ var deleteMirroredService = &testEnvironment{
 		GatewayAddress:      "192.0.2.127",
 		GatewayPort:         888,
 		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
 	},
 }
 
 var updateServiceWithChangedPorts = &testEnvironment{
 	events: []interface{}{
 		&RemoteServiceUpdated{
-			remoteUpdate: remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "currentServiceResVersion", []corev1.ServicePort{
+			remoteUpdate: remoteService("test-service", "test-namespace", "currentServiceResVersion", map[string]string{
+				consts.DefaultExportedServiceSelector: "true",
+			}, []corev1.ServicePort{
 				{
 					Name:     "port1",
 					Protocol: "TCP",
@@ -253,6 +223,7 @@ var updateServiceWithChangedPorts = &testEnvironment{
 		GatewayAddress:      "192.0.2.127",
 		GatewayPort:         888,
 		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
 	},
 }
 
@@ -282,7 +253,7 @@ var gcTriggered = &testEnvironment{
 		endpointsAsYaml("test-service-2-remote", "test-namespace", "", "", nil),
 	},
 	remoteResources: []string{
-		remoteServiceAsYaml("test-service-1", "test-namespace", "gateway", "gateway-ns", "", nil),
+		remoteServiceAsYaml("test-service-1", "test-namespace", "", nil),
 	},
 	link: multicluster.Link{
 		TargetClusterName: clusterName,
@@ -292,7 +263,9 @@ var gcTriggered = &testEnvironment{
 func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 	return &testEnvironment{
 		events: []interface{}{
-			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "resVersion", nil)),
+			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "resVersion", map[string]string{
+				consts.DefaultExportedServiceSelector: "true",
+			}, nil)),
 		},
 		link: multicluster.Link{
 			TargetClusterName:   clusterName,
@@ -301,6 +274,7 @@ func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 			GatewayAddress:      "192.0.2.127",
 			GatewayPort:         888,
 			ProbeSpec:           defaultProbeSpec,
+			Selector:            *defaultSelector,
 		},
 	}
 
@@ -309,7 +283,9 @@ func onAddOrUpdateExportedSvc(isAdd bool) *testEnvironment {
 func onAddOrUpdateRemoteServiceUpdated(isAdd bool) *testEnvironment {
 	return &testEnvironment{
 		events: []interface{}{
-			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "currentResVersion", nil)),
+			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "currentResVersion", map[string]string{
+				consts.DefaultExportedServiceSelector: "true",
+			}, nil)),
 		},
 		localResources: []string{
 			mirrorServiceAsYaml("test-service-remote", "test-namespace", "pastResourceVersion", nil),
@@ -322,6 +298,7 @@ func onAddOrUpdateRemoteServiceUpdated(isAdd bool) *testEnvironment {
 			GatewayAddress:      "192.0.2.127",
 			GatewayPort:         888,
 			ProbeSpec:           defaultProbeSpec,
+			Selector:            *defaultSelector,
 		},
 	}
 }
@@ -329,7 +306,9 @@ func onAddOrUpdateRemoteServiceUpdated(isAdd bool) *testEnvironment {
 func onAddOrUpdateSameResVersion(isAdd bool) *testEnvironment {
 	return &testEnvironment{
 		events: []interface{}{
-			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "currentResVersion", nil)),
+			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "currentResVersion", map[string]string{
+				consts.DefaultExportedServiceSelector: "true",
+			}, nil)),
 		},
 		localResources: []string{
 			mirrorServiceAsYaml("test-service-remote", "test-namespace", "currentResVersion", nil),
@@ -342,6 +321,7 @@ func onAddOrUpdateSameResVersion(isAdd bool) *testEnvironment {
 			GatewayAddress:      "192.0.2.127",
 			GatewayPort:         888,
 			ProbeSpec:           defaultProbeSpec,
+			Selector:            *defaultSelector,
 		},
 	}
 }
@@ -349,7 +329,7 @@ func onAddOrUpdateSameResVersion(isAdd bool) *testEnvironment {
 func serviceNotExportedAnymore(isAdd bool) *testEnvironment {
 	return &testEnvironment{
 		events: []interface{}{
-			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "", "gateway-ns", "currentResVersion", nil)),
+			onAddOrUpdateEvent(isAdd, remoteService("test-service", "test-namespace", "currentResVersion", map[string]string{}, nil)),
 		},
 		localResources: []string{
 			mirrorServiceAsYaml("test-service-remote", "test-namespace", "currentResVersion", nil),
@@ -362,14 +342,17 @@ func serviceNotExportedAnymore(isAdd bool) *testEnvironment {
 			GatewayAddress:      "192.0.2.127",
 			GatewayPort:         888,
 			ProbeSpec:           defaultProbeSpec,
+			Selector:            *defaultSelector,
 		},
 	}
 }
 
-var onDeleteWithGatewayMetadata = &testEnvironment{
+var onDeleteExportedService = &testEnvironment{
 	events: []interface{}{
 		&OnDeleteCalled{
-			svc: remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "currentResVersion", nil),
+			svc: remoteService("test-service", "test-namespace", "currentResVersion", map[string]string{
+				consts.DefaultExportedServiceSelector: "true",
+			}, nil),
 		},
 	},
 	link: multicluster.Link{
@@ -379,13 +362,14 @@ var onDeleteWithGatewayMetadata = &testEnvironment{
 		GatewayAddress:      "192.0.2.127",
 		GatewayPort:         888,
 		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
 	},
 }
 
-var onDeleteNoGatewayMetadata = &testEnvironment{
+var onDeleteNonExportedService = &testEnvironment{
 	events: []interface{}{
 		&OnDeleteCalled{
-			svc: remoteService("gateway", "test-namespace", "", "", "currentResVersion", nil),
+			svc: remoteService("gateway", "test-namespace", "currentResVersion", map[string]string{}, nil),
 		},
 	},
 	link: multicluster.Link{
@@ -395,6 +379,7 @@ var onDeleteNoGatewayMetadata = &testEnvironment{
 		GatewayAddress:      "192.0.2.127",
 		GatewayPort:         888,
 		ProbeSpec:           defaultProbeSpec,
+		Selector:            *defaultSelector,
 	},
 }
 
@@ -452,13 +437,7 @@ func diffEndpoints(expected, actual *corev1.Endpoints) error {
 	return nil
 }
 
-func remoteService(name, namespace, gtwName, gtwNs, resourceVersion string, ports []corev1.ServicePort) *corev1.Service {
-	annotations := make(map[string]string)
-	if gtwName != "" && gtwNs != "" {
-		annotations[consts.GatewayNameAnnotation] = gtwName
-		annotations[consts.GatewayNsAnnotation] = gtwNs
-	}
-
+func remoteService(name, namespace, resourceVersion string, labels map[string]string, ports []corev1.ServicePort) *corev1.Service {
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -468,7 +447,7 @@ func remoteService(name, namespace, gtwName, gtwNs, resourceVersion string, port
 			Name:            name,
 			Namespace:       namespace,
 			ResourceVersion: resourceVersion,
-			Annotations:     annotations,
+			Labels:          labels,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: ports,
@@ -476,8 +455,8 @@ func remoteService(name, namespace, gtwName, gtwNs, resourceVersion string, port
 	}
 }
 
-func remoteServiceAsYaml(name, namespace, gtwName, gtwNs, resourceVersion string, ports []corev1.ServicePort) string {
-	svc := remoteService(name, namespace, gtwName, gtwNs, resourceVersion, ports)
+func remoteServiceAsYaml(name, namespace, resourceVersion string, ports []corev1.ServicePort) string {
+	svc := remoteService(name, namespace, resourceVersion, nil, ports)
 
 	bytes, err := yaml.Marshal(svc)
 	if err != nil {

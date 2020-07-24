@@ -384,18 +384,12 @@ const (
 	// the access information for remote clusters.
 	MirrorSecretType = SvcMirrorPrefix + "/remote-kubeconfig"
 
-	// GatewayNameAnnotation is the annotation that is present on the remote
-	// service, indicating which gateway is supposed to route traffic to it
-	GatewayNameAnnotation = SvcMirrorPrefix + "/gateway-name"
+	DefaultExportedServiceSelector = SvcMirrorPrefix + "/exported"
 
 	// RemoteGatewayNameLabel is same as GatewayNameAnnotation but on the local,
 	// mirrored service. It's used for quick querying when we want to figure out
 	// the services that are being associated with a certain gateway
 	RemoteGatewayNameLabel = SvcMirrorPrefix + "/remote-gateway-name"
-
-	// GatewayNsAnnotation is present on the remote service, indicating the ns
-	// in which we can find the gateway
-	GatewayNsAnnotation = SvcMirrorPrefix + "/gateway-ns"
 
 	// RemoteGatewayNsLabel follows the same kind of logic as RemoteGatewayNameLabel
 	RemoteGatewayNsLabel = SvcMirrorPrefix + "/remote-gateway-ns"
