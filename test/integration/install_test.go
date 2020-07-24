@@ -436,8 +436,8 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "spValidatorProxyResources.memory.request=108Mi",
 		"--set", "tapProxyResources.cpu.limit=1090m",
 		"--set", "tapProxyResources.memory.request=109Mi",
-		"--set", "webProxyResources.cpu.limit=1100m",
-		"--set", "webProxyResources.memory.request=110Mi",
+		"--set", "dashboard.proxy.resources.cpu.limit=1100m",
+		"--set", "dashboard.proxy.resources.memory.request=110Mi",
 		"--atomic",
 		"--wait",
 	}
