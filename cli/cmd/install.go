@@ -125,7 +125,6 @@ var (
 		"templates/controller-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
-		"templates/web-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
 		"templates/proxy-injector-rbac.yaml",
@@ -143,7 +142,6 @@ var (
 		"templates/controller.yaml",
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
-		"templates/web.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
@@ -789,7 +787,6 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat
-	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
 	installValues.SMIMetrics.Image = options.smiMetricsImage
 	installValues.SMIMetrics.Enabled = options.smiMetricsEnabled
 

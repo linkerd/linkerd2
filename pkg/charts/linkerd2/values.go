@@ -22,7 +22,6 @@ type (
 		Stage                       string            `json:"stage"`
 		ControllerImage             string            `json:"controllerImage"`
 		ControllerImageVersion      string            `json:"controllerImageVersion"`
-		WebImage                    string            `json:"webImage"`
 		ControllerReplicas          uint              `json:"controllerReplicas"`
 		ControllerUID               int64             `json:"controllerUID"`
 		EnableH2Upgrade             bool              `json:"enableH2Upgrade"`
@@ -36,7 +35,6 @@ type (
 		Configs                     ConfigJSONs       `json:"configs"`
 		Global                      *Global           `json:"global"`
 		Identity                    *Identity         `json:"identity"`
-		Dashboard                   *Dashboard        `json:"dashboard"`
 		DebugContainer              *DebugContainer   `json:"debugContainer"`
 		ProxyInjector               *ProxyInjector    `json:"proxyInjector"`
 		ProfileValidator            *ProfileValidator `json:"profileValidator"`
@@ -53,7 +51,6 @@ type (
 		SMIMetricsResources    *Resources `json:"smiMetricsResources"`
 		SPValidatorResources   *Resources `json:"spValidatorResources"`
 		TapResources           *Resources `json:"tapResources"`
-		WebResources           *Resources `json:"webResources"`
 
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
@@ -62,12 +59,12 @@ type (
 		SMIMetricsProxyResources    *Resources `json:"smiMetricsProxyResources"`
 		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
 		TapProxyResources           *Resources `json:"tapProxyResources"`
-		WebProxyResources           *Resources `json:"webProxyResources"`
 
 		// Addon Structures
 		Grafana    Grafana    `json:"grafana"`
 		Prometheus Prometheus `json:"prometheus"`
 		Tracing    Tracing    `json:"tracing"`
+		Dashboard  Dashboard  `json:"dashboard"`
 	}
 
 	// Global values common across all charts
@@ -182,11 +179,6 @@ type (
 	Resources struct {
 		CPU    Constraints `json:"cpu"`
 		Memory Constraints `json:"memory"`
-	}
-
-	// Dashboard has the Helm variables for the web dashboard
-	Dashboard struct {
-		Replicas int32 `json:"replicas"`
 	}
 
 	// Identity contains the fields to set the identity variables in the proxy

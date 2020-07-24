@@ -112,11 +112,6 @@ controllerUID: 2103
 #destinationResources:
 #destinationProxyResources:
 
-
-# web dashboard configuration
-dashboard:
-  replicas: 1
-
 # debug configuration
 debugContainer:
   image:
@@ -208,14 +203,6 @@ tap:
 #tapResources:
 #tapProxyResources:
 
-# web configuration
-webImage: gcr.io/linkerd-io/web
-# set resources for web UI and its linkerd proxy respectively
-# see global.proxy.resources for details.
-#webResources:
-#webProxyResources:
-
-
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:
 # - The namespace created by the external tool must match the namespace value above
@@ -306,6 +293,13 @@ prometheus:
   #   storageClass: ""
   #   accessMode: ReadWriteOnce
   #   size: 8Gi
+  # resources:
+  # proxy:
+  #   resources:
+
+# Dashboard configuration
+dashboard:
+  enabled: true
   # resources:
   # proxy:
   #   resources:

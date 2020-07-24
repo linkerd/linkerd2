@@ -1,0 +1,7 @@
+# This add-on's default property values are declared in `charts/add-ons/dashboard/values.yaml`.
+# If installing/upgrading with Helm, you can override them through the usual `--set` or `-f` flags
+# when installing with the parent linkerd2 chart
+# Do not override them in this file!
+# If installing/upgrading with linkerd's CLI, use the `--addon-config` flag.
+image: gcr.io/linkerd-io/web
+replicas: 1

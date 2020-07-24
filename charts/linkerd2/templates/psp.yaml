@@ -117,9 +117,11 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-tap
   namespace: {{.Values.global.namespace}}
+{{ if .Values.dashboard.enabled -}}
 - kind: ServiceAccount
   name: linkerd-web
   namespace: {{.Values.global.namespace}}
+{{ end -}}
 {{- if .Values.smiMetrics.enabled }}
 - kind: ServiceAccount
   name: linkerd-smi-metrics

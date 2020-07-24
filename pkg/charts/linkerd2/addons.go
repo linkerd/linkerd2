@@ -43,5 +43,13 @@ func ParseAddOnValues(values *Values) ([]AddOn, error) {
 		}
 	}
 
+	if values.Dashboard != nil {
+		if enabled, ok := values.Dashboard["enabled"].(bool); !ok {
+			return nil, fmt.Errorf("invalid value for 'dashboard.enabled' (should be boolean): %s", values.Dashboard["enabled"])
+		} else if enabled {
+			addOns = append(addOns, values.Dashboard)
+		}
+	}
+
 	return addOns, nil
 }

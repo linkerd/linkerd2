@@ -14,3 +14,7 @@ dependencies:
   version: 0.1.0
   repository: file://../add-ons/tracing
   condition: tracing.enabled
+- name: dashboard
+  version: 0.1.0
+  repository: file://../add-ons/dashboard
+  condition: dashboard.enabled

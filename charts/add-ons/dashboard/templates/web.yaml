@@ -42,7 +42,7 @@ metadata:
   name: linkerd-web
   namespace: {{.Values.global.namespace}}
 spec:
-  replicas: {{.Values.dashboard.replicas}}
+  replicas: {{.Values.replicas}}
   selector:
     matchLabels:
       {{.Values.global.controllerComponentLabel}}: web
@@ -84,7 +84,7 @@ spec:
         - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
         {{- end}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
-        image: {{.Values.webImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
+        image: {{.Values.image}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:

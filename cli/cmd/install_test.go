@@ -53,7 +53,6 @@ func TestRender(t *testing.T) {
 	metaConfig.Global.LinkerdNamespace = "Namespace"
 	metaValues := &charts.Values{
 		ControllerImage:             "ControllerImage",
-		WebImage:                    "WebImage",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
@@ -131,9 +130,7 @@ func TestRender(t *testing.T) {
 		ProfileValidator:   defaultValues.ProfileValidator,
 		Tap:                defaultValues.Tap,
 		SMIMetrics:         defaultValues.SMIMetrics,
-		Dashboard: &charts.Dashboard{
-			Replicas: 1,
-		},
+		Dashboard:          defaultValues.Dashboard,
 		Prometheus: charts.Prometheus{
 			"enabled": true,
 			"image":   "PrometheusImage",
