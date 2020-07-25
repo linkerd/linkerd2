@@ -25,6 +25,7 @@
 - [Paybase](https://paybase.io/)
 - [PlayStudios Asia](https://www.playstudios.asia)
 - [Projector](https://projector.com)
+- [Purdue University Global](https://www.purdueglobal.edu/)
 - [Studyo](https://studyo.co)
 - [Sue](https://sue.nl)
 - [Transit](https://transit.app)
