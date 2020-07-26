@@ -38,7 +38,6 @@ prometheus:
   sidecarContainers:
   - name: sidecar
     lifecycle:
-      # n.b. only valid on k8s >=1.19
       type: Sidecar
     imagePullPolicy: always
     command:

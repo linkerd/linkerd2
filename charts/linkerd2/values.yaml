@@ -315,9 +315,9 @@ prometheus:
   #       --stackdriver.kubernetes.cluster-name=mycluster \
   #       --prometheus.wal-directory=/data/wal \
   #       --log.level=info
-  #     volumeMounts:
-  #     - mountPath: /data
-  #       name: data
+  #   volumeMounts:
+  #   - mountPath: /data
+  #     name: data
   #   ports:
   #   - name: foo
   #     containerPort: 9091
