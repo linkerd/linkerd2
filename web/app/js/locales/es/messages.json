@@ -1,0 +1,5 @@
+{
+  "Add {0} to the k8s.yml file<0/><1/>Then run {inject} to add it to the service mesh": "Agregue {0} a la k8s.yml file<0/><1/>Luego ejecuta {inject} para inyectarla en la malla de servicios",
+  "No data to display": "No hay datos que mostrar",
+  "one or more resources": "uno más recursos más"
+}

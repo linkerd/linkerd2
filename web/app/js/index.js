@@ -9,6 +9,7 @@ import AppContext from './components/util/AppContext.jsx';
 import Community from './components/Community.jsx';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import Gateway from './components/Gateway.jsx';
+import { I18nProvider } from '@lingui/react';
 import Namespace from './components/Namespace.jsx';
 import Navigation from './components/Navigation.jsx';
 import NoMatch from './components/NoMatch.jsx';
@@ -21,6 +22,8 @@ import ServiceMesh from './components/ServiceMesh.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
 import TopRoutes from './components/TopRoutes.jsx';
+import catalogEn from './locales/en/messages.js';
+import catalogEs from './locales/es/messages.js';
 import { dashboardTheme } from './components/util/theme.js';
 
 const appMain = document.getElementById('main');
@@ -72,9 +75,13 @@ class App extends React.Component {
   }
 
   render() {
+    const catalogs = { en: catalogEn, es: catalogEs };
+
     return (
       <AppContext.Provider value={this.state}>
-        <AppHTML />
+        <I18nProvider language={window.navigator.language} catalogs={catalogs}>
+          <AppHTML />
+        </I18nProvider>
       </AppContext.Provider>
     );
   }
