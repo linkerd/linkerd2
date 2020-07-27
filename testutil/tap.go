@@ -75,7 +75,7 @@ func toFieldMap(line string) map[string]string {
 	return fieldMap
 }
 
-// ValidateExpected compares the recieved tap event with the expected tap event
+// ValidateExpected compares the received tap event with the expected tap event
 func ValidateExpected(events []*TapEvent, expectedEvent TapEvent) error {
 	if len(events) == 0 {
 		return fmt.Errorf("Expected tap events, got nothing")
