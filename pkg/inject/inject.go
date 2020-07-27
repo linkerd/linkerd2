@@ -849,20 +849,20 @@ func (conf *ResourceConfig) destinationGetNetworks() string {
 
 func (conf *ResourceConfig) getOutboundConnectTimeout() string {
 	if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyOutboundConnectTimeout]; hasPodOverride {
-		_, err := time.ParseDuration(podOverride)
+		duration, err := time.ParseDuration(podOverride)
 		if err != nil {
 			log.Warnf("unrecognized proxy-outbound-connect-timeout duration value found on pod annotation: %s", err.Error())
 		} else {
-			return podOverride
+			return fmt.Sprintf("%dms", int(duration.Seconds()*1000))
 		}
 	}
 
 	if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyOutboundConnectTimeout]; hasNsOverride {
-		_, err := time.ParseDuration(nsOverride)
+		duration, err := time.ParseDuration(nsOverride)
 		if err != nil {
 			log.Warnf("unrecognized proxy-outbound-connect-timeout duration value found on namespace annotation: %s", err.Error())
 		} else {
-			return nsOverride
+			return fmt.Sprintf("%dms", int(duration.Seconds()*1000))
 		}
 	}
 
@@ -871,20 +871,20 @@ func (conf *ResourceConfig) getOutboundConnectTimeout() string {
 
 func (conf *ResourceConfig) getInboundConnectTimeout() string {
 	if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyInboundConnectTimeout]; hasPodOverride {
-		_, err := time.ParseDuration(podOverride)
+		duration, err := time.ParseDuration(podOverride)
 		if err != nil {
 			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on pod annotation: %s", err.Error())
 		} else {
-			return podOverride
+			return fmt.Sprintf("%dms", int(duration.Seconds()*1000))
 		}
 	}
 
 	if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyInboundConnectTimeout]; hasNsOverride {
-		_, err := time.ParseDuration(nsOverride)
+		duration, err := time.ParseDuration(nsOverride)
 		if err != nil {
 			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on namespace annotation: %s", err.Error())
 		} else {
-			return nsOverride
+			return fmt.Sprintf("%dms", int(duration.Seconds()*1000))
 		}
 	}
 

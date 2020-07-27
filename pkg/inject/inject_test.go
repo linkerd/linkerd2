@@ -404,8 +404,9 @@ func TestConfigAccessors(t *testing.T) {
 		},
 		{id: "use valid duration for TCP connect timeouts",
 			nsAnnotations: map[string]string{
-				k8s.ProxyOutboundConnectTimeout: "6000ms",
-				k8s.ProxyInboundConnectTimeout:  "600ms",
+				// Validate we're converting time values into ms for the proxy to parse correctly.
+				k8s.ProxyOutboundConnectTimeout: "6s5ms",
+				k8s.ProxyInboundConnectTimeout:  "1s5ms",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -442,8 +443,8 @@ func TestConfigAccessors(t *testing.T) {
 				inboundSkipPorts:       "53,58-59",
 				outboundSkipPorts:      "9079-9080",
 				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-				outboundConnectTimeout: "6000ms",
-				inboundConnectTimeout:  "600ms",
+				outboundConnectTimeout: "6005ms",
+				inboundConnectTimeout:  "1005ms",
 			},
 		},
 	}
