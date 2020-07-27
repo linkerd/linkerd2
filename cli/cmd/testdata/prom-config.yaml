@@ -35,3 +35,25 @@ prometheus:
     configMap: linkerd-prometheus-rules
   remoteWrite:
   - url: http://cortex-service.default:9009/api/prom/push
+  sidecarContainers:
+  - name: sidecar
+    lifecycle:
+      type: Sidecar
+    imagePullPolicy: always
+    command:
+    - /bin/sh
+    - -c
+    - |
+      exec /bin/stackdriver-prometheus-sidecar \
+        --stackdriver.project-id=myproject \
+        --stackdriver.kubernetes.location=us-central1 \
+        --stackdriver.kubernetes.cluster-name=mycluster \
+        --prometheus.wal-directory=/data/wal \
+        --log.level=info
+      volumeMounts:
+      - mountPath: /data
+        name: data
+    ports:
+    - name: foo
+      containerPort: 9091
+      protocol: TCP
