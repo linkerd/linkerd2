@@ -849,11 +849,21 @@ func (conf *ResourceConfig) destinationGetNetworks() string {
 
 func (conf *ResourceConfig) getOutboundConnectTimeout() string {
 	if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyOutboundConnectTimeout]; hasPodOverride {
-		return podOverride
+		_, err := time.ParseDuration(podOverride)
+		if err != nil {
+			log.Warnf("unrecognized proxy-outbound-connect-timeout duration value found on pod annotation: %s", err.Error())
+		} else {
+			return podOverride
+		}
 	}
 
 	if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyOutboundConnectTimeout]; hasNsOverride {
-		return nsOverride
+		_, err := time.ParseDuration(nsOverride)
+		if err != nil {
+			log.Warnf("unrecognized proxy-outbound-connect-timeout duration value found on namespace annotation: %s", err.Error())
+		} else {
+			return nsOverride
+		}
 	}
 
 	return conf.configs.GetProxy().OutboundConnectTimeout
@@ -861,11 +871,21 @@ func (conf *ResourceConfig) getOutboundConnectTimeout() string {
 
 func (conf *ResourceConfig) getInboundConnectTimeout() string {
 	if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyInboundConnectTimeout]; hasPodOverride {
-		return podOverride
+		_, err := time.ParseDuration(podOverride)
+		if err != nil {
+			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on pod annotation: %s", err.Error())
+		} else {
+			return podOverride
+		}
 	}
 
 	if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyInboundConnectTimeout]; hasNsOverride {
-		return nsOverride
+		_, err := time.ParseDuration(nsOverride)
+		if err != nil {
+			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on namespace annotation: %s", err.Error())
+		} else {
+			return nsOverride
+		}
 	}
 
 	return conf.configs.GetProxy().InboundConnectTimeout

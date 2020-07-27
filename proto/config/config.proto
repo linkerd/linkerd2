@@ -61,7 +61,11 @@ message Proxy {
 
   string outbound_connect_timeout = 19;
 
+<<<<<<< HEAD
+  string inbound_connect_timeout = 20;
+=======
   string inbound_connect_timeout = 20
+>>>>>>> 3180bd22... Revert "requested changes"
 }
 
 message Image {
