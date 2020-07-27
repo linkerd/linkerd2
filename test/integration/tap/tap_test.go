@@ -21,55 +21,45 @@ func TestMain(m *testing.M) {
 	os.Exit(testutil.Run(m, TestHelper))
 }
 
-type tapEvent struct {
-	method     string
-	authority  string
-	path       string
-	httpStatus string
-	grpcStatus string
-	tls        string
-	lineCount  int
-}
-
 var (
-	expectedT1 = tapEvent{
-		method:     "POST",
-		authority:  "t1-svc:9090",
-		path:       "/buoyantio.bb.TheService/theFunction",
-		httpStatus: "200",
-		grpcStatus: "OK",
-		tls:        "true",
-		lineCount:  3,
+	expectedT1 = testutil.TapEvent{
+		Method:     "POST",
+		Authority:  "t1-svc:9090",
+		Path:       "/buoyantio.bb.TheService/theFunction",
+		HTTPStatus: "200",
+		GrpcStatus: "OK",
+		TLS:        "true",
+		LineCount:  3,
 	}
 
-	expectedT2 = tapEvent{
-		method:     "POST",
-		authority:  "t2-svc:9090",
-		path:       "/buoyantio.bb.TheService/theFunction",
-		httpStatus: "200",
-		grpcStatus: "Unknown",
-		tls:        "true",
-		lineCount:  3,
+	expectedT2 = testutil.TapEvent{
+		Method:     "POST",
+		Authority:  "t2-svc:9090",
+		Path:       "/buoyantio.bb.TheService/theFunction",
+		HTTPStatus: "200",
+		GrpcStatus: "Unknown",
+		TLS:        "true",
+		LineCount:  3,
 	}
 
-	expectedT3 = tapEvent{
-		method:     "POST",
-		authority:  "t3-svc:8080",
-		path:       "/",
-		httpStatus: "200",
-		grpcStatus: "",
-		tls:        "true",
-		lineCount:  3,
+	expectedT3 = testutil.TapEvent{
+		Method:     "POST",
+		Authority:  "t3-svc:8080",
+		Path:       "/",
+		HTTPStatus: "200",
+		GrpcStatus: "",
+		TLS:        "true",
+		LineCount:  3,
 	}
 
-	expectedGateway = tapEvent{
-		method:     "GET",
-		authority:  "gateway-svc:8080",
-		path:       "/",
-		httpStatus: "500",
-		grpcStatus: "",
-		tls:        "true",
-		lineCount:  3,
+	expectedGateway = testutil.TapEvent{
+		Method:     "GET",
+		Authority:  "gateway-svc:8080",
+		Path:       "/",
+		HTTPStatus: "500",
+		GrpcStatus: "",
+		TLS:        "true",
+		LineCount:  3,
 	}
 )
 
@@ -112,12 +102,12 @@ func TestCliTap(t *testing.T) {
 	}
 
 	t.Run("tap a deployment", func(t *testing.T) {
-		events, err := tap("deploy/t1", "--namespace", prefixedNs)
+		events, err := testutil.Tap("deploy/t1", TestHelper, "--namespace", prefixedNs)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "tap failed", err)
 		}
 
-		err = validateExpected(events, expectedT1)
+		err = testutil.ValidateExpected(events, expectedT1)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "validating tap failed", err)
 		}
@@ -130,12 +120,12 @@ func TestCliTap(t *testing.T) {
 				"unexpected error: %v output:\n%s", err, out)
 		}
 
-		events, err := tap("deploy/t1")
+		events, err := testutil.Tap("deploy/t1", TestHelper)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "tap failed using context namespace", err)
 		}
 
-		err = validateExpected(events, expectedT1)
+		err = testutil.ValidateExpected(events, expectedT1)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "validating tap failed using context namespace", err)
 		}
@@ -167,12 +157,12 @@ func TestCliTap(t *testing.T) {
 	})
 
 	t.Run("tap a service call", func(t *testing.T) {
-		events, err := tap("deploy/gateway", "--to", "svc/t2-svc", "--namespace", prefixedNs)
+		events, err := testutil.Tap("deploy/gateway", TestHelper, "--to", "svc/t2-svc", "--namespace", prefixedNs)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "failed tapping a service call", err)
 		}
 
-		err = validateExpected(events, expectedT2)
+		err = testutil.ValidateExpected(events, expectedT2)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "failed validating tapping a service call", err)
 		}
@@ -190,109 +180,39 @@ func TestCliTap(t *testing.T) {
 			testutil.Fatalf(t, "expected exactly one pod for deployment [%s], got:\n%v", deploy, pods)
 		}
 
-		events, err := tap("pod/"+pods[0], "--namespace", prefixedNs)
+		events, err := testutil.Tap("pod/"+pods[0], TestHelper, "--namespace", prefixedNs)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "error tapping pod", err)
 		}
 
-		err = validateExpected(events, expectedT3)
+		err = testutil.ValidateExpected(events, expectedT3)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "error validating pod tap", err)
 		}
 	})
 
 	t.Run("filter tap events by method", func(t *testing.T) {
-		events, err := tap("deploy/gateway", "--namespace", prefixedNs, "--method", "GET")
+		events, err := testutil.Tap("deploy/gateway", TestHelper, "--namespace", prefixedNs, "--method", "GET")
 		if err != nil {
 			testutil.AnnotatedFatal(t, "error filtering tap events by method", err)
 		}
 
-		err = validateExpected(events, expectedGateway)
+		err = testutil.ValidateExpected(events, expectedGateway)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "error validating filtered tap events by method", err)
 		}
 	})
 
 	t.Run("filter tap events by authority", func(t *testing.T) {
-		events, err := tap("deploy/gateway", "--namespace", prefixedNs, "--authority", "t1-svc:9090")
+		events, err := testutil.Tap("deploy/gateway", TestHelper, "--namespace", prefixedNs, "--authority", "t1-svc:9090")
 		if err != nil {
 			testutil.AnnotatedFatal(t, "error filtering tap events by authority", err)
 		}
 
-		err = validateExpected(events, expectedT1)
+		err = testutil.ValidateExpected(events, expectedT1)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "error validating filtered tap events by authority", err)
 		}
 	})
 
-}
-
-// executes a tap command and converts the command's streaming output into tap
-// events using each line's "id" field
-func tap(target string, arg ...string) ([]*tapEvent, error) {
-	cmd := append([]string{"tap", target}, arg...)
-	outputStream, err := TestHelper.LinkerdRunStream(cmd...)
-	if err != nil {
-		return nil, err
-	}
-	defer outputStream.Stop()
-
-	outputLines, err := outputStream.ReadUntil(10, 1*time.Minute)
-	if err != nil {
-		return nil, err
-	}
-
-	tapEventByID := make(map[string]*tapEvent)
-	for _, line := range outputLines {
-		fields := toFieldMap(line)
-		obj, ok := tapEventByID[fields["id"]]
-		if !ok {
-			obj = &tapEvent{}
-			tapEventByID[fields["id"]] = obj
-		}
-		obj.lineCount++
-		obj.tls = fields["tls"]
-
-		switch fields["type"] {
-		case "req":
-			obj.method = fields[":method"]
-			obj.authority = fields[":authority"]
-			obj.path = fields[":path"]
-		case "rsp":
-			obj.httpStatus = fields[":status"]
-		case "end":
-			obj.grpcStatus = fields["grpc-status"]
-		}
-	}
-
-	output := make([]*tapEvent, 0)
-	for _, obj := range tapEventByID {
-		if obj.lineCount == 3 { // filter out incomplete events
-			output = append(output, obj)
-		}
-	}
-
-	return output, nil
-}
-
-func toFieldMap(line string) map[string]string {
-	fields := strings.Fields(line)
-	fieldMap := map[string]string{"type": fields[0]}
-	for _, field := range fields[1:] {
-		parts := strings.SplitN(field, "=", 2)
-		fieldMap[parts[0]] = parts[1]
-	}
-	return fieldMap
-}
-
-func validateExpected(events []*tapEvent, expectedEvent tapEvent) error {
-	if len(events) == 0 {
-		return fmt.Errorf("Expected tap events, got nothing")
-	}
-	for _, event := range events {
-		if *event != expectedEvent {
-			return fmt.Errorf("Unexpected tap event [%+v]; expected=[%+v]", *event, expectedEvent)
-		}
-	}
-	return nil
 }
