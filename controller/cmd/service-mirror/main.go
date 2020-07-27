@@ -109,12 +109,14 @@ main:
 							restartClusterWatcher(link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics)
 						case watch.Deleted:
 							log.Infof("Link %s deleted", linkName)
-							link, err := multicluster.NewLink(*obj)
-							if err != nil {
-								log.Errorf("Failed to parse link %s: %s", linkName, err)
-								continue
+							if clusterWatcher != nil {
+								clusterWatcher.Stop(false)
+								clusterWatcher = nil
 							}
-							deleteMirrorServices(link.TargetClusterName, k8sAPI)
+							if probeWorker != nil {
+								probeWorker.Stop()
+								probeWorker = nil
+							}
 						default:
 							log.Infof("Ignoring event type %s", event.Type)
 						}
@@ -184,24 +186,4 @@ func restartClusterWatcher(
 	}
 	probeWorker = NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
 	go probeWorker.run()
-}
-
-func deleteMirrorServices(targetCluster string, k8sAPI *k8s.KubernetesAPI) {
-	selector := fmt.Sprintf("%s=%s,%s=%s",
-		k8s.MirroredResourceLabel, "true",
-		k8s.RemoteClusterNameLabel, targetCluster,
-	)
-	mirrorServices, err := k8sAPI.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{LabelSelector: selector})
-	if err != nil {
-		log.Errorf("Failed to list mirror services for deletion: %s", err)
-		return
-	}
-
-	for _, svc := range mirrorServices.Items {
-		log.Infof("Deleting mirror service %s.%s", svc.Name, svc.Namespace)
-		err = k8sAPI.CoreV1().Services(svc.Namespace).Delete(svc.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			log.Errorf("Failed to delete mirror service %s.%s: %s", svc.Name, svc.Namespace, err)
-		}
-	}
 }
