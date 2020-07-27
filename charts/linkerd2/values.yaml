@@ -100,11 +100,6 @@ enableH2Upgrade: true
 omitWebhookSideEffects: false
 webhookFailurePolicy: Ignore
 
-# controller configuration
-controllerImage: gcr.io/linkerd-io/controller
-controllerReplicas: 1
-controllerUID: 2103
-
 
 # destination configuration
 # set resources for the sp-validator and its linkerd proxy respectively
@@ -251,6 +246,9 @@ smiMetrics:
 
 # Configuration for Add-ons
 # Full configuration fields https://github.com/linkerd/linkerd2/tree/master/charts/linkerd2#add-ons-configuration
+
+publicApi:
+  enabled: true
 
 grafana:
   enabled: true

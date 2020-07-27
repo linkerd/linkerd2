@@ -20,11 +20,8 @@ type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
 		Stage                       string            `json:"stage"`
-		ControllerImage             string            `json:"controllerImage"`
 		ControllerImageVersion      string            `json:"controllerImageVersion"`
 		WebImage                    string            `json:"webImage"`
-		ControllerReplicas          uint              `json:"controllerReplicas"`
-		ControllerUID               int64             `json:"controllerUID"`
 		EnableH2Upgrade             bool              `json:"enableH2Upgrade"`
 		EnablePodAntiAffinity       bool              `json:"enablePodAntiAffinity"`
 		WebhookFailurePolicy        string            `json:"webhookFailurePolicy"`
@@ -49,7 +46,6 @@ type (
 		HeartbeatResources     *Resources `json:"heartbeatResources"`
 		IdentityResources      *Resources `json:"identityResources"`
 		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
-		PublicAPIResources     *Resources `json:"publicAPIResources"`
 		SMIMetricsResources    *Resources `json:"smiMetricsResources"`
 		SPValidatorResources   *Resources `json:"spValidatorResources"`
 		TapResources           *Resources `json:"tapResources"`
@@ -58,7 +54,6 @@ type (
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
-		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
 		SMIMetricsProxyResources    *Resources `json:"smiMetricsProxyResources"`
 		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
 		TapProxyResources           *Resources `json:"tapProxyResources"`
@@ -68,6 +63,7 @@ type (
 		Grafana    Grafana    `json:"grafana"`
 		Prometheus Prometheus `json:"prometheus"`
 		Tracing    Tracing    `json:"tracing"`
+		PublicAPI  *PublicAPI `json:"publicApi"`
 	}
 
 	// Global values common across all charts

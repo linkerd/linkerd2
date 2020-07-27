@@ -122,7 +122,6 @@ var (
 	templatesConfigStage = []string{
 		"templates/namespace.yaml",
 		"templates/identity-rbac.yaml",
-		"templates/controller-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
 		"templates/web-rbac.yaml",
@@ -140,7 +139,6 @@ var (
 		"templates/_helpers.tpl",
 		"templates/config.yaml",
 		"templates/identity.yaml",
-		"templates/controller.yaml",
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
 		"templates/web.yaml",
@@ -178,10 +176,10 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 	return &installOptions{
 		clusterDomain:               defaults.Global.ClusterDomain,
 		controlPlaneVersion:         version.Version,
-		controllerReplicas:          defaults.ControllerReplicas,
+		controllerReplicas:          defaults.PublicAPI.Replicas,
 		controllerLogLevel:          defaults.Global.ControllerLogLevel,
 		highAvailability:            defaults.Global.HighAvailability,
-		controllerUID:               defaults.ControllerUID,
+		controllerUID:               defaults.PublicAPI.UID,
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
 		disableHeartbeat:            defaults.DisableHeartBeat,
 		cniEnabled:                  defaults.Global.CNIEnabled,
@@ -721,7 +719,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	if options.highAvailability {
 		// use the HA defaults if CLI options aren't provided
 		if options.controllerReplicas == 1 {
-			options.controllerReplicas = installValues.ControllerReplicas
+			options.controllerReplicas = installValues.PublicAPI.Replicas
 		}
 
 		if options.proxyCPURequest == "" {
@@ -771,11 +769,11 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Configs.Global = globalJSON
 	installValues.Configs.Proxy = proxyJSON
 	installValues.Configs.Install = installJSON
-	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
+	installValues.PublicAPI.Image = fmt.Sprintf("%s/controller", options.dockerRegistry)
 	installValues.Global.ControllerImageVersion = configs.GetGlobal().GetVersion()
 	installValues.Global.ControllerLogLevel = options.controllerLogLevel
-	installValues.ControllerReplicas = options.controllerReplicas
-	installValues.ControllerUID = options.controllerUID
+	installValues.PublicAPI.Replicas = options.controllerReplicas
+	installValues.PublicAPI.UID = options.controllerUID
 	installValues.Global.ControlPlaneTracing = options.controlPlaneTracing
 	installValues.EnableH2Upgrade = !options.disableH2Upgrade
 	installValues.EnablePodAntiAffinity = options.highAvailability

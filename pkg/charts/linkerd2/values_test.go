@@ -15,10 +15,7 @@ func TestNewValues(t *testing.T) {
 
 	expected := &Values{
 		Stage:                       "",
-		ControllerImage:             "gcr.io/linkerd-io/controller",
 		WebImage:                    "gcr.io/linkerd-io/web",
-		ControllerReplicas:          1,
-		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		EnablePodAntiAffinity:       false,
 		WebhookFailurePolicy:        "Ignore",
@@ -141,6 +138,9 @@ func TestNewValues(t *testing.T) {
 				"name": "gcr.io/linkerd-io/grafana",
 			},
 		},
+		PublicAPI: &PublicAPI{
+			Enabled: true,
+		},
 	}
 
 	// pin the versions to ensure consistent test result.
@@ -165,7 +165,6 @@ func TestNewValues(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
-		expected.ControllerReplicas = 3
 		expected.EnablePodAntiAffinity = true
 		expected.WebhookFailurePolicy = "Fail"
 
@@ -180,7 +179,6 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 		expected.DestinationResources = controllerResources
-		expected.PublicAPIResources = controllerResources
 		expected.ProxyInjectorResources = controllerResources
 		expected.SPValidatorResources = controllerResources
 		expected.TapResources = controllerResources

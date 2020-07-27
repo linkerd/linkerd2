@@ -52,9 +52,12 @@ func TestRender(t *testing.T) {
 	metaConfig := metaOptions.configs(identityContext)
 	metaConfig.Global.LinkerdNamespace = "Namespace"
 	metaValues := &charts.Values{
-		ControllerImage:             "ControllerImage",
+		PublicAPI: &charts.PublicAPI{
+			Image:    "ControllerImage",
+			UID:      2103,
+			Replicas: 1,
+		},
 		WebImage:                    "WebImage",
-		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
 		OmitWebhookSideEffects:      false,
@@ -126,11 +129,10 @@ func TestRender(t *testing.T) {
 			Proxy:   "ProxyConfig",
 			Install: "InstallConfig",
 		},
-		ControllerReplicas: 1,
-		ProxyInjector:      defaultValues.ProxyInjector,
-		ProfileValidator:   defaultValues.ProfileValidator,
-		Tap:                defaultValues.Tap,
-		SMIMetrics:         defaultValues.SMIMetrics,
+		ProxyInjector:    defaultValues.ProxyInjector,
+		ProfileValidator: defaultValues.ProfileValidator,
+		Tap:              defaultValues.Tap,
+		SMIMetrics:       defaultValues.SMIMetrics,
 		Dashboard: &charts.Dashboard{
 			Replicas: 1,
 		},

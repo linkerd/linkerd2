@@ -1,0 +1,4 @@
+# controller configuration
+image: gcr.io/linkerd-io/controller
+replicas: 1
+UID: 2103

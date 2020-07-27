@@ -10,6 +10,10 @@ dependencies:
   version: 0.1.0
   repository: file://../add-ons/grafana
   condition: grafana.enabled
+- name: publicApi
+  version: 0.1.0
+  repository: file://../add-ons/publicApi
+  condition: publicApi.enabled
 - name: tracing
   version: 0.1.0
   repository: file://../add-ons/tracing

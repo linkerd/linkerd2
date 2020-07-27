@@ -73,7 +73,6 @@ func TestMergeRaw(t *testing.T) {
 		initialValues := charts.Values{
 			WebImage:               "initial-web",
 			EnableH2Upgrade:        true,
-			ControllerReplicas:     1,
 			OmitWebhookSideEffects: false,
 			InstallNamespace:       true,
 		}
@@ -85,14 +84,12 @@ func TestMergeRaw(t *testing.T) {
 		rawOverwriteValues := `
 webImage: override-web
 enableH2Upgrade: false
-controllerReplicas: 2
 omitWebhookSideEffects: true
 enablePodAntiAffinity: true`
 
 		expectedValues := charts.Values{
 			WebImage:               "override-web",
 			EnableH2Upgrade:        false,
-			ControllerReplicas:     2,
 			OmitWebhookSideEffects: true,
 			EnablePodAntiAffinity:  true,
 			InstallNamespace:       true,

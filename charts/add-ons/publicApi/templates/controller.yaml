@@ -39,7 +39,7 @@ metadata:
   name: linkerd-controller
   namespace: {{.Values.global.namespace}}
 spec:
-  replicas: {{.Values.controllerReplicas}}
+  replicas: {{.Values.replicas}}
   selector:
     matchLabels:
       {{.Values.global.controllerComponentLabel}}: controller
@@ -75,11 +75,9 @@ spec:
         - -destination-addr=linkerd-dst.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8086
         - -controller-namespace={{.Values.global.namespace}}
         - -log-level={{.Values.global.controllerLogLevel}}
-        {{- if .Values.prometheus.enabled }}
         - -prometheus-url=http://linkerd-prometheus.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090
-        {{- end}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
-        image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
+        image: {{.Values.image}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
           httpGet:
@@ -97,18 +95,20 @@ spec:
           httpGet:
             path: /ready
             port: 9995
-        {{- if .Values.publicAPIResources -}}
-        {{- include "partials.resources" .Values.publicAPIResources | nindent 8 }}
+        {{- if .Values.resources -}}
+        {{- include "partials.resources" .Values.resources | nindent 8 }}
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.controllerUID}}
+          runAsUser: {{.Values.UID}}
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
-      {{- $tree := deepCopy . }}      
-      {{- if not (empty .Values.publicAPIProxyResources) }}
-      {{- $r := merge .Values.publicAPIProxyResources .Values.global.proxy.resources }}
+      {{- $tree := deepCopy . }}
+      {{- if not (empty .Values.proxy) }}
+      {{- if not (empty .Values.proxy.resources) }}
+      {{- $r := merge .Values.proxy.resources .Values.global.proxy.resources }}
       {{- $_ := set $tree.Values.global.proxy "resources" $r }}
+      {{- end }}
       {{- end }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}

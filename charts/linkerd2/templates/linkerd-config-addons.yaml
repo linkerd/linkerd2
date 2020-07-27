@@ -26,5 +26,7 @@ data:
       {{- include "linkerd.addons.sanitize-config" .Values.grafana}}
     prometheus:
       {{- include "linkerd.addons.sanitize-config" .Values.prometheus}}
+    publicApi:
+      {{- include "linkerd.addons.sanitize-config" .Values.publicApi}}
     tracing:
       {{- include "linkerd.addons.sanitize-config" .Values.tracing}}
