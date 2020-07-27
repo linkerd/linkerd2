@@ -14,9 +14,17 @@ COPY controller controller
 COPY cni-plugin cni-plugin
 RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/linkerd-cni -v -mod=readonly ./cni-plugin/
 
-FROM gcr.io/linkerd-io/base:2020-06-08.01
+FROM debian:buster-20200514-slim
 WORKDIR /linkerd
-RUN curl -kL -o $(which jq) https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    iptables \
+    jq && \
+    rm -rf /var/lib/apt/lists/*
+
+# We still rely on old iptables-legacy syntax.
+RUN update-alternatives --set iptables /usr/sbin/iptables-legacy \
+    && update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+
 COPY --from=golang /go/bin/linkerd-cni /opt/cni/bin/
 COPY LICENSE .
 COPY cni-plugin/deployment/scripts/install-cni.sh .

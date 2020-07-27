@@ -7,11 +7,9 @@ import (
 )
 
 const (
-	gatewayNameLabel      = "gateway_name"
-	gatewayNamespaceLabel = "gateway_namespace"
-	gatewayClusterName    = "target_cluster_name"
-	eventTypeLabelName    = "event_type"
-	probeSuccessfulLabel  = "probe_successful"
+	gatewayClusterName   = "target_cluster_name"
+	eventTypeLabelName   = "event_type"
+	probeSuccessfulLabel = "probe_successful"
 )
 
 type probeMetricVecs struct {
@@ -37,19 +35,19 @@ func init() {
 			Name: "service_mirror_endpoint_repairs",
 			Help: "Increments when the service mirror controller attempts to repair mirror endpoints",
 		},
-		[]string{gatewayNameLabel, gatewayNamespaceLabel, gatewayClusterName},
+		[]string{gatewayClusterName},
 	)
 }
 
 func newProbeMetricVecs() probeMetricVecs {
-	labelNames := []string{gatewayNameLabel, gatewayNamespaceLabel, gatewayClusterName}
+	labelNames := []string{gatewayClusterName}
 
 	probes := promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "gateway_probes",
 			Help: "A counter for the number of actual performed probes to a gateway",
 		},
-		[]string{gatewayNameLabel, gatewayNamespaceLabel, gatewayClusterName, probeSuccessfulLabel},
+		[]string{gatewayClusterName, probeSuccessfulLabel},
 	)
 
 	enqueues := promauto.NewCounterVec(
@@ -98,12 +96,10 @@ func newProbeMetricVecs() probeMetricVecs {
 		probes:    probes,
 	}
 }
-func (mv probeMetricVecs) newWorkerMetrics(gatewayNamespace, gatewayName, remoteClusterName string) (*probeMetrics, error) {
+func (mv probeMetricVecs) newWorkerMetrics(remoteClusterName string) (*probeMetrics, error) {
 
 	labels := prometheus.Labels{
-		gatewayNameLabel:      gatewayName,
-		gatewayNamespaceLabel: gatewayNamespace,
-		gatewayClusterName:    remoteClusterName,
+		gatewayClusterName: remoteClusterName,
 	}
 
 	curriedProbes, err := mv.probes.CurryWith(labels)
@@ -115,16 +111,14 @@ func (mv probeMetricVecs) newWorkerMetrics(gatewayNamespace, gatewayName, remote
 		latencies: mv.latencies.With(labels),
 		probes:    curriedProbes,
 		unregister: func() {
-			mv.unregister(gatewayNamespace, gatewayName, remoteClusterName)
+			mv.unregister(remoteClusterName)
 		},
 	}, nil
 }
 
-func (mv probeMetricVecs) unregister(gatewayNamespace, gatewayName, remoteClusterName string) {
+func (mv probeMetricVecs) unregister(remoteClusterName string) {
 	labels := prometheus.Labels{
-		gatewayNameLabel:      gatewayName,
-		gatewayNamespaceLabel: gatewayNamespace,
-		gatewayClusterName:    remoteClusterName,
+		gatewayClusterName: remoteClusterName,
 	}
 
 	if !mv.alive.Delete(labels) {
