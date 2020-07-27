@@ -124,6 +124,8 @@ type (
 		WaitBeforeExitSeconds         uint64           `json:"waitBeforeExitSeconds"`
 		IsGateway                     bool             `json:"isGateway"`
 		RequireIdentityOnInboundPorts string           `json:"requireIdentityOnInboundPorts"`
+		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
+		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container
