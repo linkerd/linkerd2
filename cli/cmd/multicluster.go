@@ -695,6 +695,9 @@ func newUnlinkCommand() *cobra.Command {
 				k8s.RemoteClusterNameLabel, opts.clusterName,
 			)
 			svcList, err := k.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{LabelSelector: selector})
+			if err != nil {
+				return err
+			}
 			for _, svc := range svcList.Items {
 				resources = append(resources,
 					newNamespacedKubernetesResource(corev1.SchemeGroupVersion.String(), "Service", svc.Name, svc.Namespace),
