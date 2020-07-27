@@ -243,6 +243,84 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
+	t.Run("Return service profile when using json token", func(t *testing.T) {
+		server := makeServer(t)
+
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+
+		stream.Cancel() // see note above on pre-emptive cancelling
+		err := server.GetProfile(&pb.GetDestination{
+			Scheme:       "k8s",
+			Path:         "name1.ns.svc.mycluster.local:8989",
+			ContextToken: "{\"ns\":\"other\"}",
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// The number of updates we get depends on the order that the watcher
+		// gets updates about the server profile and the client profile.  The
+		// client profile takes priority so if we get that update first, it
+		// will only trigger one update to the stream.  However, if the watcher
+		// gets the server profile first, it will send an update with that
+		// profile to the stream and then a second update when it gets the
+		// client profile.
+		// Additionally, under normal conditions the creation of resources by
+		// the fake API will generate notifications that are discarded after the
+		// stream.Cancel() call, but very rarely those notifications might come
+		// after, in which case we'll get a third update.
+		if len(stream.updates) == 0 || len(stream.updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got: %d: %v", len(stream.updates), stream.updates)
+		}
+		lastUpdate := stream.updates[len(stream.updates)-1]
+		routes := lastUpdate.GetRoutes()
+		if len(routes) != 1 {
+			t.Fatalf("Expected 1 route got %d: %v", len(routes), routes)
+		}
+		if routes[0].GetIsRetryable() {
+			t.Fatalf("Expected route to not be retryable, but it was")
+		}
+	})
+
+	t.Run("Returns client profile", func(t *testing.T) {
+		server := makeServer(t)
+
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+
+		// See note about pre-emptive cancellation
+		stream.Cancel()
+		err := server.GetProfile(&pb.GetDestination{
+			Scheme:       "k8s",
+			Path:         "name1.ns.svc.mycluster.local:8989",
+			ContextToken: "{\"ns\":\"client-ns\"}",
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// The number of updates we get depends on if the watcher gets an update
+		// about the profile before or after the subscription.  If the subscription
+		// happens first, then we get a profile update during the subscription and
+		// then a second update when the watcher receives the update about that
+		// profile.  If the watcher event happens first, then we only get the
+		// update during subscription.
+		if len(stream.updates) != 1 && len(stream.updates) != 2 {
+			t.Fatalf("Expected 1 or 2 updates but got %d: %v", len(stream.updates), stream.updates)
+		}
+		routes := stream.updates[len(stream.updates)-1].GetRoutes()
+		if len(routes) != 1 {
+			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
+		}
+		if !routes[0].GetIsRetryable() {
+			t.Fatalf("Expected route to be retryable, but it was not")
+		}
+	})
 	t.Run("Returns client profile", func(t *testing.T) {
 		server := makeServer(t)
 
@@ -277,6 +355,41 @@ func TestGetProfiles(t *testing.T) {
 		}
 		if !routes[0].GetIsRetryable() {
 			t.Fatalf("Expected route to be retryable, but it was not")
+		}
+	})
+
+}
+
+func TestTokenStructure(t *testing.T) {
+	t.Run("when JSON is valid", func(t *testing.T) {
+		server := makeServer(t)
+		dest := &pb.GetDestination{ContextToken: "{\"ns\":\"ns-1\",\"nodeName\":\"node-1\"}\n"}
+		token := server.parseContextToken(dest.ContextToken)
+
+		if token.Ns != "ns-1" {
+			t.Fatalf("Expected token namespace to be %s got %s", "ns-1", token.Ns)
+		}
+
+		if token.NodeName != "node-1" {
+			t.Fatalf("Expected token nodeName to be %s got %s", "node-1", token.NodeName)
+		}
+	})
+
+	t.Run("when JSON is invalid and old token format used", func(t *testing.T) {
+		server := makeServer(t)
+		dest := &pb.GetDestination{ContextToken: "ns:ns-2"}
+		token := server.parseContextToken(dest.ContextToken)
+		if token.Ns != "ns-2" {
+			t.Fatalf("Expected %s got %s", "ns-2", token.Ns)
+		}
+	})
+
+	t.Run("when invalid JSON and invalid old format", func(t *testing.T) {
+		server := makeServer(t)
+		dest := &pb.GetDestination{ContextToken: "123fa-test"}
+		token := server.parseContextToken(dest.ContextToken)
+		if token.Ns != "" || token.NodeName != "" {
+			t.Fatalf("Expected context token to be empty, got %v", token)
 		}
 	})
 }

@@ -40,7 +40,7 @@
       "emptyDir": {},
       "name": "linkerd-proxy-init-xtables-lock"
     }
-  }, 
+  },
   {
     "op": "add",
     "path": "/spec/initContainers/-",
@@ -161,9 +161,17 @@
             }
           }
         },
+          {
+              "name": "_pod_nodeName",
+              "valueFrom": {
+                  "fieldRef": {
+                      "fieldPath": "spec.nodeName"
+                  }
+              }
+          },
         {
           "name": "LINKERD2_PROXY_DESTINATION_CONTEXT",
-          "value": "ns:$(_pod_ns)"
+          "value": "{\"ns\":\"$(_pod_ns)\", \"nodeName\":\"$(_pod_nodeName)\"}\n"
         },
         {
           "name": "LINKERD2_PROXY_IDENTITY_DISABLED",
