@@ -1038,8 +1038,11 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description:         "control plane self-check",
-					hintAnchor:          "l5d-api-control-api",
+					description: "control plane self-check",
+					hintAnchor:  "l5d-api-control-api",
+					// to avoid confusing users with a prometheus readiness error, we only show
+					// "waiting for check to complete" while things converge. If after the timeout
+					// it still hasn't converged, we show the real error (a 503 usually).
 					surfaceErrorOnRetry: false,
 					fatal:               true,
 					retryDeadline:       hc.RetryDeadline,
