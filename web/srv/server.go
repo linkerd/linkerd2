@@ -136,6 +136,7 @@ func NewServer(
 	server.router.GET("/", handler.handleIndex)
 	server.router.GET("/controlplane", handler.handleIndex)
 	server.router.GET("/namespaces", handler.handleIndex)
+	server.router.GET("/gateways", handler.handleIndex)
 
 	// paths for a list of resources by namespace
 	server.router.GET("/namespaces/:namespace/daemonsets", handler.handleIndex)
@@ -193,6 +194,7 @@ func NewServer(
 	server.router.GET("/api/edges", handler.handleAPIEdges)
 	server.router.GET("/api/check", handler.handleAPICheck)
 	server.router.GET("/api/resource-definition", handler.handleAPIResourceDefinition)
+	server.router.GET("/api/gateways", handler.handleAPIGateways)
 
 	// grafana proxy
 	server.handleAllOperationsForPath("/grafana/*grafanapath", handler.handleGrafana)

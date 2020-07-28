@@ -68,6 +68,8 @@ var (
 		k8s.ProxyIgnoreInboundPortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
 		k8s.ProxyTraceCollectorSvcAddrAnnotation,
+		k8s.ProxyOutboundConnectTimeout,
+		k8s.ProxyInboundConnectTimeout,
 	}
 )
 
@@ -512,6 +514,8 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		IsGateway:                     conf.isGateway(),
 		RequireIdentityOnInboundPorts: conf.requireIdentityOnInboundPorts(),
 		DestinationGetNetworks:        conf.destinationGetNetworks(),
+		OutboundConnectTimeout:        conf.getOutboundConnectTimeout(),
+		InboundConnectTimeout:         conf.getInboundConnectTimeout(),
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -841,6 +845,50 @@ func (conf *ResourceConfig) destinationGetNetworks() string {
 	}
 
 	return conf.configs.GetProxy().DestinationGetNetworks
+}
+
+func (conf *ResourceConfig) getOutboundConnectTimeout() string {
+	if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyOutboundConnectTimeout]; hasPodOverride {
+		duration, err := time.ParseDuration(podOverride)
+		if err != nil {
+			log.Warnf("unrecognized proxy-outbound-connect-timeout duration value found on pod annotation: %s", err.Error())
+		} else {
+			return fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+		}
+	}
+
+	if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyOutboundConnectTimeout]; hasNsOverride {
+		duration, err := time.ParseDuration(nsOverride)
+		if err != nil {
+			log.Warnf("unrecognized proxy-outbound-connect-timeout duration value found on namespace annotation: %s", err.Error())
+		} else {
+			return fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+		}
+	}
+
+	return conf.configs.GetProxy().OutboundConnectTimeout
+}
+
+func (conf *ResourceConfig) getInboundConnectTimeout() string {
+	if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyInboundConnectTimeout]; hasPodOverride {
+		duration, err := time.ParseDuration(podOverride)
+		if err != nil {
+			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on pod annotation: %s", err.Error())
+		} else {
+			return fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+		}
+	}
+
+	if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyInboundConnectTimeout]; hasNsOverride {
+		duration, err := time.ParseDuration(nsOverride)
+		if err != nil {
+			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on namespace annotation: %s", err.Error())
+		} else {
+			return fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+		}
+	}
+
+	return conf.configs.GetProxy().InboundConnectTimeout
 }
 
 func (conf *ResourceConfig) isGateway() bool {

@@ -315,4 +315,14 @@ describe('ApiHelpers', () => {
       expect(fetchStub.args[0][0]).toEqual(`/api/resource-definition?namespace=${namespace}&resource_type=${type}&resource_name=${name}`);
     });
   });
+
+  describe('fetchGateways', () => {
+    it('fetches the gateways from the api', () => {
+      api = ApiHelpers();
+      api.fetchGateways();
+
+      expect(fetchStub.calledOnce).toBeTruthy;
+      expect(fetchStub.args[0][0]).toEqual('/api/gateways');
+    });
+  });
 });

@@ -58,6 +58,10 @@ message Proxy {
   string destination_get_networks = 17;
 
   string log_format = 18;
+
+  string outbound_connect_timeout = 19;
+
+  string inbound_connect_timeout = 20;
 }
 
 message Image {
