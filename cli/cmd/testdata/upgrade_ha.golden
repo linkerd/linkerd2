@@ -2426,6 +2426,7 @@ metadata:
 data:
   values: |-
     global:
+      prometheusUrl: ""
       grafanaUrl: ""
     dashboard:
       enabled: true
@@ -2797,36 +2798,10 @@ metadata:
   labels:
     linkerd.io/control-plane-component: prometheus
     linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-data:
-  values: |-
-    global:
-      prometheusUrl: ""
-      grafanaUrl: ""
-    grafana:
-      enabled: true
-      image:
-        name: gcr.io/linkerd-io/grafana
-      name: linkerd-grafana
-      resources:
-        cpu:
-          limit: "1"
-          request: 100m
-        memory:
-          limit: 1024Mi
-          request: 50Mi
-    prometheus:
-      enabled: true
-      resources:
-        cpu:
-          limit: "4"
-          request: 300m
-        memory:
-          limit: 8192Mi
-          request: 300Mi
-    tracing:
-      enabled: false
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "nodes/proxy", "pods"]
+  verbs: ["get", "list", "watch"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -3137,6 +3112,8 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+        - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
+          value: "10000"
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -3498,8 +3475,6 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
-        - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
-          value: "10000"
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
