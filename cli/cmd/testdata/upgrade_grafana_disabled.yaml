@@ -2550,6 +2550,7 @@ metadata:
 data:
   values: |-
     global:
+      prometheusUrl: ""
       grafanaUrl: ""
     grafana:
       enabled: false

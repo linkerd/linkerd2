@@ -25,6 +25,8 @@ global:
 
   identityTrustDomain: *cluster_domain
 
+  # url of existing prometheus
+  prometheusUrl: ""
   # url of external grafana instance.
   grafanaUrl: ""
 
