@@ -7,7 +7,7 @@ import (
 
 var (
 	// publicApiAddOn is the name of the public-api add-on
-	publicApiAddOn = "publicApi"
+	publicAPIAddOn = "publicApi"
 )
 
 // PublicAPI is an add-on that installs the public-api component
@@ -15,12 +15,12 @@ type PublicAPI struct {
 	Enabled  bool   `json:"enabled"`
 	Replicas uint   `json:"replicas"`
 	Image    string `json:"image"`
-	UID      int64  `json:"UID`
+	UID      int64  `json:"UID"`
 }
 
 // Name returns the name of the Prometheus add-on
 func (p PublicAPI) Name() string {
-	return publicApiAddOn
+	return publicAPIAddOn
 }
 
 // Values returns the configuration values that were assigned for this add-on
