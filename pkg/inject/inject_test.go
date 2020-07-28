@@ -36,6 +36,8 @@ type expectedProxyConfigs struct {
 	outboundSkipPorts             string
 	requireIdentityOnInboundPorts string
 	destinationGetNetworks        string
+	outboundConnectTimeout        string
+	inboundConnectTimeout         string
 	trace                         *l5dcharts.Trace
 }
 
@@ -118,6 +120,8 @@ func TestConfigAccessors(t *testing.T) {
 							k8s.ProxyWaitBeforeExitSecondsAnnotation:         "123",
 							k8s.ProxyRequireIdentityOnInboundPortsAnnotation: "8888,9999",
 							k8s.ProxyDestinationGetNetworks:                  "10.0.0.0/8",
+							k8s.ProxyOutboundConnectTimeout:                  "6000ms",
+							k8s.ProxyInboundConnectTimeout:                   "600ms",
 						},
 					},
 					Spec: corev1.PodSpec{},
@@ -156,6 +160,8 @@ func TestConfigAccessors(t *testing.T) {
 				},
 				requireIdentityOnInboundPorts: "8888,9999",
 				destinationGetNetworks:        "10.0.0.0/8",
+				outboundConnectTimeout:        "6000ms",
+				inboundConnectTimeout:         "600ms",
 			},
 		},
 		{id: "use defaults",
@@ -194,6 +200,8 @@ func TestConfigAccessors(t *testing.T) {
 				inboundSkipPorts:       "53,58-59",
 				outboundSkipPorts:      "9079-9080",
 				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+				outboundConnectTimeout: "1000ms",
+				inboundConnectTimeout:  "100ms",
 			},
 		},
 		{id: "use namespace overrides",
@@ -220,6 +228,8 @@ func TestConfigAccessors(t *testing.T) {
 				k8s.ProxyTraceCollectorSvcAddrAnnotation:    "oc-collector.tracing:55678",
 				k8s.ProxyTraceCollectorSvcAccountAnnotation: "default",
 				k8s.ProxyWaitBeforeExitSecondsAnnotation:    "123",
+				k8s.ProxyOutboundConnectTimeout:             "6000ms",
+				k8s.ProxyInboundConnectTimeout:              "600ms",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -258,6 +268,8 @@ func TestConfigAccessors(t *testing.T) {
 					CollectorSvcAccount: "default.tracing",
 				},
 				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+				outboundConnectTimeout: "6000ms",
+				inboundConnectTimeout:  "600ms",
 			},
 		},
 		{id: "use not a uint value for ProxyWaitBeforeExitSecondsAnnotation annotation",
@@ -299,6 +311,8 @@ func TestConfigAccessors(t *testing.T) {
 				inboundSkipPorts:       "53,58-59",
 				outboundSkipPorts:      "9079-9080",
 				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+				outboundConnectTimeout: "1000ms",
+				inboundConnectTimeout:  "100ms",
 			},
 		},
 		{id: "use empty string for dst networks",
@@ -340,6 +354,97 @@ func TestConfigAccessors(t *testing.T) {
 				inboundSkipPorts:       "53,58-59",
 				outboundSkipPorts:      "9079-9080",
 				destinationGetNetworks: "",
+				outboundConnectTimeout: "1000ms",
+				inboundConnectTimeout:  "100ms",
+			},
+		},
+		{id: "use invalid duration for TCP connect timeouts",
+			nsAnnotations: map[string]string{
+				k8s.ProxyOutboundConnectTimeout: "6000",
+				k8s.ProxyInboundConnectTimeout:  "600",
+			},
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       corev1.PodSpec{},
+				},
+			},
+			expected: expectedProxyConfigs{
+				identityContext:            &config.IdentityContext{},
+				image:                      "gcr.io/linkerd-io/proxy",
+				imagePullPolicy:            "IfNotPresent",
+				proxyVersion:               proxyVersion,
+				controlPort:                int32(9000),
+				inboundPort:                int32(6000),
+				adminPort:                  int32(6001),
+				outboundPort:               int32(6002),
+				proxyWaitBeforeExitSeconds: 0,
+				logLevel:                   "info,linkerd2_proxy=debug",
+				logFormat:                  "plain",
+				resourceRequirements: &l5dcharts.Resources{
+					CPU: l5dcharts.Constraints{
+						Limit:   "1",
+						Request: "200m",
+					},
+					Memory: l5dcharts.Constraints{
+						Limit:   "128",
+						Request: "64",
+					},
+				},
+				proxyUID:               int64(8888),
+				initImage:              "gcr.io/linkerd-io/proxy-init",
+				initImagePullPolicy:    "IfNotPresent",
+				initVersion:            version.ProxyInitVersion,
+				inboundSkipPorts:       "53,58-59",
+				outboundSkipPorts:      "9079-9080",
+				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+				outboundConnectTimeout: "1000ms",
+				inboundConnectTimeout:  "100ms",
+			},
+		},
+		{id: "use valid duration for TCP connect timeouts",
+			nsAnnotations: map[string]string{
+				// Validate we're converting time values into ms for the proxy to parse correctly.
+				k8s.ProxyOutboundConnectTimeout: "6s5ms",
+				k8s.ProxyInboundConnectTimeout:  "1s5ms",
+			},
+			spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec:       corev1.PodSpec{},
+				},
+			},
+			expected: expectedProxyConfigs{
+				identityContext:            &config.IdentityContext{},
+				image:                      "gcr.io/linkerd-io/proxy",
+				imagePullPolicy:            "IfNotPresent",
+				proxyVersion:               proxyVersion,
+				controlPort:                int32(9000),
+				inboundPort:                int32(6000),
+				adminPort:                  int32(6001),
+				outboundPort:               int32(6002),
+				proxyWaitBeforeExitSeconds: 0,
+				logLevel:                   "info,linkerd2_proxy=debug",
+				logFormat:                  "plain",
+				resourceRequirements: &l5dcharts.Resources{
+					CPU: l5dcharts.Constraints{
+						Limit:   "1",
+						Request: "200m",
+					},
+					Memory: l5dcharts.Constraints{
+						Limit:   "128",
+						Request: "64",
+					},
+				},
+				proxyUID:               int64(8888),
+				initImage:              "gcr.io/linkerd-io/proxy-init",
+				initImagePullPolicy:    "IfNotPresent",
+				initVersion:            version.ProxyInitVersion,
+				inboundSkipPorts:       "53,58-59",
+				outboundSkipPorts:      "9079-9080",
+				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+				outboundConnectTimeout: "6005ms",
+				inboundConnectTimeout:  "1005ms",
 			},
 		},
 	}

@@ -8,6 +8,7 @@ import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
 import Community from './components/Community.jsx';
 import CssBaseline from '@material-ui/core/CssBaseline';
+import Gateway from './components/Gateway.jsx';
 import Namespace from './components/Namespace.jsx';
 import Navigation from './components/Navigation.jsx';
 import NoMatch from './components/NoMatch.jsx';
@@ -103,6 +104,9 @@ function AppHTML() {
               <Route
                 path={`${pathPrefix}/controlplane`}
                 render={props => <Navigation {...props} ChildComponent={ServiceMesh} />} />
+              <Route
+                path={`${pathPrefix}/gateways`}
+                render={props => <Navigation {...props} ChildComponent={Gateway} resource="gateway" />} />
               <Route
                 exact
                 path={`${pathPrefix}/namespaces/:namespace`}

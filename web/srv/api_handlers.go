@@ -438,3 +438,26 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 	w.Header().Set("Content-Type", "text/yaml")
 	w.Write(resourceDefinition)
 }
+
+func (h *handler) handleAPIGateways(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	window := req.FormValue("window")
+	if window == "" {
+		window = "1m"
+	}
+	_, err := time.ParseDuration(window)
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+	gatewayRequest := &pb.GatewaysRequest{
+		TimeWindow:        window,
+		GatewayNamespace:  req.FormValue("gatewayNamespace"),
+		RemoteClusterName: req.FormValue("remoteClusterName"),
+	}
+	result, err := h.apiClient.Gateways(req.Context(), gatewayRequest)
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+	renderJSONPb(w, result)
+}

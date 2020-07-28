@@ -202,6 +202,14 @@ const (
 	// destination lookups on IP addresses from the specified network ranges
 	ProxyDestinationGetNetworks = ProxyConfigAnnotationsPrefix + "/proxy-destination-get-networks"
 
+	// ProxyOutboundConnectTimeout can be used to configure the outbound TCP connection
+	// timeout in the proxy
+	ProxyOutboundConnectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-connect-timeout"
+
+	// ProxyInboundConnectTimeout can be used to configure the inbound TCP connection
+	// timeout in the proxy
+	ProxyInboundConnectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-connect-timeout"
+
 	// ProxyEnableGatewayAnnotation can be used to configure the proxy
 	// to operate as a gateway, routing requests that target the inbound router.
 	ProxyEnableGatewayAnnotation = ProxyConfigAnnotationsPrefix + "/enable-gateway"

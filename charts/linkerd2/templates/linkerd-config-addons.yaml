@@ -21,6 +21,7 @@ metadata:
 data:
   values: |-
     global:
+      prometheusUrl: "{{.Values.global.prometheusUrl}}"
       grafanaUrl: "{{.Values.global.grafanaUrl}}"
     dashboard:
       {{- include "linkerd.addons.sanitize-config" .Values.dashboard}}
