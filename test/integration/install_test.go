@@ -218,7 +218,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	if TestHelper.UpgradeFromVersion() != "" {
 
-		cmd = "upgrade"
+		cmd = "upgrade-broken"
 		// test 2-stage install during upgrade
 		out, stderr, err := TestHelper.LinkerdRun(cmd, "config")
 		if err != nil {
