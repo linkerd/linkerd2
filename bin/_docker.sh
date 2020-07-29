@@ -20,8 +20,11 @@ export DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-}
 # buildx cache directory. Needed if DOCKER_BUILDKIT is used
 export DOCKER_BUILDKIT_CACHE=${DOCKER_BUILDKIT_CACHE:-}
 
-# When set together with DOCKER_BUILDKIT, it will build and push the multi architecture images to the registry
+# When set together with DOCKER_BUILDKIT, it will build the multi-arch images. Currently DOCKER_PUSH is also required
 export DOCKER_MULTIARCH=${DOCKER_MULTIARCH:-}
+
+# When set together with DOCKER_MULTIARCH, it will push the multi-arch images to the registry
+export DOCKER_PUSH=${DOCKER_PUSH:-}
 
 # Default supported docker image architectures
 export SUPPORTED_ARCHS=linux/amd64,linux/arm64,linux/arm/v7
@@ -62,7 +65,15 @@ docker_build() {
 
       output_params="--load"
       if [ -n "$DOCKER_MULTIARCH" ]; then
-        output_params="--push --platform $SUPPORTED_ARCHS"
+        output_params="--platform $SUPPORTED_ARCHS"
+        if [ -n "$DOCKER_PUSH" ]; then
+          output_params+=" --push"
+        else
+          echo "Error: env DOCKER_PUSH=1 is missing"
+          echo "When building the multi-arch images it is required to push the images to the registry"
+          echo "See https://github.com/docker/buildx/issues/59 for more details"
+          exit 1
+        fi
       fi
 
       log_debug "  :; docker buildx $rootdir $cache_params $output_params -t $repo:$tag -f $file $*"
