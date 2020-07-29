@@ -70,7 +70,6 @@ docker_build() {
       docker buildx build "$rootdir" $cache_params \
           $output_params \
           -t "$repo:$tag" \
-          -t "$repo:main" \
           -f "$file" \
           "$@" \
           > "$output"
