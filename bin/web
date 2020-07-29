@@ -55,7 +55,7 @@ dev() {
 
 build() {
   cd "$ROOT"/web/app
-  yarn compile && yarn webpack
+  yarn lingui compile && yarn webpack
 }
 
 get-pod() {

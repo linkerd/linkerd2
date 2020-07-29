@@ -2,6 +2,7 @@ import '../css/styles.css';
 import '../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
 
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
+import { DETECTORS, LocaleResolver, TRANSFORMERS } from 'locales-detector';
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 
 import ApiHelpers from './components/util/ApiHelpers.jsx';
@@ -22,6 +23,8 @@ import ServiceMesh from './components/ServiceMesh.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
 import TopRoutes from './components/TopRoutes.jsx';
+import _find from 'lodash/find';
+import _isEmpty from 'lodash/isEmpty';
 import catalogEn from './locales/en/messages.js';
 import catalogEs from './locales/es/messages.js';
 import { dashboardTheme } from './components/util/theme.js';
@@ -47,6 +50,15 @@ if (pathArray[0] === '' && pathArray[1] === 'namespaces' && pathArray[2]) {
 } else if (pathArray.length === 2 && pathArray[1] !== '' && pathArray[1] !== 'namespaces') {
   defaultNamespace = '_all';
 }
+
+const detectedLocales = new LocaleResolver(
+  [new DETECTORS.NavigatorDetector()],
+  [new TRANSFORMERS.FallbacksTransformer()],
+).getLocales();
+const catalogOptions = { en: catalogEn, es: catalogEs };
+const selectedLocale =
+    _find(detectedLocales, l => !_isEmpty(catalogOptions[l])) || 'en';
+const selectedCatalog = catalogOptions[selectedLocale] || catalogEn;
 
 class App extends React.Component {
   constructor(props) {
@@ -75,11 +87,11 @@ class App extends React.Component {
   }
 
   render() {
-    const catalogs = { en: catalogEn, es: catalogEs };
-
     return (
       <AppContext.Provider value={this.state}>
-        <I18nProvider language={window.navigator.language} catalogs={catalogs}>
+        <I18nProvider
+          language={selectedLocale}
+          catalogs={{ [selectedLocale]: selectedCatalog }}>
           <AppHTML />
         </I18nProvider>
       </AppContext.Provider>
