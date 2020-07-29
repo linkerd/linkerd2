@@ -7527,7 +7527,7 @@ loader-utils@^2.0.0:
     emojis-list "^3.0.0"
     json5 "^2.1.2"
 
-locales-detector@^2.26.0:
+locales-detector@2.26.0:
   version "2.26.0"
   resolved "https://registry.yarnpkg.com/locales-detector/-/locales-detector-2.26.0.tgz#4c034f3b6cb3f84ee916f6f1fdd99e45ca23c1b5"
   integrity sha512-B+/+abgTUh9QG8hTQRS2+QGaKFC3YUOkEXvwx4LwvN1Q7T9IdBMBRtksdaGpI+cOYEKWNaQvGHh7kxD+l97c1Q==
