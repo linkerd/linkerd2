@@ -66,4 +66,5 @@ spValidatorResources: *controller_resources
 tapResources: *controller_resources
 
 # web configuration
-webResources: *controller_resources
+dashboard:
+  resources: *controller_resources
