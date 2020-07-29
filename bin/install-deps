@@ -7,9 +7,10 @@ set -eu
 
 bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
+arch=${1:-amd64}
 cd "$rootdir"
 
-CGO_ENABLED=0 GOOS=linux go install -mod=readonly \
+CGO_ENABLED=0 GOOS=linux GOARCH=$arch go install -mod=readonly \
     github.com/golang/protobuf/jsonpb \
     github.com/grpc-ecosystem/go-grpc-prometheus \
     github.com/prometheus/client_golang/api \

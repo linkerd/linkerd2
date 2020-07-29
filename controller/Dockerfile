@@ -6,7 +6,8 @@ WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 COPY bin/install-deps bin/
 RUN go mod download
-RUN ./bin/install-deps
+ARG TARGETARCH
+RUN ./bin/install-deps $TARGETARCH
 
 ## compile controller service
 FROM go-deps as golang
