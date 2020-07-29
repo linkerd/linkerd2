@@ -1,3 +1,4 @@
+controllerComponentLabel: linkerd.io/control-plane-component
 createdByAnnotation: linkerd.io/created-by
 gateway: true
 gatewayLocalProbePath: /health-local
