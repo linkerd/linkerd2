@@ -8,7 +8,7 @@ the way services in target clusters are selected for mirroring.
 The long-awaited Bring-Your-Own-Prometheus case has been finally addressed.
 
 Many other improvements from our great contributors are described below. Also
-note progress is still made under the covers for future support for Service
+note progress is still being made under the covers for future support for Service
 Topologies (by @Matei207) and delivering image builds in multiple platforms (by
 @aliariff).
 
@@ -16,19 +16,18 @@ Topologies (by @Matei207) and delivering image builds in multiple platforms (by
   * Replaced the single `service-mirror` controller, with separate controllers
     that will be installed per target cluster through `linkerd multicluster
     link`. More info [here](https://github.com/linkerd/linkerd2/pull/4710).
-  * Changed mechanism for mirroring services: instead of relying on annotations
-    on the target services, now the source cluster should specify which services
-    from the target cluster should be exported by using a label selector. More
-    info [here](https://github.com/linkerd/linkerd2/pull/4795).
+  * Changed the mechanism for mirroring services: instead of relying on
+    annotations on the target services, now the source cluster should specify
+    which services from the target cluster should be exported by using a label
+    selector. More info [here](https://github.com/linkerd/linkerd2/pull/4795).
   * Added new section in the dashboard for exposing multicluster gateway metrics
     (thanks @tharun208!)
 * Prometheus
-  * Added `global.prometheusUrl` to the Helm config to have linkerd use a
-    different external Prometheus instance instead of the one provided by
-    default.
+  * Added `global.prometheusUrl` to the Helm config to have linkerd use an
+    external Prometheus instance instead of the one provided by default.
   * Added ability to declare sidecar containers in the Prometheus Helm config.
-    This allows adding components allowing things like exporting logs to
-    services such as Cloudwatch, Stackdriver, Datadog, etc. (thanks @memory!)
+    This allows adding components for cases like exporting logs to services
+    such as Cloudwatch, Stackdriver, Datadog, etc. (thanks @memory!)
   * Upgraded Prometheus to the latest version (v2.19.3), which should consume
     substantially less memory, among other benefits.
 * Other
@@ -42,7 +41,7 @@ Topologies (by @Matei207) and delivering image builds in multiple platforms (by
   * Added library support for dashboard i18n. Strings still need to be tagged
     and translations to be added. More info
     [here](https://github.com/linkerd/linkerd2/pull/4803).
-  * In some Helm charts, replace the non-standard
+  * In some Helm charts, replaced the non-standard
     `linkerd.io/helm-release-version` annotation with `checksum/config` for
     forcing restarting the component during upgrades (thanks @naseemkullah!)
   * Upgraded the proxy init-container to v1.3.4, which comes with an updated
