@@ -130,6 +130,11 @@ func NewRemoteClusterServiceWatcher(
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize api for target cluster %s: %s", clusterName, err)
 	}
+	_, err = remoteAPI.Client.Discovery().ServerVersion()
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to api for target cluster %s: %s", clusterName, err)
+	}
+
 	stopper := make(chan struct{})
 	return &RemoteClusterServiceWatcher{
 		serviceMirrorNamespace: serviceMirrorNamespace,
