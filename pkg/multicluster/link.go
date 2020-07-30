@@ -1,6 +1,7 @@
 package multicluster
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -41,6 +42,7 @@ type (
 		GatewayPort                   uint32
 		GatewayIdentity               string
 		ProbeSpec                     ProbeSpec
+		Selector                      metav1.LabelSelector
 	}
 )
 
@@ -121,6 +123,18 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		return Link{}, err
 	}
 
+	selector := metav1.LabelSelector{}
+	if selectorObj, ok := specObj["selector"]; ok {
+		bytes, err := json.Marshal(selectorObj)
+		if err != nil {
+			return Link{}, err
+		}
+		err = json.Unmarshal(bytes, &selector)
+		if err != nil {
+			return Link{}, err
+		}
+	}
+
 	return Link{
 		Name:                          u.GetName(),
 		Namespace:                     u.GetNamespace(),
@@ -132,14 +146,40 @@ func NewLink(u unstructured.Unstructured) (Link, error) {
 		GatewayPort:                   uint32(gatewayPort),
 		GatewayIdentity:               gatewayIdentity,
 		ProbeSpec:                     probeSpec,
+		Selector:                      selector,
 	}, nil
 }
 
 // ToUnstructured converts a Link struct into an unstructured resource that can
 // be used by a kubernetes dynamic client.
-func (l Link) ToUnstructured() unstructured.Unstructured {
-	return unstructured.Unstructured{
+func (l Link) ToUnstructured() (unstructured.Unstructured, error) {
+	spec := map[string]interface{}{
+		"targetClusterName":             l.TargetClusterName,
+		"targetClusterDomain":           l.TargetClusterDomain,
+		"targetClusterLinkerdNamespace": l.TargetClusterLinkerdNamespace,
+		"clusterCredentialsSecret":      l.ClusterCredentialsSecret,
+		"gatewayAddress":                l.GatewayAddress,
+		"gatewayPort":                   fmt.Sprintf("%d", l.GatewayPort),
+		"gatewayIdentity":               l.GatewayIdentity,
+		"probeSpec": map[string]interface{}{
+			"path":   l.ProbeSpec.Path,
+			"port":   fmt.Sprintf("%d", l.ProbeSpec.Port),
+			"period": l.ProbeSpec.Period.String(),
+		},
+	}
 
+	data, err := json.Marshal(l.Selector)
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
+	selector := make(map[string]interface{})
+	err = json.Unmarshal(data, &selector)
+	if err != nil {
+		return unstructured.Unstructured{}, err
+	}
+	spec["selector"] = selector
+
+	return unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": k8s.LinkAPIGroupVersion,
 			"kind":       k8s.LinkKind,
@@ -147,22 +187,9 @@ func (l Link) ToUnstructured() unstructured.Unstructured {
 				"name":      l.Name,
 				"namespace": l.Namespace,
 			},
-			"spec": map[string]interface{}{
-				"targetClusterName":             l.TargetClusterName,
-				"targetClusterDomain":           l.TargetClusterDomain,
-				"targetClusterLinkerdNamespace": l.TargetClusterLinkerdNamespace,
-				"clusterCredentialsSecret":      l.ClusterCredentialsSecret,
-				"gatewayAddress":                l.GatewayAddress,
-				"gatewayPort":                   fmt.Sprintf("%d", l.GatewayPort),
-				"gatewayIdentity":               l.GatewayIdentity,
-				"probeSpec": map[string]interface{}{
-					"path":   l.ProbeSpec.Path,
-					"port":   fmt.Sprintf("%d", l.ProbeSpec.Port),
-					"period": l.ProbeSpec.Period.String(),
-				},
-			},
+			"spec": spec,
 		},
-	}
+	}, nil
 }
 
 // ExtractProbeSpec parses the ProbSpec from a gateway service's annotations.
