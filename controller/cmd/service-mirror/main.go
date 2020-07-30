@@ -130,7 +130,7 @@ main:
 	log.Info("Shutting down")
 }
 
-func loadCredentials(link multicluster.Link, namespace string, k8sAPI *k8s.KubernetesAPI) (*servicemirror.WatchedClusterConfig, error) {
+func loadCredentials(link multicluster.Link, namespace string, k8sAPI *k8s.KubernetesAPI) ([]byte, error) {
 	// Load the credentials secret
 	secret, err := k8sAPI.Interface.CoreV1().Secrets(namespace).Get(link.ClusterCredentialsSecret, metav1.GetOptions{})
 	if err != nil {
@@ -142,7 +142,7 @@ func loadCredentials(link multicluster.Link, namespace string, k8sAPI *k8s.Kuber
 func restartClusterWatcher(
 	link multicluster.Link,
 	namespace string,
-	creds *servicemirror.WatchedClusterConfig,
+	creds []byte,
 	controllerK8sAPI *controllerK8s.API,
 	requeueLimit int,
 	repairPeriod time.Duration,
@@ -155,7 +155,7 @@ func restartClusterWatcher(
 		probeWorker.Stop()
 	}
 
-	cfg, err := clientcmd.RESTConfigFromKubeConfig(creds.APIConfig)
+	cfg, err := clientcmd.RESTConfigFromKubeConfig(creds)
 	if err != nil {
 		log.Errorf("Unable to parse kube config: %s", err)
 		return

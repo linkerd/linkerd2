@@ -3051,7 +3051,7 @@ spec:
         - --log.level=info
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
-        image: prom/prometheus:v2.15.2
+        image: prom/prometheus:v2.19.3
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
