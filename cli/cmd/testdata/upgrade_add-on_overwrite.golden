@@ -2503,7 +2503,7 @@ data:
     tracing:
       collector:
         image: overwrite-collector-image
-        name: overwrite-collector
+        name: linkerd-collector
         resources: null
       enabled: true
       jaeger:
@@ -3252,10 +3252,10 @@ spec:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: overwrite-collector
+  name: linkerd-collector
   namespace: linkerd
   labels:
-    linkerd.io/control-plane-component: overwrite-collector
+    linkerd.io/control-plane-component: linkerd-collector
     linkerd.io/control-plane-ns: linkerd
 ---
 ###
@@ -3278,10 +3278,10 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: overwrite-collector-config
+  name: linkerd-collector-config
   namespace: linkerd
   labels:
-    linkerd.io/control-plane-component: overwrite-collector
+    linkerd.io/control-plane-component: linkerd-collector
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
@@ -3305,10 +3305,10 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: overwrite-collector
+  name: linkerd-collector
   namespace: linkerd
   labels:
-    linkerd.io/control-plane-component: overwrite-collector
+    linkerd.io/control-plane-component: linkerd-collector
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
@@ -3324,7 +3324,7 @@ spec:
     protocol: TCP
     targetPort: 9411
   selector:
-    linkerd.io/control-plane-component: overwrite-collector
+    linkerd.io/control-plane-component: linkerd-collector
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -3332,20 +3332,20 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
   labels:
-    app.kubernetes.io/name: overwrite-collector
+    app.kubernetes.io/name: linkerd-collector
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: UPGRADE-CONTROL-PLANE-VERSION
-    linkerd.io/control-plane-component: overwrite-collector
+    linkerd.io/control-plane-component: linkerd-collector
     linkerd.io/control-plane-ns: linkerd
-  name: overwrite-collector
+  name: linkerd-collector
   namespace: linkerd
 spec:
   replicas: 1
   selector:
     matchLabels:
-      linkerd.io/control-plane-component: overwrite-collector
+      linkerd.io/control-plane-component: linkerd-collector
       linkerd.io/control-plane-ns: linkerd
-      linkerd.io/proxy-deployment: overwrite-collector
+      linkerd.io/proxy-deployment: linkerd-collector
   minReadySeconds: 5
   progressDeadlineSeconds: 120
   template:
@@ -3358,10 +3358,10 @@ spec:
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
       labels:
-        linkerd.io/control-plane-component: overwrite-collector
+        linkerd.io/control-plane-component: linkerd-collector
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: overwrite-collector
+        linkerd.io/proxy-deployment: linkerd-collector
     spec:
       containers:
       - command:
@@ -3386,7 +3386,7 @@ spec:
             port: 13133
         volumeMounts:
         - mountPath: /conf
-          name: overwrite-collector-config-val
+          name: linkerd-collector-config-val
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -3491,6 +3491,8 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
+        - --outbound-ports-to-ignore
+        - "443"
         image: gcr.io/linkerd-io/proxy-init:v1.3.3
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -3515,14 +3517,14 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-      serviceAccountName: overwrite-collector
+      serviceAccountName: linkerd-collector
       volumes:
       - configMap:
           items:
           - key: linkerd-collector-config
             path: linkerd-collector-config.yaml
-          name: overwrite-collector-config
-        name: overwrite-collector-config-val
+          name: linkerd-collector-config
+        name: linkerd-collector-config-val
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
