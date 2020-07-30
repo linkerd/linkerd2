@@ -1,5 +1,54 @@
 # Changes
 
+## edge-20.7.5
+
+This edge brings a new approach to multicluster service mirror controllers and
+the way services in target clusters are selected for mirroring.
+
+The long-awaited Bring-Your-Own-Prometheus case has been finally addressed.
+
+Many other improvements from our great contributors are described below. Also
+note progress is still made under the covers for future support for Service
+Topologies (by @Matei207) and delivering image builds in multiple platforms (by
+@aliariff).
+
+* Multicluster
+  * Replaced the single `service-mirror` controller, with separate controllers
+    that will be installed per target cluster through `linkerd multicluster
+    link`. More info [here](https://github.com/linkerd/linkerd2/pull/4710).
+  * Changed mechanism for mirroring services: instead of relying on annotations
+    on the target services, now the source cluster should specify which services
+    from the target cluster should be exported by using a label selector. More
+    info [here](https://github.com/linkerd/linkerd2/pull/4795).
+  * Added new section in the dashboard for exposing multicluster gateway metrics
+    (thanks @tharun208!)
+* Prometheus
+  * Added `global.prometheusUrl` to the Helm config to have linkerd use a
+    different external Prometheus instance instead of the one provided by
+    default.
+  * Added ability to declare sidecar containers in the Prometheus Helm config.
+    This allows adding components allowing things like exporting logs to
+    services such as Cloudwatch, Stackdriver, Datadog, etc. (thanks @memory!)
+  * Upgraded Prometheus to the latest version (v2.19.3), which should consume
+    substantially less memory, among other benefits.
+* Other
+  * Fixed bug in `linkerd check` that was failing to wait for Prometheus to be
+    available right after having installed linkerd.
+  * Added ability to set `priorityClassName` for CNI DaemonSet pods, and to
+    install CNI in an existing namespace (both options provided through the CLI
+    and as Helm configs) (thanks @alex-berger!)
+  * Added support for overriding the proxy's inbound and outbout TCP connection
+    timeouts (thanks @mmiller1!)
+  * Added library support for dashboard i18n. Strings still need to be tagged
+    and translations to be added. More info
+    [here](https://github.com/linkerd/linkerd2/pull/4803).
+  * In some Helm charts, replace the non-standard
+    `linkerd.io/helm-release-version` annotation with `checksum/config` for
+    forcing restarting the component during upgrades (thanks @naseemkullah!)
+  * Upgraded the proxy init-container to v1.3.4, which comes with an updated
+    debian-buster distro and will provide cleaner logs listing the iptables
+    rules applied.
+
 ## edge-20.7.4
 
 This edge release adds support for the new Kubernetes
