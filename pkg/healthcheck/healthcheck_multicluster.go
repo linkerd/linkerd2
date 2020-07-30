@@ -61,6 +61,27 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 						return &SkipError{Reason: "not checking muticluster"}
 					},
 				},
+				/* Target cluster access checks */
+				{
+					description: "remote cluster access credentials are valid",
+					hintAnchor:  "l5d-smc-target-clusters-access",
+					check: func(context.Context) error {
+						if hc.Options.MultiCluster {
+							return hc.checkRemoteClusterConnectivity()
+						}
+						return &SkipError{Reason: "not checking muticluster"}
+					},
+				},
+				{
+					description: "clusters share trust anchors",
+					hintAnchor:  "l5d-multicluster-clusters-share-anchors",
+					check: func(ctx context.Context) error {
+						if hc.Options.MultiCluster {
+							return hc.checkRemoteClusterAnchors()
+						}
+						return &SkipError{Reason: "not checking muticluster"}
+					},
+				},
 				/* Serivce mirror controller checks */
 				{
 					description: "service mirror controller has required permissions",
@@ -80,27 +101,6 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					check: func(context.Context) error {
 						if hc.Options.MultiCluster {
 							return hc.checkServiceMirrorController()
-						}
-						return &SkipError{Reason: "not checking muticluster"}
-					},
-				},
-				/* Target cluster access checks */
-				{
-					description: "remote cluster access credentials are valid",
-					hintAnchor:  "l5d-smc-target-clusters-access",
-					check: func(context.Context) error {
-						if hc.Options.MultiCluster {
-							return hc.checkRemoteClusterConnectivity()
-						}
-						return &SkipError{Reason: "not checking muticluster"}
-					},
-				},
-				{
-					description: "clusters share trust anchors",
-					hintAnchor:  "l5d-multicluster-clusters-share-anchors",
-					check: func(ctx context.Context) error {
-						if hc.Options.MultiCluster {
-							return hc.checkRemoteClusterAnchors()
 						}
 						return &SkipError{Reason: "not checking muticluster"}
 					},
@@ -314,21 +314,18 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 			continue
 		}
 
-		var verbs []string
-		if err := hc.checkCanPerformAction(remoteAPI, "get", corev1.NamespaceAll, "", "v1", "services"); err == nil {
-			verbs = append(verbs, "get")
+		// We use this call just to check connectivity.
+		_, err = remoteAPI.Discovery().ServerVersion()
+		if err != nil {
+			errors = append(errors, fmt.Errorf("* failed to connect to API for cluster: [%s]: %s", link.TargetClusterName, err))
+			continue
 		}
 
-		if err := hc.checkCanPerformAction(remoteAPI, "list", corev1.NamespaceAll, "", "v1", "services"); err == nil {
-			verbs = append(verbs, "list")
-		}
-
-		if err := hc.checkCanPerformAction(remoteAPI, "watch", corev1.NamespaceAll, "", "v1", "services"); err == nil {
-			verbs = append(verbs, "watch")
-		}
-
-		if err := comparePermissions(expectedServiceMirrorRemoteClusterPolicyVerbs, verbs); err != nil {
-			errors = append(errors, fmt.Errorf("* cluster: [%s]: Insufficient Service permissions: %s", link.TargetClusterName, err))
+		verbs := []string{"get", "list", "watch"}
+		for _, verb := range verbs {
+			if err := hc.checkCanPerformAction(remoteAPI, verb, corev1.NamespaceAll, "", "v1", "services"); err != nil {
+				errors = append(errors, fmt.Errorf("* missing service permission [%s] for cluster [%s]: %s", verb, link.TargetClusterName, err))
+			}
 		}
 
 		links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
