@@ -768,6 +768,12 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
+	if options.dockerRegistry != "gcr.io/linkerd-io" {
+		if installValues.Grafana["image"] == nil {
+			installValues.Grafana["image"] = map[string]interface{}{}
+		}
+		installValues.Grafana["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+	}
 	installValues.SMIMetrics.Image = options.smiMetricsImage
 	installValues.SMIMetrics.Enabled = options.smiMetricsEnabled
 
