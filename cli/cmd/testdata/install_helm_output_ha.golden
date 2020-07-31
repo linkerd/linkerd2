@@ -2888,10 +2888,48 @@ metadata:
   labels:
     linkerd.io/control-plane-component: prometheus
     linkerd.io/control-plane-ns: linkerd
-rules:
-- apiGroups: [""]
-  resources: ["nodes", "nodes/proxy", "pods"]
-  verbs: ["get", "list", "watch"]
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+data:
+  values: |-
+    global:
+      prometheusUrl: ""
+      grafanaUrl: ""
+    grafana:
+      enabled: true
+      image:
+        name: gcr.io/linkerd-io/grafana
+      name: linkerd-grafana
+      resources:
+        cpu:
+          limit: "1"
+          request: 100m
+        memory:
+          limit: 1024Mi
+          request: 50Mi
+    prometheus:
+      args:
+        config.file: /etc/prometheus/prometheus.yml
+        log.level: info
+        storage.tsdb.path: /data
+        storage.tsdb.retention.time: 6h
+      enabled: true
+      globalConfig:
+        evaluation_interval: 10s
+        scrape_interval: 10s
+        scrape_timeout: 10s
+      image: prom/prometheus:v2.19.3
+      resources:
+        cpu:
+          limit: "4"
+          request: 300m
+        memory:
+          limit: 8192Mi
+          request: 300Mi
+    tracing:
+      enabled: false
+---
+# Source: linkerd2/charts/grafana/templates/grafana-rbac.yaml
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -3429,12 +3467,11 @@ spec:
         null
       containers:
       - args:
-        - public-api
-        - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
-        - -controller-namespace=linkerd
-        - -log-level=info
-        - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
-        image: :linkerd-version
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --log.level=info
+        - --storage.tsdb.path=/data
+        - --storage.tsdb.retention.time=6h
+        image: prom/prometheus:v2.19.3
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
