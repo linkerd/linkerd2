@@ -420,6 +420,12 @@ func repairConfigs(configs *pb.All) {
 	if configs.Proxy.DebugImage == nil {
 		configs.Proxy.DebugImage = &pb.Image{}
 	}
+	if configs.GetProxy().GetDebugImage().GetImageName() == "" {
+		configs.Proxy.DebugImage.ImageName = k8s.DebugSidecarImage
+	}
+	if configs.GetProxy().GetDebugImageVersion() == "" {
+		configs.Proxy.DebugImageVersion = version.Version
+	}
 }
 
 func injectCABundle(k *k8s.KubernetesAPI, webhook string, value *charts.TLS) error {
