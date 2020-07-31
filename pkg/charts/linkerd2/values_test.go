@@ -230,6 +230,20 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 
+		expected.Dashboard = Dashboard{
+			"enabled": true,
+			"resources": map[string]interface{}{
+				"cpu": map[string]interface{}{
+					"limit":   "1",
+					"request": "100m",
+				},
+				"memory": map[string]interface{}{
+					"limit":   "250Mi",
+					"request": "50Mi",
+				},
+			},
+		}
+
 		expected.Global.Proxy.Resources = &Resources{
 			CPU: Constraints{
 				Limit:   controllerResources.CPU.Limit,
