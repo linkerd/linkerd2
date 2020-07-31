@@ -91,7 +91,6 @@ their default values.
 | `controllerLogLevel`                        | Log level for the control plane components                                                                                                                                            | `info`                               |
 | `controllerReplicas`                        | Number of replicas for each control plane pod                                                                                                                                         | `1`                                  |
 | `controllerUID`                             | User ID for the control plane components                                                                                                                                              | `2103`                               |
-| `dashboard.replicas`                        | Number of replicas of dashboard                                                                                                                                                       | `1`                                  |
 | `debugContainer.image.name`                 | Docker image for the debug container                                                                                                                                                  | `gcr.io/linkerd-io/debug`            |
 | `debugContainer.image.pullPolicy`           | Pull policy for the debug container Docker image                                                                                                                                      | `IfNotPresent`                       |
 | `debugContainer.image.version`              | Tag for the debug container Docker image                                                                                                                                              | latest version                       |
@@ -185,14 +184,26 @@ their default values.
 | `tapResources`                              | CPU and Memory resources required by tap (see `global.proxy.resources` for sub-fields)             |   |
 | `tapProxyResources`                         | CPU and Memory resources required by proxy injected into tap pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
 | `webhookFailurePolicy`                      | Failure policy for the proxy injector                                                                                                                                                 | `Ignore`                             |
-| `webImage`                                  | Docker image for the web container                                                                                                                                                    | `gcr.io/linkerd-io/web`              |
-| `webResources`                              | CPU and Memory resources required by web UI (see `global.proxy.resources` for sub-fields)             |   |
-| `webProxyResources`                         | CPU and Memory resources required by proxy injected into web UI pod (see `global.proxy.resources` for sub-fields)             | values in `global.proxy.resources`   |
 | `enforcedHostRegexp`                        | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information                                   | `""`                                 |
 | `nodeSelector`                        | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information                                   | `beta.kubernetes.io/os: linux`                                 |
 | `tolerations`                        | Tolerations section, See the [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) for more information                                   |                                  |
 
 ## Add-Ons Configuration
+
+## Dashboard Add-On
+
+The following table lists the configurable parameters for the Dashboard Add-On.
+
+| Parameter                             | Description                                                                                                                                                                           | Default                              |
+|:--------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------|
+| `dashboard.enabled`                     | Flag to enable dashboard instance to be installed                                                                                                                                                | `true`
+| `dashboard.image`                                  | Docker image for the web container                                                                                                                                                    | `gcr.io/linkerd-io/web`              |
+| `dashboard.replicas`                        | Number of replicas of dashboard                                                                                                                                                       | `1`                                  |
+| `dashboard.resources.cpu.limit`       | Maximum amount of CPU units that the dashboard container can use                                                                                                                     ||
+| `dashboard.resources.cpu.request`     | Amount of CPU units that the dashboard container requests                                                                                                                            ||
+| `dashboard.resources.memory.limit`    | Maximum amount of memory that dashboard container can use                                                                                                                        ||
+| `dashboard.resources.memory.request`  | Amount of memory that the dashboard container requests                                                                                                                               ||
+| `dashboard.proxy.resources`           | Structure analog to the `resources` fields above, but overriding the resources of the linkerd proxy injected into the grafana pod.   | values in `global.proxy.resources` of the linkerd2 chart. |
 
 ### Grafana Add-On
 
