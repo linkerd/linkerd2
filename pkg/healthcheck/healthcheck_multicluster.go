@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/linkerd/linkerd2/controller/gen/public"
@@ -29,12 +28,6 @@ const (
 	linkerdServiceMirrorClusterRoleName    = "linkerd-service-mirror-access-local-resources-%s"
 	linkerdServiceMirrorRoleName           = "linkerd-service-mirror-read-remote-creds-%s"
 )
-
-var expectedServiceMirrorRemoteClusterPolicyVerbs = []string{
-	"get",
-	"list",
-	"watch",
-}
 
 func (hc *HealthChecker) multiClusterCategory() []category {
 	return []category{
@@ -571,18 +564,4 @@ func joinErrors(errs []error, tabDepth int) error {
 		errStrings = append(errStrings, indent+err.Error())
 	}
 	return errors.New(strings.Join(errStrings, "\n"))
-}
-
-func comparePermissions(expected, actual []string) error {
-	sort.Strings(expected)
-	sort.Strings(actual)
-
-	expectedStr := strings.Join(expected, ",")
-	actualStr := strings.Join(actual, ",")
-
-	if expectedStr != actualStr {
-		return fmt.Errorf("expected %s, got %s", expectedStr, actualStr)
-	}
-
-	return nil
 }
