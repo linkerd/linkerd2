@@ -302,15 +302,15 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 			continue
 		}
 
-		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config.APIConfig)
+		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
 			continue
 		}
 
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
 			continue
 		}
 
@@ -328,7 +328,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 		}
 
 		if err := comparePermissions(expectedServiceMirrorRemoteClusterPolicyVerbs, verbs); err != nil {
-			errors = append(errors, fmt.Errorf("* cluster: [%s]: Insufficient Service permissions: %s", config.ClusterName, err))
+			errors = append(errors, fmt.Errorf("* cluster: [%s]: Insufficient Service permissions: %s", link.TargetClusterName, err))
 		}
 
 		links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
@@ -366,15 +366,15 @@ func (hc *HealthChecker) checkRemoteClusterAnchors() error {
 			continue
 		}
 
-		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config.APIConfig)
+		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
 			continue
 		}
 
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
 			continue
 		}
 
@@ -506,7 +506,7 @@ func (hc *HealthChecker) checkIfMirrorServicesHaveEndpoints() error {
 		// Check if there is a relevant end-point
 		endpoint, err := hc.kubeAPI.CoreV1().Endpoints(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
 		if err != nil || len(endpoint.Subsets) == 0 {
-			servicesWithNoEndpoints = append(servicesWithNoEndpoints, fmt.Sprintf("%s.%s mirrored from cluster [%s] (gateway: [%s/%s])", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel], svc.Labels[k8s.RemoteGatewayNsLabel], svc.Labels[k8s.RemoteGatewayNameLabel]))
+			servicesWithNoEndpoints = append(servicesWithNoEndpoints, fmt.Sprintf("%s.%s mirrored from cluster [%s]", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
 		}
 	}
 
