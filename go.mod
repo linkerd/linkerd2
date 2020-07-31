@@ -28,7 +28,7 @@ require (
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/linkerd/linkerd2-proxy-api v0.1.13
-	github.com/linkerd/linkerd2-proxy-init v1.3.3
+	github.com/linkerd/linkerd2-proxy-init v1.3.4
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mattn/go-runewidth v0.0.2
 	github.com/mitchellh/copystructure v1.0.0 // indirect
@@ -45,7 +45,7 @@ require (
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
 	github.com/sirupsen/logrus v1.6.0
-	github.com/spf13/cobra v0.0.5
+	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.5.1 // indirect
 	github.com/wercker/stern v0.0.0-20190705090245-4fa46dd6987f

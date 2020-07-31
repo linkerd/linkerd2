@@ -331,9 +331,15 @@ func NewServer(
 	clusterDomain string,
 	ignoredNamespaces []string,
 ) *http.Server {
+
+	var promAPI promv1.API
+	if prometheusClient != nil {
+		promAPI = promv1.NewAPI(prometheusClient)
+	}
+
 	baseHandler := &handler{
 		grpcServer: newGrpcServer(
-			promv1.NewAPI(prometheusClient),
+			promAPI,
 			destinationClient,
 			k8sAPI,
 			controllerNamespace,

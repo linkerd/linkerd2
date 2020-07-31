@@ -6,15 +6,16 @@ import (
 )
 
 var (
-	prometheusAddOn = "prometheus"
+	// PrometheusAddOn is the name of the prometheus add-on
+	PrometheusAddOn = "prometheus"
 )
 
 // Prometheus is an add-on that installs the prometheus component
 type Prometheus map[string]interface{}
 
-// Name returns the name of the Tracing add-on
+// Name returns the name of the Prometheus add-on
 func (p Prometheus) Name() string {
-	return prometheusAddOn
+	return PrometheusAddOn
 }
 
 // Values returns the configuration values that were assigned for this add-on

@@ -217,6 +217,8 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			proxyMemoryLimit:       defaults.Global.Proxy.Resources.Memory.Limit,
 			enableExternalProfiles: defaults.Global.Proxy.EnableExternalProfiles,
 			waitBeforeExitSeconds:  defaults.Global.Proxy.WaitBeforeExitSeconds,
+			inboundConnectTimeout:  defaults.Global.Proxy.InboundConnectTimeout,
+			outboundConnectTimeout: defaults.Global.Proxy.OutboundConnectTimeout,
 		},
 		identityOptions: &installIdentityOptions{
 			trustDomain:            defaults.Global.IdentityTrustDomain,
@@ -796,6 +798,8 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.Proxy = &l5dcharts.Proxy{
 		DestinationGetNetworks: strings.Join(options.destinationGetNetworks, ","),
 		EnableExternalProfiles: options.enableExternalProfiles,
+		OutboundConnectTimeout: options.outboundConnectTimeout,
+		InboundConnectTimeout:  options.inboundConnectTimeout,
 		Image: &l5dcharts.Image{
 			Name:       registryOverride(options.proxyImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,

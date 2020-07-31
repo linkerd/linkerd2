@@ -28,6 +28,11 @@ const (
 	ServiceProfileAPIVersion = "linkerd.io/v1alpha2"
 	ServiceProfileKind       = "ServiceProfile"
 
+	LinkAPIGroup        = "multicluster.linkerd.io"
+	LinkAPIVersion      = "v1alpha1"
+	LinkAPIGroupVersion = "multicluster.linkerd.io/v1alpha1"
+	LinkKind            = "Link"
+
 	// special case k8s job label, to not conflict with Prometheus' job label
 	l5dJob = "k8s_job"
 )

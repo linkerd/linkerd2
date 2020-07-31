@@ -1,5 +1,13 @@
 ARG RUNTIME_IMAGE=debian:buster-20200514-slim
 
+# Precompile key slow-to-build dependencies
+FROM golang:1.14.2-alpine as go-deps
+WORKDIR /linkerd-build
+COPY go.mod go.sum ./
+COPY bin/install-deps bin/
+RUN go mod download
+RUN ./bin/install-deps
+
 FROM debian:buster-20200514-slim as fetch
 RUN apt-get update && apt-get install -y ca-certificates curl jq
 WORKDIR /build
@@ -9,7 +17,7 @@ RUN (proxy=$(bin/fetch-proxy $(cat proxy-version)) && \
     mv "$proxy" linkerd2-proxy)
 
 ## compile proxy-identity agent
-FROM gcr.io/linkerd-io/go-deps:a525d867 as golang
+FROM go-deps as golang
 WORKDIR /linkerd-build
 COPY pkg/flags pkg/flags
 COPY pkg/tls pkg/tls

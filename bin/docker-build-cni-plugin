@@ -17,11 +17,4 @@ rootdir=$( cd "$bindir"/.. && pwd )
 
 dockerfile=$rootdir/cni-plugin/Dockerfile
 
-validate_go_deps_tag "$dockerfile"
-
-(
-    "$bindir"/docker-build-base
-    "$bindir"/docker-build-go-deps
-) >/dev/null
-
 docker_build cni-plugin "$(head_root_tag)" "$dockerfile"

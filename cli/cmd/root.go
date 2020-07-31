@@ -248,6 +248,8 @@ type proxyConfigOptions struct {
 	disableIdentity               bool
 	requireIdentityOnInboundPorts []string
 	disableTap                    bool
+	inboundConnectTimeout         string
+	outboundConnectTimeout        string
 }
 
 func (options *proxyConfigOptions) validate() error {

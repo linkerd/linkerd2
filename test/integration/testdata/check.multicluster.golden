@@ -62,23 +62,20 @@ linkerd-addons
 --------------
 √ 'linkerd-config-addons' config map exists
 
+linkerd-prometheus
+------------------
+√ prometheus add-on service account exists
+√ prometheus add-on config map exists
+√ prometheus pod is running
+
 linkerd-grafana
 ---------------
 √ grafana add-on service account exists
 √ grafana add-on config map exists
 √ grafana pod is running
 
-linkerd-multicluster-source
----------------------------
-√ service mirror controller is running
-√ service mirror controller ClusterRoles exist
-√ service mirror controller ClusterRoleBindings exist
-√ service mirror controller Roles exist
-√ service mirror controller RoleBindings exist
-√ service mirror controller ServiceAccounts exist
-√ service mirror controller has required permissions
-√ multicluster daisy chaining is avoided
-√ all mirror services have endpoints
-√ all gateway mirrors have endpoints
+linkerd-multicluster
+--------------------
+√ Link CRD exists
 
 Status check results are √

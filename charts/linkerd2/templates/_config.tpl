@@ -64,7 +64,9 @@
     "pullPolicy":"{{.Values.debugContainer.image.pullPolicy}}"
   },
   "debugImageVersion": "{{.Values.debugContainer.image.version}}",
-  "destinationGetNetworks": "{{.Values.global.proxy.destinationGetNetworks}}"
+  "destinationGetNetworks": "{{.Values.global.proxy.destinationGetNetworks}}",
+  "outboundConnectTimeout": "{{.Values.global.proxy.outboundConnectTimeout}}",
+  "inboundConnectTimeout": "{{.Values.global.proxy.inboundConnectTimeout}}"
 }
 {{- end -}}
 

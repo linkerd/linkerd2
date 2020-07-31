@@ -159,6 +159,7 @@ spec:
         beta.kubernetes.io/os: linux
       hostNetwork: true
       serviceAccountName: linkerd-cni
+      priorityClassName: system-node-critical
       containers:
       # This container installs the linkerd CNI binaries
       # and CNI network config file on each node. The install

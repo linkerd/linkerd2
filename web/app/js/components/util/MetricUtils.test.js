@@ -1,8 +1,10 @@
 import deployRollupFixtures from '../../../test/fixtures/deployRollup.json';
 import multiDeployRollupFixtures from '../../../test/fixtures/multiDeployRollup.json';
 import multiResourceRollupFixtures from '../../../test/fixtures/allRollup.json';
+import gatewayFixtures from '../../../test/fixtures/gateway.json';
 import Percentage from './Percentage';
 import {
+  processGatewayResults,
   processMultiResourceRollup,
   processSingleResourceRollup
 } from './MetricUtils.jsx';
@@ -65,4 +67,31 @@ describe('MetricUtils', () => {
       expect(result["replicationcontroller"]).toBeUndefined;
     });
   });
+  describe('processGatewayResults', () => {
+    it('Extracts and sorts gateway metrics from a response', () => {
+      let result = processGatewayResults(gatewayFixtures);
+      let expectedResult = [
+        {
+          key: 'test_namespace-gateway-default_gateway',
+          name: 'default_gateway',
+          namespace: 'test_namespace',
+          clusterName: 'multi_cluster',
+          alive: true,
+          pairedServices: '0',
+          latency: { P50: 0, P95: 0, P99: 0 }
+        },
+        {
+          key: 'test_namespace-gateway-test_gateway',
+          name: 'test_gateway',
+          namespace: 'test_namespace',
+          clusterName: 'multi_cluster',
+          alive: true,
+          pairedServices: '0',
+          latency: { P50: 0, P95: 0, P99: 0 }
+        }
+      ];
+      expect(result).toHaveLength(2);
+      expect(result).toEqual(expectedResult);
+    });
+  })
 });

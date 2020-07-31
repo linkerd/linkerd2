@@ -116,6 +116,14 @@ type TapRequestParams struct {
 	LabelSelector string
 }
 
+// GatewayRequestParams conttains parameters that are used to build a
+// GatewayRequest
+type GatewayRequestParams struct {
+	RemoteClusterName string
+	GatewayNamespace  string
+	TimeWindow        string
+}
+
 // GRPCError generates a gRPC error code, as defined in
 // google.golang.org/grpc/status.
 // If the error is nil or already a gRPC error, return the error.

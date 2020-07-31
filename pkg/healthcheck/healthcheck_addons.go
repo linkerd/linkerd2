@@ -18,13 +18,16 @@ const (
 	// LinkerdGrafanaAddOnChecks adds checks related to grafana add-on components
 	LinkerdGrafanaAddOnChecks CategoryID = "linkerd-grafana"
 
+	// LinkerdPrometheusAddOnChecks adds checks related to Prometheus add-on components
+	LinkerdPrometheusAddOnChecks CategoryID = "linkerd-prometheus"
+
 	// LinkerdTracingAddOnChecks adds checks related to tracing add-on components
 	LinkerdTracingAddOnChecks CategoryID = "linkerd-tracing"
 )
 
 var (
 	// AddOnCategories is the list of add-on category checks
-	AddOnCategories = []CategoryID{LinkerdAddOnChecks, LinkerdGrafanaAddOnChecks, LinkerdTracingAddOnChecks}
+	AddOnCategories = []CategoryID{LinkerdAddOnChecks, LinkerdPrometheusAddOnChecks, LinkerdGrafanaAddOnChecks, LinkerdTracingAddOnChecks}
 )
 
 // addOnCategories contain all the checks w.r.t add-ons. It is strongly advised to
@@ -40,6 +43,51 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						return hc.checkIfAddOnsConfigMapExists()
+					},
+				},
+			},
+		},
+		{
+			id: LinkerdPrometheusAddOnChecks,
+			checkers: []checker{
+				{
+					description: "prometheus add-on service account exists",
+					warning:     true,
+					check: func(context.Context) error {
+						if _, ok := hc.addOns[l5dcharts.PrometheusAddOn]; ok {
+							return hc.checkServiceAccounts([]string{"linkerd-prometheus"}, hc.ControlPlaneNamespace, "")
+						}
+						return &SkipError{Reason: "prometheus add-on not enabled"}
+					},
+				},
+				{
+					description: "prometheus add-on config map exists",
+					warning:     true,
+					check: func(context.Context) error {
+						if _, ok := hc.addOns[l5dcharts.PrometheusAddOn]; ok {
+							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get("linkerd-prometheus-config", metav1.GetOptions{})
+							return err
+						}
+						return &SkipError{Reason: "prometheus add-on not enabled"}
+					},
+				},
+				{
+					description:         "prometheus pod is running",
+					warning:             true,
+					retryDeadline:       hc.RetryDeadline,
+					surfaceErrorOnRetry: true,
+					check: func(context.Context) error {
+						if _, ok := hc.addOns[l5dcharts.PrometheusAddOn]; ok {
+							// populate controlPlanePods to get the latest status, during retries
+							var err error
+							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+							if err != nil {
+								return err
+							}
+
+							return checkContainerRunning(hc.controlPlanePods, "prometheus")
+						}
+						return &SkipError{Reason: "prometheus add-on not enabled"}
 					},
 				},
 			},

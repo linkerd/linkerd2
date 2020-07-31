@@ -25,8 +25,6 @@ const (
 	// metrics labels
 	service                = "service"
 	namespace              = "namespace"
-	targetGatewayNamespace = "target_gateway_namespace"
-	targetGateway          = "target_gateway"
 	targetCluster          = "target_cluster"
 	targetService          = "target_service"
 	targetServiceNamespace = "target_service_namespace"
@@ -129,7 +127,6 @@ var endpointsVecs = newEndpointsMetricsVecs()
 // NewEndpointsWatcher creates an EndpointsWatcher and begins watching the
 // k8sAPI for pod, service, and endpoint changes. An EndpointsWatcher will
 // watch on Endpoints or EndpointSlice resources, depending on cluster configuration.
-//TODO: Allow EndpointSlice resources to be used once opt-in functionality is supported.
 func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlices bool) *EndpointsWatcher {
 	ew := &EndpointsWatcher{
 		publishers:           make(map[ServiceID]*servicePublisher),
@@ -161,7 +158,6 @@ func NewEndpointsWatcher(k8sAPI *k8s.API, log *logging.Entry, enableEndpointSlic
 			UpdateFunc: ew.updateEndpointSlice,
 		})
 	} else {
-		// ew.log.Debugf("Cluster does not have EndpointSlice access:%v", err)
 		ew.log.Debugf("Watching Endpoints resources")
 		k8sAPI.Endpoint().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    ew.addEndpoints,
@@ -671,16 +667,12 @@ func metricLabels(resource interface{}) map[string]string {
 
 	labels := map[string]string{service: serviceName, namespace: ns}
 
-	gateway, hasRemoteGateway := resLabels[consts.RemoteGatewayNameLabel]
-	gatewayNs, hasRemoteGatwayNs := resLabels[consts.RemoteGatewayNsLabel]
 	remoteClusterName, hasRemoteClusterName := resLabels[consts.RemoteClusterNameLabel]
 	serviceFqn, hasServiceFqn := resAnnotations[consts.RemoteServiceFqName]
 
-	if hasRemoteGateway && hasRemoteGatwayNs && hasRemoteClusterName && hasServiceFqn {
+	if hasRemoteClusterName && hasServiceFqn {
 		// this means we are looking at Endpoints created for the purpose of mirroring
 		// an out of cluster service.
-		labels[targetGatewayNamespace] = gatewayNs
-		labels[targetGateway] = gateway
 		labels[targetCluster] = remoteClusterName
 
 		fqParts := strings.Split(serviceFqn, ".")

@@ -62,6 +62,12 @@ linkerd-addons
 --------------
 √ 'linkerd-config-addons' config map exists
 
+linkerd-prometheus
+------------------
+√ prometheus add-on service account exists
+√ prometheus add-on config map exists
+√ prometheus pod is running
+
 linkerd-grafana
 ---------------
 √ grafana add-on service account exists
