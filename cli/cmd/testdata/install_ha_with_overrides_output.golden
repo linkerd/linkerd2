@@ -2418,6 +2418,13 @@ data:
       grafanaUrl: ""
     dashboard:
       enabled: true
+      resources:
+        cpu:
+          limit: "1"
+          request: 100m
+        memory:
+          limit: 250Mi
+          request: 50Mi
     grafana:
       enabled: true
       image:
@@ -3022,7 +3029,7 @@ spec:
         - --log.level=info
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
-        image: prom/prometheus:v2.15.2
+        image: prom/prometheus:v2.19.3
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3414,6 +3421,13 @@ spec:
           httpGet:
             path: /ready
             port: 9994
+        resources:
+          limits:
+            cpu: "1"
+            memory: "250Mi"
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
         securityContext:
           runAsUser: 2103
         volumeMounts:

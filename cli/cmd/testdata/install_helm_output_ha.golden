@@ -2476,6 +2476,13 @@ data:
       enabled: true
       image: gcr.io/linkerd-io/web
       replicas: 1
+      resources:
+        cpu:
+          limit: "1"
+          request: 100m
+        memory:
+          limit: 250Mi
+          request: 50Mi
     grafana:
       enabled: true
       image:
@@ -2499,7 +2506,7 @@ data:
         evaluation_interval: 10s
         scrape_interval: 10s
         scrape_timeout: 10s
-      image: prom/prometheus:v2.15.2
+      image: prom/prometheus:v2.19.3
       resources:
         cpu:
           limit: "4"
@@ -3089,7 +3096,7 @@ spec:
         - --log.level=info
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
-        image: prom/prometheus:v2.15.2
+        image: prom/prometheus:v2.19.3
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3476,6 +3483,13 @@ spec:
           httpGet:
             path: /ready
             port: 9994
+        resources:
+          limits:
+            cpu: "1"
+            memory: "250Mi"
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
         securityContext:
           runAsUser: 
         volumeMounts:

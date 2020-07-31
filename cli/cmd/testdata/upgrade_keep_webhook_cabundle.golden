@@ -3287,7 +3287,7 @@ spec:
         - 4190,4191,2525-2527,2529
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
