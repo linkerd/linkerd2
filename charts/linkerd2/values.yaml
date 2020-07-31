@@ -328,6 +328,8 @@ prometheus:
 # Dashboard configuration
 dashboard:
   enabled: true
+  # image:
+  # replicas: 
   # resources:
   # proxy:
   #   resources:
