@@ -789,7 +789,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat
-	if options.dockerRegistry != "gcr.io/linkerd-io" {
+	if options.dockerRegistry != defaultDockerRegistry {
 		installValues.Dashboard["image"] = fmt.Sprintf("%s/web", options.dockerRegistry)
 	}
 	installValues.SMIMetrics.Image = options.smiMetricsImage
