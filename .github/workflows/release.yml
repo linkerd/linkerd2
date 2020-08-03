@@ -34,9 +34,8 @@ jobs:
       uses: actions/cache@b820478
       with:
         path: ${{ env.DOCKER_BUILDKIT_CACHE }}
-        key: ${{ runner.os }}-buildx-multiarch-${{ matrix.target }}-${{ env.TAG }}
+        key: ${{ runner.os }}-buildx-${{ matrix.target }}-${{ env.TAG }}
         restore-keys: |
-          ${{ runner.os }}-buildx-multiarch-${{ matrix.target }}-
           ${{ runner.os }}-buildx-${{ matrix.target }}-
     - name: Configure gcloud
       # linkerd/linkerd2-action-gcloud@v1.0.1
