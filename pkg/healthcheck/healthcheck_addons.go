@@ -56,7 +56,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							name, err := getString(grafana, "name")
-							if err != nil && err != errorKeyNotFound {
+							if err != nil && !errors.Is(err, errorKeyNotFound) {
 								return err
 							}
 
@@ -76,7 +76,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							name, err := getString(grafana, "name")
-							if err != nil && err != errorKeyNotFound {
+							if err != nil && !errors.Is(err, errorKeyNotFound) {
 								return err
 							}
 
