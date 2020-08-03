@@ -203,7 +203,7 @@ The following table lists the configurable parameters for the Dashboard Add-On.
 | `dashboard.resources.cpu.request`     | Amount of CPU units that the dashboard container requests                                                                                                                            ||
 | `dashboard.resources.memory.limit`    | Maximum amount of memory that dashboard container can use                                                                                                                        ||
 | `dashboard.resources.memory.request`  | Amount of memory that the dashboard container requests                                                                                                                               ||
-| `dashboard.proxy.resources`           | Structure analog to the `resources` fields above, but overriding the resources of the linkerd proxy injected into the grafana pod.   | values in `global.proxy.resources` of the linkerd2 chart. |
+| `dashboard.proxy.resources`           | Structure analog to the `resources` fields above, but overriding the resources of the linkerd proxy injected into the dashboard pod.   | values in `global.proxy.resources` of the linkerd2 chart. |
 
 ### Grafana Add-On
 

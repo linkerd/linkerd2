@@ -42,8 +42,7 @@ func AddOns(filepath string) (*l5dcharts.Values, error) {
 		return nil, err
 	}
 
-	err = yaml.Unmarshal(config, values)
-	if err != nil {
+	if err = yaml.Unmarshal(config, values); err != nil {
 		return nil, err
 	}
 
