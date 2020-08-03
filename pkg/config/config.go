@@ -38,6 +38,10 @@ func Install(filepath string) (*pb.Install, error) {
 func AddOns(filepath string) (*l5dcharts.Values, error) {
 	values := &l5dcharts.Values{}
 	config, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return nil, err
+	}
+
 	err = yaml.Unmarshal(config, values)
 	if err != nil {
 		return nil, err

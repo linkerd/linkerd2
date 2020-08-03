@@ -2805,7 +2805,6 @@ spec:
       - args:
         - -api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
         - -grafana-addr=somegrafana.xyz
-        - -jaeger-addr=linkerd-jaeger.linkerd.svc.cluster.local:16686
         - -controller-namespace=linkerd
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
@@ -2832,6 +2831,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        - mountPath: /var/run/linkerd/config-addons
+          name: config-addons
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -2974,6 +2975,9 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - configMap:
+          name: linkerd-config-addons
+        name: config-addons
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
