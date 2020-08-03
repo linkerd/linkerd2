@@ -8,7 +8,9 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	log "github.com/sirupsen/logrus"
+	"sigs.k8s.io/yaml"
 )
 
 // Global returns the Global protobuf config from the linkerd-config ConfigMap
@@ -30,6 +32,18 @@ func Install(filepath string) (*pb.Install, error) {
 	config := &pb.Install{}
 	err := unmarshalFile(filepath, config)
 	return config, err
+}
+
+// AddOns returns the Values config from the linkerd-config-addons ConfigMap
+func AddOns(filepath string) (*l5dcharts.Values, error) {
+	values := &l5dcharts.Values{}
+	config, err := ioutil.ReadFile(filepath)
+	err = yaml.Unmarshal(config, values)
+	if err != nil {
+		return nil, err
+	}
+
+	return values, err
 }
 
 func unmarshalFile(filepath string, msg proto.Message) error {

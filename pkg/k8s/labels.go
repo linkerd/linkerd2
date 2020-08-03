@@ -343,6 +343,9 @@ const (
 	// the service account token
 	MountPathServiceAccount = "/var/run/secrets/kubernetes.io/serviceaccount"
 
+	// MountPathAddOnsConfig is the path at which addons config file is mounted
+	MountPathAddOnsConfig = MountPathBase + "/config-addons/values"
+
 	// MountPathGlobalConfig is the path at which the global config file is mounted.
 	MountPathGlobalConfig = MountPathBase + "/config/global"
 

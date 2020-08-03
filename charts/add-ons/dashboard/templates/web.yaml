@@ -68,10 +68,7 @@ spec:
         - -api-addr=linkerd-controller-api.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8085
         {{- if .Values.global.grafanaUrl }}
         - -grafana-addr={{.Values.global.grafanaUrl}}
-        {{- else}}
-        - -grafana-addr=linkerd-grafana.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:3000
         {{- end}}
-        - -jaeger-addr=linkerd-jaeger.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:16686
         - -controller-namespace={{.Values.global.namespace}}
         - -log-level={{.Values.global.controllerLogLevel}}
         {{- if .Values.enforcedHostRegexp }}
@@ -108,6 +105,8 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
+        - mountPath: /var/run/linkerd/config-addons
+          name: config-addons
       {{- $tree := deepCopy . }}
       {{- if not (empty .Values.proxy) }}
       {{- if not (empty .Values.proxy.resources) }}
@@ -125,6 +124,9 @@ spec:
       - configMap:
           name: linkerd-config
         name: config
+      - configMap:
+          name: linkerd-config-addons
+        name: config-addons
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}

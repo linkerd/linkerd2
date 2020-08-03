@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/admin"
+	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -55,6 +57,33 @@ func main() {
 	if err != nil || clusterDomain == "" {
 		clusterDomain = "cluster.local"
 		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
+	}
+
+	values, err := config.AddOns(pkgK8s.MountPathAddOnsConfig)
+	if err != nil {
+		log.Warnf("failed to load values config: [%s]", err)
+	}
+
+	addOns, err := l5dcharts.ParseAddOnValues(values)
+	if err != nil {
+		log.Warnf("failed to parse add-on values: [%s]", err)
+	}
+
+	for _, addOn := range addOns {
+		if addOn.Name() == l5dcharts.GrafanaAddOn && *grafanaAddr == "" {
+			*grafanaAddr = fmt.Sprintf("linkerd-grafana.%s.svc.%s:3000", *controllerNamespace, clusterDomain)
+		}
+
+		if addOn.Name() == l5dcharts.TracingAddOn && *jaegerAddr == "" {
+			*jaegerAddr = fmt.Sprintf("linkerd-jaeger.%s.svc.%s:16686", *controllerNamespace, clusterDomain)
+		}
+	}
+
+	if *grafanaAddr != "" {
+		log.Infof("Grafana Addr: %s", *grafanaAddr)
+	}
+	if *jaegerAddr != "" {
+		log.Infof("Jaeger Addr: %s", *jaegerAddr)
 	}
 
 	k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", []string{}, 0)
