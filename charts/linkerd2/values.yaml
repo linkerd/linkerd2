@@ -96,9 +96,6 @@ global:
   linkerdNamespaceLabel: linkerd.io/is-control-plane
   workloadNamespaceLabel: linkerd.io/workload-ns
 
-# enforced host validation regular expression
-enforcedHostRegexp: ""
-
 enableH2Upgrade: true
 
 omitWebhookSideEffects: false
@@ -328,6 +325,8 @@ prometheus:
 # Dashboard configuration
 dashboard:
   enabled: true
+  # enforced host validation regular expression
+  # enforcedHostRegexp: ""
   # image:
   # replicas: 
   # resources:

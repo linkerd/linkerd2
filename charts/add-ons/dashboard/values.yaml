@@ -5,3 +5,4 @@
 # If installing/upgrading with linkerd's CLI, use the `--addon-config` flag.
 image: gcr.io/linkerd-io/web
 replicas: 1
+enforcedHostRegexp: ""

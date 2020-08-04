@@ -2251,6 +2251,7 @@ data:
       grafanaUrl: ""
     dashboard:
       enabled: true
+      enforcedHostRegexp: ""
       image: gcr.io/linkerd-io/web
       replicas: 1
     grafana:
