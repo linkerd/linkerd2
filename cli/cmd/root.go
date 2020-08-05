@@ -207,8 +207,7 @@ func getDefaultNamespace() string {
 	ns, _, err := kubeCfg.Namespace()
 
 	if err != nil {
-		log.Warnf("could not set namespace from kubectl context, using 'default' namespace: %s", err)
-		log.Warnf("ensure the KUBECONFIG path %s is valid", kubeconfigPath)
+		log.Warnf("could not set namespace from kubectl context, using 'default' namespace: %s\n ensure the KUBECONFIG path %s is valid", err, kubeconfigPath)
 		return corev1.NamespaceDefault
 	}
 
