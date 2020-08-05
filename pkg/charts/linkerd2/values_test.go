@@ -15,7 +15,10 @@ func TestNewValues(t *testing.T) {
 
 	expected := &Values{
 		Stage:                       "",
+		ControllerImage:             "gcr.io/linkerd-io/controller",
 		WebImage:                    "gcr.io/linkerd-io/web",
+		ControllerReplicas:          1,
+		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		EnablePodAntiAffinity:       false,
 		WebhookFailurePolicy:        "Ignore",
