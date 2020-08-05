@@ -231,6 +231,9 @@ spec:
       securityContext:
         fsGroup: 65534
       containers:
+      {{- if .Values.sidecarContainers -}}
+      {{- toYaml .Values.sidecarContainers | trim | nindent 6 }}
+      {{- end}}
       - args:
         {{- range $key, $value := .Values.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}

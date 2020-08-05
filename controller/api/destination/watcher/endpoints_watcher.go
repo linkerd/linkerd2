@@ -25,8 +25,6 @@ const (
 	// metrics labels
 	service                = "service"
 	namespace              = "namespace"
-	targetGatewayNamespace = "target_gateway_namespace"
-	targetGateway          = "target_gateway"
 	targetCluster          = "target_cluster"
 	targetService          = "target_service"
 	targetServiceNamespace = "target_service_namespace"
@@ -669,16 +667,12 @@ func metricLabels(resource interface{}) map[string]string {
 
 	labels := map[string]string{service: serviceName, namespace: ns}
 
-	gateway, hasRemoteGateway := resLabels[consts.RemoteGatewayNameLabel]
-	gatewayNs, hasRemoteGatwayNs := resLabels[consts.RemoteGatewayNsLabel]
 	remoteClusterName, hasRemoteClusterName := resLabels[consts.RemoteClusterNameLabel]
 	serviceFqn, hasServiceFqn := resAnnotations[consts.RemoteServiceFqName]
 
-	if hasRemoteGateway && hasRemoteGatwayNs && hasRemoteClusterName && hasServiceFqn {
+	if hasRemoteClusterName && hasServiceFqn {
 		// this means we are looking at Endpoints created for the purpose of mirroring
 		// an out of cluster service.
-		labels[targetGatewayNamespace] = gatewayNs
-		labels[targetGateway] = gateway
 		labels[targetCluster] = remoteClusterName
 
 		fqParts := strings.Split(serviceFqn, ".")

@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"strconv"
@@ -225,7 +226,9 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// up to the fallbackProfileListener to merge updates from the primary and
 	// secondary listeners and send the appropriate updates to the stream.
 	if dest.GetContextToken() != "" {
-		profile, err := profileID(path, dest.GetContextToken(), s.clusterDomain)
+		ctxToken := s.parseContextToken(dest.GetContextToken())
+
+		profile, err := profileID(path, ctxToken, s.clusterDomain)
 		if err != nil {
 			log.Debugf("Invalid service %s", path)
 			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
@@ -239,7 +242,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		defer s.profiles.Unsubscribe(profile, primary)
 	}
 
-	profile, err := profileID(path, "", s.clusterDomain)
+	profile, err := profileID(path, contextToken{}, s.clusterDomain)
 	if err != nil {
 		log.Debugf("Invalid service %s", path)
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
@@ -264,17 +267,29 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 /// util ///
 ////////////
 
-func nsFromToken(token string) string {
-	// ns:<namespace>
-	parts := strings.Split(token, ":")
-	if len(parts) == 2 && parts[0] == "ns" {
-		return parts[1]
-	}
-
-	return ""
+type contextToken struct {
+	Ns       string `json:"ns,omitempty"`
+	NodeName string `json:"nodeName,omitempty"`
 }
 
-func profileID(authority string, contextToken string, clusterDomain string) (watcher.ProfileID, error) {
+func (s *server) parseContextToken(token string) contextToken {
+	ctxToken := contextToken{}
+	if err := json.Unmarshal([]byte(token), &ctxToken); err != nil {
+		// if json is invalid, means token can have ns:<namespace> form
+		parts := strings.Split(token, ":")
+		if len(parts) == 2 && parts[0] == "ns" {
+			s.log.Warnf("context token %s using old token format", token)
+			ctxToken = contextToken{
+				Ns: parts[1],
+			}
+		} else {
+			s.log.Errorf("context token %s is invalid: %s", token, err)
+		}
+	}
+	return ctxToken
+}
+
+func profileID(authority string, ctxToken contextToken, clusterDomain string) (watcher.ProfileID, error) {
 	host, _, err := getHostAndPort(authority)
 	if err != nil {
 		return watcher.ProfileID{}, fmt.Errorf("invalid authority: %s", err)
@@ -287,8 +302,8 @@ func profileID(authority string, contextToken string, clusterDomain string) (wat
 		Name:      fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, clusterDomain),
 		Namespace: service.Namespace,
 	}
-	if contextNs := nsFromToken(contextToken); contextNs != "" {
-		id.Namespace = contextNs
+	if ctxToken.Ns != "" {
+		id.Namespace = ctxToken.Ns
 	}
 	return id, nil
 }
