@@ -251,7 +251,7 @@ smiMetrics:
 # Configuration for Add-ons
 # Full configuration fields https://github.com/linkerd/linkerd2/tree/master/charts/linkerd2#add-ons-configuration
 
-publicApi:
+publicAPI:
   enabled: true
 
 grafana:

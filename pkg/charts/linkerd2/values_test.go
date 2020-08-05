@@ -140,8 +140,8 @@ func TestNewValues(t *testing.T) {
 				"name": "gcr.io/linkerd-io/grafana",
 			},
 		},
-		PublicAPI: &PublicAPI{
-			Enabled: true,
+		PublicAPI: PublicAPI{
+			Enabled:  true,
 		},
 	}
 
@@ -167,6 +167,7 @@ func TestNewValues(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
+		expected.PublicAPI.Replicas = 3
 		expected.EnablePodAntiAffinity = true
 		expected.WebhookFailurePolicy = "Fail"
 
@@ -181,6 +182,7 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 		expected.DestinationResources = controllerResources
+		expected.PublicAPI.Resources = controllerResources
 		expected.ProxyInjectorResources = controllerResources
 		expected.SPValidatorResources = controllerResources
 		expected.TapResources = controllerResources

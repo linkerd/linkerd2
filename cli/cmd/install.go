@@ -771,7 +771,9 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Configs.Global = globalJSON
 	installValues.Configs.Proxy = proxyJSON
 	installValues.Configs.Install = installJSON
-	installValues.PublicAPI.Image = fmt.Sprintf("%s/controller", options.dockerRegistry)
+	if options.dockerRegistry != defaultDockerRegistry {
+		installValues.PublicAPI.Image = fmt.Sprintf("%s/controller", options.dockerRegistry)
+	}
 	installValues.Global.ControllerImageVersion = configs.GetGlobal().GetVersion()
 	installValues.Global.ControllerLogLevel = options.controllerLogLevel
 	installValues.PublicAPI.Replicas = options.controllerReplicas

@@ -52,11 +52,6 @@ func TestRender(t *testing.T) {
 	metaConfig := metaOptions.configs(identityContext)
 	metaConfig.Global.LinkerdNamespace = "Namespace"
 	metaValues := &charts.Values{
-		PublicAPI: &charts.PublicAPI{
-			Image:    "ControllerImage",
-			UID:      2103,
-			Replicas: 1,
-		},
 		WebImage:                    "WebImage",
 		EnableH2Upgrade:             true,
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
@@ -142,6 +137,9 @@ func TestRender(t *testing.T) {
 		},
 		Tracing: map[string]interface{}{
 			"enabled": false,
+		},
+		PublicAPI: charts.PublicAPI{
+			Enabled: true,
 		},
 		Grafana: defaultValues.Grafana,
 	}

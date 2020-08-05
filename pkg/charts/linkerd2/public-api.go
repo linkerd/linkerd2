@@ -13,9 +13,10 @@ var (
 // PublicAPI is an add-on that installs the public-api component
 type PublicAPI struct {
 	Enabled  bool   `json:"enabled"`
-	Replicas uint   `json:"replicas"`
-	Image    string `json:"image"`
-	UID      int64  `json:"UID"`
+	Replicas uint   `json:"replicas,omitempty"`
+	Image    string `json:"image,omitempty"`
+	UID      int64  `json:"UID,omitempty"`
+	Resources *Resources `json:"resources,omitempty"`
 }
 
 // Name returns the name of the Prometheus add-on

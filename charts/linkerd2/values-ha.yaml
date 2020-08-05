@@ -15,8 +15,6 @@ global:
         limit: 250Mi
         request: 20Mi
 
-# controller configuration
-controllerReplicas: 3
 controllerResources: &controller_resources
   cpu: &controller_resources_cpu
     limit: "1"
@@ -25,7 +23,11 @@ controllerResources: &controller_resources
     limit: 250Mi
     request: 50Mi
 destinationResources: *controller_resources
-publicAPIResources: *controller_resources
+
+# controller configuration
+publicAPI:
+  replicas: 3
+  resources: *controller_resources
 
 # identity configuration
 identityResources:
