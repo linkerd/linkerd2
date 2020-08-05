@@ -418,8 +418,8 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "global.proxy.resources.memory.limit=200Mi",
 		"--set", "global.proxy.resources.memory.request=100Mi",
 		// actually sets the value for the controller pod
-		"--set", "publicAPIProxyResources.cpu.limit=1010m",
-		"--set", "publicAPIProxyResources.memory.request=101Mi",
+		"--set", "publicAPI.proxy.resources.cpu.limit=1010m",
+		"--set", "publicAPI.proxy.resources.memory.request=101Mi",
 		"--set", "destinationProxyResources.cpu.limit=1020m",
 		"--set", "destinationProxyResources.memory.request=102Mi",
 		"--set", "grafana.proxy.resources.cpu.limit=1030m",
