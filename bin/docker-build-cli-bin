@@ -15,14 +15,29 @@ rootdir=$( cd "$bindir"/.. && pwd )
 # shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
 
+get_multiarch_argument() {
+    if [ -n "$DOCKER_MULTIARCH" ]; then
+        echo "--build-arg BUILD_STAGE=multi-arch"
+    fi
+}
+
 dockerfile=$rootdir/cli/Dockerfile-bin
 tag=$(head_root_tag)
-docker_build cli-bin "$tag" "$dockerfile" --build-arg LINKERD_VERSION="$tag"
+
+# shellcheck disable=SC2046
+SUPPORTED_ARCHS=linux/amd64 docker_build cli-bin "$tag" "$dockerfile" \
+    --build-arg LINKERD_VERSION="$tag" \
+    $(get_multiarch_argument)
+
 IMG=$(docker_repo cli-bin):$tag
 ID=$(docker create "$IMG")
+OS="darwin windows linux-amd64"
+if [ -n "$DOCKER_MULTIARCH" ]; then
+    OS+=" linux-arm64 linux-arm"
+fi
 
 # copy the newly built linkerd cli binaries to the local system
-for OS in darwin linux windows ; do
+for OS in $OS; do
     DIR=$rootdir/target/cli/$OS
     mkdir -p "$DIR"
 
