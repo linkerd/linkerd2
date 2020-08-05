@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -85,20 +86,8 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 func TestRemoteServiceCreatedMirroring(t *testing.T) {
 	for _, tt := range []mirroringTestCase{
 		{
-			description:            "does not create service and endpoints when gateway address is missing",
-			environment:            serviceCreateWithMissingGateway,
-			expectedLocalServices:  []*corev1.Service{},
-			expectedLocalEndpoints: []*corev1.Endpoints{},
-		},
-		{
-			description:            "does not create service and endpoints when gateway spec is wrong",
-			environment:            createServiceWrongGatewaySpec,
-			expectedLocalServices:  []*corev1.Service{},
-			expectedLocalEndpoints: []*corev1.Endpoints{},
-		},
-		{
 			description: "create service and endpoints when gateway can be resolved",
-			environment: createServiceOkeGatewaySpec,
+			environment: createExportedService,
 			expectedLocalServices: []*corev1.Service{
 				mirrorService(
 					"service-one-remote",
@@ -142,7 +131,7 @@ func TestRemoteServiceDeletedMirroring(t *testing.T) {
 	for _, tt := range []mirroringTestCase{
 		{
 			description: "deletes locally mirrored service",
-			environment: deleteMirroredService,
+			environment: deleteMirrorService,
 		},
 	} {
 		tc := tt // pin
@@ -235,7 +224,9 @@ func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
 			description: fmt.Sprintf("enqueue a RemoteServiceCreated event when this is not a gateway and we have the needed annotations (%s)", testType),
 			environment: onAddOrUpdateExportedSvc(isAdd),
 			expectedEventsInQueue: []interface{}{&RemoteServiceCreated{
-				service: remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "resVersion", nil),
+				service: remoteService("test-service", "test-namespace", "resVersion", map[string]string{
+					consts.DefaultExportedServiceSelector: "true",
+				}, nil),
 			}},
 		},
 		{
@@ -244,7 +235,9 @@ func onAddOrUpdateTestCases(isAdd bool) []mirroringTestCase {
 			expectedEventsInQueue: []interface{}{&RemoteServiceUpdated{
 				localService:   mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil),
 				localEndpoints: endpoints("test-service-remote", "test-namespace", "0.0.0.0", "", nil),
-				remoteUpdate:   remoteService("test-service", "test-namespace", "gateway", "gateway-ns", "currentResVersion", nil),
+				remoteUpdate: remoteService("test-service", "test-namespace", "currentResVersion", map[string]string{
+					consts.DefaultExportedServiceSelector: "true",
+				}, nil),
 			}},
 			expectedLocalServices: []*corev1.Service{
 				mirrorService("test-service-remote", "test-namespace", "pastResourceVersion", nil),
@@ -299,7 +292,7 @@ func TestOnDelete(t *testing.T) {
 	for _, tt := range []mirroringTestCase{
 		{
 			description: "enqueues a RemoteServiceDeleted because there is gateway metadata present on the service",
-			environment: onDeleteWithGatewayMetadata,
+			environment: onDeleteExportedService,
 			expectedEventsInQueue: []interface{}{
 				&RemoteServiceDeleted{
 					Name:      "test-service",
@@ -309,7 +302,7 @@ func TestOnDelete(t *testing.T) {
 		},
 		{
 			description:           "skips because there is no gateway metadata present on the service",
-			environment:           onDeleteNoGatewayMetadata,
+			environment:           onDeleteNonExportedService,
 			expectedEventsInQueue: []interface{}{},
 		},
 	} {

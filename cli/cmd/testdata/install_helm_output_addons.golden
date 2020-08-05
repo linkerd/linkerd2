@@ -1905,7 +1905,7 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/helm-release-version: "0"
+        checksum/config: 6e734f618da84e77b839fe4aef71fef3292e197e2315d8f5c96811ce4ee133e3
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2154,7 +2154,7 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/helm-release-version: "0"
+        checksum/config: 2ef69096dc03ab049c6767f057e2360ec556c8dfb7290cee5d471f2a8b366cfe
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2384,7 +2384,7 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/helm-release-version: "0"
+        checksum/config: 394865b9065b74cd3fbb50fc96923c65e29bd4345c2574b5d2511a20effedadb
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2592,6 +2592,7 @@ metadata:
 data:
   values: |-
     global:
+      prometheusUrl: ""
       grafanaUrl: ""
     grafana:
       enabled: true
@@ -2609,7 +2610,7 @@ data:
         evaluation_interval: 10s
         scrape_interval: 10s
         scrape_timeout: 10s
-      image: prom/prometheus:v2.15.2
+      image: prom/prometheus:v2.19.3
     tracing:
       collector:
         image: omnition/opencensus-collector:0.1.11
@@ -3185,7 +3186,7 @@ spec:
         - --log.level=info
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
-        image: prom/prometheus:v2.15.2
+        image: prom/prometheus:v2.19.3
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

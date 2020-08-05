@@ -102,8 +102,7 @@ jobs:
         - helm-deep
         - helm-upgrade
         - uninstall
-        #TO-DO: re-enable upgrade-edge after edge-20-7-5 comes out
-        #- upgrade-edge
+        - upgrade-edge
         - upgrade-stable
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})

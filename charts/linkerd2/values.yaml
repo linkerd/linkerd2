@@ -25,6 +25,8 @@ global:
 
   identityTrustDomain: *cluster_domain
 
+  # url of existing prometheus
+  prometheusUrl: ""
   # url of external grafana instance.
   grafanaUrl: ""
 
@@ -70,7 +72,7 @@ global:
     image:
       name: gcr.io/linkerd-io/proxy-init
       pullPolicy: *image_pull_policy
-      version: v1.3.3
+      version: v1.3.4
     resources:
       cpu:
         limit: 100m

@@ -17,7 +17,8 @@ if [ "$version" = latest ]; then
 fi
 
 assetbase="https://github.com/linkerd/linkerd2-proxy/releases/download/release%2F${version}"
-pkgname="linkerd2-proxy-${version}-amd64"
+arch=${2:-amd64}
+pkgname="linkerd2-proxy-${version}-${arch}"
 pkgfile="${pkgname}.tar.gz"
 shafile="${pkgname}.txt"
 

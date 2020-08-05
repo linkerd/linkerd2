@@ -232,7 +232,7 @@ class TopRoutes extends React.Component {
 
           <Grid item container spacing={4} alignItems="center" justify="flex-start">
             <Grid item>
-              { this.renderNamespaceDropdown('To Namespace', 'to_namespace', 'Namespece of target resource') }
+              { this.renderNamespaceDropdown('To Namespace', 'to_namespace', 'Namespace of target resource') }
             </Grid>
 
             <Grid item>

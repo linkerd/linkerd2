@@ -1,10 +1,13 @@
+ARG BUILDPLATFORM=linux/amd64
+
 # Precompile key slow-to-build dependencies
-FROM golang:1.14.2-alpine as go-deps
+FROM --platform=$BUILDPLATFORM golang:1.14.2-alpine as go-deps
 WORKDIR /linkerd-build
 COPY go.mod go.sum ./
 COPY bin/install-deps bin/
 RUN go mod download
-RUN ./bin/install-deps
+ARG TARGETARCH
+RUN ./bin/install-deps $TARGETARCH
 
 ## compile cni-plugin utility
 FROM go-deps as golang
@@ -12,7 +15,8 @@ WORKDIR /linkerd-build
 COPY pkg pkg
 COPY controller controller
 COPY cni-plugin cni-plugin
-RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/linkerd-cni -v -mod=readonly ./cni-plugin/
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /go/bin/linkerd-cni -v -mod=readonly ./cni-plugin/
 
 FROM debian:buster-20200514-slim
 WORKDIR /linkerd
