@@ -48,6 +48,7 @@ type (
 		disableH2Upgrade            bool
 		disableHeartbeat            bool
 		cniEnabled                  bool
+		enableEndpointSlices        bool
 		skipChecks                  bool
 		omitWebhookSideEffects      bool
 		restrictDashboardPrivileges bool
@@ -184,6 +185,7 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 		disableH2Upgrade:            !defaults.EnableH2Upgrade,
 		disableHeartbeat:            defaults.DisableHeartBeat,
 		cniEnabled:                  defaults.Global.CNIEnabled,
+		enableEndpointSlices:        defaults.Global.EnableEndpointSlices,
 		omitWebhookSideEffects:      defaults.OmitWebhookSideEffects,
 		restrictDashboardPrivileges: defaults.RestrictDashboardPrivileges,
 		controlPlaneTracing:         defaults.Global.ControlPlaneTracing,
@@ -215,6 +217,8 @@ func newInstallOptionsWithDefaults() (*installOptions, error) {
 			proxyMemoryLimit:       defaults.Global.Proxy.Resources.Memory.Limit,
 			enableExternalProfiles: defaults.Global.Proxy.EnableExternalProfiles,
 			waitBeforeExitSeconds:  defaults.Global.Proxy.WaitBeforeExitSeconds,
+			inboundConnectTimeout:  defaults.Global.Proxy.InboundConnectTimeout,
+			outboundConnectTimeout: defaults.Global.Proxy.OutboundConnectTimeout,
 		},
 		identityOptions: &installIdentityOptions{
 			trustDomain:            defaults.Global.IdentityTrustDomain,
@@ -434,6 +438,12 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 		return nil, nil, err
 	}
 
+	if options.enableEndpointSlices {
+		if err = validateEndpointSlicesFeature(); err != nil {
+			return nil, nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
+		}
+	}
+
 	return values, configs, nil
 }
 
@@ -505,6 +515,9 @@ func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 		&options.smiMetricsEnabled, "smi-metrics", options.smiMetricsEnabled,
 		"Enables installing the SMI-Metrics controller",
 	)
+
+	flags.BoolVar(&options.enableEndpointSlices, "enable-endpoint-slices", options.enableEndpointSlices,
+		"Enables the usage of EndpointSlice informers and resources for destination service")
 
 	flags.StringVarP(&options.controlPlaneVersion, "control-plane-version", "", options.controlPlaneVersion, "Tag to be used for the control plane component images")
 	flags.StringVar(&options.smiMetricsImage, "smi-metrics-image", options.smiMetricsImage, "SMI Metrics image")
@@ -690,6 +703,15 @@ func (options *installOptions) validate() error {
 	return nil
 }
 
+func validateEndpointSlicesFeature() error {
+	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return err
+	}
+
+	return k8s.EndpointSliceAccess(k8sAPI)
+}
+
 // buildValuesWithoutIdentity builds the values that will be used to render
 // the Helm templates. It overrides the defaults values with CLI options.
 func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5dcharts.Values, error) {
@@ -763,6 +785,7 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
 	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.Global.CNIEnabled = options.cniEnabled
+	installValues.Global.EnableEndpointSlices = options.enableEndpointSlices
 	installValues.OmitWebhookSideEffects = options.omitWebhookSideEffects
 	installValues.HeartbeatSchedule = options.heartbeatSchedule()
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
@@ -780,6 +803,8 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Global.Proxy = &l5dcharts.Proxy{
 		DestinationGetNetworks: strings.Join(options.destinationGetNetworks, ","),
 		EnableExternalProfiles: options.enableExternalProfiles,
+		OutboundConnectTimeout: options.outboundConnectTimeout,
+		InboundConnectTimeout:  options.inboundConnectTimeout,
 		Image: &l5dcharts.Image{
 			Name:       registryOverride(options.proxyImage, options.dockerRegistry),
 			PullPolicy: options.imagePullPolicy,
@@ -927,6 +952,7 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 	return &pb.Global{
 		LinkerdNamespace:       controlPlaneNamespace,
 		CniEnabled:             options.cniEnabled,
+		EndpointSliceEnabled:   options.enableEndpointSlices,
 		Version:                options.controlPlaneVersion,
 		IdentityContext:        identity,
 		OmitWebhookSideEffects: options.omitWebhookSideEffects,

@@ -29,15 +29,21 @@ func newCmdCompletion() *cobra.Command {
   source <(linkerd completion zsh)
 
   # zsh on osx / oh-my-zsh
-  linkerd completion zsh > "${fpath[1]}/_linkerd"`
+  linkerd completion zsh > "${fpath[1]}/_linkerd"
+
+  # fish:
+  linkerd completion fish | source
+
+  # To load fish shell completions for each session, execute once:
+  linkerd completion fish > ~/.config/fish/completions/linkerd.fish`
 
 	cmd := &cobra.Command{
-		Use:       "completion [bash|zsh]",
-		Short:     "Output shell completion code for the specified shell (bash or zsh)",
-		Long:      "Output shell completion code for the specified shell (bash or zsh).",
+		Use:       "completion [bash|zsh|fish]",
+		Short:     "Output shell completion code for the specified shell (bash, zsh or fish)",
+		Long:      "Output shell completion code for the specified shell (bash, zsh or fish).",
 		Example:   example,
 		Args:      cobra.ExactArgs(1),
-		ValidArgs: []string{"bash", "zsh"},
+		ValidArgs: []string{"bash", "zsh", "fish"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out, err := getCompletion(args[0], cmd.Parent())
 			if err != nil {
@@ -62,8 +68,11 @@ func getCompletion(sh string, parent *cobra.Command) (string, error) {
 		err = parent.GenBashCompletion(&buf)
 	case "zsh":
 		err = parent.GenZshCompletion(&buf)
+	case "fish":
+		err = parent.GenFishCompletion(&buf, true)
+
 	default:
-		err = errors.New("unsupported shell type (must be bash or zsh): " + sh)
+		err = errors.New("unsupported shell type (must be bash, zsh or fish): " + sh)
 	}
 
 	if err != nil {

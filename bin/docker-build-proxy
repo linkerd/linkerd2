@@ -17,12 +17,6 @@ rootdir=$( cd "$bindir"/.. && pwd )
 
 dockerfile=$rootdir/Dockerfile-proxy
 
-validate_go_deps_tag "$dockerfile"
-
-(
-    "$bindir"/docker-build-go-deps
-) >/dev/null
-
 get_extra_options() {
     options=
     for var in http_proxy https_proxy no_proxy; do

@@ -27,5 +27,5 @@ name: podinfo
 
 {{ define "partials.proxyInit.volumes.xtables" -}}
 emptyDir: {}
-name: linkerd-proxy-init-xtables-lock
+name: {{ .Values.global.proxyInit.xtMountPath.name }}
 {{- end -}}

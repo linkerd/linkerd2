@@ -2,12 +2,15 @@ import '../css/styles.css';
 import '../img/favicon.png'; // needs to be referenced somewhere so webpack bundles it
 
 import { BrowserRouter, Redirect, Route, Switch } from 'react-router-dom';
+import { DETECTORS, LocaleResolver, TRANSFORMERS } from 'locales-detector';
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 
 import ApiHelpers from './components/util/ApiHelpers.jsx';
 import AppContext from './components/util/AppContext.jsx';
 import Community from './components/Community.jsx';
 import CssBaseline from '@material-ui/core/CssBaseline';
+import Gateway from './components/Gateway.jsx';
+import { I18nProvider } from '@lingui/react';
 import Namespace from './components/Namespace.jsx';
 import Navigation from './components/Navigation.jsx';
 import NoMatch from './components/NoMatch.jsx';
@@ -20,6 +23,10 @@ import ServiceMesh from './components/ServiceMesh.jsx';
 import Tap from './components/Tap.jsx';
 import Top from './components/Top.jsx';
 import TopRoutes from './components/TopRoutes.jsx';
+import _find from 'lodash/find';
+import _isEmpty from 'lodash/isEmpty';
+import catalogEn from './locales/en/messages.js';
+import catalogEs from './locales/es/messages.js';
 import { dashboardTheme } from './components/util/theme.js';
 
 const appMain = document.getElementById('main');
@@ -43,6 +50,15 @@ if (pathArray[0] === '' && pathArray[1] === 'namespaces' && pathArray[2]) {
 } else if (pathArray.length === 2 && pathArray[1] !== '' && pathArray[1] !== 'namespaces') {
   defaultNamespace = '_all';
 }
+
+const detectedLocales = new LocaleResolver(
+  [new DETECTORS.NavigatorDetector()],
+  [new TRANSFORMERS.FallbacksTransformer()],
+).getLocales();
+const catalogOptions = { en: catalogEn, es: catalogEs };
+const selectedLocale =
+    _find(detectedLocales, l => !_isEmpty(catalogOptions[l])) || 'en';
+const selectedCatalog = catalogOptions[selectedLocale] || catalogEn;
 
 class App extends React.Component {
   constructor(props) {
@@ -73,7 +89,11 @@ class App extends React.Component {
   render() {
     return (
       <AppContext.Provider value={this.state}>
-        <AppHTML />
+        <I18nProvider
+          language={selectedLocale}
+          catalogs={{ [selectedLocale]: selectedCatalog }}>
+          <AppHTML />
+        </I18nProvider>
       </AppContext.Provider>
     );
   }
@@ -103,6 +123,9 @@ function AppHTML() {
               <Route
                 path={`${pathPrefix}/controlplane`}
                 render={props => <Navigation {...props} ChildComponent={ServiceMesh} />} />
+              <Route
+                path={`${pathPrefix}/gateways`}
+                render={props => <Navigation {...props} ChildComponent={Gateway} resource="gateway" />} />
               <Route
                 exact
                 path={`${pathPrefix}/namespaces/:namespace`}

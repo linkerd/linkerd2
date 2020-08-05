@@ -88,9 +88,11 @@ type (
 		ProxyContainerName       string `json:"proxyContainerName"`
 		HighAvailability         bool   `json:"highAvailability"`
 		CNIEnabled               bool   `json:"cniEnabled"`
+		EnableEndpointSlices     bool   `json:"enableEndpointSlices"`
 		ControlPlaneTracing      bool   `json:"controlPlaneTracing"`
 		IdentityTrustAnchorsPEM  string `json:"identityTrustAnchorsPEM"`
 		IdentityTrustDomain      string `json:"identityTrustDomain"`
+		PrometheusURL            string `json:"prometheusUrl"`
 		GrafanaURL               string `json:"grafanaUrl"`
 
 		Proxy     *Proxy     `json:"proxy"`
@@ -123,6 +125,8 @@ type (
 		WaitBeforeExitSeconds         uint64           `json:"waitBeforeExitSeconds"`
 		IsGateway                     bool             `json:"isGateway"`
 		RequireIdentityOnInboundPorts string           `json:"requireIdentityOnInboundPorts"`
+		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
+		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

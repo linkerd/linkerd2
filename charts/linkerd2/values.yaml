@@ -16,16 +16,25 @@ global:
 
   namespace: linkerd
 
+  # enables the use of EndpointSlice informers for the destination service;
+  # enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on;
+  # the feature is still experimental.
+  enableEndpointSlices: false
+
   identityTrustAnchorsPEM: |
 
   identityTrustDomain: *cluster_domain
 
+  # url of existing prometheus
+  prometheusUrl: ""
   # url of external grafana instance.
   grafanaUrl: ""
 
   # proxy configuration
   proxy:
     enableExternalProfiles: false
+    outboundConnectTimeout: 1000ms
+    inboundConnectTimeout: 100ms
     image:
       name: gcr.io/linkerd-io/proxy
       pullPolicy: *image_pull_policy
@@ -63,7 +72,7 @@ global:
     image:
       name: gcr.io/linkerd-io/proxy-init
       pullPolicy: *image_pull_policy
-      version: v1.3.3
+      version: v1.3.4
     resources:
       cpu:
         limit: 100m
@@ -294,6 +303,30 @@ prometheus:
   # - name: recording-rules
   #   subPath: recording_rules.yml
   #   configMap: linkerd-prometheus-rules
+  ###
+  ### Sidecar containers allow access to the prometheus data directory,
+  ### e.g. for exporting data to non-prometheus systems.
+  # sidecarContainers:
+  # - name: sidecar
+  #   image: gcr.io/myproject/stackdriver-prometheus-sidecar
+  #   imagePullPolicy: Always
+  #   command:
+  #   - /bin/sh
+  #   - -c
+  #   - |
+  #     exec /bin/stackdriver-prometheus-sidecar \
+  #       --stackdriver.project-id=myproject \
+  #       --stackdriver.kubernetes.location=us-central1 \
+  #       --stackdriver.kubernetes.cluster-name=mycluster \
+  #       --prometheus.wal-directory=/data/wal \
+  #       --log.level=info
+  #   volumeMounts:
+  #   - mountPath: /data
+  #     name: data
+  #   ports:
+  #   - name: foo
+  #     containerPort: 9091
+  #     protocol: TCP
   ### WARNING: persistence is experimental and has not been tested/vetted by the Linkerd team.
   ### As such, please refer to https://linkerd.io/2/tasks/exporting-metrics/ for the recommended approach to metrics data retention.
   # if enabled, creates a persistent volume claim for prometheus data

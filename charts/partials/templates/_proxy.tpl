@@ -14,6 +14,14 @@ env:
 - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
   value: "{{.Values.global.proxy.destinationGetNetworks}}"
 {{ end -}}
+{{ if .Values.global.proxy.inboundConnectTimeout -}}
+- name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
+  value: "{{.Values.global.proxy.inboundConnectTimeout }}"
+{{ end -}}
+{{ if .Values.global.proxy.outboundConnectTimeout -}}
+- name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
+  value: "{{.Values.global.proxy.outboundConnectTimeout }}"
+{{ end -}}
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.global.proxy.ports.control}}
 - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -43,8 +51,13 @@ env:
   valueFrom:
     fieldRef:
       fieldPath: metadata.namespace
+- name: _pod_nodeName
+  valueFrom:
+     fieldRef:
+      fieldPath: spec.nodeName
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-  value: ns:$(_pod_ns)
+  value: |
+    {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
 {{ if eq .Values.global.proxy.component "linkerd-prometheus" -}}
 - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
   value: "10000"
