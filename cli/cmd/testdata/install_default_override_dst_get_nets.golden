@@ -2262,10 +2262,7 @@ data:
     prometheus:
       enabled: true
     publicApi:
-      UID: 0
       enabled: true
-      image: gcr.io/linkerd-io/controller
-      replicas: 0
     tracing:
       enabled: false
 ---
@@ -3107,7 +3104,7 @@ metadata:
   name: linkerd-controller
   namespace: linkerd
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: controller
@@ -3153,7 +3150,7 @@ spec:
             path: /ready
             port: 9995
         securityContext:
-          runAsUser: 0
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config

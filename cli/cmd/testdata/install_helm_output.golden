@@ -2328,10 +2328,10 @@ data:
         scrape_timeout: 10s
       image: prom/prometheus:v2.19.3
     publicApi:
-      UID: 0
+      UID: 2103
       enabled: true
-      image: ""
-      replicas: 0
+      image: gcr.io/linkerd-io/controller
+      replicas: 1
     tracing:
       enabled: false
 ---
@@ -3167,7 +3167,7 @@ metadata:
   name: linkerd-controller
   namespace: linkerd
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: controller
@@ -3194,7 +3194,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
-        image: :linkerd-version
+        image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3213,7 +3213,7 @@ spec:
             path: /ready
             port: 9995
         securityContext:
-          runAsUser: 0
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config

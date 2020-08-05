@@ -2476,10 +2476,14 @@ data:
           limit: 8192Mi
           request: 300Mi
     publicApi:
-      UID: 0
       enabled: true
-      image: gcr.io/linkerd-io/controller
-      replicas: 0
+      resources:
+        cpu:
+          limit: "1"
+          request: 100m
+        memory:
+          limit: 250Mi
+          request: 50Mi
     tracing:
       enabled: false
 ---
@@ -3347,7 +3351,7 @@ metadata:
   name: linkerd-controller
   namespace: linkerd
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: controller
@@ -3415,8 +3419,15 @@ spec:
           httpGet:
             path: /ready
             port: 9995
+        resources:
+          limits:
+            cpu: "1"
+            memory: "250Mi"
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
         securityContext:
-          runAsUser: 0
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
