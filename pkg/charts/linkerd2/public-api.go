@@ -10,14 +10,23 @@ var (
 	publicAPIAddOn = "publicApi"
 )
 
-// PublicAPI is an add-on that installs the public-api component
-type PublicAPI struct {
-	Enabled   bool       `json:"enabled"`
-	Replicas  uint       `json:"replicas,omitempty"`
-	Image     string     `json:"image,omitempty"`
-	UID       int64      `json:"UID,omitempty"`
-	Resources *Resources `json:"resources,omitempty"`
-}
+type (
+
+	// PublicAPI is an add-on that installs the public-api component
+	PublicAPI struct {
+		Enabled   bool            `json:"enabled"`
+		Replicas  uint            `json:"replicas,omitempty"`
+		Image     string          `json:"image,omitempty"`
+		UID       int64           `json:"UID,omitempty"`
+		Resources *Resources      `json:"resources,omitempty"`
+		Proxy     *publicAPIProxy `json:"proxy,omitempty"`
+	}
+
+	// Proxy is a sub-type consisting of the proxy component of public-api
+	publicAPIProxy struct {
+		Resources *Resources `json:"resources,omitempty"`
+	}
+)
 
 // Name returns the name of the Prometheus add-on
 func (p PublicAPI) Name() string {
