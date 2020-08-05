@@ -64,8 +64,9 @@ jobs:
       env:
         ARCHIVES: /home/runner/archives
       run: |
+        bin/docker-pull-binaries $TAG
         mkdir -p $ARCHIVES
-        cp -r ./target/cli/windows/linkerd $ARCHIVES/linkerd-windows.exe
+        cp -r $PWD/target/release/linkerd2-cli-$TAG-windows.exe $ARCHIVES/linkerd-windows.exe
     # `with.path` values do not support environment variables yet, so an
     # absolute path is used here.
     #
