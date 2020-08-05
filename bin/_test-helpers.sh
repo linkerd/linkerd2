@@ -6,9 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-# TO-DO: re-enable upgrade-edge after edge-20-7-5 comes out
-#export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
-export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-stable)
+export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
 export all_test_names=(cluster-domain "${default_test_names[*]}")
 
 handle_input() {
