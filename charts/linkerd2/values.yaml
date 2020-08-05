@@ -258,7 +258,6 @@ smiMetrics:
 
 grafana:
   enabled: true
-  # name: linkerd-grafana
   # image:
   #   name: gcr.io/linkerd-io/grafana
   #   tag: latest

@@ -108,7 +108,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 								return err
 							}
 
-							if err == errorKeyNotFound {
+							if errors.Is(err, errorKeyNotFound) {
 								// default name of grafana instance
 								name = "linkerd-grafana"
 							}
@@ -128,7 +128,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 								return err
 							}
 
-							if err == errorKeyNotFound {
+							if errors.Is(err, errorKeyNotFound) {
 								// default name of grafana instance
 								name = "linkerd-grafana"
 							}
