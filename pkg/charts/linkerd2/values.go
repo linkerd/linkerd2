@@ -63,7 +63,7 @@ type (
 		Grafana    Grafana    `json:"grafana"`
 		Prometheus Prometheus `json:"prometheus"`
 		Tracing    Tracing    `json:"tracing"`
-		PublicAPI  PublicAPI `json:"publicApi"`
+		PublicAPI  PublicAPI  `json:"publicApi"`
 	}
 
 	// Global values common across all charts
@@ -265,7 +265,6 @@ func NewValues(ha bool) (*Values, error) {
 
 	return v, nil
 }
-
 
 // readDefaults read all the default variables from the values.yaml file.
 // chartDir is the root directory of the Helm chart where values.yaml is.

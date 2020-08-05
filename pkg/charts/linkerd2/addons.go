@@ -43,9 +43,9 @@ func ParseAddOnValues(values *Values) ([]AddOn, error) {
 		}
 	}
 
-		if values.PublicAPI.Enabled {
-			addOns = append(addOns, values.PublicAPI)
-		}
+	if values.PublicAPI.Enabled {
+		addOns = append(addOns, values.PublicAPI)
+	}
 
 	return addOns, nil
 }

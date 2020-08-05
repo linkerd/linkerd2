@@ -141,7 +141,7 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 		PublicAPI: PublicAPI{
-			Enabled:  true,
+			Enabled: true,
 		},
 	}
 
