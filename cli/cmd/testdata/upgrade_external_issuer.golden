@@ -791,7 +791,7 @@ metadata:
   name: linkerd-identity
   namespace: linkerd
 spec:
-  replicas: 
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
@@ -815,7 +815,7 @@ spec:
       - args:
         - identity
         - -log-level=info
-        image: :UPGRADE-CONTROL-PLANE-VERSION
+        image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -834,7 +834,7 @@ spec:
             path: /ready
             port: 9990
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1030,7 +1030,7 @@ metadata:
   name: linkerd-destination
   namespace: linkerd
 spec:
-  replicas: 
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
@@ -1057,7 +1057,7 @@ spec:
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
         - -log-level=info
-        image: :UPGRADE-CONTROL-PLANE-VERSION
+        image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1076,7 +1076,7 @@ spec:
             path: /ready
             port: 9996
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1266,7 +1266,7 @@ spec:
           restartPolicy: Never
           containers:
           - name: heartbeat
-            image: :UPGRADE-CONTROL-PLANE-VERSION
+            image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
             imagePullPolicy: IfNotPresent
             args:
             - "heartbeat"
@@ -1274,7 +1274,7 @@ spec:
             - "-log-level=info"
             - "-prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090"
             securityContext:
-              runAsUser: 
+              runAsUser: 2103
 ---
 ###
 ### Web
@@ -1362,7 +1362,7 @@ spec:
             path: /ready
             port: 9994
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1534,7 +1534,7 @@ metadata:
   name: linkerd-proxy-injector
   namespace: linkerd
 spec:
-  replicas: 
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
@@ -1556,7 +1556,7 @@ spec:
       - args:
         - proxy-injector
         - -log-level=info
-        image: :UPGRADE-CONTROL-PLANE-VERSION
+        image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1575,7 +1575,7 @@ spec:
             path: /ready
             port: 9995
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1791,7 +1791,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: linkerd
 spec:
-  replicas: 
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: sp-validator
@@ -1813,7 +1813,7 @@ spec:
       - args:
         - sp-validator
         - -log-level=info
-        image: :UPGRADE-CONTROL-PLANE-VERSION
+        image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1832,7 +1832,7 @@ spec:
             path: /ready
             port: 9997
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -2027,7 +2027,7 @@ metadata:
   name: linkerd-tap
   namespace: linkerd
 spec:
-  replicas: 
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: tap
@@ -2052,7 +2052,7 @@ spec:
         - tap
         - -controller-namespace=linkerd
         - -log-level=info
-        image: :UPGRADE-CONTROL-PLANE-VERSION
+        image: gcr.io/linkerd-io/controller:UPGRADE-CONTROL-PLANE-VERSION
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2073,7 +2073,7 @@ spec:
             path: /ready
             port: 9998
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls

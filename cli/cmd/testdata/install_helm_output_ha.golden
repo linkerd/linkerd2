@@ -896,7 +896,7 @@ metadata:
   name: linkerd-identity
   namespace: linkerd
 spec:
-  replicas: 
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: identity
@@ -943,7 +943,7 @@ spec:
       - args:
         - identity
         - -log-level=info
-        image: :linkerd-version
+        image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -969,7 +969,7 @@ spec:
             cpu: "100m"
             memory: "10Mi"
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1162,7 +1162,7 @@ metadata:
   name: linkerd-destination
   namespace: linkerd
 spec:
-  replicas: 
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: destination
@@ -1212,7 +1212,7 @@ spec:
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
         - -log-level=info
-        image: :linkerd-version
+        image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1238,7 +1238,7 @@ spec:
             cpu: "100m"
             memory: "50Mi"
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1425,7 +1425,7 @@ spec:
           restartPolicy: Never
           containers:
           - name: heartbeat
-            image: :linkerd-version
+            image: gcr.io/linkerd-io/controller:linkerd-version
             imagePullPolicy: IfNotPresent
             args:
             - "heartbeat"
@@ -1440,7 +1440,7 @@ spec:
                 cpu: "100m"
                 memory: "50Mi"
             securityContext:
-              runAsUser: 
+              runAsUser: 2103
 ---
 # Source: linkerd2/templates/web.yaml
 ---
@@ -1537,7 +1537,7 @@ spec:
             cpu: "100m"
             memory: "50Mi"
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1706,7 +1706,7 @@ metadata:
   name: linkerd-proxy-injector
   namespace: linkerd
 spec:
-  replicas: 
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: proxy-injector
@@ -1752,7 +1752,7 @@ spec:
       - args:
         - proxy-injector
         - -log-level=info
-        image: :linkerd-version
+        image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1778,7 +1778,7 @@ spec:
             cpu: "100m"
             memory: "50Mi"
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1991,7 +1991,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: linkerd
 spec:
-  replicas: 
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: sp-validator
@@ -2037,7 +2037,7 @@ spec:
       - args:
         - sp-validator
         - -log-level=info
-        image: :linkerd-version
+        image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2063,7 +2063,7 @@ spec:
             cpu: "100m"
             memory: "50Mi"
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -2255,7 +2255,7 @@ metadata:
   name: linkerd-tap
   namespace: linkerd
 spec:
-  replicas: 
+  replicas: 1
   selector:
     matchLabels:
       linkerd.io/control-plane-component: tap
@@ -2304,7 +2304,7 @@ spec:
         - tap
         - -controller-namespace=linkerd
         - -log-level=info
-        image: :linkerd-version
+        image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2332,7 +2332,7 @@ spec:
             cpu: "100m"
             memory: "50Mi"
         securityContext:
-          runAsUser: 
+          runAsUser: 2103
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls

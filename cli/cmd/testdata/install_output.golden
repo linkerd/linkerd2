@@ -805,7 +805,7 @@ metadata:
   name: linkerd-identity
   namespace: Namespace
 spec:
-  replicas: 
+  replicas: 0
   selector:
     matchLabels:
       ControllerComponentLabel: identity
@@ -848,7 +848,7 @@ spec:
             path: /ready
             port: 9990
         securityContext:
-          runAsUser: 
+          runAsUser: 0
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1037,7 +1037,7 @@ metadata:
   name: linkerd-destination
   namespace: Namespace
 spec:
-  replicas: 
+  replicas: 0
   selector:
     matchLabels:
       ControllerComponentLabel: destination
@@ -1083,7 +1083,7 @@ spec:
             path: /ready
             port: 9996
         securityContext:
-          runAsUser: 
+          runAsUser: 0
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1274,7 +1274,7 @@ spec:
             - "-log-level=ControllerLogLevel"
             - "-prometheus-url=http://linkerd-prometheus.Namespace.svc.cluster.local:9090"
             securityContext:
-              runAsUser: 
+              runAsUser: 0
 ---
 ###
 ### Web
@@ -1362,7 +1362,7 @@ spec:
             path: /ready
             port: 9994
         securityContext:
-          runAsUser: 
+          runAsUser: 0
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1527,7 +1527,7 @@ metadata:
   name: linkerd-proxy-injector
   namespace: Namespace
 spec:
-  replicas: 
+  replicas: 0
   selector:
     matchLabels:
       ControllerComponentLabel: proxy-injector
@@ -1568,7 +1568,7 @@ spec:
             path: /ready
             port: 9995
         securityContext:
-          runAsUser: 
+          runAsUser: 0
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
@@ -1777,7 +1777,7 @@ metadata:
   name: linkerd-sp-validator
   namespace: Namespace
 spec:
-  replicas: 
+  replicas: 0
   selector:
     matchLabels:
       ControllerComponentLabel: sp-validator
@@ -1818,7 +1818,7 @@ spec:
             path: /ready
             port: 9997
         securityContext:
-          runAsUser: 
+          runAsUser: 0
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
@@ -2006,7 +2006,7 @@ metadata:
   name: linkerd-tap
   namespace: Namespace
 spec:
-  replicas: 
+  replicas: 0
   selector:
     matchLabels:
       ControllerComponentLabel: tap
@@ -2052,7 +2052,7 @@ spec:
             path: /ready
             port: 9998
         securityContext:
-          runAsUser: 
+          runAsUser: 0
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls
