@@ -420,6 +420,11 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = configs.Proxy.ProxyInitImageVersion
 	}
 
+	if options.debugImageVersion != "" {
+		configs.Proxy.DebugImageVersion = options.debugImageVersion
+		overrideAnnotations[k8s.DebugImageVersionAnnotation] = options.debugImageVersion
+	}
+
 	if options.imagePullPolicy != "" {
 		configs.Proxy.ProxyImage.PullPolicy = options.imagePullPolicy
 		configs.Proxy.ProxyInitImage.PullPolicy = options.imagePullPolicy
