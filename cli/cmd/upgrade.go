@@ -500,30 +500,6 @@ func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOption
 	return value, nil
 }
 
-func fetchK8sTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
-	secret, err := k.CoreV1().
-		Secrets(controlPlaneNamespace).
-		Get(webhookSecretName(webhook), metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	value := &charts.TLS{
-		KeyPEM: string(secret.Data["tls.key"]),
-		CrtPEM: string(secret.Data["tls.crt"]),
-	}
-
-	if err := injectCABundle(k, webhook, value); err != nil {
-		return nil, err
-	}
-
-	if err := options.verifyTLS(value, webhook); err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
 func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred) error {
 	meshedPods, err := healthcheck.GetMeshedPodsIdentityData(k, "")
 	var problematicPods []string
