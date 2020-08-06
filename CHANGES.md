@@ -1,5 +1,22 @@
 # Changes
 
+## edge-20.8.1
+
+This edge adds multi-arch support to Linkerd! Our docker images now support the
+amd64, arm64, and arm architectures.
+
+* Multicluster
+  * Added a multicluster unlink command for removing multicluster links
+  * Improved multicluster checks to be more informative when the remote API is
+    not reachable
+* Proxy
+  * Enabled a multi-threaded runtime to substantially
+* Other
+  * Fixed an issue where the debug sidecar image was missing during upgrades
+    (thanks @javaducky!)
+  * Updated all control plane plane and proxy container images to be multi-arch
+    to support amd64, arm64, and arm (thanks @aliariff!)
+
 ## edge-20.7.5
 
 This edge brings a new approach to multicluster service mirror controllers and
