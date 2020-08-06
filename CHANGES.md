@@ -10,7 +10,8 @@ amd64, arm64, and arm architectures.
   * Improved multicluster checks to be more informative when the remote API is
     not reachable
 * Proxy
-  * Enabled a multi-threaded runtime to substantially
+  * Enabled a multi-threaded runtime to substantially improve latency especially
+    when the proxy is serving requests for many concurrent connections
 * Other
   * Fixed an issue where the debug sidecar image was missing during upgrades
     (thanks @javaducky!)
