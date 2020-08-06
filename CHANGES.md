@@ -5,6 +5,10 @@
 This edge adds multi-arch support to Linkerd! Our docker images now support the
 amd64, arm64, and arm architectures.
 
+Note: This edge release contains a known issue where the Linkerd-CNI plugin
+does not function correctly. We advise against using the Linkerd-CNI plugin
+with this edge release. For more information, see [the issue](https://github.com/linkerd/linkerd2/issues/4828).
+
 * Multicluster
   * Added a multicluster unlink command for removing multicluster links
   * Improved multicluster checks to be more informative when the remote API is
