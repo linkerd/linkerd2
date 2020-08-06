@@ -19,6 +19,7 @@
 - [Kurio](https://kurio.id)
 - [LeadIQ](https://leadiq.com)
 - [MattePaint](https://www.mattepaint.com/)
+- [MercedesBenz.io](https://www.mercedes-benz.io/)
 - [Mulligan Funding](https://www.mulliganfunding.com/)
 - [National Information Solutions Cooperative (NISC)](https://nisc.coop/)
 - [Nordstrom](https://nordstrom.com/)
