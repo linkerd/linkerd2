@@ -3292,7 +3292,7 @@ func TestGetString(t *testing.T) {
 			},
 			k:             "key1",
 			expected:      "",
-			expectedError: errors.New("key 'key1' not found in config value"),
+			expectedError: errorKeyNotFound,
 		},
 	}
 

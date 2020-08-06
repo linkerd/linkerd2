@@ -2509,9 +2509,6 @@ data:
       grafanaUrl: ""
     grafana:
       enabled: true
-      image:
-        name: gcr.io/linkerd-io/grafana
-      name: linkerd-grafana
     prometheus:
       enabled: true
       image: PrometheusImage

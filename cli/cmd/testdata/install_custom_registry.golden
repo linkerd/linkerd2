@@ -2546,7 +2546,6 @@ data:
       enabled: true
       image:
         name: my.custom.registry/linkerd-io/grafana
-      name: linkerd-grafana
     prometheus:
       enabled: true
     tracing:

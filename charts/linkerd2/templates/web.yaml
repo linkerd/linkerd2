@@ -69,7 +69,7 @@ spec:
         {{- if .Values.global.grafanaUrl }}
         - -grafana-addr={{.Values.global.grafanaUrl}}
         {{- else if .Values.grafana.enabled }}
-        - -grafana-addr={{.Values.grafana.name}}.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:3000
+        - -grafana-addr=linkerd-grafana.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:3000
         {{- end}}
         {{- if .Values.tracing.enabled }}
         - -jaeger-addr={{.Values.tracing.jaeger.name}}.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:16686
@@ -110,7 +110,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
-      {{- $tree := deepCopy . }}      
+      {{- $tree := deepCopy . }}
       {{- if not (empty .Values.webProxyResources) }}
       {{- $r := merge .Values.webProxyResources .Values.global.proxy.resources }}
       {{- $_ := set $tree.Values.global.proxy "resources" $r }}
