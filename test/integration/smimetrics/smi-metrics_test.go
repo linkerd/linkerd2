@@ -14,7 +14,7 @@ import (
 var TestHelper *testutil.TestHelper
 
 type testCase struct {
-	queryUrl string
+	queryURL string
 	filePath string
 }
 
@@ -59,11 +59,11 @@ func TestSMIMetrics(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			queryUrl: fmt.Sprintf("/apis/metrics.smi-spec.io/v1alpha1/namespaces/%s/deployments/linkerd-controller", TestHelper.GetLinkerdNamespace()),
+			queryURL: fmt.Sprintf("/apis/metrics.smi-spec.io/v1alpha1/namespaces/%s/deployments/linkerd-controller", TestHelper.GetLinkerdNamespace()),
 			filePath: "testdata/resources.golden",
 		},
 		{
-			queryUrl: fmt.Sprintf("/apis/metrics.smi-spec.io/v1alpha1/namespaces/%s/deployments/linkerd-controller/edges", TestHelper.GetLinkerdNamespace()),
+			queryURL: fmt.Sprintf("/apis/metrics.smi-spec.io/v1alpha1/namespaces/%s/deployments/linkerd-controller/edges", TestHelper.GetLinkerdNamespace()),
 			filePath: "testdata/edges.golden",
 		},
 	}
@@ -71,7 +71,7 @@ func TestSMIMetrics(t *testing.T) {
 	for _, tc := range testCases {
 		queryArgs := []string{
 			"--raw",
-			tc.queryUrl,
+			tc.queryURL,
 		}
 
 		out, err := TestHelper.Kubectl("get", queryArgs...)
