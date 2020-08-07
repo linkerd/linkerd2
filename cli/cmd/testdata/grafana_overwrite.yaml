@@ -1,5 +1,5 @@
 grafana:
   enabled: true
-  name: linkerd-grafana-overwrite
   image:
     name: linkerd-image-overwrite
+    tag: image-tag-overwrite

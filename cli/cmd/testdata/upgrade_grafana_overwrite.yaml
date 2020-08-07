@@ -763,7 +763,7 @@ subjects:
   name: linkerd-destination
   namespace: linkerd
 - kind: ServiceAccount
-  name: linkerd-grafana-overwrite
+  name: linkerd-grafana
   namespace: linkerd
 - kind: ServiceAccount
   name: linkerd-heartbeat
@@ -802,7 +802,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"UPGRADE-CONTROL-PLANE-VERSION","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"},"autoInjectContext":null,"omitWebhookSideEffects":false,"clusterDomain":"cluster.local","endpointSliceEnabled":false}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"UPGRADE-PROXY-VERSION","proxyInitImageVersion":"v1.3.3","debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION","destinationGetNetworks":"DST-GET-NETWORKS","logFormat":"plain","outboundConnectTimeout":"","inboundConnectTimeout":""}
+    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"UPGRADE-PROXY-VERSION","proxyInitImageVersion":"v1.3.4","debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"UPGRADE-DEBUG-VERSION","destinationGetNetworks":"DST-GET-NETWORKS","logFormat":"plain","outboundConnectTimeout":"","inboundConnectTimeout":""}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
 ---
@@ -1022,7 +1022,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1262,7 +1262,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1499,7 +1499,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1643,7 +1643,7 @@ spec:
       containers:
       - args:
         - -api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
-        - -grafana-addr=linkerd-grafana-overwrite.linkerd.svc.cluster.local:3000
+        - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -controller-namespace=linkerd
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
@@ -1785,7 +1785,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2001,7 +2001,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2256,7 +2256,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2499,7 +2499,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2554,12 +2554,13 @@ metadata:
 data:
   values: |-
     global:
+      prometheusUrl: ""
       grafanaUrl: ""
     grafana:
       enabled: true
       image:
         name: linkerd-image-overwrite
-      name: linkerd-grafana-overwrite
+        tag: image-tag-overwrite
     prometheus:
       enabled: true
     tracing:
@@ -2572,7 +2573,7 @@ data:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-grafana-overwrite
+  name: linkerd-grafana
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
@@ -2585,7 +2586,7 @@ metadata:
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: linkerd-grafana-overwrite-config
+  name: linkerd-grafana-config
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
@@ -2594,7 +2595,7 @@ metadata:
     linkerd.io/created-by: linkerd/cli dev-undefined
 data:
   grafana.ini: |-
-    instance_name = linkerd-grafana-overwrite
+    instance_name = linkerd-grafana
 
     [server]
     root_url = %(protocol)s://%(domain)s:/grafana/
@@ -2645,7 +2646,7 @@ data:
 kind: Service
 apiVersion: v1
 metadata:
-  name: linkerd-grafana-overwrite
+  name: linkerd-grafana
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: grafana
@@ -2672,7 +2673,7 @@ metadata:
     app.kubernetes.io/version: UPGRADE-CONTROL-PLANE-VERSION
     linkerd.io/control-plane-component: grafana
     linkerd.io/control-plane-ns: linkerd
-  name: linkerd-grafana-overwrite
+  name: linkerd-grafana
   namespace: linkerd
 spec:
   replicas: 1
@@ -2680,7 +2681,7 @@ spec:
     matchLabels:
       linkerd.io/control-plane-component: grafana
       linkerd.io/control-plane-ns: linkerd
-      linkerd.io/proxy-deployment: linkerd-grafana-overwrite
+      linkerd.io/proxy-deployment: linkerd-grafana
   template:
     metadata:
       annotations:
@@ -2691,7 +2692,7 @@ spec:
         linkerd.io/control-plane-component: grafana
         linkerd.io/control-plane-ns: linkerd
         linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-grafana-overwrite
+        linkerd.io/proxy-deployment: linkerd-grafana
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
@@ -2703,7 +2704,7 @@ spec:
         # see https://github.com/grafana/grafana/issues/20096
         - name: GODEBUG
           value: netdns=go
-        image: linkerd-image-overwrite:UPGRADE-CONTROL-PLANE-VERSION
+        image: linkerd-image-overwrite:image-tag-overwrite
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2841,7 +2842,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2865,7 +2866,7 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
-      serviceAccountName: linkerd-grafana-overwrite
+      serviceAccountName: linkerd-grafana
       volumes:
       - emptyDir: {}
         name: data
@@ -2877,7 +2878,7 @@ spec:
             path: provisioning/datasources/datasources.yaml
           - key: dashboards.yaml
             path: provisioning/dashboards/dashboards.yaml
-          name: linkerd-grafana-overwrite-config
+          name: linkerd-grafana-config
         name: grafana-config
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
@@ -3134,7 +3135,7 @@ spec:
         - --log.level=info
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
-        image: prom/prometheus:v2.15.2
+        image: prom/prometheus:v2.19.3
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3280,7 +3281,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.4
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

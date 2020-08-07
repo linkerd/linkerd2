@@ -33,7 +33,7 @@ spec:
     metadata:
       annotations:
         {{- if empty .Values.global.cliVersion }}
-        linkerd.io/helm-release-version: {{ $.Release.Revision | quote}}
+        checksum/config: {{ include (print $.Template.BasePath "/proxy-injector-rbac.yaml") . | sha256sum }}
         {{- end }}
         {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
         {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}

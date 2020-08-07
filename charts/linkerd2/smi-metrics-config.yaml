@@ -1,5 +1,6 @@
 mesh: linkerd
 linkerd:
+  // TODO: update to use `global.prometheusUrl` field, before falling back to the default value
   prometheusUrl: http://linkerd-prometheus.linkerd.svc.cluster.local:9090
   resourceQueries:
     p99_response_latency : |-
