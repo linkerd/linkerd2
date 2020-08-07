@@ -768,7 +768,6 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.EnablePodAntiAffinity = options.highAvailability
 	installValues.Global.HighAvailability = options.highAvailability
 	installValues.Global.ImagePullPolicy = options.imagePullPolicy
-	installValues.Grafana["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	installValues.Global.Namespace = controlPlaneNamespace
 	installValues.Global.CNIEnabled = options.cniEnabled
 	installValues.Global.EnableEndpointSlices = options.enableEndpointSlices
@@ -777,6 +776,12 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.RestrictDashboardPrivileges = options.restrictDashboardPrivileges
 	installValues.DisableHeartBeat = options.disableHeartbeat
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
+	if options.dockerRegistry != "gcr.io/linkerd-io" {
+		if installValues.Grafana["image"] == nil {
+			installValues.Grafana["image"] = map[string]interface{}{}
+		}
+		installValues.Grafana["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+	}
 
 	installValues.Global.Proxy = &l5dcharts.Proxy{
 		DestinationGetNetworks: strings.Join(options.destinationGetNetworks, ","),

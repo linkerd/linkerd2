@@ -134,10 +134,6 @@ func TestNewValues(t *testing.T) {
 		Tap:              &Tap{TLS: &TLS{}},
 		Grafana: Grafana{
 			"enabled": true,
-			"name":    "linkerd-grafana",
-			"image": map[string]interface{}{
-				"name": "gcr.io/linkerd-io/grafana",
-			},
 		},
 	}
 
@@ -187,10 +183,6 @@ func TestNewValues(t *testing.T) {
 
 		expected.Grafana = Grafana{
 			"enabled": true,
-			"name":    "linkerd-grafana",
-			"image": map[string]interface{}{
-				"name": "gcr.io/linkerd-io/grafana",
-			},
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
 					"limit":   controllerResources.CPU.Limit,
