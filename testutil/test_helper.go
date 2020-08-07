@@ -314,6 +314,18 @@ func (h *TestHelper) PipeToLinkerdRun(stdin string, arg ...string) (string, stri
 	return combinedOutput(stdin, h.linkerd, withParams...)
 }
 
+// HelmRun executes a helm command appended with the --context
+func (h *TestHelper) HelmRun(arg ...string) (string, string, error) {
+	return h.PipeToHelmRun("", arg...)
+}
+
+// PipeToHelmRun executes a Helm command appended with the
+// --context flag, and provides a string at Stdin.
+func (h *TestHelper) PipeToHelmRun(stdin string, arg ...string) (string, string, error) {
+	withParams := append([]string{"--kube-context=" + h.k8sContext}, arg...)
+	return combinedOutput(stdin, h.helm.path, withParams...)
+}
+
 // LinkerdRunStream initiates a linkerd command appended with the
 // --linkerd-namespace flag, and returns a Stream that can be used to read the
 // command's output while it is still executing.
