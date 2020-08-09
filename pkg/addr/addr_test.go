@@ -239,3 +239,44 @@ func TestParseProxyIPV4(t *testing.T) {
 		}
 	}
 }
+
+func TestParsePublicIPV4(t *testing.T) {
+	var testCases = []struct {
+		ip      string
+		expAddr *public.IPAddress
+		expErr  bool
+	}{
+		{
+			ip:      "10.0",
+			expAddr: nil,
+			expErr:  true,
+		},
+		{
+			ip:      "x.x.x.x",
+			expAddr: nil,
+			expErr:  true,
+		},
+		{
+			ip: "10.10.10.11",
+			expAddr: &public.IPAddress{
+				Ip: &public.IPAddress_Ipv4{Ipv4: 168430091},
+			},
+			expErr: false,
+		},
+	}
+
+	for _, testCase := range testCases {
+		res, err := ParsePublicIPV4(testCase.ip)
+		if testCase.expErr && err == nil {
+			t.Fatalf("expected get err, but get nil")
+		}
+		if !testCase.expErr {
+			if err != nil {
+				t.Fatalf("Unexpected err %v", err)
+			}
+			if !proto.Equal(res, testCase.expAddr) {
+				t.Fatalf("Unexpected TCP Address: [%+v] expected: [%+v]", res, testCase.expAddr)
+			}
+		}
+	}
+}
