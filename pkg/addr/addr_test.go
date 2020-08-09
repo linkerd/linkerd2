@@ -280,3 +280,32 @@ func TestParsePublicIPV4(t *testing.T) {
 		}
 	}
 }
+
+func TestProxyAddressToString(t *testing.T) {
+	var testCases = []struct {
+		addr   *pb.TcpAddress
+		expStr string
+	}{
+		{
+			addr: &pb.TcpAddress{
+				Ip:   &pb.IPAddress{Ip: &pb.IPAddress_Ipv4{Ipv4: 1}},
+				Port: 1234,
+			},
+			expStr: "0.0.0.1:1234",
+		},
+		{
+			addr: &pb.TcpAddress{
+				Ip:   &pb.IPAddress{Ip: &pb.IPAddress_Ipv4{Ipv4: 65535}},
+				Port: 5678,
+			},
+			expStr: "0.0.255.255:5678",
+		},
+	}
+
+	for _, testCase := range testCases {
+		res := ProxyAddressToString(testCase.addr)
+		if !(res == testCase.expStr) {
+			t.Fatalf("Unexpected string: %s expected: %s", res, testCase.expStr)
+		}
+	}
+}
