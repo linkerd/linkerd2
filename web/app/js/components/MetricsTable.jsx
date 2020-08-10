@@ -156,7 +156,7 @@ const gatewayColumns = [
   },
 ];
 
-const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, grafana, jaeger) => {
+const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, PrefixedLink, isTcpTable, grafana, jaeger, redirect) => {
   const isAuthorityTable = resource === 'authority';
   const isTrafficSplitTable = resource === 'trafficsplit';
   const isMultiResourceTable = resource === 'multi_resource';
@@ -196,6 +196,8 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
           name={row.name}
           namespace={row.namespace}
           resource={row.type}
+          redirect={redirect}
+          addr={grafana}
           PrefixedLink={PrefixedLink} />
       );
     },
@@ -216,6 +218,8 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
           name={row.name}
           namespace={row.namespace}
           resource={row.type}
+          redirect={redirect}
+          addr={jaeger}
           PrefixedLink={PrefixedLink} />
       );
     },
@@ -298,12 +302,12 @@ const preprocessMetrics = metrics => {
   return tableData;
 };
 
-const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace, grafana, jaeger }) => {
+const MetricsTable = ({ metrics, resource, showNamespaceColumn, showName, title, api, isTcpTable, selectedNamespace, grafana, jaeger, redirect }) => {
   const showNsColumn = resource === 'namespace' || selectedNamespace !== '_all' ? false : showNamespaceColumn;
   const showNameColumn = resource !== 'trafficsplit' ? true : showName;
   let orderBy = 'name';
   if (resource === 'trafficsplit' && !showNameColumn) { orderBy = 'leaf'; }
-  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, grafana, jaeger);
+  const columns = columnDefinitions(resource, showNsColumn, showNameColumn, api.PrefixedLink, isTcpTable, grafana, jaeger, redirect);
   const rows = preprocessMetrics(metrics);
   return (
     <BaseTable
@@ -330,6 +334,7 @@ MetricsTable.propTypes = {
   title: PropTypes.string,
   grafana: PropTypes.string,
   jaeger: PropTypes.string,
+  redirect: PropTypes.string.isRequired,
 };
 
 MetricsTable.defaultProps = {

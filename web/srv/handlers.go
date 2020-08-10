@@ -33,6 +33,7 @@ type (
 		jaegerProxy         *reverseProxy
 		hc                  healthChecker
 		statCache           *cache.Cache
+		redirect            bool
 	}
 )
 
@@ -49,6 +50,7 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 		PathPrefix:          pathPfx,
 		Grafana:             h.grafana,
 		Jaeger:              h.jaeger,
+		Redirect:            h.redirect,
 	}
 
 	version, err := h.apiClient.Version(req.Context(), &pb.Empty{}) // TODO: remove and call /api/version from web app

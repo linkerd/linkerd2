@@ -54,6 +54,7 @@ type (
 		PathPrefix          string
 		Jaeger              string
 		Grafana             string
+		Redirect            bool
 	}
 
 	healthChecker interface {
@@ -86,6 +87,7 @@ func NewServer(
 	addr string,
 	grafanaAddr string,
 	jaegerAddr string,
+	noProxy bool,
 	templateDir string,
 	staticDir string,
 	uuid string,
@@ -122,6 +124,7 @@ func NewServer(
 		grafana:             grafanaAddr,
 		jaeger:              jaegerAddr,
 		hc:                  hc,
+		redirect:            noProxy,
 		statCache:           cache.New(statExpiration, statCleanupInterval),
 	}
 
