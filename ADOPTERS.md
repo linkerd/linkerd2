@@ -25,6 +25,7 @@
 - [Nordstrom](https://nordstrom.com/)
 - [Paybase](https://paybase.io/)
 - [PlayStudios Asia](https://www.playstudios.asia)
+- [PriceKinetics](https://www.pricekinetics.com.au/) (GVC Australia)
 - [Projector](https://projector.com)
 - [Purdue University Global](https://www.purdueglobal.edu/)
 - [Studyo](https://studyo.co)
