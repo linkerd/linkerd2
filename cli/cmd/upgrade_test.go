@@ -91,6 +91,7 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
 
 	issuer := generateIssuerCerts(t, true)
+	defer issuer.cleanup()
 
 	identity := identityWithAnchorsAndTrustDomain{
 		TrustDomain:     "cluster.local",
@@ -131,6 +132,7 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
 
 	issuer := generateIssuerCerts(t, true)
+	defer issuer.cleanup()
 
 	identity := identityWithAnchorsAndTrustDomain{
 		TrustDomain:     "cluster.local",
@@ -153,6 +155,7 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 	}
 
 	upgradedIssuer := generateIssuerCerts(t, true)
+	defer upgradedIssuer.cleanup()
 	upgradeFlags.Set("identity-trust-anchors-file", upgradedIssuer.caFile)
 	upgradeFlags.Set("identity-issuer-certificate-file", upgradedIssuer.crtFile)
 	upgradeFlags.Set("identity-issuer-key-file", upgradedIssuer.keyFile)
@@ -170,6 +173,7 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
 
 	issuerCerts := generateIssuerCerts(t, true)
+	defer issuerCerts.cleanup()
 
 	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
 	upgradeFlags.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
@@ -218,6 +222,7 @@ func TestUpgradeFailsWithOnlyIssuerCert(t *testing.T) {
 	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
 
 	issuerCerts := generateIssuerCerts(t, true)
+	defer issuerCerts.cleanup()
 	upgradeOpts.identityOptions.identityExternalIssuer = true
 	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
 	upgradeFlags.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
@@ -234,6 +239,7 @@ func TestUpgradeFailsWithOnlyIssuerKey(t *testing.T) {
 	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
 
 	issuerCerts := generateIssuerCerts(t, true)
+	defer issuerCerts.cleanup()
 	upgradeOpts.identityOptions.identityExternalIssuer = true
 	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
 	upgradeFlags.Set("identity-issuer-key-file", issuerCerts.keyFile)
@@ -250,10 +256,12 @@ func TestUpgradeRootFailsWithOldPods(t *testing.T) {
 	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
 
 	oldIssuer := generateIssuerCerts(t, false)
+	defer oldIssuer.cleanup()
 
 	install := renderInstall(t, installValues(t, installOpts, installFlags))
 
 	issuerCerts := generateIssuerCerts(t, true)
+	defer issuerCerts.cleanup()
 	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
 	upgradeFlags.Set("identity-issuer-key-file", issuerCerts.keyFile)
 	upgradeFlags.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
@@ -341,18 +349,21 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 	// This tests the case where the webhook certs are not self-signed.
 	values := installValues(t, installOpts, installFlags)
 	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
+	defer injectorCerts.cleanup()
 	values.ProxyInjector.TLS = &linkerd2.TLS{
 		CaBundle: injectorCerts.ca,
 		CrtPEM:   injectorCerts.crt,
 		KeyPEM:   injectorCerts.key,
 	}
 	tapCerts := generateCerts(t, "linkerd-tap.linkerd.svc", false)
+	defer tapCerts.cleanup()
 	values.Tap.TLS = &linkerd2.TLS{
 		CaBundle: tapCerts.ca,
 		CrtPEM:   tapCerts.crt,
 		KeyPEM:   tapCerts.key,
 	}
 	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
+	defer validatorCerts.cleanup()
 	values.ProfileValidator.TLS = &linkerd2.TLS{
 		CaBundle: validatorCerts.ca,
 		CrtPEM:   validatorCerts.crt,
@@ -541,12 +552,6 @@ func generateCerts(t *testing.T, name string, b64encode bool) issuerCerts {
 		t.Fatal(err)
 	}
 
-	t.Cleanup(func() {
-		os.Remove(caFile.Name())
-		os.Remove(crtFile.Name())
-		os.Remove(keyFile.Name())
-	})
-
 	_, err = caFile.Write([]byte(caPem))
 	if err != nil {
 		t.Fatal(err)
@@ -574,6 +579,12 @@ func generateCerts(t *testing.T, name string, b64encode bool) issuerCerts {
 		keyFile: keyFile.Name(),
 		key:     keyPem,
 	}
+}
+
+func (ic issuerCerts) cleanup() {
+	os.Remove(ic.caFile)
+	os.Remove(ic.crtFile)
+	os.Remove(ic.keyFile)
 }
 
 func externalIssuerSecret(certs issuerCerts) string {
