@@ -71,11 +71,12 @@ func TestSMIMetrics(t *testing.T) {
 
 	for _, tc := range testCases {
 		queryArgs := []string{
+			"get",
 			"--raw",
 			tc.queryURL,
 		}
 
-		out, err := TestHelper.Kubectl("get", queryArgs...)
+		out, err := TestHelper.Kubectl("", queryArgs...)
 		if err != nil {
 			testutil.Fatalf(t, "failed to query smi-metrics API: %s", err)
 		}
