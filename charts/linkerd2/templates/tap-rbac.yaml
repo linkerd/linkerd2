@@ -105,8 +105,8 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 type: Opaque
 data:
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.tap.keyPEM)) (empty .Values.tap.keyPEM) }}
+  crt.pem: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
+  key.pem: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.tap.keyPEM)) (empty .Values.tap.keyPEM) }}
 ---
 {{- end }}
 apiVersion: apiregistration.k8s.io/v1
@@ -127,4 +127,4 @@ spec:
 {{- if and (.Values.tap.externalSecret) (empty .Values.tap.caBundle) }}
   {{- fail "If tap.externalSecret is true then you need to provide tap.caBundle" }}
 {{- end }}
-  caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.tap.caBundle)) (empty .Values.tap.caBundle) }}
+  caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tap.caBundle)) (empty .Values.tap.caBundle) }}
