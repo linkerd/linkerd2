@@ -73,6 +73,10 @@
 {{- define "linkerd.configs.install" -}}
 {
   "cliVersion":"{{ .Values.global.linkerdVersion }}",
-  "flags":[]
+  "flags":[
+  {{- if .Values.disableHeartBeat -}}
+  {"name": "disable-heartbeat", "value": "true"}
+  {{- end -}}
+  ]
 }
 {{- end -}}
