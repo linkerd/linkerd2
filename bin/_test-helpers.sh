@@ -350,7 +350,7 @@ run_helm-deep_test() {
   --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
-    run_test "$test"
+    run_test "$test" --helm-path="$helm_path"
   done
   helm_cleanup
 }

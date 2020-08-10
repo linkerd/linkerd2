@@ -78,7 +78,7 @@ func TestSMIMetrics(t *testing.T) {
 
 		out, err := TestHelper.Kubectl("", queryArgs...)
 		if err != nil {
-			testutil.Fatalf(t, "failed to query smi-metrics API: %s", err)
+			testutil.Fatalf(t, "failed to query smi-metrics URL %s: %s",tc.queryURL, err)
 		}
 
 		// check resources output
