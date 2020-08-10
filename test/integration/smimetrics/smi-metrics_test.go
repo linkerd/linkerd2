@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
 )
@@ -69,30 +70,38 @@ func TestSMIMetrics(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		queryArgs := []string{
-			"get",
-			"--raw",
-			tc.queryURL,
-		}
+	timeout := 50 * time.Second
+	err = TestHelper.RetryFor(timeout, func() error {
+		for _, tc := range testCases {
+			queryArgs := []string{
+				"get",
+				"--raw",
+				tc.queryURL,
+			}
 
-		out, err := TestHelper.Kubectl("", queryArgs...)
-		if err != nil {
-			testutil.Fatalf(t, "failed to query smi-metrics URL %s: %s",tc.queryURL, err)
-		}
+			out, err := TestHelper.Kubectl("", queryArgs...)
+			if err != nil {
+				fmt.Errorf( "failed to query smi-metrics URL %s: %s\n%s", tc.queryURL, err, out)
+			}
 
-		// check resources output
-		vars := struct{ Ns string }{TestHelper.GetLinkerdNamespace()}
-		tpl := template.Must(template.ParseFiles(tc.filePath))
-		var buf bytes.Buffer
-		if err := tpl.Execute(&buf, vars); err != nil {
-			testutil.Fatalf(t, "failed to parse %s template: %s", tc.filePath, err)
-		}
+			// check resources output
+			vars := struct{ Ns string }{TestHelper.GetLinkerdNamespace()}
+			tpl := template.Must(template.ParseFiles(tc.filePath))
+			var buf bytes.Buffer
+			if err := tpl.Execute(&buf, vars); err != nil {
+				return fmt.Errorf( "failed to parse %s template: %s", tc.filePath, err)
+			}
 
-		r := regexp.MustCompile(buf.String())
-		if !r.MatchString(out) {
-			testutil.Fatalf(t, "Expected output:\n%s\nactual:\n%s", buf.String(), out)
+			r := regexp.MustCompile(buf.String())
+			if !r.MatchString(out) {
+				return fmt.Errorf( "Expected output:\n%s\nactual:\n%s", buf.String(), out)
+			}
 		}
+		return nil
+	})
+
+	if err != nil {
+		testutil.AnnotatedError(t, fmt.Sprintf("timed-out checking smi-metrics output (%s)", timeout), err)
 	}
 
 }
