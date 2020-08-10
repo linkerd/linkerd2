@@ -333,10 +333,11 @@ run_uninstall_test() {
 
 run_deep_test() {
   local tests=()
+  export helm_path="$bindir"/helm
   run_test "$test_directory/install_test.go" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
-    run_test "$test"
+    run_test "$test" --helm-path="$helm_path"
   done
 }
 

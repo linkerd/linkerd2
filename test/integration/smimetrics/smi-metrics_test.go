@@ -33,6 +33,7 @@ func TestSMIMetrics(t *testing.T) {
 	}
 
 	args := []string{
+		"install",
 		"smi-metrics",
 		"smi-metrics.tgz",
 		"--set",
