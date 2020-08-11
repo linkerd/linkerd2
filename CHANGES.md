@@ -2,12 +2,8 @@
 
 ## edge-20.8.1
 
-This edge adds multi-arch support to Linkerd! Our docker images now support the
-amd64, arm64, and arm architectures.
-
-Note: This edge release contains a known issue where the Linkerd-CNI plugin
-does not function correctly. We advise against using the Linkerd-CNI plugin
-with this edge release. For more information, see [the issue](https://github.com/linkerd/linkerd2/issues/4828).
+This edge adds multi-arch support to Linkerd! Our docker images and CLI now
+support the amd64, arm64, and arm architectures.
 
 * Multicluster
   * Added a multicluster unlink command for removing multicluster links
@@ -21,6 +17,8 @@ with this edge release. For more information, see [the issue](https://github.com
     (thanks @javaducky!)
   * Updated all control plane plane and proxy container images to be multi-arch
     to support amd64, arm64, and arm (thanks @aliariff!)
+  * Fixed an issue where check was failing when DisableHeartBeat was set to true
+    (thanks @mvaal!)
 
 ## edge-20.7.5
 
