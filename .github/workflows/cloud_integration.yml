@@ -80,7 +80,7 @@ jobs:
       id: install_cli
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
-        CMD="$PWD/target/release/linkerd2-cli-$TAG-linux"
+        CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
         bin/docker-pull-binaries $TAG
         $CMD version --client
         # validate CLI version matches the repo
