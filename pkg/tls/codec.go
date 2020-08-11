@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // === ENCODE ===
@@ -86,6 +88,45 @@ func DecodePEMKey(txt string) (GenericPrivateKey, error) {
 	default:
 		return nil, fmt.Errorf("unsupported block type: '%s'", block.Type)
 	}
+}
+
+// DecodeDERKey parses a DER-encoded private key from the named path.
+//
+// Because this is DER encoded, we are unable to match the starting blocks of
+// the keys like we can in DecodePEMKey. Therefore, we attemp to parse as an
+// EC PRIVATE KEY, RSA PRIVATE KEY, and then PRIVATE KEY. Only when all of
+// these fail is an error returned.
+func DecodeDERKey(der []byte) (GenericPrivateKey, error) {
+	ecKey, err := x509.ParseECPrivateKey(der)
+	if err != nil {
+		log.Debugf("failed to parse as EC PRIVATE KEY: %s", err)
+	} else {
+		return privateKeyEC{ecKey}, nil
+	}
+
+	rsaKey, err := x509.ParsePKCS1PrivateKey(der)
+	if err != nil {
+		log.Debugf("failed to parse as RSA PRIVATE KEY: %s", err)
+	} else {
+		return privateKeyRSA{rsaKey}, nil
+	}
+
+	pKey, err := x509.ParsePKCS8PrivateKey(der)
+	if err != nil {
+		log.Debugf("failed to parse as PRIVATE KEY: %s", err)
+	} else {
+		if ec, ok := pKey.(*ecdsa.PrivateKey); ok {
+			return privateKeyEC{ec}, nil
+		}
+		if rsa, ok := pKey.(*rsa.PrivateKey); ok {
+			return privateKeyRSA{rsa}, nil
+		}
+		return nil, fmt.Errorf(
+			"unsupported PKCS#8 encoded private key type: '%s', linkerd2 only supports ECDSA and RSA private keys",
+			reflect.TypeOf(pKey))
+	}
+
+	return nil, fmt.Errorf("unable to parse key")
 }
 
 // DecodePEMCertificates parses a string containing PEM-encoded certificates.
