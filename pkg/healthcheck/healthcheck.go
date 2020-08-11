@@ -23,6 +23,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
+	admissionRegistration "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -1208,7 +1209,11 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-injection-disabled",
 					warning:     true,
 					check: func(context.Context) error {
-						if hc.isHA() {
+						policy, err := hc.getMutatingWebhookFailurePolicy()
+						if err != nil {
+							return err
+						}
+						if policy != nil && *policy == admissionRegistration.Fail {
 							return hc.checkHAMetadataPresentOnKubeSystemNamespace()
 						}
 						return &SkipError{Reason: "not run for non HA installs"}
@@ -1665,6 +1670,17 @@ func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error 
 	}
 
 	return checkResources("CustomResourceDefinitions", objects, []string{"serviceprofiles.linkerd.io"}, shouldExist)
+}
+
+func (hc *HealthChecker) getMutatingWebhookFailurePolicy() (*admissionRegistration.FailurePolicyType, error) {
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	if len(mwc.Webhooks) != 1 {
+		return nil, fmt.Errorf("expected 1 webhooks, found %d", len(mwc.Webhooks))
+	}
+	return mwc.Webhooks[0].FailurePolicy, nil
 }
 
 func (hc *HealthChecker) checkMutatingWebhookConfigurations(shouldExist bool) error {
