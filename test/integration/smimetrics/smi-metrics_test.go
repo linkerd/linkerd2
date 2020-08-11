@@ -65,7 +65,7 @@ func TestSMIMetrics(t *testing.T) {
 			filePath: "testdata/resources.golden",
 		},
 		{
-			queryURL: fmt.Sprintf("/apis/metrics.smi-spec.io/v1alpha1/namespaces/%s/deployments/linkerd-controller/edges", TestHelper.GetLinkerdNamespace()),
+			queryURL: fmt.Sprintf("/apis/metrics.smi-spec.io/v1alpha1/namespaces/%s/deployments/linkerd-destination/edges", TestHelper.GetLinkerdNamespace()),
 			filePath: "testdata/edges.golden",
 		},
 	}
@@ -81,7 +81,7 @@ func TestSMIMetrics(t *testing.T) {
 
 			out, err := TestHelper.Kubectl("", queryArgs...)
 			if err != nil {
-				fmt.Errorf( "failed to query smi-metrics URL %s: %s\n%s", tc.queryURL, err, out)
+				return fmt.Errorf("failed to query smi-metrics URL %s: %s\n%s", tc.queryURL, err, out)
 			}
 
 			// check resources output
@@ -89,12 +89,12 @@ func TestSMIMetrics(t *testing.T) {
 			tpl := template.Must(template.ParseFiles(tc.filePath))
 			var buf bytes.Buffer
 			if err := tpl.Execute(&buf, vars); err != nil {
-				return fmt.Errorf( "failed to parse %s template: %s", tc.filePath, err)
+				return fmt.Errorf("failed to parse %s template: %s", tc.filePath, err)
 			}
 
 			r := regexp.MustCompile(buf.String())
 			if !r.MatchString(out) {
-				return fmt.Errorf( "Expected output:\n%s\nactual:\n%s", buf.String(), out)
+				return fmt.Errorf("Expected output:\n%s\nactual:\n%s", buf.String(), out)
 			}
 		}
 		return nil
