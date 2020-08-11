@@ -52,6 +52,9 @@ func main() {
 			log.Fatalf("failed to read key file: %s", err)
 		}
 		k, err := tls.DecodeDERKey(keyb)
+		if err != nil {
+			log.Fatalf("failed to decode key file: %s", err)
+		}
 		key = k.Signer()
 	} else {
 		key, err = generateAndStoreKey(keyPath)

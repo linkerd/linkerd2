@@ -93,7 +93,7 @@ func DecodePEMKey(txt string) (GenericPrivateKey, error) {
 // DecodeDERKey parses a DER-encoded private key from the named path.
 //
 // Because this is DER encoded, we are unable to match the starting blocks of
-// the keys like we can in DecodePEMKey. Therefore, we attemp to parse as an
+// the keys like we can in DecodePEMKey. Therefore, we attempt to parse as an
 // EC PRIVATE KEY, RSA PRIVATE KEY, and then PRIVATE KEY. Only when all of
 // these fail is an error returned.
 func DecodeDERKey(der []byte) (GenericPrivateKey, error) {
