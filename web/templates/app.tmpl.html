@@ -6,7 +6,7 @@
     data-uuid="{{.UUID}}"
     data-grafana="{{.Grafana}}"
     data-jaeger="{{.Jaeger}}"
-    data-redirect={{.Redirect}}>
+    data-redirect={{.GrafanaRedirect}}>
     {{ if .Error }}
       <p>Failed to call public API: {{ .ErrorMessage }}</p>
     {{ end }}

@@ -116,6 +116,8 @@ controllerUID: 2103
 #destinationResources:
 #destinationProxyResources:
 
+# Flag to configure dashboard to re-direct(instead of proxy'ing) for grafana URL
+grafanaRedirect: false
 
 # web dashboard configuration
 dashboard:

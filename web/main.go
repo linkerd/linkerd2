@@ -36,7 +36,7 @@ func main() {
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	enforcedHost := cmd.String("enforced-host", "", "regexp describing the allowed values for the Host header; protects from DNS-rebinding attacks")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
-	redirect := cmd.Bool("redirect", false, "enabling this redirects instead of proxying for grafana Url")
+	grafanaRedirect := cmd.Bool("grafana-redirect", false, "enabling this redirects instead of proxying for grafana Url")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -99,7 +99,7 @@ func main() {
 		log.Fatalf("invalid --enforced-host parameter: %s", err)
 	}
 
-	server := srv.NewServer(*addr, *grafanaAddr, *jaegerAddr, *redirect, *templateDir, *staticDir, uuid,
+	server := srv.NewServer(*addr, *grafanaAddr, *jaegerAddr, *grafanaRedirect, *templateDir, *staticDir, uuid,
 		*controllerNamespace, clusterDomain, *reload, reHost, client, k8sAPI, hc)
 
 	go func() {
