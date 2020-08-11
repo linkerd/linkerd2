@@ -13,26 +13,8 @@ function jaegerQuery(name, namespace, resource) {
   }
 }
 
-const JaegerLink = ({ addr, PrefixedLink, redirect, name, namespace, resource }) => {
-  let link = 'jaeger';
-
-  if (redirect === 'true') {
-    link = addr;
-  }
-
-  link += `/search?service=linkerd-proxy&tags=${jaegerQuery(name, namespace, resource)}`;
-
-
-  if (redirect === 'true') {
-    return (
-      <a
-        href={link}
-        targetBlank>
-        &nbsp;&nbsp;
-        {jaegerIcon}
-      </a>
-    );
-  }
+const JaegerLink = ({ PrefixedLink, name, namespace, resource }) => {
+  const link = `jaeger/search?service=linkerd-proxy&tags=${jaegerQuery(name, namespace, resource)}`;
 
   return (
     <PrefixedLink
@@ -46,16 +28,13 @@ const JaegerLink = ({ addr, PrefixedLink, redirect, name, namespace, resource })
 
 
 JaegerLink.propTypes = {
-  addr: PropTypes.string,
   name: PropTypes.string.isRequired,
   namespace: PropTypes.string,
-  redirect: PropTypes.string.isRequired,
   PrefixedLink: PropTypes.func.isRequired,
   resource: PropTypes.string.isRequired,
 };
 
 JaegerLink.defaultProps = {
-  addr: '',
   namespace: '',
 };
 

@@ -87,7 +87,7 @@ func NewServer(
 	addr string,
 	grafanaAddr string,
 	jaegerAddr string,
-	noProxy bool,
+	redirect bool,
 	templateDir string,
 	staticDir string,
 	uuid string,
@@ -124,7 +124,7 @@ func NewServer(
 		grafana:             grafanaAddr,
 		jaeger:              jaegerAddr,
 		hc:                  hc,
-		redirect:            noProxy,
+		redirect:            redirect,
 		statCache:           cache.New(statExpiration, statCleanupInterval),
 	}
 

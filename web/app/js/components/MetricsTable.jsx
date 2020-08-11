@@ -218,8 +218,6 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
           name={row.name}
           namespace={row.namespace}
           resource={row.type}
-          redirect={redirect}
-          addr={jaeger}
           PrefixedLink={PrefixedLink} />
       );
     },
@@ -247,7 +245,7 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
         <Grid container alignItems="center" spacing={1}>
           <Grid item>{nameContents}</Grid>
           {_isEmpty(d.errors) ? null :
-          <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={d.type} /></Grid>}
+            <Grid item><ErrorModal errors={d.errors} resourceName={d.name} resourceType={d.type} /></Grid>}
         </Grid>
       );
     },
