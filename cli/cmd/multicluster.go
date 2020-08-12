@@ -539,7 +539,7 @@ func newLinkCommand() *cobra.Command {
 
 			gatewayIdentity, ok := gateway.Annotations[k8s.GatewayIdentity]
 			if !ok || gatewayIdentity == "" {
-				return fmt.Errorf("Gatway %s.%s has no %s annotation", gateway.Name, gateway.Namespace, k8s.GatewayIdentity)
+				return fmt.Errorf("Gateway %s.%s has no %s annotation", gateway.Name, gateway.Namespace, k8s.GatewayIdentity)
 			}
 
 			probeSpec, err := mc.ExtractProbeSpec(gateway)
