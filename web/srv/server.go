@@ -124,7 +124,7 @@ func NewServer(
 		grafana:             grafanaAddr,
 		jaeger:              jaegerAddr,
 		hc:                  hc,
-		redirect:            grafanaRedirect,
+		grafanaRedirect:     grafanaRedirect,
 		statCache:           cache.New(statExpiration, statCleanupInterval),
 	}
 
