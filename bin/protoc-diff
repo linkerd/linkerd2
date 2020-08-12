@@ -1,12 +1,21 @@
 #!/usr/bin/env sh
 
 set -eu
-dir_dirty=$(git status --untracked-files=no --porcelain)
+
+# Install unzip if not already installed
+if [ $(dpkg-query -W -f='${Status}' unzip 2>/dev/null | grep -c "ok installed") -eq 0 ];
+then
+  apt-get update
+  apt-get install unzip
+fi
 
 bin/protoc-go.sh
 
-if [ -z "$dir_dirty" ]; then 
+dir_dirty=$(git status -s)
+if [ -z "$dir_dirty" ]; then
+  echo "Protobuf definitions match generated code"
   exit 0
-else 
+else
+  echo "Protobuf definitions diverge from generated code"
   exit 64
 fi
