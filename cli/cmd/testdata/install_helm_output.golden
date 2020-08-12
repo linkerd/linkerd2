@@ -842,7 +842,7 @@ data:
       "autoInjectContext": null,
       "omitWebhookSideEffects": false,
       "clusterDomain": "cluster.local",
-      "enableEndpointSlices": "false"
+      "endpointSliceEnabled": false
     }
   proxy: |
     {

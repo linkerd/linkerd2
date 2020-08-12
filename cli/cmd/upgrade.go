@@ -292,6 +292,16 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 		}
 	}
 
+	if options.enableEndpointSlices != configs.GetGlobal().GetEndpointSliceEnabled() {
+		if options.enableEndpointSlices {
+			if err = validateEndpointSlicesFeature(); err != nil {
+				return nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
+			}
+		}
+
+		configs.GetGlobal().EndpointSliceEnabled = options.enableEndpointSlices
+	}
+
 	// Values have to be generated after any missing identity is generated,
 	// otherwise it will be missing from the generated configmap.
 	values, err := options.buildValuesWithoutIdentity(configs)
@@ -389,7 +399,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) {
 	for _, i := range installFlags {
 		if f := flags.Lookup(i.GetName()); f != nil && !f.Changed {
-
 			// The function recordFlags() stores the string representation of flags in the ConfigMap
 			// so a stringSlice is stored e.g. as [a,b].
 			// To avoid having f.Value.Set() interpreting that as a string we need to remove
