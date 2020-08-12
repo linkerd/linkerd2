@@ -45,7 +45,7 @@ func main() {
 	}
 
 	if exists {
-		log.Infof("Using with pre-existing CSR: %s and key: %s", csrPath, keyPath)
+		log.Infof("Using with pre-existing CSR and key")
 		return
 	}
 
