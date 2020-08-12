@@ -36,7 +36,7 @@ Topologies (by @Matei207) and delivering image builds in multiple platforms (by
   * Added ability to set `priorityClassName` for CNI DaemonSet pods, and to
     install CNI in an existing namespace (both options provided through the CLI
     and as Helm configs) (thanks @alex-berger!)
-  * Added support for overriding the proxy's inbound and outbout TCP connection
+  * Added support for overriding the proxy's inbound and outbound TCP connection
     timeouts (thanks @mmiller1!)
   * Added library support for dashboard i18n. Strings still need to be tagged
     and translations to be added. More info
