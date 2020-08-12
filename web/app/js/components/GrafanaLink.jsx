@@ -40,7 +40,7 @@ GrafanaLink.propTypes = {
   addr: PropTypes.string,
   name: PropTypes.string.isRequired,
   namespace: PropTypes.string,
-  redirect: PropTypes.string.isRequired,
+  redirect: PropTypes.string,
   PrefixedLink: PropTypes.func.isRequired,
   resource: PropTypes.string.isRequired,
 };

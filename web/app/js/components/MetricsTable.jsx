@@ -332,7 +332,7 @@ MetricsTable.propTypes = {
   title: PropTypes.string,
   grafana: PropTypes.string,
   jaeger: PropTypes.string,
-  redirect: PropTypes.string.isRequired,
+  redirect: PropTypes.string,
 };
 
 MetricsTable.defaultProps = {
