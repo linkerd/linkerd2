@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+
+set -eu
+dir_dirty=$(git status --untracked-files=no --porcelain)
+
+bin/protoc-go.sh
+
+if [ -z "$dir_dirty" ]; then 
+  exit 0
+else 
+  exit 64
+fi
