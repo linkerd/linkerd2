@@ -2,8 +2,9 @@
 
 set -eu
 
-# Install unzip if not already installed
-if [ $(dpkg-query -W -f='${Status}' unzip 2>/dev/null | grep -c "ok installed") -eq 0 ];
+# Install unzip if not already installed (Linux only)
+system=$(uname -s)
+if [ "$system" = Linux ] && [ $(dpkg-query -W -f='${Status}' unzip 2>/dev/null | grep -c "ok installed") -eq 0 ];
 then
   apt-get update
   apt-get install unzip
