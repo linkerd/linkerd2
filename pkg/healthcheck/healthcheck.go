@@ -163,7 +163,7 @@ const HintBaseURL = "https://linkerd.io/checks/#"
 // based on assumed node's heartbeat interval (5 minutes) plus default TLS
 // clock skew allowance.
 //
-// TODO: Make this default value overridiable, e.g. by CLI flag
+// TODO: Make this default value overridable, e.g. by CLI flag
 const AllowedClockSkew = 5*time.Minute + tls.DefaultClockSkewAllowance
 
 var linkerdHAControlPlaneComponents = []string{
