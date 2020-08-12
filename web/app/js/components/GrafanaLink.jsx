@@ -48,6 +48,7 @@ GrafanaLink.propTypes = {
 GrafanaLink.defaultProps = {
   addr: '',
   namespace: '',
+  redirect: '',
 };
 
 export default GrafanaLink;

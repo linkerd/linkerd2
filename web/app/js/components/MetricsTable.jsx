@@ -343,6 +343,7 @@ MetricsTable.defaultProps = {
   jaeger: '',
   isTcpTable: false,
   metrics: [],
+  redirect: '',
 };
 
 export default withContext(MetricsTable);
