@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
@@ -36,37 +35,27 @@ func main() {
 		os.Exit(0)
 	}
 
-	keyPath, keyExists, csrPath, csrExists, err := checkEndEntityDir(*dir)
-	if err != nil {
-		log.Fatalf("Invalid end-entity directory: %s", err)
-	}
-
 	if _, err := loadVerifier(os.Getenv(envTrustAnchors)); err != nil {
 		log.Fatalf("Failed to load trust anchors: %s", err)
 	}
 
-	var key crypto.Signer
-	if keyExists {
-		keyb, err := ioutil.ReadFile(keyPath)
-		if err != nil {
-			log.Fatalf("failed to read key file: %s", err)
-		}
-		k, err := tls.DecodeDERKey(keyb)
-		if err != nil {
-			log.Fatalf("failed to decode key file: %s", err)
-		}
-		key = k.Signer()
-	} else {
-		key, err = generateAndStoreKey(keyPath)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
+	keyPath, csrPath, exists, err := checkEndEntityDir(*dir)
+	if err != nil {
+		log.Fatalf("Invalid end-entity directory: %s", err)
 	}
 
-	if !csrExists {
-		if _, err := generateAndStoreCSR(csrPath, *name, key); err != nil {
-			log.Fatal(err.Error())
-		}
+	if exists {
+		log.Infof("Using with pre-existing CSR: %s and key: %s", keyPath, csrPath)
+		return
+	}
+
+	key, err := generateAndStoreKey(keyPath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	if _, err := generateAndStoreCSR(csrPath, *name, key); err != nil {
+		log.Fatal(err.Error())
 	}
 }
 
@@ -91,34 +80,34 @@ func loadVerifier(pem string) (verify x509.VerifyOptions, err error) {
 //
 // If the key, CSR, and/or Crt paths refer to existing files, it is assumed that
 // the proxy has been restarted and these credentials are NOT recreated.
-func checkEndEntityDir(dir string) (string, bool, string, bool, error) {
+func checkEndEntityDir(dir string) (string, string, bool, error) {
 	if dir == "" {
-		return "", false, "", false, errors.New("no end entity directory specified")
+		return "", "", false, errors.New("no end entity directory specified")
 	}
 
 	s, err := os.Stat(dir)
 	if err != nil {
-		return "", false, "", false, err
+		return "", "", false, err
 	}
 	if !s.IsDir() {
-		return "", false, "", false, fmt.Errorf("not a directory: %s", dir)
+		return "", "", false, fmt.Errorf("not a directory: %s", dir)
 	}
 
 	keyPath := filepath.Join(dir, "key.p8")
 	keyExists := false
 	if err = checkNotExists(keyPath); err != nil {
-		log.Infof("Using with pre-existing key: %s", keyPath)
+		log.Infof("Found pre-existing key: %s", keyPath)
 		keyExists = true
 	}
 
 	csrPath := filepath.Join(dir, "csr.der")
 	csrExists := false
 	if err = checkNotExists(csrPath); err != nil {
-		log.Infof("Using with pre-existing CSR: %s", csrPath)
+		log.Infof("Found pre-existing CSR: %s", csrPath)
 		csrExists = true
 	}
 
-	return keyPath, keyExists, csrPath, csrExists, nil
+	return keyPath, csrPath, keyExists && csrExists, nil
 }
 
 func checkNotExists(p string) (err error) {
@@ -143,7 +132,7 @@ func generateAndStoreKey(p string) (key *ecdsa.PrivateKey, err error) {
 	return
 }
 
-func generateAndStoreCSR(p, id string, key crypto.Signer) ([]byte, error) {
+func generateAndStoreCSR(p, id string, key *ecdsa.PrivateKey) ([]byte, error) {
 	// TODO do proper DNS name validation.
 	if id == "" {
 		return nil, errors.New("a non-empty identity is required")

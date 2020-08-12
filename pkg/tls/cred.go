@@ -2,7 +2,6 @@ package tls
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
@@ -29,7 +28,6 @@ type (
 	GenericPrivateKey interface {
 		matchesCertificate(*x509.Certificate) bool
 		marshal() ([]byte, error)
-		Signer() crypto.Signer
 	}
 
 	// Cred is a container for a certificate, trust chain, and private key.
@@ -57,10 +55,6 @@ func (k privateKeyEC) marshal() ([]byte, error) {
 	return x509.MarshalECPrivateKey(k.PrivateKey)
 }
 
-func (k privateKeyEC) Signer() crypto.Signer {
-	return k.PrivateKey
-}
-
 func (k privateKeyRSA) matchesCertificate(c *x509.Certificate) bool {
 	pub, ok := c.PublicKey.(*rsa.PublicKey)
 	return ok && pub.N.Cmp(k.N) == 0 && pub.E == k.E
@@ -68,10 +62,6 @@ func (k privateKeyRSA) matchesCertificate(c *x509.Certificate) bool {
 
 func (k privateKeyRSA) marshal() ([]byte, error) {
 	return x509.MarshalPKCS1PrivateKey(k.PrivateKey), nil
-}
-
-func (k privateKeyRSA) Signer() crypto.Signer {
-	return k.PrivateKey
 }
 
 // validCredOrPanic creates a  Cred, panicking if the key does not match the certificate.
