@@ -199,13 +199,13 @@ func TestRender(t *testing.T) {
 	withHeartBeatDisabledValues, _, _ := withHeartBeatDisabled.validateAndBuild("", nil)
 	addFakeTLSSecrets(withHeartBeatDisabledValues)
 
-	withRestrictedDashboardPriviliges, err := testInstallOptions()
+	withRestrictedDashboardPrivileges, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withRestrictedDashboardPriviliges.restrictDashboardPrivileges = true
-	withRestrictedDashboardPriviligesValues, _, _ := withRestrictedDashboardPriviliges.validateAndBuild("", nil)
-	addFakeTLSSecrets(withRestrictedDashboardPriviligesValues)
+	withRestrictedDashboardPrivileges.restrictDashboardPrivileges = true
+	withRestrictedDashboardPrivilegesValues, _, _ := withRestrictedDashboardPrivileges.validateAndBuild("", nil)
+	addFakeTLSSecrets(withRestrictedDashboardPrivilegesValues)
 
 	withControlPlaneTracing, err := testInstallOptions()
 	if err != nil {
@@ -264,7 +264,7 @@ func TestRender(t *testing.T) {
 		{cniEnabledValues, "install_no_init_container.golden"},
 		{withProxyIgnoresValues, "install_proxy_ignores.golden"},
 		{withHeartBeatDisabledValues, "install_heartbeat_disabled_output.golden"},
-		{withRestrictedDashboardPriviligesValues, "install_restricted_dashboard.golden"},
+		{withRestrictedDashboardPrivilegesValues, "install_restricted_dashboard.golden"},
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
 		{withCustomRegistryValues, "install_custom_registry.golden"},
 		{withAddOnConfigStageValues, "install_addon_config.golden"},
