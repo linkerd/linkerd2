@@ -71,8 +71,8 @@ func TestSMIMetrics(t *testing.T) {
 	}
 
 	timeout := 50 * time.Second
-	err = TestHelper.RetryFor(timeout, func() error {
-		for _, tc := range testCases {
+	for _, tc := range testCases {
+		err = TestHelper.RetryFor(timeout, func() error {
 			queryArgs := []string{
 				"get",
 				"--raw",
@@ -96,12 +96,10 @@ func TestSMIMetrics(t *testing.T) {
 			if !r.MatchString(out) {
 				return fmt.Errorf("Expected output:\n%s\nactual:\n%s", buf.String(), out)
 			}
+			return nil
+		})
+		if err != nil {
+			testutil.AnnotatedError(t, fmt.Sprintf("timed-out checking smi-metrics output (%s)", timeout), err)
 		}
-		return nil
-	})
-
-	if err != nil {
-		testutil.AnnotatedError(t, fmt.Sprintf("timed-out checking smi-metrics output (%s)", timeout), err)
 	}
-
 }
