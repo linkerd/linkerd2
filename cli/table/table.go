@@ -8,7 +8,7 @@ import (
 )
 
 type (
-	// Table represts a table of data to be rendered.
+	// Table represents a table of data to be rendered.
 	Table struct {
 		Columns       []Column
 		Data          []Row
