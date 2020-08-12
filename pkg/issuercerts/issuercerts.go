@@ -125,7 +125,7 @@ func CheckExpiringSoon(cert *x509.Certificate) error {
 // we have posed on the public key and signature algorithms
 func CheckCertAlgoRequirements(cert *x509.Certificate) error {
 	if cert.PublicKeyAlgorithm == x509.ECDSA {
-		// this si a safe cast here as wel know we are using ECDSA
+		// this is a safe cast here as wel know we are using ECDSA
 		k, ok := cert.PublicKey.(*ecdsa.PublicKey)
 		if !ok {
 			return fmt.Errorf("expected ecdsa.PublicKey but got something %v", cert.PublicKey)
