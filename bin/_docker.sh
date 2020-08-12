@@ -27,7 +27,7 @@ export DOCKER_MULTIARCH=${DOCKER_MULTIARCH:-}
 export DOCKER_PUSH=${DOCKER_PUSH:-}
 
 # Default supported docker image architectures
-export SUPPORTED_ARCHS=linux/amd64,linux/arm64,linux/arm/v7
+export SUPPORTED_ARCHS=${SUPPORTED_ARCHS:-linux/amd64,linux/arm64,linux/arm/v7}
 
 docker_repo() {
     repo=$1
