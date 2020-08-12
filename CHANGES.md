@@ -3335,7 +3335,7 @@ this release!
 * Control plane
   * Injected proxy containers now have readiness and liveness probes enabled
 
-Special thanks to @sourishkrout for contributing a web readibility fix!
+Special thanks to @sourishkrout for contributing a web readability fix!
 
 ## v18.8.2
 
