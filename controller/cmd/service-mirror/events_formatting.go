@@ -68,8 +68,8 @@ func (cgu ClusterUnregistered) String() string {
 	return "ClusterUnregistered: {}"
 }
 
-func (cgu OprhanedServicesGcTriggered) String() string {
-	return "OprhanedServicesGcTriggered: {}"
+func (cgu OrphanedServicesGcTriggered) String() string {
+	return "OrphanedServicesGcTriggered: {}"
 }
 
 func (oa OnAddCalled) String() string {
