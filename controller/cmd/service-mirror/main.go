@@ -44,7 +44,7 @@ func Main(args []string) {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	// We create two different kubernetes API clients for the local cluster:
-	// k8sAPI is used as a dynamic client for unstrcutured access to Link custom
+	// k8sAPI is used as a dynamic client for unstructured access to Link custom
 	// resources.
 	//
 	// controllerK8sAPI is used by the cluster watcher to manage
