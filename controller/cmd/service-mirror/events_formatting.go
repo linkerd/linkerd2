@@ -9,12 +9,12 @@ import (
 )
 
 func formatAddresses(addresses []corev1.EndpointAddress) string {
-	var adrs []string
+	var addrs []string
 
 	for _, a := range addresses {
-		adrs = append(adrs, a.IP)
+		addrs = append(addrs, a.IP)
 	}
-	return fmt.Sprintf("[%s]", strings.Join(adrs, ","))
+	return fmt.Sprintf("[%s]", strings.Join(addrs, ","))
 }
 
 func formatMetadata(meta map[string]string) string {
