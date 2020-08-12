@@ -1145,7 +1145,7 @@ spec:
     name: client`,
 			},
 		},
-		// Service porfile in client namespace takes priority
+		// Service profile in client namespace takes priority
 		{
 			expectedRouteNames: []string{"client"},
 			profileConfigs: []string{`
