@@ -65,10 +65,10 @@ usually take place the last Wednesday of the month at 9am Pacific / 4pm UTC.
 
 We're a friendly group, so please feel free to join us!
 
-## Code of conduct
+## Code of Conduct
 
 This project is for everyone. We ask that our users and contributors take a few
-minutes to review our [code of conduct][coc].
+minutes to review our [Code of Conduct][CoC].
 
 ## Security
 
@@ -96,7 +96,7 @@ specific language governing permissions and limitations under the License.
 [github-actions]: https://github.com/linkerd/linkerd2/actions
 [github-actions-badge]: https://github.com/linkerd/linkerd2/workflows/Cloud%20integration/badge.svg
 [cncf]: https://www.cncf.io/
-[coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
+[CoC]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [getting-started]: https://linkerd.io/2/getting-started/
 [golang]: https://golang.org/
 [go-report-card]: https://goreportcard.com/report/github.com/linkerd/linkerd2
