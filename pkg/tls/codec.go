@@ -105,7 +105,7 @@ func DecodePEMCertificates(txt string) (certs []*x509.Certificate, err error) {
 	return
 }
 
-// CertificatesToPool coverts a slice of certificates into a cert pool
+// CertificatesToPool converts a slice of certificates into a cert pool
 func CertificatesToPool(certs []*x509.Certificate) *x509.CertPool {
 	pool := x509.NewCertPool()
 	for _, c := range certs {
