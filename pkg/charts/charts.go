@@ -34,7 +34,7 @@ func (c *Chart) render(partialsFiles []*chartutil.BufferedFile) (bytes.Buffer, e
 	}
 
 	// Create chart and render templates
-	chrt, err := chartutil.LoadFiles(append(c.Files, partialsFiles...))
+	chart, err := chartutil.LoadFiles(append(c.Files, partialsFiles...))
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
@@ -50,8 +50,8 @@ func (c *Chart) render(partialsFiles []*chartutil.BufferedFile) (bytes.Buffer, e
 		KubeVersion: "",
 	}
 
-	chrtConfig := &helmChart.Config{Raw: string(c.RawValues), Values: map[string]*helmChart.Value{}}
-	renderedTemplates, err := renderutil.Render(chrt, chrtConfig, renderOpts)
+	chartConfig := &helmChart.Config{Raw: string(c.RawValues), Values: map[string]*helmChart.Value{}}
+	renderedTemplates, err := renderutil.Render(chart, chartConfig, renderOpts)
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
