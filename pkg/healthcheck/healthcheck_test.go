@@ -2265,7 +2265,7 @@ func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 			"pre-linkerd-global-resources no PodSecurityPolicies exist",
 		}
 		if !reflect.DeepEqual(observer.results, expected) {
-			testutil.AnnotatedErrorf(t, "Mistmatch result", "Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
+			testutil.AnnotatedErrorf(t, "Mismatch result", "Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
 		}
 	})
 
