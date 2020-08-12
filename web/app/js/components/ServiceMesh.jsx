@@ -149,7 +149,7 @@ class ServiceMesh extends React.Component {
 
   extractNsStatuses = nsData => {
     const podsByNs = _get(nsData, ['ok', 'statTables', 0, 'podGroup', 'rows'], []);
-    const dataPlaneNamepaces = podsByNs.map(ns => {
+    const dataPlaneNamespaces = podsByNs.map(ns => {
       const meshedPods = parseInt(ns.meshedPodCount, 10);
       const totalPods = parseInt(ns.runningPodCount, 10);
       const failedPods = parseInt(ns.failedPodCount, 10);
@@ -164,7 +164,7 @@ class ServiceMesh extends React.Component {
         errors: ns.errorsByPod,
       };
     });
-    return _compact(dataPlaneNamepaces);
+    return _compact(dataPlaneNamespaces);
   }
 
   loadFromServer() {
