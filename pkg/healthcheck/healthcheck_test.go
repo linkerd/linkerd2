@@ -503,7 +503,7 @@ status:
 
 }
 
-func TestChecCapability(t *testing.T) {
+func TestCheckCapability(t *testing.T) {
 	tests := []struct {
 		k8sConfigs []string
 		err        error
