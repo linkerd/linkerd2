@@ -256,7 +256,7 @@ improvements and fixes for multicluster support.
   * Fixed shellcheck errors in all `bin/` scripts (thanks @joakimr-axis!)
 * Helm
   * Added support for `linkerd mc allow`
-  * Added ability to disable secret rescources for self-signed certs (thanks
+  * Added ability to disable secret resources for self-signed certs (thanks
     @cypherfox!)
 * Proxy
   * Modified the `linkerd-gateway` component to use the inbound proxy, rather
