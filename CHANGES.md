@@ -771,7 +771,7 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-270).
   * Fixed an issue in the `identity` RBAC resource which caused start up
     errors in k8s 1.6 (thanks @Pothulapati!)
   * Added support for using trust anchors from an external certificate issuer
-    (such as `cert-mananger`) to the `linkerd-identity` service
+    (such as `cert-manager`) to the `linkerd-identity` service
   * Added support for headless services (thanks @JohannesEH!)
 * Helm
   * **Breaking change**: Renamed `noInitContainer` parameter to `cniEnabled`
@@ -1092,7 +1092,7 @@ the Linkerd CLI.
     IPs that match multiple running pods
 * Controller
   * Added support for using trust anchors from an external certificate issuer
-    (such as `cert-mananger`) to the `linkerd-identity` service
+    (such as `cert-manager`) to the `linkerd-identity` service
 * Web UI
   * Added `Host:` header validation to the `linkerd-web` service, to protect
     against DNS rebinding attacks
