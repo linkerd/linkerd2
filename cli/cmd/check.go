@@ -207,6 +207,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		RetryDeadline:         time.Now().Add(options.wait),
 		CNIEnabled:            options.cniEnabled,
 		InstallManifest:       installManifest,
+		MultiCluster:          options.multicluster,
 	})
 
 	success := runChecks(wout, werr, hc, options.output)
