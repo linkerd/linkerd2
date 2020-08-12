@@ -260,7 +260,7 @@ improvements and fixes for multicluster support.
     @cypherfox!)
 * Proxy
   * Modified the `linkerd-gateway` component to use the inbound proxy, rather
-    than nginx, for gateway; this allows Linkerd to detect loops and propogate
+    than nginx, for gateway; this allows Linkerd to detect loops and propagate
     identity
 
 ## edge-20.5.5
