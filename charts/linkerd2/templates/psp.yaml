@@ -92,7 +92,7 @@ subjects:
   namespace: {{.Values.global.namespace}}
 {{ if .Values.grafana.enabled -}}
 - kind: ServiceAccount
-  name: {{.Values.grafana.name}}
+  name: linkerd-grafana
   namespace: {{.Values.global.namespace}}
 {{ end -}}
 {{ if not .Values.disableHeartBeat -}}

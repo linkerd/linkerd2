@@ -2597,7 +2597,6 @@ data:
       enabled: true
       image:
         name: gcr.io/linkerd-io/grafana
-      name: linkerd-grafana
     prometheus:
       args:
         config.file: /etc/prometheus/prometheus.yml

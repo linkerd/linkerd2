@@ -26,6 +26,9 @@ const (
 )
 
 var (
+	// errorKeyNotFound is returned when a key is not found in data
+	errorKeyNotFound error = errors.New("key not found")
+
 	// AddOnCategories is the list of add-on category checks
 	AddOnCategories = []CategoryID{LinkerdAddOnChecks, LinkerdPrometheusAddOnChecks, LinkerdGrafanaAddOnChecks, LinkerdTracingAddOnChecks}
 )
@@ -101,9 +104,15 @@ func (hc *HealthChecker) addOnCategories() []category {
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							name, err := getString(grafana, "name")
-							if err != nil {
+							if err != nil && !errors.Is(err, errorKeyNotFound) {
 								return err
 							}
+
+							if errors.Is(err, errorKeyNotFound) {
+								// default name of grafana instance
+								name = "linkerd-grafana"
+							}
+
 							return hc.checkServiceAccounts([]string{name}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
@@ -115,9 +124,15 @@ func (hc *HealthChecker) addOnCategories() []category {
 					check: func(context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							name, err := getString(grafana, "name")
-							if err != nil {
+							if err != nil && !errors.Is(err, errorKeyNotFound) {
 								return err
 							}
+
+							if errors.Is(err, errorKeyNotFound) {
+								// default name of grafana instance
+								name = "linkerd-grafana"
+							}
+
 							_, err = hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", name), metav1.GetOptions{})
 							if err != nil {
 								return err
@@ -316,7 +331,7 @@ func getString(i interface{}, k string) (string, error) {
 
 	v, ok := m[k]
 	if !ok {
-		return "", fmt.Errorf("key '%s' not found in config value", k)
+		return "", errorKeyNotFound
 	}
 
 	res, ok := v.(string)
