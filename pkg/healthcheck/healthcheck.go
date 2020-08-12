@@ -1901,7 +1901,7 @@ func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace() error {
 
 	val, ok := ns.Labels[k8s.AdmissionWebhookLabel]
 	if !ok || val != "disabled" {
-		return fmt.Errorf("kube-system namespace needs to have the label %s: disabled if HA mode is enabled", k8s.AdmissionWebhookLabel)
+		return fmt.Errorf("kube-system namespace needs to have the label %s: disabled if injector webhook failure policy is Fail", k8s.AdmissionWebhookLabel)
 	}
 
 	return nil
