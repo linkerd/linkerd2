@@ -449,7 +449,7 @@ kind: Service
 metadata:
   name: emoji-svc
   namespace: emojivoto
-  uid: serviceUIDdoesntMatter
+  uid: serviceUIDDoesNotMatter
 spec:
   type: ClusterIP
   selector:
