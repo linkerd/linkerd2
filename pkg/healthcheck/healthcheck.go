@@ -148,7 +148,7 @@ const (
 	linkerdCNIConfigMapName      = "linkerd-cni-config"
 
 	// linkerdTapAPIServiceName is the name of the tap api service
-	// This key is passed to checkApiSercice method to check whether
+	// This key is passed to checkApiService method to check whether
 	// the api service is available or not
 	linkerdTapAPIServiceName = "v1alpha1.tap.linkerd.io"
 )
