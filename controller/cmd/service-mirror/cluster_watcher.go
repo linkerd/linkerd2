@@ -297,14 +297,14 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 		return RetryableError{[]error{innerErr}}
 	}
 
-	for _, endpt := range endpoints {
-		if err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpt.Namespace).Delete(endpt.Name, &metav1.DeleteOptions{}); err != nil {
+	for _, endpoint := range endpoints {
+		if err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoint.Namespace).Delete(endpoint.Name, &metav1.DeleteOptions{}); err != nil {
 			if kerrors.IsNotFound(err) {
 				continue
 			}
-			errors = append(errors, fmt.Errorf("Could not delete  Endpoints %s/%s: %s", endpt.Namespace, endpt.Name, err))
+			errors = append(errors, fmt.Errorf("Could not delete  Endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
 		} else {
-			rcsw.log.Infof("Deleted Endpoints %s/%s", endpt.Namespace, endpt.Name)
+			rcsw.log.Infof("Deleted Endpoints %s/%s", endpoint.Namespace, endpoint.Name)
 		}
 	}
 
