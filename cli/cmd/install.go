@@ -415,6 +415,10 @@ func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagS
 	if err != nil {
 		return nil, nil, err
 	}
+	return options.validateAndBuildWithIdentity(stage, identityValues)
+}
+
+func (options *installOptions) validateAndBuildWithIdentity(stage string, identityValues *identityWithAnchorsAndTrustDomain) (*l5dcharts.Values, *pb.All, error) {
 	configs := options.configs(toIdentityContext(identityValues))
 
 	values, err := options.buildValuesWithoutIdentity(configs)

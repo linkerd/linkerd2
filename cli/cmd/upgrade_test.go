@@ -2,15 +2,19 @@ package cmd
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
-	"reflect"
+	"strings"
 	"testing"
 
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/spf13/pflag"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -18,6 +22,464 @@ const (
 	upgradeControlPlaneVersion = "UPGRADE-CONTROL-PLANE-VERSION"
 	upgradeDebugVersion        = "UPGRADE-DEBUG-VERSION"
 )
+
+type (
+	issuerCerts struct {
+		caFile  string
+		ca      string
+		crtFile string
+		crt     string
+		keyFile string
+		key     string
+	}
+)
+
+/* Test cases */
+
+/* Most test cases in this file work by first rendering an install manifest
+   list, creating a fake k8s client initialized with those manifests, rendering
+   an upgrade manifest list, and comparing the install manifests to the upgrade
+   manifests. In some cases we expect these manifests to be identical and in
+   others there are certain expected differences */
+
+func TestUpgradeDefault(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Install and upgrade manifests should be identical except for the version.
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		for _, diff := range diffs {
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func TestUpgradeHA(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installFlags.Set("ha", "true")
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Install and upgrade manifests should be identical except for the version.
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		for _, diff := range diffs {
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func TestUpgradeExternalIssuer(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	issuer := generateIssuerCerts(t, true)
+	defer issuer.cleanup()
+
+	identity := identityWithAnchorsAndTrustDomain{
+		TrustDomain:     "cluster.local",
+		TrustAnchorsPEM: issuer.ca,
+		Identity: &linkerd2.Identity{
+			Issuer: &linkerd2.Issuer{
+				Scheme: string(corev1.SecretTypeTLS),
+				TLS: &linkerd2.IssuerTLS{
+					CrtPEM: issuer.crt,
+					KeyPEM: issuer.key,
+				},
+			},
+		},
+	}
+	installOpts.recordFlags(installFlags)
+	values, _, err := installOpts.validateAndBuildWithIdentity("", &identity)
+	install := renderInstall(t, values)
+	if err != nil {
+		t.Fatalf("Failed to build install values: %s", err)
+	}
+	upgrade, err := renderUpgrade(t, install.String()+externalIssuerSecret(issuer), upgradeOpts, upgradeFlags)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Install and upgrade manifests should be identical except for the version.
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		for _, diff := range diffs {
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	issuer := generateIssuerCerts(t, true)
+	defer issuer.cleanup()
+
+	identity := identityWithAnchorsAndTrustDomain{
+		TrustDomain:     "cluster.local",
+		TrustAnchorsPEM: issuer.ca,
+		Identity: &linkerd2.Identity{
+			Issuer: &linkerd2.Issuer{
+				Scheme: string(corev1.SecretTypeTLS),
+				TLS: &linkerd2.IssuerTLS{
+					CrtPEM: issuer.crt,
+					KeyPEM: issuer.key,
+				},
+			},
+		},
+	}
+	installOpts.recordFlags(installFlags)
+	values, _, err := installOpts.validateAndBuildWithIdentity("", &identity)
+	install := renderInstall(t, values)
+	if err != nil {
+		t.Fatalf("Failed to build install values: %s", err)
+	}
+
+	upgradedIssuer := generateIssuerCerts(t, true)
+	defer upgradedIssuer.cleanup()
+	upgradeFlags.Set("identity-trust-anchors-file", upgradedIssuer.caFile)
+	upgradeFlags.Set("identity-issuer-certificate-file", upgradedIssuer.crtFile)
+	upgradeFlags.Set("identity-issuer-key-file", upgradedIssuer.keyFile)
+
+	_, err = renderUpgrade(t, install.String()+externalIssuerSecret(issuer), upgradeOpts, upgradeFlags)
+
+	expectedErr := "cannot update issuer certificates if you are using external cert management solution"
+
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Expected error: %s but got %s", expectedErr, err)
+	}
+}
+
+func TestUpgradeOverwriteIssuer(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	issuerCerts := generateIssuerCerts(t, true)
+	defer issuerCerts.cleanup()
+
+	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	upgradeFlags.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	upgradeFlags.Set("identity-issuer-key-file", issuerCerts.keyFile)
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// When upgrading the trust root, we expect to see the new trust root passed
+	// to each proxy, the trust root updated in the linkerd-config, and the
+	// updated credentials in the linkerd-identity-issuer secret.
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		for _, diff := range diffs {
+			if isProxyEnvDiff(diff.path) {
+				continue
+			}
+			if id == "ConfigMap/linkerd-config" {
+				continue
+			}
+			if id == "Secret/linkerd-identity-issuer" {
+				if pathMatch(diff.path, []string{"data", "crt.pem"}) {
+					if diff.b.(string) != issuerCerts.crt {
+						diff.a = issuerCerts.crt
+						t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+					}
+				} else if pathMatch(diff.path, []string{"data", "key.pem"}) {
+					if diff.b.(string) != issuerCerts.key {
+						diff.a = issuerCerts.key
+						t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+					}
+				} else if pathMatch(diff.path, []string{"metadata", "annotations", "linkerd.io/identity-issuer-expiry"}) {
+					// Differences in expiry are expected; do nothing.
+				} else {
+					t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+				}
+				continue
+			}
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func TestUpgradeFailsWithOnlyIssuerCert(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	issuerCerts := generateIssuerCerts(t, true)
+	defer issuerCerts.cleanup()
+	upgradeOpts.identityOptions.identityExternalIssuer = true
+	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	upgradeFlags.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	_, _, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+
+	expectedErr := "a private key file must be specified if a certificate is provided"
+
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Expected error: %s but got %s", expectedErr, err)
+	}
+}
+
+func TestUpgradeFailsWithOnlyIssuerKey(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	issuerCerts := generateIssuerCerts(t, true)
+	defer issuerCerts.cleanup()
+	upgradeOpts.identityOptions.identityExternalIssuer = true
+	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	upgradeFlags.Set("identity-issuer-key-file", issuerCerts.keyFile)
+	_, _, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+
+	expectedErr := "a certificate file must be specified if a private key is provided"
+
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Expected error: %s but got %s", expectedErr, err)
+	}
+}
+
+func TestUpgradeRootFailsWithOldPods(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	oldIssuer := generateIssuerCerts(t, false)
+	defer oldIssuer.cleanup()
+
+	install := renderInstall(t, installValues(t, installOpts, installFlags))
+
+	issuerCerts := generateIssuerCerts(t, true)
+	defer issuerCerts.cleanup()
+	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	upgradeFlags.Set("identity-issuer-key-file", issuerCerts.keyFile)
+	upgradeFlags.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	_, err := renderUpgrade(t, install.String()+podWithSidecar(oldIssuer), upgradeOpts, upgradeFlags)
+
+	expectedErr := "You are attempting to use an issuer certificate which does not validate against the trust anchors of the following pods"
+	if err == nil || !strings.HasPrefix(err.Error(), expectedErr) {
+		t.Errorf("Expected error: %s but got %s", expectedErr, err)
+	}
+}
+
+func TestUpgradeTracingAddon(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	upgradeOpts.addOnConfig = filepath.Join("testdata", "addon_config.yaml")
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
+	tracingManifests := []string{
+		"Service/linkerd-jaeger", "Deployment/linkerd-jaeger", "ConfigMap/linkerd-config-addons",
+		"ServiceAccount/linkerd-jaeger", "Service/linkerd-collector", "ConfigMap/linkerd-collector-config",
+		"ServiceAccount/linkerd-collector", "Deployment/linkerd-collector",
+	}
+	for _, id := range tracingManifests {
+		if _, ok := diffMap[id]; ok {
+			delete(diffMap, id)
+		} else {
+			t.Errorf("Expected %s in upgrade output but was absent", id)
+		}
+	}
+	for id, diffs := range diffMap {
+		for _, diff := range diffs {
+			if id == "Deployment/linkerd-web" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args"}) {
+				continue
+			}
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func TestUpgradeOverwriteTracingAddon(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	installOpts.addOnConfig = filepath.Join("testdata", "addon_config.yaml")
+	upgradeOpts.addOnConfig = filepath.Join("testdata", "addon_config_overwrite.yaml")
+	upgradeOpts.traceCollector = "overwrite-collector"
+	upgradeOpts.traceCollectorSvcAccount = "overwrite-collector.default"
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
+	tracingManifests := []string{
+		"ConfigMap/linkerd-config-addons",
+		"Service/overwrite-collector", "ConfigMap/overwrite-collector-config",
+		"ServiceAccount/overwrite-collector", "Deployment/overwrite-collector",
+		"Service/linkerd-collector", "ConfigMap/linkerd-collector-config",
+		"ServiceAccount/linkerd-collector", "Deployment/linkerd-collector",
+	}
+	for _, id := range tracingManifests {
+		if _, ok := diffMap[id]; ok {
+			delete(diffMap, id)
+		} else {
+			t.Errorf("Expected %s in upgrade output diff but was absent", id)
+		}
+	}
+	for id, diffs := range diffMap {
+		for _, diff := range diffs {
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	// This tests the case where the webhook certs are not self-signed.
+	values := installValues(t, installOpts, installFlags)
+	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
+	defer injectorCerts.cleanup()
+	values.ProxyInjector.TLS = &linkerd2.TLS{
+		CaBundle: injectorCerts.ca,
+		CrtPEM:   injectorCerts.crt,
+		KeyPEM:   injectorCerts.key,
+	}
+	tapCerts := generateCerts(t, "linkerd-tap.linkerd.svc", false)
+	defer tapCerts.cleanup()
+	values.Tap.TLS = &linkerd2.TLS{
+		CaBundle: tapCerts.ca,
+		CrtPEM:   tapCerts.crt,
+		KeyPEM:   tapCerts.key,
+	}
+	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
+	defer validatorCerts.cleanup()
+	values.ProfileValidator.TLS = &linkerd2.TLS{
+		CaBundle: validatorCerts.ca,
+		CrtPEM:   validatorCerts.crt,
+		KeyPEM:   validatorCerts.key,
+	}
+
+	install := renderInstall(t, values)
+	upgrade, err := renderUpgrade(t, install.String(), upgradeOpts, upgradeFlags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		for _, diff := range diffs {
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func TestUpgradeWithAddonDisabled(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	installOpts.addOnConfig = filepath.Join("testdata", "grafana_disabled.yaml")
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		for _, diff := range diffs {
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func TestUpgradeEnableAddon(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	installOpts.addOnConfig = filepath.Join("testdata", "grafana_disabled.yaml")
+	upgradeOpts.addOnConfig = filepath.Join("testdata", "grafana_enabled.yaml")
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
+	addonManifests := []string{
+		"ServiceAccount/linkerd-grafana", "Deployment/linkerd-grafana", "Service/linkerd-grafana",
+		"ConfigMap/linkerd-grafana-config", "ConfigMap/linkerd-config-addons",
+	}
+	for _, id := range addonManifests {
+		if _, ok := diffMap[id]; ok {
+			delete(diffMap, id)
+		} else {
+			t.Errorf("Expected %s in upgrade output but was absent", id)
+		}
+	}
+	for id, diffs := range diffMap {
+		for _, diff := range diffs {
+			if id == "RoleBinding/linkerd-psp" && pathMatch(diff.path, []string{"subjects"}) {
+				continue
+			}
+			if id == "Deployment/linkerd-web" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args"}) {
+				continue
+			}
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func TestUpgradeRemoveAddonKeys(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	installOpts.addOnConfig = filepath.Join("testdata", "grafana_enabled_resources.yaml")
+	upgradeOpts.addOnConfig = filepath.Join("testdata", "grafana_enabled.yaml")
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		for _, diff := range diffs {
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	installOpts.addOnConfig = filepath.Join("testdata", "grafana_enabled_resources.yaml")
+	upgradeOpts.addOnConfig = filepath.Join("testdata", "grafana_enabled.yaml")
+	upgradeOpts.addOnOverwrite = true
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
+	if _, ok := diffMap["ConfigMap/linkerd-config-addons"]; ok {
+		delete(diffMap, "ConfigMap/linkerd-config-addons")
+	} else {
+		t.Error("Expected ConfigMap/linkerd-config-addons in upgrade output diff but was absent")
+	}
+	for id, diffs := range diffMap {
+		for _, diff := range diffs {
+			if id == "Deployment/linkerd-grafana" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "resources"}) {
+				continue
+			}
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+/* Helpers */
 
 func testUpgradeOptions() (*upgradeOptions, error) {
 	o, err := newUpgradeOptionsWithDefaults()
@@ -32,913 +494,115 @@ func testUpgradeOptions() (*upgradeOptions, error) {
 	return o, nil
 }
 
-func TestRenderUpgrade(t *testing.T) {
-	testCases := []struct {
-		stage string
-		// k8sConfigs are resources which should remain unchanged during an upgrade
-		k8sConfigs     []string
-		outputfile     string
-		err            error
-		processOptions func(*upgradeOptions)
-	}{
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[{"portRange":"2525-2527"},{"portRange":"25259"}],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[{"name":"skip-inbound-ports","value":"[2525-2527,2529]"}]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUd0cEJrT0hjVENqOVZQcXBtMG5TSFpYOXZmdXN3RWx5R1dJQVJ1NlUwQTJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSEFLNzY0OWFTNkpPREgvTHJxY3R5cWs5bmU5S1ZjRmZqeEY1S3dIWGgrL0M1M2JWdDBPbApmVkVIa3pyYjhsYzV2czJYdEhYQVdlQ2JVWUJXT0pKQWZBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: linkerd-proxy-injector-webhook-config
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-webhooks:
-- name: linkerd-proxy-injector.linkerd.io
-  namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-  clientConfig:
-    service:
-      name: linkerd-proxy-injector
-      namespace: linkerd
-      path: "/"
-    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  failurePolicy: Ignore
-  rules:
-  - operations: [ "CREATE" ]
-    apiGroups: [""]
-    apiVersions: ["v1"]
-    resources: ["pods"]
-  sideEffects: None`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: linkerd-sp-validator-webhook-config
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-webhooks:
-- name: linkerd-sp-validator.linkerd.io
-  namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-  clientConfig:
-    service:
-      name: linkerd-sp-validator
-      namespace: linkerd
-      path: "/"
-    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  failurePolicy: Ignore
-  rules:
-  - operations: [ "CREATE" , "UPDATE" ]
-    apiGroups: ["linkerd.io"]
-    apiVersions: ["v1alpha1", "v1alpha2"]
-    resources: ["serviceprofiles"]
-  sideEffects: None`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-			},
-			"upgrade_default.golden",
-			nil,
-			nil,
-		},
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1", "destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[{"name":"ha","value":"true"}]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUd0cEJrT0hjVENqOVZQcXBtMG5TSFpYOXZmdXN3RWx5R1dJQVJ1NlUwQTJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSEFLNzY0OWFTNkpPREgvTHJxY3R5cWs5bmU5S1ZjRmZqeEY1S3dIWGgrL0M1M2JWdDBPbApmVkVIa3pyYjhsYzV2czJYdEhYQVdlQ2JVWUJXT0pKQWZBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-			},
-			"upgrade_ha.golden",
-			nil,
-			nil,
-		},
-		{
-			configStage,
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[{"name":"ha","value":"true"}]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUd0cEJrT0hjVENqOVZQcXBtMG5TSFpYOXZmdXN3RWx5R1dJQVJ1NlUwQTJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSEFLNzY0OWFTNkpPREgvTHJxY3R5cWs5bmU5S1ZjRmZqeEY1S3dIWGgrL0M1M2JWdDBPbApmVkVIa3pyYjhsYzV2czJYdEhYQVdlQ2JVWUJXT0pKQWZBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-			},
-			"upgrade_ha_config.golden",
-			nil,
-			nil,
-		},
-		{
-			"",
-			[]string{},
-			"",
-			errors.New("could not fetch configs from kubernetes: configmaps \"linkerd-config\" not found"),
-			nil,
-		},
+func testOptionsAndFlags(t *testing.T) (*installOptions, *pflag.FlagSet, *upgradeOptions, *pflag.FlagSet) {
+	installOpts, err := testInstallOptions()
+	if err != nil {
+		t.Fatalf("failed to create install options: %s", err)
+	}
+	upgradeOpts, err := testUpgradeOptions()
+	if err != nil {
+		t.Fatalf("failed to create upgrade options: %s", err)
+	}
+	return installOpts, installOpts.recordableFlagSet(), upgradeOpts, upgradeOpts.recordableFlagSet()
+}
 
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"kubernetes.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
-  tls.key: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUd0cEJrT0hjVENqOVZQcXBtMG5TSFpYOXZmdXN3RWx5R1dJQVJ1NlUwQTJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSEFLNzY0OWFTNkpPREgvTHJxY3R5cWs5bmU5S1ZjRmZqeEY1S3dIWGgrL0M1M2JWdDBPbApmVkVIa3pyYjhsYzV2czJYdEhYQVdlQ2JVWUJXT0pKQWZBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==
-  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdhZ0F3SUJBZ0lRTXZkMVFuR1VKelhWVXQzZ05oN3JXakFLQmdncWhrak9QUVFEQWpBcE1TY3cKSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3TkRBMgpNVEF6T1RVeFdoY05NekF3TkRBME1UQXpPVFV4V2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyClpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFRMTlubWcKUThsK0VNb2ZQeGFzN0hVbE9KRTVhdnBzNmI2UTk3WTcxV2F3M3JkWFlOQ1BxTXhhNFBlZFBjNVZLR2plNmVxSgpBbzVtWDI5SGVNY1V3L3kzbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCi93SUJBVEFkQmdOVkhRNEVGZ1FVZnh2K0JjQ3Q1djdvRjdQWEo5eFkrSmFtYmR3d0tRWURWUjBSQkNJd0lJSWUKYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGdBTUVVQwpJUUNNOFVmZXZSNTNTVkdEZC80TWdYTWxWcUMzVmg4b0RpTTBVVG9qMndzak5nSWdMblpnb2dycWpLMEtSbzlSClN4WkxiSkt0NlNKSUlZOWR3NWd6UXBVUVIyVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-			},
-			"upgrade_external_issuer.golden",
-			nil,
-			nil,
-		},
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBgzCCASmgAwIBAgIBATAKBggqhkjOPQQDAjApMScwJQYDVQQDEx5pZGVudGl0\neS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMTkwNDA0MjM1MzM3WhcNMjAwNDAz\nMjM1MzU3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9j\nYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT+Sb5X4wi4XP0X3rJwMp23VBdg\nEMMU8EU+KG8UI2LmC5Vjg5RWLOW6BJjBmjXViKM+b+1/oKAeOg6FrJk8qyFlo0Iw\nQDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC\nMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAKUFG3sYOS++bakW\nYmJZU45iCdTLtaelMDSFiHoC9eBKAiBDWzzo+/CYLLmn33bAEn8pQnogP4Fx06aj\n+U9K4WlbzA==\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"kubernetes.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJnekNDQVNtZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDAKZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTVRrd05EQTBNak0xTXpNM1doY05NakF3TkRBegpNak0xTXpVM1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqCllXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBVCtTYjVYNHdpNFhQMFgzckp3TXAyM1ZCZGcKRU1NVThFVStLRzhVSTJMbUM1VmpnNVJXTE9XNkJKakJtalhWaUtNK2IrMS9vS0FlT2c2RnJKazhxeUZsbzBJdwpRREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0NnWUlLb1pJemowRUF3SURTQUF3UlFJaEFLVUZHM3NZT1MrK2Jha1cKWW1KWlU0NWlDZFRMdGFlbE1EU0ZpSG9DOWVCS0FpQkRXenpvKy9DWUxMbW4zM2JBRW44cFFub2dQNEZ4MDZhagorVTlLNFdsYnpBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUhaaEFWTnNwSlRzMWZ4YmZ4VmptTTJvMTNTOFd4U2VVdTlrNFhZK0NPY3JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFL2ttK1YrTUl1Rno5Rjk2eWNES2R0MVFYWUJEREZQQkZQaWh2RkNOaTVndVZZNE9VVml6bAp1Z1NZd1pvMTFZaWpQbS90ZjZDZ0hqb09oYXlaUEtzaFpRPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-			},
-			"",
-			errors.New("key ca.crt containing the trust anchors needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=true"),
-			nil,
-		},
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJnekNDQVNtZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDAKZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTVRrd05EQTBNak0xTXpNM1doY05NakF3TkRBegpNak0xTXpVM1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqCllXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBVCtTYjVYNHdpNFhQMFgzckp3TXAyM1ZCZGcKRU1NVThFVStLRzhVSTJMbUM1VmpnNVJXTE9XNkJKakJtalhWaUtNK2IrMS9vS0FlT2c2RnJKazhxeUZsbzBJdwpRREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0NnWUlLb1pJemowRUF3SURTQUF3UlFJaEFLVUZHM3NZT1MrK2Jha1cKWW1KWlU0NWlDZFRMdGFlbE1EU0ZpSG9DOWVCS0FpQkRXenpvKy9DWUxMbW4zM2JBRW44cFFub2dQNEZ4MDZhagorVTlLNFdsYnpBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUhaaEFWTnNwSlRzMWZ4YmZ4VmptTTJvMTNTOFd4U2VVdTlrNFhZK0NPY3JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFL2ttK1YrTUl1Rno5Rjk2eWNES2R0MVFYWUJEREZQQkZQaWh2RkNOaTVndVZZNE9VVml6bAp1Z1NZd1pvMTFZaWpQbS90ZjZDZ0hqb09oYXlaUEtzaFpRPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-			},
-			"upgrade_overwrite_issuer.golden",
-			nil,
-			func(options *upgradeOptions) {
-				options.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
-				options.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
-			},
-		},
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwTCCAWegAwIBAgIRAL4P/Flr9k8dH2irpJj9/DUwCgYIKoZIzj0EAwIwKTEn\nMCUGA1UEAxMeaWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMB4XDTE5MTIw\nNjEzMjYxOFoXDTI5MTIwMzEzMjYxOFowKTEnMCUGA1UEAxMeaWRlbnRpdHkubGlu\na2VyZC5jbHVzdGVyLmxvY2FsMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7xqp\nIwJRM0HMtlhBJmG3Tpah/5tFapeFnZLWanOcNLAtRWyr55EIIlVKTHmmwtn5hBgg\noszaWogLVPW77BpXiaNwMG4wDgYDVR0PAQH/BAQDAgEGMBIGA1UdEwEB/wQIMAYB\nAf8CAQEwHQYDVR0OBBYEFIwhqACdkaeqy7/Qdh35FqRCizYTMCkGA1UdEQQiMCCC\nHmlkZW50aXR5LmxpbmtlcmQuY2x1c3Rlci5sb2NhbDAKBggqhkjOPQQDAgNIADBF\nAiBEqWPaMM7bemV7UjsrkDoIVGW2pXB8GhTJfhyHoH2VZQIhANClWdDVvh/20KfA\nIZp9KcosxUcRb3KZE1ZgciwaO1UI\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJjakNDQVJpZ0F3SUJBZ0lCQWpBS0JnZ3Foa2pPUFFRREFqQVlNUll3RkFZRFZRUURFdzFqYkhWemRHVnkKTG14dlkyRnNNQjRYRFRFNU1ETXdNekF4TlRrMU1sb1hEVEk1TURJeU9EQXlNRE0xTWxvd0tURW5NQ1VHQTFVRQpBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJCktvWkl6ajBEQVFjRFFnQUVJU2cwQ21KTkJXTHhKVHNLdDcrYno4QXMxWWZxWkZ1VHEyRm5ZbzAxNk5LVnY3MGUKUUMzVDZ0T3Bhajl4dUtzWGZsVTZaa3VpVlJpaWh3K3RWMmlzcTZOQ01FQXdEZ1lEVlIwUEFRSC9CQVFEQWdFRwpNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RUJUQURBUUgvCk1Bb0dDQ3FHU000OUJBTUNBMGdBTUVVQ0lGK2FNMEJ3MlBkTUZEcS9LdGFCUXZIZEFZYVVQVng4dmYzam4rTTQKQWFENEFpRUE5SEJkanlXeWlLZUt4bEE4Q29PdlVBd0k5NXhjNlhVTW9EeFJTWGpucFhnPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0t
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSU1JSnltZWtZeitra0NMUGtGbHJVeUF1L2NISllSVHl3Zm1BVVJLS1JYZHpvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSVNnMENtSk5CV0x4SlRzS3Q3K2J6OEFzMVlmcVpGdVRxMkZuWW8wMTZOS1Z2NzBlUUMzVAo2dE9wYWo5eHVLc1hmbFU2Wmt1aVZSaWlodyt0VjJpc3F3PT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-			},
-			"upgrade_overwrite_trust_anchors.golden",
-			nil,
-			func(options *upgradeOptions) {
-				options.identityOptions.trustPEMFile = filepath.Join("testdata", "valid-trust-anchors.pem")
-			},
-		},
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-			},
-			"",
-			errors.New("a private key file must be specified if a certificate is provided"),
-			func(options *upgradeOptions) {
-				options.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
-			},
-		},
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-			},
-			"",
-			errors.New("a certificate file must be specified if a private key is provided"),
-			func(options *upgradeOptions) {
-				options.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
-			},
-		},
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"kubernetes.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-			},
-			"",
-			errors.New("cannot update issuer certificates if you are using external cert management solution"),
-			func(options *upgradeOptions) {
-				options.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
-				options.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
-			},
-		},
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"c29tZS1vbGQtY2E=","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"kubernetes.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJjakNDQVJpZ0F3SUJBZ0lCQWpBS0JnZ3Foa2pPUFFRREFqQVlNUll3RkFZRFZRUURFdzFqYkhWemRHVnkKTG14dlkyRnNNQjRYRFRFNU1ETXdNekF4TlRrMU1sb1hEVEk1TURJeU9EQXlNRE0xTWxvd0tURW5NQ1VHQTFVRQpBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJCktvWkl6ajBEQVFjRFFnQUVJU2cwQ21KTkJXTHhKVHNLdDcrYno4QXMxWWZxWkZ1VHEyRm5ZbzAxNk5LVnY3MGUKUUMzVDZ0T3Bhajl4dUtzWGZsVTZaa3VpVlJpaWh3K3RWMmlzcTZOQ01FQXdEZ1lEVlIwUEFRSC9CQVFEQWdFRwpNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RUJUQURBUUgvCk1Bb0dDQ3FHU000OUJBTUNBMGdBTUVVQ0lGK2FNMEJ3MlBkTUZEcS9LdGFCUXZIZEFZYVVQVng4dmYzam4rTTQKQWFENEFpRUE5SEJkanlXeWlLZUt4bEE4Q29PdlVBd0k5NXhjNlhVTW9EeFJTWGpucFhnPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0t
-  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJjakNDQVJpZ0F3SUJBZ0lCQWpBS0JnZ3Foa2pPUFFRREFqQVlNUll3RkFZRFZRUURFdzFqYkhWemRHVnkKTG14dlkyRnNNQjRYRFRFNU1ETXdNekF4TlRrMU1sb1hEVEk1TURJeU9EQXlNRE0xTWxvd0tURW5NQ1VHQTFVRQpBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJCktvWkl6ajBEQVFjRFFnQUVJU2cwQ21KTkJXTHhKVHNLdDcrYno4QXMxWWZxWkZ1VHEyRm5ZbzAxNk5LVnY3MGUKUUMzVDZ0T3Bhajl4dUtzWGZsVTZaa3VpVlJpaWh3K3RWMmlzcTZOQ01FQXdEZ1lEVlIwUEFRSC9CQVFEQWdFRwpNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RUJUQURBUUgvCk1Bb0dDQ3FHU000OUJBTUNBMGdBTUVVQ0lGK2FNMEJ3MlBkTUZEcS9LdGFCUXZIZEFZYVVQVng4dmYzam4rTTQKQWFENEFpRUE5SEJkanlXeWlLZUt4bEE4Q29PdlVBd0k5NXhjNlhVTW9EeFJTWGpucFhnPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0t
-  tls.key: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSU1JSnltZWtZeitra0NMUGtGbHJVeUF1L2NISllSVHl3Zm1BVVJLS1JYZHpvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSVNnMENtSk5CV0x4SlRzS3Q3K2J6OEFzMVlmcVpGdVRxMkZuWW8wMTZOS1Z2NzBlUUMzVAo2dE9wYWo5eHVLc1hmbFU2Wmt1aVZSaWlodyt0VjJpc3F3PT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-			},
-			"upgrade_overwrite_trust_anchors-external-issuer.golden",
-			nil,
-			func(options *upgradeOptions) {
-				options.identityOptions.trustPEMFile = filepath.Join("testdata", "valid-trust-anchors.pem")
-			},
-		},
+func replaceVersions(manifest string) string {
+	manifest = strings.ReplaceAll(manifest, installProxyVersion, upgradeProxyVersion)
+	manifest = strings.ReplaceAll(manifest, installControlPlaneVersion, upgradeControlPlaneVersion)
+	manifest = strings.ReplaceAll(manifest, installDebugVersion, upgradeDebugVersion)
+	return manifest
+}
 
-		{
-			"",
-			[]string{`
-kind: ConfigMap
+func generateIssuerCerts(t *testing.T, b64encode bool) issuerCerts {
+	return generateCerts(t, "issuer", b64encode)
+}
+
+func generateCerts(t *testing.T, name string, b64encode bool) issuerCerts {
+	ca, err := tls.GenerateRootCAWithDefaults("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	issuer, err := ca.GenerateCA(name, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	caPem := strings.TrimSpace(issuer.Cred.EncodePEM())
+	keyPem := strings.TrimSpace(issuer.Cred.EncodePrivateKeyPEM())
+	crtPem := strings.TrimSpace(issuer.Cred.EncodeCertificatePEM())
+
+	caFile, err := ioutil.TempFile("", "ca.*.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	crtFile, err := ioutil.TempFile("", "crt.*.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyFile, err := ioutil.TempFile("", "key.*.pem")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = caFile.Write([]byte(caPem))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = crtFile.Write([]byte(crtPem))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = keyFile.Write([]byte(keyPem))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if b64encode {
+		caPem = base64.StdEncoding.EncodeToString([]byte(caPem))
+		crtPem = base64.StdEncoding.EncodeToString([]byte(crtPem))
+		keyPem = base64.StdEncoding.EncodeToString([]byte(keyPem))
+	}
+
+	return issuerCerts{
+		caFile:  caFile.Name(),
+		ca:      caPem,
+		crtFile: crtFile.Name(),
+		crt:     crtPem,
+		keyFile: keyFile.Name(),
+		key:     keyPem,
+	}
+}
+
+func (ic issuerCerts) cleanup() {
+	os.Remove(ic.caFile)
+	os.Remove(ic.crtFile)
+	os.Remove(ic.keyFile)
+}
+
+func externalIssuerSecret(certs issuerCerts) string {
+	return fmt.Sprintf(`---
 apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy\nLmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE\nAxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0\nxtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364\n6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF\nBQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE\nAiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv\nOLO4Zsk1XrGZHGsmyiEyvYF9lpY=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-				`
 kind: Secret
-apiVersion: v1
 metadata:
   name: linkerd-identity-issuer
   namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
 data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJnekNDQVNtZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDAKZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTVRrd05EQTBNak0xTXpNM1doY05NakF3TkRBegpNak0xTXpVM1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqCllXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBVCtTYjVYNHdpNFhQMFgzckp3TXAyM1ZCZGcKRU1NVThFVStLRzhVSTJMbUM1VmpnNVJXTE9XNkJKakJtalhWaUtNK2IrMS9vS0FlT2c2RnJKazhxeUZsbzBJdwpRREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUZCd01DCk1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0NnWUlLb1pJemowRUF3SURTQUF3UlFJaEFLVUZHM3NZT1MrK2Jha1cKWW1KWlU0NWlDZFRMdGFlbE1EU0ZpSG9DOWVCS0FpQkRXenpvKy9DWUxMbW4zM2JBRW44cFFub2dQNEZ4MDZhagorVTlLNFdsYnpBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUhaaEFWTnNwSlRzMWZ4YmZ4VmptTTJvMTNTOFd4U2VVdTlrNFhZK0NPY3JvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFL2ttK1YrTUl1Rno5Rjk2eWNES2R0MVFYWUJEREZQQkZQaWh2RkNOaTVndVZZNE9VVml6bAp1Z1NZd1pvMTFZaWpQbS90ZjZDZ0hqb09oYXlaUEtzaFpRPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-				`
+  tls.crt: %s
+  tls.key: %s
+  ca.crt: %s
+type: kubernetes.io/tls
+`, certs.crt, certs.key, certs.ca)
+}
+
+func indentLines(s string, prefix string) string {
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		lines[i] = prefix + line
+	}
+	return strings.Join(lines, "\n")
+}
+
+func podWithSidecar(certs issuerCerts) string {
+	return fmt.Sprintf(`---
 apiVersion: v1
 kind: Pod
 metadata:
@@ -946,1226 +610,78 @@ metadata:
     linkerd.io/created-by: linkerd/cli some-version
     linkerd.io/identity-mode: default
     linkerd.io/proxy-version: some-version
-  creationTimestamp: "2019-12-12T12:45:05Z"
-  generateName: backend-66f7544cb6-
   labels:
-    app: backend
     linkerd.io/control-plane-ns: linkerd
-    linkerd.io/proxy-deployment: backend
   name: backend-wrong-anchors
   namespace: some-namespace
-  resourceVersion: "10456"
-  uid: 8018fa11-e2cc-48d6-8e2c-1c83f9a3675c
 spec:
   containers:
   - env:
     - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
       value: |
-        -----BEGIN CERTIFICATE-----
-        MIIBsjCCAVmgAwIBAgIBATAKBggqhkjOPQQDAjBBMT8wPQYDVQQDEzZpZGVudGl0
-        eS5sNWQtaW50ZWdyYXRpb24tZXh0ZXJuYWwtaXNzdWVyLmNsdXN0ZXIubG9jYWww
-        HhcNMTkxMjEyMTIzMjMyWhcNMjAxMjExMTIzMjUyWjBBMT8wPQYDVQQDEzZpZGVu
-        dGl0eS5sNWQtaW50ZWdyYXRpb24tZXh0ZXJuYWwtaXNzdWVyLmNsdXN0ZXIubG9j
-        YWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASdpgf24q6YSKyK6EJr+bItGxsn
-        9wI2e+W0+zkiijgv7AdaVoMLGvvlwUhilkUqJbVOCa0o3f57feXsXan2kq4ko0Iw
-        QDAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMC
-        MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDRwAwRAIgcU9CkA4+elkcBF4s
-        58HiWR7kmtMzypOKy34ymLQNAIUCIBRhzErsbaTFmA3f+NM+nX4GT6jSnEhGg19n
-        CG6G2Xq/
-        -----END CERTIFICATE-----
+%s
     image: gcr.io/linkerd-io/proxy:some-version
-    imagePullPolicy: IfNotPresent
     name: linkerd-proxy
-    ports:
-    - containerPort: 4143
-      name: linkerd-proxy
-      protocol: TCP
-    - containerPort: 4191
-      name: linkerd-admin
-      protocol: TCP
-    resources: {}
-    volumeMounts:
-    - mountPath: /var/run/linkerd/identity/end-entity
-      name: linkerd-identity-end-entity
-    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-      name: default-token-vgd8j
-      readOnly: true
-  dnsPolicy: ClusterFirst
-  volumes:
-  - emptyDir:
-      medium: Memory
-    name: linkerd-identity-end-entity
-  - name: default-token-vgd8j
-    secret:
-      defaultMode: 420
-      secretName: default-token-vgd8j
-  phase: Running
-  podIP: 10.244.0.75
-  podIPs:
-  - ip: 10.244.0.75
-  qosClass: Burstable
-  startTime: "2019-12-12T12:45:05Z"`,
-				`
-apiVersion: v1
-kind: Pod
-metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/cli some-version
-    linkerd.io/identity-mode: default
-    linkerd.io/proxy-version: some-version
-  creationTimestamp: "2019-12-12T12:45:05Z"
-  generateName: backend-66f7544cb6-
-  labels:
-    app: backend
-    linkerd.io/control-plane-ns: linkerd
-    linkerd.io/proxy-deployment: backend
-  name: backend-right-anchors
-  namespace: some-namespace
-  resourceVersion: "10456"
-  uid: 8018fa11-e2cc-48d6-8e2c-1c83f9a3675c
-spec:
-  containers:
-  - env:
-    - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-      value: |
-        -----BEGIN CERTIFICATE-----
-        MIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy
-        LmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE
-        AxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0
-        xtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364
-        6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF
-        BQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE
-        AiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv
-        OLO4Zsk1XrGZHGsmyiEyvYF9lpY=
-        -----END CERTIFICATE-----
-    image: gcr.io/linkerd-io/proxy:some-version
-    imagePullPolicy: IfNotPresent
-    name: linkerd-proxy
-    ports:
-    - containerPort: 4143
-      name: linkerd-proxy
-      protocol: TCP
-    - containerPort: 4191
-      name: linkerd-admin
-      protocol: TCP
-    resources: {}
-    volumeMounts:
-    - mountPath: /var/run/linkerd/identity/end-entity
-      name: linkerd-identity-end-entity
-    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-      name: default-token-vgd8j
-      readOnly: true
-  dnsPolicy: ClusterFirst
-  volumes:
-  - emptyDir:
-      medium: Memory
-    name: linkerd-identity-end-entity
-  - name: default-token-vgd8j
-    secret:
-      defaultMode: 420
-      secretName: default-token-vgd8j
-  phase: Running
-  podIP: 10.244.0.75
-  podIPs:
-  - ip: 10.244.0.75
-  qosClass: Burstable
-  startTime: "2019-12-12T12:45:05Z"`,
-			},
-			"upgrade_overwrite_issuer.golden",
-			// use Errorf here to stop the linter complaining that our error message is capitalized...
-			fmt.Errorf("%s", "You are attempting to use an issuer certificate which does not validate against the trust anchors of the following pods:\n\t* some-namespace/backend-wrong-anchors\nThese pods do not have the current trust bundle and must be restarted.  Use the --force flag to proceed anyway (this will likely prevent those pods from sending or receiving traffic)."),
-			func(options *upgradeOptions) {
-				options.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
-				options.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
-			},
-		},
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUd0cEJrT0hjVENqOVZQcXBtMG5TSFpYOXZmdXN3RWx5R1dJQVJ1NlUwQTJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSEFLNzY0OWFTNkpPREgvTHJxY3R5cWs5bmU5S1ZjRmZqeEY1S3dIWGgrL0M1M2JWdDBPbApmVkVIa3pyYjhsYzV2czJYdEhYQVdlQ2JVWUJXT0pKQWZBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-			},
-			"upgrade_add_add-on.golden",
-			nil,
-			func(options *upgradeOptions) {
-				options.addOnConfig = filepath.Join("testdata", "addon_config.yaml")
-			},
-		},
-		{
-			configStage,
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUd0cEJrT0hjVENqOVZQcXBtMG5TSFpYOXZmdXN3RWx5R1dJQVJ1NlUwQTJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSEFLNzY0OWFTNkpPREgvTHJxY3R5cWs5bmU5S1ZjRmZqeEY1S3dIWGgrL0M1M2JWdDBPbApmVkVIa3pyYjhsYzV2czJYdEhYQVdlQ2JVWUJXT0pKQWZBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-			},
-			"upgrade_add-on_config.golden",
-			nil,
-			func(options *upgradeOptions) {
-				options.addOnConfig = filepath.Join("testdata", "addon_config.yaml")
-			},
-		},
-		{
-			controlPlaneStage,
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUd0cEJrT0hjVENqOVZQcXBtMG5TSFpYOXZmdXN3RWx5R1dJQVJ1NlUwQTJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSEFLNzY0OWFTNkpPREgvTHJxY3R5cWs5bmU5S1ZjRmZqeEY1S3dIWGgrL0M1M2JWdDBPbApmVkVIa3pyYjhsYzV2czJYdEhYQVdlQ2JVWUJXT0pKQWZBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-			},
-			"upgrade_add-on_controlplane.golden",
-			nil,
-			func(options *upgradeOptions) {
-				options.addOnConfig = filepath.Join("testdata", "addon_config.yaml")
-			},
-		},
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUd0cEJrT0hjVENqOVZQcXBtMG5TSFpYOXZmdXN3RWx5R1dJQVJ1NlUwQTJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSEFLNzY0OWFTNkpPREgvTHJxY3R5cWs5bmU5S1ZjRmZqeEY1S3dIWGgrL0M1M2JWdDBPbApmVkVIa3pyYjhsYzV2czJYdEhYQVdlQ2JVWUJXT0pKQWZBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-				`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config-addons
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  values: |-
-    tracing:
-      enabled: true
-      collector:
-        image: omnition/opencensus-collector:0.1.11
-        name: linkerd-collector
-        resources: null
-      jaeger:
-        image: jaegertracing/all-in-one:1.17.1
-        name: linkerd-jaeger
-        resources: null
-`,
-			},
-			"upgrade_add-on_overwrite.golden",
-			nil,
-			func(options *upgradeOptions) {
-				options.traceCollector = "overwrite-collector"
-				options.traceCollectorSvcAccount = "overwrite-collector.default"
-				options.addOnConfig = filepath.Join("testdata", "addon_config_overwrite.yaml")
-			},
-		},
-		{
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[{"portRange":"2525-2527"},{"portRange":"25259"}],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[{"name":"skip-inbound-ports","value":"[2525-2527,2529]"}]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUd0cEJrT0hjVENqOVZQcXBtMG5TSFpYOXZmdXN3RWx5R1dJQVJ1NlUwQTJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSEFLNzY0OWFTNkpPREgvTHJxY3R5cWs5bmU5S1ZjRmZqeEY1S3dIWGgrL0M1M2JWdDBPbApmVkVIa3pyYjhsYzV2czJYdEhYQVdlQ2JVWUJXT0pKQWZBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: linkerd-proxy-injector-webhook-config
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-webhooks:
-- name: linkerd-proxy-injector.linkerd.io
-  namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-  clientConfig:
-    service:
-      name: linkerd-proxy-injector
-      namespace: linkerd
-      path: "/"
-    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQotLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KTUlJREpqQ0NBZzZnQXdJQkFnSVFWMWtJcmFEbWx3M1NXNjlRc1FaM1BEQU5CZ2txaGtpRzl3MEJBUXNGQURBdApNU3N3S1FZRFZRUURFeUpzYVc1clpYSmtMWEJ5YjNoNUxXbHVhbVZqZEc5eUxteHBibXRsY21RdWMzWmpNQjRYCkRURTVNRGd3TnpJeE16WTBNRm9YRFRJd01EZ3dOakl4TXpZME1Gb3dMVEVyTUNrR0ExVUVBeE1pYkdsdWEyVnkKWkMxd2NtOTRlUzFwYm1wbFkzUnZjaTVzYVc1clpYSmtMbk4yWXpDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRApnZ0VQQURDQ0FRb0NnZ0VCQU56TmIyZ3RVVTZKazFUNXhKbHd1M2VKZWJKaXhPTVVzdDIzNWRJYldTUXY5SU1qCldFNHVnd2VuTVlIOHlXWmlXUXk0KzJrSHdzUmR1Y3EzeWplQisyYWxSWXp6cEtwVS90dXFWL1dPZTdVWnFwZFoKQ2w1NTM1eWZTMzM2d1p2MWtaVGVTeDV0dzR3djBpT29Ub2NUaWxKbW04ZWxYMlQ3S2hqMlVqbmhIM1ZRcXFuMQpwRFFQYi9qVEw5VzJKVlgvaW45d29MSm1zb3hoU2RHYzFMNGxWeW9YQU5JV1JYQ3BBVjNWWjkxdXpIcWppZjJmCnJacFpFNDRBa1ozWFZGdWVqV21xNlRFbEcvUzVicGRoTENzLzNYTjVPWVlRdVhteVN0cTJvTnlnMVQ4THpGbEQKYnp5dkFKV2ZJdXp3eFlrTnU1OWNuSFpSMFFjaWJQMXk1NDRCVXZzQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFILwpCQVFEQWdLa01CMEdBMVVkSlFRV01CUUdDQ3NHQVFVRkJ3TUJCZ2dyQmdFRkJRY0RBakFQQmdOVkhSTUJBZjhFCkJUQURBUUgvTUEwR0NTcUdTSWIzRFFFQkN3VUFBNElCQVFCME1kRE41ZG5pSDFhL3pQYjlBYUFPYmpoUERQL0UKeCt5WVFTdUNhenJ4VkJSWk94Z2lSRTI3UmNnTkFEZmY5VGRFT0RHUGtRVjhpNGdVVU52L1VqeWM4NjF1bnlIbQpHcVpwSnQ4VE5nSlY3ZUdHTTBRaWs2QVhlN0tPU3RoV3NVVkNIeUYxQXJqbTVTZ1FQdGxES21UaTVsMEJnWnIrCkFuVXM5WWU0eFRIUUVhKzBIU3c1c2N2cWxUOFhLRkJqejNraElscVV3ci9LL2x5VkhMNzBBMzJSL1Q4OHlnVjMKVDgyK3BLVHlPeVlTUitkbVlRZ3FxbTRqNWFVWnlpRE9lUUdHWTJwRk1CckxjS0ZmMWpyYkdZeVVBU2t2WHo1egpodkg5S0lZcU5yR2EwOWhMUGNvTSsxb0I0c2djZEp0WkJXakJFZ2JMd3BYQkl1RUVVdjlyejR0MAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0t
-  failurePolicy: Ignore
-  rules:
-  - operations: [ "CREATE" ]
-    apiGroups: [""]
-    apiVersions: ["v1"]
-    resources: ["pods"]
-  sideEffects: None`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: linkerd-sp-validator-webhook-config
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-webhooks:
-- name: linkerd-sp-validator.linkerd.io
-  namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-  clientConfig:
-    service:
-      name: linkerd-sp-validator
-      namespace: linkerd
-      path: "/"
-    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  failurePolicy: Ignore
-  rules:
-  - operations: [ "CREATE" , "UPDATE" ]
-    apiGroups: ["linkerd.io"]
-    apiVersions: ["v1alpha1", "v1alpha2"]
-    resources: ["serviceprofiles"]
-  sideEffects: None`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-				`
-apiVersion: apiregistration.k8s.io/v1
-kind: APIService
-metadata:
-  name: v1alpha1.tap.linkerd.io
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-spec:
-  group: tap.linkerd.io
-  version: v1alpha1
-  groupPriorityMinimum: 1000
-  versionPriority: 100
-  service:
-    name: linkerd-tap
-    namespace: linkerd
-  caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0t`,
-			},
-			"upgrade_keep_webhook_cabundle.golden",
-			nil,
-			nil,
-		},
-		{
-			// test the handling of certificates in webhooks with actual two-level
-			// certificate chain instead of self-signed certs.
-			"",
-			[]string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}, "clusterDomain":"cluster.local"}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[{"portRange":"2525-2527"},{"portRange":"25259"}],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[{"name":"skip-inbound-ports","value":"[2525-2527,2529]"}]}`,
-				`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUd0cEJrT0hjVENqOVZQcXBtMG5TSFpYOXZmdXN3RWx5R1dJQVJ1NlUwQTJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSEFLNzY0OWFTNkpPREgvTHJxY3R5cWs5bmU5S1ZjRmZqeEY1S3dIWGgrL0M1M2JWdDBPbApmVkVIa3pyYjhsYzV2czJYdEhYQVdlQ2JVWUJXT0pKQWZBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMwVENDQWJrQ0ZCUndJTjM5MTFjYlZZV3pOWDNpNU42SjJDanlNQTBHQ1NxR1NJYjNEUUVCQ3dVQU1CMHgKR3pBWkJnTlZCQU1NRWt4cGJtdGxjbVFnVjJWaWFHOXZheUJEUVRBZUZ3MHlNREExTWpjeE1ERTRNak5hRncweQpNVEV3TURreE1ERTRNak5hTUMweEt6QXBCZ05WQkFNTUlteHBibXRsY21RdGNISnZlSGt0YVc1cVpXTjBiM0l1CmJHbHVhMlZ5WkM1emRtTXdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFEVWR0MlkKN1hoVTFhZWNFWHhhMjZuTFpRNkNXREtCN3FpRGxkV1dDNHN6TWpFL29waDJXejJ5RnJneGp6TEczcGM0dXBoVgp3MjdiejVLdlpUM3ZZWmlnRkk5NW14YW1sZTE5S2t3RjZwV2dPYU9HVVBpTzMzTTNGb1ZkbmZ5TFU3TXNxNHZICjVVYVczK3E1cjZlb0NMeTJhR3hOVm1vVnJRWk43cTNLb1J3eDgwcndIbVA2RlduTnJQUWRFb0ZQNmdPWEZRNjgKZ2tOd2JEUU5hbEJ3RjVqanJTVnpVUE9RZXVYZWJ4VHFsVzdKYTRoQ2xEejFYam5HQ1gvVFVuQUlYcFFtcVViWApCWXA5VFBSMmEyMitBMjBTS2dkcGVEVy8zUWVIWWl0MTMvT3p6VnpMeHJTYlVnUHZHWXBock40WXNyUmMvemx1CjZjRlMxd0JwRTJqRlJqTDVBZ01CQUFFd0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFMV1YyaWlNSGlxRVh4cVQKODJFS21DSU9OU2tueGZ1cDVXUXpjcktCNTdMbXIzemNncmNrWmZGanlrclhxWndsNGMzWkwwVm9sNklITHdYbgpaVHEyZ1dteGNqaVBmVzlWSXJ4cERFOC9Tdytnd0lPZ0FRd3d0RWFJZGFmUWMrdURFbkU0akxOVFNOZ25vZ0dHCnR0eXRzTEgxNUlSK1dVNGs1WEhnd2RXU0IrR3c0WCtmR2ZZTDdBSk8rT3JBTG04REd3eVpuVTM5Z1p1UmhocGQKWFVzelJ3ZmZGOXJlRmxnWFQ2UmsxamhPM3RhMkltcEJHczlRUmlSbGRUZkxWaElyNWp3bGRJWTBTS3lLSnJhbApyVGltRy9JWTNYUFNsZzJhVHFWZHl3R3ZiV1RrUytLVTJFaGFCaWtXR0RzQUhKcGJEODVuVGFiM1VCbmhrSUdoCi9WK0QrTTA9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBclNvSURxUTZKT3M5Y29TNUtXcFZaMHc2NkNtVTNpbmJ3cHBJYkZKTDVWcW1hQTI2ClFKSmY2RXBkek5zdnhMcXhIeFRZY1o4c1FUb0MwNlg4ZmppVXZ2WUsxdU5KZVpkdzZzQU5YcE5nY2JEWkU5NksKWVo5NmZkSXVZWklPbjI5MVBVTUQ1ZnpaQVB1NGdUUEMwRzZXV1BPTmgzTE4vdGtJVnBIYk5HNm5ZNFZSRmFoRApmQ0xJZkxHam4vVzE2YkI1dmx1VW5SQTU3ekc5NldETXFkZElBcGxFeHYwNWpmMWRob01rdC9reTNwSDdjejV5CmJqbm1ielloZ2I3QWFHRWRQazd5WTk2aFpqMlc5eEF5N3c5RzhLYzhJL0NjT1cyZTU2eWtIOVRFOU1zdnBWaCsKVnlubG9RbkxnMVZ1VmpycG55RUQzOHhaTUNPQjl2ZjZJdWlQTHdJREFRQUJBb0lCQVFDbmdkVXhkS1BhT3NUQwpGcW1XNm9tYTF4N1VuZ1NudEE0bGZXRTVoNUpyVnZsS0JwMTVBUjlOY1VLemZBUUZaaU1ZVWUzZVczOVB5WElhCmtxSmc1eExjZHQyZGFWZ1dDdXpyNk1RR0RNSnF1QXdGTUd6a2FvVHZXWFlNWkdGSTBXU3owalBmTW13b2kxZTcKZy9xYjdaMzZoZjhPVzN2eFhyaTJKWG5LaW8vWnIvR2I3RUhRNllNQm8zSHJidHZNdWw4QWFhZG5jZFdySk95RgpuT1JXV0hjSVBNWmNpVjVEN3Bmd0p2MjFVTzJNellHVFBMdFVLT2o3bDlVRmxRcmRVcU9LZ2RRK041MEkyeGplCnJRb0p0RUtXcUlSSXh5ZTRXanB3bUtmektoc1JEMU10dkJSaFJMcEloWnlQMUZJdG9DNDVVdHJCUjQzUnNERTEKZ29mdm9IcWhBb0dCQU5LV0RIR3c1dFJvTFVFVGtYUWs5dllxeG9KU1lzNW1YcU9ReDliMUZoTFRJYm1qUkllUgpzOTR3WHJDL3l6QllzYTdJU2FxNjFyeU1zTG9ObXprK0VrQmxNb0VLM1h0aS9lUytxRHVubWVqR1NyeUJjTUxXClJGR0RvR2x4aW8ybXpRN2E2Um1MN012MFVBRGhhQWRNdHlqSXZsS21CSDVLRUtleTcyYklTbnJWQW9HQkFOS0MKQWdKTGdPQlFJRG00TmNYMk1ObHFXOC9SNnJLcWRhMjE3ODIzT1FtQm9weVFEcFVsN0xQQmw3M1pkcHAraDliUgpET3JvMFpPNjBLd0gvV2dMem1INHkvR3R1WC9SZjY5bkZEWndzOWdqREVIdFhrUW9MbEIvTUFFeDdJbitDMnVyClQvZjhVa3RLT29XbjRsQlZ5d2phNTJKZWRCdTZ4dWlGZ0JrSis1dnpBb0dBZkVuREhuYmlSZ3NXYW9vNkZ1cWEKTjhBWFdXTjJuWXNkNER2Yk5xdUFVNnY1QTYreENyS2NEazlPRTlPZkFQSFlMT2haVWtMajZuUysrWkIrUk5LMQp3dnYzU3VJMnhsUXV0WXN4ajhQanV0Y04xU1F3Z1U0bEZGY3puZ2c5VmsxVVNhZzZXN0dTR080aEtlUGZtaTlWCkN1VXdMMmQ4ejJ5M1Y4THNPU1dOaitFQ2dZRUFzY2lVMDhWYW1aZHlMKzB3bFBrZ05tNktEZEVXcTBBbFZNa2sKTnhQMyt0eGVMbVhIdXhVbGZJY1NsWWMwa0xRdUd6SEEvQ0FXNS9KTnpBeVBhckVWNDA1UlI5SlZxT3FSTU4wWQppQVhWRGNSRDFPWVl4KzA3ZUVhQ2oyL1BlcGR3bzhVeUs1a1JFMzhrUDc4UzlwQU9nbk1HR2VEMXBIbXhCYTNDCkN1T1FlUnNDZ1lBMVR0R3BQUTQ4QkJuUVBleU9DckZmUW1OeUZ0RXN4SjErMkZleFdJdjdTSGthZXVUWVVzajEKRDhGQytpbWlNZVFRcVJ1VjJjYVBjUXpxMEJaUVppd3YvcmhwRHlDcjkyYm5HQkx6d20zMG56UTJoMi9CNDRSSwprQzlkdWpNK2taZEJ5MFRWY1hrdzk4ZWlJeUFDaGd4RXVNWVFLb21rVW0xU2dxZkhpWmR6M1E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: linkerd-proxy-injector-webhook-config
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-webhooks:
-- name: linkerd-proxy-injector.linkerd.io
-  namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-  clientConfig:
-    service:
-      name: linkerd-proxy-injector
-      namespace: linkerd
-      path: "/"
-    caBundle: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBclNvSURxUTZKT3M5Y29TNUtXcFZaMHc2NkNtVTNpbmJ3cHBJYkZKTDVWcW1hQTI2ClFKSmY2RXBkek5zdnhMcXhIeFRZY1o4c1FUb0MwNlg4ZmppVXZ2WUsxdU5KZVpkdzZzQU5YcE5nY2JEWkU5NksKWVo5NmZkSXVZWklPbjI5MVBVTUQ1ZnpaQVB1NGdUUEMwRzZXV1BPTmgzTE4vdGtJVnBIYk5HNm5ZNFZSRmFoRApmQ0xJZkxHam4vVzE2YkI1dmx1VW5SQTU3ekc5NldETXFkZElBcGxFeHYwNWpmMWRob01rdC9reTNwSDdjejV5CmJqbm1ielloZ2I3QWFHRWRQazd5WTk2aFpqMlc5eEF5N3c5RzhLYzhJL0NjT1cyZTU2eWtIOVRFOU1zdnBWaCsKVnlubG9RbkxnMVZ1VmpycG55RUQzOHhaTUNPQjl2ZjZJdWlQTHdJREFRQUJBb0lCQVFDbmdkVXhkS1BhT3NUQwpGcW1XNm9tYTF4N1VuZ1NudEE0bGZXRTVoNUpyVnZsS0JwMTVBUjlOY1VLemZBUUZaaU1ZVWUzZVczOVB5WElhCmtxSmc1eExjZHQyZGFWZ1dDdXpyNk1RR0RNSnF1QXdGTUd6a2FvVHZXWFlNWkdGSTBXU3owalBmTW13b2kxZTcKZy9xYjdaMzZoZjhPVzN2eFhyaTJKWG5LaW8vWnIvR2I3RUhRNllNQm8zSHJidHZNdWw4QWFhZG5jZFdySk95RgpuT1JXV0hjSVBNWmNpVjVEN3Bmd0p2MjFVTzJNellHVFBMdFVLT2o3bDlVRmxRcmRVcU9LZ2RRK041MEkyeGplCnJRb0p0RUtXcUlSSXh5ZTRXanB3bUtmektoc1JEMU10dkJSaFJMcEloWnlQMUZJdG9DNDVVdHJCUjQzUnNERTEKZ29mdm9IcWhBb0dCQU5LV0RIR3c1dFJvTFVFVGtYUWs5dllxeG9KU1lzNW1YcU9ReDliMUZoTFRJYm1qUkllUgpzOTR3WHJDL3l6QllzYTdJU2FxNjFyeU1zTG9ObXprK0VrQmxNb0VLM1h0aS9lUytxRHVubWVqR1NyeUJjTUxXClJGR0RvR2x4aW8ybXpRN2E2Um1MN012MFVBRGhhQWRNdHlqSXZsS21CSDVLRUtleTcyYklTbnJWQW9HQkFOS0MKQWdKTGdPQlFJRG00TmNYMk1ObHFXOC9SNnJLcWRhMjE3ODIzT1FtQm9weVFEcFVsN0xQQmw3M1pkcHAraDliUgpET3JvMFpPNjBLd0gvV2dMem1INHkvR3R1WC9SZjY5bkZEWndzOWdqREVIdFhrUW9MbEIvTUFFeDdJbitDMnVyClQvZjhVa3RLT29XbjRsQlZ5d2phNTJKZWRCdTZ4dWlGZ0JrSis1dnpBb0dBZkVuREhuYmlSZ3NXYW9vNkZ1cWEKTjhBWFdXTjJuWXNkNER2Yk5xdUFVNnY1QTYreENyS2NEazlPRTlPZkFQSFlMT2haVWtMajZuUysrWkIrUk5LMQp3dnYzU3VJMnhsUXV0WXN4ajhQanV0Y04xU1F3Z1U0bEZGY3puZ2c5VmsxVVNhZzZXN0dTR080aEtlUGZtaTlWCkN1VXdMMmQ4ejJ5M1Y4THNPU1dOaitFQ2dZRUFzY2lVMDhWYW1aZHlMKzB3bFBrZ05tNktEZEVXcTBBbFZNa2sKTnhQMyt0eGVMbVhIdXhVbGZJY1NsWWMwa0xRdUd6SEEvQ0FXNS9KTnpBeVBhckVWNDA1UlI5SlZxT3FSTU4wWQppQVhWRGNSRDFPWVl4KzA3ZUVhQ2oyL1BlcGR3bzhVeUs1a1JFMzhrUDc4UzlwQU9nbk1HR2VEMXBIbXhCYTNDCkN1T1FlUnNDZ1lBMVR0R3BQUTQ4QkJuUVBleU9DckZmUW1OeUZ0RXN4SjErMkZleFdJdjdTSGthZXVUWVVzajEKRDhGQytpbWlNZVFRcVJ1VjJjYVBjUXpxMEJaUVppd3YvcmhwRHlDcjkyYm5HQkx6d20zMG56UTJoMi9CNDRSSwprQzlkdWpNK2taZEJ5MFRWY1hrdzk4ZWlJeUFDaGd4RXVNWVFLb21rVW0xU2dxZkhpWmR6M1E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-  failurePolicy: Ignore
-  rules:
-  - operations: [ "CREATE" ]
-    apiGroups: [""]
-    apiVersions: ["v1"]
-    resources: ["pods"]
-  sideEffects: None`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN6ekNDQWJjQ0ZCUndJTjM5MTFjYlZZV3pOWDNpNU42SjJDanhNQTBHQ1NxR1NJYjNEUUVCQ3dVQU1CMHgKR3pBWkJnTlZCQU1NRWt4cGJtdGxjbVFnVjJWaWFHOXZheUJEUVRBZUZ3MHlNREExTWpjeE1ERTRNak5hRncweQpNVEV3TURreE1ERTRNak5hTUNzeEtUQW5CZ05WQkFNTUlHeHBibXRsY21RdGMzQXRkbUZzYVdSaGRHOXlMbXhwCmJtdGxjbVF1YzNaak1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBdGFFcnRsL0EKT3ZlWG56NXo2SGxuaGkrclNvS3VDTVBOUXhteXFYdFNCOUFGcnZpS3c2ME00SEdVS1J4MG1qWXB3dWltTGZaZQo4WTBGYVdibzZibGJ5QUNnYjcvclhPY09mVk15WWFIQXdpc3JLWlhIWjFiQVc0cXRRTUFqSHZhRlVrbjhIMlYrCkpKWk5PenpRbG10bUhxcjU1QmZ5VzArK0p2Uk16RTJNU0tuTllyWTFVV3hHclp1Nmt4WHp5U1d5ekNPTU5IVlYKb1kwZDUrQjhMdExOUE5PUU5GdWhPVWp2R0FNbVRERWFhbmRLNTFnemdiTjRGTlRhODZrazkzMXpUdW1OSFFvYgo1YjZxaElzV0M0UGhNY2RLSVhDY0Y1L2NGaldKVFc2cHVUeW9OYlZpY0JiZ3lYT043MEFlUnhYc2pESHk5QVRtCnVPdHhpZmNicDdHeEJRSURBUUFCTUEwR0NTcUdTSWIzRFFFQkN3VUFBNElCQVFDZnM1S2dNWms2UGZQYU9yRFcKZVVHWDlXT0dTalJFMld0YWtVbUttT3BiVHM0TWt3a2hiQUFsemNxbmxGOHZORUoxMmpBRkFQVXZMT0ZOUHA5dQpBdWpuWmNIeVd6U2FNcFhvdEFXZHFWNjlEN2ExUnJFek5KS3k1clEzMDBwVTFnZlF6ay9lMmo3NjlEd2cyM0ZFCldvTkFIeFpvQzlSL3NIUmxHb1VScmZ2VklTS0ZEQy9Oc2ZGaXE1elRjYjhQMVl4UVF3Wk1Tc2EzTldUVHNlYy8KSmcybTJYVkJ1dlk5VXh5aGozdUVvUnFkVTluNkVlNWFHaTVPTGptUEtDVHlSZHB2WnM5d2NuWnpzUDVaR00xTApuZFlUczluOGdETDBiMlhmbmNoK01SbWMxd2ppd2hHRzJGZFY3VW1Fa3I0ait0M2dUdTd5Rmo4MEhWNDBLY2pjCkdEaWEKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcFFJQkFBS0NBUUVBdGFFcnRsL0FPdmVYbno1ejZIbG5oaStyU29LdUNNUE5ReG15cVh0U0I5QUZydmlLCnc2ME00SEdVS1J4MG1qWXB3dWltTGZaZThZMEZhV2JvNmJsYnlBQ2diNy9yWE9jT2ZWTXlZYUhBd2lzcktaWEgKWjFiQVc0cXRRTUFqSHZhRlVrbjhIMlYrSkpaTk96elFsbXRtSHFyNTVCZnlXMCsrSnZSTXpFMk1TS25OWXJZMQpVV3hHclp1Nmt4WHp5U1d5ekNPTU5IVlZvWTBkNStCOEx0TE5QTk9RTkZ1aE9VanZHQU1tVERFYWFuZEs1MWd6CmdiTjRGTlRhODZrazkzMXpUdW1OSFFvYjViNnFoSXNXQzRQaE1jZEtJWENjRjUvY0ZqV0pUVzZwdVR5b05iVmkKY0JiZ3lYT043MEFlUnhYc2pESHk5QVRtdU90eGlmY2JwN0d4QlFJREFRQUJBb0lCQVFDTmdnaUFpcEZHWCtpdApsUWJSTk9WSFVwUnQ5T3FLd2FLR2lOcjkyS3JNazNJYUpHSlltZGJTZHlzcjdKT2NJbDdmRUV1SXU4NjArMTRnCkJLR3FsMU8rdTE1RU1vNjVUdnVuQU03YjZoNDRLVkh6a0ZKUFhQTjVYczRsQ0kxVWJsVHBDK04yd3FoSThTRXkKNmVySmh0dUZRVWg0UVgvOVRGK21FZWhUdElkN2hCOStDcks1QjdQQnBQYnV4em9ocWg0d3YwNkJzcGxtOStCVgprbVhRN2F0QWs4dXdRcFk2MC9MU1hBczhDLzM4eitJcGxkWTZPMGpOM3YzL2Ntc2hrcGozc1hRMlA3Y1g0bmlnCjZDRStUM0wzZzluaE9wUnpUcFo1bTBaRmV4K3R2OUMvUVhHSURLcTZCTlF4aFQzcU1UUUpudVVKT21GejNEZ28KeXlqNVlCN3hBb0dCQU9TN3QwMDFXeVNkMStFOFZVTER6dThPRlNBQVNQVm96ak9BTkxWc1dOVDRpd3lpc1M2NQpuZUUvcHVqbjlnR2VpK2dSSzRNcEpBd1cwQUNLOHFMWW9HcjhabE9NVDlGYm5qM0dOaGg5czc4dm1pRW1qTXRzCjBnV1l6SE16eEdCdnd1bldiT01mdFBDWjFuSDkrZEtLaExSRG92ZU51K3F0UjV4dmI0SlNSNHV6QW9HQkFNdEgKL0NmRDJvVVF5TUp3QXM3SEc0WDZyTEwrQ2kvWGJ1dWUvUlR2MHJFRlM3aXNoeU5sTkhZb3FtS3hiUURPazgvTwpwMnptczR1aURHb2NHZktDQnFJeERJcHlyNWhmMTkwaVNCQjVOcFlyMnpXQ1J4NUZIRjBZMDZObklVa3VyMUZSCmt5TXgwL25tTE5UQmpwT0pKcTFvMmlkLzRNUWtNdUlzbjJBSXg1Um5Bb0dCQUxnY29SNzBvN2lGbFE4bmtUbDgKZzBUSkFSZ1JJcWpuQTVOUXp4eDVhY2VEaCtsVHkycmczY1JCaUFoUkxpTi9pdjN4VkNUdktLVFNkL3IzM1BaWAppRWlWZ1lnZW1PRGI3ak9yS0QvdWJwQ2xzRnFldlJYQk1neHZRYUk1T1FpbTdTMXIrNW1XRy83TzFWNU1JSnJvCkJJbFZLQWc3ZmRjWVExd1lGcG0vd1BjaEFvR0JBSkRJRzJMakRuOFpuak5GL2VueVM3c1g5K3FnSHZkR0ZCMUQKSm5QRC82Yk80OGlMTU5EWDR3NkpGaG1tenNEMVlMZHdNelRQOTI3cklyWnNmMXFHbTF6blhFdzdOSzl0Qzl6Vwo3c2EwM2xrRXNXTWgvNjhpZi9vYWxabmErUTBiY0FpVjlocnFBVlVLU0VIYi9jVTh1TXhuVW9FeGhnK016S1RrCkxUc0Q1Y25mQW9HQWF0QlcvWGlCdTVWOG9Gd3l3ZVFjb2lyR0V4NTlxWm8wUjl6V2RIRWxEeUNDenJxTi9YUUcKZlZZTmpJbE5pbThUaVlGbjl1clBsMm1sRlBzK2dJaXRna1JPSFYvbVdFaTExaEg4UzRmL0dOVVFRblgzV3g0TQo1Y3JlN3U5dDVhWnhHc3dvRFBWYVlTMTJNaUttSkZVZWlzL2hEcWk4dG13WGYvRnZ2dzd2a2hzPQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: linkerd-sp-validator-webhook-config
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-webhooks:
-- name: linkerd-sp-validator.linkerd.io
-  namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
-  clientConfig:
-    service:
-      name: linkerd-sp-validator
-      namespace: linkerd
-      path: "/"
-    caBundle: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBclNvSURxUTZKT3M5Y29TNUtXcFZaMHc2NkNtVTNpbmJ3cHBJYkZKTDVWcW1hQTI2ClFKSmY2RXBkek5zdnhMcXhIeFRZY1o4c1FUb0MwNlg4ZmppVXZ2WUsxdU5KZVpkdzZzQU5YcE5nY2JEWkU5NksKWVo5NmZkSXVZWklPbjI5MVBVTUQ1ZnpaQVB1NGdUUEMwRzZXV1BPTmgzTE4vdGtJVnBIYk5HNm5ZNFZSRmFoRApmQ0xJZkxHam4vVzE2YkI1dmx1VW5SQTU3ekc5NldETXFkZElBcGxFeHYwNWpmMWRob01rdC9reTNwSDdjejV5CmJqbm1ielloZ2I3QWFHRWRQazd5WTk2aFpqMlc5eEF5N3c5RzhLYzhJL0NjT1cyZTU2eWtIOVRFOU1zdnBWaCsKVnlubG9RbkxnMVZ1VmpycG55RUQzOHhaTUNPQjl2ZjZJdWlQTHdJREFRQUJBb0lCQVFDbmdkVXhkS1BhT3NUQwpGcW1XNm9tYTF4N1VuZ1NudEE0bGZXRTVoNUpyVnZsS0JwMTVBUjlOY1VLemZBUUZaaU1ZVWUzZVczOVB5WElhCmtxSmc1eExjZHQyZGFWZ1dDdXpyNk1RR0RNSnF1QXdGTUd6a2FvVHZXWFlNWkdGSTBXU3owalBmTW13b2kxZTcKZy9xYjdaMzZoZjhPVzN2eFhyaTJKWG5LaW8vWnIvR2I3RUhRNllNQm8zSHJidHZNdWw4QWFhZG5jZFdySk95RgpuT1JXV0hjSVBNWmNpVjVEN3Bmd0p2MjFVTzJNellHVFBMdFVLT2o3bDlVRmxRcmRVcU9LZ2RRK041MEkyeGplCnJRb0p0RUtXcUlSSXh5ZTRXanB3bUtmektoc1JEMU10dkJSaFJMcEloWnlQMUZJdG9DNDVVdHJCUjQzUnNERTEKZ29mdm9IcWhBb0dCQU5LV0RIR3c1dFJvTFVFVGtYUWs5dllxeG9KU1lzNW1YcU9ReDliMUZoTFRJYm1qUkllUgpzOTR3WHJDL3l6QllzYTdJU2FxNjFyeU1zTG9ObXprK0VrQmxNb0VLM1h0aS9lUytxRHVubWVqR1NyeUJjTUxXClJGR0RvR2x4aW8ybXpRN2E2Um1MN012MFVBRGhhQWRNdHlqSXZsS21CSDVLRUtleTcyYklTbnJWQW9HQkFOS0MKQWdKTGdPQlFJRG00TmNYMk1ObHFXOC9SNnJLcWRhMjE3ODIzT1FtQm9weVFEcFVsN0xQQmw3M1pkcHAraDliUgpET3JvMFpPNjBLd0gvV2dMem1INHkvR3R1WC9SZjY5bkZEWndzOWdqREVIdFhrUW9MbEIvTUFFeDdJbitDMnVyClQvZjhVa3RLT29XbjRsQlZ5d2phNTJKZWRCdTZ4dWlGZ0JrSis1dnpBb0dBZkVuREhuYmlSZ3NXYW9vNkZ1cWEKTjhBWFdXTjJuWXNkNER2Yk5xdUFVNnY1QTYreENyS2NEazlPRTlPZkFQSFlMT2haVWtMajZuUysrWkIrUk5LMQp3dnYzU3VJMnhsUXV0WXN4ajhQanV0Y04xU1F3Z1U0bEZGY3puZ2c5VmsxVVNhZzZXN0dTR080aEtlUGZtaTlWCkN1VXdMMmQ4ejJ5M1Y4THNPU1dOaitFQ2dZRUFzY2lVMDhWYW1aZHlMKzB3bFBrZ05tNktEZEVXcTBBbFZNa2sKTnhQMyt0eGVMbVhIdXhVbGZJY1NsWWMwa0xRdUd6SEEvQ0FXNS9KTnpBeVBhckVWNDA1UlI5SlZxT3FSTU4wWQppQVhWRGNSRDFPWVl4KzA3ZUVhQ2oyL1BlcGR3bzhVeUs1a1JFMzhrUDc4UzlwQU9nbk1HR2VEMXBIbXhCYTNDCkN1T1FlUnNDZ1lBMVR0R3BQUTQ4QkJuUVBleU9DckZmUW1OeUZ0RXN4SjErMkZleFdJdjdTSGthZXVUWVVzajEKRDhGQytpbWlNZVFRcVJ1VjJjYVBjUXpxMEJaUVppd3YvcmhwRHlDcjkyYm5HQkx6d20zMG56UTJoMi9CNDRSSwprQzlkdWpNK2taZEJ5MFRWY1hrdzk4ZWlJeUFDaGd4RXVNWVFLb21rVW0xU2dxZkhpWmR6M1E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-  failurePolicy: Ignore
-  rules:
-  - operations: [ "CREATE" , "UPDATE" ]
-    apiGroups: ["linkerd.io"]
-    apiVersions: ["v1alpha1", "v1alpha2"]
-    resources: ["serviceprofiles"]
-  sideEffects: None`,
-				`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN4akNDQWE0Q0ZCUndJTjM5MTFjYlZZV3pOWDNpNU42SjJDandNQTBHQ1NxR1NJYjNEUUVCQ3dVQU1CMHgKR3pBWkJnTlZCQU1NRWt4cGJtdGxjbVFnVjJWaWFHOXZheUJEUVRBZUZ3MHlNREExTWpjeE1ERTRNak5hRncweQpNVEV3TURreE1ERTRNak5hTUNJeElEQWVCZ05WQkFNTUYyeHBibXRsY21RdGRHRndMbXhwYm10bGNtUXVjM1pqCk1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBeWFIU1k3ay94WUF2UVpzajF5eU4KV2QxMlRqRjJiVmVpNWpEUFRQVDg1UElqZ0U5bjdlTkVwOHhjNHVxaSt2eGR3cGpDK3JINWcwRmlWV1didFRMOAo4eWRFNERXL0VZWFh2VjdFMUVMNUtqbWJPaEwyN3lDcE1PL3pmU1Q0Ly9Ea0xLT1pkODRHOExtZjdoU1FJd2w5CitTeHRyZW4rRU5JWkdEK0FrNnQ2UnNBaGN3U3htNmVzYmp3bGEwS21rSDFkS05OY00xcUYvanVPc3gxVlIxVHYKRlo1UWlrMFFiSXhLT1Y3OVEwTmIxMVlHanRieGpEZGRVRVNBUmVjNnBqelkxVG1TekRCWkc2b1dpNE81cmVjbgpiN3g1bFN4TG1DMmQ3NmNqc1NWM0p6MG5FZWxUQ2tSNFZISFVVU2UrTnZiTUQ4K2FUeDRBTDlCNk92Wkh4NXRrCjZ3SURBUUFCTUEwR0NTcUdTSWIzRFFFQkN3VUFBNElCQVFEbGNva2h2dlJoK1RZSE9MK2QrS1NiNFdXSlloaXAKQ3N2K0JLWUxWYjBkdG5qaTlWeVR1VTdreU9DTU84RTBoVEtvWXZKL1pUTXJ5U1ZheEpOVEdhVzNZQ0R4KzVSRgpnODhJZHprMGdOcStRZFhwbzZieHVyZ3JPZW5JSHAzL3NFczdvYlhrMzJrbmJMYW9VbWoweWQ5QkR6ZWNCaktqCkZRclBLaHh2NGdrc0dJd3l0a09xa3hUVHFla0VtQkVhaTNpVEdlZ0l2RWVTYTRHMTlRUnRXQldNY0dzNWFybTEKaDkxamgwcVdGR0NKd1ZVWENtTDlVUmtueXNxMkhjUnc4ZkdpNnB6ck1nMnRHcSszMWh5UytBZDBOZmdYTmxDbQoxbW9hR3hVTURHYllqaXp0YnEyRVl4aUVhZkVxMER3T3JTbFVyUVNVWDFmd1cwQTRnMndPK3lGeAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBeWFIU1k3ay94WUF2UVpzajF5eU5XZDEyVGpGMmJWZWk1akRQVFBUODVQSWpnRTluCjdlTkVwOHhjNHVxaSt2eGR3cGpDK3JINWcwRmlWV1didFRMODh5ZEU0RFcvRVlYWHZWN0UxRUw1S2ptYk9oTDIKN3lDcE1PL3pmU1Q0Ly9Ea0xLT1pkODRHOExtZjdoU1FJd2w5K1N4dHJlbitFTklaR0QrQWs2dDZSc0FoY3dTeAptNmVzYmp3bGEwS21rSDFkS05OY00xcUYvanVPc3gxVlIxVHZGWjVRaWswUWJJeEtPVjc5UTBOYjExWUdqdGJ4CmpEZGRVRVNBUmVjNnBqelkxVG1TekRCWkc2b1dpNE81cmVjbmI3eDVsU3hMbUMyZDc2Y2pzU1YzSnowbkVlbFQKQ2tSNFZISFVVU2UrTnZiTUQ4K2FUeDRBTDlCNk92Wkh4NXRrNndJREFRQUJBb0lCQVFDMlp6emoyQmIzdlRHQwo0U3o0SUNhelVDUVJNcS9XMUx2YUQvZkl2NnYwRlpUR0k0OTZaZW1hL3NaY3hUU3haeElPMDVFM3B6OTRYUEx2CkhCOVRPWkFaQzhKRUxucnVDQzJWODZDT0FSUlUvWTRPYUUrWkhldlJDSkUxK2ZlRDJkRWhETkx0emFUN3FvRWkKcU5tSHlMTjhjWk83Qy80NkMwYUdhQlFTQXNONE1nWVVzYlpWWWNSUGpuQjhQWVJHenFqUSt6b3FRUHliZklhSQpGcFRMRTVQbDdQaG16dWZvK2dtdmUvcUtVYmI0Uk4yOGUyVVNtNUhIb1JFRy82TWY4TDlGa2ZIREZoRkpNRk42CmZYbUFEQzE2eWtRUmxFNmZXTlJMaUNpMFpvOGFiUHFzdHpmLzNyZlFkYXQzWVlGVnNlSDRwL3FaYnppWW5La0sKK01ZZ214dVJBb0dCQU9uUlBMVktVdmRiQUd6UG1sTElncm9KZEZZMlREdDc0dGR2Y1VTR1dYQllNTkd3MndQRApWOEsrYW00UkpML2ZZbXhGNXU3LzduSnRjL2xPWkp0R3ZTVmdwTXpvZ0dPSVpSaGsyT0JFUFROOE5QdTh5ZElzCklvdW5Ja1U5dU11ZGhnd1N0VHZiOXk0ajIrZ3RhRXgxQWtUcVgyQzR4YVN6WkNZaFh0dmVtL041QW9HQkFOekMKNVl2ZmNIL0pHbkpVZXQ2ako5WEpkTWZ6TkxNMzFiNHN2a0RYSDViVDZYak9JSE1UUmJIVUtvd0VOc3NDT1lsZwo1dGxnUk5iMUtZMXVPZE5CWUkzenp6aEFQVmgyNmo1R0dTQk1ldVN4RW9YQWpEeW0vWWNIL2xaRW51dW4ycmxaCjk4VUZ0Ylo4L1h3eUlaSllOUHJBNCtCb0FuczA1UTFUV0dJSGFyNkRBb0dCQUxDVW1ucDNkUXpscHY2R0VwQXUKYWJ2QjVDQXZ4WWF1MnZQRWNCQkdQa2wvOE82TDEvdVJqVGUvd25UNWNYMk9ZTEJRWWtWZzkxMW5sOHhTRGR6TwpvWTRXM0o3N2YrcXJXVjRBMjJFVFovejM4ck9qTWZBTjhORHpHZ2ljd25EVHVDWnFBb0VBY0Q1aVNuT2Z4MExtCm94NFV1bzg3TzloVXVtK3BpQkFZb0VKUkFvR0FDUFR6WVVod2hRN0F2dkRFaDNIeE5OQldwNklyZWpZQ3V4T1AKcUl2UjRVbTV5RWY4c3c2T0hsZndYZnZ4eVN6TzdzNzZyc2trSWVDU2pnVngzU3RpNG4rSTRjeGhjTXhxVnBwNwpmSDc5NFhkNXUrbURCeGJ6WkY0anFKWmlLRWVJTFVzRUxYODh6eW1sRXp2cGRzbVRaTFVjeWNjT2lyY3JyKzI0CndVbHh3RWNDZ1lBMVh3SjZwbWkrUGo5Mnd2MDVUZHBHcGk3NzE3N2prWXc3SGVMMklaZTFtcUVRRzZCNk0rR2oKMVcvMXVJSW0rdjAxMzdCeDBOVHRRVzQ0Y0VkZXF1TGpBQ0kzQUNLa3RrZVVHNFQvZzljZXM3RHBnckRDRThWQgpqaHUxZ1FEc3JKS3VXTVNRZmd6SjBSY0ZCTFk4dm44QzBOZHZpaG5YTkZLYUd2QjRKVjRCVEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-				`
-apiVersion: apiregistration.k8s.io/v1
-kind: APIService
-metadata:
-  name: v1alpha1.tap.linkerd.io
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-spec:
-  group: tap.linkerd.io
-  version: v1alpha1
-  groupPriorityMinimum: 1000
-  versionPriority: 100
-  service:
-    name: linkerd-tap
-    namespace: linkerd
-  caBundle: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBclNvSURxUTZKT3M5Y29TNUtXcFZaMHc2NkNtVTNpbmJ3cHBJYkZKTDVWcW1hQTI2ClFKSmY2RXBkek5zdnhMcXhIeFRZY1o4c1FUb0MwNlg4ZmppVXZ2WUsxdU5KZVpkdzZzQU5YcE5nY2JEWkU5NksKWVo5NmZkSXVZWklPbjI5MVBVTUQ1ZnpaQVB1NGdUUEMwRzZXV1BPTmgzTE4vdGtJVnBIYk5HNm5ZNFZSRmFoRApmQ0xJZkxHam4vVzE2YkI1dmx1VW5SQTU3ekc5NldETXFkZElBcGxFeHYwNWpmMWRob01rdC9reTNwSDdjejV5CmJqbm1ielloZ2I3QWFHRWRQazd5WTk2aFpqMlc5eEF5N3c5RzhLYzhJL0NjT1cyZTU2eWtIOVRFOU1zdnBWaCsKVnlubG9RbkxnMVZ1VmpycG55RUQzOHhaTUNPQjl2ZjZJdWlQTHdJREFRQUJBb0lCQVFDbmdkVXhkS1BhT3NUQwpGcW1XNm9tYTF4N1VuZ1NudEE0bGZXRTVoNUpyVnZsS0JwMTVBUjlOY1VLemZBUUZaaU1ZVWUzZVczOVB5WElhCmtxSmc1eExjZHQyZGFWZ1dDdXpyNk1RR0RNSnF1QXdGTUd6a2FvVHZXWFlNWkdGSTBXU3owalBmTW13b2kxZTcKZy9xYjdaMzZoZjhPVzN2eFhyaTJKWG5LaW8vWnIvR2I3RUhRNllNQm8zSHJidHZNdWw4QWFhZG5jZFdySk95RgpuT1JXV0hjSVBNWmNpVjVEN3Bmd0p2MjFVTzJNellHVFBMdFVLT2o3bDlVRmxRcmRVcU9LZ2RRK041MEkyeGplCnJRb0p0RUtXcUlSSXh5ZTRXanB3bUtmektoc1JEMU10dkJSaFJMcEloWnlQMUZJdG9DNDVVdHJCUjQzUnNERTEKZ29mdm9IcWhBb0dCQU5LV0RIR3c1dFJvTFVFVGtYUWs5dllxeG9KU1lzNW1YcU9ReDliMUZoTFRJYm1qUkllUgpzOTR3WHJDL3l6QllzYTdJU2FxNjFyeU1zTG9ObXprK0VrQmxNb0VLM1h0aS9lUytxRHVubWVqR1NyeUJjTUxXClJGR0RvR2x4aW8ybXpRN2E2Um1MN012MFVBRGhhQWRNdHlqSXZsS21CSDVLRUtleTcyYklTbnJWQW9HQkFOS0MKQWdKTGdPQlFJRG00TmNYMk1ObHFXOC9SNnJLcWRhMjE3ODIzT1FtQm9weVFEcFVsN0xQQmw3M1pkcHAraDliUgpET3JvMFpPNjBLd0gvV2dMem1INHkvR3R1WC9SZjY5bkZEWndzOWdqREVIdFhrUW9MbEIvTUFFeDdJbitDMnVyClQvZjhVa3RLT29XbjRsQlZ5d2phNTJKZWRCdTZ4dWlGZ0JrSis1dnpBb0dBZkVuREhuYmlSZ3NXYW9vNkZ1cWEKTjhBWFdXTjJuWXNkNER2Yk5xdUFVNnY1QTYreENyS2NEazlPRTlPZkFQSFlMT2haVWtMajZuUysrWkIrUk5LMQp3dnYzU3VJMnhsUXV0WXN4ajhQanV0Y04xU1F3Z1U0bEZGY3puZ2c5VmsxVVNhZzZXN0dTR080aEtlUGZtaTlWCkN1VXdMMmQ4ejJ5M1Y4THNPU1dOaitFQ2dZRUFzY2lVMDhWYW1aZHlMKzB3bFBrZ05tNktEZEVXcTBBbFZNa2sKTnhQMyt0eGVMbVhIdXhVbGZJY1NsWWMwa0xRdUd6SEEvQ0FXNS9KTnpBeVBhckVWNDA1UlI5SlZxT3FSTU4wWQppQVhWRGNSRDFPWVl4KzA3ZUVhQ2oyL1BlcGR3bzhVeUs1a1JFMzhrUDc4UzlwQU9nbk1HR2VEMXBIbXhCYTNDCkN1T1FlUnNDZ1lBMVR0R3BQUTQ4QkJuUVBleU9DckZmUW1OeUZ0RXN4SjErMkZleFdJdjdTSGthZXVUWVVzajEKRDhGQytpbWlNZVFRcVJ1VjJjYVBjUXpxMEJaUVppd3YvcmhwRHlDcjkyYm5HQkx6d20zMG56UTJoMi9CNDRSSwprQzlkdWpNK2taZEJ5MFRWY1hrdzk4ZWlJeUFDaGd4RXVNWVFLb21rVW0xU2dxZkhpWmR6M1E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=`,
-			},
-			"upgrade_two_level_webhook_cert.golden",
-			nil,
-			nil,
-		},
-	}
-
-	for i, tc := range testCases {
-		tc := tc // pin
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			options, err := testUpgradeOptions()
-
-			if tc.processOptions != nil {
-				tc.processOptions(options)
-			}
-
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			flags := options.recordableFlagSet()
-
-			clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
-			if err != nil {
-				t.Fatalf("Error mocking k8s client: %s", err)
-			}
-
-			values, configs, err := options.validateAndBuild(tc.stage, clientset, flags)
-			if !reflect.DeepEqual(err, tc.err) {
-				t.Fatalf("Expected \"%s\", got \"%s\"", tc.err, err)
-			} else if err == nil {
-				if configs.GetGlobal().GetVersion() != upgradeControlPlaneVersion {
-					t.Errorf("version not upgraded in config")
-				}
-
-				var buf bytes.Buffer
-				if err = render(&buf, values); err != nil {
-
-					t.Fatalf("could not render upgrade configuration: %s", err)
-				}
-				diffTestdata(t, tc.outputfile, buf.String())
-			}
-		})
-	}
+`, indentLines(certs.ca, "        "))
 }
 
-func TestUpgradeFromOldConfig(t *testing.T) {
-	k8sConfigs := []string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":null}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true}
-  install: |
-    {"cliVersion":"edge-19.3.1","flags":[]}`,
-		`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-		`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-		`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
-	}
-
-	options, err := testUpgradeOptions()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-
-	flags := options.recordableFlagSet()
-
-	clientset, err := k8s.NewFakeAPI(k8sConfigs...)
-	if err != nil {
-		t.Fatalf("Error mocking k8s client: %s", err)
-	}
-
-	values, configs, err := options.validateAndBuild("", clientset, flags)
-	if err != nil {
-		t.Fatalf("validateAndBuild failed with %s", err)
-	}
-
-	if values.Identity == nil ||
-		values.Global.IdentityTrustAnchorsPEM == "" ||
-		values.Global.IdentityTrustDomain == "" ||
-		values.Identity.Issuer == nil ||
-		values.Identity.Issuer.TLS.CrtPEM == "" ||
-		values.Identity.Issuer.TLS.KeyPEM == "" {
-		t.Errorf("issuer values not generated")
-	}
-	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {
-		t.Errorf("identity config not generated")
-	}
-
-	global := pb.Global{}
-	if err := json.Unmarshal([]byte(values.Configs.Global), &global); err != nil {
-		t.Fatalf("Could not unmarshal global config: %s", err)
-	}
-	if configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem() == "" {
-		t.Errorf("identity config not serialized")
-	}
-	if configs.GetProxy().GetDebugImage().GetImageName() == "" {
-		t.Errorf("missing debugImageName")
-	}
-	if configs.GetProxy().GetDebugImageVersion() == "" {
-		t.Errorf("missing debugImageVersion")
-	}
+func isProxyEnvDiff(path []string) bool {
+	template := []string{"spec", "template", "spec", "containers", "*", "env", "*", "value"}
+	return pathMatch(path, template)
 }
 
-func TestUpgradeAddOns(t *testing.T) {
+func pathMatch(path []string, template []string) bool {
+	if len(path) != len(template) {
+		return false
+	}
+	for i, elem := range template {
+		if elem != "*" && elem != path[i] {
+			return false
+		}
+	}
+	return true
+}
 
-	commonk8sconfig := []string{`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: controller
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  global: |
-    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"edge-19.4.1","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"-----BEGIN CERTIFICATE-----\nMIIBwDCCAWagAwIBAgIQMvd1QnGUJzXVUt3gNh7rWjAKBggqhkjOPQQDAjApMScw\nJQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwNDA2\nMTAzOTUxWhcNMzAwNDA0MTAzOTUxWjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r\nZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQ19nmg\nQ8l+EMofPxas7HUlOJE5avps6b6Q97Y71Waw3rdXYNCPqMxa4PedPc5VKGje6eqJ\nAo5mX29HeMcUw/y3o3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB\n/wIBATAdBgNVHQ4EFgQUfxv+BcCt5v7oF7PXJ9xY+JambdwwKQYDVR0RBCIwIIIe\naWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0gAMEUC\nIQCM8UfevR53SVGDd/4MgXMlVqC3Vh8oDiM0UToj2wsjNgIgLnZgogrqjK0KRo9R\nSxZLbJKt6SJIIY9dw5gzQpUQR2U=\n-----END CERTIFICATE-----\n","issuanceLifetime":"86400s","clockSkewAllowance":"20s","scheme":"linkerd.io/tls"}}
-  proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"edge-19.4.1","destinationGetNetworks":"DST-GET-NETWORKS"}
-  install: |
-    {"cliVersion":"edge-19.4.1","flags":[]}`,
-		`
-kind: Secret
-apiVersion: v1
-metadata:
-  name: linkerd-identity-issuer
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: identity
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-    linkerd.io/identity-issuer-expiry: 2020-04-03T23:53:57Z
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUxEaXZ5V1hPWVB1OU5qdmxQbzVyQll3Q2dZSUtvWkl6ajBFQXdJd0tURW4KTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01CNFhEVEl3TURRdwpOakV3TkRBd05Gb1hEVE13TURRd05ERXdOREF3TkZvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CmEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhBSzcKNjQ5YVM2Sk9ESC9McnFjdHlxazluZTlLVmNGZmp4RjVLd0hYaCsvQzUzYlZ0ME9sZlZFSGt6cmI4bGM1dnMyWAp0SFhBV2VDYlVZQldPSkpBZktOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCkFmOENBUUF3SFFZRFZSME9CQllFRkJSMkZnUm5WUWZ2bTA1eHpYVm5RWGpVYkRzNU1Da0dBMVVkRVFRaU1DQ0MKSG1sa1pXNTBhWFI1TG14cGJtdGxjbVF1WTJ4MWMzUmxjaTVzYjJOaGJEQUtCZ2dxaGtqT1BRUURBZ05IQURCRQpBaUJRQURPN04vN3J4RU5jcDRVWWxoSi9Va3JtU1BmbzB5OWEycnczRTJOUDJBSWdZU25tUllQM2RYZEJ3TVB6CkU1UVZlY0VPb0tjL0VrVjhudDFuR0FuSU5yVT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
-  key.pem: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUd0cEJrT0hjVENqOVZQcXBtMG5TSFpYOXZmdXN3RWx5R1dJQVJ1NlUwQTJvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFSEFLNzY0OWFTNkpPREgvTHJxY3R5cWs5bmU5S1ZjRmZqeEY1S3dIWGgrL0M1M2JWdDBPbApmVkVIa3pyYjhsYzV2czJYdEhYQVdlQ2JVWUJXT0pKQWZBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQ==`,
-		`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-proxy-injector-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: proxy-injector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURKakNDQWc2Z0F3SUJBZ0lRVjFrSXJhRG1sdzNTVzY5UXNRWjNQREFOQmdrcWhraUc5dzBCQVFzRkFEQXQKTVNzd0tRWURWUVFERXlKc2FXNXJaWEprTFhCeWIzaDVMV2x1YW1WamRHOXlMbXhwYm10bGNtUXVjM1pqTUI0WApEVEU1TURnd056SXhNelkwTUZvWERUSXdNRGd3TmpJeE16WTBNRm93TFRFck1Da0dBMVVFQXhNaWJHbHVhMlZ5ClpDMXdjbTk0ZVMxcGJtcGxZM1J2Y2k1c2FXNXJaWEprTG5OMll6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQUQKZ2dFUEFEQ0NBUW9DZ2dFQkFOek5iMmd0VVU2SmsxVDV4Smx3dTNlSmViSml4T01Vc3QyMzVkSWJXU1F2OUlNagpXRTR1Z3dlbk1ZSDh5V1ppV1F5NCsya0h3c1JkdWNxM3lqZUIrMmFsUll6enBLcFUvdHVxVi9XT2U3VVpxcGRaCkNsNTUzNXlmUzMzNndadjFrWlRlU3g1dHc0d3YwaU9vVG9jVGlsSm1tOGVsWDJUN0toajJVam5oSDNWUXFxbjEKcERRUGIvalRMOVcySlZYL2luOXdvTEptc294aFNkR2MxTDRsVnlvWEFOSVdSWENwQVYzVlo5MXV6SHFqaWYyZgpyWnBaRTQ0QWtaM1hWRnVlaldtcTZURWxHL1M1YnBkaExDcy8zWE41T1lZUXVYbXlTdHEyb055ZzFUOEx6RmxECmJ6eXZBSldmSXV6d3hZa051NTljbkhaUjBRY2liUDF5NTQ0QlV2c0NBd0VBQWFOQ01FQXdEZ1lEVlIwUEFRSC8KQkFRREFnS2tNQjBHQTFVZEpRUVdNQlFHQ0NzR0FRVUZCd01CQmdnckJnRUZCUWNEQWpBUEJnTlZIUk1CQWY4RQpCVEFEQVFIL01BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQjBNZERONWRuaUgxYS96UGI5QWFBT2JqaFBEUC9FCngreVlRU3VDYXpyeFZCUlpPeGdpUkUyN1JjZ05BRGZmOVRkRU9ER1BrUVY4aTRnVVVOdi9VanljODYxdW55SG0KR3FacEp0OFROZ0pWN2VHR00wUWlrNkFYZTdLT1N0aFdzVVZDSHlGMUFyam01U2dRUHRsREttVGk1bDBCZ1pyKwpBblVzOVllNHhUSFFFYSswSFN3NXNjdnFsVDhYS0ZCanoza2hJbHFVd3IvSy9seVZITDcwQTMyUi9UODh5Z1YzClQ4MitwS1R5T3lZU1IrZG1ZUWdxcW00ajVhVVp5aURPZVFHR1kycEZNQnJMY0tGZjFqcmJHWXlVQVNrdlh6NXoKaHZIOUtJWXFOckdhMDloTFBjb00rMW9CNHNnY2RKdFpCV2pCRWdiTHdwWEJJdUVFVXY5cno0dDAKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBM00xdmFDMVJUb21UVlBuRW1YQzdkNGw1c21MRTR4U3kzYmZsMGh0WkpDLzBneU5ZClRpNkRCNmN4Z2Z6SlptSlpETGo3YVFmQ3hGMjV5cmZLTjRIN1pxVkZqUE9rcWxUKzI2cFg5WTU3dFJtcWwxa0sKWG5uZm5KOUxmZnJCbS9XUmxONUxIbTNEakMvU0k2aE9oeE9LVW1hYng2VmZaUHNxR1BaU09lRWZkVkNxcWZXawpOQTl2K05NdjFiWWxWZitLZjNDZ3NtYXlqR0ZKMFp6VXZpVlhLaGNBMGhaRmNLa0JYZFZuM1c3TWVxT0ovWit0Cm1sa1RqZ0NSbmRkVVc1Nk5hYXJwTVNVYjlMbHVsMkVzS3ovZGMzazVoaEM1ZWJKSzJyYWczS0RWUHd2TVdVTnYKUEs4QWxaOGk3UERGaVEyN24xeWNkbEhSQnlKcy9YTG5qZ0ZTK3dJREFRQUJBb0lCQVFDd1BGVEFyUE1wb1l0MApGc3VCd1VZUU9pMWxZWXBPeVpXZWZJcTJNZGZybDA4dFlJZTZGMHZFVHdHb0EvRm9nL1VadjRnRHBBc2tHcjhSCmU3S3VyVlBROFBkYmNwaXF6NTZBREMyYXRIZ3U2MmFLMktuN0VJR1hqRm1BR3ladmFna2g3bSs4d05XRXppS0gKRFc1b1NBTnVrN0doSDNETnM5ODgvMVpRRmt5Nm9BVThzWEhaTEpsNGJoV05UU3FSS0VnT3pIRDRwYWRITzUrMwp3cFVHamg1VklaS1BlMzRqYmMwTVZDOUwwNjhJY3Fibmp6d3g3NnYrQnh6MXFyRFNNMDR2TytGWUZUTVVmWEtyClBZRU5qMEN6UEhUanlwT2FBdFNwZFJTY2x1YzVGMTVmcXpKRnE5dVVLM2VpWFY3amNjTW1Sb0l0bkxMS3Z5VkgKVWJOZ1pnZmhBb0dCQVBpOU40MjRwK1ZxWnJRRTZ3K21kTTh2S2JIb0NPWUNlVDZrYXExMzhLVFJ2Z0MzZGJQNgpRcFpSNXlYNlhQeW1YMnNkZkxQTDk2NE1DeGJlS1ovWmw5UC9zRkxhRDVOc0RXMXZ2djJkYXBhQ1d0U0hwNHFFClJIN2tWWTZmcHZUYmZWN2FWL1JQZlhGbWVrbEJZd05pNTNkNFRYZEhJWC9ONHM0aFgwVzNtMk1yQW9HQkFPTS8KYzk0anJDbGtESUN4YWhUYlp4UHdST1hqVEZvdEpxaGRhandZOXcxdEVIelNnNUY1QVFSaWR4WGxFa0lENVdCRApYeG1JZWF2TDgyRkpUeWFXWlBzUnRkOXNJV3BIM084VDh2TnZLN1Z0SXY2RzZYSy9XUjhHMjhodTl6bVNlMk5HCjVUN2FkL0dMSlZ3Mm9GcTEzNGFIbHdvY00xMUFPa2YwYU9SWGJTZHhBb0dCQU0vT1JQdEJxZ01nUVcxa0xuMkUKczFIa05SRk1xU0tBTG9zSEVaaWErNUMzS2VXdlg4WmM3Z1JucUpVeDlUMmVRVmxiNlRMTTFMK3prQkFxeXR1aApEaGN2SmtBUnJiR2NOQnVab0JhQnpPcXhQUEVSNUFiMU9jUkpQckZJOEZMZ2pIMFNMU2tPdjk1ZG53eFVkRVAvCi9TRHlnTVdGeDViZWl2MXJKQTA2dDdiQkFvR0FVSkg2dnRQZkFuM2FnUFptS2lid0VQMnJMK2E2OTIzeXV0Y0UKQjNMQ2hSd2FNR2RqQm56a2cyMTEwMmw0WTdlRjUrOTdGRTV5OVJwR25FT2xzSVM2SU5wU3BYaHRFSVdTSzZIagpEYlJveHRaL0JjZEhsY3VLQ1pvZzZwdU5RL2hQanc5ZjBEMGRNYUtvQ0YzRjFPT084Tis2Q1hlZUxuM0xMQi9YCjRMMnVrY0VDZ1lCeWxEY2haSHR3YjlxYWFoeVhiQUI2WHAvMTdLUEtZOFltbDBqN0cydm1VMXJUZDdTREhHek4Kc1B5LzErY3FraWkrVVQxc2I0d1RQaW9wTXZxa3hsY05tdzM4L2NRL05ET3JENlEvN1NJN0I3TkNod1BLNFBhWgpCVEo1MW84RktSRTczcDhVYkdDUlNtdjVzYk5aTUMyWlRBaVNWa0MzUHU4QmxGN1VoM3RCeEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-		`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-sp-validator-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: sp-validator
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm git-54b2103b
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURJakNDQWdxZ0F3SUJBZ0lRQkhsRWhOb3Y0Z1hHT0EzbGFOamErekFOQmdrcWhraUc5dzBCQVFzRkFEQXIKTVNrd0p3WURWUVFERXlCc2FXNXJaWEprTFhOd0xYWmhiR2xrWVhSdmNpNXNhVzVyWlhKa0xuTjJZekFlRncweApPVEE0TURjeU1UTTJOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ3N4S1RBbkJnTlZCQU1USUd4cGJtdGxjbVF0CmMzQXRkbUZzYVdSaGRHOXlMbXhwYm10bGNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEEKTUlJQkNnS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoMUNYdgpNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzNXT1FmCk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZHRKL1YKYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNWTNlNwpZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUI0bmxjCmJIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUMKQXFRd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQgpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUtJQUc5T2E4SndtSzBUaGVtc2RxdjhvdkhZUk5XTHBWOVBhCkJNejJhQklFQVlvMURxQmFaQWFkdWZKa0k1bmFoTC81K2NaQXp3M2s4RmpYN2plT1ErYmlPaS9TNlU4K0FNZEUKZnZvdVR5N05Kb0xXM1NUclhCcjJnYzY3RUtLQ2JGQmsxYzM3b21KSUhhZU15aWNkRHY0SHRYTExDcUtrYk54aAo0NGQ2YUpzL3lNZm9kZGFhZFN0L1RwMGZtaHNPMTR5OUp3RDFWL2s1M3ppUmxDcXNYVUtBK05vejhqRC8wVkI5CnFyd0dpWGk4S1ZsZS9LYjFDZktOM1VhczdBRHlxbVVEUGNKY2tQMGM5QnBRQzlLYTJqZHhzb0hvWi8vSG5SVGYKalc2dExlcjN1UHZpek5qM2swcWt2SVAydVVJNDg0MkJjQmUrbVB1NlJoeVozdWt4elNVPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBdklFVW5YdlBkSDFra2lJM2JPc01wQ0Zpb3FoN0dCK1ZtSmE5Q2RoNEQ3bWhiMWhoCjFDWHZNblZtQVduUE9UYWRvUHRZNFNZZU9pUDBURVQ1enZ1MUlEUzVyZFhUcDlZaHZHWDRMM1NhVk5XdnlsbzMKV09RZk5sSXZPWFU4bHZHaDAyeE9TK3RZeklSMVh0dmFhOUV6K1QyN0p4ei9meHhnK2tHRmRES3BBK0tQeitvZAp0Si9WYTYvc2N6UWhaczhtTWt3L0Y3MzJxS1JtWG83bm9pTjhYRjAxSFBiT1pVdFpGZjJ6L2hGMHhKaEVMNlRNClkzZTdZNnZ4UFoyMGVobTR5cUk1Q2RqcWN1WFNwL0xhbFNJOTBsb0ZMMU5SZFRuREgzZ1BNUWM3VE9KenIzQUIKNG5sY2JIU0ZsNkFvN2J1U3EvOTJ4MmdwMjRRT2w0UURkdlVZaVFJREFRQUJBb0lCQVFDU1hGTHFXQWhpdFQyUwpMVmtGaTVjY0ZRUGxzWlVwek5RMVRzem1TUm9uYzRWQjA4alpsTDZkV2dQaWt3b2ZyU1ZFcWdOL2hUNHcvRnVoCm9HaXA2a3ZlL3JFd3BQYWF1U3NtZ2JIcS9za1psM1RQVTY3bnFQQUhHRmFzY1RlakoyZnpwWU5CZFRGVVVvQmoKTDZidTBkZGQ3UzFVR0RMVXVlOGVRQ05qYmpaRzJadnhiclhHQ1hTcjZtankvUTI2UkhrM0JSZXZ6UlFEMXIzbgpsSUxGdm9ueHNoTnVvU2xGVmJlTXNoN0JQQlBkbmR0MGNwZDRLcW5oQ0NCZVk0YUlsNmQ2eVJ1K1h4akhmRWRUCjlFTXhjYjJidEIzWHUrNTBtSWJsd1NEK2ZkVkFJUmFYeFRNMlc2dys4ZEZNSjFidXBRbTRLKy9KMC9UMko5b0sKRWpzdno5WVZBb0dCQU9td2t0NXpMVW5GVkNCR1p1aWJhTGRhcUFncy9pNldDcnJzL2xKd0VMb0grWDA4ZFkyWApIMS95ay8xVzZlbFFWVUEwOWg0dEZXSm1JM3BiT0c4d25iVU53MGVIZmlodkU2N0QvdlpXTi83b2FOUDZrdXdhCmNoTWRvaE5JNmhpSXd0cGo2L3JrVEIvTENtaXFWUHlEWXc2U0tiKzh5TktMZE1VdkFDZUpCRXVqQW9HQkFNNkEKS2NsUHNGeStrUzZDQzh4YkUvMER1eTZxc1BPQ3BBdDVDZWNGMHhHZHhBOXp4ZUdBWkxBTk5vZ0dPRjRrVTQxSwo0V20rRFoyNFFIV2FtWEp4dkhOZlZSdVVwSkR6UFJHcGdWSXJJNEMwMWprN0xxYy9VNEtpK2lYVGxWZDE0cWtJClVzalJTOUVrSU4yN3VIQzRnYnpoRW9PbXlOS0Q0U1JTQ2xyellrM2pBb0dBZUV0MHp4M3JDamFSLzZzOS9pOUIKMEdEU2JxTDZsWENYUlhJSjJOWG5SbHdraWRzOWlBMXJFVEVHRFR0WVhjb0VtSENxNFEzRUhFc0hxRXljMkYvbQpUdlV1dVB0K2JjSUFGODY4eUlISmdXYVJ6ODBGSkpUWWRBNmxCOWhZNlJnOWRiNUtFM1RCMnZ2aDk4NzJ3S1hCCnNCWjlkejN2QXJMWEFVb1lna0Y5L0pFQ2dZQmRObzhtTnhtR0UrT1hHYzdYbFRsRm1ieVJ5UzBORHFpY0lTdnUKSTd2dUZNZ2VyWVRpVU1HaWtxUk43SGpmVGdpRkhBcjZYM2JuL2ZiaTMwRnEzcHBSZmZQOStpLzYya0Z6eW83OApsMHAwVzZ6anNxcFJobzFjeDlLZzVveGdLVytDRzZhNnpYY3ExZU1jRkJPaWxqYkNHdHJ2b0liQU9CV1YvbzU4CkZhY0hQd0tCZ1FERS9nb2sxZ3VEaGVXUmJEaTdpNVVqd0ZqcnRJZ1hVbTA5N29yOW5Mb2dibFdIK0EyWmgvaG8KQ0hmekdLMUtnZytTd1I2YlRhZ29wRGVCMkRnNTk2ODFwTTQ4ZjVYbzV6NkJUejhFMVFPREpIRlkyNlNJNTlIRwpwZFlWMno5QmdxaDZKQWprZWhQWDlYMWFCcTRrVkpCQzg5MDBOUk1pbG1EdlBISjNhU1EyT0E9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=
-type: Opaque`,
-		`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: linkerd-tap-tls
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: tap
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: "linkerd/helm git-54b2103b"
-data:
-  crt.pem: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURFRENDQWZpZ0F3SUJBZ0lRRlNhSmJjd0ZrMHNvclpsUENLUmhuakFOQmdrcWhraUc5dzBCQVFzRkFEQWkKTVNBd0hnWURWUVFERXhkc2FXNXJaWEprTFhSaGNDNXNhVzVyWlhKa0xuTjJZekFlRncweE9UQTRNRGN5TVRNMgpOREJhRncweU1EQTRNRFl5TVRNMk5EQmFNQ0l4SURBZUJnTlZCQU1URjJ4cGJtdGxjbVF0ZEdGd0xteHBibXRsCmNtUXVjM1pqTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1UTRhb3hLSWVnUncKZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5UnJDRXphOURXcklad2JTazhpNnlHYnpQWTZCaQpHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzVFNU12WlZGay9XeW03ck5GWWhqWXNmengzdTY3CldWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WDJqYlFWZ0xMdUNsL3FjZE05MzRsay81ODNtT3kKeVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrdkR5VDNscEZ2SFpraG5sSm53am9XN0RIN3dPNwplK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2VlcFc5VjVGbGJvRFZvOUtOMlhTSVRkbVJsWmF0CjJuRng3TU83YndJREFRQUJvMEl3UURBT0JnTlZIUThCQWY4RUJBTUNBcVF3SFFZRFZSMGxCQll3RkFZSUt3WUIKQlFVSEF3RUdDQ3NHQVFVRkJ3TUNNQThHQTFVZEV3RUIvd1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMQlFBRApnZ0VCQUZNd3hXVnV1NFMzMi9LSVhsdURsR3dpQjh0YzFCTEVRQzUyY3hhNERodnBGNFkwZmRSOXRwMDN3S1VYClRlRWp6OUMyYzBFTW1EcVpheDVsQmxaaDBtWUFpNFowSUZkbXg4Q0FLYWowUVV1MEdQL1Jmd0taYWFuTjhBbEUKbCtRQjRLWG1ZNjRnOFZUUXR0VXhNL2FZdjkrU0FrMlcvbkZiZTFjUXpHbGFCSVh2WW9Da1N3TDFiTEpDV0N2WQowaEtteFhYdGpHZmpqZXJGTk9CTUdRZkJmQ0czZUJTZE45aS8rOEs3NS9FM21EV01iTGMwVHU2OEFsdWRxVUJRCmZsbngrNXlUaUtlaExhaW9BY0psTldrOVRCSEcySSswLy9tNTM4VGhYbnZ2ZC9uTXdTWitJbEZiVUpvbEo3Rk4KNXVUNG91Vm8xUU9BTlh3Nk5LWU1PT0VURXo0PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
-  key.pem: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdVE0YW94S0llZ1J3ZW5FWHY0QVBjWTc0SnNqNUJXSEhwMUJzY1d1Y24weEwrcEo5ClJyQ0V6YTlEV3JJWndiU2s4aTZ5R2J6UFk2QmlHdlIxK0NMRkZNR1VraERuS1lINk9hNzlvTXN3WGZEc1lmKzUKRTVNdlpWRmsvV3ltN3JORlloallzZnp4M3U2N1dWbFgyRTBGaHBrU1pMUGN6bHNCQzFzN0hxVzV4TnBYUmc2WAoyamJRVmdMTHVDbC9xY2RNOTM0bGsvNTgzbU95eVIwSkQvV3RMc3VxdVIrOWJZSjlVYXUrbGpqZUc3U1h0UVYrCnZEeVQzbHBGdkhaa2hubEpud2pvVzdESDd3TzdlK0ZQc3FmOG9nQk8xUlBmUEhNakRZRERoVlJUTWRKVFpZK2UKZXBXOVY1Rmxib0RWbzlLTjJYU0lUZG1SbFphdDJuRng3TU83YndJREFRQUJBb0lCQVFDdUtVNzZjS1BQS2tSdApoK2hReTRZOVdzL0RPTnZjcTlUS2E4OVR3M0tKSGJaWUlld1RUbWYrYUZkY2tVZmFYVmZyc2ZUZWNpdEEyUjNiCnZuMFVSaXp6UnVpN3UzckRQdGV2MkRoTlQwMjY2OWFjdUo2SGhMdFRnSklxVEVxalZrY1Rkc3ppWG11SVkyZ2gKUkF0L3Y2VldzdE56d1M4cmFzeUYwcHZHVVRTUHhVK29Vcm9BYm54TmRnMzRzbzBrR1lDRDJUbGk3ZmRvTWRuQQpRZWovUVp5aFFDTkorUWxJUGEyN2VkN3R5TWNVN3NpdXQ2aGVBRUJqT3AzVXJLS1BwUnc4VHhZNTltZ05oamt2CjVnT3FhZmV2U0ZPZS96TzNnNFpheXVoU3c5N1ZXR3NwZ0NvbmZETy8vNlZabG44cVlkdmQrNWdTTVBtanBKVlIKZCtRcE9BVmhBb0dCQU9VZmUyVkxXR1JlQVlidXhwdWt5OUFtRlkxSGN2eWN3SXlVZmphWEVUNDQvc0hXODdtMwo0MkVaK3BiYUd2ZE5VOVZtNytCblJ2WFBLVzlCaVNDT0dSSVppSDFWTnQ0d0ZMaTI1ZGNIamlZYitxbVNyUGpkCmI3MThHMTN3SU90L1ZsSDFOQW4zUU9qcmdMZm5udFgrUjlLMEtqVzRYbU4yVmpxUGd3MUZBSWdmQW9HQkFNN0QKUmExR29JSnduaHhuTXd0T08zVCtLUnVKc0Y1aUlYTW40Q1JhWUFwanN1cTUwYmdHQjV5MmdCazR6Y2ZOajVVbgpVQ0hXb2JFNFphcFhveHgvWXFkYkJRdTJaK2gxbnpCdTJJQTVoUEFJRmo1dTJ0SXI5d3FMczFLR1pTUjJScUM0Ck9nL2NFbnFEUUtHcStmUEtBeSs1NWRlbm1BYm8xM2FNOXhQZWZxS3hBb0dBR2JJOExwSVNxYjc1UU43S20yNFMKQlpnZjFxWnF1UFlEaWtDbEh3NDJPdG85aUJQSlpjeS96WVlTV3BTL2JYallyQmhOVXNlQ1o5TUIvSjVHK01XMgovaGFxL2hOdWdlQzJrampBOGlyQXdIbG0xVm5EMkcxTk9OMFFYS3F2cG5temZxR1hZbjYrWXVEMm9LbHpZT0NSCndZbS9LaU14UXNwa3hWQ1BEQS92RFZVQ2dZQUtUQzlzTWRoTXBzODVHdXF2NVhXUW5oZnVCeTJCaGVHa21wZlAKTjdFUTAyWlZ5bXRuZnVWaUtMUzRqTnV5MThvTzQ2WmFDUmFFZlFxVE1Vb3VZU25JcS8vVVZZRlhVb1JiSlNvagpPTG9tT2tEaFd5UUswNlc2SUxzTm9TUG9iUHVYaFpWZXROYzJ3dEsxT282NFZaZFRDUzhwVG0rRDZKVFNrcks3CmlwbEVBUUtCZ0VWb2hsNkpMNWhxcDc3dGg1RVp1VFpqUFZDUkJrU3VUeHZuY1pPUGZHemJjQUp2d05pYVZnblAKbVpnMXdKZDVMczZtbkV3QVJLOXhIRmpFbVpkdEpwSkIwY1ZhVzFvZFY4bWFQamFwRGFiNHJwR3NrL2tuRFZ5TAphWTl3M2FlakFiNlZhaVJ3bUZDZDlzOVhPYmFnQkJ4UU05bVBoTXh2WWdiQzdrSUZJUXVaCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-type: Opaque`,
+func installValues(t *testing.T, installOpts *installOptions, installFlags *pflag.FlagSet) *linkerd2.Values {
+	installValues, _, err := installOpts.validateAndBuild("", installFlags)
+	if err != nil {
+		t.Fatalf("Unexpected error validating install options: %v", err)
+	}
+	return installValues
+}
+
+func renderInstall(t *testing.T, values *linkerd2.Values) bytes.Buffer {
+	var installBuf bytes.Buffer
+	if err := render(&installBuf, values); err != nil {
+		t.Fatalf("could not render install manifests: %s", err)
+	}
+	return installBuf
+}
+
+func renderUpgrade(t *testing.T, installManifest string, upgradeOpts *upgradeOptions, upgradeFlags *pflag.FlagSet) (bytes.Buffer, error) {
+	manifests := splitManifests(installManifest)
+	clientset, err := k8s.NewFakeAPI(manifests...)
+	if err != nil {
+		t.Fatalf("could not initialize fake k8s API: %s", err)
 	}
 
-	// add-on config cases
-	testCases := []struct {
-		stage string
-		// k8sConfigs are resources which should remain unchanged during an upgrade
-		k8sConfigs     []string
-		outputfile     string
-		err            error
-		processOptions func(*upgradeOptions)
-	}{
-		{
-			// Test adding add-on from a state where there is no add-on configmap
-			k8sConfigs:     commonk8sconfig,
-			outputfile:     "upgrade_nothing_addon.yaml",
-			err:            nil,
-			processOptions: nil,
-		},
-		{
-			// Test normal upgrade from a disabled state
-			k8sConfigs: append(commonk8sconfig, `
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config-addons
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  values: |-
-    grafana:
-      enabled: false
-`),
-			outputfile:     "upgrade_grafana_disabled.yaml",
-			err:            nil,
-			processOptions: nil,
-		},
-		{
-			// Test add-on enabled upgrade from a disabled state
-			k8sConfigs: append(commonk8sconfig, `
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config-addons
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  values: |-
-    grafana:
-      enabled: false
-`),
-			outputfile: "upgrade_grafana_enabled.yaml",
-			err:        nil,
-			processOptions: func(options *upgradeOptions) {
-				options.addOnConfig = filepath.Join("testdata", "grafana_enabled.yaml")
-			},
-		},
-		{
-			// Test add-on upgrade from enabled with overwrite changes
-			k8sConfigs: append(commonk8sconfig, `
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config-addons
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  values: |-
-    grafana:
-      enabled: true
-`),
-			outputfile: "upgrade_grafana_overwrite.yaml",
-			err:        nil,
-			processOptions: func(options *upgradeOptions) {
-				options.addOnConfig = filepath.Join("testdata", "grafana_overwrite.yaml")
-			},
-		},
-		{
-			// Linkerd upgrade to disabled state from enabled state
-			k8sConfigs: append(commonk8sconfig, `
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config-addons
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  values: |-
-    grafana:
-      enabled: true
-`),
-			outputfile: "upgrade_grafana_enabled_disabled.yaml",
-			err:        nil,
-			processOptions: func(options *upgradeOptions) {
-				options.addOnConfig = filepath.Join("testdata", "grafana_disabled.yaml")
-			},
-		},
+	upgradeValues, err := upgradeOpts.validateAndBuild("", clientset, upgradeFlags)
 
-		{
-			// Linkerd upgrade with addons-overwrite
-			k8sConfigs: append(commonk8sconfig, `
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config-addons
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/cli edge-19.4.1
-data:
-  values: |-
-    grafana:
-      enabled: true
-      resources:
-        cpu:
-          limit: "1"
-          request: 100m
-        memory:
-          limit: 250Mi
-          request: 50Mi
-`),
-			outputfile: "upgrade_grafana_addon_overwrite.yaml",
-			err:        nil,
-			processOptions: func(options *upgradeOptions) {
-				options.addOnConfig = filepath.Join("testdata", "grafana_enabled.yaml")
-				options.addOnOverwrite = true
-			},
-		},
+	if err != nil {
+		return bytes.Buffer{}, err
 	}
-	for i, tc := range testCases {
-		tc := tc // pin
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			options, err := testUpgradeOptions()
 
-			if tc.processOptions != nil {
-				tc.processOptions(options)
-			}
-
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			flags := options.recordableFlagSet()
-
-			clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
-			if err != nil {
-				t.Fatalf("Error mocking k8s client: %s", err)
-			}
-
-			values, configs, err := options.validateAndBuild(tc.stage, clientset, flags)
-			if !reflect.DeepEqual(err, tc.err) {
-				t.Fatalf("Expected \"%s\", got \"%s\"", tc.err, err)
-			} else if err == nil {
-				if configs.GetGlobal().GetVersion() != upgradeControlPlaneVersion {
-					t.Errorf("version not upgraded in config")
-				}
-
-				var buf bytes.Buffer
-				if err = render(&buf, values); err != nil {
-
-					t.Fatalf("could not render upgrade configuration: %s", err)
-				}
-				diffTestdata(t, tc.outputfile, buf.String())
-			}
-		})
+	var upgradeBuf bytes.Buffer
+	err = render(&upgradeBuf, upgradeValues)
+	if err != nil {
+		t.Fatalf("could not render upgrade configuration: %s", err)
 	}
+
+	return upgradeBuf, nil
+}
+
+func renderInstallAndUpgrade(t *testing.T, installOpts *installOptions, installFlags *pflag.FlagSet, upgradeOpts *upgradeOptions, upgradeFlags *pflag.FlagSet) (bytes.Buffer, bytes.Buffer, error) {
+	installBuf := renderInstall(t, installValues(t, installOpts, installFlags))
+	upgradeBuf, err := renderUpgrade(t, installBuf.String(), upgradeOpts, upgradeFlags)
+	return installBuf, upgradeBuf, err
 }
