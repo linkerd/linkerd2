@@ -31,4 +31,4 @@ indent_size = 2
 
 [*.proto]
 indent_size = 2
-indent_stlye = space
+indent_style = space
