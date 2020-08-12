@@ -213,7 +213,7 @@ run_test(){
 
   printf 'Test script: [%s] Params: [%s]\n' "${filename##*/}" "$*"
   # Exit on failure here
-  GO111MODULE=on go test --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --k8s-context="$context" --integration-tests "$@" || exit 1
+  GO111MODULE=on go test --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --k8s-context="$context" --integration-tests "$@" || exit 1
 }
 
 # Returns the latest version for the release channel
@@ -333,11 +333,11 @@ run_uninstall_test() {
 
 run_deep_test() {
   local tests=()
-  export helm_path="$bindir"/helm
+  setup_helm
   run_test "$test_directory/install_test.go" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
-    run_test "$test" --helm-path="$helm_path"
+    run_test "$test"
   done
 }
 
@@ -350,7 +350,7 @@ run_helm-deep_test() {
   --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
-    run_test "$test" --helm-path="$helm_path"
+    run_test "$test"
   done
   helm_cleanup
 }

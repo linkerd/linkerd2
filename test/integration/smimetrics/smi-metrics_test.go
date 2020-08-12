@@ -72,6 +72,7 @@ func TestSMIMetrics(t *testing.T) {
 
 	timeout := 50 * time.Second
 	for _, tc := range testCases {
+		tc := tc // pin
 		err = TestHelper.RetryFor(timeout, func() error {
 			queryArgs := []string{
 				"get",
