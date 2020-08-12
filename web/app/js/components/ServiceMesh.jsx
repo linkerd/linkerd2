@@ -13,6 +13,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import StatusTable from './StatusTable.jsx';
+import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _compact from 'lodash/compact';
 import _countBy from 'lodash/countBy';
@@ -35,11 +36,11 @@ const styles = {
 
 const serviceMeshDetailsColumns = [
   {
-    title: 'Name',
+    title: <Trans>columnTitleName</Trans>,
     dataIndex: 'name',
   },
   {
-    title: 'Value',
+    title: <Trans>columnTitleValue</Trans>,
     dataIndex: 'value',
     isNumeric: true,
   },
@@ -107,9 +108,9 @@ class ServiceMesh extends React.Component {
 
     return [
       { key: 1, name: `${productName} version`, value: releaseVersion },
-      { key: 2, name: `${productName} namespace`, value: controllerNamespace },
-      { key: 3, name: 'Control plane components', value: components.length },
-      { key: 4, name: 'Data plane proxies', value: this.proxyCount() },
+      { key: 2, name: <Trans>{productName} namespace</Trans>, value: controllerNamespace },
+      { key: 3, name: <Trans>Control plane components</Trans>, value: components.length },
+      { key: 4, name: <Trans>Data plane proxies</Trans>, value: this.proxyCount() },
     ];
   }
 
@@ -225,7 +226,7 @@ class ServiceMesh extends React.Component {
             <Typography variant="h6">Control plane</Typography>
           </Grid>
           <Grid item xs={3}>
-            <Typography align="right">Components</Typography>
+            <Typography align="right"><Trans>componentsMsg</Trans></Typography>
             <Typography align="right">{components.length}</Typography>
           </Grid>
         </Grid>

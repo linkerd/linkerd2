@@ -5,6 +5,7 @@ import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
+import { Trans } from '@lingui/macro';
 import _isEmpty from 'lodash/isEmpty';
 import _isNil from 'lodash/isNil';
 import { withContext } from './util/AppContext.jsx';
@@ -16,7 +17,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     render: d => directionColumn(d.direction),
   },
   {
-    title: 'Name',
+    title: <Trans>columnTitleName</Trans>,
     filter: d => {
       const [labels, display] = extractDisplayName(d);
       return _isEmpty(labels[resourceType]) ?
@@ -27,33 +28,33 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     render: d => srcDstColumn(d, resourceType, ResourceLink),
   },
   {
-    title: 'Method',
+    title: <Trans>columnTitleMethod</Trans>,
     dataIndex: 'httpMethod',
     filter: d => d.httpMethod,
     sorter: d => d.httpMethod,
   },
   {
-    title: 'Path',
+    title: <Trans>columnTitlePath</Trans>,
     dataIndex: 'path',
     filter: d => d.path,
     sorter: d => d.path,
   },
   {
-    title: 'Count',
+    title: <Trans>columnTitleCount</Trans>,
     dataIndex: 'count',
     isNumeric: true,
     defaultSortOrder: 'desc',
     sorter: d => d.count,
   },
   {
-    title: 'Best',
+    title: <Trans>columnTitleBest</Trans>,
     dataIndex: 'best',
     isNumeric: true,
     render: d => formatLatencySec(d.best),
     sorter: d => d.best,
   },
   {
-    title: 'Worst',
+    title: <Trans>columnTitleWorst</Trans>,
     dataIndex: 'worst',
     isNumeric: true,
     defaultSortOrder: 'desc',
@@ -61,14 +62,14 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     sorter: d => d.worst,
   },
   {
-    title: 'Last',
+    title: <Trans>columnTitleLast</Trans>,
     dataIndex: 'last',
     isNumeric: true,
     render: d => formatLatencySec(d.last),
     sorter: d => d.last,
   },
   {
-    title: 'Success Rate',
+    title: <Trans>columnTitleSuccessRate</Trans>,
     dataIndex: 'successRate',
     isNumeric: true,
     render: d => _isNil(d) || _isNil(d.successRate) ? '---' :
@@ -76,7 +77,7 @@ const topColumns = (resourceType, ResourceLink, PrefixedLink) => [
     sorter: d => d.successRate.get(),
   },
   {
-    title: 'Tap',
+    title: <Trans>columnTitleTap</Trans>,
     key: 'tap',
     isNumeric: true,
     render: d => tapLink(d, resourceType, PrefixedLink),

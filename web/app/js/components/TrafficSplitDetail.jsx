@@ -3,6 +3,7 @@ import MetricsTable from './MetricsTable.jsx';
 import Octopus from './Octopus.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _each from 'lodash/each';
 import _isNil from 'lodash/isNil';
@@ -73,7 +74,7 @@ const TrafficSplitDetail = ({ resourceMetrics, resourceName, resourceRsp, resour
         metrics={resourceMetrics}
         showName={false}
         showNamespaceColumn={false}
-        title="Leaf Services" />
+        title={<Trans>tableTitleLeafServices</Trans>} />
     </div>
   );
 };
