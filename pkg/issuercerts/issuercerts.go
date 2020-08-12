@@ -26,7 +26,7 @@ type IssuerCertData struct {
 	Expiry       *time.Time
 }
 
-// FetchIssuerData fetches the issuer data from the linkerd-identitiy-issuer secrets (used for linkerd.io/tls schemed secrets)
+// FetchIssuerData fetches the issuer data from the linkerd-identity-issuer secrets (used for linkerd.io/tls schemed secrets)
 func FetchIssuerData(api kubernetes.Interface, trustAnchors, controlPlaneNamespace string) (*IssuerCertData, error) {
 	secret, err := api.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
 	if err != nil {
@@ -46,7 +46,7 @@ func FetchIssuerData(api kubernetes.Interface, trustAnchors, controlPlaneNamespa
 	return &IssuerCertData{trustAnchors, string(crt), string(key), nil}, nil
 }
 
-// FetchExternalIssuerData fetches the issuer data from the linkerd-identitiy-issuer secrets (used for kubernetes.io/tls schemed secrets)
+// FetchExternalIssuerData fetches the issuer data from the linkerd-identity-issuer secrets (used for kubernetes.io/tls schemed secrets)
 func FetchExternalIssuerData(api kubernetes.Interface, controlPlaneNamespace string) (*IssuerCertData, error) {
 	secret, err := api.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
 	if err != nil {
