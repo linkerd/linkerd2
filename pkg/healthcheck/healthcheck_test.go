@@ -2116,7 +2116,7 @@ func TestValidateDataPlaneNamespace(t *testing.T) {
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			// create a synethic category that only includes the "data plane namespace exists" check
+			// create a synthetic category that only includes the "data plane namespace exists" check
 			hc.addCheckAsCategory("data-plane-ns-test-cat", LinkerdDataPlaneChecks, "data plane namespace exists")
 
 			expectedResults := []string{
