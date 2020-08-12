@@ -41,14 +41,14 @@ func formatService(svc *corev1.Service) string {
 	return fmt.Sprintf("Service: {name: %s, namespace: %s, annotations: [%s], labels [%s]}", svc.Name, svc.Namespace, formatMetadata(svc.Annotations), formatMetadata(svc.Labels))
 }
 
-func formatEndpoints(endp *corev1.Endpoints) string {
+func formatEndpoints(endpoints *corev1.Endpoints) string {
 	var subsets []string
 
-	for _, ss := range endp.Subsets {
+	for _, ss := range endpoints.Subsets {
 		subsets = append(subsets, fmt.Sprintf("%s:%s", formatAddresses(ss.Addresses), formatPorts(ss.Ports)))
 	}
 
-	return fmt.Sprintf("Endpoints: {name: %s, namespace: %s, annotations: [%s], labels: [%s], subsets: [%s]}", endp.Name, endp.Namespace, formatMetadata(endp.Annotations), formatMetadata(endp.Labels), strings.Join(subsets, ","))
+	return fmt.Sprintf("Endpoints: {name: %s, namespace: %s, annotations: [%s], labels: [%s], subsets: [%s]}", endpoints.Name, endpoints.Namespace, formatMetadata(endpoints.Annotations), formatMetadata(endpoints.Labels), strings.Join(subsets, ","))
 }
 
 // Events for cluster watcher
