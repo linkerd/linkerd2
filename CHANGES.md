@@ -699,7 +699,7 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-270).
     don't fail when the external version endpoint is unreachable (thanks
     @mayankshah1607!)
   * Added a new `tap` APIService check to aid with uncovering Kubernetes API
-    aggregatation layer issues (thanks @droidnoob!)
+    aggregation layer issues (thanks @droidnoob!)
   * Introduced CNI checks to confirm the CNI plugin is installed and ready;
     this is done through `linkerd check --pre --linkerd-cni-enabled` before
     installation and `linkerd check` after installation if the CNI plugin is
@@ -865,7 +865,7 @@ debugging experience.
     don't fail when the external version endpoint is unreachable (thanks
     @mayankshah1607!)
   * Added a new `tap` APIService check to aid with uncovering Kubernetes API
-    aggregatation layer issues (thanks @droidnoob!)
+    aggregation layer issues (thanks @droidnoob!)
 
 ## edge-20.1.3
 
