@@ -84,12 +84,12 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
 };
 
 const generateEdgesTableTitle = edges => {
-  let title = <Trans>columnTitleEdges</Trans>;
+  let title = <Trans>tableTitleEdgesEmpty</Trans>;
   if (edges.length > 0) {
     let identity = edges[0].direction === 'INBOUND' ? edges[0].serverId : edges[0].clientId;
     if (identity) {
       identity = `${identity.split('.')[0]}.${identity.split('.')[1]}`;
-      title = `${title} (Identity: ${identity})`;
+      title = <Trans>tableTitleEdgesWithIdentity {identity}</Trans>;
     }
   }
   return title;
