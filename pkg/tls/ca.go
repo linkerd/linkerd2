@@ -157,7 +157,7 @@ func GenerateRootCAWithDefaults(name string) (*CA, error) {
 	return CreateRootCA(name, key, Validity{})
 }
 
-// GenerateCA generates a new intermdiary CA.
+// GenerateCA generates a new intermediate CA.
 func (ca *CA) GenerateCA(name string, maxPathLen int) (*CA, error) {
 	key, err := GenerateKey()
 	if err != nil {

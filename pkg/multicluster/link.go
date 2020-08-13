@@ -216,7 +216,7 @@ func ExtractProbeSpec(gateway *corev1.Service) (ProbeSpec, error) {
 	}, nil
 }
 
-// GetLinks fetchs a list of all Link objects in the cluster.
+// GetLinks fetches a list of all Link objects in the cluster.
 func GetLinks(client dynamic.Interface) ([]Link, error) {
 	list, err := client.Resource(LinkGVR).List(metav1.ListOptions{})
 	if err != nil {

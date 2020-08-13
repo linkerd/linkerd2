@@ -11,12 +11,35 @@ rootdir=$( cd "$bindir"/.. && pwd )
 # shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
 
+arch=""
 case $(uname) in
 	Darwin)
 		host_platform=darwin
 		;;
 	Linux)
 		host_platform=linux
+		arch=$(uname -m)
+		case $arch in
+			x86_64)
+				arch=amd64
+				;;
+			armv8*)
+				arch=arm64
+				;;
+			aarch64*)
+				arch=arm64
+				;;
+			armv*)
+				arch=arm
+				;;
+			amd64|arm64)
+				arch=$arch
+				;;
+			*)
+				echo "unsupported architecture: $arch" >&2
+				exit 1
+				;;
+		esac
 		;;
 	*)
 		host_platform=windows
@@ -27,6 +50,9 @@ esac
     cd "$rootdir"
     cd "$(pwd -P)"
     target=target/cli/$host_platform/linkerd
+    if [ -n "$arch" ]; then
+      target=target/cli/$host_platform-$arch/linkerd
+    fi
     GO111MODULE=on go generate -mod=readonly ./pkg/charts/static # TODO: `go generate` does not honor -mod=readonly
     root_tag=$("$bindir"/root-tag)
     GO111MODULE=on CGO_ENABLED=0 go build -o $target -tags prod -mod=readonly -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$root_tag" ./cli

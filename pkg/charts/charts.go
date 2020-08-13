@@ -24,8 +24,8 @@ type Chart struct {
 	Files     []*loader.BufferedFile
 }
 
-func (chart *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, error) {
-	if err := FilesReader(chart.Dir+"/", chart.Files); err != nil {
+func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, error) {
+	if err := FilesReader(c.Dir+"/", c.Files); err != nil {
 		return bytes.Buffer{}, err
 	}
 
@@ -34,37 +34,37 @@ func (chart *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, 
 	}
 
 	// Create chart and render templates
-	chrt, err := loader.LoadFiles(append(chart.Files, partialsFiles...))
+	chart, err := loader.LoadFiles(append(c.Files, partialsFiles...))
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
 
 	releaseOptions := chartutil.ReleaseOptions{
-		Name:      chart.Name,
+		Name:      c.Name,
 		IsInstall: true,
 		IsUpgrade: false,
-		Namespace: chart.Namespace,
+		Namespace: c.Namespace,
 	}
 
 	var rawMapValues map[string]interface{}
-	err = yaml.Unmarshal(chart.RawValues, &rawMapValues)
+	err = yaml.Unmarshal(c.RawValues, &rawMapValues)
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
 
-	valuesToRender, err := chartutil.ToRenderValues(chrt, rawMapValues, releaseOptions, nil)
+	valuesToRender, err := chartutil.ToRenderValues(chart, rawMapValues, releaseOptions, nil)
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
 
-	renderedTemplates, err := engine.Render(chrt, valuesToRender)
+	renderedTemplates, err := engine.Render(chart, valuesToRender)
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
 
 	// Merge templates and inject
 	var buf bytes.Buffer
-	for _, tmpl := range chart.Files {
+	for _, tmpl := range c.Files {
 		t := path.Join(releaseOptions.Name, tmpl.Name)
 		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
 			return bytes.Buffer{}, err
@@ -75,7 +75,7 @@ func (chart *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, 
 }
 
 // Render returns a bytes buffer with the result of rendering a Helm chart
-func (chart *Chart) Render() (bytes.Buffer, error) {
+func (c *Chart) Render() (bytes.Buffer, error) {
 
 	// Keep this slice synced with the contents of /charts/partials
 	l5dPartials := []*loader.BufferedFile{
@@ -95,21 +95,21 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 		{Name: "charts/partials/templates/_addons.tpl"},
 		{Name: "charts/partials/templates/_validate.tpl"},
 	}
-	return chart.render(l5dPartials)
+	return c.render(l5dPartials)
 }
 
 // RenderCNI returns a bytes buffer with the result of rendering a Helm chart
-func (chart *Chart) RenderCNI() (bytes.Buffer, error) {
+func (c *Chart) RenderCNI() (bytes.Buffer, error) {
 	cniPartials := []*loader.BufferedFile{
 		{Name: "charts/partials/" + chartutil.ChartfileName},
 		{Name: "charts/partials/templates/_helpers.tpl"},
 	}
-	return chart.render(cniPartials)
+	return c.render(cniPartials)
 }
 
 // RenderNoPartials returns a bytes buffer with the result of rendering a Helm chart with no partials
-func (chart *Chart) RenderNoPartials() (bytes.Buffer, error) {
-	return chart.render([]*loader.BufferedFile{})
+func (c *Chart) RenderNoPartials() (bytes.Buffer, error) {
+	return c.render([]*loader.BufferedFile{})
 }
 
 // ReadFile updates the buffered file with the data read from disk
