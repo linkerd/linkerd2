@@ -49,10 +49,10 @@ esac
 (
     cd "$rootdir"
     cd "$(pwd -P)"
-		target=target/cli/$host_platform/linkerd
-		if [ -n "$arch" ]; then
-			target=target/cli/$host_platform-$arch/linkerd
-		fi
+    target=target/cli/$host_platform/linkerd
+    if [ -n "$arch" ]; then
+      target=target/cli/$host_platform-$arch/linkerd
+    fi
     GO111MODULE=on go generate -mod=readonly ./pkg/charts/static # TODO: `go generate` does not honor -mod=readonly
     root_tag=$("$bindir"/root-tag)
     GO111MODULE=on CGO_ENABLED=0 go build -o $target -tags prod -mod=readonly -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$root_tag" ./cli
