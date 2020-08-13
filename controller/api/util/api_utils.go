@@ -116,7 +116,7 @@ type TapRequestParams struct {
 	LabelSelector string
 }
 
-// GatewayRequestParams conttains parameters that are used to build a
+// GatewayRequestParams contains parameters that are used to build a
 // GatewayRequest
 type GatewayRequestParams struct {
 	RemoteClusterName string

@@ -503,7 +503,7 @@ status:
 
 }
 
-func TestChecCapability(t *testing.T) {
+func TestCheckCapability(t *testing.T) {
 	tests := []struct {
 		k8sConfigs []string
 		err        error
@@ -2116,7 +2116,7 @@ func TestValidateDataPlaneNamespace(t *testing.T) {
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			// create a synethic category that only includes the "data plane namespace exists" check
+			// create a synthetic category that only includes the "data plane namespace exists" check
 			hc.addCheckAsCategory("data-plane-ns-test-cat", LinkerdDataPlaneChecks, "data plane namespace exists")
 
 			expectedResults := []string{
@@ -2265,7 +2265,7 @@ func TestLinkerdPreInstallGlobalResourcesChecks(t *testing.T) {
 			"pre-linkerd-global-resources no PodSecurityPolicies exist",
 		}
 		if !reflect.DeepEqual(observer.results, expected) {
-			testutil.AnnotatedErrorf(t, "Mistmatch result", "Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
+			testutil.AnnotatedErrorf(t, "Mismatch result", "Mismatch result.\nExpected: %v\n Actual: %v\n", expected, observer.results)
 		}
 	})
 

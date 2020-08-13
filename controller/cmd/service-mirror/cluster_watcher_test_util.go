@@ -244,7 +244,7 @@ var clusterUnregistered = &testEnvironment{
 
 var gcTriggered = &testEnvironment{
 	events: []interface{}{
-		&OprhanedServicesGcTriggered{},
+		&OrphanedServicesGcTriggered{},
 	},
 	localResources: []string{
 		mirrorServiceAsYaml("test-service-1-remote", "test-namespace", "", nil),

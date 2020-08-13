@@ -27,7 +27,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/trace"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	v1machinary "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1machinery "k8s.io/apimachinery/pkg/apis/meta/v1"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -142,7 +142,7 @@ func Main(args []string) {
 		Interface: k8sAPI.CoreV1().Events(controllerNS),
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: componentName})
-	deployment, err := k8sAPI.AppsV1().Deployments(controllerNS).Get(componentName, v1machinary.GetOptions{})
+	deployment, err := k8sAPI.AppsV1().Deployments(controllerNS).Get(componentName, v1machinery.GetOptions{})
 
 	if err != nil {
 		log.Fatalf("Failed to construct k8s event recorder: %s", err)

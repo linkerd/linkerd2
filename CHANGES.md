@@ -56,7 +56,7 @@ Topologies (by @Matei207) and delivering image builds in multiple platforms (by
   * Added ability to set `priorityClassName` for CNI DaemonSet pods, and to
     install CNI in an existing namespace (both options provided through the CLI
     and as Helm configs) (thanks @alex-berger!)
-  * Added support for overriding the proxy's inbound and outbout TCP connection
+  * Added support for overriding the proxy's inbound and outbound TCP connection
     timeouts (thanks @mmiller1!)
   * Added library support for dashboard i18n. Strings still need to be tagged
     and translations to be added. More info
@@ -276,11 +276,11 @@ improvements and fixes for multicluster support.
   * Fixed shellcheck errors in all `bin/` scripts (thanks @joakimr-axis!)
 * Helm
   * Added support for `linkerd mc allow`
-  * Added ability to disable secret rescources for self-signed certs (thanks
+  * Added ability to disable secret resources for self-signed certs (thanks
     @cypherfox!)
 * Proxy
   * Modified the `linkerd-gateway` component to use the inbound proxy, rather
-    than nginx, for gateway; this allows Linkerd to detect loops and propogate
+    than nginx, for gateway; this allows Linkerd to detect loops and propagate
     identity
 
 ## edge-20.5.5
@@ -368,7 +368,7 @@ multicluster. For a tutorial on how to do that, check out the
   * Added multicluster checks to the `linkerd check` command
   * Hid development flags in the `linkerd install` command for release builds
 * Controller
-  * Added ability to configure Prometheus Altermanager as well as recording
+  * Added ability to configure Prometheus Alertmanager as well as recording
     and alerting rules on the Linkerd Prometheus (thanks @naseemkullah!)
   * Added ability to add more commandline flags to the Prometheus command
     (thanks @naseemkullah!)
@@ -719,7 +719,7 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-270).
     don't fail when the external version endpoint is unreachable (thanks
     @mayankshah1607!)
   * Added a new `tap` APIService check to aid with uncovering Kubernetes API
-    aggregatation layer issues (thanks @droidnoob!)
+    aggregation layer issues (thanks @droidnoob!)
   * Introduced CNI checks to confirm the CNI plugin is installed and ready;
     this is done through `linkerd check --pre --linkerd-cni-enabled` before
     installation and `linkerd check` after installation if the CNI plugin is
@@ -791,7 +791,7 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-270).
   * Fixed an issue in the `identity` RBAC resource which caused start up
     errors in k8s 1.6 (thanks @Pothulapati!)
   * Added support for using trust anchors from an external certificate issuer
-    (such as `cert-mananger`) to the `linkerd-identity` service
+    (such as `cert-manager`) to the `linkerd-identity` service
   * Added support for headless services (thanks @JohannesEH!)
 * Helm
   * **Breaking change**: Renamed `noInitContainer` parameter to `cniEnabled`
@@ -885,7 +885,7 @@ debugging experience.
     don't fail when the external version endpoint is unreachable (thanks
     @mayankshah1607!)
   * Added a new `tap` APIService check to aid with uncovering Kubernetes API
-    aggregatation layer issues (thanks @droidnoob!)
+    aggregation layer issues (thanks @droidnoob!)
 
 ## edge-20.1.3
 
@@ -1112,7 +1112,7 @@ the Linkerd CLI.
     IPs that match multiple running pods
 * Controller
   * Added support for using trust anchors from an external certificate issuer
-    (such as `cert-mananger`) to the `linkerd-identity` service
+    (such as `cert-manager`) to the `linkerd-identity` service
 * Web UI
   * Added `Host:` header validation to the `linkerd-web` service, to protect
     against DNS rebinding attacks
@@ -3355,7 +3355,7 @@ this release!
 * Control plane
   * Injected proxy containers now have readiness and liveness probes enabled
 
-Special thanks to @sourishkrout for contributing a web readibility fix!
+Special thanks to @sourishkrout for contributing a web readability fix!
 
 ## v18.8.2
 

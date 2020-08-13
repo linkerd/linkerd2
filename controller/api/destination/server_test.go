@@ -164,7 +164,7 @@ func TestGet(t *testing.T) {
 		}
 
 		// We cancel the stream before even sending the request so that we don't
-		// need to call server.Get in a separate goroutine.  By pre-emptively
+		// need to call server.Get in a separate goroutine.  By preemptively
 		// cancelling, the behavior of Get becomes effectively synchronous and
 		// we will get only the initial update, which is what we want for this
 		// test.

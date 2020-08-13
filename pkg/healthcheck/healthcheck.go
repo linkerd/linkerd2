@@ -148,7 +148,7 @@ const (
 	linkerdCNIConfigMapName      = "linkerd-cni-config"
 
 	// linkerdTapAPIServiceName is the name of the tap api service
-	// This key is passed to checkApiSercice method to check whether
+	// This key is passed to checkApiService method to check whether
 	// the api service is available or not
 	linkerdTapAPIServiceName = "v1alpha1.tap.linkerd.io"
 )
@@ -163,7 +163,7 @@ const HintBaseURL = "https://linkerd.io/checks/#"
 // based on assumed node's heartbeat interval (5 minutes) plus default TLS
 // clock skew allowance.
 //
-// TODO: Make this default value overridiable, e.g. by CLI flag
+// TODO: Make this default value overridable, e.g. by CLI flag
 const AllowedClockSkew = 5*time.Minute + tls.DefaultClockSkewAllowance
 
 var linkerdHAControlPlaneComponents = []string{

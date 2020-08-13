@@ -190,8 +190,8 @@ func TestServiceProfileMetrics(t *testing.T) {
 	// Grab the output and convert it to a service profile object for modification
 	err = yaml.Unmarshal([]byte(out), profile)
 	if err != nil {
-		testutil.AnnotatedErrorf(t, "unable to unmarshall YAML",
-			"unable to unmarshall YAML: %s", err)
+		testutil.AnnotatedErrorf(t, "unable to unmarshal YAML",
+			"unable to unmarshal YAML: %s", err)
 	}
 
 	// introduce retry in the service profile

@@ -393,7 +393,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().StringVar(&options.gatewayNginxImage, "gateway-nginx-image", options.gatewayNginxImage, "The nginx image to be used")
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
-	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported servivces")
+	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -625,7 +625,7 @@ func newLinkCommand() *cobra.Command {
 
 			gatewayIdentity, ok := gateway.Annotations[k8s.GatewayIdentity]
 			if !ok || gatewayIdentity == "" {
-				return fmt.Errorf("Gatway %s.%s has no %s annotation", gateway.Name, gateway.Namespace, k8s.GatewayIdentity)
+				return fmt.Errorf("Gateway %s.%s has no %s annotation", gateway.Name, gateway.Namespace, k8s.GatewayIdentity)
 			}
 
 			probeSpec, err := mc.ExtractProbeSpec(gateway)
