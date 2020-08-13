@@ -20,6 +20,9 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	chartloader "helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -28,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
 
@@ -270,7 +272,7 @@ func newAllowCommand() *cobra.Command {
 				return err
 			}
 
-			files := []*chartutil.BufferedFile{
+			files := []*chartloader.BufferedFile{
 				{Name: chartutil.ChartfileName},
 				{Name: "templates/namespace.yaml"},
 				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
@@ -359,7 +361,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 				return err
 			}
 
-			files := []*chartutil.BufferedFile{
+			files := []*loader.BufferedFile{
 				{Name: chartutil.ChartfileName},
 				{Name: "templates/namespace.yaml"},
 				{Name: "templates/gateway.yaml"},
@@ -464,7 +466,7 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 				return err
 			}
 
-			files := []*chartutil.BufferedFile{
+			files := []*chartloader.BufferedFile{
 				{Name: chartutil.ChartfileName},
 				{Name: "templates/namespace.yaml"},
 				{Name: "templates/gateway.yaml"},
@@ -678,7 +680,7 @@ func newLinkCommand() *cobra.Command {
 				return err
 			}
 
-			files := []*chartutil.BufferedFile{
+			files := []*chartloader.BufferedFile{
 				{Name: chartutil.ChartfileName},
 				{Name: "templates/service-mirror.yaml"},
 				{Name: "templates/gateway-mirror.yaml"},

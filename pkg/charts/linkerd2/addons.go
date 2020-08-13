@@ -3,15 +3,15 @@ package linkerd2
 import (
 	"fmt"
 
-	"k8s.io/helm/pkg/chartutil"
+	loader "helm.sh/helm/v3/pkg/chart/loader"
 )
 
 // AddOn includes the general functions required by add-on, provides
 // a common abstraction for install, etc
 type AddOn interface {
 	Name() string
-	ConfigStageTemplates() []*chartutil.BufferedFile
-	ControlPlaneStageTemplates() []*chartutil.BufferedFile
+	ConfigStageTemplates() []*loader.BufferedFile
+	ControlPlaneStageTemplates() []*loader.BufferedFile
 	Values() []byte
 }
 

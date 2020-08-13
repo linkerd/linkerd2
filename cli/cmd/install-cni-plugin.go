@@ -6,14 +6,13 @@ import (
 	"os"
 	"strings"
 
-	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
-
 	"github.com/linkerd/linkerd2/pkg/charts"
-	"k8s.io/helm/pkg/chartutil"
-
+	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
 
@@ -193,7 +192,7 @@ func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
 		return err
 	}
 
-	files := []*chartutil.BufferedFile{
+	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 		{Name: "templates/cni-plugin.yaml"},
 	}

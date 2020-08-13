@@ -23,11 +23,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
 
@@ -642,7 +643,7 @@ func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Val
 }
 
 func mergeRaw(a, b []byte) ([]byte, error) {
-	var aMap, bMap chartutil.Values
+	var aMap, bMap map[string]interface{}
 
 	err := yaml.Unmarshal(a, &aMap)
 	if err != nil {
@@ -654,9 +655,28 @@ func mergeRaw(a, b []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	aMap.MergeInto(bMap)
-	return yaml.Marshal(aMap)
+	result := mergeMaps(aMap, bMap)
+	return yaml.Marshal(result)
 
+}
+
+func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(a))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		if v, ok := v.(map[string]interface{}); ok {
+			if bv, ok := out[k]; ok {
+				if bv, ok := bv.(map[string]interface{}); ok {
+					out[k] = mergeMaps(bv, v)
+					continue
+				}
+			}
+		}
+		out[k] = v
+	}
+	return out
 }
 
 func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
@@ -860,7 +880,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 		return err
 	}
 
-	files := []*chartutil.BufferedFile{
+	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
 
@@ -877,7 +897,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 			Dir:       addOnChartsPath + "/" + addOn.Name(),
 			Namespace: controlPlaneNamespace,
 			RawValues: append(addOn.Values(), rawValues...),
-			Files: []*chartutil.BufferedFile{
+			Files: []*loader.BufferedFile{
 				{
 					Name: chartutil.ChartfileName,
 				},
@@ -891,7 +911,7 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 	if values.Stage == "" || values.Stage == configStage {
 		for _, template := range templatesConfigStage {
 			files = append(files,
-				&chartutil.BufferedFile{Name: template},
+				&loader.BufferedFile{Name: template},
 			)
 		}
 
@@ -902,10 +922,9 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 	}
 
 	if values.Stage == "" || values.Stage == controlPlaneStage {
-		files = append(files, &chartutil.BufferedFile{Name: "smi-metrics-config.yaml"})
 		for _, template := range templatesControlPlaneStage {
 			files = append(files,
-				&chartutil.BufferedFile{Name: template},
+				&loader.BufferedFile{Name: template},
 			)
 		}
 
