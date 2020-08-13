@@ -32,13 +32,13 @@ os() {
           arch=$arch
           ;;
         *)
-          echo "unknown architecture: $arch" >&2
+          echo "unsupported architecture: $arch" >&2
           exit 1
           ;;
       esac
       ;;
     *)
-      echo "unknown os: $os" >&2
+      echo "unsupported os: $os" >&2
       exit 1
       ;;
   esac
