@@ -246,7 +246,16 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	if options.controlPlaneVersion != "" {
 		configs.GetGlobal().Version = options.controlPlaneVersion
 	}
+
 	configs.GetInstall().Flags = options.recordedFlags
+
+	if options.enableEndpointSlices {
+		if err = validateEndpointSlicesFeature(); err != nil {
+			return nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
+		}
+	}
+
+	configs.GetGlobal().EndpointSliceEnabled = options.enableEndpointSlices
 	configs.GetGlobal().OmitWebhookSideEffects = options.omitWebhookSideEffects
 	if configs.GetGlobal().GetClusterDomain() == "" {
 		configs.GetGlobal().ClusterDomain = defaultClusterDomain
@@ -290,16 +299,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	if options.enableEndpointSlices != configs.GetGlobal().GetEndpointSliceEnabled() {
-		if options.enableEndpointSlices {
-			if err = validateEndpointSlicesFeature(); err != nil {
-				return nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
-			}
-		}
-
-		configs.GetGlobal().EndpointSliceEnabled = options.enableEndpointSlices
 	}
 
 	// Values have to be generated after any missing identity is generated,
