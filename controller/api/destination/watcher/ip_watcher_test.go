@@ -604,7 +604,7 @@ status:
   phase: Running
   podIP: 172.17.0.12`
 
-	hostNetworkPodConifg := `
+	hostNetworkPodConfig := `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -638,7 +638,7 @@ status:
 		},
 		{
 			description: "host network pod update",
-			k8sConfigs:  hostNetworkPodConifg,
+			k8sConfigs:  hostNetworkPodConfig,
 			host:        "172.17.0.12",
 			port:        12345,
 			objectToUpdate: &corev1.Pod{

@@ -16,7 +16,7 @@ To report a security problem in Linkerd, please contact the Security Alert Team:
 
 The team will help diagnose the severity of the issue and determine how to
 address the issue. Issues deemed to be non-critical will be filed as GitHub
-issues. Critical issues will receive immedaite attention and be fixed as quickly
+issues. Critical issues will receive immediate attention and be fixed as quickly
 as possible.
 
 ## Security Advisories

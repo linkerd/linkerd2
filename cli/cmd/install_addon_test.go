@@ -68,7 +68,7 @@ func TestAddOnRender(t *testing.T) {
 }
 
 func TestMergeRaw(t *testing.T) {
-	t.Run("Test Ovewriting of Values struct", func(*testing.T) {
+	t.Run("Test Overwriting of Values struct", func(*testing.T) {
 
 		initialValues := charts.Values{
 			WebImage:               "initial-web",

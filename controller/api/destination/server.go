@@ -327,7 +327,7 @@ func getHostAndPort(authority string) (string, watcher.Port, error) {
 
 type instanceID = string
 
-// parseK8sServiceName is a utility that destructures a Kubernetes serviec hostname into its constituent components.
+// parseK8sServiceName is a utility that destructures a Kubernetes service hostname into its constituent components.
 //
 // If the authority does not represent a Kubernetes service, an error is returned.
 //

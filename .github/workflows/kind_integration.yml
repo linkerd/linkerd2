@@ -137,7 +137,7 @@ jobs:
       run: |
         # Copy the CLI out of the local cli-bin container.
         container_id=$(docker create "$DOCKER_REGISTRY/cli-bin:$TAG")
-        docker cp $container_id:/out/linkerd-linux "$HOME/.linkerd"
+        docker cp $container_id:/out/linkerd-linux-amd64 "$HOME/.linkerd"
 
         # Validate the CLI version matches the current build tag.
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]

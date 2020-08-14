@@ -45,8 +45,8 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 type: kubernetes.io/tls
 data:
-  tls.crt: {{ ternary (b64enc $cert.Cert) (b64enc (trim .Values.smiMetrics.crtPEM)) (empty .Values.smiMetrics.crtPEM) }}
-  tls.key: {{ ternary (b64enc $cert.Key) (b64enc (trim .Values.smiMetrics.keyPEM)) (empty .Values.smiMetrics.keyPEM) }}
+  tls.crt: {{ ternary (b64enc (trim $cert.Cert)) (b64enc (trim .Values.smiMetrics.crtPEM)) (empty .Values.smiMetrics.crtPEM) }}
+  tls.key: {{ ternary (b64enc (trim $cert.Key)) (b64enc (trim .Values.smiMetrics.keyPEM)) (empty .Values.smiMetrics.keyPEM) }}
 ---
 {{- end }}
 apiVersion: apiregistration.k8s.io/v1
@@ -68,5 +68,5 @@ spec:
 {{- if and (.Values.smiMetrics.externalSecret) (empty .Values.smiMetrics.caBundle) }}
   {{- fail "If smiMetrics.externalSecret is true then you need to provide smiMetrics.caBundle" }}
 {{- end }}
-  caBundle: {{ ternary (b64enc $cert.Cert) (b64enc (trim .Values.smiMetrics.caBundle)) (empty .Values.smiMetrics.caBundle) }}
+  caBundle: {{ ternary (b64enc (trim $cert.Cert)) (b64enc (trim .Values.smiMetrics.caBundle)) (empty .Values.smiMetrics.caBundle) }}
 {{- end }}

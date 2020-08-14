@@ -393,7 +393,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().StringVar(&options.gatewayNginxImage, "gateway-nginx-image", options.gatewayNginxImage, "The nginx image to be used")
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
-	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported servivces")
+	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -405,6 +405,92 @@ func newMulticlusterInstallCommand() *cobra.Command {
 		cmd.Flags().MarkHidden("gateway-nginx-image")
 		cmd.Flags().MarkHidden("gateway-nginx-image-version")
 	}
+
+	return cmd
+}
+
+func newMulticlusterUninstallCommand() *cobra.Command {
+	options, err := newMulticlusterInstallOptionsWithDefault()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		os.Exit(1)
+	}
+
+	cmd := &cobra.Command{
+		Use:   "uninstall",
+		Short: "Output Kubernetes configs to uninstall the Linkerd multicluster add-on",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+
+			rules := clientcmd.NewDefaultClientConfigLoadingRules()
+			rules.ExplicitPath = kubeconfigPath
+			loader := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, &clientcmd.ConfigOverrides{})
+			config, err := loader.RawConfig()
+			if err != nil {
+				return err
+			}
+
+			if kubeContext != "" {
+				config.CurrentContext = kubeContext
+			}
+
+			k, err := k8s.NewAPI(kubeconfigPath, config.CurrentContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return err
+			}
+
+			links, err := mc.GetLinks(k.DynamicClient)
+			if err != nil {
+				return err
+			}
+
+			if len(links) > 0 {
+				err := []string{"Please unlink the following clusters before uninstalling multicluster:"}
+				for _, link := range links {
+					err = append(err, fmt.Sprintf("  * %s", link.TargetClusterName))
+				}
+				return errors.New(strings.Join(err, "\n"))
+			}
+
+			values, err := buildMulticlusterInstallValues(options)
+
+			if err != nil {
+				return err
+			}
+
+			// Render raw values and create chart config
+			rawValues, err := yaml.Marshal(values)
+			if err != nil {
+				return err
+			}
+
+			files := []*chartutil.BufferedFile{
+				{Name: chartutil.ChartfileName},
+				{Name: "templates/namespace.yaml"},
+				{Name: "templates/gateway.yaml"},
+				{Name: "templates/remote-access-service-mirror-rbac.yaml"},
+				{Name: "templates/link-crd.yaml"},
+			}
+
+			chart := &charts.Chart{
+				Name:      helmMulticlusterDefaultChartName,
+				Dir:       helmMulticlusterDefaultChartName,
+				Namespace: controlPlaneNamespace,
+				RawValues: rawValues,
+				Files:     files,
+			}
+			buf, err := chart.RenderNoPartials()
+			if err != nil {
+				return err
+			}
+			stdout.Write(buf.Bytes())
+			stdout.Write([]byte("---\n"))
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&options.namespace, "namespace", options.namespace, "The namespace in which the multicluster add-on is to be installed. Must not be the control plane namespace. ")
 
 	return cmd
 }
@@ -539,7 +625,7 @@ func newLinkCommand() *cobra.Command {
 
 			gatewayIdentity, ok := gateway.Annotations[k8s.GatewayIdentity]
 			if !ok || gatewayIdentity == "" {
-				return fmt.Errorf("Gatway %s.%s has no %s annotation", gateway.Name, gateway.Namespace, k8s.GatewayIdentity)
+				return fmt.Errorf("Gateway %s.%s has no %s annotation", gateway.Name, gateway.Namespace, k8s.GatewayIdentity)
 			}
 
 			probeSpec, err := mc.ExtractProbeSpec(gateway)
@@ -753,6 +839,7 @@ components on a cluster, manage credentials and link clusters together.`,
 	multiclusterCmd.AddCommand(newLinkCommand())
 	multiclusterCmd.AddCommand(newUnlinkCommand())
 	multiclusterCmd.AddCommand(newMulticlusterInstallCommand())
+	multiclusterCmd.AddCommand(newMulticlusterUninstallCommand())
 	multiclusterCmd.AddCommand(newGatewaysCommand())
 	multiclusterCmd.AddCommand(newAllowCommand())
 	return multiclusterCmd

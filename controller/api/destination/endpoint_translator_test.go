@@ -168,7 +168,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 		actualProtocolHint := addrs[0].GetProtocolHint()
 		if !reflect.DeepEqual(actualProtocolHint, expectedProtocolHint) {
-			t.Fatalf("Expected ProtoclHint to be [%v] but was [%v]", expectedProtocolHint, actualProtocolHint)
+			t.Fatalf("Expected ProtocolHint to be [%v] but was [%v]", expectedProtocolHint, actualProtocolHint)
 		}
 	})
 
@@ -203,7 +203,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 
 		actualProtocolHint := addrs[0].GetProtocolHint()
 		if !reflect.DeepEqual(actualProtocolHint, expectedProtocolHint) {
-			t.Fatalf("Expected ProtoclHint to be [%v] but was [%v]", expectedProtocolHint, actualProtocolHint)
+			t.Fatalf("Expected ProtocolHint to be [%v] but was [%v]", expectedProtocolHint, actualProtocolHint)
 		}
 
 		actualAuthOverride := addrs[0].GetAuthorityOverride()
