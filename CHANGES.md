@@ -1,5 +1,18 @@
 # Changes
 
+## edge-20.8.2
+
+This edge release adds an internationalization framework to the dashboard,
+spanish translations to the dashboard UI, and a `linkerd multicluster uninstall`
+command for graceful removal of the multicluster components.
+
+* Web UI
+  * Added Spanish translations to the dashboard
+  * Added a framework and documentation to simplify creation of new
+    translations
+* Multicluster
+  * Added a multicluster uninstall command
+
 ## edge-20.8.1
 
 This edge adds multi-arch support to Linkerd! Our docker images and CLI now
