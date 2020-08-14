@@ -18,11 +18,7 @@ jobs:
       # actions/checkout@v2
       uses: actions/checkout@722adc6
     - name: Go lint
-      env:
-        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
-      run: |
-        echo "$GITCOOKIE_SH" | bash
-        bin/lint --verbose
+      run: bin/lint --verbose
   go_format:
     name: Go format
     runs-on: ubuntu-18.04
@@ -33,11 +29,7 @@ jobs:
       # actions/checkout@v2
       uses: actions/checkout@722adc6
     - name: Format
-      env:
-        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
-      run: |
-        echo "$GITCOOKIE_SH" | bash
-        bin/fmt
+      run: bin/fmt
   shellcheck:
     name: shellcheck
     runs-on: ubuntu-18.04

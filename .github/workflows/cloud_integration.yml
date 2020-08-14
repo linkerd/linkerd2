@@ -100,11 +100,7 @@ jobs:
         name: testing-${{ env.TAG }}-${{ github.run_id }}
         num_nodes: 2
     - name: Run integration tests
-      env:
-        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
-      run: |
-        echo "$GITCOOKIE_SH" | bash
-        bin/tests --skip-kind-create "$CMD"
+      run: bin/tests --skip-kind-create "$CMD"
     - name: CNI tests
       run: |
         export TAG="$($CMD version --client --short)"
