@@ -1,7 +1,7 @@
 package linkerd2
 
 import (
-	loader "helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"sigs.k8s.io/yaml"
 )
 

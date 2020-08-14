@@ -3,7 +3,7 @@ package linkerd2
 import (
 	"fmt"
 
-	loader "helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chart/loader"
 )
 
 // AddOn includes the general functions required by add-on, provides
