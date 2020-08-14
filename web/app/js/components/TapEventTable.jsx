@@ -11,6 +11,7 @@ import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
@@ -53,7 +54,7 @@ const formatTapLatency = str => {
 };
 
 const httpStatusCol = {
-  title: 'HTTP status',
+  title: <Trans>columnTitleHTTPStatus</Trans>,
   key: 'http-status',
   render: datum => {
     const d = _get(datum, 'responseInit.http.responseInit');
@@ -62,7 +63,7 @@ const httpStatusCol = {
 };
 
 const responseInitLatencyCol = {
-  title: 'Latency',
+  title: <Trans>columnTitleLatency</Trans>,
   key: 'rsp-latency',
   isNumeric: true,
   render: datum => {
@@ -72,7 +73,7 @@ const responseInitLatencyCol = {
 };
 
 const grpcStatusCol = {
-  title: 'GRPC status',
+  title: <Trans>columnTitleGRPCStatus</Trans>,
   key: 'grpc-status',
   render: datum => {
     const d = _get(datum, 'responseEnd.http.responseEnd');
@@ -82,7 +83,7 @@ const grpcStatusCol = {
 };
 
 const pathCol = {
-  title: 'Path',
+  title: <Trans>columnTitlePath</Trans>,
   key: 'path',
   render: datum => {
     const d = _get(datum, 'requestInit.http.requestInit');
@@ -91,7 +92,7 @@ const pathCol = {
 };
 
 const methodCol = {
-  title: 'Method',
+  title: <Trans>columnTitleMethod</Trans>,
   key: 'method',
   render: datum => {
     const d = _get(datum, 'requestInit.http.requestInit');
@@ -101,12 +102,12 @@ const methodCol = {
 
 const topLevelColumns = (resourceType, ResourceLink) => [
   {
-    title: 'Direction',
+    title: <Trans>columnTitleDirection</Trans>,
     key: 'direction',
     render: d => directionColumn(d.base.proxyDirection),
   },
   {
-    title: 'Name',
+    title: <Trans>columnTitleName</Trans>,
     key: 'src-dst',
     render: d => {
       const datum = {

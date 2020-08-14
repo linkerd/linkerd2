@@ -6,7 +6,7 @@ import Typography from '@material-ui/core/Typography';
 * Instructions for adding resources to service mesh
 */
 export const incompleteMeshMessage = name => {
-  const unspecifiedResources = <Trans>one or more resources</Trans>;
+  const unspecifiedResources = <Trans>unspecifiedResourcesMsg</Trans>;
   const inject = <code>linkerd inject k8s.yml | kubectl apply -f -</code>;
 
   return (

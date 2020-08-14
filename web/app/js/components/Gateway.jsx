@@ -4,6 +4,7 @@ import MetricsTable from './MetricsTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
+import { Trans } from '@lingui/macro';
 import _isEmpty from 'lodash/isEmpty';
 import { processGatewayResults } from './util/MetricUtils.jsx';
 import { withContext } from './util/AppContext.jsx';
@@ -102,7 +103,7 @@ class Gateways extends React.Component {
             {noMetrics ? null : (
               <div className="page-section">
                 <MetricsTable
-                  title="Gateways"
+                  title={<Trans>tableTitleGateways</Trans>}
                   resource="gateway"
                   metrics={metrics} />
               </div>

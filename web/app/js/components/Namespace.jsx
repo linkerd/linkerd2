@@ -7,6 +7,7 @@ import NetworkGraph from './NetworkGraph.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
+import { Trans } from '@lingui/macro';
 import _filter from 'lodash/filter';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
@@ -147,7 +148,7 @@ class Namespaces extends React.Component {
         {!error ? null : <ErrorBanner message={error} />}
         {!loaded ? <Spinner /> : (
           <div>
-            {noMetrics ? <div>No resources detected.</div> : null}
+            {noMetrics ? <div><Trans>noResourcesDetectedMsg</Trans></div> : null}
             {
               _isEmpty(deploymentsWithMetrics) ? null :
               <NetworkGraph namespace={ns} deployments={metrics.deployment} />
@@ -166,7 +167,7 @@ class Namespaces extends React.Component {
               noMetrics ? null :
               <div className="page-section">
                 <MetricsTable
-                  title="TCP"
+                  title={<Trans>tableTitleTCP</Trans>}
                   resource="pod"
                   metrics={metrics.pod}
                   isTcpTable />

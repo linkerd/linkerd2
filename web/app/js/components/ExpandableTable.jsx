@@ -148,7 +148,7 @@ ExpandableTable.propTypes = {
   expandedRowRender: PropTypes.func.isRequired,
   tableClassName: PropTypes.string,
   tableColumns: PropTypes.arrayOf(PropTypes.shape({
-    title: PropTypes.string,
+    title: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     isNumeric: PropTypes.bool,
     render: PropTypes.func,
   })).isRequired,

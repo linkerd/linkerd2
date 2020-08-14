@@ -10,6 +10,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Switch from '@material-ui/core/Switch';
 import Tooltip from '@material-ui/core/Tooltip';
+import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
@@ -150,7 +151,9 @@ class ErrorModal extends React.Component {
 
     if (showInit) {
       return (
-        <Tooltip title="Pods are initializing"><CircularProgress size={20} thickness={4} /></Tooltip>
+        <Tooltip title={<Trans>podsAreInitializingMsg</Trans>}>
+          <CircularProgress size={20} thickness={4} />
+        </Tooltip>
       );
     } else {
       return (
