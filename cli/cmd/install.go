@@ -660,6 +660,10 @@ func mergeRaw(a, b []byte) ([]byte, error) {
 
 }
 
+// mergeMaps takes two maps and merges them recursively. This has been taken from
+// https://github.com/helm/helm/blob/master/pkg/cli/values/options.go#L88
+// as this same func in Helm V2 named as MergeInto was made private in the Helm V3 sdk
+// providing another higher level abstraction which we can't use in this case.
 func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
 	out := make(map[string]interface{}, len(a))
 	for k, v := range a {
