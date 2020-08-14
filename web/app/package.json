@@ -82,7 +82,7 @@
     "url-loader": "4.1.0",
     "wdio-chromedriver-service": "6.0.2",
     "webdriverio": "6.1.2",
-    "webpack": "4.43.0",
+    "webpack": "4.44.1",
     "webpack-bundle-analyzer": "3.7.0",
     "webpack-cli": "3.3.11",
     "webpack-dev-server": "3.11.0"
