@@ -70,22 +70,7 @@ func (et *endpointTranslator) Add(set watcher.AddressSet) {
 		et.availableEndpoints.Addresses[id] = address
 	}
 
-	if len(set.TopologicalPref) == 0 {
-		if len(set.Addresses) > 0 {
-			et.sendClientAdd(set)
-		} else {
-			// when the set is empty it means we receive a topology pref update
-			// in this case, the Add set is empty, so send all avail endpoints
-			// that have not yet been sent
-			add, _ := et.diffEndpoints(et.availableEndpoints)
-			et.sendClientAdd(add)
-		}
-		return
-	}
-
-	et.availableEndpoints.TopologicalPref = set.TopologicalPref
-
-	et.sendFilteredUpdate()
+	et.sendFilteredUpdate(set)
 }
 
 func (et *endpointTranslator) Remove(set watcher.AddressSet) {
@@ -93,17 +78,16 @@ func (et *endpointTranslator) Remove(set watcher.AddressSet) {
 		delete(et.availableEndpoints.Addresses, id)
 	}
 
-	if len(set.TopologicalPref) == 0 {
-		et.sendClientRemove(set)
-		return
-	}
-
-	et.availableEndpoints.TopologicalPref = set.TopologicalPref
-
-	et.sendFilteredUpdate()
+	et.sendFilteredUpdate(set)
 }
 
-func (et *endpointTranslator) sendFilteredUpdate() {
+func (et *endpointTranslator) sendFilteredUpdate(set watcher.AddressSet) {
+	et.availableEndpoints = watcher.AddressSet{
+		Addresses:       et.availableEndpoints.Addresses,
+		Labels:          set.Labels,
+		TopologicalPref: set.TopologicalPref,
+	}
+
 	filtered := et.filterAddresses()
 	diffAdd, diffRemove := et.diffEndpoints(filtered)
 
@@ -121,6 +105,17 @@ func (et *endpointTranslator) sendFilteredUpdate() {
 // The client will receive only endpoints with the same topology label value as the source node,
 // the order of labels is based on the topological preference elicited from the K8s service.
 func (et *endpointTranslator) filterAddresses() watcher.AddressSet {
+	if len(et.availableEndpoints.TopologicalPref) == 0 {
+		allAvailEndpoints := make(map[watcher.ID]watcher.Address)
+		for k, v := range et.availableEndpoints.Addresses {
+			allAvailEndpoints[k] = v
+		}
+		return watcher.AddressSet{
+			Addresses: allAvailEndpoints,
+			Labels:    et.availableEndpoints.Labels,
+		}
+	}
+
 	et.log.Debugf("Filtering through address set with preference %v", et.availableEndpoints.TopologicalPref)
 	filtered := make(map[watcher.ID]watcher.Address)
 	for _, pref := range et.availableEndpoints.TopologicalPref {
@@ -176,9 +171,11 @@ func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watche
 
 	return watcher.AddressSet{
 			Addresses: add,
+			Labels:    filtered.Labels,
 		},
 		watcher.AddressSet{
 			Addresses: remove,
+			Labels:    filtered.Labels,
 		}
 }
 

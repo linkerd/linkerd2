@@ -157,7 +157,7 @@ func TestEndpointTranslatorForRemoteGateways(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForServices(remoteGatewayWithNoTLS))
+		translator.Add(mkAddressSetForServices(remoteGatewayWithNoTLS, remoteGatewayWithTLS))
 		translator.Remove(mkAddressSetForServices(remoteGatewayWithTLS))
 
 		expectedNumUpdates := 2
@@ -262,7 +262,7 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends one update for add and another for remove", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(normalPod))
+		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod))
 		translator.Remove(mkAddressSetForPods(tlsOptionalPod))
 
 		expectedNumUpdates := 2
@@ -275,12 +275,12 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 	t.Run("Sends addresses as removed or added", func(t *testing.T) {
 		mockGetServer, translator := makeEndpointTranslator(t)
 
-		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod))
+		translator.Add(mkAddressSetForPods(normalPod, tlsOptionalPod, tlsDisabledPod))
 		translator.Remove(mkAddressSetForPods(tlsDisabledPod))
 
 		addressesAdded := mockGetServer.updatesReceived[0].GetAdd().Addrs
 		actualNumberOfAdded := len(addressesAdded)
-		expectedNumberOfAdded := 2
+		expectedNumberOfAdded := 3
 		if actualNumberOfAdded != expectedNumberOfAdded {
 			t.Fatalf("Expecting [%d] addresses to be added, got [%d]: %v", expectedNumberOfAdded, actualNumberOfAdded, addressesAdded)
 		}
@@ -391,8 +391,9 @@ func TestEndpointTranslatorForPods(t *testing.T) {
 
 func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.ServiceID]watcher.Address),
-		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
+		Addresses:       make(map[watcher.ServiceID]watcher.Address),
+		Labels:          map[string]string{"service": "service-name", "namespace": "service-ns"},
+		TopologicalPref: []string{},
 	}
 	for _, a := range gatewayAddresses {
 		a := a // pin
@@ -410,8 +411,9 @@ func mkAddressSetForServices(gatewayAddresses ...watcher.Address) watcher.Addres
 
 func mkAddressSetForPods(podAddresses ...watcher.Address) watcher.AddressSet {
 	set := watcher.AddressSet{
-		Addresses: make(map[watcher.PodID]watcher.Address),
-		Labels:    map[string]string{"service": "service-name", "namespace": "service-ns"},
+		Addresses:       make(map[watcher.PodID]watcher.Address),
+		Labels:          map[string]string{"service": "service-name", "namespace": "service-ns"},
+		TopologicalPref: []string{},
 	}
 	for _, p := range podAddresses {
 		id := watcher.PodID{Name: p.Pod.Name, Namespace: p.Pod.Namespace}
