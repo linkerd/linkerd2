@@ -3,7 +3,7 @@
 ## edge-20.8.2
 
 This edge release adds an internationalization framework to the dashboard,
-spanish translations to the dashboard UI, and a `linkerd multicluster uninstall`
+Spanish translations to the dashboard UI, and a `linkerd multicluster uninstall`
 command for graceful removal of the multicluster components.
 
 * Web UI
@@ -12,6 +12,8 @@ command for graceful removal of the multicluster components.
     translations
 * Multicluster
   * Added a multicluster uninstall command
+  * Added a warning from `linkerd check --multicluster` if the multicluster
+    support is not installed
 
 ## edge-20.8.1
 
