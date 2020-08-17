@@ -3,19 +3,19 @@ package smimetrics
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/metrics/v1alpha1"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
+	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/metrics/v1alpha1"
 )
 
 var TestHelper *testutil.TestHelper
 
 type testCase struct {
-	name  string
-	kind  string
+	name string
+	kind string
 	// edges > 0 denotes that its a edges query, otherwise a resource query
 	edges int
 }
@@ -82,20 +82,20 @@ func TestSMIMetrics(t *testing.T) {
 		tc := tc // pin
 		err = TestHelper.RetryFor(timeout, func() error {
 
-			queryUrl := fmt.Sprintf("/apis/metrics.smi-spec.io/v1alpha1/namespaces/%s/%s/%s", TestHelper.GetLinkerdNamespace(), tc.kind, tc.name)
+			queryURL := fmt.Sprintf("/apis/metrics.smi-spec.io/v1alpha1/namespaces/%s/%s/%s", TestHelper.GetLinkerdNamespace(), tc.kind, tc.name)
 			if tc.edges > 0 {
-				queryUrl += "/edges"
+				queryURL += "/edges"
 			}
 
 			queryArgs := []string{
 				"get",
 				"--raw",
-				queryUrl,
+				queryURL,
 			}
 
 			out, err := TestHelper.Kubectl("", queryArgs...)
 			if err != nil {
-				return fmt.Errorf("failed to query smi-metrics URL %s: %s\n%s", queryUrl, err, out)
+				return fmt.Errorf("failed to query smi-metrics URL %s: %s\n%s", queryURL, err, out)
 			}
 
 			if tc.edges > 0 {
@@ -103,7 +103,7 @@ func TestSMIMetrics(t *testing.T) {
 				var metrics v1alpha1.TrafficMetricsList
 				err = json.Unmarshal([]byte(out), &metrics)
 				if err != nil {
-					return fmt.Errorf("failed to unmarshal output for query %s into TrafficMetricsList type: %s", queryUrl, err)
+					return fmt.Errorf("failed to unmarshal output for query %s into TrafficMetricsList type: %s", queryURL, err)
 				}
 
 				if err = checkTrafficMetricsList(metrics, tc.name, tc.edges); err != nil {
@@ -115,7 +115,7 @@ func TestSMIMetrics(t *testing.T) {
 				var metrics v1alpha1.TrafficMetrics
 				err = json.Unmarshal([]byte(out), &metrics)
 				if err != nil {
-					return fmt.Errorf("failed to unmarshal output for query %s into TrafficMetricsList type: %s", queryUrl, err)
+					return fmt.Errorf("failed to unmarshal output for query %s into TrafficMetricsList type: %s", queryURL, err)
 				}
 
 				if err = checkTrafficMetrics(metrics, tc.name); err != nil {

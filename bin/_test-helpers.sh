@@ -176,6 +176,7 @@ Help:
 start_test() {
   name=$1
   config=$2
+  export helm_path="$bindir"/helm 
 
   test_setup
   if [ -z "$skip_kind_create" ]; then
@@ -333,7 +334,6 @@ run_uninstall_test() {
 
 run_deep_test() {
   local tests=()
-  setup_helm
   run_test "$test_directory/install_test.go" --multicluster
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
