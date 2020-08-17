@@ -83,11 +83,6 @@ func TestSMIMetrics(t *testing.T) {
 			kind:  "deployments",
 			edges: 1,
 		},
-		{
-			name:  "linkerd-web",
-			kind:  "deployments",
-			edges: 1,
-		},
 	}
 
 	timeout := 50 * time.Second
