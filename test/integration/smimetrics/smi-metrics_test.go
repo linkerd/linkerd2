@@ -1,12 +1,11 @@
 package smimetrics
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/servicemeshinterface/smi-sdk-go/pkg/apis/metrics/v1alpha1"
 	"os"
-	"regexp"
 	"testing"
-	"text/template"
 	"time"
 
 	"github.com/linkerd/linkerd2/testutil"
@@ -15,8 +14,10 @@ import (
 var TestHelper *testutil.TestHelper
 
 type testCase struct {
-	queryURL string
-	filePath string
+	name  string
+	kind  string
+	// edges > 0 denotes that its a edges query, otherwise a resource query
+	edges int
 }
 
 func TestMain(m *testing.M) {
@@ -61,46 +62,86 @@ func TestSMIMetrics(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			queryURL: fmt.Sprintf("/apis/metrics.smi-spec.io/v1alpha1/namespaces/%s/deployments/linkerd-controller", TestHelper.GetLinkerdNamespace()),
-			filePath: "testdata/resources.golden",
+			name: "linkerd-controller",
+			kind: "deployments",
 		},
 		{
-			queryURL: fmt.Sprintf("/apis/metrics.smi-spec.io/v1alpha1/namespaces/%s/deployments/linkerd-destination/edges", TestHelper.GetLinkerdNamespace()),
-			filePath: "testdata/edges.golden",
+			name: "linkerd-destination",
+			kind: "deployments",
+		},
+		{
+			name:  "linkerd-destination",
+			kind:  "deployments",
+			edges: 2,
 		},
 	}
 
 	timeout := 50 * time.Second
+	// check resource queries
 	for _, tc := range testCases {
 		tc := tc // pin
 		err = TestHelper.RetryFor(timeout, func() error {
+
+			queryUrl := fmt.Sprintf("/apis/metrics.smi-spec.io/v1alpha1/namespaces/%s/%s/%s", TestHelper.GetLinkerdNamespace(), tc.kind, tc.name)
+			if tc.edges > 0 {
+				queryUrl += "/edges"
+			}
+
 			queryArgs := []string{
 				"get",
 				"--raw",
-				tc.queryURL,
+				queryUrl,
 			}
 
 			out, err := TestHelper.Kubectl("", queryArgs...)
 			if err != nil {
-				return fmt.Errorf("failed to query smi-metrics URL %s: %s\n%s", tc.queryURL, err, out)
+				return fmt.Errorf("failed to query smi-metrics URL %s: %s\n%s", queryUrl, err, out)
 			}
 
-			// check resources output
-			vars := struct{ Ns string }{TestHelper.GetLinkerdNamespace()}
-			tpl := template.Must(template.ParseFiles(tc.filePath))
-			var buf bytes.Buffer
-			if err := tpl.Execute(&buf, vars); err != nil {
-				return fmt.Errorf("failed to parse %s template: %s", tc.filePath, err)
+			if tc.edges > 0 {
+				// edges query
+				var metrics v1alpha1.TrafficMetricsList
+				err = json.Unmarshal([]byte(out), &metrics)
+				if err != nil {
+					return fmt.Errorf("failed to unmarshal output for query %s into TrafficMetricsList type: %s", queryUrl, err)
+				}
+
+				if err = checkTrafficMetricsList(metrics, tc.name, tc.edges); err != nil {
+					return err
+				}
+
+			} else {
+				// resource query
+				var metrics v1alpha1.TrafficMetrics
+				err = json.Unmarshal([]byte(out), &metrics)
+				if err != nil {
+					return fmt.Errorf("failed to unmarshal output for query %s into TrafficMetricsList type: %s", queryUrl, err)
+				}
+
+				if err = checkTrafficMetrics(metrics, tc.name); err != nil {
+					return err
+				}
 			}
 
-			r := regexp.MustCompile(buf.String())
-			if !r.MatchString(out) {
-				return fmt.Errorf("Expected output:\n%s\nactual:\n%s", buf.String(), out)
-			}
 			return nil
 		})
 		if err != nil {
 			testutil.AnnotatedError(t, fmt.Sprintf("timed-out checking smi-metrics output (%s)", timeout), err)
 		}
 	}
+}
+
+func checkTrafficMetrics(metrics v1alpha1.TrafficMetrics, name string) error {
+	if metrics.Name == name {
+		return nil
+	}
+	return fmt.Errorf("excpected %s, but got %s", name, metrics.Name)
+
+}
+
+func checkTrafficMetricsList(metrics v1alpha1.TrafficMetricsList, name string, numberOfEdges int) error {
+	if metrics.Resource.Name == name && len(metrics.Items) == numberOfEdges {
+		return nil
+	}
+	return fmt.Errorf("excpected %s with %d edges, but got %s with %d edges", name, numberOfEdges, metrics.Resource.Name, len(metrics.Items))
 }
