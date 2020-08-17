@@ -70,9 +70,23 @@ func TestSMIMetrics(t *testing.T) {
 			kind: "deployments",
 		},
 		{
+			name: "linkerd-prometheus",
+			kind: "deployments",
+		},
+		{
 			name:  "linkerd-destination",
 			kind:  "deployments",
 			edges: 2,
+		},
+		{
+			name:  "linkerd-identity",
+			kind:  "deployments",
+			edges: 1,
+		},
+		{
+			name:  "linkerd-web",
+			kind:  "deployments",
+			edges: 1,
 		},
 	}
 
