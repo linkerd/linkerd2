@@ -1347,6 +1347,7 @@ spec:
         - -controller-namespace=Namespace
         - -enable-h2-upgrade=true
         - -log-level=ControllerLogLevel
+        - -enable-endpoint-slices=false
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

@@ -841,8 +841,7 @@ data:
       },
       "autoInjectContext": null,
       "omitWebhookSideEffects": false,
-      "clusterDomain": "cluster.local",
-      "endpointSliceEnabled": false
+      "clusterDomain": "cluster.local"
     }
   proxy: |
     {
@@ -1436,6 +1435,7 @@ spec:
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
         - -log-level=info
+        - -enable-endpoint-slices=false
         image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

@@ -242,6 +242,12 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	// The overrideConfigs() is used to override proxy configs only.
 	options.overrideConfigs(configs, map[string]string{})
 
+	if options.enableEndpointSlices {
+		if err = validateEndpointSlicesFeature(); err != nil {
+			return nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
+		}
+	}
+
 	// Override configs with upgrade CLI options.
 	if options.controlPlaneVersion != "" {
 		configs.GetGlobal().Version = options.controlPlaneVersion
@@ -249,13 +255,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 
 	configs.GetInstall().Flags = options.recordedFlags
 
-	if options.enableEndpointSlices {
-		if err = validateEndpointSlicesFeature(); err != nil {
-			return nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
-		}
-	}
-
-	configs.GetGlobal().EndpointSliceEnabled = options.enableEndpointSlices
 	configs.GetGlobal().OmitWebhookSideEffects = options.omitWebhookSideEffects
 	if configs.GetGlobal().GetClusterDomain() == "" {
 		configs.GetGlobal().ClusterDomain = defaultClusterDomain

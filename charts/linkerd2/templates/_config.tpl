@@ -12,8 +12,7 @@
   },
   "autoInjectContext": null,
   "omitWebhookSideEffects": {{.Values.omitWebhookSideEffects}},
-  "clusterDomain": "{{.Values.global.clusterDomain}}",
-  "endpointSliceEnabled": {{.Values.global.enableEndpointSlices}}
+  "clusterDomain": "{{.Values.global.clusterDomain}}"
 }
 {{- end -}}
 

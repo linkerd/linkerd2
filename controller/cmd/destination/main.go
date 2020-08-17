@@ -27,6 +27,7 @@ func Main(args []string) {
 	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
+	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", false, "Enable the usage of EndpointSlice informers and resources")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -73,14 +74,14 @@ func Main(args []string) {
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API Client: %s", err)
 	}
-	enableEndpointSlices := global.GetEndpointSliceEnabled()
+
 	err = pkgK8s.EndpointSliceAccess(k8Client)
-	if enableEndpointSlices && err != nil {
+	if *enableEndpointSlices && err != nil {
 		log.Fatalf("Failed to start with EndpointSlices enabled: %s", err)
 	}
 
 	var k8sAPI *k8s.API
-	if enableEndpointSlices {
+	if *enableEndpointSlices {
 		k8sAPI, err = k8s.InitializeAPI(
 			*kubeConfigPath, true,
 			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
@@ -100,7 +101,7 @@ func Main(args []string) {
 		*controllerNamespace,
 		trustDomain,
 		*enableH2Upgrade,
-		enableEndpointSlices,
+		*enableEndpointSlices,
 		k8sAPI,
 		clusterDomain,
 		done,

@@ -956,7 +956,6 @@ func (options *installOptions) globalConfig(identity *pb.IdentityContext) *pb.Gl
 	return &pb.Global{
 		LinkerdNamespace:       controlPlaneNamespace,
 		CniEnabled:             options.cniEnabled,
-		EndpointSliceEnabled:   options.enableEndpointSlices,
 		Version:                options.controlPlaneVersion,
 		IdentityContext:        identity,
 		OmitWebhookSideEffects: options.omitWebhookSideEffects,
