@@ -2335,17 +2335,8 @@ metadata:
 	})
 }
 
-func getConfigAndKubeSystemNamespace(ha bool, nsLabel string) []string {
+func getWebhookAndKubeSystemNamespace(nsLabel string, failurePolicy string) []string {
 	return []string{fmt.Sprintf(`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-data:
-  install: |
-    {"cliVersion":"dev-undefined","flags":[{"name":"ha","value":"%v"}]}`, ha),
-		fmt.Sprintf(`
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -2353,6 +2344,35 @@ metadata:
   labels:
     %s
   name: kube-system`, nsLabel),
+		fmt.Sprintf(`
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-proxy-injector-webhook-config
+  labels:
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: linkerd
+webhooks:
+- name: linkerd-proxy-injector.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+  clientConfig:
+    service:
+      name: linkerd-proxy-injector
+      namespace: linkerd
+      path: "/"
+    caBundle: cHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxl
+  failurePolicy: %s
+  rules:
+  - operations: [ "CREATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  sideEffects: None`, failurePolicy),
 	}
 }
 
@@ -2363,24 +2383,24 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 		expectedOutput  string
 	}{
 		{
-			"passes when HA is not enabled",
-			getConfigAndKubeSystemNamespace(false, ""),
+			"passes when webhook policy is Ignore is not enabled",
+			getWebhookAndKubeSystemNamespace("", "Ignore"),
 			"",
 		},
 		{
-			"passes when HA is enabled and namespace has required metadata",
-			getConfigAndKubeSystemNamespace(true, "config.linkerd.io/admission-webhooks: disabled"),
+			"passes when webhook policy is Fail and namespace has required metadata",
+			getWebhookAndKubeSystemNamespace("config.linkerd.io/admission-webhooks: disabled", "Fail"),
 			"l5d-injection-disabled pod injection disabled on kube-system",
 		},
 		{
-			"fails when HA and admission hooks are enabled",
-			getConfigAndKubeSystemNamespace(true, "config.linkerd.io/admission-webhooks: enabled"),
-			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have the label config.linkerd.io/admission-webhooks: disabled if HA mode is enabled",
+			"fails when webhook policy is Fail and admission hooks are enabled",
+			getWebhookAndKubeSystemNamespace("config.linkerd.io/admission-webhooks: enabled", "Fail"),
+			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have the label config.linkerd.io/admission-webhooks: disabled if injector webhook failure policy is Fail",
 		},
 		{
-			"fails when HA is enabled and metadata is missing",
-			getConfigAndKubeSystemNamespace(true, ""),
-			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have the label config.linkerd.io/admission-webhooks: disabled if HA mode is enabled",
+			"fails when webhook policy is Fail and metadata is missing",
+			getWebhookAndKubeSystemNamespace("", "Fail"),
+			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have the label config.linkerd.io/admission-webhooks: disabled if injector webhook failure policy is Fail",
 		},
 	}
 
@@ -2391,13 +2411,7 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 			hc := NewHealthChecker([]CategoryID{}, &Options{})
 			hc.ControlPlaneNamespace = "linkerd"
 
-			var err error
 			hc.kubeAPI, _ = k8s.NewFakeAPI(tc.k8sConfigs...)
-			_, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
-			if err != nil {
-				t.Fatalf("Unexpected error: %q", err)
-			}
-
 			hc.addCheckAsCategory("l5d-injection-disabled", LinkerdHAChecks, "pod injection disabled on kube-system")
 
 			obs := newObserver()
