@@ -124,7 +124,7 @@ func TestSMIMetrics(t *testing.T) {
 				var metrics v1alpha1.TrafficMetrics
 				err = json.Unmarshal([]byte(out), &metrics)
 				if err != nil {
-					return fmt.Errorf("failed to unmarshal output for query %s into TrafficMetricsList type: %s", queryURL, err)
+					return fmt.Errorf("failed to unmarshal output for query %s into TrafficMetrics type: %s", queryURL, err)
 				}
 
 				if err = checkTrafficMetrics(metrics, tc.name); err != nil {
