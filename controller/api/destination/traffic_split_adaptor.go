@@ -2,10 +2,12 @@ package destination
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	ts "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // trafficSplitAdaptor merges traffic splits into service profiles, encoding
@@ -64,11 +66,19 @@ func (tsa *trafficSplitAdaptor) publish() {
 			overrides = append(overrides, dst)
 		}
 		merged.Spec.DstOverrides = overrides
+	} else {
+		// If there is no traffic split, always return a destination override
+		// so that it's known the host is a service.
+		overrides := []*sp.WeightedDst{}
+		id := strings.Split(tsa.id.String(), "/")
+		dst := &sp.WeightedDst{
+			Authority: fmt.Sprintf("%s.%s.svc.%s.:%d", id[1], tsa.id.Namespace, tsa.clusterDomain, tsa.port),
+			// Weights are expressed in decimillis: 10_000 represents 100%
+			Weight: resource.MustParse("10000m"),
+		}
+		overrides = append(overrides, dst)
+		merged.Spec.DstOverrides = overrides
 	}
 
-	if tsa.profile == nil && tsa.split == nil {
-		tsa.listener.Update(nil)
-	} else {
-		tsa.listener.Update(&merged)
-	}
+	tsa.listener.Update(&merged)
 }
