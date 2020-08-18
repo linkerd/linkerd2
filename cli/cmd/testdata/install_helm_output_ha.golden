@@ -141,7 +141,7 @@ rules:
   resources: ["jobs"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
+  resources: ["pods", "endpoints", "services", "nodes"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
