@@ -23,7 +23,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 			DstOverrides: []*sp.WeightedDst{
 				{
 					Authority: "foo.ns.svc.cluster.local.:80",
-					Weight:    resource.MustParse("10000m"),
+					Weight:    resource.MustParse("1"),
 				},
 			},
 		},
