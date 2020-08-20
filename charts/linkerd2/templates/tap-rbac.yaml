@@ -73,6 +73,7 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: tap
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{ include "partials.image-pull-secrets" . }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

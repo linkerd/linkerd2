@@ -39,3 +39,4 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: prometheus
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{ include "partials.image-pull-secrets" . }}

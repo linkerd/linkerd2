@@ -12,6 +12,7 @@ metadata:
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   name: linkerd-smi-metrics
   namespace: {{.Values.global.namespace}}
+{{ include "partials.image-pull-secrets" . }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

@@ -88,6 +88,7 @@ func (chart *Chart) Render() (bytes.Buffer, error) {
 		{Name: "charts/partials/templates/_affinity.tpl"},
 		{Name: "charts/partials/templates/_addons.tpl"},
 		{Name: "charts/partials/templates/_validate.tpl"},
+		{Name: "charts/partials/templates/_pull-secrets.tpl"},
 	}
 	return chart.render(l5dPartials)
 }
@@ -97,6 +98,7 @@ func (chart *Chart) RenderCNI() (bytes.Buffer, error) {
 	cniPartials := []*chartutil.BufferedFile{
 		{Name: "charts/partials/" + chartutil.ChartfileName},
 		{Name: "charts/partials/templates/_helpers.tpl"},
+		{Name: "charts/partials/templates/_pull-secrets.tpl"},
 	}
 	return chart.render(cniPartials)
 }
