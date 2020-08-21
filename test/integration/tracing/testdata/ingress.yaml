@@ -35,7 +35,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - networking.k8s.io
+  - extensions
   resources:
   - ingresses
   verbs:
@@ -135,7 +135,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
-        image: quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.33.0
+        image: quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.22.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
@@ -173,7 +173,7 @@ spec:
             drop:
             - ALL
           procMount: Default
-          runAsUser: 101
+          runAsUser: 33
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
 ---

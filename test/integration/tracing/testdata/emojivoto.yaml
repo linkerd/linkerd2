@@ -40,7 +40,7 @@ spec:
           value: "8080"
         - name: OC_AGENT_HOST
           value: "oc-collector.___TRACING_NS___:55678"
-        image: buoyantio/emojivoto-emoji-svc:v10
+        image: buoyantio/emojivoto-emoji-svc:v8-tracing
         name: emoji-svc
         ports:
         - containerPort: 8080
@@ -89,7 +89,7 @@ spec:
           value: "8080"
         - name: OC_AGENT_HOST
           value: "oc-collector.___TRACING_NS___:55678"
-        image: buoyantio/emojivoto-voting-svc:v10
+        image: buoyantio/emojivoto-voting-svc:v8-tracing
         name: voting-svc
         ports:
         - containerPort: 8080
@@ -144,7 +144,7 @@ spec:
           value: voting-svc:8080
         - name: INDEX_BUNDLE
           value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v10
+        image: buoyantio/emojivoto-web:v8-tracing
         name: web-svc
         ports:
         - containerPort: 80
