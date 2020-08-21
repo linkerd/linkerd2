@@ -27,7 +27,7 @@ func TestNewValues(t *testing.T) {
 		DisableHeartBeat:            false,
 		HeartbeatSchedule:           "0 0 * * *",
 		InstallNamespace:            true,
-		Prometheus: Prometheus{
+		Prometheus: &Prometheus{
 			"enabled": true,
 		},
 		Global: &Global{
@@ -65,11 +65,11 @@ func TestNewValues(t *testing.T) {
 					Outbound: 4140,
 				},
 				Resources: &Resources{
-					CPU: Constraints{
+					CPU: &Constraints{
 						Limit:   "",
 						Request: "",
 					},
-					Memory: Constraints{
+					Memory: &Constraints{
 						Limit:   "",
 						Request: "",
 					},
@@ -91,11 +91,11 @@ func TestNewValues(t *testing.T) {
 					Version:    testVersion,
 				},
 				Resources: &Resources{
-					CPU: Constraints{
+					CPU: &Constraints{
 						Limit:   "100m",
 						Request: "10m",
 					},
-					Memory: Constraints{
+					Memory: &Constraints{
 						Limit:   "50Mi",
 						Request: "10Mi",
 					},
@@ -136,7 +136,7 @@ func TestNewValues(t *testing.T) {
 			Image: "deislabs/smi-metrics:v0.2.1",
 			TLS:   &TLS{},
 		},
-		Grafana: Grafana{
+		Grafana: &Grafana{
 			"enabled": true,
 		},
 	}
@@ -168,11 +168,11 @@ func TestNewValues(t *testing.T) {
 		expected.WebhookFailurePolicy = "Fail"
 
 		controllerResources := &Resources{
-			CPU: Constraints{
+			CPU: &Constraints{
 				Limit:   "1",
 				Request: "100m",
 			},
-			Memory: Constraints{
+			Memory: &Constraints{
 				Limit:   "250Mi",
 				Request: "50Mi",
 			},
@@ -185,7 +185,7 @@ func TestNewValues(t *testing.T) {
 		expected.WebResources = controllerResources
 		expected.HeartbeatResources = controllerResources
 
-		expected.Grafana = Grafana{
+		expected.Grafana = &Grafana{
 			"enabled": true,
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
@@ -200,17 +200,17 @@ func TestNewValues(t *testing.T) {
 		}
 
 		expected.IdentityResources = &Resources{
-			CPU: Constraints{
+			CPU: &Constraints{
 				Limit:   controllerResources.CPU.Limit,
 				Request: controllerResources.CPU.Request,
 			},
-			Memory: Constraints{
+			Memory: &Constraints{
 				Limit:   controllerResources.Memory.Limit,
 				Request: "10Mi",
 			},
 		}
 
-		expected.Prometheus = Prometheus{
+		expected.Prometheus = &Prometheus{
 			"enabled": true,
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
@@ -225,11 +225,11 @@ func TestNewValues(t *testing.T) {
 		}
 
 		expected.Global.Proxy.Resources = &Resources{
-			CPU: Constraints{
+			CPU: &Constraints{
 				Limit:   controllerResources.CPU.Limit,
 				Request: controllerResources.CPU.Request,
 			},
-			Memory: Constraints{
+			Memory: &Constraints{
 				Limit:   controllerResources.Memory.Limit,
 				Request: "20Mi",
 			},

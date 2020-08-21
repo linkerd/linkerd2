@@ -382,11 +382,11 @@ func TestConfigAccessors(t *testing.T) {
 				logLevel:                   "info,linkerd2_proxy=debug",
 				logFormat:                  "plain",
 				resourceRequirements: &l5dcharts.Resources{
-					CPU: l5dcharts.Constraints{
+					CPU: &l5dcharts.Constraints{
 						Limit:   "1",
 						Request: "200m",
 					},
-					Memory: l5dcharts.Constraints{
+					Memory: &l5dcharts.Constraints{
 						Limit:   "128",
 						Request: "64",
 					},
@@ -427,11 +427,11 @@ func TestConfigAccessors(t *testing.T) {
 				logLevel:                   "info,linkerd2_proxy=debug",
 				logFormat:                  "plain",
 				resourceRequirements: &l5dcharts.Resources{
-					CPU: l5dcharts.Constraints{
+					CPU: &l5dcharts.Constraints{
 						Limit:   "1",
 						Request: "200m",
 					},
-					Memory: l5dcharts.Constraints{
+					Memory: &l5dcharts.Constraints{
 						Limit:   "128",
 						Request: "64",
 					},
