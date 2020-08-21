@@ -143,7 +143,7 @@ func TestConfigAccessors(t *testing.T) {
 						Limit:   "1500m",
 						Request: "150m",
 					},
-					Memory:&l5dcharts.Constraints{
+					Memory: &l5dcharts.Constraints{
 						Limit:   "256",
 						Request: "120",
 					},
