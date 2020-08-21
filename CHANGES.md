@@ -1,5 +1,26 @@
 # Changes
 
+## edge-20.8.3
+
+This edge release adds support for [topology-aware service routing][topology] to
+the Destination controller. When providing service discovery updates to proxies,
+the Destination controller will now filter endpoints based on the service's
+topology preferences. Additionally, this release includes bug fixes for the
+`linkerd check` CLI command and web dashboard.
+
+* CLI
+  * `linkerd check` will no longer warn about a looser webhook failure policy in
+    HA mode
+* Controller
+  * Added support for [topology-aware service routing][topology] to the Destination
+    controller (thanks @Matei207)
+  * Changed the Destination controller to always return destination overrides
+    for service profiles when no traffic split is present
+* Web UI
+  * Fixed Tap `Authority` dropdown not being populated (thanks to @tharun208!)
+  
+[topology]: https://kubernetes.io/docs/concepts/services-networking/service-topology/
+
 ## edge-20.8.2
 
 This edge release adds an internationalization framework to the dashboard,
