@@ -18,7 +18,7 @@ func TestAddOnRender(t *testing.T) {
 	}
 
 	withTracingAddonValues, _, _ := withTracingAddon.validateAndBuild("", nil)
-	withTracingAddonValues.Tracing["enabled"] = true
+	(*withTracingAddonValues.Tracing)["enabled"] = true
 	addFakeTLSSecrets(withTracingAddonValues)
 
 	withTracingOverwrite, err := testInstallOptions()
