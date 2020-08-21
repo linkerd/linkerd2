@@ -46,7 +46,7 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-sp-validator-tls
+  name: linkerd-sp-validator-k8s-tls
   namespace: {{ .Values.global.namespace }}
   labels:
     {{.Values.global.controllerComponentLabel}}: sp-validator
