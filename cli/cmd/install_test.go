@@ -112,11 +112,11 @@ func TestRender(t *testing.T) {
 					Version:    "ProxyInitVersion",
 				},
 				Resources: &charts.Resources{
-					CPU: charts.Constraints{
+					CPU: &charts.Constraints{
 						Limit:   "100m",
 						Request: "10m",
 					},
-					Memory: charts.Constraints{
+					Memory: &charts.Constraints{
 						Limit:   "50Mi",
 						Request: "10Mi",
 					},
@@ -140,11 +140,11 @@ func TestRender(t *testing.T) {
 		Dashboard: &charts.Dashboard{
 			Replicas: 1,
 		},
-		Prometheus: charts.Prometheus{
+		Prometheus: &charts.Prometheus{
 			"enabled": true,
 			"image":   "PrometheusImage",
 		},
-		Tracing: map[string]interface{}{
+		Tracing: &charts.Tracing{
 			"enabled": false,
 		},
 		Grafana: defaultValues.Grafana,
@@ -238,7 +238,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withAddOnConfigStageValues, _, _ := withAddOnConfigStage.validateAndBuild(configStage, nil)
-	withAddOnConfigStageValues.Tracing["enabled"] = true
+	(*withAddOnConfigStageValues.Tracing)["enabled"] = true
 	addFakeTLSSecrets(withAddOnConfigStageValues)
 
 	withAddOnControlPlaneStage, err := testInstallOptions()
@@ -246,7 +246,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withAddOnControlPlaneStageValues, _, _ := withAddOnControlPlaneStage.validateAndBuild(controlPlaneStage, nil)
-	withAddOnControlPlaneStageValues.Tracing["enabled"] = true
+	(*withAddOnControlPlaneStageValues.Tracing)["enabled"] = true
 	addFakeTLSSecrets(withAddOnControlPlaneStageValues)
 
 	withCustomDestinationGetNets, err := testInstallOptions()

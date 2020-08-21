@@ -8,12 +8,22 @@ args:
 - {{.Values.global.proxy.uid | quote}}
 - --inbound-ports-to-ignore
 - {{.Values.global.proxy.ports.control}},{{.Values.global.proxy.ports.admin}}{{ternary (printf ",%s" .Values.global.proxyInit.ignoreInboundPorts) "" (not (empty .Values.global.proxyInit.ignoreInboundPorts)) }}
+{{- $ports:= ""}}
+{{- if kindIs "string" .Values.global.proxy.component -}}
 {{- if hasPrefix "linkerd-" .Values.global.proxy.component }}
+{{- $ports = "443" }}
+{{- end }}
+{{- end }}
+{{- if .Values.global.proxyInit.ignoreOutboundPorts }}
+{{- if (empty $ports) }}
+{{ $ports = .Values.global.proxyInit.ignoreOutboundPorts }}
+{{- else}}
+{{- $ports = (printf "%s,%s" $ports .Values.global.proxyInit.ignoreOutboundPorts) }}
+{{- end }}
+{{- end }}
+{{- if $ports }}
 - --outbound-ports-to-ignore
-- {{ternary (printf "443,%s" .Values.global.proxyInit.ignoreOutboundPorts) (quote "443") (not (empty .Values.global.proxyInit.ignoreOutboundPorts)) }}
-{{- else if .Values.global.proxyInit.ignoreOutboundPorts }}
-- --outbound-ports-to-ignore
-- {{.Values.global.proxyInit.ignoreOutboundPorts | quote}}
+- {{  $ports | quote}}
 {{- end }}
 {{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
 - --timeout-close-wait-secs

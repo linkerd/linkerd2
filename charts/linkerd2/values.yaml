@@ -161,14 +161,15 @@ heartbeatSchedule: "0 0 * * *"
 
 # proxy injector configuration
 proxyInjector:
-  externalSecret: false
-  # if empty, Helm will auto-generate these fields
-  crtPEM: |
+  tls:
+    externalSecret: false
+    # if empty, Helm will auto-generate these fields
+    crtPEM: |
 
-  keyPEM: |
+    keyPEM: |
 
-  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
-  caBundle: |
+    # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+    caBundle: |
 
 # set resources for proxy injector and its linkerd proxy respectively
 # see global.proxy.resources for details.
@@ -177,14 +178,15 @@ proxyInjector:
 
 # service profile validator configuration
 profileValidator:
-  externalSecret: false
-  # if empty, Helm will auto-generate these fields
-  crtPEM: |
+  tls:
+    externalSecret: false
+    # if empty, Helm will auto-generate these fields
+    crtPEM: |
 
-  keyPEM: |
+    keyPEM: |
 
-  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
-  caBundle: |
+    # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+    caBundle: |
 
 # set resources for the sp-validator and its linkerd proxy respectively
 # see global.proxy.resources for details.
@@ -198,14 +200,15 @@ profileValidator:
 
 # tap configuration
 tap:
-  externalSecret: false
-  # if empty, Helm will auto-generate these fields
-  crtPEM: |
+  tls:
+    externalSecret: false
+    # if empty, Helm will auto-generate these fields
+    crtPEM: |
 
-  keyPEM: |
+    keyPEM: |
 
-  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
-  caBundle: |
+    # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+    caBundle: |
 
 # set resources for tap and its linkerd proxy respectively
 # see global.proxy.resources for details.

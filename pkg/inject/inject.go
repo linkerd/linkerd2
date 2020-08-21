@@ -598,11 +598,11 @@ func (conf *ResourceConfig) injectProxyInit(values *patch) {
 		IgnoreInboundPorts:  conf.proxyInboundSkipPorts(),
 		IgnoreOutboundPorts: conf.proxyOutboundSkipPorts(),
 		Resources: &l5dcharts.Resources{
-			CPU: l5dcharts.Constraints{
+			CPU: &l5dcharts.Constraints{
 				Limit:   proxyInitResourceLimitCPU,
 				Request: proxyInitResourceRequestCPU,
 			},
-			Memory: l5dcharts.Constraints{
+			Memory: &l5dcharts.Constraints{
 				Limit:   proxyInitResourceLimitMemory,
 				Request: proxyInitResourceRequestMemory,
 			},
@@ -923,7 +923,7 @@ func (conf *ResourceConfig) proxyResourceRequirements() *l5dcharts.Resources {
 		limitMemory   k8sResource.Quantity
 		err           error
 	)
-	res := &l5dcharts.Resources{}
+	res := &l5dcharts.Resources{CPU: &l5dcharts.Constraints{}, Memory: &l5dcharts.Constraints{}}
 
 	if override := conf.getOverride(k8s.ProxyCPURequestAnnotation); override != "" {
 		requestCPU, err = k8sResource.ParseQuantity(override)

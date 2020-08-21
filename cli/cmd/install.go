@@ -820,10 +820,10 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.DisableHeartBeat = options.disableHeartbeat
 	installValues.WebImage = fmt.Sprintf("%s/web", options.dockerRegistry)
 	if options.dockerRegistry != "gcr.io/linkerd-io" {
-		if installValues.Grafana["image"] == nil {
-			installValues.Grafana["image"] = map[string]interface{}{}
+		if (*installValues.Grafana)["image"] == nil {
+			(*installValues.Grafana)["image"] = map[string]interface{}{}
 		}
-		installValues.Grafana["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
+		(*installValues.Grafana)["image"].(map[string]interface{})["name"] = fmt.Sprintf("%s/grafana", options.dockerRegistry)
 	}
 	installValues.SMIMetrics.Image = options.smiMetricsImage
 	installValues.SMIMetrics.Enabled = options.smiMetricsEnabled
@@ -847,11 +847,11 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 			Outbound: int32(options.proxyOutboundPort),
 		},
 		Resources: &l5dcharts.Resources{
-			CPU: l5dcharts.Constraints{
+			CPU: &l5dcharts.Constraints{
 				Limit:   options.proxyCPULimit,
 				Request: options.proxyCPURequest,
 			},
-			Memory: l5dcharts.Constraints{
+			Memory: &l5dcharts.Constraints{
 				Limit:   options.proxyMemoryLimit,
 				Request: options.proxyMemoryRequest,
 			},

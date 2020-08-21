@@ -9,7 +9,7 @@ env:
 - name: LINKERD2_PROXY_LOG_FORMAT
   value: {{.Values.global.proxy.logFormat | default "plain"}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-  value: {{ternary "localhost.:8086" (printf "linkerd-dst.%s.svc.%s:8086" .Values.global.namespace .Values.global.clusterDomain) (eq .Values.global.proxy.component "linkerd-destination")}}
+  value: {{ printf "linkerd-dst.%s.svc.%s:8086" .Values.global.namespace .Values.global.clusterDomain }}
 {{ if .Values.global.proxy.destinationGetNetworks -}}
 - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
   value: "{{.Values.global.proxy.destinationGetNetworks}}"
@@ -36,9 +36,13 @@ env:
 {{ end -}}
 - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
   value: {{printf "svc.%s." .Values.global.clusterDomain}}
+{{ if .Values.global.proxy.enableExternalProfiles }}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
-  {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
-  value: {{ternary "." $internalDomain .Values.global.proxy.enableExternalProfiles}}
+  value: "."
+{{ else -}}
+- name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
+  value: {{printf "svc.%s." .Values.global.clusterDomain}}
+{{ end -}}
 - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
   value: 10000ms
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
@@ -58,9 +62,11 @@ env:
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
   value: |
     {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
+{{ if kindIs "string" .Values.global.proxy.component -}}
 {{ if eq .Values.global.proxy.component "linkerd-prometheus" -}}
 - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
   value: "10000"
+{{ end -}}
 {{ end -}}
 {{ if .Values.global.proxy.disableIdentity -}}
 - name: LINKERD2_PROXY_IDENTITY_DISABLED
@@ -74,8 +80,7 @@ env:
 - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
   value: /var/run/secrets/kubernetes.io/serviceaccount/token
 - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-  {{- $identitySvcAddr := printf "linkerd-identity.%s.svc.%s:8080" .Values.global.namespace .Values.global.clusterDomain }}
-  value: {{ternary "localhost.:8080" $identitySvcAddr (eq .Values.global.proxy.component "linkerd-identity")}}
+  value: {{ printf "linkerd-identity.%s.svc.%s:8080" .Values.global.namespace .Values.global.clusterDomain }}
 - name: _pod_sa
   valueFrom:
     fieldRef:
