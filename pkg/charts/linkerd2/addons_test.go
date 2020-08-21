@@ -28,7 +28,7 @@ Tracing:
 	if len(addOns) != 1 {
 		t.Fatalf("expected 1 add-on to be present but found %d", len(addOns))
 	}
-	if !reflect.DeepEqual(addOns[0], Tracing{"enabled": true}) {
+	if !reflect.DeepEqual(addOns[0], &Tracing{"enabled": true}) {
 		t.Fatal("expected tracing add-on to be present")
 	}
 }
