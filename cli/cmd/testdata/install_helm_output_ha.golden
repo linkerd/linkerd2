@@ -454,7 +454,7 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-injector-tls
+  name: linkerd-proxy-injector-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: proxy-injector
@@ -542,7 +542,7 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-sp-validator-tls
+  name: linkerd-sp-validator-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: sp-validator
@@ -680,7 +680,7 @@ subjects:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-tap-tls
+  name: linkerd-tap-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: tap
@@ -2035,7 +2035,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: b2d80f74b9046648274ca721ebda0a8dc27b4a6ab6655a98b5e64f9134c7364f
+        checksum/config: be311764933a64c49159bffee252ca951b64a3f91771e5de5713fe7e7594c430
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2245,7 +2245,7 @@ spec:
         name: config
       - name: tls
         secret:
-          secretName: linkerd-proxy-injector-tls
+          secretName: linkerd-proxy-injector-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2320,7 +2320,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4b581262c8ce04e0f419aaa9ac25f057f4547a13703b8fedadcf737521ae0b71
+        checksum/config: 9e6be0b3fa12e4f73b7150529b7c2b36f6d4b89e2fcb6f020dd5454607c7ccab
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2525,7 +2525,7 @@ spec:
       volumes:
       - name: tls
         secret:
-          secretName: linkerd-sp-validator-tls
+          secretName: linkerd-sp-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2586,7 +2586,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 5fbabd9fd6997021b15bb0c96a01d7df557bf56d694f18dae3f0dbb04da3204f
+        checksum/config: 494b55fb8f6819248b77bc13baf3fd41675475ad771fbe9696ff25fdc6e7405a
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2804,7 +2804,7 @@ spec:
         name: linkerd-identity-end-entity
       - name: tls
         secret:
-          secretName: linkerd-tap-tls
+          secretName: linkerd-tap-k8s-tls
 ---
 # Source: linkerd2/templates/smi-metrics.yaml
 
