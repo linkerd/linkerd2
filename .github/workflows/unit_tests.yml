@@ -37,5 +37,5 @@ jobs:
       run: |
         export PATH="$HOME/.yarn/bin:$PATH"
         export NODE_ENV=test
-        bin/web
+        bin/web --frozen-lockfile
         bin/web test --reporters="jest-dot-reporter" --reporters="./gh_ann_reporter.js"
