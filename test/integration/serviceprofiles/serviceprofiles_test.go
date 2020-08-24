@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -84,7 +83,7 @@ func TestServiceProfiles(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // pin
 		t.Run(tc.sourceName, func(t *testing.T) {
-			routes, err := getRoutes(tc.deployName, tc.namespace, []string{})
+			routes, err := testutil.GetRoutes(tc.deployName, tc.namespace, []string{}, TestHelper)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "'linkerd routes' command failed",
 					"'linkerd routes' command failed: %s\n", err)
@@ -92,7 +91,9 @@ func TestServiceProfiles(t *testing.T) {
 
 			initialExpectedRoutes := []string{"[DEFAULT]"}
 
-			assertExpectedRoutes(initialExpectedRoutes, routes, t)
+			if err := testutil.AssertExpectedRoutes(initialExpectedRoutes, routes); err != nil {
+				testutil.Errorf(t, err.Error())
+			}
 
 			sourceFlag := fmt.Sprintf("--%s", tc.sourceName)
 			cmd := []string{"profile", "--namespace", tc.namespace, tc.spName, sourceFlag}
@@ -125,13 +126,15 @@ func TestServiceProfiles(t *testing.T) {
 					"'kubectl apply' command failed:\n%s", err)
 			}
 
-			routes, err = getRoutes(tc.deployName, tc.namespace, []string{})
+			routes, err = testutil.GetRoutes(tc.deployName, tc.namespace, []string{}, TestHelper)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "'linkerd routes' command failed",
 					"'linkerd routes' command failed: %s\n", err)
 			}
 
-			assertExpectedRoutes(tc.expectedRoutes, routes, t)
+			if err := testutil.AssertExpectedRoutes(tc.expectedRoutes, routes); err != nil {
+				testutil.Errorf(t, err.Error())
+			}
 		})
 	}
 }
@@ -226,13 +229,15 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 	const routePath = "GET /testpath"
 	timeout := 2 * time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
-		routes, err := getRoutes(upstream, namespace, []string{"--to", downstream})
+		routes, err := testutil.GetRoutes(upstream, namespace, []string{"--to", downstream}, TestHelper)
 		if err != nil {
 			return fmt.Errorf("'linkerd routes' command failed: %s", err)
 		}
 
 		var testRoute *cmd2.JSONRouteStats
-		assertExpectedRoutes([]string{routePath, "[DEFAULT]"}, routes, t)
+		if err := testutil.AssertExpectedRoutes([]string{routePath, "[DEFAULT]"}, routes); err != nil {
+			testutil.Errorf(t, err.Error())
+		}
 
 		for _, route := range routes {
 			if route.Route == routePath {
@@ -250,58 +255,4 @@ func assertRouteStat(upstream, namespace, downstream string, t *testing.T, asser
 	if err != nil {
 		testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out asserting route stat (%s)", timeout), err)
 	}
-}
-
-func assertExpectedRoutes(expected []string, actual []*cmd2.JSONRouteStats, t *testing.T) {
-
-	if len(expected) != len(actual) {
-		testutil.Errorf(t, "mismatch routes count. Expected %d, Actual %d", len(expected), len(actual))
-	}
-
-	for _, expectedRoute := range expected {
-		containsRoute := false
-		for _, actualRoute := range actual {
-			if actualRoute.Route == expectedRoute {
-				containsRoute = true
-				break
-			}
-		}
-		if !containsRoute {
-			sb := strings.Builder{}
-			for _, route := range actual {
-				sb.WriteString(fmt.Sprintf("%s ", route.Route))
-			}
-			testutil.Errorf(t, "expected route %s not found in %+v", expectedRoute, sb.String())
-		}
-	}
-}
-
-func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.JSONRouteStats, error) {
-	cmd := []string{"routes", "--namespace", namespace, deployName}
-
-	if len(additionalArgs) > 0 {
-		cmd = append(cmd, additionalArgs...)
-	}
-
-	cmd = append(cmd, "--output", "json")
-	var out, stderr string
-	err := TestHelper.RetryFor(2*time.Minute, func() error {
-		var err error
-		out, stderr, err = TestHelper.LinkerdRun(cmd...)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	var list map[string][]*cmd2.JSONRouteStats
-	err = yaml.Unmarshal([]byte(out), &list)
-	if err != nil {
-		return nil, fmt.Errorf(fmt.Sprintf("Error: %s stderr: %s", err, stderr))
-	}
-
-	if deployment, ok := list[deployName]; ok {
-		return deployment, nil
-	}
-	return nil, fmt.Errorf("could not retrieve route info for %s", deployName)
 }
