@@ -514,7 +514,7 @@ func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOption
 func fetchK8sTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
-		Get(webhookSecretName(webhook), metav1.GetOptions{})
+		Get(webhookK8sSecretName(webhook), metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -698,6 +698,14 @@ func webhookCommonName(webhook string) string {
 
 func webhookSecretName(webhook string) string {
 	return fmt.Sprintf("%s-tls", webhook)
+}
+
+func webhookK8sSecretName(webhook string) string {
+	if webhook == "smi-metrics" {
+		return "smi-metrics-tls"
+	}
+
+	return fmt.Sprintf("%s-k8s-tls", webhook)
 }
 
 func verifyWebhookTLS(value *charts.TLS, webhook string) error {
