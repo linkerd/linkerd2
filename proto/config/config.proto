@@ -28,7 +28,6 @@ message Global {
 
   // Override default `cluster.local`
   string cluster_domain = 8;
-  bool endpoint_slice_enabled = 9;
 }
 
 message Proxy {

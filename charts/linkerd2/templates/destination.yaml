@@ -76,6 +76,7 @@ spec:
         - -controller-namespace={{.Values.global.namespace}}
         - -enable-h2-upgrade={{.Values.enableH2Upgrade}}
         - -log-level={{.Values.global.controllerLogLevel}}
+        - -enable-endpoint-slices={{.Values.global.enableEndpointSlices}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
@@ -103,7 +104,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/config
           name: config
-      {{- $tree := deepCopy . }}      
+      {{- $tree := deepCopy . }}
       {{- if not (empty .Values.destinationProxyResources) }}
       {{- $r := merge .Values.destinationProxyResources .Values.global.proxy.resources }}
       {{- $_ := set $tree.Values.global.proxy "resources" $r }}
