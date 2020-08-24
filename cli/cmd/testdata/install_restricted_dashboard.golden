@@ -718,7 +718,6 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-web
   namespace: linkerd
-
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -2455,7 +2454,6 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-tap-tls
-
 ---
 ###
 ### linkerd add-ons configuration

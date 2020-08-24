@@ -132,10 +132,6 @@ func TestNewValues(t *testing.T) {
 		ProxyInjector:    &ProxyInjector{TLS: &TLS{}},
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
 		Tap:              &Tap{TLS: &TLS{}},
-		SMIMetrics: &SMIMetrics{
-			Image: "deislabs/smi-metrics:v0.2.1",
-			TLS:   &TLS{},
-		},
 		Grafana: Grafana{
 			"enabled": true,
 		},

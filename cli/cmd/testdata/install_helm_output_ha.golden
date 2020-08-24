@@ -811,9 +811,6 @@ subjects:
   name: linkerd-web
   namespace: linkerd
 ---
-# Source: linkerd2/templates/smi-metrics-rbac.yaml
-
----
 # Source: linkerd2/templates/config.yaml
 ---
 kind: ConfigMap
@@ -2805,9 +2802,6 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-tap-tls
----
-# Source: linkerd2/templates/smi-metrics.yaml
-
 ---
 # Source: linkerd2/templates/linkerd-config-addons.yaml
 ---

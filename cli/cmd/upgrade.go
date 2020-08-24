@@ -347,15 +347,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	}
 	values.Tap = &charts.Tap{TLS: tapTLS}
 
-	smiMetricsTLS, err := fetchK8sTLSSecret(k, k8s.SmiMetricsServiceName, options)
-	if err != nil {
-		if !kerrors.IsNotFound(err) {
-			return nil, fmt.Errorf("could not fetch existing SMI metrics secret: %s", err)
-		}
-		smiMetricsTLS = &charts.TLS{}
-	}
-	values.SMIMetrics.TLS = smiMetricsTLS
-
 	values.Stage = stage
 
 	if !options.addOnOverwrite {
@@ -446,8 +437,6 @@ func injectCABundle(k *k8s.KubernetesAPI, webhook string, value *charts.TLS) err
 		err = injectCABundleFromValidatingWebhook(k, k8s.SPValidatorWebhookConfigName, value)
 	case k8s.TapServiceName:
 		err = injectCABundleFromAPIService(k, k8s.TapAPIRegistrationServiceName, value)
-	case k8s.SmiMetricsServiceName:
-		err = injectCABundleFromAPIService(k, k8s.SmiMetricsAPIRegistrationServiceName, value)
 	default:
 		err = fmt.Errorf("unknown webhook for retrieving CA bundle: %s", webhook)
 	}
@@ -505,30 +494,6 @@ func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOption
 	value := &charts.TLS{
 		KeyPEM: string(secret.Data["key.pem"]),
 		CrtPEM: string(secret.Data["crt.pem"]),
-	}
-
-	if err := injectCABundle(k, webhook, value); err != nil {
-		return nil, err
-	}
-
-	if err := options.verifyTLS(value, webhook); err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
-func fetchK8sTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
-	secret, err := k.CoreV1().
-		Secrets(controlPlaneNamespace).
-		Get(webhookSecretName(webhook), metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	value := &charts.TLS{
-		KeyPEM: string(secret.Data["tls.key"]),
-		CrtPEM: string(secret.Data["tls.crt"]),
 	}
 
 	if err := injectCABundle(k, webhook, value); err != nil {

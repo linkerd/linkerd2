@@ -43,14 +43,12 @@ type (
 		Tap                         *Tap              `json:"tap"`
 		NodeSelector                map[string]string `json:"nodeSelector"`
 		Tolerations                 []interface{}     `json:"tolerations"`
-		SMIMetrics                  *SMIMetrics       `json:"smiMetrics"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
 		HeartbeatResources     *Resources `json:"heartbeatResources"`
 		IdentityResources      *Resources `json:"identityResources"`
 		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
 		PublicAPIResources     *Resources `json:"publicAPIResources"`
-		SMIMetricsResources    *Resources `json:"smiMetricsResources"`
 		SPValidatorResources   *Resources `json:"spValidatorResources"`
 		TapResources           *Resources `json:"tapResources"`
 		WebResources           *Resources `json:"webResources"`
@@ -59,7 +57,6 @@ type (
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
 		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
-		SMIMetricsProxyResources    *Resources `json:"smiMetricsProxyResources"`
 		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
 		TapProxyResources           *Resources `json:"tapProxyResources"`
 		WebProxyResources           *Resources `json:"webProxyResources"`
@@ -221,13 +218,6 @@ type (
 	// Tap has all the Tap's Helm variables
 	Tap struct {
 		*TLS
-	}
-
-	// SMIMetrics has all the SMIMetrics's Helm variables
-	SMIMetrics struct {
-		*TLS
-		Enabled bool   `json:"enabled"`
-		Image   string `json:"image"`
 	}
 
 	// TLS has a pair of PEM-encoded key and certificate variables used in the

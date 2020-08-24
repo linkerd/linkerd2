@@ -1735,7 +1735,6 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-tap-tls
-
 ---
 ###
 ### linkerd add-ons configuration
