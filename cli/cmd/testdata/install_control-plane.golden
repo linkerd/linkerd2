@@ -1733,8 +1733,7 @@ spec:
         name: linkerd-identity-end-entity
       - name: tls
         secret:
-          secretName: linkerd-tap-k8s-tls
----
+          secretName: linkerd-tap-k8s-tls---
 ###
 ### linkerd add-ons configuration
 ###
