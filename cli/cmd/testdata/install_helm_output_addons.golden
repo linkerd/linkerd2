@@ -894,7 +894,7 @@ data:
     }
   values: |
     controllerImage: ghcr.io/linkerd/controller
-    controllerImageVersion: ""
+    controllerImageVersion: dev-undefined
     controllerReplicas: 1
     controllerUID: 2103
     dashboard:
@@ -915,7 +915,7 @@ data:
       cniEnabled: false
       controlPlaneTracing: false
       controllerComponentLabel: linkerd.io/control-plane-component
-      controllerImageVersion: ""
+      controllerImageVersion: linkerd-version
       controllerLogLevel: info
       controllerNamespaceLabel: linkerd.io/control-plane-ns
       createdByAnnotation: linkerd.io/created-by
@@ -1002,7 +1002,7 @@ data:
         cniEnabled: false
         controlPlaneTracing: false
         controllerComponentLabel: linkerd.io/control-plane-component
-        controllerImageVersion: ""
+        controllerImageVersion: linkerd-version
         controllerLogLevel: info
         controllerNamespaceLabel: linkerd.io/control-plane-ns
         createdByAnnotation: linkerd.io/created-by
@@ -1090,7 +1090,7 @@ data:
           cniEnabled: false
           controlPlaneTracing: false
           controllerComponentLabel: linkerd.io/control-plane-component
-          controllerImageVersion: ""
+          controllerImageVersion: linkerd-version
           controllerLogLevel: info
           controllerNamespaceLabel: linkerd.io/control-plane-ns
           createdByAnnotation: linkerd.io/created-by
@@ -1203,7 +1203,7 @@ data:
         cniEnabled: false
         controlPlaneTracing: false
         controllerComponentLabel: linkerd.io/control-plane-component
-        controllerImageVersion: ""
+        controllerImageVersion: linkerd-version
         controllerLogLevel: info
         controllerNamespaceLabel: linkerd.io/control-plane-ns
         createdByAnnotation: linkerd.io/created-by
@@ -1294,7 +1294,7 @@ data:
           cniEnabled: false
           controlPlaneTracing: false
           controllerComponentLabel: linkerd.io/control-plane-component
-          controllerImageVersion: ""
+          controllerImageVersion: linkerd-version
           controllerLogLevel: info
           controllerNamespaceLabel: linkerd.io/control-plane-ns
           createdByAnnotation: linkerd.io/created-by
@@ -1384,7 +1384,6 @@ data:
     restrictDashboardPrivileges: false
     spValidatorProxyResources: null
     spValidatorResources: null
-    stage: ""
     tap:
       caBundle: test-tap-ca-bundle
       crtPEM: test-tap-crt-pem
@@ -1402,7 +1401,7 @@ data:
         cniEnabled: false
         controlPlaneTracing: false
         controllerComponentLabel: linkerd.io/control-plane-component
-        controllerImageVersion: ""
+        controllerImageVersion: linkerd-version
         controllerLogLevel: info
         controllerNamespaceLabel: linkerd.io/control-plane-ns
         createdByAnnotation: linkerd.io/created-by
@@ -1490,7 +1489,7 @@ data:
           cniEnabled: false
           controlPlaneTracing: false
           controllerComponentLabel: linkerd.io/control-plane-component
-          controllerImageVersion: ""
+          controllerImageVersion: linkerd-version
           controllerLogLevel: info
           controllerNamespaceLabel: linkerd.io/control-plane-ns
           createdByAnnotation: linkerd.io/created-by
