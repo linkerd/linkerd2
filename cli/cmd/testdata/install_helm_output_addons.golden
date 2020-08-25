@@ -141,7 +141,7 @@ rules:
   resources: ["jobs"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
+  resources: ["pods", "endpoints", "services", "nodes"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
@@ -811,9 +811,6 @@ subjects:
   name: linkerd-web
   namespace: linkerd
 ---
-# Source: linkerd2/templates/smi-metrics-rbac.yaml
-
----
 # Source: linkerd2/templates/config.yaml
 ---
 kind: ConfigMap
@@ -841,8 +838,7 @@ data:
       },
       "autoInjectContext": null,
       "omitWebhookSideEffects": false,
-      "clusterDomain": "cluster.local",
-      "enableEndpointSlices": "false"
+      "clusterDomain": "cluster.local"
     }
   proxy: |
     {
@@ -1436,6 +1432,7 @@ spec:
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
         - -log-level=info
+        - -enable-endpoint-slices=false
         image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2570,9 +2567,6 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-tap-k8s-tls
----
-# Source: linkerd2/templates/smi-metrics.yaml
-
 ---
 # Source: linkerd2/templates/linkerd-config-addons.yaml
 ---

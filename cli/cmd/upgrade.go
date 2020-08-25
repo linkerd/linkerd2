@@ -242,11 +242,19 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	// The overrideConfigs() is used to override proxy configs only.
 	options.overrideConfigs(configs, map[string]string{})
 
+	if options.enableEndpointSlices {
+		if err = validateEndpointSlicesFeature(); err != nil {
+			return nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
+		}
+	}
+
 	// Override configs with upgrade CLI options.
 	if options.controlPlaneVersion != "" {
 		configs.GetGlobal().Version = options.controlPlaneVersion
 	}
+
 	configs.GetInstall().Flags = options.recordedFlags
+
 	configs.GetGlobal().OmitWebhookSideEffects = options.omitWebhookSideEffects
 	if configs.GetGlobal().GetClusterDomain() == "" {
 		configs.GetGlobal().ClusterDomain = defaultClusterDomain
@@ -339,15 +347,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	}
 	values.Tap = &charts.Tap{TLS: tapTLS}
 
-	smiMetricsTLS, err := fetchK8sTLSSecret(k, k8s.SmiMetricsServiceName, options)
-	if err != nil {
-		if !kerrors.IsNotFound(err) {
-			return nil, fmt.Errorf("could not fetch existing SMI metrics secret: %s", err)
-		}
-		smiMetricsTLS = &charts.TLS{}
-	}
-	values.SMIMetrics.TLS = smiMetricsTLS
-
 	values.Stage = stage
 
 	if !options.addOnOverwrite {
@@ -389,7 +388,6 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) {
 	for _, i := range installFlags {
 		if f := flags.Lookup(i.GetName()); f != nil && !f.Changed {
-
 			// The function recordFlags() stores the string representation of flags in the ConfigMap
 			// so a stringSlice is stored e.g. as [a,b].
 			// To avoid having f.Value.Set() interpreting that as a string we need to remove
@@ -439,8 +437,6 @@ func injectCABundle(k *k8s.KubernetesAPI, webhook string, value *charts.TLS) err
 		err = injectCABundleFromValidatingWebhook(k, k8s.SPValidatorWebhookConfigName, value)
 	case k8s.TapServiceName:
 		err = injectCABundleFromAPIService(k, k8s.TapAPIRegistrationServiceName, value)
-	case k8s.SmiMetricsServiceName:
-		err = injectCABundleFromAPIService(k, k8s.SmiMetricsAPIRegistrationServiceName, value)
 	default:
 		err = fmt.Errorf("unknown webhook for retrieving CA bundle: %s", webhook)
 	}

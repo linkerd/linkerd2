@@ -236,23 +236,6 @@ nodeSelector:
 # https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 #tolerations:
 
-smiMetrics:
-  enabled: false
-  externalSecret: false
-  image: deislabs/smi-metrics:v0.2.1
-  # if empty, Helm will auto-generate these fields
-  crtPEM: |
-
-  keyPEM: |
-
-  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
-  caBundle: |
-
-# set resources for smi-metrics and its linkerd proxy respectively
-# see global.proxy.resources for details.
-#smiMetricsResources:
-#smiMetricsProxyResources:
-
 # Configuration for Add-ons
 # Full configuration fields https://github.com/linkerd/linkerd2/tree/master/charts/linkerd2#add-ons-configuration
 

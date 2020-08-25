@@ -133,7 +133,7 @@ rules:
   resources: ["jobs"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
+  resources: ["pods", "endpoints", "services", "nodes"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
@@ -786,7 +786,6 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-web
   namespace: Namespace
-
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -1347,6 +1346,7 @@ spec:
         - -controller-namespace=Namespace
         - -enable-h2-upgrade=true
         - -log-level=ControllerLogLevel
+        - -enable-endpoint-slices=false
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -2487,7 +2487,6 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-tap-k8s-tls
-
 ---
 ###
 ### linkerd add-ons configuration

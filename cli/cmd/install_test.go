@@ -136,7 +136,6 @@ func TestRender(t *testing.T) {
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
 		Tap:                defaultValues.Tap,
-		SMIMetrics:         defaultValues.SMIMetrics,
 		Dashboard: &charts.Dashboard{
 			Replicas: 1,
 		},
@@ -526,7 +525,4 @@ func addFakeTLSSecrets(values *charts.Values) {
 	values.Tap.CrtPEM = "tap crt"
 	values.Tap.KeyPEM = "tap key"
 	values.Tap.CaBundle = "tap CA bundle"
-	values.SMIMetrics.CrtPEM = "smi metrics crt"
-	values.SMIMetrics.KeyPEM = "smi metrics key"
-	values.SMIMetrics.CaBundle = "smi metrics CA bundle"
 }

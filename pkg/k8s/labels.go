@@ -323,12 +323,6 @@ const (
 	// TapAPIRegistrationServiceName is the name of the tap APIService registration resource
 	TapAPIRegistrationServiceName = "v1alpha1.tap.linkerd.io"
 
-	// SmiMetricsServiceName is the name of the SMI metrics APIService
-	SmiMetricsServiceName = "linkerd-smi-metrics"
-
-	// SmiMetricsAPIRegistrationServiceName is the name of the SMI metrics APIService registration resource
-	SmiMetricsAPIRegistrationServiceName = "v1alpha1.metrics.smi-spec.io"
-
 	// AdmissionWebhookLabel indicates whether admission webhooks are enabled for a namespace
 	AdmissionWebhookLabel = ProxyConfigAnnotationsPrefix + "/admission-webhooks"
 

@@ -51,26 +51,12 @@ func TestUpgradeDefault(t *testing.T) {
 	// Install and upgrade manifests should be identical except for the version.
 	expected := replaceVersions(install.String())
 	expectedManifests := parseManifestList(expected)
-	fmt.Printf("expected Manifests: %v\n", keysString(expectedManifests))
-
 	upgradeManifests := parseManifestList(upgrade.String())
-	fmt.Printf("upgraded Manifests: %v\n", keysString(upgradeManifests))
-
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
-}
-
-func keysString(m map[string]map[string]interface{}) []string {
-	keys := make([]string, len(m))
-	i := 0
-	for k := range m {
-		keys[i] = k
-		i++
-	}
-	return keys
 }
 
 func TestUpgradeHA(t *testing.T) {

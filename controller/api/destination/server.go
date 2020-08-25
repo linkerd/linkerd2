@@ -30,6 +30,7 @@ type (
 		identityTrustDomain string
 		clusterDomain       string
 
+		k8sAPI   *k8s.API
 		log      *logging.Entry
 		shutdown <-chan struct{}
 	}
@@ -75,6 +76,7 @@ func NewServer(
 		controllerNS,
 		identityTrustDomain,
 		clusterDomain,
+		k8sAPI,
 		log,
 		shutdown,
 	}
@@ -93,11 +95,19 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	}
 	log.Debugf("Get %s", dest.GetPath())
 
+	var token contextToken
+	if dest.GetContextToken() != "" {
+		token = s.parseContextToken(dest.GetContextToken())
+		log.Debugf("Dest token: %v", token)
+	}
+
 	translator := newEndpointTranslator(
 		s.controllerNS,
 		s.identityTrustDomain,
 		s.enableH2Upgrade,
 		dest.GetPath(),
+		token.NodeName,
+		s.k8sAPI.Client,
 		stream,
 		log,
 	)
