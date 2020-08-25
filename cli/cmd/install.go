@@ -19,6 +19,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/pkg/tree"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -445,6 +446,48 @@ func (options *installOptions) validateAndBuildWithIdentity(stage string, identi
 	return values, configs, nil
 }
 
+func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error) {
+	defaults, err := l5dcharts.NewValues(false)
+	if err != nil {
+		return nil, err
+	}
+	values.Configs = l5dcharts.ConfigJSONs{}
+	valuesTree, err := tree.MarshalToTree(values)
+	if err != nil {
+		return nil, err
+	}
+	defaultsTree, err := tree.MarshalToTree(defaults)
+	if err != nil {
+		return nil, err
+	}
+
+	overrides, err := defaultsTree.Diff(valuesTree)
+	if err != nil {
+		return nil, err
+	}
+
+	overridesBytes, err := yaml.Marshal(overrides)
+	if err != nil {
+		return nil, err
+	}
+
+	secret := corev1.Secret{
+		TypeMeta: metav1.TypeMeta{Kind: "Secret", APIVersion: "v1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "linkerd-config-overrides",
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			"linkerd-config-overrides": overridesBytes,
+		},
+	}
+	bytes, err := yaml.Marshal(secret)
+	if err != nil {
+		return nil, err
+	}
+	return bytes, nil
+}
+
 // recordableFlagSet returns flags usable during install or upgrade.
 func (options *installOptions) recordableFlagSet() *pflag.FlagSet {
 	e := pflag.ExitOnError
@@ -763,7 +806,9 @@ func (options *installOptions) buildValuesWithoutIdentity(configs *pb.All) (*l5d
 	installValues.Configs.Proxy = proxyJSON
 	installValues.Configs.Install = installJSON
 	installValues.ControllerImage = fmt.Sprintf("%s/controller", options.dockerRegistry)
-	installValues.Global.ControllerImageVersion = configs.GetGlobal().GetVersion()
+	if configs.GetGlobal().GetVersion() != version.Version {
+		installValues.Global.ControllerImageVersion = configs.GetGlobal().GetVersion()
+	}
 	installValues.Global.ControllerLogLevel = options.controllerLogLevel
 	installValues.ControllerReplicas = options.controllerReplicas
 	installValues.ControllerUID = options.controllerUID
@@ -921,6 +966,13 @@ func render(w io.Writer, values *l5dcharts.Values) error {
 			return err
 		}
 	}
+
+	overrides, err := renderOverrides(values, values.Global.Namespace)
+	if err != nil {
+		return err
+	}
+	buf.WriteString(yamlSep)
+	buf.WriteString(string(overrides))
 
 	_, err = w.Write(buf.Bytes())
 	return err
