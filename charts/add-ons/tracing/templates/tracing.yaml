@@ -41,7 +41,7 @@ metadata:
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 spec:
-  type: ClusterIP
+  clusterIP: None
   ports:
   - name: opencensus
     port: 55678
@@ -156,7 +156,7 @@ metadata:
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 spec:
-  type: ClusterIP
+  clusterIP: None
   selector:
     {{.Values.global.controllerComponentLabel}}: {{.Values.jaeger.name}}
   ports:
