@@ -224,7 +224,7 @@ jobs:
         kubectl cluster-info
     - name: Run integration tests
       env:
-        ARM_TEST: 1
+        RUN_ARM_TEST: 1
       run: bin/tests --skip-kind-create "$CMD"
     - name: CNI tests
       run: |

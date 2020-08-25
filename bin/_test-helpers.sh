@@ -284,7 +284,7 @@ run_upgrade-edge_test() {
 # Run the upgrade-stable test by upgrading the most-recent stable release to the
 # HEAD of this branch.
 run_upgrade-stable_test() {
-  if [ -n "$ARM_TEST" ]; then
+  if [ -n "$RUN_ARM_TEST" ]; then
     echo "Skipped. Linkerd stable version does not support ARM yet"
     exit 0
   fi
@@ -318,7 +318,7 @@ helm_cleanup() {
 }
 
 run_helm-upgrade_test() {
-  if [ -n "$ARM_TEST" ]; then
+  if [ -n "$RUN_ARM_TEST" ]; then
     echo "Skipped. Linkerd stable version does not support ARM yet"
     exit 0
   fi

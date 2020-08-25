@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestTracing(t *testing.T) {
-	if os.Getenv("ARM_TEST") != "" {
+	if os.Getenv("RUN_ARM_TEST") != "" {
 		t.Skip("Skipped. Jaeger & Open Census images does not support ARM yet")
 	}
 
