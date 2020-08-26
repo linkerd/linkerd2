@@ -79,6 +79,7 @@ spec:
       - args:
         - tap
         - -controller-namespace={{.Values.global.namespace}}
+        - -trust-domain={{.Values.global.identityTrustDomain}}
         - -log-level={{.Values.global.controllerLogLevel}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
@@ -110,8 +111,6 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
-        - mountPath: /var/run/linkerd/config
-          name: config
       {{- $tree := deepCopy . }}      
       {{- if not (empty .Values.tapProxyResources) }}
       {{- $r := merge .Values.tapProxyResources .Values.global.proxy.resources }}
@@ -124,9 +123,6 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-tap
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}

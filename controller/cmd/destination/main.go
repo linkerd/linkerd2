@@ -10,7 +10,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
@@ -28,7 +27,8 @@ func Main(args []string) {
 	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", false, "Enable the usage of EndpointSlice informers and resources")
-
+	trustDomain := cmd.String("trust-domain", "cluster.local", "trust domain of identity")
+	clusterDomain := cmd.String("cluster-domain", "cluster.local", "cluster domain of the cluster")
 	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
@@ -43,23 +43,16 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	global, err := config.Global(pkgK8s.MountPathGlobalConfig)
-
-	trustDomain := ""
 	if *disableIdentity {
 		log.Info("Identity is disabled")
 	} else {
-		trustDomain = global.GetIdentityContext().GetTrustDomain()
-		if err != nil || trustDomain == "" {
-			trustDomain = "cluster.local"
-			log.Warnf("failed to load trust domain from global config: [%s] (falling back to %s)", err, trustDomain)
+		if err != nil || *trustDomain == "" {
+			log.Warnf("failed to load trust domain from global config: [%s] (falling back to %s)", err, *trustDomain)
 		}
 	}
 
-	clusterDomain := global.GetClusterDomain()
-	if err != nil || clusterDomain == "" {
-		clusterDomain = "cluster.local"
-		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
+	if err != nil || *clusterDomain == "" {
+		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, *clusterDomain)
 	}
 
 	if *traceCollector != "" {
@@ -99,11 +92,11 @@ func Main(args []string) {
 	server := destination.NewServer(
 		*addr,
 		*controllerNamespace,
-		trustDomain,
+		*trustDomain,
 		*enableH2Upgrade,
 		*enableEndpointSlices,
 		k8sAPI,
-		clusterDomain,
+		*clusterDomain,
 		done,
 	)
 

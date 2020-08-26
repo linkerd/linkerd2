@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"net"
@@ -9,26 +10,23 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
-
-	"github.com/golang/protobuf/ptypes"
 	idctl "github.com/linkerd/linkerd2/controller/identity"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/trace"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	v1machinery "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 )
 
 // TODO watch trustAnchorsPath for changes
@@ -42,6 +40,13 @@ func Main(args []string) {
 	addr := cmd.String("addr", ":8080", "address to serve on")
 	adminAddr := cmd.String("admin-addr", ":9990", "address of HTTP admin server")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
+	controllerNS := cmd.String("controller-namespace", "", "namespace of the linkerd control plane")
+	identityScheme := cmd.String("identity-scheme", "", "scheme of the identity")
+	trustDomain := cmd.String("identity-trust-domain", "", "trust domain of identity")
+	encodedIdentityTrustAnchorPEM := cmd.String("identity-trust-anchor-pem", "", "Base64 encoded trust anchor certificate")
+	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "")
+	identityClockSkewAllowance := cmd.String("identity-clock-skew-allowance", "", "")
+
 	issuerPath := cmd.String("issuer",
 		"/var/run/linkerd/identity/issuer",
 		"path to directory containing issuer credentials")
@@ -53,24 +58,23 @@ func Main(args []string) {
 
 	flags.ConfigureAndParse(cmd, args)
 
-	cfg, err := config.Global(consts.MountPathGlobalConfig)
+	rawPEM, err := base64.StdEncoding.DecodeString(*encodedIdentityTrustAnchorPEM)
 	if err != nil {
-		log.Fatalf("Failed to load config: %s", err.Error())
+		log.Fatalf("could not decode identity trust anchors PEM: %s", err.Error())
 	}
 
+	identityTrustAnchorPEM := string(rawPEM)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	controllerNS := cfg.GetLinkerdNamespace()
-	idctx := cfg.GetIdentityContext()
-	if idctx == nil {
+	if *identityScheme == "" || *trustDomain == "" {
 		log.Infof("Identity disabled in control plane configuration.")
 		os.Exit(0)
 	}
 
-	if idctx.Scheme == k8s.IdentityIssuerSchemeLinkerd {
+	if *identityScheme == k8s.IdentityIssuerSchemeLinkerd {
 		issuerPathCrt = filepath.Join(*issuerPath, k8s.IdentityIssuerCrtName)
 		issuerPathKey = filepath.Join(*issuerPath, k8s.IdentityIssuerKeyName)
 	} else {
@@ -78,13 +82,12 @@ func Main(args []string) {
 		issuerPathKey = filepath.Join(*issuerPath, corev1.TLSPrivateKeyKey)
 	}
 
-	trustDomain := idctx.GetTrustDomain()
-	dom, err := idctl.NewTrustDomain(controllerNS, trustDomain)
+	dom, err := idctl.NewTrustDomain(*controllerNS, *trustDomain)
 	if err != nil {
 		log.Fatalf("Invalid trust domain: %s", err.Error())
 	}
 
-	trustAnchors, err := tls.DecodePEMCertPool(idctx.GetTrustAnchorsPem())
+	trustAnchors, err := tls.DecodePEMCertPool(identityTrustAnchorPEM)
 	if err != nil {
 		log.Fatalf("Failed to read trust anchors: %s", err)
 	}
@@ -93,16 +96,16 @@ func Main(args []string) {
 		ClockSkewAllowance: tls.DefaultClockSkewAllowance,
 		Lifetime:           identity.DefaultIssuanceLifetime,
 	}
-	if pbd := idctx.GetClockSkewAllowance(); pbd != nil {
-		csa, err := ptypes.Duration(pbd)
+	if pbd := *identityClockSkewAllowance; pbd != "" {
+		csa, err := time.ParseDuration(pbd)
 		if err != nil {
 			log.Warnf("Invalid clock skew allowance: %s", err)
 		} else {
 			validity.ClockSkewAllowance = csa
 		}
 	}
-	if pbd := idctx.GetIssuanceLifetime(); pbd != nil {
-		il, err := ptypes.Duration(pbd)
+	if pbd := *identityIssuanceLifeTime; pbd != "" {
+		il, err := time.ParseDuration(pbd)
 		if err != nil {
 			log.Warnf("Invalid issuance lifetime: %s", err)
 		} else {
@@ -110,7 +113,7 @@ func Main(args []string) {
 		}
 	}
 
-	expectedName := fmt.Sprintf("identity.%s.%s", controllerNS, trustDomain)
+	expectedName := fmt.Sprintf("identity.%s.%s", *controllerNS, *trustDomain)
 	issuerEvent := make(chan struct{})
 	issuerError := make(chan error)
 
@@ -139,10 +142,10 @@ func Main(args []string) {
 	// Create K8s event recorder
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{
-		Interface: k8sAPI.CoreV1().Events(controllerNS),
+		Interface: k8sAPI.CoreV1().Events(*controllerNS),
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: componentName})
-	deployment, err := k8sAPI.AppsV1().Deployments(controllerNS).Get(componentName, v1machinery.GetOptions{})
+	deployment, err := k8sAPI.AppsV1().Deployments(*controllerNS).Get(componentName, v1machinery.GetOptions{})
 
 	if err != nil {
 		log.Fatalf("Failed to construct k8s event recorder: %s", err)

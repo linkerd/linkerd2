@@ -93,7 +93,13 @@ spec:
       - args:
         - identity
         - -log-level={{.Values.global.controllerLogLevel}}
-        {{- include "partials.linkerd.trace" . | nindent 8 -}}
+        - -controller-namespace={{.Values.global.namespace}}
+        - -identity-scheme={{.Values.identity.issuer.scheme}}
+        - -identity-trust-domain={{.Values.global.identityTrustDomain}}
+        - -identity-issuance-lifetime={{.Values.identity.issuer.issuanceLifetime}}
+        - -identity-clock-skew-allowance={{.Values.identity.issuer.clockSkewAllowance}}
+        - -identity-trust-anchor-pem="{{b64enc .Values.global.identityTrustAnchorsPEM}}"
+       {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
@@ -118,8 +124,6 @@ spec:
         securityContext:
           runAsUser: {{.Values.controllerUID}}
         volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
       {{- $tree := deepCopy . }}      
@@ -134,9 +138,6 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-identity
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
