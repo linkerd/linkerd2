@@ -350,7 +350,8 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	// test `linkerd upgrade --from-manifests`
 	if TestHelper.UpgradeFromVersion() != "" {
-		resources := []string{"configmaps/" + k8s.ConfigConfigMapName, "configmaps/" + k8s.AddOnsConfigMapName, "secrets/" + k8s.IdentityIssuerSecretName}
+		resources := []string{"configmaps", "secrets"}
+
 		kubeArgs := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
 		kubeArgs = append(kubeArgs, "-oyaml")
 
