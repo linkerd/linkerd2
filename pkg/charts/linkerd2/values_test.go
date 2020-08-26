@@ -3,6 +3,8 @@ package linkerd2
 import (
 	"reflect"
 	"testing"
+
+	"github.com/linkerd/linkerd2/pkg/version"
 )
 
 func TestNewValues(t *testing.T) {
@@ -38,6 +40,7 @@ func TestNewValues(t *testing.T) {
 			ControllerComponentLabel: "linkerd.io/control-plane-component",
 			ControllerLogLevel:       "info",
 			ControllerImageVersion:   testVersion,
+			LinkerdVersion:           version.Version,
 			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
 			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
 			CreatedByAnnotation:      "linkerd.io/created-by",

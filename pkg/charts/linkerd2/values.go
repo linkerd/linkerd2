@@ -92,6 +92,7 @@ type (
 		PrometheusURL            string              `json:"prometheusUrl"`
 		GrafanaURL               string              `json:"grafanaUrl"`
 		ImagePullSecrets         []map[string]string `json:"imagePullSecrets"`
+		LinkerdVersion           string              `json:"linkerdVersion"`
 
 		Proxy     *Proxy     `json:"proxy"`
 		ProxyInit *ProxyInit `json:"proxyInit"`
