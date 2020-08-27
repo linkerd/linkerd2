@@ -54,6 +54,7 @@ func TestUpgradeDefault(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
+
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -93,6 +94,8 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 					CrtPEM: issuer.crt,
 					KeyPEM: issuer.key,
 				},
+				ClockSkewAllowance: "20s",
+				IssuanceLifetime: "24h0m0s",
 			},
 		},
 	}
@@ -184,6 +187,11 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 				continue
 			}
 			if id == "ConfigMap/linkerd-config" {
+				continue
+			}
+
+			if id == "Deployment/linkerd-identity" {
+				// skip checking identity as `identity-trust-anchor-pem` is overridden, which is passed as a CLI flag
 				continue
 			}
 			if id == "Secret/linkerd-identity-issuer" {
