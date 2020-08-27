@@ -976,7 +976,7 @@ spec:
         - -identity-trust-domain=test.trust.domain
         - -identity-issuance-lifetime=86400s
         - -identity-clock-skew-allowance=20s
-        - -identity-trust-anchor-pem="dGVzdC10cnVzdC1hbmNob3I="
+        - -identity-trust-anchors-pem=dGVzdC10cnVzdC1hbmNob3I=
         image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
