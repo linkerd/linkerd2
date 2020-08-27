@@ -23,7 +23,7 @@ const (
 	// multicluster setup.
 	LinkerdMulticlusterChecks CategoryID = "linkerd-multicluster"
 
-	linkerdServiceMirrorComponentName      = "linkerd-service-mirror"
+	linkerdServiceMirrorComponentName      = "service-mirror"
 	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror-%s"
 	linkerdServiceMirrorClusterRoleName    = "linkerd-service-mirror-access-local-resources-%s"
 	linkerdServiceMirrorRoleName           = "linkerd-service-mirror-read-remote-creds-%s"
