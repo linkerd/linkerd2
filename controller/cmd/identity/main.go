@@ -43,7 +43,7 @@ func Main(args []string) {
 	controllerNS := cmd.String("controller-namespace", "", "namespace of the linkerd control plane")
 	identityScheme := cmd.String("identity-scheme", "", "scheme of the identity")
 	trustDomain := cmd.String("identity-trust-domain", "", "trust domain of identity")
-	encodedIdentityTrustAnchorPEM := cmd.String("identity-trust-anchor-pem", "", "Base64 encoded trust anchor certificate")
+	encodedIdentityTrustAnchorPEM := cmd.String("identity-trust-anchors-pem", "", "Base64 encoded trust anchor certificate")
 	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "")
 	identityClockSkewAllowance := cmd.String("identity-clock-skew-allowance", "", "")
 
