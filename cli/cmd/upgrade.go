@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/golang/protobuf/ptypes"
 	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -597,7 +597,6 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 	if err != nil {
 		return nil, fmt.Errorf("could not convert issuance Lifetime protobuf Duration format into golang Duration: %s", err)
 	}
-
 
 	return &identityWithAnchorsAndTrustDomain{
 		TrustDomain:     idctx.GetTrustDomain(),
