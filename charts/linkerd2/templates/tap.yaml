@@ -137,3 +137,4 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-tap-k8s-tls
+
