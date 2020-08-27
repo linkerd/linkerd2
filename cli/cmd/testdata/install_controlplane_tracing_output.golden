@@ -881,6 +881,12 @@ spec:
       - args:
         - identity
         - -log-level=info
+        - -controller-namespace=linkerd
+        - -identity-scheme=linkerd.io/tls
+        - -identity-trust-domain=cluster.local
+        - -identity-issuance-lifetime=24h0m0s
+        - -identity-clock-skew-allowance=20s
+        - -identity-trust-anchor-pem="LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJZRENDQVFlZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQVlNUll3RkFZRFZRUURFdzFqYkhWemRHVnkKTG14dlkyRnNNQjRYRFRFNU1ETXdNekF4TlRrMU1sb1hEVEk1TURJeU9EQXlNRE0xTWxvd0dERVdNQlFHQTFVRQpBeE1OWTJ4MWMzUmxjaTVzYjJOaGJEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJBQ2hwQXQwCnh0Z085cWJWdEV0REs4ME42aUNMMkh0eWYya0l2Mm01UWtKMXkwVEZRaTVoVFZlM3d0c3BKOFlwWkYwcGwzNjQKNlRpWWVYQjh0T09oSUFDalFqQkFNQTRHQTFVZER3RUIvd1FFQXdJQkJqQWRCZ05WSFNVRUZqQVVCZ2dyQmdFRgpCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBS0JnZ3Foa2pPUFFRREFnTkhBREJFCkFpQlEvQUF3RjhrRzhWT21SU1VUUGFrU1NhL040bXFLMkhzWnVoUVhDbWlaSHdJZ1pFekk1RENrcFU3dzNTSXYKT0xPNFpzazFYckdaSEdzbXlpRXl2WUY5bHBZPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
         - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
@@ -903,8 +909,6 @@ spec:
         securityContext:
           runAsUser: 2103
         volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
       - env:
@@ -1054,9 +1058,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-identity
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
@@ -1134,6 +1135,7 @@ spec:
         - public-api
         - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
         - -controller-namespace=linkerd
+        - -cluster-domain=cluster.local
         - -log-level=info
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
@@ -1157,9 +1159,6 @@ spec:
             port: 9995
         securityContext:
           runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -1307,9 +1306,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-controller
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - downwardAPI:
           items:
           - fieldRef:
@@ -1385,6 +1381,8 @@ spec:
         - -addr=:8086
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
+        - -trust-domain=cluster.local
+        - -cluster-domain=cluster.local
         - -log-level=info
         - -enable-endpoint-slices=false
         - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
@@ -1408,9 +1406,6 @@ spec:
             port: 9996
         securityContext:
           runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -1558,9 +1553,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-destination
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - downwardAPI:
           items:
           - fieldRef:
@@ -1682,6 +1674,7 @@ spec:
       containers:
       - args:
         - -api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
+        - -cluster-domain=cluster.local
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -controller-namespace=linkerd
         - -log-level=info
@@ -1707,9 +1700,6 @@ spec:
             port: 9994
         securityContext:
           runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -1857,9 +1847,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-web
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - downwardAPI:
           items:
           - fieldRef:
@@ -2431,6 +2418,7 @@ spec:
       - args:
         - tap
         - -controller-namespace=linkerd
+        - -trust-domain=cluster.local
         - -log-level=info
         - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
         image: gcr.io/linkerd-io/controller:install-control-plane-version
@@ -2459,8 +2447,6 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
-        - mountPath: /var/run/linkerd/config
-          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -2608,9 +2594,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-tap
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - downwardAPI:
           items:
           - fieldRef:
