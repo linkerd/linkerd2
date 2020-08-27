@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -13,7 +12,6 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	cfg "github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -350,8 +348,8 @@ func (options *proxyConfigOptions) fetchConfigsOrDefault() (*cfg.All, error) {
 		return install.configs(nil), nil
 	}
 
-	api := checkPublicAPIClientOrExit()
-	config, err := api.Config(context.Background(), &public.Empty{})
+	checkPublicAPIClientOrExit()
+	config, err := getLinkerdConfigMap()
 	if err != nil {
 		return nil, err
 	}
