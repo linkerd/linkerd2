@@ -843,6 +843,25 @@ spec:
     port: 8080
     targetPort: 8080
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-identity-headless
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: identity
+    ControllerNamespaceLabel: Namespace
+  annotations:
+    CreatedByAnnotation: CliVersion
+spec:
+  clusterIP: None
+  selector:
+    ControllerComponentLabel: identity
+  ports:
+  - name: grpc
+    port: 8080
+    targetPort: 8080
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -912,7 +931,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.Namespace.svc.cluster.local:8086
+          value: linkerd-dst-headless.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -1145,7 +1164,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.Namespace.svc.cluster.local:8086
+          value: linkerd-dst-headless.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -1192,7 +1211,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.Namespace.svc.cluster.local:8080
+          value: linkerd-identity-headless.Namespace.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1298,6 +1317,25 @@ metadata:
     CreatedByAnnotation: CliVersion
 spec:
   type: ClusterIP
+  selector:
+    ControllerComponentLabel: destination
+  ports:
+  - name: grpc
+    port: 8086
+    targetPort: 8086
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-dst-headless
+  namespace: Namespace
+  labels:
+    ControllerComponentLabel: destination
+    ControllerNamespaceLabel: Namespace
+  annotations:
+    CreatedByAnnotation: CliVersion
+spec:
+  clusterIP: None
   selector:
     ControllerComponentLabel: destination
   ports:
@@ -1423,7 +1461,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.Namespace.svc.cluster.local:8080
+          value: linkerd-identity-headless.Namespace.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1655,7 +1693,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.Namespace.svc.cluster.local:8086
+          value: linkerd-dst-headless.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -1702,7 +1740,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.Namespace.svc.cluster.local:8080
+          value: linkerd-identity-headless.Namespace.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1864,7 +1902,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.Namespace.svc.cluster.local:8086
+          value: linkerd-dst-headless.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -1911,7 +1949,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.Namespace.svc.cluster.local:8080
+          value: linkerd-identity-headless.Namespace.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -2112,7 +2150,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.Namespace.svc.cluster.local:8086
+          value: linkerd-dst-headless.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -2159,7 +2197,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.Namespace.svc.cluster.local:8080
+          value: linkerd-identity-headless.Namespace.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -2348,7 +2386,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.Namespace.svc.cluster.local:8086
+          value: linkerd-dst-headless.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -2395,7 +2433,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.Namespace.svc.cluster.local:8080
+          value: linkerd-identity-headless.Namespace.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -2681,7 +2719,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.Namespace.svc.cluster.local:8086
+          value: linkerd-dst-headless.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -2728,7 +2766,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.Namespace.svc.cluster.local:8080
+          value: linkerd-identity-headless.Namespace.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -3111,7 +3149,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.Namespace.svc.cluster.local:8086
+          value: linkerd-dst-headless.Namespace.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "DestinationGetNetworks"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -3160,7 +3198,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.Namespace.svc.cluster.local:8080
+          value: linkerd-identity-headless.Namespace.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
