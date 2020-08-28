@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: terminus
-        image: buoyantio/bb:v0.0.5
+        image: buoyantio/bb:v0.0.6
         args:
         - terminus
         - "--h1-server-port=8080"

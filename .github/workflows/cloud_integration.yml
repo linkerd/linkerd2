@@ -77,7 +77,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Install linkerd CLI
-      id: install_cli
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"

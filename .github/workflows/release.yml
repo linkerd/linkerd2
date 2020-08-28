@@ -160,7 +160,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Install linkerd CLI
-      id: install_cli
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
@@ -170,7 +169,7 @@ jobs:
         [[ "$TAG" == "$($CMD version --short --client)" ]]
         echo "Installed Linkerd CLI version: $TAG"
         echo "::set-env name=CMD::$CMD"
-        echo "::set-output name=tag::$TAG"
+        echo "::set-env name=TAG::$TAG"
     - name: Create GKE cluster
       # linkerd/linkerd2-action-gcloud@v1.0.1
       uses: linkerd/linkerd2-action-gcloud@308c4df
@@ -180,7 +179,7 @@ jobs:
         gcp_zone: ${{ secrets.GCP_ZONE }}
         preemptible: false
         create: true
-        name: testing-${{ steps.install_cli.outputs.tag }}-${{ github.run_id }}
+        name: testing-${{ env.TAG }}-${{ github.run_id }}
         num_nodes: 2
     - name: Run integration tests
       run: bin/tests --skip-kind-create "$CMD"
@@ -188,11 +187,54 @@ jobs:
       run: |
         export TAG="$($CMD version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
+  arm64_integration_tests:
+    name: ARM64 integration tests
+    runs-on: ubuntu-18.04
+    needs: [docker_build]
+    steps:
+    - name: Checkout code
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
+    - name: Try to load cached Go modules
+      # actions/cache@v1.1.2
+      uses: actions/cache@70655ec
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Install linkerd CLI
+      run: |
+        TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
+        CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
+        bin/docker-pull-binaries $TAG
+        $CMD version --client
+        # validate CLI version matches the repo
+        [[ "$TAG" == "$($CMD version --short --client)" ]]
+        echo "Installed Linkerd CLI version: $TAG"
+        echo "::set-env name=CMD::$CMD"
+    - name: Set KUBECONFIG environment variables
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.ARM64_KUBECONFIG }}" > $HOME/.kube/config
+        echo ::set-env name=KUBECONFIG::$HOME/.kube/config
+        kubectl cluster-info
+    - name: Run integration tests
+      env:
+        RUN_ARM_TEST: 1
+      run: bin/tests --skip-kind-create "$CMD"
+    - name: CNI tests
+      run: |
+        export TAG="$($CMD version --client --short)"
+        go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
+    - name: Test cleanup
+      if: ${{ always() }}
+      run: bin/test-cleanup
   choco_pack:
     # only runs for stable tags. The conditionals are at each step level instead of the job level
     # otherwise the jobs below that depend on this one won't run
     name: Pack Chocolatey release
-    needs: [kind_integration_tests, cloud_integration_tests]
+    needs: [kind_integration_tests, cloud_integration_tests, arm64_integration_tests]
     runs-on: windows-2019
     steps:
     - name: Checkout code
