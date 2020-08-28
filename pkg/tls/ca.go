@@ -167,6 +167,7 @@ func (ca *CA) GenerateCA(name string, maxPathLen int) (*CA, error) {
 
 	t := ca.createTemplate(&key.PublicKey)
 	t.Subject = pkix.Name{CommonName: name}
+	t.DNSNames = []string{name}
 	t.IsCA = true
 	t.MaxPathLen = maxPathLen
 	t.MaxPathLenZero = true // 0-values are actually 0
