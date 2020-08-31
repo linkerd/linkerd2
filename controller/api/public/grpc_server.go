@@ -31,12 +31,12 @@ type APIServer interface {
 }
 
 type grpcServer struct {
-	prometheusAPI          promv1.API
-	destinationClient      destinationPb.DestinationClient
-	k8sAPI                 *k8s.API
-	controllerNamespace    string
-	clusterDomain          string
-	ignoredNamespaces      []string
+	prometheusAPI       promv1.API
+	destinationClient   destinationPb.DestinationClient
+	k8sAPI              *k8s.API
+	controllerNamespace string
+	clusterDomain       string
+	ignoredNamespaces   []string
 }
 
 type podReport struct {
@@ -62,12 +62,12 @@ func newGrpcServer(
 ) *grpcServer {
 
 	grpcServer := &grpcServer{
-		prometheusAPI:          promAPI,
-		destinationClient:      destinationClient,
-		k8sAPI:                 k8sAPI,
-		controllerNamespace:    controllerNamespace,
-		clusterDomain:          clusterDomain,
-		ignoredNamespaces:      ignoredNamespaces,
+		prometheusAPI:       promAPI,
+		destinationClient:   destinationClient,
+		k8sAPI:              k8sAPI,
+		controllerNamespace: controllerNamespace,
+		clusterDomain:       clusterDomain,
+		ignoredNamespaces:   ignoredNamespaces,
 	}
 
 	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)
