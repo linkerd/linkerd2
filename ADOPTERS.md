@@ -23,6 +23,7 @@
 - [Mulligan Funding](https://www.mulliganfunding.com/)
 - [National Information Solutions Cooperative (NISC)](https://nisc.coop/)
 - [Nordstrom](https://nordstrom.com/)
+- [Novolabs](https://novolabs.com)
 - [Paybase](https://paybase.io/)
 - [PlayStudios Asia](https://www.playstudios.asia)
 - [PriceKinetics (GVC Australia)](https://www.pricekinetics.com.au/)
