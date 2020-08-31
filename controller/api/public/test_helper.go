@@ -13,7 +13,6 @@ import (
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/prometheus/client_golang/api"
@@ -33,7 +32,6 @@ type MockAPIClient struct {
 	TopRoutesResponseToReturn      *pb.TopRoutesResponse
 	EdgesResponseToReturn          *pb.EdgesResponse
 	SelfCheckResponseToReturn      *healthcheckPb.SelfCheckResponse
-	ConfigResponseToReturn         *configPb.All
 	APITapClientToReturn           pb.Api_TapClient
 	APITapByResourceClientToReturn pb.Api_TapByResourceClient
 	DestinationGetClientToReturn   destinationPb.Destination_GetClient
@@ -98,11 +96,6 @@ func (c *MockAPIClient) GetProfile(ctx context.Context, _ *destinationPb.GetDest
 // SelfCheck provides a mock of a Public API method.
 func (c *MockAPIClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
 	return c.SelfCheckResponseToReturn, c.ErrorToReturn
-}
-
-// Config provides a mock of a Public API method.
-func (c *MockAPIClient) Config(ctx context.Context, in *pb.Empty, _ ...grpc.CallOption) (*configPb.All, error) {
-	return c.ConfigResponseToReturn, c.ErrorToReturn
 }
 
 // MockDestinationGetClient satisfies the Destination_GetClient gRPC interface.

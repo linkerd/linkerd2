@@ -11,10 +11,8 @@ import (
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/linkerd/linkerd2/pkg/config"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -39,9 +37,6 @@ type grpcServer struct {
 	controllerNamespace    string
 	clusterDomain          string
 	ignoredNamespaces      []string
-	mountPathGlobalConfig  string
-	mountPathProxyConfig   string
-	mountPathInstallConfig string
 }
 
 type podReport struct {
@@ -73,9 +68,6 @@ func newGrpcServer(
 		controllerNamespace:    controllerNamespace,
 		clusterDomain:          clusterDomain,
 		ignoredNamespaces:      ignoredNamespaces,
-		mountPathGlobalConfig:  pkgK8s.MountPathGlobalConfig,
-		mountPathProxyConfig:   pkgK8s.MountPathProxyConfig,
-		mountPathInstallConfig: pkgK8s.MountPathInstallConfig,
 	}
 
 	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)
@@ -229,22 +221,6 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 	}
 
 	return response, nil
-}
-
-func (s *grpcServer) Config(ctx context.Context, req *pb.Empty) (*configPb.All, error) {
-	global, err := config.Global(s.mountPathGlobalConfig)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving global config - %s", err)
-	}
-	proxy, err := config.Proxy(s.mountPathProxyConfig)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving proxy config - %s", err)
-	}
-	install, err := config.Install(s.mountPathInstallConfig)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving install config - %s", err)
-	}
-	return &configPb.All{Global: global, Proxy: proxy, Install: install}, nil
 }
 
 func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {
