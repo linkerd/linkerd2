@@ -1904,6 +1904,39 @@ spec:
       - args:
         - proxy-injector
         - -log-level=info
+        - -controller-namespace=linkerd
+        - -cni-enabled=false
+        - -identity-trust-domain=test.trust.domain
+        - -identity-issuance-lifetime=86400s
+        - -identity-clock-skew-allowance=20s
+        - -identity-trust-anchors-pem=dGVzdC10cnVzdC1hbmNob3I=
+        - -identity-scheme=linkerd.io/tls
+        - -omit-webhook-side-effects=false
+        - -cluster-domain=cluster.local
+        - -proxy-image-name=gcr.io/linkerd-io/proxy
+        - -proxy-image-pull-policy=IfNotPresent
+        - -proxy-init-image=gcr.io/linkerd-io/proxy-init
+        - -proxy-init-image-pull-policy=IfNotPresent
+        - -control-port=4190
+        - -ignore-inbound-ports={"portRange":"222"}- -ignore-outbound-ports={"portRange":"111"}- -inbound-port=4143
+        - -admin-port=4191
+        - -outbound-port=4140
+        - -proxy-cpu-request=
+        - -proxy-cpu-limit=
+        - -proxy-memory-request=
+        - -proxy-memory-limit=
+        - -proxy-uid=2102
+        - -proxy-log-level=warn,linkerd=info
+        - -proxy-log-format=plain
+        - -disable-external-profiles=true
+        - -proxy-version=test-proxy-version
+        - -proxy-init-image-version=test-proxy-init-version
+        - -debug-image-name=gcr.io/linkerd-io/debug
+        - -debug-image-pull-policy=IfNotPresent
+        - -debug-image-version=test-debug-version
+        - -destination-get-networks=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+        - -outbound-connect-timeout=1000ms
+        - -inbound-connect-timeout=100ms
         image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1925,8 +1958,6 @@ spec:
         securityContext:
           runAsUser: 2103
         volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
@@ -2060,9 +2091,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-proxy-injector
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-tls

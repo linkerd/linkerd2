@@ -1684,6 +1684,39 @@ spec:
       - args:
         - proxy-injector
         - -log-level=info
+        - -controller-namespace=linkerd
+        - -cni-enabled=true
+        - -identity-trust-domain=cluster.local
+        - -identity-issuance-lifetime=24h0m0s
+        - -identity-clock-skew-allowance=20s
+        - -identity-trust-anchors-pem=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJZRENDQVFlZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQVlNUll3RkFZRFZRUURFdzFqYkhWemRHVnkKTG14dlkyRnNNQjRYRFRFNU1ETXdNekF4TlRrMU1sb1hEVEk1TURJeU9EQXlNRE0xTWxvd0dERVdNQlFHQTFVRQpBeE1OWTJ4MWMzUmxjaTVzYjJOaGJEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJBQ2hwQXQwCnh0Z085cWJWdEV0REs4ME42aUNMMkh0eWYya0l2Mm01UWtKMXkwVEZRaTVoVFZlM3d0c3BKOFlwWkYwcGwzNjQKNlRpWWVYQjh0T09oSUFDalFqQkFNQTRHQTFVZER3RUIvd1FFQXdJQkJqQWRCZ05WSFNVRUZqQVVCZ2dyQmdFRgpCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBS0JnZ3Foa2pPUFFRREFnTkhBREJFCkFpQlEvQUF3RjhrRzhWT21SU1VUUGFrU1NhL040bXFLMkhzWnVoUVhDbWlaSHdJZ1pFekk1RENrcFU3dzNTSXYKT0xPNFpzazFYckdaSEdzbXlpRXl2WUY5bHBZPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+        - -identity-scheme=linkerd.io/tls
+        - -omit-webhook-side-effects=false
+        - -cluster-domain=cluster.local
+        - -proxy-image-name=gcr.io/linkerd-io/proxy
+        - -proxy-image-pull-policy=IfNotPresent
+        - -proxy-init-image=gcr.io/linkerd-io/proxy-init
+        - -proxy-init-image-pull-policy=IfNotPresent
+        - -control-port=4190
+        - -ignore-inbound-ports=- -ignore-outbound-ports=- -inbound-port=4143
+        - -admin-port=4191
+        - -outbound-port=4140
+        - -proxy-cpu-request=
+        - -proxy-cpu-limit=
+        - -proxy-memory-request=
+        - -proxy-memory-limit=
+        - -proxy-uid=2102
+        - -proxy-log-level=warn,linkerd=info
+        - -proxy-log-format=plain
+        - -disable-external-profiles=true
+        - -proxy-version=install-proxy-version
+        - -proxy-init-image-version=v1.3.6
+        - -debug-image-name=gcr.io/linkerd-io/debug
+        - -debug-image-pull-policy=IfNotPresent
+        - -debug-image-version=install-debug-version
+        - -destination-get-networks=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+        - -outbound-connect-timeout=1000ms
+        - -inbound-connect-timeout=100ms
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1705,8 +1738,6 @@ spec:
         securityContext:
           runAsUser: 2103
         volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
@@ -1813,9 +1844,6 @@ spec:
           name: linkerd-identity-end-entity
       serviceAccountName: linkerd-proxy-injector
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-tls

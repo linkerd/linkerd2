@@ -998,6 +998,13 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+        resources:
+          limits:
+            cpu: "cpu-limit"
+            memory: "memory-limit"
+          requests:
+            cpu: "cpu-request"
+            memory: "memory-request"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1226,6 +1233,13 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+        resources:
+          limits:
+            cpu: "cpu-limit"
+            memory: "memory-limit"
+          requests:
+            cpu: "cpu-request"
+            memory: "memory-request"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1453,6 +1467,13 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+        resources:
+          limits:
+            cpu: "cpu-limit"
+            memory: "memory-limit"
+          requests:
+            cpu: "cpu-request"
+            memory: "memory-request"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1727,6 +1748,13 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+        resources:
+          limits:
+            cpu: "cpu-limit"
+            memory: "memory-limit"
+          requests:
+            cpu: "cpu-request"
+            memory: "memory-request"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1819,6 +1847,39 @@ spec:
       - args:
         - proxy-injector
         - -log-level=ControllerLogLevel
+        - -controller-namespace=Namespace
+        - -cni-enabled=false
+        - -identity-trust-domain=cluster.local
+        - -identity-issuance-lifetime=24h0m0s
+        - -identity-clock-skew-allowance=20s
+        - -identity-trust-anchors-pem=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJZRENDQVFlZ0F3SUJBZ0lCQVRBS0JnZ3Foa2pPUFFRREFqQVlNUll3RkFZRFZRUURFdzFqYkhWemRHVnkKTG14dlkyRnNNQjRYRFRFNU1ETXdNekF4TlRrMU1sb1hEVEk1TURJeU9EQXlNRE0xTWxvd0dERVdNQlFHQTFVRQpBeE1OWTJ4MWMzUmxjaTVzYjJOaGJEQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJBQ2hwQXQwCnh0Z085cWJWdEV0REs4ME42aUNMMkh0eWYya0l2Mm01UWtKMXkwVEZRaTVoVFZlM3d0c3BKOFlwWkYwcGwzNjQKNlRpWWVYQjh0T09oSUFDalFqQkFNQTRHQTFVZER3RUIvd1FFQXdJQkJqQWRCZ05WSFNVRUZqQVVCZ2dyQmdFRgpCUWNEQVFZSUt3WUJCUVVIQXdJd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBS0JnZ3Foa2pPUFFRREFnTkhBREJFCkFpQlEvQUF3RjhrRzhWT21SU1VUUGFrU1NhL040bXFLMkhzWnVoUVhDbWlaSHdJZ1pFekk1RENrcFU3dzNTSXYKT0xPNFpzazFYckdaSEdzbXlpRXl2WUY5bHBZPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+        - -identity-scheme=linkerd.io/tls
+        - -omit-webhook-side-effects=false
+        - -cluster-domain=cluster.local
+        - -proxy-image-name=ProxyImageName
+        - -proxy-image-pull-policy=ImagePullPolicy
+        - -proxy-init-image=ProxyInitImageName
+        - -proxy-init-image-pull-policy=ImagePullPolicy
+        - -control-port=4190
+        - -ignore-inbound-ports=- -ignore-outbound-ports=- -inbound-port=4143
+        - -admin-port=4191
+        - -outbound-port=4140
+        - -proxy-cpu-request=cpu-request
+        - -proxy-cpu-limit=cpu-limit
+        - -proxy-memory-request=memory-request
+        - -proxy-memory-limit=memory-limit
+        - -proxy-uid=2102
+        - -proxy-log-level=warn,linkerd=info
+        - -proxy-log-format=plain
+        - -disable-external-profiles=true
+        - -proxy-version=ProxyVersion
+        - -proxy-init-image-version=ProxyInitVersion
+        - -debug-image-name=DebugImageName
+        - -debug-image-pull-policy=DebugImagePullPolicy
+        - -debug-image-version=DebugVersion
+        - -destination-get-networks=DestinationGetNetworks
+        - -outbound-connect-timeout=
+        - -inbound-connect-timeout=
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:
@@ -1840,8 +1901,6 @@ spec:
         securityContext:
           runAsUser: 2103
         volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
@@ -1933,6 +1992,13 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+        resources:
+          limits:
+            cpu: "cpu-limit"
+            memory: "memory-limit"
+          requests:
+            cpu: "cpu-request"
+            memory: "memory-request"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1979,9 +2045,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-proxy-injector
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-tls
@@ -2181,6 +2244,13 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+        resources:
+          limits:
+            cpu: "cpu-limit"
+            memory: "memory-limit"
+          requests:
+            cpu: "cpu-request"
+            memory: "memory-request"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -2416,6 +2486,13 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+        resources:
+          limits:
+            cpu: "cpu-limit"
+            memory: "memory-limit"
+          requests:
+            cpu: "cpu-request"
+            memory: "memory-request"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -2746,6 +2823,13 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+        resources:
+          limits:
+            cpu: "cpu-limit"
+            memory: "memory-limit"
+          requests:
+            cpu: "cpu-request"
+            memory: "memory-request"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -3178,6 +3262,13 @@ spec:
             path: /ready
             port: 4191
           initialDelaySeconds: 2
+        resources:
+          limits:
+            cpu: "cpu-limit"
+            memory: "memory-limit"
+          requests:
+            cpu: "cpu-request"
+            memory: "memory-request"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true

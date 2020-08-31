@@ -190,7 +190,7 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 				continue
 			}
 
-			if id == "Deployment/linkerd-identity" {
+			if id == "Deployment/linkerd-identity" || id == "Deployment/linkerd-proxy-injector" {
 				// skip checking identity as `identity-trust-anchor-pem` is overridden, which is passed as a CLI flag
 				continue
 			}

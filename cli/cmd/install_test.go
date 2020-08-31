@@ -96,6 +96,16 @@ func TestRender(t *testing.T) {
 				},
 				LogLevel:  "warn,linkerd=info",
 				LogFormat: "plain",
+				Resources: &charts.Resources{
+					CPU: charts.Constraints{
+						Limit: "cpu-limit",
+						Request: "cpu-request",
+					},
+					Memory: charts.Constraints{
+						Limit: "memory-limit",
+						Request: "memory-request",
+					},
+				},
 				Ports: &charts.Ports{
 					Admin:    4191,
 					Control:  4190,
@@ -131,6 +141,13 @@ func TestRender(t *testing.T) {
 			Global:  "GlobalConfig",
 			Proxy:   "ProxyConfig",
 			Install: "InstallConfig",
+		},
+		DebugContainer: &charts.DebugContainer{
+			Image: &charts.Image{
+				Name:       "DebugImageName",
+				PullPolicy: "DebugImagePullPolicy",
+				Version:    "DebugVersion",
+			},
 		},
 		ControllerReplicas: 1,
 		ProxyInjector:      defaultValues.ProxyInjector,
