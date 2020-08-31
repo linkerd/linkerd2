@@ -1853,8 +1853,8 @@ spec:
         - -proxy-init-image-name=gcr.io/linkerd-io/proxy-init
         - -proxy-init-image-pull-policy=IfNotPresent
         - -control-port=4190
-        - -ignore-inbound-ports={"portRange":"22"},{"portRange":"8100-8102"}
-        - -ignore-outbound-ports={"portRange":"5432"}
+        - -ignore-inbound-ports=22,8100-8102
+        - -ignore-outbound-ports=5432
         - -inbound-port=4143
         - -admin-port=4191
         - -outbound-port=4140
