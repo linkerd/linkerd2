@@ -1848,9 +1848,9 @@ spec:
         - -identity-scheme=linkerd.io/tls
         - -omit-webhook-side-effects=false
         - -cluster-domain=cluster.local
-        - -proxy-image-name=gcr.io/linkerd-io/proxy
+        - -proxy-image=gcr.io/linkerd-io/proxy
         - -proxy-image-pull-policy=IfNotPresent
-        - -proxy-init-image-name=gcr.io/linkerd-io/proxy-init
+        - -proxy-init-image=gcr.io/linkerd-io/proxy-init
         - -proxy-init-image-pull-policy=IfNotPresent
         - -control-port=4190
         - -ignore-inbound-ports=
@@ -1868,7 +1868,7 @@ spec:
         - -disable-external-profiles=true
         - -proxy-version=install-proxy-version
         - -proxy-init-image-version=v1.3.6
-        - -debug-image-name=gcr.io/linkerd-io/debug
+        - -debug-image=gcr.io/linkerd-io/debug
         - -debug-image-pull-policy=IfNotPresent
         - -debug-image-version=install-debug-version
         - -destination-get-networks=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16

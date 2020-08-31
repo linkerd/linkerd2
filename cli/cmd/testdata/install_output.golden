@@ -1856,9 +1856,9 @@ spec:
         - -identity-scheme=linkerd.io/tls
         - -omit-webhook-side-effects=false
         - -cluster-domain=cluster.local
-        - -proxy-image-name=ProxyImageName
+        - -proxy-image=ProxyImageName
         - -proxy-image-pull-policy=ImagePullPolicy
-        - -proxy-init-image-name=ProxyInitImageName
+        - -proxy-init-image=ProxyInitImageName
         - -proxy-init-image-pull-policy=ImagePullPolicy
         - -control-port=4190
         - -ignore-inbound-ports=
@@ -1876,7 +1876,7 @@ spec:
         - -disable-external-profiles=true
         - -proxy-version=ProxyVersion
         - -proxy-init-image-version=ProxyInitVersion
-        - -debug-image-name=DebugImageName
+        - -debug-image=DebugImageName
         - -debug-image-pull-policy=DebugImagePullPolicy
         - -debug-image-version=DebugVersion
         - -destination-get-networks=DestinationGetNetworks
