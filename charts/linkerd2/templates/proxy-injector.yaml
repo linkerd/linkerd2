@@ -66,11 +66,11 @@ spec:
         - -cluster-domain={{.Values.global.clusterDomain}}
         - -proxy-image-name={{.Values.global.proxy.image.name}}
         - -proxy-image-pull-policy={{.Values.global.proxy.image.pullPolicy}}
-        - -proxy-init-image={{.Values.global.proxyInit.image.name}}
+        - -proxy-init-image-name={{.Values.global.proxyInit.image.name}}
         - -proxy-init-image-pull-policy={{.Values.global.proxyInit.image.pullPolicy}}
         - -control-port={{.Values.global.proxy.ports.control}}
-        - -ignore-inbound-ports={{- include "partials.splitStringListToPortRanges" .Values.global.proxyInit.ignoreInboundPorts -}}
-        - -ignore-outbound-ports={{- include "partials.splitStringListToPortRanges" .Values.global.proxyInit.ignoreOutboundPorts -}}
+        - -ignore-inbound-ports={{- include "partials.splitStringListToPortRanges" .Values.global.proxyInit.ignoreInboundPorts }}
+        - -ignore-outbound-ports={{- include "partials.splitStringListToPortRanges" .Values.global.proxyInit.ignoreOutboundPorts }}
         - -inbound-port={{.Values.global.proxy.ports.inbound}}
         - -admin-port={{.Values.global.proxy.ports.admin}}
         - -outbound-port={{.Values.global.proxy.ports.outbound}}

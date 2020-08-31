@@ -3,6 +3,7 @@ package proxyinjector
 import (
 	"encoding/base64"
 	"flag"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -39,21 +40,24 @@ func Main(args []string) {
 	adminPort := cmd.Uint64("admin-port", 0, "")
 	outboundPort := cmd.Uint64("outbound-port", 0, "")
 	proxyUID := cmd.Int64("proxy-uid", 0, "")
-	logLevel := cmd.String("log-level", "", "")
+	proxyLogLevel := cmd.String("proxy-log-level", "", "")
 	disableExternalProfiles := cmd.Bool("disable-external-profiles", false, "")
 	proxyVersion := cmd.String("proxy-version", "", "")
 	proxyInitImageVersion := cmd.String("proxy-init-image-version", "", "")
 	debugImageName := cmd.String("debug-image-name", "", "")
-	debugImagePullPolicy := cmd.String("debug-image", "", "")
+	debugImagePullPolicy := cmd.String("debug-image-pull-policy", "", "")
 	debugImageVersion := cmd.String("debug-image-version", "", "")
 	destinationGetNetworks := cmd.String("destination-get-networks", "", "")
-	logFormat := cmd.String("log-format", "", "")
+	proxyLogFormat := cmd.String("proxy-log-format", "", "")
 	outBoundConnectTimeout := cmd.String("outbound-connect-timeout", "", "")
 	inboundConnectTimeOut := cmd.String("inbound-connect-timeout", "", "")
 	proxyCPURequest := cmd.String("proxy-cpu-request", "", "")
 	proxyCPULimit := cmd.String("proxy-cpu-limit", "", "")
 	proxyMemoryRequest := cmd.String("proxy-memory-request", "", "")
 	proxyMemoryLimit := cmd.String("proxy-memory-limit", "", "")
+	metricsAddr := cmd.String("metrics-addr", fmt.Sprintf(":%d", 9995), "address to serve scrapable metrics on")
+	addr := cmd.String("addr", ":8443", "address to serve on")
+	kubeconfig := cmd.String("kubeconfig", "", "path to kubeconfig")
 
 	flags.ConfigureAndParse(cmd, args)
 
@@ -72,15 +76,13 @@ func Main(args []string) {
 		log.Fatalf("could not decode identity trust anchors PEM: %s", err.Error())
 	}
 
-	identityTrustAnchorPEM := string(rawPEM)
-
 	global := config.Global{
 		LinkerdNamespace: *controllerNamespace,
 		CniEnabled:       *cniEnabled,
 		ClusterDomain:    *clusterDomain,
 		IdentityContext: &config.IdentityContext{
 			TrustDomain:        *trustDomain,
-			TrustAnchorsPem:    identityTrustAnchorPEM,
+			TrustAnchorsPem:    string(rawPEM),
 			Scheme:             *identityScheme,
 			IssuanceLifetime:   ptypes.DurationProto(identityIssuanceLifeTimeDuration),
 			ClockSkewAllowance: ptypes.DurationProto(identityClockSkewAllowanceDuration),
@@ -110,7 +112,7 @@ func Main(args []string) {
 			LimitMemory:   *proxyMemoryLimit,
 		},
 		ProxyUid:                *proxyUID,
-		LogLevel:                &config.LogLevel{Level: *logLevel},
+		LogLevel:                &config.LogLevel{Level: *proxyLogLevel},
 		DisableExternalProfiles: *disableExternalProfiles,
 		ProxyVersion:            *proxyVersion,
 		ProxyInitImageVersion:   *proxyInitImageVersion,
@@ -120,7 +122,7 @@ func Main(args []string) {
 		},
 		DebugImageVersion:      *debugImageVersion,
 		DestinationGetNetworks: *destinationGetNetworks,
-		LogFormat:              *logFormat,
+		LogFormat:              *proxyLogFormat,
 		OutboundConnectTimeout: *outBoundConnectTimeout,
 		InboundConnectTimeout:  *inboundConnectTimeOut,
 	}
@@ -128,11 +130,11 @@ func Main(args []string) {
 	injection := injector.NewInjection(&global, &proxy)
 	webhook.Launch(
 		[]k8s.APIResource{k8s.NS, k8s.Deploy, k8s.RC, k8s.RS, k8s.Job, k8s.DS, k8s.SS, k8s.Pod, k8s.CJ},
-		9995,
 		injection.Inject,
 		"linkerd-proxy-injector",
-		"proxy-injector",
-		args,
+		*kubeconfig,
+		*addr,
+		*metricsAddr,
 	)
 }
 
