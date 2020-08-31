@@ -31,7 +31,7 @@ func Main(args []string) {
 	tlsCertPath := cmd.String("tls-cert", pkgK8s.MountPathTLSCrtPEM, "path to TLS Cert PEM")
 	tlsKeyPath := cmd.String("tls-key", pkgK8s.MountPathTLSKeyPEM, "path to TLS Key PEM")
 	disableCommonNames := cmd.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
-	trustDomain := cmd.String("trust-domain", defaultDomain, "trust domain of identity")
+	trustDomain := cmd.String("trust-domain", defaultDomain, "configures the name suffix used for identities")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 

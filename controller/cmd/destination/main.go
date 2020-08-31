@@ -27,8 +27,8 @@ func Main(args []string) {
 	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", false, "Enable the usage of EndpointSlice informers and resources")
-	trustDomain := cmd.String("trust-domain", "cluster.local", "trust domain of identity")
-	clusterDomain := cmd.String("cluster-domain", "cluster.local", "cluster domain of the cluster")
+	trustDomain := cmd.String("trust-domain", "cluster.local", "configures the name suffix used for identities")
+	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
 	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)

@@ -40,12 +40,12 @@ func Main(args []string) {
 	addr := cmd.String("addr", ":8080", "address to serve on")
 	adminAddr := cmd.String("admin-addr", ":9990", "address of HTTP admin server")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
-	controllerNS := cmd.String("controller-namespace", "", "namespace of the linkerd control plane")
+	controllerNS := cmd.String("controller-namespace", "", "namespace in which Linkerd is installed")
 	identityScheme := cmd.String("identity-scheme", "", "scheme of the identity")
-	trustDomain := cmd.String("identity-trust-domain", "", "trust domain of identity")
-	encodedIdentityTrustAnchorPEM := cmd.String("identity-trust-anchors-pem", "", "Base64 encoded trust anchor certificate")
-	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "")
-	identityClockSkewAllowance := cmd.String("identity-clock-skew-allowance", "", "")
+	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
+	encodedIdentityTrustAnchorPEM := cmd.String("identity-trust-anchors-pem", "", "Base64 encoded trust anchors certificate")
+	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "the amount of time for which the Identity issuer should certify identity")
+	identityClockSkewAllowance := cmd.String("identity-clock-skew-allowance", "", "the amount of time to allow for clock skew within a Linkerd cluster")
 
 	issuerPath := cmd.String("issuer",
 		"/var/run/linkerd/identity/issuer",

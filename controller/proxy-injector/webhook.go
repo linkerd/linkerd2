@@ -30,7 +30,7 @@ type Injection struct {
 	proxy  *pb.Proxy
 }
 
-// NewInjection returns a Injection obj with the provid confg
+// NewInjection returns a Injection object with the provided configuration
 func NewInjection(global *pb.Global, proxy *pb.Proxy) *Injection {
 	return &Injection{
 		global: global,

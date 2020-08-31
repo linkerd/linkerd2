@@ -29,7 +29,7 @@ func Main(args []string) {
 	destinationAPIAddr := cmd.String("destination-addr", "127.0.0.1:8086", "address of destination service")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
-	clusterDomain := cmd.String("cluster-domain", "cluster.local", "cluster domain of the cluster")
+	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 

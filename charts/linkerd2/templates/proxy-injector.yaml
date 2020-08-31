@@ -64,9 +64,9 @@ spec:
         - -identity-scheme={{.Values.identity.issuer.scheme}}
         - -omit-webhook-side-effects={{.Values.omitWebhookSideEffects}}
         - -cluster-domain={{.Values.global.clusterDomain}}
-        - -proxy-image-name={{.Values.global.proxy.image.name}}
+        - -proxy-image={{.Values.global.proxy.image.name}}
         - -proxy-image-pull-policy={{.Values.global.proxy.image.pullPolicy}}
-        - -proxy-init-image-name={{.Values.global.proxyInit.image.name}}
+        - -proxy-init-image={{.Values.global.proxyInit.image.name}}
         - -proxy-init-image-pull-policy={{.Values.global.proxyInit.image.pullPolicy}}
         - -control-port={{.Values.global.proxy.ports.control}}
         - -ignore-inbound-ports={{.Values.global.proxyInit.ignoreInboundPorts}}
@@ -84,7 +84,7 @@ spec:
         - -disable-external-profiles={{not .Values.global.proxy.enableExternalProfiles}}
         - -proxy-version={{.Values.global.proxy.image.version}}
         - -proxy-init-image-version={{.Values.global.proxyInit.image.version}}
-        - -debug-image-name={{.Values.debugContainer.image.name}}
+        - -debug-image={{.Values.debugContainer.image.name}}
         - -debug-image-pull-policy={{.Values.debugContainer.image.pullPolicy}}
         - -debug-image-version={{.Values.debugContainer.image.version}}
         - -destination-get-networks={{.Values.global.proxy.destinationGetNetworks}}

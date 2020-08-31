@@ -34,7 +34,7 @@ func main() {
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	enforcedHost := cmd.String("enforced-host", "", "regexp describing the allowed values for the Host header; protects from DNS-rebinding attacks")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
-	clusterDomain := cmd.String("cluster-domain", "cluster.local", "cluster domain of the cluster")
+	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
