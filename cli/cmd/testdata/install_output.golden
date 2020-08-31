@@ -1858,10 +1858,12 @@ spec:
         - -cluster-domain=cluster.local
         - -proxy-image-name=ProxyImageName
         - -proxy-image-pull-policy=ImagePullPolicy
-        - -proxy-init-image=ProxyInitImageName
+        - -proxy-init-image-name=ProxyInitImageName
         - -proxy-init-image-pull-policy=ImagePullPolicy
         - -control-port=4190
-        - -ignore-inbound-ports=- -ignore-outbound-ports=- -inbound-port=4143
+        - -ignore-inbound-ports=
+        - -ignore-outbound-ports=
+        - -inbound-port=4143
         - -admin-port=4191
         - -outbound-port=4140
         - -proxy-cpu-request=cpu-request

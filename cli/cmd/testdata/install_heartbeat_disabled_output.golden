@@ -1761,10 +1761,12 @@ spec:
         - -cluster-domain=cluster.local
         - -proxy-image-name=gcr.io/linkerd-io/proxy
         - -proxy-image-pull-policy=IfNotPresent
-        - -proxy-init-image=gcr.io/linkerd-io/proxy-init
+        - -proxy-init-image-name=gcr.io/linkerd-io/proxy-init
         - -proxy-init-image-pull-policy=IfNotPresent
         - -control-port=4190
-        - -ignore-inbound-ports=- -ignore-outbound-ports=- -inbound-port=4143
+        - -ignore-inbound-ports=
+        - -ignore-outbound-ports=
+        - -inbound-port=4143
         - -admin-port=4191
         - -outbound-port=4140
         - -proxy-cpu-request=
