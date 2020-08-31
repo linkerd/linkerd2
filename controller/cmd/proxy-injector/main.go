@@ -23,7 +23,7 @@ func Main(args []string) {
 	controllerNamespace := cmd.String("controller-namespace", "", "namespace in which Linkerd is installed")
 	cniEnabled := cmd.Bool("cni-enabled", false, "network ranges for which the Linkerd proxy does destination lookups by IP address")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
-	identityScheme := cmd.String("identity-scheme", "", "scheme of the identity")
+	identityScheme := cmd.String("identity-scheme", "", "scheme used for the identity issuer secret format")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	encodedIdentityTrustAnchorPEM := cmd.String("identity-trust-anchors-pem", "", "base64 encoded trust anchors certificate")
 	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "the amount of time for which the Identity issuer should certify identity")

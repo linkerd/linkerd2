@@ -27,8 +27,8 @@ func Main(args []string) {
 	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", false, "Enable the usage of EndpointSlice informers and resources")
-	trustDomain := cmd.String("trust-domain", "cluster.local", "configures the name suffix used for identities")
-	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
+	trustDomain := cmd.String("trust-domain", "", "configures the name suffix used for identities")
+	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
@@ -46,13 +46,15 @@ func Main(args []string) {
 	if *disableIdentity {
 		log.Info("Identity is disabled")
 	} else {
-		if err != nil || *trustDomain == "" {
-			log.Warnf("failed to load trust domain from global config: [%s] (falling back to %s)", err, *trustDomain)
+		if *trustDomain == "" {
+			*trustDomain = "cluster.local"
+			log.Warnf(" expected trust domain through args (falling back to %s)", *trustDomain)
 		}
 	}
 
 	if err != nil || *clusterDomain == "" {
-		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, *clusterDomain)
+		*clusterDomain = "cluster.local"
+		log.Warnf("expected cluster domain through args (falling back to %s)", *clusterDomain)
 	}
 
 	if *traceCollector != "" {

@@ -29,10 +29,6 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
-// TODO watch trustAnchorsPath for changes
-// TODO watch issuerPath for changes
-// TODO restrict servicetoken audiences (and lifetimes)
-
 // Main executes the identity subcommand
 func Main(args []string) {
 	cmd := flag.NewFlagSet("identity", flag.ExitOnError)
@@ -41,7 +37,7 @@ func Main(args []string) {
 	adminAddr := cmd.String("admin-addr", ":9990", "address of HTTP admin server")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	controllerNS := cmd.String("controller-namespace", "", "namespace in which Linkerd is installed")
-	identityScheme := cmd.String("identity-scheme", "", "scheme of the identity")
+	identityScheme := cmd.String("identity-scheme", "", "scheme used for the identity issuer secret format")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
 	encodedIdentityTrustAnchorPEM := cmd.String("identity-trust-anchors-pem", "", "Base64 encoded trust anchors certificate")
 	identityIssuanceLifeTime := cmd.String("identity-issuance-lifetime", "", "the amount of time for which the Identity issuer should certify identity")
