@@ -98,11 +98,11 @@ func TestRender(t *testing.T) {
 				LogFormat: "plain",
 				Resources: &charts.Resources{
 					CPU: charts.Constraints{
-						Limit: "cpu-limit",
+						Limit:   "cpu-limit",
 						Request: "cpu-request",
 					},
 					Memory: charts.Constraints{
-						Limit: "memory-limit",
+						Limit:   "memory-limit",
 						Request: "memory-request",
 					},
 				},
