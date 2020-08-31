@@ -191,7 +191,9 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 			}
 
 			if id == "Deployment/linkerd-identity" || id == "Deployment/linkerd-proxy-injector" {
-				// skip checking identity as `identity-trust-anchor-pem` is overridden, which is passed as a CLI flag
+				if !pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args", "*"}) || strings.TrimPrefix(diff.b.(string), "-identity-trust-anchors-pem=") != issuerCerts.ca {
+					t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+				}
 				continue
 			}
 			if id == "Secret/linkerd-identity-issuer" {
