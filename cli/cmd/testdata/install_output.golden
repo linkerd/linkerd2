@@ -1875,6 +1875,9 @@ spec:
         - -debug-image-pull-policy=DebugImagePullPolicy
         - -debug-image-version=DebugVersion
         - -destination-get-networks=DestinationGetNetworks
+        - -omit-webhook-side-effects=false
+        - -cni-enabled=false
+        - -enable-external-profiles=false
         image: ControllerImage:ControllerImageVersion
         imagePullPolicy: ImagePullPolicy
         livenessProbe:

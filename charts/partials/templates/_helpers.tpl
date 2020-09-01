@@ -61,7 +61,8 @@ For example "11,22,55" will become{"portRange":11},{"portRange":22},
 {{- end -}}
 
 {{/*
-Returns an arg list, only if the field is not empty
+Returns an arg, only if the field value is not empty.
+This has to be used only with strings, as false is also considered as empty.
 */}}
 {{- define "partials.CheckArgIfEmpty" -}}
   {{- $field := index . 0 -}}

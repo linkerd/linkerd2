@@ -1685,7 +1685,6 @@ spec:
         - proxy-injector
         - -log-level=info
         - -controller-namespace=linkerd
-        - -cni-enabled=true
         - -identity-trust-domain=cluster.local
         - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
@@ -1711,6 +1710,9 @@ spec:
         - -destination-get-networks=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
         - -outbound-connect-timeout=1000ms
         - -inbound-connect-timeout=100ms
+        - -omit-webhook-side-effects=false
+        - -cni-enabled=true
+        - -enable-external-profiles=false
         image: gcr.io/linkerd-io/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

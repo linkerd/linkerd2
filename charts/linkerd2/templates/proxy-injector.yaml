@@ -56,13 +56,11 @@ spec:
         - proxy-injector
         {{- tuple "log-level" .Values.global.controllerLogLevel | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "controller-namespace" .Values.global.namespace | include "partials.CheckArgIfEmpty" -}}
-        {{- tuple "cni-enabled" .Values.global.cniEnabled | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "identity-trust-domain" .Values.global.identityTrustDomain | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "identity-issuance-lifetime" .Values.identity.issuer.issuanceLifetime | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "identity-clock-skew-allowance" .Values.identity.issuer.clockSkewAllowance | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "identity-trust-anchors-pem" (b64enc .Values.global.identityTrustAnchorsPEM) | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "identity-scheme" .Values.identity.issuer.scheme | include "partials.CheckArgIfEmpty" -}}
-        {{- tuple "omit-webhook-side-effects" .Values.omitWebhookSideEffects | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "cluster-domain" .Values.global.clusterDomain | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "proxy-image" .Values.global.proxy.image.name | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "proxy-image-pull-policy" .Values.global.proxy.image.pullPolicy | include "partials.CheckArgIfEmpty" -}}
@@ -81,7 +79,6 @@ spec:
         {{- tuple "proxy-uid" .Values.global.proxy.uid | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "proxy-log-level" .Values.global.proxy.logLevel | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "proxy-log-format" .Values.global.proxy.logFormat | include "partials.CheckArgIfEmpty" -}}
-        {{- tuple "enable-external-profiles" .Values.global.proxy.enableExternalProfiles | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "proxy-version" .Values.global.proxy.image.version | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "proxy-init-image-version" .Values.global.proxyInit.image.version | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "debug-image" .Values.debugContainer.image.name | include "partials.CheckArgIfEmpty" -}}
@@ -90,6 +87,9 @@ spec:
         {{- tuple "destination-get-networks" .Values.global.proxy.destinationGetNetworks | include "partials.CheckArgIfEmpty" -}}
         {{- tuple "outbound-connect-timeout" .Values.global.proxy.outboundConnectTimeout| include "partials.CheckArgIfEmpty" -}}
         {{- tuple "inbound-connect-timeout" .Values.global.proxy.inboundConnectTimeout | include "partials.CheckArgIfEmpty"}}
+        - -omit-webhook-side-effects={{.Values.omitWebhookSideEffects}}
+        - -cni-enabled={{.Values.global.cniEnabled}}
+        - -enable-external-profiles={{.Values.global.proxy.enableExternalProfiles}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
