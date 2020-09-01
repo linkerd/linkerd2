@@ -75,10 +75,10 @@ spec:
         - -addr=:8086
         - -controller-namespace={{.Values.global.namespace}}
         - -enable-h2-upgrade={{.Values.enableH2Upgrade}}
-        - -trust-domain={{.Values.global.identityTrustDomain}}
-        - -cluster-domain={{.Values.global.clusterDomain}}
         - -log-level={{.Values.global.controllerLogLevel}}
         - -enable-endpoint-slices={{.Values.global.enableEndpointSlices}}
+        {{- tuple "cluster-domain" .Values.global.clusterDomain | include "partials.CheckArgIfEmpty" -}}
+        {{- tuple "identity-trust-domain" .Values.global.identityTrustDomain | include "partials.CheckArgIfEmpty" -}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}

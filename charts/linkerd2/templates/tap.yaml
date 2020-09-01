@@ -79,8 +79,8 @@ spec:
       - args:
         - tap
         - -controller-namespace={{.Values.global.namespace}}
-        - -trust-domain={{.Values.global.identityTrustDomain}}
         - -log-level={{.Values.global.controllerLogLevel}}
+        {{- tuple "identity-trust-domain" .Values.global.identityTrustDomain | include "partials.CheckArgIfEmpty" -}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}

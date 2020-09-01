@@ -66,7 +66,7 @@ spec:
       containers:
       - args:
         - -api-addr=linkerd-controller-api.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8085
-        - -cluster-domain={{.Values.global.clusterDomain}}
+        {{- tuple "cluster-domain" .Values.global.clusterDomain | include "partials.CheckArgIfEmpty" -}}
         {{- if .Values.global.grafanaUrl }}
         - -grafana-addr={{.Values.global.grafanaUrl}}
         {{- else if .Values.grafana.enabled }}
