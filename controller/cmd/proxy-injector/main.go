@@ -21,7 +21,7 @@ func Main(args []string) {
 
 	cmd := flag.NewFlagSet("proxy-injector", flag.ExitOnError)
 	controllerNamespace := cmd.String("controller-namespace", "", "namespace in which Linkerd is installed")
-	cniEnabled := cmd.Bool("cni-enabled", false, "network ranges for which the Linkerd proxy does destination lookups by IP address")
+	cniEnabled := cmd.Bool("cni-enabled", false, "enabling this omits the the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed")
 	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 	identityScheme := cmd.String("identity-scheme", "", "scheme used for the identity issuer secret format")
 	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
@@ -49,7 +49,7 @@ func Main(args []string) {
 	debugImageVersion := cmd.String("debug-image-version", "", "linkerd debug container image version")
 	destinationGetNetworks := cmd.String("destination-get-networks", "", "network ranges for which the Linkerd proxy does destination lookups by IP address")
 	proxyLogFormat := cmd.String("proxy-log-format", "", "log format (`plain` or `json`) for the proxy")
-	outBoundConnectTimeout := cmd.String("outbound-connect-timeout", "", "maximum time allowed for the proxy to establish an outbound TCP connection")
+	outboundConnectTimeout := cmd.String("outbound-connect-timeout", "", "maximum time allowed for the proxy to establish an outbound TCP connection")
 	inboundConnectTimeOut := cmd.String("inbound-connect-timeout", "", "maximum time allowed for the proxy to establish an inbound TCP connection")
 	proxyCPURequest := cmd.String("proxy-cpu-request", "", "amount of CPU units that the proxy sidecar requests")
 	proxyCPULimit := cmd.String("proxy-cpu-limit", "", "maximum amount of CPU units that the proxy sidecar can use")
@@ -123,7 +123,7 @@ func Main(args []string) {
 		DebugImageVersion:      *debugImageVersion,
 		DestinationGetNetworks: *destinationGetNetworks,
 		LogFormat:              *proxyLogFormat,
-		OutboundConnectTimeout: *outBoundConnectTimeout,
+		OutboundConnectTimeout: *outboundConnectTimeout,
 		InboundConnectTimeout:  *inboundConnectTimeOut,
 	}
 

@@ -52,7 +52,7 @@ func Main(args []string) {
 		}
 	}
 
-	if err != nil || *clusterDomain == "" {
+	if *clusterDomain == "" {
 		*clusterDomain = "cluster.local"
 		log.Warnf("expected cluster domain through args (falling back to %s)", *clusterDomain)
 	}
