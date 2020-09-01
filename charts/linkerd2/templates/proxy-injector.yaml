@@ -81,7 +81,7 @@ spec:
         - -proxy-uid={{.Values.global.proxy.uid}}
         - -proxy-log-level={{.Values.global.proxy.logLevel}}
         - -proxy-log-format={{.Values.global.proxy.logFormat}}
-        - -disable-external-profiles={{not .Values.global.proxy.enableExternalProfiles}}
+        - -enable-external-profiles={{.Values.global.proxy.enableExternalProfiles}}
         - -proxy-version={{.Values.global.proxy.image.version}}
         - -proxy-init-image-version={{.Values.global.proxyInit.image.version}}
         - -debug-image={{.Values.debugContainer.image.name}}

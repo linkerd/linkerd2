@@ -41,7 +41,7 @@ func Main(args []string) {
 	outboundPort := cmd.Uint64("outbound-port", 0, "proxy port to use for outbound traffic")
 	proxyUID := cmd.Int64("proxy-uid", 0, "run the proxy under this user ID")
 	proxyLogLevel := cmd.String("proxy-log-level", "", "log level for the proxy")
-	disableExternalProfiles := cmd.Bool("disable-external-profiles", false, "disable service profiles for non-Kubernetes services")
+	enableExternalProfiles := cmd.Bool("enable-external-profiles", false, "disable service profiles for non-Kubernetes services")
 	proxyVersion := cmd.String("proxy-version", "", "tag to be used for the Linkerd proxy images")
 	proxyInitImageVersion := cmd.String("proxy-init-image-version", "", "linkerd init container image version")
 	debugImageName := cmd.String("debug-image", "", "linkerd debug container image name")
@@ -113,7 +113,7 @@ func Main(args []string) {
 		},
 		ProxyUid:                *proxyUID,
 		LogLevel:                &config.LogLevel{Level: *proxyLogLevel},
-		DisableExternalProfiles: *disableExternalProfiles,
+		DisableExternalProfiles: !*enableExternalProfiles,
 		ProxyVersion:            *proxyVersion,
 		ProxyInitImageVersion:   *proxyInitImageVersion,
 		DebugImage: &config.Image{
