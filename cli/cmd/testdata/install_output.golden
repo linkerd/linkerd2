@@ -1873,7 +1873,7 @@ spec:
         - -proxy-uid=2102
         - -proxy-log-level=warn,linkerd=info
         - -proxy-log-format=plain
-        - -disable-external-profiles=true
+        - -enable-external-profiles=false
         - -proxy-version=ProxyVersion
         - -proxy-init-image-version=ProxyInitVersion
         - -debug-image=DebugImageName

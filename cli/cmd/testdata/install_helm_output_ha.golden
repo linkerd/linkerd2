@@ -2081,7 +2081,7 @@ spec:
         - -proxy-uid=2102
         - -proxy-log-level=warn,linkerd=info
         - -proxy-log-format=plain
-        - -disable-external-profiles=true
+        - -enable-external-profiles=false
         - -proxy-version=test-proxy-version
         - -proxy-init-image-version=test-proxy-init-version
         - -debug-image=gcr.io/linkerd-io/debug

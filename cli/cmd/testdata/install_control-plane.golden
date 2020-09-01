@@ -1077,7 +1077,7 @@ spec:
         - -proxy-uid=2102
         - -proxy-log-level=warn,linkerd=info
         - -proxy-log-format=plain
-        - -disable-external-profiles=true
+        - -enable-external-profiles=false
         - -proxy-version=install-proxy-version
         - -proxy-init-image-version=v1.3.6
         - -debug-image=gcr.io/linkerd-io/debug
