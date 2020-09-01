@@ -41,6 +41,9 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestTracing(t *testing.T) {
+	if os.Getenv("RUN_ARM_TEST") != "" {
+		t.Skip("Skipped. Jaeger & Open Census images does not support ARM yet")
+	}
 
 	// Tracing Components
 	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/tracing.yaml")

@@ -41,7 +41,8 @@ metadata:
     {{.Values.global.controllerComponentLabel}}: sp-validator
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 ---
-{{- $ca := genCA (printf "linkerd-sp-validator.%s.svc" .Values.global.namespace) 365 }}
+{{- $host := printf "linkerd-sp-validator.%s.svc" .Values.global.namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.profileValidator.externalSecret) }}
 kind: Secret
 apiVersion: v1
