@@ -508,11 +508,17 @@ func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOption
 }
 
 func fetchK8sTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+	webhookSecretNameStr := webhookK8sSecretName(webhook)
+
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
-		Get(webhookK8sSecretName(webhook), metav1.GetOptions{})
+		Get(webhookSecretNameStr, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
+	}
+
+	if secret.Data == nil || secret.Data["tls.key"] == nil || secret.Data["tls.crt"] == nil {
+		return nil, fmt.Errorf("TLS Secret %s is missing data fields (data.tls.key and data.tls.crt expected)", webhookSecretNameStr)
 	}
 
 	value := &charts.TLS{
