@@ -31,7 +31,17 @@ var (
 
 	helmTLSCerts *tls.CA
 
-	linkerdSvcs = []string{
+	linkerdSvcStable = []string{
+		"linkerd-controller-api",
+		"linkerd-dst",
+		"linkerd-grafana",
+		"linkerd-identity",
+		"linkerd-prometheus",
+		"linkerd-web",
+		"linkerd-tap",
+	}
+
+	linkerdSvcEdge = []string{
 		"linkerd-controller-api",
 		"linkerd-dst",
 		"linkerd-dst-headless",
@@ -352,7 +362,11 @@ func TestInstallHelm(t *testing.T) {
 }
 
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
-	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), linkerdSvcs, testutil.LinkerdDeployReplicas, TestHelper, t)
+	expectedServices := linkerdSvcEdge
+	if TestHelper.UpgradeHelmFromVersion() != "" {
+		expectedServices = linkerdSvcStable
+	}
+	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), expectedServices, testutil.LinkerdDeployReplicas, TestHelper, t)
 }
 
 func TestInstallMulticluster(t *testing.T) {
