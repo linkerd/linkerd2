@@ -34,8 +34,10 @@ var (
 	linkerdSvcs = []string{
 		"linkerd-controller-api",
 		"linkerd-dst",
+		"linkerd-dst-headless",
 		"linkerd-grafana",
 		"linkerd-identity",
+		"linkerd-identity-headless",
 		"linkerd-prometheus",
 		"linkerd-web",
 		"linkerd-tap",
