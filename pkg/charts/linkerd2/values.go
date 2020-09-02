@@ -260,6 +260,26 @@ func NewValues(ha bool) (*Values, error) {
 	return v, nil
 }
 
+// MergeRaw takes two marshalled data's and performs a merge
+// by converting them into a map[string]interface{}
+func MergeRaw(a, b []byte) ([]byte, error) {
+	var aMap, bMap chartutil.Values
+
+	err := yaml.Unmarshal(a, &aMap)
+	if err != nil {
+		return nil, err
+	}
+
+	err = yaml.Unmarshal(b, &bMap)
+	if err != nil {
+		return nil, err
+	}
+
+	aMap.MergeInto(bMap)
+	return yaml.Marshal(aMap)
+
+}
+
 // readDefaults read all the default variables from the values.yaml file.
 // chartDir is the root directory of the Helm chart where values.yaml is.
 func readDefaults(chartDir string, ha bool) (*Values, error) {

@@ -612,7 +612,7 @@ func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Val
 		}
 
 		// Merge Add-On Values with Values
-		finalValues, err := mergeRaw(rawValues, addOnValuesRaw)
+		finalValues, err := l5dcharts.MergeRaw(rawValues, addOnValuesRaw)
 		if err != nil {
 			return err
 		}
@@ -624,24 +624,6 @@ func (options *installOptions) UpdateAddOnValuesFromConfig(values *l5dcharts.Val
 	}
 
 	return nil
-}
-
-func mergeRaw(a, b []byte) ([]byte, error) {
-	var aMap, bMap chartutil.Values
-
-	err := yaml.Unmarshal(a, &aMap)
-	if err != nil {
-		return nil, err
-	}
-
-	err = yaml.Unmarshal(b, &bMap)
-	if err != nil {
-		return nil, err
-	}
-
-	aMap.MergeInto(bMap)
-	return yaml.Marshal(aMap)
-
 }
 
 func (options *installOptions) recordFlags(flags *pflag.FlagSet) {
@@ -1070,7 +1052,7 @@ func errIfLinkerdConfigConfigMapExists() error {
 		return err
 	}
 
-	_, _, err = healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
+	_, err = healthcheck.FetchCurrentConfiguration(kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil

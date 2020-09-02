@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/linkerd/linkerd2/cli/table"
-	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/charts/multicluster"
 	mccharts "github.com/linkerd/linkerd2/pkg/charts/multicluster"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
@@ -116,18 +116,18 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 	}, nil
 }
 
-func getLinkerdConfigMap() (*configPb.All, error) {
+func getLinkerdConfigMap() (*linkerd2.Values, error) {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	_, global, err := healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
+	values, err := healthcheck.FetchCurrentConfiguration(kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		return nil, err
 	}
 
-	return global, nil
+	return values, nil
 }
 
 func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
@@ -165,7 +165,7 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 
 func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multicluster.Values, error) {
 
-	global, err := getLinkerdConfigMap()
+	values, err := getLinkerdConfigMap()
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil, errors.New("you need Linkerd to be installed in order to install multicluster addons")
@@ -193,9 +193,9 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	defaults.GatewayProbePort = opts.gatewayProbePort
 	defaults.GatewayNginxImage = opts.gatewayNginxImage
 	defaults.GatewayNginxImageVersion = opts.gatewayNginxVersion
-	defaults.IdentityTrustDomain = global.Global.IdentityContext.TrustDomain
+	defaults.IdentityTrustDomain = values.Global.IdentityTrustDomain
 	defaults.LinkerdNamespace = controlPlaneNamespace
-	defaults.ProxyOutboundPort = global.Proxy.OutboundPort.Port
+	defaults.ProxyOutboundPort = uint32(values.Global.Proxy.Ports.Outbound)
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
 

@@ -8,6 +8,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -95,4 +96,91 @@ func ToJSON(configs *pb.All) (global, proxy, install string, err error) {
 
 	install, err = m.MarshalToString(configs.GetInstall())
 	return
+}
+
+// ToValues converts configuration into a Values struct, i.e to be consumed by check
+// TODO: Remove this once the newer configuration becomes the default i.e 2.10
+func ToValues(configs *pb.All) *l5dcharts.Values {
+	// convert install flags into values
+	// TODO: add version field
+	// TODO: add UUID into values
+	values := &l5dcharts.Values{
+		Global: &l5dcharts.Global{
+			CNIEnabled:              configs.GetGlobal().GetCniEnabled(),
+			Namespace:               configs.GetGlobal().GetLinkerdNamespace(),
+			IdentityTrustAnchorsPEM: configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem(),
+			IdentityTrustDomain:     configs.GetGlobal().GetIdentityContext().GetTrustDomain(),
+			ClusterDomain:           configs.GetGlobal().GetClusterDomain(),
+
+			Proxy: &l5dcharts.Proxy{
+				Image: &l5dcharts.Image{
+					Name:       configs.GetProxy().GetProxyImage().GetImageName(),
+					PullPolicy: configs.GetProxy().GetProxyImage().GetPullPolicy(),
+					Version:    configs.GetProxy().GetProxyVersion(),
+				},
+				Ports: &l5dcharts.Ports{
+					Control:  int32(configs.GetProxy().GetControlPort().GetPort()),
+					Inbound:  int32(configs.GetProxy().GetInboundPort().GetPort()),
+					Admin:    int32(configs.GetProxy().GetAdminPort().GetPort()),
+					Outbound: int32(configs.GetProxy().GetOutboundPort().GetPort()),
+				},
+				Resources: &l5dcharts.Resources{
+					CPU: l5dcharts.Constraints{
+						Limit:   configs.GetProxy().GetResource().GetLimitCpu(),
+						Request: configs.GetProxy().GetResource().GetRequestCpu(),
+					},
+					Memory: l5dcharts.Constraints{
+						Limit:   configs.GetProxy().GetResource().GetLimitMemory(),
+						Request: configs.GetProxy().GetResource().GetRequestMemory(),
+					},
+				},
+				LogLevel:               configs.GetProxy().GetLogLevel().String(),
+				EnableExternalProfiles: !configs.Proxy.GetDisableExternalProfiles(),
+				DestinationGetNetworks: configs.GetProxy().GetDestinationGetNetworks(),
+				LogFormat:              configs.GetProxy().GetLogFormat(),
+				OutboundConnectTimeout: configs.GetProxy().GetOutboundConnectTimeout(),
+				InboundConnectTimeout:  configs.GetProxy().GetInboundConnectTimeout(),
+			},
+			ProxyInit: &l5dcharts.ProxyInit{
+				IgnoreInboundPorts:  toString(configs.GetProxy().GetIgnoreInboundPorts()),
+				IgnoreOutboundPorts: toString(configs.GetProxy().GetIgnoreOutboundPorts()),
+				Image: &l5dcharts.Image{
+					Name:       configs.GetProxy().GetProxyInitImage().GetImageName(),
+					PullPolicy: configs.GetProxy().GetProxyInitImage().GetPullPolicy(),
+					Version:    configs.GetProxy().GetProxyInitImageVersion(),
+				},
+			},
+		},
+		Identity: &l5dcharts.Identity{
+			Issuer: &l5dcharts.Issuer{
+				IssuanceLifetime:   configs.GetGlobal().GetIdentityContext().GetIssuanceLifetime().String(),
+				ClockSkewAllowance: configs.GetGlobal().GetIdentityContext().GetClockSkewAllowance().String(),
+				Scheme:             configs.GetGlobal().GetIdentityContext().GetScheme(),
+			},
+		},
+		OmitWebhookSideEffects: configs.GetGlobal().GetOmitWebhookSideEffects(),
+		DebugContainer: &l5dcharts.DebugContainer{
+			Image: &l5dcharts.Image{
+				Name:       configs.GetProxy().GetDebugImage().GetImageName(),
+				PullPolicy: configs.GetProxy().GetDebugImage().GetPullPolicy(),
+				Version:    configs.GetProxy().GetDebugImageVersion(),
+			},
+		},
+	}
+
+	return values
+}
+
+func toString(portRanges []*pb.PortRange) string {
+
+	var portRangeString string
+	if len(portRanges) > 0 {
+		for i := 0; i < len(portRanges)-1; i++ {
+			portRangeString += portRanges[i].GetPortRange() + ","
+		}
+
+		portRangeString += portRanges[len(portRanges)-1].GetPortRange()
+	}
+
+	return portRangeString
 }

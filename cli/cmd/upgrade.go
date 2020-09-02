@@ -365,7 +365,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 
 			// over-write add-on values with cmValues
 			// Merge Add-On Values with Values
-			if rawValues, err = mergeRaw(rawValues, []byte(cmData)); err != nil {
+			if rawValues, err = charts.MergeRaw(rawValues, []byte(cmData)); err != nil {
 				return nil, err
 			}
 

@@ -155,7 +155,7 @@ func chartControlPlane(t *testing.T, ha bool, addOnConfig string, ignoreOutbound
 	}
 
 	if addOnConfig != "" {
-		mergedConfig, err := mergeRaw(rawValues, []byte(addOnConfig))
+		mergedConfig, err := l5dcharts.MergeRaw(rawValues, []byte(addOnConfig))
 		if err != nil {
 			t.Fatal("Unexpected error", err)
 		}
