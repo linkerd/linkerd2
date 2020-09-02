@@ -697,10 +697,6 @@ func webhookSecretName(webhook string) string {
 }
 
 func webhookK8sSecretName(webhook string) string {
-	if webhook == "smi-metrics" {
-		return "smi-metrics-tls"
-	}
-
 	return fmt.Sprintf("%s-k8s-tls", webhook)
 }
 
