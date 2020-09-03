@@ -602,7 +602,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						//TODO: Set hc.uuid to the current value here
+						// TODO: Set hc.uuid to the current value here
 						hc.linkerdConfig, err = FetchCurrentConfiguration(hc.kubeAPI, hc.ControlPlaneNamespace)
 
 						if hc.linkerdConfig != nil {
@@ -1453,6 +1453,7 @@ func (hc *HealthChecker) checkLinkerdConfigConfigMap() (string, *l5dcharts.Value
 		return "", nil, err
 	}
 
+	// TODO: set the correct UID
 	return string(values.ControllerUID), values, nil
 }
 
@@ -1527,6 +1528,9 @@ func FetchCurrentConfiguration(k kubernetes.Interface, controlPlaneNamespace str
 
 		return fullValues, nil
 	}
+
+	// fall back to the older configMap
+	// TODO: remove this once the newer config override secret becomes the default i.e 2.10
 	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
