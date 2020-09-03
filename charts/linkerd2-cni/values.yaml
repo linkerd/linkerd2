@@ -30,4 +30,4 @@ proxyInjectDisabled: disabled
 #
 # The pull secrets are applied to the respective service accounts
 # which will further orchestrate the deployments.
-imagePullSecrets: []
+imagePullSecrets:

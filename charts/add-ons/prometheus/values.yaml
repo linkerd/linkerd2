@@ -13,14 +13,4 @@ globalConfig:
   scrape_interval: 10s
   scrape_timeout: 10s
   evaluation_interval: 10s
-#
-## For Private docker registries, authentication is needed.
-# If the control plane service images are pulled from a
-# protected docker registry, define pull secrets as follows:
-#
-#imagePullSecrets:
-#    - name: my-private-docker-registry-login-secret
-#
-# The pull secrets are applied to the respective service accounts
-# which will further orchestrate the deployments.
-imagePullSecrets: []
+
