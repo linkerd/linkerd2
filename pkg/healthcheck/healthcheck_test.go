@@ -14,6 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/testutil"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/public"
@@ -2390,7 +2391,7 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 }
 
 func TestFetchLinkerdConfigMap(t *testing.T) {
-	_ = []struct {
+	testCases := []struct {
 		k8sConfigs []string
 		expected   *configPb.All
 		err        error
@@ -2501,24 +2502,24 @@ data:
 		},
 	}
 
-	// for i, tc := range testCases {
-	// tc := tc // pin
-	// t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-	//clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
-	//if err != nil {
-	//	t.Fatalf("Unexpected error: %s", err)
-	//}
+	for i, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
 
-	//values, err := FetchCurrentConfiguration(clientset, "linkerd")
-	//if !reflect.DeepEqual(err, tc.err) {
-	//	t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
-	//}
+			_, configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
+			if !reflect.DeepEqual(err, tc.err) {
+				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
+			}
 
-	//if !proto.Equal(configs, tc.expected) {
-	//	t.Fatalf("Unexpected config:\nExpected:\n%+v\nGot:\n%+v", tc.expected, configs)
-	//}
-	//	})
-	//}
+			if !proto.Equal(configs, tc.expected) {
+				t.Fatalf("Unexpected config:\nExpected:\n%+v\nGot:\n%+v", tc.expected, configs)
+			}
+		})
+	}
 }
 
 func getFakeConfigMap(scheme string, issuerCerts *issuercerts.IssuerCertData) string {
