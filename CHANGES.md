@@ -1,5 +1,24 @@
 # Changes
 
+## edge-20.9.1
+
+This edge release contains an important proxy update that allows linkerd to
+continue to operate normally in HA during node outages. We're also adding full
+Kubernetes 1.19 support!
+
+* Improved the proxy's error handling for DNS errors encountered when
+  discovering control plane addresses, which can be common during installation,
+  before all components have been started
+* The destination and identity services had to be made headless in order to
+  support that new controller discovery (which now can leverage SRV records)
+* Use SAN fields when generating the linkerd webhook configs; this completes the
+  Kubernetes 1.19 support which enforces them
+* Fixed `linkerd check` for multicluster that was spuriously claiming the
+  absence of some resources
+* Improved the injection test cleanup (thanks @zhouhao3!)
+* Added ability to run the integration test suite using a cluster in an ARM
+  architecture (thanks @aliariff!)
+
 ## edge-20.8.4
 
 * Fixed a problem causing the `enable-endpoint-slices` flag to not be persisted
