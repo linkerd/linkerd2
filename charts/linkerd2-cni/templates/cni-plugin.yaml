@@ -57,7 +57,10 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
     {{.Values.cniResourceLabel}}: "true"
-{{ include "partials.image-pull-secrets" . }}
+{{- if .Values.imagePullSecrets }}
+imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 2 }}
+{{- end -}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
