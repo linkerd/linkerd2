@@ -42,7 +42,8 @@ metadata:
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 {{ include "partials.image-pull-secrets" . }}
 ---
-{{- $ca := genCA (printf "linkerd-sp-validator.%s.svc" .Values.global.namespace) 365 }}
+{{- $host := printf "linkerd-sp-validator.%s.svc" .Values.global.namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.profileValidator.externalSecret) }}
 kind: Secret
 apiVersion: v1
@@ -56,8 +57,8 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 type: Opaque
 data:
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.profileValidator.keyPEM)) (empty .Values.profileValidator.keyPEM) }}
+  crt.pem: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
+  key.pem: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.profileValidator.keyPEM)) (empty .Values.profileValidator.keyPEM) }}
 ---
 {{- end }}
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -83,7 +84,7 @@ webhooks:
 {{- if and (.Values.profileValidator.externalSecret) (empty .Values.profileValidator.caBundle) }}
   {{- fail "If profileValidator.externalSecret is true then you need to provide profileValidator.caBundle" }}
 {{- end }}
-    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.profileValidator.caBundle)) (empty .Values.profileValidator.caBundle) }}
+    caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.profileValidator.caBundle)) (empty .Values.profileValidator.caBundle) }}
   failurePolicy: {{.Values.webhookFailurePolicy}}
   rules:
   - operations: [ "CREATE" , "UPDATE" ]

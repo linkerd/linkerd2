@@ -12,8 +12,7 @@
   },
   "autoInjectContext": null,
   "omitWebhookSideEffects": {{.Values.omitWebhookSideEffects}},
-  "clusterDomain": "{{.Values.global.clusterDomain}}",
-  "enableEndpointSlices": "{{.Values.global.enableEndpointSlices}}"
+  "clusterDomain": "{{.Values.global.clusterDomain}}"
 }
 {{- end -}}
 
@@ -64,13 +63,19 @@
     "pullPolicy":"{{.Values.debugContainer.image.pullPolicy}}"
   },
   "debugImageVersion": "{{.Values.debugContainer.image.version}}",
-  "destinationGetNetworks": "{{.Values.global.proxy.destinationGetNetworks}}"
+  "destinationGetNetworks": "{{.Values.global.proxy.destinationGetNetworks}}",
+  "outboundConnectTimeout": "{{.Values.global.proxy.outboundConnectTimeout}}",
+  "inboundConnectTimeout": "{{.Values.global.proxy.inboundConnectTimeout}}"
 }
 {{- end -}}
 
 {{- define "linkerd.configs.install" -}}
 {
   "cliVersion":"{{ .Values.global.linkerdVersion }}",
-  "flags":[]
+  "flags":[
+  {{- if .Values.disableHeartBeat -}}
+  {"name": "disable-heartbeat", "value": "true"}
+  {{- end -}}
+  ]
 }
 {{- end -}}

@@ -102,45 +102,45 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
     return resourceAgg;
   }
 
-  let neighb = {};
+  let neighbor = {};
   if (_has(labels, resourceType)) {
-    neighb = {
+    neighbor = {
       type: resourceType,
       name: labels[resourceType],
       namespace: labels.namespace,
     };
   } else if (_has(labels, 'pod')) {
-    neighb = {
+    neighbor = {
       type: 'pod',
       name: labels.pod,
       namespace: labels.namespace,
     };
   } else if (_has(labels, 'node')) {
-    neighb = {
+    neighbor = {
       type: 'node',
       name: labels.node,
     };
   } else {
-    neighb = {
+    neighbor = {
       type: 'ip',
       name: source.str,
     };
   }
 
   // keep track of pods under this resource to display the number of unmeshed source pods
-  neighb.pods = {};
+  neighbor.pods = {};
   if (labels.pod) {
-    neighb.pods[labels.pod] = true;
+    neighbor.pods[labels.pod] = true;
   }
 
-  const key = `${neighb.type}/${neighb.name}`;
+  const key = `${neighbor.type}/${neighbor.name}`;
   if (_has(labels, 'control_plane_ns')) {
     delete resourceAgg[key];
   } else {
     if (_has(resourceAgg, key)) {
-      _merge(neighb.pods, resourceAgg[key].pods);
+      _merge(neighbor.pods, resourceAgg[key].pods);
     }
-    resourceAgg[key] = neighb;
+    resourceAgg[key] = neighbor;
   }
 
   return resourceAgg;

@@ -66,7 +66,7 @@ type (
 	// ClusterUnregistered is issued when this ClusterWatcher is shut down.
 	ClusterUnregistered struct{}
 
-	// OprhanedServicesGcTriggered is a self-triggered event which aims to delete any
+	// OrphanedServicesGcTriggered is a self-triggered event which aims to delete any
 	// orphaned services that are no longer on the remote cluster. It is emitted every
 	// time a new remote cluster is registered for monitoring. The need for this arises
 	// because the following might happen.
@@ -80,7 +80,7 @@ type (
 	//
 	// This event indicates that we need to make a diff with all services on the remote
 	// cluster, ensuring that we do not keep any mirrors that are not relevant anymore
-	OprhanedServicesGcTriggered struct{}
+	OrphanedServicesGcTriggered struct{}
 
 	// OnAddCalled is issued when the onAdd function of the
 	// shared informer is called
@@ -130,6 +130,11 @@ func NewRemoteClusterServiceWatcher(
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialize api for target cluster %s: %s", clusterName, err)
 	}
+	_, err = remoteAPI.Client.Discovery().ServerVersion()
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to api for target cluster %s: %s", clusterName, err)
+	}
+
 	stopper := make(chan struct{})
 	return &RemoteClusterServiceWatcher{
 		serviceMirrorNamespace: serviceMirrorNamespace,
@@ -292,14 +297,14 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 		return RetryableError{[]error{innerErr}}
 	}
 
-	for _, endpt := range endpoints {
-		if err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpt.Namespace).Delete(endpt.Name, &metav1.DeleteOptions{}); err != nil {
+	for _, endpoint := range endpoints {
+		if err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoint.Namespace).Delete(endpoint.Name, &metav1.DeleteOptions{}); err != nil {
 			if kerrors.IsNotFound(err) {
 				continue
 			}
-			errors = append(errors, fmt.Errorf("Could not delete  Endpoints %s/%s: %s", endpt.Namespace, endpt.Name, err))
+			errors = append(errors, fmt.Errorf("Could not delete  Endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
 		} else {
-			rcsw.log.Infof("Deleted Endpoints %s/%s", endpt.Namespace, endpt.Name)
+			rcsw.log.Infof("Deleted Endpoints %s/%s", endpoint.Namespace, endpoint.Name)
 		}
 	}
 
@@ -383,7 +388,7 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 	if err := rcsw.mirrorNamespaceIfNecessary(remoteService.Namespace); err != nil {
 		return err
 	}
-	// here we always create both a service and endpoints, even if we cannot resolve the gateway
+
 	serviceToCreate := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        localServiceName,
@@ -446,13 +451,13 @@ func (rcsw *RemoteClusterServiceWatcher) handleRemoteServiceCreated(ev *RemoteSe
 	return nil
 }
 
-func isExportedService(annotations map[string]string) bool {
-	if annotations != nil {
-		_, hasGtwName := annotations[consts.GatewayNameAnnotation]
-		_, hasGtwNs := annotations[consts.GatewayNsAnnotation]
-		return hasGtwName && hasGtwNs
+func (rcsw *RemoteClusterServiceWatcher) isExportedService(service *corev1.Service) bool {
+	selector, err := metav1.LabelSelectorAsSelector(&rcsw.link.Selector)
+	if err != nil {
+		rcsw.log.Errorf("Invalid service selector: %s", err)
+		return false
 	}
-	return false
+	return selector.Matches(labels.Set(service.Labels))
 }
 
 // this method is common to both CREATE and UPDATE because if we have been
@@ -461,7 +466,7 @@ func isExportedService(annotations map[string]string) bool {
 func (rcsw *RemoteClusterServiceWatcher) createOrUpdateService(service *corev1.Service) error {
 	localName := rcsw.mirroredResourceName(service.Name)
 
-	if isExportedService(service.Annotations) {
+	if rcsw.isExportedService(service) {
 		localService, err := rcsw.localAPIClient.Svc().Lister().Services(service.Namespace).Get(localName)
 		if err != nil {
 			if kerrors.IsNotFound(err) {
@@ -518,7 +523,7 @@ func (rcsw *RemoteClusterServiceWatcher) getMirrorServices() ([]*corev1.Service,
 }
 
 func (rcsw *RemoteClusterServiceWatcher) handleOnDelete(service *corev1.Service) {
-	if isExportedService(service.Annotations) {
+	if rcsw.isExportedService(service) {
 		rcsw.eventsQueue.Add(&RemoteServiceDeleted{
 			Name:      service.Name,
 			Namespace: service.Namespace,
@@ -554,7 +559,7 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent() (bool, interface{}, 
 		err = rcsw.handleRemoteServiceDeleted(ev)
 	case *ClusterUnregistered:
 		err = rcsw.cleanupMirroredResources()
-	case *OprhanedServicesGcTriggered:
+	case *OrphanedServicesGcTriggered:
 		err = rcsw.cleanupOrphanedServices()
 	case *RepairEndpoints:
 		rcsw.repairEndpoints()
@@ -607,7 +612,7 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 // Start starts watching the remote cluster
 func (rcsw *RemoteClusterServiceWatcher) Start() error {
 	rcsw.remoteAPIClient.Sync(rcsw.stopper)
-	rcsw.eventsQueue.Add(&OprhanedServicesGcTriggered{})
+	rcsw.eventsQueue.Add(&OrphanedServicesGcTriggered{})
 	rcsw.remoteAPIClient.Svc().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(svc interface{}) {

@@ -9,10 +9,18 @@ env:
 - name: LINKERD2_PROXY_LOG_FORMAT
   value: {{.Values.global.proxy.logFormat | default "plain"}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-  value: {{ternary "localhost.:8086" (printf "linkerd-dst.%s.svc.%s:8086" .Values.global.namespace .Values.global.clusterDomain) (eq .Values.global.proxy.component "linkerd-destination")}}
+  value: {{ternary "localhost.:8086" (printf "linkerd-dst-headless.%s.svc.%s:8086" .Values.global.namespace .Values.global.clusterDomain) (eq .Values.global.proxy.component "linkerd-destination")}}
 {{ if .Values.global.proxy.destinationGetNetworks -}}
 - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
   value: "{{.Values.global.proxy.destinationGetNetworks}}"
+{{ end -}}
+{{ if .Values.global.proxy.inboundConnectTimeout -}}
+- name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
+  value: "{{.Values.global.proxy.inboundConnectTimeout }}"
+{{ end -}}
+{{ if .Values.global.proxy.outboundConnectTimeout -}}
+- name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
+  value: "{{.Values.global.proxy.outboundConnectTimeout }}"
 {{ end -}}
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.global.proxy.ports.control}}
@@ -43,8 +51,13 @@ env:
   valueFrom:
     fieldRef:
       fieldPath: metadata.namespace
+- name: _pod_nodeName
+  valueFrom:
+     fieldRef:
+      fieldPath: spec.nodeName
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-  value: ns:$(_pod_ns)
+  value: |
+    {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
 {{ if eq .Values.global.proxy.component "linkerd-prometheus" -}}
 - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
   value: "10000"
@@ -61,7 +74,7 @@ env:
 - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
   value: /var/run/secrets/kubernetes.io/serviceaccount/token
 - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-  {{- $identitySvcAddr := printf "linkerd-identity.%s.svc.%s:8080" .Values.global.namespace .Values.global.clusterDomain }}
+  {{- $identitySvcAddr := printf "linkerd-identity-headless.%s.svc.%s:8080" .Values.global.namespace .Values.global.clusterDomain }}
   value: {{ternary "localhost.:8080" $identitySvcAddr (eq .Values.global.proxy.component "linkerd-identity")}}
 - name: _pod_sa
   valueFrom:

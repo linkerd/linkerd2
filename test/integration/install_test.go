@@ -31,11 +31,23 @@ var (
 
 	helmTLSCerts *tls.CA
 
-	linkerdSvcs = []string{
+	linkerdSvcStable = []string{
 		"linkerd-controller-api",
 		"linkerd-dst",
 		"linkerd-grafana",
 		"linkerd-identity",
+		"linkerd-prometheus",
+		"linkerd-web",
+		"linkerd-tap",
+	}
+
+	linkerdSvcEdge = []string{
+		"linkerd-controller-api",
+		"linkerd-dst",
+		"linkerd-dst-headless",
+		"linkerd-grafana",
+		"linkerd-identity",
+		"linkerd-identity-headless",
 		"linkerd-prometheus",
 		"linkerd-web",
 		"linkerd-tap",
@@ -350,7 +362,11 @@ func TestInstallHelm(t *testing.T) {
 }
 
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
-	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), linkerdSvcs, testutil.LinkerdDeployReplicas, TestHelper, t)
+	expectedServices := linkerdSvcEdge
+	if TestHelper.UpgradeHelmFromVersion() != "" {
+		expectedServices = linkerdSvcStable
+	}
+	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), expectedServices, testutil.LinkerdDeployReplicas, TestHelper, t)
 }
 
 func TestInstallMulticluster(t *testing.T) {
@@ -430,8 +446,6 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "prometheus.proxy.resources.memory.request=105Mi",
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
-		"--set", "smiMetricsProxyResources.cpu.limit=1070m",
-		"--set", "smiMetricsProxyResources.memory.request=107Mi",
 		"--set", "spValidatorProxyResources.cpu.limit=1080m",
 		"--set", "spValidatorProxyResources.memory.request=108Mi",
 		"--set", "tapProxyResources.cpu.limit=1090m",
@@ -515,15 +529,6 @@ var expectedResources = []expectedData{
 		memLimit:   "200Mi",
 		memRequest: "106Mi",
 	},
-	/*	 not used in default case
-	{
-		pod:        "linkerd-smi-metrics",
-		cpuLimit:   "1070m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "1007i",
-	},
-	*/
 	{
 		pod:        "linkerd-sp-validator",
 		cpuLimit:   "1080m",

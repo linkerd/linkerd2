@@ -18,10 +18,7 @@ jobs:
       # actions/checkout@v2
       uses: actions/checkout@722adc6
     - name: Go unit tests
-      env:
-        GITCOOKIE_SH: ${{ secrets.GITCOOKIE_SH }}
       run: |
-        echo "$GITCOOKIE_SH" | bash
         go get gotest.tools/gotestsum@v0.4.2
         # TODO: validate bin/protoc-go.sh does not dirty the repo
         gotestsum -- -cover -race -v -mod=readonly ./...
@@ -40,5 +37,5 @@ jobs:
       run: |
         export PATH="$HOME/.yarn/bin:$PATH"
         export NODE_ENV=test
-        bin/web
+        bin/web --frozen-lockfile
         bin/web test --reporters="jest-dot-reporter" --reporters="./gh_ann_reporter.js"

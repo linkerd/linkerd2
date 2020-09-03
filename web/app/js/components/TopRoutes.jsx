@@ -17,6 +17,7 @@ import QueryToCliCmd from './QueryToCliCmd.jsx';
 import React from 'react';
 import Select from '@material-ui/core/Select';
 import TopRoutesModule from './TopRoutesModule.jsx';
+import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
@@ -232,11 +233,11 @@ class TopRoutes extends React.Component {
 
           <Grid item container spacing={4} alignItems="center" justify="flex-start">
             <Grid item>
-              { this.renderNamespaceDropdown('To Namespace', 'to_namespace', 'Namespece of target resource') }
+              { this.renderNamespaceDropdown(<Trans>formToNamespace</Trans>, 'to_namespace', 'Namespace of target resource') }
             </Grid>
 
             <Grid item>
-              { this.renderResourceDropdown('To Resource', 'to_name', 'to_type', 'Target resource') }
+              { this.renderResourceDropdown(<Trans>formToResource</Trans>, 'to_name', 'to_type', 'Target resource') }
             </Grid>
           </Grid>
         </Grid>

@@ -1,9 +1,14 @@
 import React from 'react';
+import { Trans } from '@lingui/macro';
 
 const NoMatch = () => (
   <div>
     <h3>404</h3>
-    <div>Page not found.</div>
+    <div>
+      <Trans>
+        404Msg
+      </Trans>
+    </div>
   </div>
 );
 

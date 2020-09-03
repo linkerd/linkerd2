@@ -40,7 +40,8 @@ func TestRenderCniHelm(t *testing.T) {
   			"destCNINetDir": "/etc/cni/net.d-test",
   			"destCNIBinDir": "/opt/cni/bin-test",
   			"useWaitFlag": true,
-			"cliVersion": "test-version"
+			"cliVersion": "test-version",
+			"priorityClassName": "system-node-critical"
 		}`
 
 		overrideConfig := &pb.Config{Raw: overrideJSON}

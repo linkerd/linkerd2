@@ -2,6 +2,7 @@ import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Tooltip from '@material-ui/core/Tooltip';
+import { Trans } from '@lingui/macro';
 import _get from 'lodash/get';
 import _merge from 'lodash/merge';
 import classNames from 'classnames';
@@ -75,18 +76,18 @@ StatusDot.propTypes = {
 
 const columns = {
   resourceName: {
-    title: 'Deployment',
+    title: <Trans>columnTitleDeployment</Trans>,
     dataIndex: 'name',
   },
   pods: {
-    title: 'Pods',
+    title: <Trans>columnTitlePods</Trans>,
     key: 'numEntities',
     isNumeric: true,
     render: d => d.pods.length,
   },
   status: (name, classes) => {
     return {
-      title: name,
+      title: <Trans>columnTitlePodStatus</Trans>,
       key: 'status',
       render: d => {
         return d.pods.map(status => (

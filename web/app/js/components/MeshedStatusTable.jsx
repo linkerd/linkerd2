@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { StyledProgress } from './util/Progress.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
+import { Trans } from '@lingui/macro';
 import _isEmpty from 'lodash/isEmpty';
 import { withContext } from './util/AppContext.jsx';
 
@@ -20,7 +21,7 @@ const getClassification = (meshedPodCount, failedPodCount) => {
 
 const namespacesColumns = PrefixedLink => [
   {
-    title: 'Namespace',
+    title: <Trans>columnTitleNamespace</Trans>,
     dataIndex: 'namespace',
     sorter: d => d.namespace,
     render: d => {
@@ -37,12 +38,12 @@ const namespacesColumns = PrefixedLink => [
     },
   },
   {
-    title: 'Meshed pods',
+    title: <Trans>columnTitleMeshedPods</Trans>,
     dataIndex: 'meshedPodsStr',
     isNumeric: true,
   },
   {
-    title: 'Meshed Status',
+    title: <Trans>columnTitleMeshedStatus</Trans>,
     key: 'meshification',
     render: row => {
       const percent = row.meshedPercent.get();

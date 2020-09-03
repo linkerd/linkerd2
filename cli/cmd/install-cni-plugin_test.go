@@ -27,6 +27,8 @@ func TestRenderCNIPlugin(t *testing.T) {
 		logLevel:            "debug",
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/opt/my-cni/bin",
+		priorityClassName:   "system-node-critical",
+		installNamespace:    true,
 	}
 
 	otherNamespace := "other"
@@ -45,6 +47,26 @@ func TestRenderCNIPlugin(t *testing.T) {
 		logLevel:            "debug",
 		destCNINetDir:       "/etc/kubernetes/cni/net.d",
 		destCNIBinDir:       "/etc/kubernetes/cni/net.d",
+		priorityClassName:   "system-node-critical",
+		installNamespace:    true,
+	}
+
+	fullyConfiguredOptionsNoNamespace := &cniPluginOptions{
+		linkerdVersion:      "awesome-linkerd-version.1",
+		dockerRegistry:      "gcr.io/linkerd-io",
+		proxyControlPort:    5190,
+		proxyAdminPort:      5191,
+		inboundPort:         5143,
+		outboundPort:        5140,
+		ignoreInboundPorts:  make([]string, 0),
+		ignoreOutboundPorts: make([]string, 0),
+		proxyUID:            12102,
+		cniPluginImage:      "my-docker-registry.io/awesome/cni-plugin-test-image",
+		logLevel:            "debug",
+		destCNINetDir:       "/etc/kubernetes/cni/net.d",
+		destCNIBinDir:       "/opt/my-cni/bin",
+		priorityClassName:   "system-node-critical",
+		installNamespace:    false,
 	}
 
 	testCases := []struct {
@@ -55,6 +77,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		{defaultOptions, defaultCniNamespace, "install-cni-plugin_default.golden"},
 		{fullyConfiguredOptions, otherNamespace, "install-cni-plugin_fully_configured.golden"},
 		{fullyConfiguredOptionsEqualDsts, otherNamespace, "install-cni-plugin_fully_configured_equal_dsts.golden"},
+		{fullyConfiguredOptionsNoNamespace, otherNamespace, "install-cni-plugin_fully_configured_no_namespace.golden"},
 	}
 
 	for i, tc := range testCases {

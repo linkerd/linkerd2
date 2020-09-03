@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: hello
-        image: buoyantio/helloworld:0.1.6
+        image: buoyantio/helloworld:0.1.7
         args:
         - "-addr=:8888"
         - "-text=Hello"
@@ -51,7 +51,7 @@ spec:
     spec:
       containers:
       - name: world
-        image: buoyantio/helloworld:0.1.6
+        image: buoyantio/helloworld:0.1.7
         args:
         - "-addr=:8889"
         - "-text=World"
@@ -84,12 +84,12 @@ spec:
     spec:
       containers:
       - name: hello-slow-cooker
-        image: buoyantio/slow_cooker:1.1.1
+        image: buoyantio/slow_cooker:1.3.0
         command:
         - "/bin/sh"
         args:
         - "-c"
         - |
           sleep 15 # wait for pods to start
-          slow_cooker -metric-addr 0.0.0.0:9998 http://hello-svc:8888/testpath
+          /slow_cooker/slow_cooker -metric-addr 0.0.0.0:9998 http://hello-svc:8888/testpath
       restartPolicy: OnFailure

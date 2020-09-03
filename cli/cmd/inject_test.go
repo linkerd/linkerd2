@@ -575,7 +575,12 @@ func TestWalk(t *testing.T) {
 	if err := os.MkdirAll(tmpFolderData, os.ModeDir|os.ModePerm); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
-	defer os.RemoveAll(tmpFolderRoot)
+	defer func() {
+		err := os.RemoveAll(tmpFolderRoot)
+		if err != nil {
+			t.Errorf("failed to remove temp dir %q: %v", tmpFolderRoot, err)
+		}
+	}()
 
 	var (
 		data  = []byte(readTestdata(t, "inject_gettest_deployment.bad.input.yml"))

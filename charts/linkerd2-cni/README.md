@@ -30,3 +30,5 @@ and their default values.
 |`portsToRedirect`                     | Ports to redirect to proxy                                            ||
 |`proxyUID`                            | User id under which the proxy shall be ran                            |`2102`|
 |`useWaitFlag`                         | Configures the CNI plugin to use the -w flag for the iptables command |`false`|
+|`installNamespace`                    | Whether to create the CNI plugin plane namespace or not               |`true`|
+|`priorityClassName`                   | Kubernetes priorityClassName for the CNI plugin's Pods                ||

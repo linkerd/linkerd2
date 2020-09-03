@@ -52,6 +52,22 @@ spec:
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
 metadata:
+  name: linkerd-dst-headless.{{.Namespace}}.svc.{{.ClusterDomain}}
+  namespace: {{.Namespace}}
+spec:
+  routes:
+  - name: POST /io.linkerd.proxy.destination.Destination/Get
+    condition:
+      method: POST
+      pathRegex: /io\.linkerd\.proxy\.destination\.Destination/Get
+  - name: POST /io.linkerd.proxy.destination.Destination/GetProfile
+    condition:
+      method: POST
+      pathRegex: /io\.linkerd\.proxy\.destination\.Destination/GetProfile
+---
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
   name: linkerd-prometheus.{{.Namespace}}.svc.{{.ClusterDomain}}
   namespace: {{.Namespace}}
 spec:

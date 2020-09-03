@@ -31,7 +31,7 @@ func TestServiceNotReady(t *testing.T) {
 	//ch := make(chan tls.Issuer, 1)
 	svc := NewService(&fakeValidator{"successful-result", nil}, nil, nil, nil, "", "", "")
 	req := &pb.CertifyRequest{
-		Identity:                  "some-identitiy",
+		Identity:                  "some-identity",
 		Token:                     []byte{},
 		CertificateSigningRequest: []byte{},
 	}
@@ -61,8 +61,8 @@ func TestInvalidRequestArguments(t *testing.T) {
 		}
 	}
 
-	reqNoIdentitiy := invalidCsr()
-	reqNoIdentitiy.Identity = ""
+	reqNoIdentity := invalidCsr()
+	reqNoIdentity.Identity = ""
 
 	reqNoToken := invalidCsr()
 	reqNoToken.Token = []byte{}
@@ -74,7 +74,7 @@ func TestInvalidRequestArguments(t *testing.T) {
 		input         *pb.CertifyRequest
 		expectedError string
 	}{
-		{reqNoIdentitiy, "rpc error: code = InvalidArgument desc = missing identity"},
+		{reqNoIdentity, "rpc error: code = InvalidArgument desc = missing identity"},
 		{reqNoToken, "rpc error: code = InvalidArgument desc = missing token"},
 		{reqNoCsr, "rpc error: code = InvalidArgument desc = missing certificate signing request"},
 		{invalidCsr(), "rpc error: code = InvalidArgument desc = asn1: structure error: tags don't match " +

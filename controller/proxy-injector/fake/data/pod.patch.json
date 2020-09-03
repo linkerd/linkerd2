@@ -56,7 +56,7 @@
         "--inbound-ports-to-ignore",
         "4190,4191"
       ],
-      "image": "gcr.io/linkerd-io/proxy-init:v1.3.3",
+      "image": "gcr.io/linkerd-io/proxy-init:v1.3.6",
       "imagePullPolicy": "IfNotPresent",
       "name": "linkerd-init",
       "resources": {
@@ -106,7 +106,7 @@
         },
         {
           "name": "LINKERD2_PROXY_DESTINATION_SVC_ADDR",
-          "value": "linkerd-dst.linkerd.svc.cluster.local:8086"
+          "value": "linkerd-dst-headless.linkerd.svc.cluster.local:8086"
         },
         {
           "name": "LINKERD2_PROXY_DESTINATION_GET_NETWORKS",
@@ -152,9 +152,17 @@
             }
           }
         },
+          {
+              "name": "_pod_nodeName",
+              "valueFrom": {
+                  "fieldRef": {
+                      "fieldPath": "spec.nodeName"
+                  }
+              }
+          },
         {
           "name": "LINKERD2_PROXY_DESTINATION_CONTEXT",
-          "value": "ns:$(_pod_ns)"
+          "value": "{\"ns\":\"$(_pod_ns)\", \"nodeName\":\"$(_pod_nodeName)\"}\n"
         },
         {
           "name": "LINKERD2_PROXY_IDENTITY_DISABLED",

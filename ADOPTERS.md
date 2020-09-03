@@ -19,18 +19,23 @@
 - [Kurio](https://kurio.id)
 - [LeadIQ](https://leadiq.com)
 - [MattePaint](https://www.mattepaint.com/)
+- [MercedesBenz.io](https://www.mercedes-benz.io/)
 - [Mulligan Funding](https://www.mulliganfunding.com/)
 - [National Information Solutions Cooperative (NISC)](https://nisc.coop/)
 - [Nordstrom](https://nordstrom.com/)
+- [Novolabs](https://novolabs.com)
 - [Paybase](https://paybase.io/)
 - [PlayStudios Asia](https://www.playstudios.asia)
+- [PriceKinetics (GVC Australia)](https://www.pricekinetics.com.au/)
 - [Projector](https://projector.com)
+- [Purdue University Global](https://www.purdueglobal.edu/)
 - [Studyo](https://studyo.co)
 - [Sue](https://sue.nl)
 - [Transit](https://transit.app)
 - [Vernacular.ai](https://vernacular.ai/)
 - [xCloud](https://www.xbox.com/en-US/xbox-game-streaming/project-xcloud)
 - [YouMail](https://www.youmail.com)
+- [OLX Brasil](https://www.olx.com.br)
 
 If you're using Linkerd 2.x and aren't on this list, please [submit a pull
 request](https://github.com/linkerd/linkerd2/edit/main/ADOPTERS.md)!

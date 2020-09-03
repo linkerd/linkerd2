@@ -141,7 +141,7 @@ rules:
   resources: ["jobs"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
+  resources: ["pods", "endpoints", "services", "nodes"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
@@ -811,9 +811,6 @@ subjects:
   name: linkerd-web
   namespace: linkerd
 ---
-# Source: linkerd2/templates/smi-metrics-rbac.yaml
-
----
 # Source: linkerd2/templates/config.yaml
 ---
 kind: ConfigMap
@@ -841,8 +838,7 @@ data:
       },
       "autoInjectContext": null,
       "omitWebhookSideEffects": false,
-      "clusterDomain": "cluster.local",
-      "enableEndpointSlices": "false"
+      "clusterDomain": "cluster.local"
     }
   proxy: |
     {
@@ -887,7 +883,9 @@ data:
         "pullPolicy":"IfNotPresent"
       },
       "debugImageVersion": "test-debug-version",
-      "destinationGetNetworks": "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+      "destinationGetNetworks": "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+      "outboundConnectTimeout": "1000ms",
+      "inboundConnectTimeout": "100ms"
     }
   install: |
     {
@@ -928,6 +926,25 @@ metadata:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
   type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: identity
+  ports:
+  - name: grpc
+    port: 8080
+    targetPort: 8080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-identity-headless
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+spec:
+  clusterIP: None
   selector:
     linkerd.io/control-plane-component: identity
   ports:
@@ -1034,9 +1051,13 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
+          value: "100ms"
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
+          value: "1000ms"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1057,8 +1078,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+             fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1292,9 +1318,13 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
+          value: "100ms"
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
+          value: "1000ms"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1315,8 +1345,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+             fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1325,7 +1360,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1447,6 +1482,25 @@ spec:
     port: 8086
     targetPort: 8086
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-dst-headless
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+spec:
+  clusterIP: None
+  selector:
+    linkerd.io/control-plane-component: destination
+  ports:
+  - name: grpc
+    port: 8086
+    targetPort: 8086
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1511,6 +1565,7 @@ spec:
         - -controller-namespace=linkerd
         - -enable-h2-upgrade=true
         - -log-level=info
+        - -enable-endpoint-slices=false
         image: gcr.io/linkerd-io/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1550,6 +1605,10 @@ spec:
           value: localhost.:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
+          value: "100ms"
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
+          value: "1000ms"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1570,8 +1629,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+             fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1580,7 +1644,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1837,9 +1901,13 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
+          value: "100ms"
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
+          value: "1000ms"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -1860,8 +1928,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+             fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -1870,7 +1943,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1997,7 +2070,7 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/helm-release-version: "0"
+        checksum/config: ba3686271c366717fdceb99d6391b8a4c74a07f06e361a76754ca2231c69b7c8
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2072,9 +2145,13 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
+          value: "100ms"
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
+          value: "1000ms"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2095,8 +2172,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+             fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -2105,7 +2187,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -2273,7 +2355,7 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/helm-release-version: "0"
+        checksum/config: e03a2508f5dbb58434de77a605aeeccb440e4ce1cc5d3f32ca4c5f96537d25f3
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2346,9 +2428,13 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
+          value: "100ms"
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
+          value: "1000ms"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2369,8 +2455,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+             fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -2379,7 +2470,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -2530,7 +2621,7 @@ spec:
   template:
     metadata:
       annotations:
-        linkerd.io/helm-release-version: "0"
+        checksum/config: 394865b9065b74cd3fbb50fc96923c65e29bd4345c2574b5d2511a20effedadb
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2608,9 +2699,13 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
+          value: "100ms"
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
+          value: "1000ms"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2631,8 +2726,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+             fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -2641,7 +2741,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -2741,9 +2841,6 @@ spec:
         secret:
           secretName: linkerd-tap-tls
 ---
-# Source: linkerd2/templates/smi-metrics.yaml
-
----
 # Source: linkerd2/templates/linkerd-config-addons.yaml
 ---
 ###
@@ -2762,12 +2859,12 @@ metadata:
 data:
   values: |-
     global:
+      prometheusUrl: ""
       grafanaUrl: ""
     grafana:
       enabled: true
       image:
         name: gcr.io/linkerd-io/grafana
-      name: linkerd-grafana
       resources:
         cpu:
           limit: "1"
@@ -2786,7 +2883,7 @@ data:
         evaluation_interval: 10s
         scrape_interval: 10s
         scrape_timeout: 10s
-      image: prom/prometheus:v2.15.2
+      image: prom/prometheus:v2.19.3
       resources:
         cpu:
           limit: "4"
@@ -2975,9 +3072,13 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
+          value: "100ms"
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
+          value: "1000ms"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -2998,8 +3099,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+             fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -3008,7 +3114,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -3367,7 +3473,7 @@ spec:
         - --log.level=info
         - --storage.tsdb.path=/data
         - --storage.tsdb.retention.time=6h
-        image: prom/prometheus:v2.15.2
+        image: prom/prometheus:v2.19.3
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3409,9 +3515,13 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
+          value: "100ms"
+        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
+          value: "1000ms"
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -3432,8 +3542,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+             fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
           value: "10000"
         - name: LINKERD2_PROXY_IDENTITY_DIR
@@ -3444,7 +3559,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:

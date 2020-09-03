@@ -1,0 +1,18 @@
+{
+    "ok": {
+        "gatewaysTable": {
+            "rows": [
+                {
+                    "namespace": "test_namespace",
+                    "name": "test_gateway",
+                    "clusterName": "multi_cluster",
+                    "pairedServices": "0",
+                    "alive": true,
+                    "latencyMsP50": "0",
+                    "latencyMsP95": "0",
+                    "latencyMsP99": "0"
+                }
+            ]
+        }
+    }
+}

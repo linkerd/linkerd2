@@ -4,17 +4,10 @@ set -eu
 
 bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
 
-system=$(uname -s)
-
-if [ "$system" = Darwin ]; then
-  bin=$rootdir/target/cli/darwin/linkerd
-elif [ "$system" = Linux ]; then
-  bin=$rootdir/target/cli/linux/linkerd
-else
-  echo "unknown system: $system" >&2
-  exit 1
-fi
+bin=$rootdir/target/cli/$(os)/linkerd
 
 # build linkerd executable if it does not exist
 if [ ! -f "$bin" ]; then

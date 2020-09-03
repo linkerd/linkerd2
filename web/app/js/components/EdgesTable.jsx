@@ -3,6 +3,7 @@ import CheckCircleOutline from '@material-ui/icons/CheckCircleOutline';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Tooltip from '@material-ui/core/Tooltip';
+import { Trans } from '@lingui/macro';
 import WarningIcon from '@material-ui/icons/Warning';
 import { directionColumn } from './util/TapUtils.jsx';
 import { processedEdgesPropType } from './util/EdgesUtils.jsx';
@@ -25,7 +26,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       render: d => directionColumn(d.direction),
     },
     {
-      title: 'Namespace',
+      title: <Trans>columnTitleNamespace</Trans>,
       dataIndex: 'namespace',
       isNumeric: false,
       filter: d => d.namespace,
@@ -37,7 +38,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       sorter: d => d.namespace,
     },
     {
-      title: 'Name',
+      title: <Trans>columnTitleName</Trans>,
       dataIndex: 'name',
       isNumeric: false,
       filter: d => d.name,
@@ -56,7 +57,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       sorter: d => d.name,
     },
     {
-      title: 'Identity',
+      title: <Trans>columnTitleIdentity</Trans>,
       dataIndex: 'identity',
       isNumeric: false,
       filter: d => d.identity,
@@ -64,7 +65,7 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
       sorter: d => d.identity,
     },
     {
-      title: 'Secured',
+      title: <Trans>columnTitleSecured</Trans>,
       dataIndex: 'message',
       isNumeric: true,
       render: d => {
@@ -83,12 +84,12 @@ const edgesColumnDefinitions = (PrefixedLink, namespace, type, classes) => {
 };
 
 const generateEdgesTableTitle = edges => {
-  let title = 'Edges';
+  let title = <Trans>tableTitleEdgesEmpty</Trans>;
   if (edges.length > 0) {
     let identity = edges[0].direction === 'INBOUND' ? edges[0].serverId : edges[0].clientId;
     if (identity) {
       identity = `${identity.split('.')[0]}.${identity.split('.')[1]}`;
-      title = `${title} (Identity: ${identity})`;
+      title = <Trans>tableTitleEdgesWithIdentity {identity}</Trans>;
     }
   }
   return title;

@@ -33,6 +33,8 @@ type Values struct {
 	UseWaitFlag           bool   `json:"useWaitFlag"`
 	ProxyInjectAnnotation string `json:"proxyInjectAnnotation"`
 	ProxyInjectDisabled   string `json:"proxyInjectDisabled"`
+	PriorityClassName     string `json:"priorityClassName"`
+	InstallNamespace      bool   `json:"installNamespace"`
 }
 
 // NewValues returns a new instance of the Values type.
@@ -47,7 +49,7 @@ func NewValues() (*Values, error) {
 	return v, nil
 }
 
-// readDefaults read all the default variables from the values.yaml file.
+// readDefaults reads all the default variables from the values.yaml file.
 // chartDir is the root directory of the Helm chart where values.yaml is.
 func readDefaults(chartDir string) (*Values, error) {
 	file := &chartutil.BufferedFile{

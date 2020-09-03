@@ -3,7 +3,7 @@
 # when installing with the parent linkerd2 chart
 # Do not override them in this file!
 # If installing/upgrading with linkerd's CLI, use the `--addon-config` flag.
-image: prom/prometheus:v2.15.2
+image: prom/prometheus:v2.19.3
 args:
   storage.tsdb.path: /data
   storage.tsdb.retention.time: 6h

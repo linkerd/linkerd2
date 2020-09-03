@@ -81,6 +81,8 @@ func TestNewValues(t *testing.T) {
 				UID:                    2102,
 				WaitBeforeExitSeconds:  0,
 				DestinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+				OutboundConnectTimeout: "1000ms",
+				InboundConnectTimeout:  "100ms",
 			},
 			ProxyInit: &ProxyInit{
 				Image: &Image{
@@ -130,16 +132,8 @@ func TestNewValues(t *testing.T) {
 		ProxyInjector:    &ProxyInjector{TLS: &TLS{}},
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
 		Tap:              &Tap{TLS: &TLS{}},
-		SMIMetrics: &SMIMetrics{
-			Image: "deislabs/smi-metrics:v0.2.1",
-			TLS:   &TLS{},
-		},
 		Grafana: Grafana{
 			"enabled": true,
-			"name":    "linkerd-grafana",
-			"image": map[string]interface{}{
-				"name": "gcr.io/linkerd-io/grafana",
-			},
 		},
 	}
 
@@ -189,10 +183,6 @@ func TestNewValues(t *testing.T) {
 
 		expected.Grafana = Grafana{
 			"enabled": true,
-			"name":    "linkerd-grafana",
-			"image": map[string]interface{}{
-				"name": "gcr.io/linkerd-io/grafana",
-			},
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
 					"limit":   controllerResources.CPU.Limit,

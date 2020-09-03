@@ -184,7 +184,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 		}
 	}
 
-	values, _, err := options.validateAndBuild(stage, k, flags)
+	values, err := options.validateAndBuild(stage, k, flags)
 	if err != nil {
 		upgradeErrorf("Failed to build upgrade configuration: %s", err)
 	}
@@ -209,9 +209,9 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	return nil
 }
 
-func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesAPI, flags *pflag.FlagSet) (*charts.Values, *pb.All, error) {
+func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesAPI, flags *pflag.FlagSet) (*charts.Values, error) {
 	if err := options.validate(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// We fetch the configs directly from kubernetes because we need to be able
@@ -220,7 +220,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	// control plane.
 	_, configs, err := healthcheck.FetchLinkerdConfigMap(k, controlPlaneNamespace)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not fetch configs from kubernetes: %s", err)
+		return nil, fmt.Errorf("could not fetch configs from kubernetes: %s", err)
 	}
 
 	// If the configs need to be repaired--either because sections did not
@@ -242,11 +242,19 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	// The overrideConfigs() is used to override proxy configs only.
 	options.overrideConfigs(configs, map[string]string{})
 
+	if options.enableEndpointSlices {
+		if err = validateEndpointSlicesFeature(); err != nil {
+			return nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
+		}
+	}
+
 	// Override configs with upgrade CLI options.
 	if options.controlPlaneVersion != "" {
 		configs.GetGlobal().Version = options.controlPlaneVersion
 	}
+
 	configs.GetInstall().Flags = options.recordedFlags
+
 	configs.GetGlobal().OmitWebhookSideEffects = options.omitWebhookSideEffects
 	if configs.GetGlobal().GetClusterDomain() == "" {
 		configs.GetGlobal().ClusterDomain = defaultClusterDomain
@@ -255,23 +263,23 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	if options.identityOptions.crtPEMFile != "" || options.identityOptions.keyPEMFile != "" {
 
 		if configs.Global.IdentityContext.Scheme == string(corev1.SecretTypeTLS) {
-			return nil, nil, errors.New("cannot update issuer certificates if you are using external cert management solution")
+			return nil, errors.New("cannot update issuer certificates if you are using external cert management solution")
 		}
 
 		if options.identityOptions.crtPEMFile == "" {
-			return nil, nil, errors.New("a certificate file must be specified if a private key is provided")
+			return nil, errors.New("a certificate file must be specified if a private key is provided")
 		}
 		if options.identityOptions.keyPEMFile == "" {
-			return nil, nil, errors.New("a private key file must be specified if a certificate is provided")
+			return nil, errors.New("a private key file must be specified if a certificate is provided")
 		}
 		if err := checkFilesExist([]string{options.identityOptions.crtPEMFile, options.identityOptions.keyPEMFile}); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
 	if options.identityOptions.trustPEMFile != "" {
 		if err := checkFilesExist([]string{options.identityOptions.trustPEMFile}); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
@@ -282,13 +290,13 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 		// must be upgrading from a version that didn't support identity, so generate it anew...
 		identity, err = options.identityOptions.genValues()
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		configs.GetGlobal().IdentityContext = toIdentityContext(identity)
 	} else {
 		identity, err = options.fetchIdentityValues(k, idctx)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
@@ -296,7 +304,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	// otherwise it will be missing from the generated configmap.
 	values, err := options.buildValuesWithoutIdentity(configs)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not build install configuration: %s", err)
+		return nil, fmt.Errorf("could not build install configuration: %s", err)
 	}
 	values.Identity = identity.Identity
 	values.Global.IdentityTrustAnchorsPEM = identity.TrustAnchorsPEM
@@ -315,7 +323,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	proxyInjectorTLS, err := fetchTLSSecret(k, k8s.ProxyInjectorWebhookServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
-			return nil, nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
+			return nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
 		}
 		proxyInjectorTLS = &charts.TLS{}
 	}
@@ -324,7 +332,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	profileValidatorTLS, err := fetchTLSSecret(k, k8s.SPValidatorWebhookServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
-			return nil, nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
+			return nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
 		}
 		profileValidatorTLS = &charts.TLS{}
 	}
@@ -333,20 +341,11 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	tapTLS, err := fetchTLSSecret(k, k8s.TapServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
-			return nil, nil, fmt.Errorf("could not fetch existing tap secret: %s", err)
+			return nil, fmt.Errorf("could not fetch existing tap secret: %s", err)
 		}
 		tapTLS = &charts.TLS{}
 	}
 	values.Tap = &charts.Tap{TLS: tapTLS}
-
-	smiMetricsTLS, err := fetchK8sTLSSecret(k, k8s.SmiMetricsServiceName, options)
-	if err != nil {
-		if !kerrors.IsNotFound(err) {
-			return nil, nil, fmt.Errorf("could not fetch existing SMI metrics secret: %s", err)
-		}
-		smiMetricsTLS = &charts.TLS{}
-	}
-	values.SMIMetrics.TLS = smiMetricsTLS
 
 	values.Stage = stage
 
@@ -357,21 +356,21 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 			//Cm is present now get the data
 			cmData, ok := cmRawValues["values"]
 			if !ok {
-				return nil, nil, fmt.Errorf("values subpath not found in %s configmap", k8s.AddOnsConfigMapName)
+				return nil, fmt.Errorf("values subpath not found in %s configmap", k8s.AddOnsConfigMapName)
 			}
 			rawValues, err := yaml.Marshal(values)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			// over-write add-on values with cmValues
 			// Merge Add-On Values with Values
 			if rawValues, err = mergeRaw(rawValues, []byte(cmData)); err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			if err = yaml.Unmarshal(rawValues, &values); err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 		}
 	}
@@ -380,16 +379,15 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	// This allow users to over-write add-ons configuration during upgrades
 	err = options.UpdateAddOnValuesFromConfig(values)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return values, configs, nil
+	return values, nil
 }
 
 func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) {
 	for _, i := range installFlags {
 		if f := flags.Lookup(i.GetName()); f != nil && !f.Changed {
-
 			// The function recordFlags() stores the string representation of flags in the ConfigMap
 			// so a stringSlice is stored e.g. as [a,b].
 			// To avoid having f.Value.Set() interpreting that as a string we need to remove
@@ -420,6 +418,12 @@ func repairConfigs(configs *pb.All) {
 	if configs.Proxy.DebugImage == nil {
 		configs.Proxy.DebugImage = &pb.Image{}
 	}
+	if configs.GetProxy().GetDebugImage().GetImageName() == "" {
+		configs.Proxy.DebugImage.ImageName = k8s.DebugSidecarImage
+	}
+	if configs.GetProxy().GetDebugImageVersion() == "" {
+		configs.Proxy.DebugImageVersion = version.Version
+	}
 }
 
 func injectCABundle(k *k8s.KubernetesAPI, webhook string, value *charts.TLS) error {
@@ -433,8 +437,6 @@ func injectCABundle(k *k8s.KubernetesAPI, webhook string, value *charts.TLS) err
 		err = injectCABundleFromValidatingWebhook(k, k8s.SPValidatorWebhookConfigName, value)
 	case k8s.TapServiceName:
 		err = injectCABundleFromAPIService(k, k8s.TapAPIRegistrationServiceName, value)
-	case k8s.SmiMetricsServiceName:
-		err = injectCABundleFromAPIService(k, k8s.SmiMetricsAPIRegistrationServiceName, value)
 	default:
 		err = fmt.Errorf("unknown webhook for retrieving CA bundle: %s", webhook)
 	}
@@ -492,30 +494,6 @@ func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOption
 	value := &charts.TLS{
 		KeyPEM: string(secret.Data["key.pem"]),
 		CrtPEM: string(secret.Data["crt.pem"]),
-	}
-
-	if err := injectCABundle(k, webhook, value); err != nil {
-		return nil, err
-	}
-
-	if err := options.verifyTLS(value, webhook); err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
-func fetchK8sTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
-	secret, err := k.CoreV1().
-		Secrets(controlPlaneNamespace).
-		Get(webhookSecretName(webhook), metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	value := &charts.TLS{
-		KeyPEM: string(secret.Data["tls.key"]),
-		CrtPEM: string(secret.Data["tls.crt"]),
 	}
 
 	if err := injectCABundle(k, webhook, value); err != nil {

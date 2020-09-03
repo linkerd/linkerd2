@@ -30,7 +30,7 @@ spec:
           value: voting-svc.emojivoto:8080
         - name: INDEX_BUNDLE
           value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v3
+        image: buoyantio/emojivoto-web:v10
         name: web-svc
         ports:
         - containerPort: 80
@@ -41,7 +41,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -64,8 +64,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -83,7 +88,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -136,7 +141,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -199,7 +204,7 @@ spec:
           value: voting-svc.emojivoto:8080
         - name: INDEX_BUNDLE
           value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v3
+        image: buoyantio/emojivoto-web:v10
         name: web-svc
         ports:
         - containerPort: 80
@@ -210,7 +215,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -233,8 +238,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -252,7 +262,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -305,7 +315,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -368,7 +378,7 @@ spec:
           value: voting-svc.emojivoto:8080
         - name: INDEX_BUNDLE
           value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v3
+        image: buoyantio/emojivoto-web:v10
         name: web-svc
         ports:
         - containerPort: 80
@@ -379,7 +389,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -402,8 +412,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -421,7 +436,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -474,7 +489,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -537,7 +552,7 @@ spec:
           value: voting-svc.emojivoto:8080
         - name: INDEX_BUNDLE
           value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v3
+        image: buoyantio/emojivoto-web:v10
         name: web-svc
         ports:
         - containerPort: 80
@@ -548,7 +563,7 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
@@ -571,8 +586,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: _pod_nodeName
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: ns:$(_pod_ns)
+          value: |
+            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
@@ -590,7 +610,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -643,7 +663,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.3.3
+        image: gcr.io/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

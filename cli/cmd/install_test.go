@@ -10,6 +10,12 @@ import (
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 )
 
+const (
+	installProxyVersion        = "install-proxy-version"
+	installControlPlaneVersion = "install-control-plane-version"
+	installDebugVersion        = "install-debug-version"
+)
+
 func TestRender(t *testing.T) {
 	defaultOptions, err := testInstallOptions()
 	if err != nil {
@@ -130,7 +136,6 @@ func TestRender(t *testing.T) {
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
 		Tap:                defaultValues.Tap,
-		SMIMetrics:         defaultValues.SMIMetrics,
 		Dashboard: &charts.Dashboard{
 			Replicas: 1,
 		},
@@ -199,13 +204,13 @@ func TestRender(t *testing.T) {
 	withHeartBeatDisabledValues, _, _ := withHeartBeatDisabled.validateAndBuild("", nil)
 	addFakeTLSSecrets(withHeartBeatDisabledValues)
 
-	withRestrictedDashboardPriviliges, err := testInstallOptions()
+	withRestrictedDashboardPrivileges, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withRestrictedDashboardPriviliges.restrictDashboardPrivileges = true
-	withRestrictedDashboardPriviligesValues, _, _ := withRestrictedDashboardPriviliges.validateAndBuild("", nil)
-	addFakeTLSSecrets(withRestrictedDashboardPriviligesValues)
+	withRestrictedDashboardPrivileges.restrictDashboardPrivileges = true
+	withRestrictedDashboardPrivilegesValues, _, _ := withRestrictedDashboardPrivileges.validateAndBuild("", nil)
+	addFakeTLSSecrets(withRestrictedDashboardPrivilegesValues)
 
 	withControlPlaneTracing, err := testInstallOptions()
 	if err != nil {
@@ -264,7 +269,7 @@ func TestRender(t *testing.T) {
 		{cniEnabledValues, "install_no_init_container.golden"},
 		{withProxyIgnoresValues, "install_proxy_ignores.golden"},
 		{withHeartBeatDisabledValues, "install_heartbeat_disabled_output.golden"},
-		{withRestrictedDashboardPriviligesValues, "install_restricted_dashboard.golden"},
+		{withRestrictedDashboardPrivilegesValues, "install_restricted_dashboard.golden"},
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
 		{withCustomRegistryValues, "install_custom_registry.golden"},
 		{withAddOnConfigStageValues, "install_addon_config.golden"},
@@ -317,9 +322,9 @@ func testInstallOptions() (*installOptions, error) {
 	}
 
 	o.ignoreCluster = true
-	o.proxyVersion = "install-proxy-version"
-	o.debugImageVersion = "install-debug-version"
-	o.controlPlaneVersion = "install-control-plane-version"
+	o.proxyVersion = installProxyVersion
+	o.debugImageVersion = installDebugVersion
+	o.controlPlaneVersion = installControlPlaneVersion
 	o.heartbeatSchedule = fakeHeartbeatSchedule
 	o.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
 	o.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
@@ -520,7 +525,4 @@ func addFakeTLSSecrets(values *charts.Values) {
 	values.Tap.CrtPEM = "tap crt"
 	values.Tap.KeyPEM = "tap key"
 	values.Tap.CaBundle = "tap CA bundle"
-	values.SMIMetrics.CrtPEM = "smi metrics crt"
-	values.SMIMetrics.KeyPEM = "smi metrics key"
-	values.SMIMetrics.CaBundle = "smi metrics CA bundle"
 }

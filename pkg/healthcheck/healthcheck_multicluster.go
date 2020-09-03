@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/linkerd/linkerd2/controller/gen/public"
@@ -24,17 +23,11 @@ const (
 	// multicluster setup.
 	LinkerdMulticlusterChecks CategoryID = "linkerd-multicluster"
 
-	linkerdServiceMirrorComponentName      = "linkerd-service-mirror"
-	linkerdServiceMirrorSerivceAccountName = "linkerd-service-mirror-%s"
+	linkerdServiceMirrorComponentName      = "service-mirror"
+	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror-%s"
 	linkerdServiceMirrorClusterRoleName    = "linkerd-service-mirror-access-local-resources-%s"
 	linkerdServiceMirrorRoleName           = "linkerd-service-mirror-read-remote-creds-%s"
 )
-
-var expectedServiceMirrorRemoteClusterPolicyVerbs = []string{
-	"get",
-	"list",
-	"watch",
-}
 
 func (hc *HealthChecker) multiClusterCategory() []category {
 	return []category{
@@ -61,7 +54,28 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 						return &SkipError{Reason: "not checking muticluster"}
 					},
 				},
-				/* Serivce mirror controller checks */
+				/* Target cluster access checks */
+				{
+					description: "remote cluster access credentials are valid",
+					hintAnchor:  "l5d-smc-target-clusters-access",
+					check: func(context.Context) error {
+						if hc.Options.MultiCluster {
+							return hc.checkRemoteClusterConnectivity()
+						}
+						return &SkipError{Reason: "not checking muticluster"}
+					},
+				},
+				{
+					description: "clusters share trust anchors",
+					hintAnchor:  "l5d-multicluster-clusters-share-anchors",
+					check: func(ctx context.Context) error {
+						if hc.Options.MultiCluster {
+							return hc.checkRemoteClusterAnchors()
+						}
+						return &SkipError{Reason: "not checking muticluster"}
+					},
+				},
+				/* Service mirror controller checks */
 				{
 					description: "service mirror controller has required permissions",
 					hintAnchor:  "l5d-multicluster-source-rbac-correct",
@@ -80,27 +94,6 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 					check: func(context.Context) error {
 						if hc.Options.MultiCluster {
 							return hc.checkServiceMirrorController()
-						}
-						return &SkipError{Reason: "not checking muticluster"}
-					},
-				},
-				/* Target cluster access checks */
-				{
-					description: "remote cluster access credentials are valid",
-					hintAnchor:  "l5d-smc-target-clusters-access",
-					check: func(context.Context) error {
-						if hc.Options.MultiCluster {
-							return hc.checkRemoteClusterConnectivity()
-						}
-						return &SkipError{Reason: "not checking muticluster"}
-					},
-				},
-				{
-					description: "clusters share trust anchors",
-					hintAnchor:  "l5d-multicluster-clusters-share-anchors",
-					check: func(ctx context.Context) error {
-						if hc.Options.MultiCluster {
-							return hc.checkRemoteClusterAnchors()
 						}
 						return &SkipError{Reason: "not checking muticluster"}
 					},
@@ -173,7 +166,7 @@ func (hc *HealthChecker) checkLinks() error {
 	return &VerboseSuccess{Message: strings.Join(linkNames, "\n")}
 }
 
-/* Serivce mirror controller checks */
+/* Service mirror controller checks */
 
 func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 	links := []string{}
@@ -182,7 +175,7 @@ func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 	for _, link := range hc.links {
 
 		err := hc.checkServiceAccounts(
-			[]string{fmt.Sprintf(linkerdServiceMirrorSerivceAccountName, link.TargetClusterName)},
+			[]string{fmt.Sprintf(linkerdServiceMirrorServiceAccountName, link.TargetClusterName)},
 			link.Namespace,
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)
@@ -302,33 +295,30 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity() error {
 			continue
 		}
 
-		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config.APIConfig)
+		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
 			continue
 		}
 
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+			errors = append(errors, fmt.Errorf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
 			continue
 		}
 
-		var verbs []string
-		if err := hc.checkCanPerformAction(remoteAPI, "get", corev1.NamespaceAll, "", "v1", "services"); err == nil {
-			verbs = append(verbs, "get")
+		// We use this call just to check connectivity.
+		_, err = remoteAPI.Discovery().ServerVersion()
+		if err != nil {
+			errors = append(errors, fmt.Errorf("* failed to connect to API for cluster: [%s]: %s", link.TargetClusterName, err))
+			continue
 		}
 
-		if err := hc.checkCanPerformAction(remoteAPI, "list", corev1.NamespaceAll, "", "v1", "services"); err == nil {
-			verbs = append(verbs, "list")
-		}
-
-		if err := hc.checkCanPerformAction(remoteAPI, "watch", corev1.NamespaceAll, "", "v1", "services"); err == nil {
-			verbs = append(verbs, "watch")
-		}
-
-		if err := comparePermissions(expectedServiceMirrorRemoteClusterPolicyVerbs, verbs); err != nil {
-			errors = append(errors, fmt.Errorf("* cluster: [%s]: Insufficient Service permissions: %s", config.ClusterName, err))
+		verbs := []string{"get", "list", "watch"}
+		for _, verb := range verbs {
+			if err := hc.checkCanPerformAction(remoteAPI, verb, corev1.NamespaceAll, "", "v1", "services"); err != nil {
+				errors = append(errors, fmt.Errorf("* missing service permission [%s] for cluster [%s]: %s", verb, link.TargetClusterName, err))
+			}
 		}
 
 		links = append(links, fmt.Sprintf("\t* %s", link.TargetClusterName))
@@ -366,15 +356,15 @@ func (hc *HealthChecker) checkRemoteClusterAnchors() error {
 			continue
 		}
 
-		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config.APIConfig)
+		clientConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: unable to parse api config: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
 			continue
 		}
 
 		remoteAPI, err := k8s.NewAPIForConfig(clientConfig, "", []string{}, requestTimeout)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, config.ClusterName, err))
+			errors = append(errors, fmt.Sprintf("* secret: [%s/%s] cluster: [%s]: could not instantiate api for target cluster: %s", secret.Namespace, secret.Name, link.TargetClusterName, err))
 			continue
 		}
 
@@ -506,7 +496,7 @@ func (hc *HealthChecker) checkIfMirrorServicesHaveEndpoints() error {
 		// Check if there is a relevant end-point
 		endpoint, err := hc.kubeAPI.CoreV1().Endpoints(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
 		if err != nil || len(endpoint.Subsets) == 0 {
-			servicesWithNoEndpoints = append(servicesWithNoEndpoints, fmt.Sprintf("%s.%s mirrored from cluster [%s] (gateway: [%s/%s])", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel], svc.Labels[k8s.RemoteGatewayNsLabel], svc.Labels[k8s.RemoteGatewayNameLabel]))
+			servicesWithNoEndpoints = append(servicesWithNoEndpoints, fmt.Sprintf("%s.%s mirrored from cluster [%s]", svc.Name, svc.Namespace, svc.Labels[k8s.RemoteClusterNameLabel]))
 		}
 	}
 
@@ -574,18 +564,4 @@ func joinErrors(errs []error, tabDepth int) error {
 		errStrings = append(errStrings, indent+err.Error())
 	}
 	return errors.New(strings.Join(errStrings, "\n"))
-}
-
-func comparePermissions(expected, actual []string) error {
-	sort.Strings(expected)
-	sort.Strings(actual)
-
-	expectedStr := strings.Join(expected, ",")
-	actualStr := strings.Join(actual, ",")
-
-	if expectedStr != actualStr {
-		return fmt.Errorf("expected %s, got %s", expectedStr, actualStr)
-	}
-
-	return nil
 }

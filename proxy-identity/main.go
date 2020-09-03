@@ -65,16 +65,16 @@ func loadVerifier(pem string) (verify x509.VerifyOptions, err error) {
 }
 
 // checkEndEntityDir checks that the provided directory path exists and is
-// suitable to write key material to, returning the Key, CSR, and Crt paths.
+// suitable to write key material to, returning the key and CSR paths.
 //
 // If the directory does not exist, we assume that the wrong directory was
-// specified incorrectly, instead of trying to
-// create or repair the directory. In practice, this directory should be tmpfs
-// so that credentials are not written to disk, so we want to be extra sensitive
-// to an incorrectly specified path.
+// specified incorrectly instead of trying to create or repair the directory.
+// In practice this directory should be tmpfs so that credentials are not
+// written to disk, so we want to be extra sensitive to an incorrectly
+// specified path.
 //
-// If the key, CSR, and/or Crt paths refer to existing files, it is assumed that
-// the proxy has been restarted and these credentials are NOT recreated.
+// If the key and/or CSR paths refer to existing files, it will be logged and
+// the credentials will be recreated.
 func checkEndEntityDir(dir string) (string, string, error) {
 	if dir == "" {
 		return "", "", errors.New("no end entity directory specified")
@@ -90,12 +90,12 @@ func checkEndEntityDir(dir string) (string, string, error) {
 
 	keyPath := filepath.Join(dir, "key.p8")
 	if err = checkNotExists(keyPath); err != nil {
-		log.Infof("Using with pre-existing key: %s", keyPath)
+		log.Infof("Found pre-existing key: %s", keyPath)
 	}
 
 	csrPath := filepath.Join(dir, "csr.der")
 	if err = checkNotExists(csrPath); err != nil {
-		log.Infof("Using with pre-existing CSR: %s", keyPath)
+		log.Infof("Found pre-existing CSR: %s", csrPath)
 	}
 
 	return keyPath, csrPath, nil

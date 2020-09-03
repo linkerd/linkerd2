@@ -1,4 +1,4 @@
-# slow_cooker --http-> gateway --grpc-> t1
+# /slow_cooker/slow_cooker --http-> gateway --grpc-> t1
 #                              --grpc-> t2 always-error
 #                              --http-> t3
 #                              --http-> t4 tap-disabled
@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: t1
-        image: buoyantio/bb:v0.0.5
+        image: buoyantio/bb:v0.0.6
         args:
         - terminus
         - "--grpc-server-port=9090"
@@ -60,7 +60,7 @@ spec:
     spec:
       containers:
       - name: t2
-        image: buoyantio/bb:v0.0.5
+        image: buoyantio/bb:v0.0.6
         args:
         - terminus
         - "--grpc-server-port=9090"
@@ -99,7 +99,7 @@ spec:
     spec:
       containers:
       - name: t3
-        image: buoyantio/bb:v0.0.5
+        image: buoyantio/bb:v0.0.6
         args:
         - terminus
         - "--h1-server-port=8080"
@@ -139,7 +139,7 @@ spec:
     spec:
       containers:
       - name: t4
-        image: buoyantio/bb:v0.0.5
+        image: buoyantio/bb:v0.0.6
         args:
         - terminus
         - "--h1-server-port=8080"
@@ -177,7 +177,7 @@ spec:
     spec:
       containers:
       - name: gateway
-        image: buoyantio/bb:v0.0.5
+        image: buoyantio/bb:v0.0.6
         args:
         - broadcast-channel
         - "--h1-server-port=8080"
@@ -214,14 +214,14 @@ spec:
     spec:
       containers:
       - name: slow-cooker
-        image: buoyantio/slow_cooker:1.1.1
+        image: buoyantio/slow_cooker:1.3.0
         command:
         - "/bin/sh"
         args:
         - "-c"
         - |
           sleep 15 # wait for pods to start
-          slow_cooker -metric-addr 0.0.0.0:9999 http://gateway-svc:8080
+          /slow_cooker/slow_cooker -metric-addr 0.0.0.0:9999 http://gateway-svc:8080
         ports:
         - containerPort: 9999
       restartPolicy: OnFailure

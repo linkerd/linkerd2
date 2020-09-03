@@ -7,6 +7,7 @@ import MetricsTable from './MetricsTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
+import { Trans } from '@lingui/macro';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import withREST from './util/withREST.jsx';
 
@@ -33,14 +34,14 @@ export class ResourceListBase extends React.Component {
         <MetricsTable
           resource={resource}
           metrics={processedMetrics}
-          title="HTTP metrics" />
+          title={<Trans>tableTitleHTTPMetrics</Trans>} />
 
         {resource !== 'trafficsplit' &&
         <MetricsTable
           resource={resource}
           isTcpTable
           metrics={processedMetrics}
-          title="TCP metrics" />
+          title={<Trans>tableTitleTCPMetrics</Trans>} />
         }
       </React.Fragment>
     );
