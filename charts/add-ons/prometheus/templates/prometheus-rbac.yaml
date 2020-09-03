@@ -39,4 +39,7 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: prometheus
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-{{- include "partials.image-pull-secrets" . }}
+{{- if .Values.imagePullSecrets }}
+imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 2 }}
+{{- end -}}
