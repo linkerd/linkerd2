@@ -3,6 +3,7 @@
 set -eu
 
 k8s_context=${1:-""}
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
 populate_array() {
   [ $# -ge 3 ] || {
@@ -24,11 +25,9 @@ Usage: ${FUNCNAME[0]} TARGET_ARRAY RESOURCE_TYPE LINKERD_LABEL (FRIENDLY_NAME)" 
 
 # Initialize empty arrays
 namespaces_controlplane=()
-namespaces_helm=()
 namespaces_cni=()
 namespaces_dataplane=()
 clusterrolebindings=()
-clusterrolebindings_helm=()
 clusterroles=()
 webhookconfigs=()
 validatingconfigs=()
@@ -40,7 +39,6 @@ rolebindings=()
 echo "cleaning up control-plane namespaces in k8s-context [${k8s_context}]"
 
 populate_array namespaces_controlplane   ns                              is-control-plane 'control-plane namespaces'
-populate_array namespaces_helm           ns                              is-test-helm     'helm namespaces'
 
 echo "cleaning up CNI namespaces in k8s-context [${k8s_context}]"
 
@@ -50,7 +48,6 @@ echo "cleaning up data-plane namespaces in k8s-context [${k8s_context}]"
 
 populate_array namespaces_dataplane      ns                              is-test-data-plane 'data-plane namespaces'
 populate_array clusterrolebindings       clusterrolebindings             control-plane-ns
-populate_array clusterrolebindings_helm  clusterrolebindings             is-test-helm       'helm clusterrolebindings'
 populate_array clusterroles              clusterroles                    control-plane-ns
 populate_array webhookconfigs            mutatingwebhookconfigurations   control-plane-ns
 populate_array validatingconfigs         validatingwebhookconfigurations control-plane-ns
@@ -61,10 +58,8 @@ populate_array apiservices               apiservices                     control
 # No action if all arrays are empty
 if [[ ${namespaces_controlplane[*]}   || \
       ${namespaces_cni[*]}            || \
-      ${namespaces_helm[*]}           || \
       ${namespaces_dataplane[*]}      || \
       ${clusterrolebindings[*]}       || \
-      ${clusterrolebindings_helm[*]}  || \
       ${clusterroles[*]}              || \
       ${webhookconfigs[*]}            || \
       ${validatingconfigs[*]}         || \
@@ -74,10 +69,8 @@ if [[ ${namespaces_controlplane[*]}   || \
   kubectl --context="$k8s_context" delete \
     ${namespaces_controlplane:+"${namespaces_controlplane[@]}"}     \
     ${namespaces_cni:+"${namespaces_cni[@]}"}                       \
-    ${namespaces_helm:+"${namespaces_helm[@]}"}                     \
     ${namespaces_dataplane:+"${namespaces_dataplane[@]}"}           \
     ${clusterrolebindings:+"${clusterrolebindings[@]}"}             \
-    ${clusterrolebindings_helm:+"${clusterrolebindings_helm[@]}"}   \
     ${clusterroles:+"${clusterroles[@]}"}                           \
     ${webhookconfigs:+"${webhookconfigs[@]}"}                       \
     ${validatingconfigs:+"${validatingconfigs[@]}"}                 \
@@ -94,3 +87,13 @@ populate_array rolebindings              rolebindings                    control
 if [[ ${rolebindings[*]} ]]; then
   kubectl --context="$k8s_context" delete "${rolebindings[@]}" -n kube-system
 fi
+
+# Helm cleanup. Just the entries in `helm ls` as the resources should have already been cleaned up by the code above.
+releases=$(helm ls -A -q)
+if [[ "${releases[*]}" =~ 'helm-test' ]]; then
+  "$bindir/helm" --kube-context="$k8s_context" delete helm-test
+fi
+if [[ "${releases[*]}" =~ 'multicluster-test' ]]; then
+  "$bindir/helm" --kube-context="$k8s_context" delete multicluster-test
+fi
+
