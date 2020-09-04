@@ -115,7 +115,7 @@
         },
         {
           "name": "LINKERD2_PROXY_DESTINATION_SVC_ADDR",
-          "value": "linkerd-dst.linkerd.svc.cluster.local:8086"
+          "value": "linkerd-dst-headless.linkerd.svc.cluster.local:8086"
         },
         {
           "name": "LINKERD2_PROXY_DESTINATION_GET_NETWORKS",

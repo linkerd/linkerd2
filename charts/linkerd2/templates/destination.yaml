@@ -22,6 +22,25 @@ spec:
     port: 8086
     targetPort: 8086
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-dst-headless
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: destination
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+spec:
+  clusterIP: None
+  selector:
+    {{.Values.global.controllerComponentLabel}}: destination
+  ports:
+  - name: grpc
+    port: 8086
+    targetPort: 8086
+---
 {{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
 {{ $_ := set .Values.global.proxy "component" "linkerd-destination" -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
