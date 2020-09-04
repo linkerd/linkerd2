@@ -1,5 +1,13 @@
 # Changes
 
+## edge-20.8.4
+
+* Fixed a problem causing the `enable-endpoint-slices` flag to not be persisted
+  when set via `linkerd upgrade` (thanks @Matei207!)
+* Removed SMI-Metrics templates and experimental sub-commands
+* Use `--frozen-lockfile` to avoid accidental update of dashboard JS
+  dependencies in CI (thanks @tharun208!)
+
 ## edge-20.8.3
 
 This edge release adds support for [topology-aware service routing][topology] to
