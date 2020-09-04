@@ -92,13 +92,9 @@ const (
 	// that the control plane is configured with
 	LinkerdIdentity CategoryID = "linkerd-identity"
 
-	// LinkerdWebhooksTLS the integrity of the mTLS certificates
-	// that of the for the injector and sp webhooks
-	LinkerdWebhooksTLS CategoryID = "linkerd-webhooks-tls"
-
-	// LinkerdTapTLS the integrity of the mTLS certificates
-	// of the tap service
-	LinkerdTapTLS CategoryID = "linkerd-tap-tls"
+	// LinkerdWebhooksAndAPISvcTLS the integrity of the mTLS certificates
+	// that of the for the injector and sp webhooks and the tap api svc
+	LinkerdWebhooksAndAPISvcTLS CategoryID = "linkerd-webhooks-and-apisvc-tls"
 
 	// LinkerdIdentityDataPlane checks that integrity of the mTLS
 	// certificates that the proxies are configured with and tries to
@@ -1022,8 +1018,25 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
-			id: LinkerdWebhooksTLS,
+			id: LinkerdWebhooksAndAPISvcTLS,
 			checkers: []checker{
+				{
+					description: "tap API server has valid cert",
+					hintAnchor:  "l5d-tap-cert-valid",
+					fatal:       true,
+					check: func(context.Context) (err error) {
+						anchors, err := hc.fetchTapCaBundle()
+						if err != nil {
+							return err
+						}
+						cert, err := hc.fetchCredsFromSecret(tapTLSSecretName)
+						if err != nil {
+							return err
+						}
+						identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.ControlPlaneNamespace)
+						return hc.checkCertAndAnchors(cert, anchors, identityName)
+					},
+				},
 				{
 					description: "proxy-injector webhook has valid cert",
 					hintAnchor:  "l5d-proxy-injector-webhook-cert-valid",
@@ -1055,28 +1068,6 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 						identityName := fmt.Sprintf("linkerd-sp-validator.%s.svc", hc.ControlPlaneNamespace)
-						return hc.checkCertAndAnchors(cert, anchors, identityName)
-					},
-				},
-			},
-		},
-		{
-			id: LinkerdTapTLS,
-			checkers: []checker{
-				{
-					description: "tap has valid cert",
-					hintAnchor:  "l5d-tap-cert-valid",
-					fatal:       true,
-					check: func(context.Context) (err error) {
-						anchors, err := hc.fetchTapCaBundle()
-						if err != nil {
-							return err
-						}
-						cert, err := hc.fetchCredsFromSecret(tapTLSSecretName)
-						if err != nil {
-							return err
-						}
-						identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.ControlPlaneNamespace)
 						return hc.checkCertAndAnchors(cert, anchors, identityName)
 					},
 				},
