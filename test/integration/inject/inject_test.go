@@ -268,10 +268,10 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 				if containers[0].Name != k8s.ProxyContainerName && containers[1].Name != k8s.ProxyContainerName {
 					testutil.Fatalf(t, "expected %s container in pod %s/%s, got %+v", ns, pods[0].GetName(), k8s.ProxyContainerName, containers[0])
 				}
-				if len(initContainers) != 1 {
+				if len(initContainers) != 1 && !TestHelper.CNI() {
 					testutil.Fatalf(t, "expected 1 init container for pod %s/%s, got %d", ns, pods[0].GetName(), len(initContainers))
 				}
-				if initContainers[0].Name != k8s.InitContainerName {
+				if initContainers[0].Name != k8s.InitContainerName && !TestHelper.CNI() {
 					testutil.Fatalf(t, "expected %s init container in pod %s/%s, got %+v", ns, pods[0].GetName(), k8s.InitContainerName, initContainers[0])
 				}
 			} else {
