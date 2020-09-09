@@ -172,7 +172,7 @@ func TestInstallCNIPlugin(t *testing.T) {
 	var (
 		cmd  = "install-cni"
 		args = []string{
-			"--dest-cni-net-dir", "/home/kubernetes/bin",
+			"--use-wait-flag",
 		}
 	)
 
@@ -635,6 +635,8 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=0"}
 		if TestHelper.Multicluster() {
 			golden = "check.multicluster.proxy.golden"
+		} else if TestHelper.CNI() {
+			golden = "check.cni.proxy.golden"
 		} else {
 			golden = "check.proxy.golden"
 		}
@@ -645,6 +647,8 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=0"}
 		if TestHelper.Multicluster() {
 			golden = "check.multicluster.golden"
+		} else if TestHelper.CNI() {
+			golden = "check.cni.golden"
 		} else {
 			golden = "check.golden"
 		}
