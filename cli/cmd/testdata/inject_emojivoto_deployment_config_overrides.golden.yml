@@ -116,7 +116,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_DISABLED
           value: "true"
-        image: gcr.io/linkerd-io/proxy:override
+        image: ghcr.io/linkerd/proxy:override
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -161,7 +161,7 @@ spec:
         - 4190,9998,7777,8888
         - --outbound-ports-to-ignore
         - "9999"
-        image: gcr.io/linkerd-io/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
