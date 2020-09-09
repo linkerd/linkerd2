@@ -11,7 +11,4 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: grafana
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-{{- if .Values.global.imagePullSecrets }}
-imagePullSecrets:
-{{ toYaml .Values.global.imagePullSecrets | indent 2 }}
-{{- end }}
+{{- include "partials.image-pull-secrets" . }}
