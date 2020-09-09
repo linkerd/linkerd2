@@ -323,11 +323,11 @@ prometheus:
 
 tracing:
   enabled: false
-  collector:
-    name: linkerd-collector
-    image: omnition/opencensus-collector:0.1.11
-    # resources:
-  jaeger:
-    name: linkerd-jaeger
-    image: jaegertracing/all-in-one:1.17.1
-    # resources:
+  # collector:
+  #  name: linkerd-collector
+  #  image: omnition/opencensus-collector:0.1.11
+  #  resources:
+  # jaeger:
+  #  name: linkerd-jaeger
+  #  image: jaegertracing/all-in-one:1.19.2
+  #  resources:
