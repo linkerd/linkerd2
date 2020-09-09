@@ -44,7 +44,7 @@ jobs:
         bin/docker-build-${{ matrix.target }}
     - name: Push docker images to registry
       run: |
-        echo "${{ secrets.DOCKER_GHCR_PAT }}" docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
+        echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
         . bin/_docker.sh
         docker_push "${{ matrix.target }}" "$TAG"
         docker_retag "${{ matrix.target }}" "$TAG" main
