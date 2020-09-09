@@ -163,6 +163,40 @@ func TestRetrieveUidPreUpgrade(t *testing.T) {
 	}
 }
 
+func TestInstallCNIPlugin(t *testing.T) {
+	if !TestHelper.CNI() {
+		return
+	}
+
+	// install the CNI plugin in the cluster
+	var (
+		cmd  = "install-cni"
+		args = []string{
+			"--dest-cni-net-dir", "/home/kubernetes/bin",
+		}
+	)
+
+	exec := append([]string{cmd}, args...)
+	out, stderr, err := TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd install-cni' command failed",
+			"'linkerd install-cni' command failed: \n%s\n%s", out, stderr)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+
+	// perform a linkerd check with --linkerd-cni-enabled
+	out, stderr, err = TestHelper.LinkerdRun("check", "--pre", "--linkerd-cni-enabled")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\n%s\n%s", out, stderr)
+	}
+
+}
+
 func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.GetHelmReleaseName() != "" {
 		return
@@ -180,6 +214,10 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	if TestHelper.GetClusterDomain() != "cluster.local" {
 		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())
+	}
+
+	if TestHelper.CNI() {
+		args = append(args, "--linkerd-cni-enabled")
 	}
 
 	if TestHelper.ExternalIssuer() {
