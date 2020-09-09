@@ -15,4 +15,4 @@ spec:
     spec:
       containers:
       - name: http-egress
-        image: ghcr.io/linkerd/debug:edge-20.8.1
+        image: ghcr.io/linkerd/debug:main
