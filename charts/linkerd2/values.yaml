@@ -96,17 +96,10 @@ global:
   linkerdNamespaceLabel: linkerd.io/is-control-plane
   workloadNamespaceLabel: linkerd.io/workload-ns
 
-  #
-  ## For Private docker registries, authentication is needed.
-  # If the control plane service images are pulled from a
-  # protected docker registry, define pull secrets as follows:
-  #
-  #imagePullSecrets:
-  #    - name: my-private-docker-registry-login-secret
-  #
-  # The pull secrets are applied to the respective service accounts
-  # which will further orchestrate the deployments.
+  # For Private docker registries, authentication is needed.
+  #  Registry secrets are applied to the respective service accounts
   imagePullSecrets: []
+  # - name: my-private-docker-registry-login-secret
 
 # enforced host validation regular expression
 enforcedHostRegexp: ""

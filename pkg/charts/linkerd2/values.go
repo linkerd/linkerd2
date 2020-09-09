@@ -91,7 +91,7 @@ type (
 		IdentityTrustDomain      string `json:"identityTrustDomain"`
 		PrometheusURL            string `json:"prometheusUrl"`
 		GrafanaURL               string `json:"grafanaUrl"`
-		ImagePullSecrets         []map[string]string `json:"imagePullSecrets""`
+		ImagePullSecrets         []map[string]string `json:"imagePullSecrets"`
 
 
 		Proxy     *Proxy     `json:"proxy"`
