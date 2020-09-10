@@ -190,11 +190,17 @@ func TestInstallCNIPlugin(t *testing.T) {
 	}
 
 	// perform a linkerd check with --linkerd-cni-enabled
-	out, stderr, err = TestHelper.LinkerdRun("check", "--pre", "--linkerd-cni-enabled")
+	timeout := time.Minute
+	err = TestHelper.RetryFor(timeout, func() error {
+		out, stderr, err = TestHelper.LinkerdRun("check", "--pre", "--linkerd-cni-enabled")
+		if err != nil {
+			return fmt.Errorf("'linkerd check' command failed\n%s\n%s\n%vs", out, stderr, err)
+		}
+		return nil
+	})
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd check' command timed-out (%s)", timeout), err)
 	}
-
 }
 
 func TestInstallOrUpgradeCli(t *testing.T) {
