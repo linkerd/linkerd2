@@ -27,17 +27,29 @@ func TestMain(m *testing.M) {
 
 func TestSMIMetrics(t *testing.T) {
 
-	// Install smi-metrics using Helm chart
 	testNamespace := TestHelper.GetTestNamespace("smi-metrics-test")
 	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(testNamespace, nil)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create %s namespace: %s", testNamespace, err)
 	}
 
+	// Add the SMI Helm repo
 	args := []string{
+		"repo",
+		"add",
+		"smi",
+		"https://servicemeshinterface.github.io/smi-metrics/",
+	}
+
+	if stdout, stderr, err := TestHelper.HelmRun(args...); err != nil {
+		testutil.AnnotatedFatalf(t, "'helm repo add' command failed\n%s\n%s\n%v", stdout, stderr, err)
+	}
+
+	// Install the latest SMI-Metrics helm chart
+	args = []string{
 		"install",
 		"smi-metrics",
-		"smi-metrics.tgz",
+		"smi/smi-metrics",
 		"--set",
 		"adapter=linkerd",
 		"--namespace",
