@@ -59,6 +59,9 @@ func defaultRetryBudget() *pb.RetryBudget {
 }
 
 func toDuration(d time.Duration) *duration.Duration {
+	if d == 0 {
+		return nil
+	}
 	return &duration.Duration{
 		Seconds: int64(d / time.Second),
 		Nanos:   int32(d % time.Second),

@@ -134,7 +134,7 @@ var (
 				IsFailure: true,
 			},
 		},
-		Timeout: &duration.Duration{},
+		Timeout: nil,
 	}
 
 	route2 = &sp.RouteSpec{
@@ -159,7 +159,7 @@ var (
 				IsFailure: true,
 			},
 		},
-		Timeout: &duration.Duration{},
+		Timeout: nil,
 	}
 
 	profile = &sp.ServiceProfile{
@@ -229,7 +229,7 @@ var (
 					"route": "multipleRequestMatches",
 				},
 				ResponseClasses: []*pb.ResponseClass{},
-				Timeout:         &duration.Duration{},
+				Timeout:         nil,
 			},
 		},
 		RetryBudget: defaultRetryBudget(),
@@ -319,7 +319,7 @@ var (
 						},
 					},
 				},
-				Timeout: &duration.Duration{},
+				Timeout: nil,
 			},
 		},
 		RetryBudget: defaultRetryBudget(),
