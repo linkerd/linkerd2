@@ -15,7 +15,9 @@ that the grafana image is properly set.
 * Changed default docker image repository to ghcr.io from gcr.io. **Users who
   pull the images into private repositories should take note of this change**
 * Added endpoint labels to outbound TCP metrics to provide more context and
-  detail for the metrics, especially whether mTLS is applied
+  detail for the metrics, add load balancing to TCP connections
+  (bypassing kube-proxy), and secure the connection with mTLS when both
+  endpoints are meshed
 * Made unnamed ServiceProfile discovery configurable using the
   `proxy.destinationGetNetworks` varuable to set the
   `LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS` variable in the proxy chart
