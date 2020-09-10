@@ -23,7 +23,8 @@
     "op": "add",
     "path": "/metadata/labels/linkerd.io~1workload-ns",
     "value": "kube-public"
-  },{
+  },
+  {
     "op": "add",
     "path": "/spec/volumes",
     "value": []
@@ -122,6 +123,10 @@
           "value": "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         },
         {
+          "name": "LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS",
+          "value": "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        },
+        {
           "name": "LINKERD2_PROXY_CONTROL_LISTEN_ADDR",
           "value": "0.0.0.0:4190"
         },
@@ -161,14 +166,14 @@
             }
           }
         },
-          {
-              "name": "_pod_nodeName",
-              "valueFrom": {
-                  "fieldRef": {
-                      "fieldPath": "spec.nodeName"
-                  }
-              }
-          },
+        {
+          "name": "_pod_nodeName",
+          "valueFrom": {
+            "fieldRef": {
+              "fieldPath": "spec.nodeName"
+            }
+          }
+        },
         {
           "name": "LINKERD2_PROXY_DESTINATION_CONTEXT",
           "value": "{\"ns\":\"$(_pod_ns)\", \"nodeName\":\"$(_pod_nodeName)\"}\n"
