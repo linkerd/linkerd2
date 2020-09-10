@@ -14,10 +14,6 @@ import (
 
 const millisPerDecimilli = 10
 
-var (
-	defaultRouteTimeout = 10 * time.Second
-)
-
 // implements the ProfileUpdateListener interface
 type profileTranslator struct {
 	stream pb.Destination_GetProfileServer
@@ -124,7 +120,7 @@ func toRoute(profile *sp.ServiceProfile, route *sp.RouteSpec) (*pb.Route, error)
 		}
 		rcs = append(rcs, pbRc)
 	}
-	timeout := defaultRouteTimeout
+	var timeout time.Duration // No default timeout
 	if route.Timeout != "" {
 		timeout, err = time.ParseDuration(route.Timeout)
 		if err != nil {
@@ -135,7 +131,6 @@ func toRoute(profile *sp.ServiceProfile, route *sp.RouteSpec) (*pb.Route, error)
 				profile.Namespace,
 				err,
 			)
-			timeout = defaultRouteTimeout
 		}
 	}
 	return &pb.Route{
