@@ -40,6 +40,12 @@ linkerd-identity
 √ issuer cert is valid for at least 60 days
 √ issuer cert is issued by the trust anchor
 
+linkerd-webhooks-and-apisvc-tls
+-------------------------------
+√ tap API server has valid cert
+√ proxy-injector webhook has valid cert
+√ sp-validator webhook has valid cert
+
 linkerd-identity-data-plane
 ---------------------------
 √ data plane proxies certificate match CA
