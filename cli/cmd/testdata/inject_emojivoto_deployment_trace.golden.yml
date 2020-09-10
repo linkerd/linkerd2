@@ -117,7 +117,7 @@ spec:
           value: linkerd-collector
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
           value: linkerd-collector.linkerd..serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:test-inject-proxy-version
+        image: ghcr.io/linkerd/proxy:test-inject-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -155,7 +155,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

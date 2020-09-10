@@ -29,7 +29,7 @@ env:
       value: nginx.deployment.default.linkerd-managed.linkerd.svc.cluster.local
     - name: LINKERD2_PROXY_CONTROLLER_NAMESPACE
       value: linkerd
-image: gcr.io/linkerd-io/proxy:v18.8.4
+image: ghcr.io/linkerd/proxy:v18.8.4
 imagePullPolicy: IfNotPresent
 livenessProbe:
     httpGet:
