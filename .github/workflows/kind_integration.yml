@@ -104,7 +104,7 @@ jobs:
         - uninstall
         - upgrade-edge
         - upgrade-stable
-        - cni
+        - cni-deep
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04

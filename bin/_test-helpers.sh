@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable cni)
+export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable cni-deep)
 export all_test_names=(cluster-domain "${default_test_names[*]}")
 
 handle_input() {
@@ -350,7 +350,7 @@ run_deep_test() {
   done
 }
 
-run_cni_test() {
+run_cni-deep_test() {
   local tests=()
   run_test "$test_directory/install_test.go" --cni
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
