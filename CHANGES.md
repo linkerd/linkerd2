@@ -3,8 +3,7 @@
 ## edge-20.9.2
 
 This edge release continues the work of adding support for mTLS for all TCP
-traffic and changes the default container registry has been changed to
-`ghcr.io` from `gcr.io`.
+traffic and changes the default container registry to `ghcr.io` from `gcr.io`.
 
 If you are upgrading from `stable-2.8.x` with the Linkerd CLI using the
 `linkerd upgrade` command, you must add the `--addon-overwrite` flag to ensure
@@ -19,7 +18,7 @@ that the grafana image is properly set.
   (bypassing kube-proxy), and secure the connection with mTLS when both
   endpoints are meshed
 * Made unnamed ServiceProfile discovery configurable using the
-  `proxy.destinationGetNetworks` varuable to set the
+  `proxy.destinationGetNetworks` variable to set the
   `LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS` variable in the proxy chart
   template
 * Added TLS certificate validation for the Injector, SP Validator, and Tap
