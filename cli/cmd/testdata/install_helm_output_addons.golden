@@ -2645,11 +2645,9 @@ data:
     tracing:
       collector:
         image: omnition/opencensus-collector:0.1.11
-        name: linkerd-collector
       enabled: true
       jaeger:
         image: jaegertracing/all-in-one:1.19.2
-        name: linkerd-jaeger
 ---
 # Source: linkerd2/charts/grafana/templates/grafana-rbac.yaml
 ---
