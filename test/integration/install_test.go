@@ -194,7 +194,7 @@ func TestInstallCNIPlugin(t *testing.T) {
 	err = TestHelper.RetryFor(timeout, func() error {
 		out, stderr, err = TestHelper.LinkerdRun("check", "--pre", "--linkerd-cni-enabled")
 		if err != nil {
-			return fmt.Errorf("'linkerd check' command failed\n%s\n%s\n%vs", out, stderr, err)
+			return fmt.Errorf("'linkerd check' command failed\n%s\n%s\n%v", out, stderr, err)
 		}
 		return nil
 	})
