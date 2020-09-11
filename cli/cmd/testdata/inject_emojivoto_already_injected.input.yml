@@ -33,7 +33,7 @@ spec:
         - containerPort: 80
           name: http
         resources: {}
-      - image: gcr.io/linkerd-io/proxy:foo
+      - image: ghcr.io/linkerd/proxy:foo
         name: linkerd-proxy
 status: {}
 ---
@@ -109,7 +109,7 @@ spec:
           name: http
         resources: {}
       initContainers:
-      - image: gcr.io/linkerd-io/proxy-init:foo
+      - image: ghcr.io/linkerd/proxy-init:foo
         name: linkerd-init
 status: {}
 ---

@@ -42,15 +42,9 @@ jobs:
       run: |
         docker buildx create --driver docker-container --use
         bin/docker-build-${{ matrix.target }}
-    - name: Configure gcloud
-      # linkerd/linkerd2-action-gcloud@v1.0.1
-      uses: linkerd/linkerd2-action-gcloud@308c4df
-      with:
-        cloud_sdk_service_account_key: ${{ secrets.CLOUD_SDK_SERVICE_ACCOUNT_KEY }}
-        gcp_project: ${{ secrets.GCP_PROJECT }}
-        gcp_zone: ${{ secrets.GCP_ZONE }}
     - name: Push docker images to registry
       run: |
+        echo "${{ secrets.DOCKER_GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.DOCKER_GHCR_USERNAME }}" --password-stdin
         . bin/_docker.sh
         docker_push "${{ matrix.target }}" "$TAG"
         docker_retag "${{ matrix.target }}" "$TAG" main

@@ -6,7 +6,7 @@ outboundProxyPort: 4140
 ignoreInboundPorts: ""
 ignoreOutboundPorts: ""
 createdByAnnotation: linkerd.io/created-by
-cniPluginImage:   "gcr.io/linkerd-io/cni-plugin"
+cniPluginImage:   "ghcr.io/linkerd/cni-plugin"
 cniPluginVersion: linkerdVersionValue
 logLevel:         info
 portsToRedirect:  ""

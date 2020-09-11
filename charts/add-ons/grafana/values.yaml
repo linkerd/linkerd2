@@ -1,2 +1,2 @@
 image:
-  name: gcr.io/linkerd-io/grafana
+  name: ghcr.io/linkerd/grafana
