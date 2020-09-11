@@ -15,7 +15,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 
 	fullyConfiguredOptions := &cniPluginOptions{
 		linkerdVersion:      "awesome-linkerd-version.1",
-		dockerRegistry:      "gcr.io/linkerd-io",
+		dockerRegistry:      "ghcr.io/linkerd",
 		proxyControlPort:    5190,
 		proxyAdminPort:      5191,
 		inboundPort:         5143,
@@ -35,7 +35,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 
 	fullyConfiguredOptionsEqualDsts := &cniPluginOptions{
 		linkerdVersion:      "awesome-linkerd-version.1",
-		dockerRegistry:      "gcr.io/linkerd-io",
+		dockerRegistry:      "ghcr.io/linkerd",
 		proxyControlPort:    5190,
 		proxyAdminPort:      5191,
 		inboundPort:         5143,
@@ -53,7 +53,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 
 	fullyConfiguredOptionsNoNamespace := &cniPluginOptions{
 		linkerdVersion:      "awesome-linkerd-version.1",
-		dockerRegistry:      "gcr.io/linkerd-io",
+		dockerRegistry:      "ghcr.io/linkerd",
 		proxyControlPort:    5190,
 		proxyAdminPort:      5191,
 		inboundPort:         5143,

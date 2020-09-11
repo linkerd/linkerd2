@@ -664,12 +664,12 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 		{
 			description: "proxy image overrides",
 			configOptions: proxyConfigOptions{
-				proxyImage:      "gcr.io/linkerd-io/proxy",
+				proxyImage:      "ghcr.io/linkerd/proxy",
 				proxyVersion:    "test-proxy-version",
 				imagePullPolicy: "IfNotPresent",
 			},
 			expectedOverrides: map[string]string{
-				k8s.ProxyImageAnnotation:           "gcr.io/linkerd-io/proxy",
+				k8s.ProxyImageAnnotation:           "ghcr.io/linkerd/proxy",
 				k8s.ProxyVersionOverrideAnnotation: "test-proxy-version",
 				k8s.ProxyImagePullPolicyAnnotation: "IfNotPresent",
 			},
@@ -677,12 +677,12 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 		{
 			description: "proxy-init image overrides",
 			configOptions: proxyConfigOptions{
-				initImage:        "gcr.io/linkerd-io/proxy-init",
+				initImage:        "ghcr.io/linkerd/proxy-init",
 				initImageVersion: "test-proxy-init-version",
 				imagePullPolicy:  "IfNotPresent",
 			},
 			expectedOverrides: map[string]string{
-				k8s.ProxyInitImageAnnotation:        "gcr.io/linkerd-io/proxy-init",
+				k8s.ProxyInitImageAnnotation:        "ghcr.io/linkerd/proxy-init",
 				k8s.ProxyInitImageVersionAnnotation: "test-proxy-init-version",
 				k8s.ProxyImagePullPolicyAnnotation:  "IfNotPresent",
 			},
@@ -690,13 +690,13 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 		{
 			description: "custom docker registry with proxy and proxy-init",
 			configOptions: proxyConfigOptions{
-				proxyImage:     "gcr.io/linkerd-io/proxy",
-				initImage:      "gcr.io/linkerd-io/proxy-init",
+				proxyImage:     "ghcr.io/linkerd/proxy",
+				initImage:      "ghcr.io/linkerd/proxy-init",
 				dockerRegistry: "my.custom.registry/linkerd-io",
 			},
 			expectedOverrides: map[string]string{
-				k8s.ProxyImageAnnotation:     "gcr.io/linkerd-io/proxy",
-				k8s.ProxyInitImageAnnotation: "gcr.io/linkerd-io/proxy-init",
+				k8s.ProxyImageAnnotation:     "ghcr.io/linkerd/proxy",
+				k8s.ProxyInitImageAnnotation: "ghcr.io/linkerd/proxy-init",
 				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
 			},
 		},
@@ -747,12 +747,12 @@ func TestOverrideConfigsWithCustomRegistryInstall(t *testing.T) {
 		{
 			description: "proxy image overrides",
 			configOptions: proxyConfigOptions{
-				proxyImage:      "gcr.io/linkerd-io/proxy",
+				proxyImage:      "ghcr.io/linkerd/proxy",
 				proxyVersion:    "test-proxy-version",
 				imagePullPolicy: "IfNotPresent",
 			},
 			expectedOverrides: map[string]string{
-				k8s.ProxyImageAnnotation:           "gcr.io/linkerd-io/proxy",
+				k8s.ProxyImageAnnotation:           "ghcr.io/linkerd/proxy",
 				k8s.ProxyVersionOverrideAnnotation: "test-proxy-version",
 				k8s.ProxyImagePullPolicyAnnotation: "IfNotPresent",
 			},
@@ -760,12 +760,12 @@ func TestOverrideConfigsWithCustomRegistryInstall(t *testing.T) {
 		{
 			description: "proxy-init image overrides",
 			configOptions: proxyConfigOptions{
-				initImage:        "gcr.io/linkerd-io/proxy-init",
+				initImage:        "ghcr.io/linkerd/proxy-init",
 				initImageVersion: "test-proxy-init-version",
 				imagePullPolicy:  "IfNotPresent",
 			},
 			expectedOverrides: map[string]string{
-				k8s.ProxyInitImageAnnotation:        "gcr.io/linkerd-io/proxy-init",
+				k8s.ProxyInitImageAnnotation:        "ghcr.io/linkerd/proxy-init",
 				k8s.ProxyInitImageVersionAnnotation: "test-proxy-init-version",
 				k8s.ProxyImagePullPolicyAnnotation:  "IfNotPresent",
 			},
@@ -773,13 +773,13 @@ func TestOverrideConfigsWithCustomRegistryInstall(t *testing.T) {
 		{
 			description: "custom docker registry with proxy and proxy-init",
 			configOptions: proxyConfigOptions{
-				proxyImage:     "gcr.io/linkerd-io/proxy",
-				initImage:      "gcr.io/linkerd-io/proxy-init",
+				proxyImage:     "ghcr.io/linkerd/proxy",
+				initImage:      "ghcr.io/linkerd/proxy-init",
 				dockerRegistry: "my.custom.registry/linkerd-io",
 			},
 			expectedOverrides: map[string]string{
-				k8s.ProxyImageAnnotation:     "gcr.io/linkerd-io/proxy",
-				k8s.ProxyInitImageAnnotation: "gcr.io/linkerd-io/proxy-init",
+				k8s.ProxyImageAnnotation:     "ghcr.io/linkerd/proxy",
+				k8s.ProxyInitImageAnnotation: "ghcr.io/linkerd/proxy-init",
 				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
 			},
 		},
@@ -841,12 +841,12 @@ func TestOverwriteRegistry(t *testing.T) {
 		expected string
 	}{
 		{
-			image:    "gcr.io/linkerd-io/image",
+			image:    "ghcr.io/linkerd/image",
 			registry: "my.custom.registry",
 			expected: "my.custom.registry/image",
 		},
 		{
-			image:    "gcr.io/linkerd-io/image",
+			image:    "ghcr.io/linkerd/image",
 			registry: "my.custom.registry/",
 			expected: "my.custom.registry/image",
 		},
@@ -857,8 +857,8 @@ func TestOverwriteRegistry(t *testing.T) {
 		},
 		{
 			image:    "my.custom.registry/image",
-			registry: "gcr.io/linkerd-io",
-			expected: "gcr.io/linkerd-io/image",
+			registry: "ghcr.io/linkerd",
+			expected: "ghcr.io/linkerd/image",
 		},
 		{
 			image:    "",
@@ -866,14 +866,14 @@ func TestOverwriteRegistry(t *testing.T) {
 			expected: "",
 		},
 		{
-			image:    "gcr.io/linkerd-io/image",
+			image:    "ghcr.io/linkerd/image",
 			registry: "",
 			expected: "image",
 		},
 		{
 			image:    "image",
-			registry: "gcr.io/linkerd-io",
-			expected: "gcr.io/linkerd-io/image",
+			registry: "ghcr.io/linkerd",
+			expected: "ghcr.io/linkerd/image",
 		},
 	}
 	for i, tc := range testCases {
