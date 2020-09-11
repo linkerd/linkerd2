@@ -1,8 +1,6 @@
 # Default values for tracing.
 collector:
-  name: linkerd-collector
   image: omnition/opencensus-collector:0.1.11
   # resources:
 jaeger:
-  name: linkerd-jaeger
   image: jaegertracing/all-in-one:1.19.2
