@@ -177,7 +177,7 @@ jobs:
     # only runs for stable tags. The conditionals are at each step level instead of the job level
     # otherwise the jobs below that depend on this one won't run
     name: Pack Chocolatey release
-    needs: [kind_integration_tests, cloud_integration_tests, arm64_integration_tests]
+    needs: [kind_integration_tests, arm64_integration_tests]
     runs-on: windows-2019
     steps:
     - name: Checkout code
