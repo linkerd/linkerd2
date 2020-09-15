@@ -2659,11 +2659,9 @@ data:
     tracing:
       collector:
         image: omnition/opencensus-collector:0.1.11
-        name: linkerd-collector
       enabled: true
       jaeger:
-        image: jaegertracing/all-in-one:1.17.1
-        name: linkerd-jaeger
+        image: jaegertracing/all-in-one:1.19.2
 ---
 # Source: linkerd2/charts/grafana/templates/grafana-rbac.yaml
 ---
@@ -3759,7 +3757,7 @@ spec:
       containers:
       - args:
         - --query.base-path=/jaeger
-        image: jaegertracing/all-in-one:1.17.1
+        image: jaegertracing/all-in-one:1.19.2
         imagePullPolicy: IfNotPresent
         name: jaeger
         ports:
