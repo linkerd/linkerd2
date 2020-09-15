@@ -199,6 +199,13 @@ func cmdAdd(args *skel.CmdArgs) error {
 				NetNs:                 args.Netns,
 				UseWaitFlag:           conf.ProxyInit.UseWaitFlag,
 			}
+
+			if pod.GetLabels()[k8s.ControllerComponentLabel] != "" {
+				// Skip 443 outbound port if its a control plane component
+				logEntry.Debug("linkerd-cni: adding 443 to OutboundPortsToIgnore as its a control plane component")
+				options.OutboundPortsToIgnore  = append(options.OutboundPortsToIgnore, "443")
+			}
+
 			firewallConfiguration, err := cmd.BuildFirewallConfiguration(&options)
 			if err != nil {
 				logEntry.Errorf("linkerd-cni: could not create a Firewall Configuration from the options: %v", options)

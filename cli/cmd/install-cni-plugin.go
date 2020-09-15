@@ -120,7 +120,7 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &cniPluginOptions{
+	cniOptions := cniPluginOptions{
 		linkerdVersion:      version.Version,
 		dockerRegistry:      defaultDockerRegistry,
 		proxyControlPort:    4190,
@@ -137,7 +137,17 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 		useWaitFlag:         defaults.UseWaitFlag,
 		priorityClassName:   defaults.PriorityClassName,
 		installNamespace:    defaults.InstallNamespace,
-	}, nil
+	}
+
+	if defaults.IgnoreInboundPorts != "" {
+		cniOptions.ignoreInboundPorts = strings.Split(defaults.IgnoreInboundPorts, ",")
+
+	}
+	if defaults.IgnoreOutboundPorts != "" {
+		cniOptions.ignoreOutboundPorts = strings.Split(defaults.IgnoreOutboundPorts, ",")
+	}
+
+	return &cniOptions, nil
 }
 
 func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
