@@ -21,6 +21,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	v1 "k8s.io/api/core/v1"
 	"os"
 	"strings"
 
@@ -200,6 +201,17 @@ func cmdAdd(args *skel.CmdArgs) error {
 				UseWaitFlag:           conf.ProxyInit.UseWaitFlag,
 			}
 
+			// Get if there are any configured ports to be ignored
+			if inboundSkipOverride, err := getAnnotationOverride(client, pod, k8s.ProxyIgnoreInboundPortsAnnotation); err == nil {
+				logEntry.Debugf("linkerd-cni: overriding InboundPortsToIgnore to %s", inboundSkipOverride)
+				options.InboundPortsToIgnore = strings.Split(inboundSkipOverride, ",")
+			}
+
+			if outboundSkipOverride, err := getAnnotationOverride(client, pod, k8s.ProxyIgnoreOutboundPortsAnnotation); err == nil {
+				logEntry.Debugf("linkerd-cni: overriding OutboundPortsToIgnore to %s", outboundSkipOverride)
+				options.OutboundPortsToIgnore = strings.Split(outboundSkipOverride, ",")
+			}
+
 			if pod.GetLabels()[k8s.ControllerComponentLabel] != "" {
 				// Skip 443 outbound port if its a control plane component
 				logEntry.Debug("linkerd-cni: adding 443 to OutboundPortsToIgnore as its a control plane component")
@@ -237,4 +249,23 @@ func cmdAdd(args *skel.CmdArgs) error {
 func cmdDel(args *skel.CmdArgs) error {
 	logrus.Debug("linkerd-cni: cmdDel not implemented")
 	return nil
+}
+
+func getAnnotationOverride(api *k8s.KubernetesAPI, pod *v1.Pod, key string) (string, error) {
+	// Check if there is a annotation on the pod
+	if override := pod.GetObjectMeta().GetAnnotations()[key]; override != "" {
+		return override, nil
+	}
+
+	// Check if there is a annotation on the namespace
+	ns, err := api.CoreV1().Namespaces().Get(pod.GetObjectMeta().GetNamespace(), metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	if override := ns.GetObjectMeta().GetAnnotations()[key]; override != "" {
+		return override, nil
+	}
+
+	return "", fmt.Errorf("did not find any override annotation for %s", key)
 }
