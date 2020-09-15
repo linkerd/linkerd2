@@ -201,7 +201,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 				UseWaitFlag:           conf.ProxyInit.UseWaitFlag,
 			}
 
-			// Get if there are any configured ports to be ignored
+			// Check if there are any overridden ports to be skipped
 			if inboundSkipOverride, err := getAnnotationOverride(client, pod, k8s.ProxyIgnoreInboundPortsAnnotation); err == nil {
 				logEntry.Debugf("linkerd-cni: overriding InboundPortsToIgnore to %s", inboundSkipOverride)
 				options.InboundPortsToIgnore = strings.Split(inboundSkipOverride, ",")
@@ -252,12 +252,12 @@ func cmdDel(args *skel.CmdArgs) error {
 }
 
 func getAnnotationOverride(api *k8s.KubernetesAPI, pod *v1.Pod, key string) (string, error) {
-	// Check if there is a annotation on the pod
+	// Check if the annotation is present on the pod
 	if override := pod.GetObjectMeta().GetAnnotations()[key]; override != "" {
 		return override, nil
 	}
 
-	// Check if there is a annotation on the namespace
+	// Check if the annotation is present on the namespace
 	ns, err := api.CoreV1().Namespaces().Get(pod.GetObjectMeta().GetNamespace(), metav1.GetOptions{})
 	if err != nil {
 		return "", err
