@@ -369,11 +369,11 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	}
 
 	if len(options.ignoreInboundPorts) > 0 {
-		configs.Proxy.IgnoreInboundPorts = toPortRanges(options.ignoreInboundPorts)
+		configs.Proxy.IgnoreInboundPorts = inject.ToPortRanges(options.ignoreInboundPorts)
 		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = parsePortRanges(configs.Proxy.IgnoreInboundPorts)
 	}
 	if len(options.ignoreOutboundPorts) > 0 {
-		configs.Proxy.IgnoreOutboundPorts = toPortRanges(options.ignoreOutboundPorts)
+		configs.Proxy.IgnoreOutboundPorts = inject.ToPortRanges(options.ignoreOutboundPorts)
 		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = parsePortRanges(configs.Proxy.IgnoreOutboundPorts)
 	}
 
@@ -507,14 +507,6 @@ func toPort(p uint) *cfg.Port {
 
 func parsePort(port *cfg.Port) string {
 	return strconv.FormatUint(uint64(port.GetPort()), 10)
-}
-
-func toPortRanges(portRanges []string) []*cfg.PortRange {
-	ports := make([]*cfg.PortRange, len(portRanges))
-	for i, p := range portRanges {
-		ports[i] = &cfg.PortRange{PortRange: p}
-	}
-	return ports
 }
 
 func parsePortRanges(portRanges []*cfg.PortRange) string {

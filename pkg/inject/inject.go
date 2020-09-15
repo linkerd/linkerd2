@@ -13,6 +13,7 @@ import (
 	"time"
 
 	jsonfilter "github.com/clarketm/json"
+	"github.com/linkerd/linkerd2-proxy-init/ports"
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
@@ -66,6 +67,7 @@ var (
 		k8s.ProxyVersionOverrideAnnotation,
 		k8s.ProxyRequireIdentityOnInboundPortsAnnotation,
 		k8s.ProxyIgnoreInboundPortsAnnotation,
+		k8s.ProxyOpaquePortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
 		k8s.ProxyTraceCollectorSvcAddrAnnotation,
 		k8s.ProxyOutboundConnectTimeout,
@@ -491,6 +493,11 @@ func (conf *ResourceConfig) complete(template *corev1.PodTemplateSpec) {
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func (conf *ResourceConfig) injectPodSpec(values *patch) {
+	opaquePorts, err := conf.proxyOpaquePorts()
+	if err != nil {
+		log.Warnf("unrecognized value used for the %s annotation: %s", k8s.ProxyOpaquePortsAnnotation, conf.getOverride(k8s.ProxyOpaquePortsAnnotation))
+	}
+
 	values.Global.Proxy = &l5dcharts.Proxy{
 		Component:              conf.pod.labels[k8s.ProxyDeploymentLabel],
 		EnableExternalProfiles: conf.enableExternalProfiles(),
@@ -516,6 +523,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		DestinationGetNetworks:        conf.destinationGetNetworks(),
 		OutboundConnectTimeout:        conf.getOutboundConnectTimeout(),
 		InboundConnectTimeout:         conf.getInboundConnectTimeout(),
+		OpaquePorts:                   opaquePorts,
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -1024,6 +1032,45 @@ func (conf *ResourceConfig) proxyInboundSkipPorts() string {
 	return strings.Join(portRanges, ",")
 }
 
+func (conf *ResourceConfig) proxyOpaquePorts() (string, error) {
+	var portRanges []*config.PortRange
+	if override := conf.getOverride(k8s.ProxyOpaquePortsAnnotation); override != "" {
+		split := strings.Split(strings.TrimSuffix(override, ","), ",")
+		portRanges = ToPortRanges(split)
+	} else {
+		portRanges = conf.configs.GetProxy().GetOpaquePorts()
+	}
+
+	var str string
+	for _, portRange := range portRanges {
+		pr := portRange.GetPortRange()
+
+		// It is valid for the format of a port name to be the same as a
+		// port range (e.g. `123-456` is a valid name, but also is a valid
+		// range). All port names must be checked before making it a list.
+		named := false
+		for _, c := range conf.pod.spec.Containers {
+			for _, p := range c.Ports {
+				if p.Name == pr {
+					named = true
+					str += strconv.Itoa(int(p.ContainerPort)) + ","
+				}
+			}
+		}
+
+		if !named {
+			pr, err := ports.ParsePortRange(pr)
+			if err != nil {
+				return "", err
+			}
+			for i := pr.LowerBound; i <= pr.UpperBound; i++ {
+				str += strconv.Itoa(i) + ","
+			}
+		}
+	}
+	return strings.TrimSuffix(str, ","), nil
+}
+
 func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
 	if override := conf.getOverride(k8s.ProxyIgnoreOutboundPortsAnnotation); override != "" {
 		return override
@@ -1122,4 +1169,13 @@ func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]by
 //present in workload objects would make it into the marshaled JSON.
 func getFilteredJSON(conf runtime.Object) ([]byte, error) {
 	return jsonfilter.Marshal(&conf)
+}
+
+// ToPortRanges converts a slice of strings into a slice of PortRanges.
+func ToPortRanges(portRanges []string) []*config.PortRange {
+	ports := make([]*config.PortRange, len(portRanges))
+	for i, p := range portRanges {
+		ports[i] = &config.PortRange{PortRange: p}
+	}
+	return ports
 }
