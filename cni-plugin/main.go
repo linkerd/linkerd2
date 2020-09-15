@@ -21,7 +21,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"os"
 	"strings"
 
@@ -33,6 +32,7 @@ import (
 	"github.com/linkerd/linkerd2-proxy-init/iptables"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
