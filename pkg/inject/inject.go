@@ -1033,13 +1033,14 @@ func (conf *ResourceConfig) proxyInboundSkipPorts() string {
 }
 
 func (conf *ResourceConfig) proxyOpaquePorts() (string, error) {
-	var portRanges []*config.PortRange
-	if override := conf.getOverride(k8s.ProxyOpaquePortsAnnotation); override != "" {
-		split := strings.Split(strings.TrimSuffix(override, ","), ",")
-		portRanges = ToPortRanges(split)
-	} else {
-		portRanges = conf.configs.GetProxy().GetOpaquePorts()
+	override := conf.getOverride(k8s.ProxyOpaquePortsAnnotation)
+	if override == "" {
+		return "", nil
 	}
+
+	var portRanges []*config.PortRange
+	split := strings.Split(strings.TrimSuffix(override, ","), ",")
+	portRanges = ToPortRanges(split)
 
 	var str string
 	for _, portRange := range portRanges {

@@ -66,7 +66,6 @@
   "destinationGetNetworks": "{{.Values.global.proxy.destinationGetNetworks}}",
   "outboundConnectTimeout": "{{.Values.global.proxy.outboundConnectTimeout}}",
   "inboundConnectTimeout": "{{.Values.global.proxy.inboundConnectTimeout}}"
-  "opaquePorts": "{{.Values.global.proxy.opaquePorts}}"
 }
 {{- end -}}
 
