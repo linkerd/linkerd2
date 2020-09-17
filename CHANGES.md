@@ -1,5 +1,16 @@
 # Changes
 
+## edge-20.9.3
+
+This edge release includes fixes and updates for the control plane and CLI.
+
+* Added `--dest-cni-bin-dir` flag to the `linkerd install-cni` command, to
+  configure the directory on the host where the CNI binary will be placed
+* Removed `collector.name` and `jaeger.name` config fields from the tracing
+  addon
+* Updated Jaeger to 1.19.2
+* Fixed a warning about deprecated Go packages in controller container logs
+
 ## edge-20.9.2
 
 This edge release continues the work of adding support for mTLS for all TCP
