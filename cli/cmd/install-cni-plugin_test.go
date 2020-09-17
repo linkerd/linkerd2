@@ -77,7 +77,6 @@ func TestRenderCNIPlugin(t *testing.T) {
 	defaultOptionsWithSkipPorts.ignoreInboundPorts = append(defaultOptionsWithSkipPorts.ignoreInboundPorts, []string{"80", "8080"}...)
 	defaultOptionsWithSkipPorts.ignoreOutboundPorts = append(defaultOptionsWithSkipPorts.ignoreOutboundPorts, []string{"443", "1000"}...)
 
-
 	testCases := []struct {
 		*cniPluginOptions
 		namespace      string
