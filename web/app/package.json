@@ -88,7 +88,8 @@
     "webpack-dev-server": "3.11.0"
   },
   "resolutions": {
-    "@lingui/**/**/minimist": ">=1.2.5"
+    "@lingui/**/**/minimist": ">=1.2.5",
+    "webpack-dev-server/selfsigned/node-forge": ">=0.10.0"
   },
   "jest": {
     "testEnvironment": "enzyme",

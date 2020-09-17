@@ -172,15 +172,22 @@ func (hc *HealthChecker) addOnCategories() []category {
 					check: func(context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
 
-							collector, err := getMap(tracing, "collector")
-							if err != nil {
-								return err
+							collector, mapError := getMap(tracing, "collector")
+
+							collectorName, keyError := getString(collector, "name")
+
+							if errors.Is(mapError, errorKeyNotFound) || errors.Is(keyError, errorKeyNotFound) {
+								// default name of collector instance
+								collectorName = "linkerd-collector"
+							} else {
+								if mapError != nil {
+									return mapError
+								}
+								if keyError != nil {
+									return keyError
+								}
 							}
 
-							collectorName, err := getString(collector, "name")
-							if err != nil {
-								return err
-							}
 							return hc.checkServiceAccounts([]string{collectorName}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "tracing add-on not enabled"}
@@ -191,14 +198,20 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
-							jaeger, err := getMap(tracing, "jaeger")
-							if err != nil {
-								return err
-							}
+							jaeger, mapError := getMap(tracing, "jaeger")
 
-							jaegerName, err := getString(jaeger, "name")
-							if err != nil {
-								return err
+							jaegerName, keyError := getString(jaeger, "name")
+
+							if errors.Is(mapError, errorKeyNotFound) || errors.Is(keyError, errorKeyNotFound) {
+								// default name of jaeger instance
+								jaegerName = "linkerd-jaeger"
+							} else {
+								if mapError != nil {
+									return mapError
+								}
+								if keyError != nil {
+									return keyError
+								}
 							}
 
 							return hc.checkServiceAccounts([]string{jaegerName}, hc.ControlPlaneNamespace, "")
@@ -211,17 +224,23 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
-							collector, err := getMap(tracing, "collector")
-							if err != nil {
-								return err
+							collector, mapError := getMap(tracing, "collector")
+
+							collectorName, keyError := getString(collector, "name")
+
+							if errors.Is(mapError, errorKeyNotFound) || errors.Is(keyError, errorKeyNotFound) {
+								// default name of collector instance
+								collectorName = "linkerd-collector"
+							} else {
+								if mapError != nil {
+									return mapError
+								}
+								if keyError != nil {
+									return keyError
+								}
 							}
 
-							collectorName, err := getString(collector, "name")
-							if err != nil {
-								return err
-							}
-
-							_, err = hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", collectorName), metav1.GetOptions{})
+							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", collectorName), metav1.GetOptions{})
 							if err != nil {
 								return err
 							}
@@ -350,7 +369,7 @@ func getMap(i interface{}, k string) (map[string]interface{}, error) {
 
 	v, ok := m[k]
 	if !ok {
-		return nil, fmt.Errorf("key '%s' not found in config value", k)
+		return nil, errorKeyNotFound
 	}
 
 	res, ok := v.(map[string]interface{})
