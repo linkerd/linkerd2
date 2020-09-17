@@ -203,6 +203,37 @@ func TestInstallCNIPlugin(t *testing.T) {
 	}
 }
 
+func TestCalicoInstall(t *testing.T) {
+	if !TestHelper.Calico() {
+		return
+	}
+
+	// Install calico CNI plug-in from the official manifests
+	// Calico operator and custom resource definitions.
+	out, err := TestHelper.Kubectl("", []string{"apply", "-f", "https://docs.projectcalico.org/manifests/tigera-operator.yaml"}...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"kubectl apply command failed\n%s", out)
+	}
+
+	// creating the necessary custom resource
+	out, err = TestHelper.Kubectl("", []string{"apply", "-f", "https://docs.projectcalico.org/manifests/custom-resources.yaml"}...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"kubectl apply command failed\n%s", out)
+	}
+
+	// wait for the tigera-operator deployment
+	name := "tigera-operator"
+	ns := "tigera-operator"
+	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
+			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
+	}
+
+}
+
 func TestInstallOrUpgradeCli(t *testing.T) {
 	if TestHelper.GetHelmReleaseName() != "" {
 		return
@@ -890,8 +921,10 @@ func TestLogs(t *testing.T) {
 }
 
 func TestEvents(t *testing.T) {
-	for _, err := range testutil.FetchAndCheckEvents(TestHelper) {
-		testutil.AnnotatedError(t, "Error checking events", err)
+	if !TestHelper.Calico() {
+		for _, err := range testutil.FetchAndCheckEvents(TestHelper) {
+			testutil.AnnotatedError(t, "Error checking events", err)
+		}
 	}
 }
 
