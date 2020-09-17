@@ -495,7 +495,7 @@ func (conf *ResourceConfig) complete(template *corev1.PodTemplateSpec) {
 func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	opaquePorts, err := conf.proxyOpaquePorts()
 	if err != nil {
-		log.Warnf("unrecognized value used for the %s annotation: %s", k8s.ProxyOpaquePortsAnnotation, conf.getOverride(k8s.ProxyOpaquePortsAnnotation))
+		log.Errorf("unrecognized value used for the %s annotation: %s", k8s.ProxyOpaquePortsAnnotation, conf.getOverride(k8s.ProxyOpaquePortsAnnotation))
 	}
 
 	values.Global.Proxy = &l5dcharts.Proxy{
