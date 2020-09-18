@@ -61,8 +61,6 @@ message Proxy {
   string outbound_connect_timeout = 19;
 
   string inbound_connect_timeout = 20;
-
-  repeated PortRange opaque_ports = 21;
 }
 
 message Image {
