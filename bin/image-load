@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+kind=""
+k3d=""
+images=""
+
+while :
+do
+  case $1 in
+    -h|--help)
+      echo "Load into KinD/k3d the images for Linkerd's proxy, controller, web, grafana, cli-bin, debug and cni-plugin."
+      echo ""
+      echo "Usage:"
+      echo "    bin/image-load [--kind] [--k3d] [--images]"
+      echo ""
+      echo "Examples:"
+      echo ""
+      echo "    # Load images from the local docker instance into KinD"
+      echo "    bin/image-load"
+      echo ""
+      echo "    # Load images from tar files located under the 'image-archives' directory into k3d"
+      echo "    bin/image-load --k3d --images"
+      echo ""
+      echo "Available Commands:"
+      echo "    --kind: use a KinD cluster (default)."
+      echo "    --k3d: use a k3d cluster."
+      echo "    --images: Load the images from local .tar files in the current directory."
+      exit 0
+      ;;
+    --kind)
+      kind=1
+      ;;
+    --k3d)
+      k3d=1
+      ;;
+    --images)
+      images=1
+      ;;
+    *)
+      break
+  esac
+  shift
+done
+
+bindir=$( cd "${0%/*}" && pwd )
+
+if [ -n "$k3d" ]; then
+  if [ -n "$kind" ]; then
+    echo $k3d
+    echo "Error: --kind and --k3d can't be use simultaneously" >&2
+    exit 1
+  fi
+  cluster=${1:-"k3s-default"}
+  bin="$bindir"/k3d
+  image_sub_cmd=(image import -c "$cluster")
+else
+  kind=1
+  cluster=${1:-"kind"}
+  bin="$bindir"/kind
+  if [ $images ]; then
+    image_sub_cmd=(load image-archive --name "$cluster")
+  else
+    image_sub_cmd=(load docker-image --name "$cluster")
+  fi
+fi
+
+if [ -z "$images" ]; then
+  # shellcheck source=_tag.sh
+  . "$bindir"/_tag.sh
+  # shellcheck source=_docker.sh
+  . "$bindir"/_docker.sh
+  TAG=${TAG:-$(head_root_tag)}
+fi
+
+# This is really to load the binary synchronously, before
+# the parallel executions below attempt doing so
+"$bin" version
+
+rm -f load_fail
+for img in proxy controller web grafana cli-bin debug cni-plugin ; do
+  if [ $images ]; then
+    param="image-archives/$img.tar"
+  else
+    param="$DOCKER_REGISTRY/$img:$TAG"
+  fi
+
+  if [ -n "$kind" ]; then
+    "$bin" "${image_sub_cmd[@]}" "${param[@]}" || touch load_fail &
+  else
+    # "k3d image import" commands don't behave well when parallelized
+    "$bin" "${image_sub_cmd[@]}" "${param[@]}"
+  fi
+done
+
+wait < <(jobs -p)
+if [ -f load_fail ]; then
+  echo "Loading docker images into the cluster failed."
+  rm load_fail
+  exit 1
+fi
