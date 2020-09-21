@@ -104,7 +104,6 @@ jobs:
         - uninstall
         - upgrade-edge
         - upgrade-stable
-        - cni-deep
         - cni-calico-deep
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
