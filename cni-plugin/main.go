@@ -202,14 +202,24 @@ func cmdAdd(args *skel.CmdArgs) error {
 			}
 
 			// Check if there are any overridden ports to be skipped
-			if inboundSkipOverride, err := getAnnotationOverride(client, pod, k8s.ProxyIgnoreInboundPortsAnnotation); err == nil {
-				logEntry.Debugf("linkerd-cni: overriding InboundPortsToIgnore to %s", inboundSkipOverride)
-				options.InboundPortsToIgnore = strings.Split(inboundSkipOverride, ",")
+			outboundSkipOverride, err := getAnnotationOverride(client, pod, k8s.ProxyIgnoreOutboundPortsAnnotation)
+			if err != nil {
+				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %v", err)
+				return err
 			}
 
-			if outboundSkipOverride, err := getAnnotationOverride(client, pod, k8s.ProxyIgnoreOutboundPortsAnnotation); err == nil {
-				logEntry.Debugf("linkerd-cni: overriding OutboundPortsToIgnore to %s", outboundSkipOverride)
+			if outboundSkipOverride != "" {
 				options.OutboundPortsToIgnore = strings.Split(outboundSkipOverride, ",")
+			}
+
+			inboundSkipOverride, err := getAnnotationOverride(client, pod, k8s.ProxyIgnoreInboundPortsAnnotation)
+			if err != nil {
+				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %v", err)
+				return err
+			}
+
+			if inboundSkipOverride != "" {
+				options.InboundPortsToIgnore = strings.Split(inboundSkipOverride, ",")
 			}
 
 			if pod.GetLabels()[k8s.ControllerComponentLabel] != "" {
@@ -267,5 +277,5 @@ func getAnnotationOverride(api *k8s.KubernetesAPI, pod *v1.Pod, key string) (str
 		return override, nil
 	}
 
-	return "", fmt.Errorf("did not find any override annotation for %s", key)
+	return "", nil
 }
