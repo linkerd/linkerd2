@@ -173,6 +173,7 @@ func TestInstallCNIPlugin(t *testing.T) {
 		cmd  = "install-cni"
 		args = []string{
 			"--use-wait-flag",
+			"--cni-log-level=debug",
 		}
 	)
 
