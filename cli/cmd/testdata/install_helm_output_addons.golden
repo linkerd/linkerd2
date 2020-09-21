@@ -1018,6 +1018,7 @@ data:
         workloadNamespaceLabel: linkerd.io/workload-ns
       image:
         name: ghcr.io/linkerd/grafana
+        tag: null
       partials:
         global:
           cliVersion: ""
@@ -1103,6 +1104,15 @@ data:
           proxyInjectAnnotation: linkerd.io/inject
           proxyInjectDisabled: disabled
           workloadNamespaceLabel: linkerd.io/workload-ns
+      proxy:
+        resources: null
+      resources:
+        cpu:
+          limit: null
+          request: null
+        memory:
+          limit: null
+          request: null
     heartbeatResources: null
     heartbeatSchedule: 0 0 * * *
     identity:
@@ -1131,6 +1141,8 @@ data:
           values:
           - disabled
     prometheus:
+      alertManagers: null
+      alertRelabelConfigs: null
       args:
         config.file: /etc/prometheus/prometheus.yml
         log.level: info
@@ -1311,6 +1323,23 @@ data:
           proxyInjectAnnotation: linkerd.io/inject
           proxyInjectDisabled: disabled
           workloadNamespaceLabel: linkerd.io/workload-ns
+      persistance:
+        accessMode: null
+        size: null
+        storageClass: null
+      proxy:
+        resources: null
+      remoteWrite: null
+      resources:
+        cpu:
+          limit: null
+          request: null
+        memory:
+          limit: null
+          request: null
+      ruleConfigMapMounts: null
+      scapeConfigs: null
+      sideCarContainers: null
     proxyInjector:
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: test-proxy-injector-crt-pem
@@ -1338,6 +1367,13 @@ data:
     tracing:
       collector:
         image: omnition/opencensus-collector:0.1.11
+        resources:
+          cpu:
+            limit: null
+            request: null
+          memory:
+            limit: null
+            request: null
       enabled: true
       global:
         cliVersion: ""
@@ -1425,6 +1461,13 @@ data:
         workloadNamespaceLabel: linkerd.io/workload-ns
       jaeger:
         image: jaegertracing/all-in-one:1.19.2
+        resources:
+          cpu:
+            limit: null
+            request: null
+          memory:
+            limit: null
+            request: null
       partials:
         global:
           cliVersion: ""
@@ -3355,6 +3398,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+        resources:
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -3780,6 +3824,7 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
+        resources:
         securityContext:
           runAsNonRoot: true
           runAsUser: 65534
@@ -4080,6 +4125,7 @@ spec:
           httpGet:
             path: /
             port: 13133
+        resources:
         volumeMounts:
         - mountPath: /conf
           name: linkerd-collector-config-val
@@ -4293,6 +4339,7 @@ spec:
           name: collection
         - containerPort: 16686
           name: ui
+        resources:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"

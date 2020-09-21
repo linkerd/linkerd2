@@ -296,6 +296,46 @@ automatically regenerated with the command:
 go test ./cli/cmd/... --update
 ```
 
+#### Generating helm charts docs
+
+Whenever a new chart is created, or updated a readme should be generated from
+the chart's values.yml. This can be done by utilizing the bundled
+[helm-docs](https://github.com/norwoodj/helm-docs) binary. For adding additional
+information, such as specific installation instructions a readme template is
+required to be created. Check existing charts for example.
+
+##### Annotating values.yml
+
+To allow helm-docs to properly document the values in values.yml a descriptive
+comment is required. This can be done in two ways.
+Either comment the value directly above with
+`# -- This is a really nice value` where the double dashes automatically
+annotates the value. Another explicit usage is to type out the value name.
+`# global.MyNiceValue -- I really like this value`
+
+##### Using helm-docs
+
+Example usage:
+
+```sh
+bin/helm-docs
+bin/helm-docs --dry-run #Prints to cli instead
+bin/helm-docs --chart-search-root=./charts #Sets search root for charts
+bin/helm-docs --template-files=README.md.gotmpl #Sets the template file used
+```
+
+Note:
+The tool searches through the current directory and sub-directories by default.
+For additional information checkout their repo above.
+
+##### Markdown templates
+
+In order to accomodate for extra data that might not have a proper place in the
+´values.yaml´ file the corresponding ´README.md.gotmpl´ can be modified for each
+chart. This template allows the standard markdown syntax as well as the go
+templating functions. Checkout
+[helm-docs](https://github.com/norwoodj/helm-docs) for more info.
+
 ##### Pretty-printed diffs for templated text
 
 When running `go test`, mismatched text is usually displayed as a compact diff.

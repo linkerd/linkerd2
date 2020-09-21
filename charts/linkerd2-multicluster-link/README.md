@@ -1,40 +1,29 @@
+# linkerd2-multicluster-link
 
-# Linkerd2-multicluster-link Helm Chart
+A helm chart containing the resources to enable mirroring
+of services from a remote cluster
 
-Linkerd is a *service mesh*, designed to give platform-wide observability,
-reliability, and security without requiring configuration or code changes. This
-chart provides the components needed to enable communication between clusters.
+![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
 
-## Configuration
+![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
-The following table lists the configurable parameters of the
-linkerd2-multicluster chart and their default values.
+## Requirements
 
-| Parameter                       | Description                                                                                 | Default                                      |
-|---------------------------------|---------------------------------------------------------------------------------------------|----------------------------------------------|
-|`controllerComponentLabel`       | Control plane label. Do not edit                                                            |`linkerd.io/control-plane-component`          |
-|`controllerImage`                | Docker image for the Service mirror component (uses the Linkerd controller image)           |`ghcr.io/linkerd/controller`                |
-|`controllerImageVersion`         | Tag for the Service Mirror container Docker image                                           |`latest version`                              |
-|`createdByAnnotation`            | Annotation label for the proxy create. Do not edit.                                         |`linkerd.io/created-by`                       |
-|`gateway`                        | If the gateway component should be installed                                                |`true`                                        |
-|`gatewayLocalProbePath`          | The path that will be used by the local liveness checks to ensure the gateway is alive      |`/health-local`                               |
-|`gatewayLocalProbePort`          | The port that will be used by the local liveness checks to ensure the gateway is alive      |`8888`                                        |
-|`gatewayName`                    | The name of the gateway that will be installed                                              |`linkerd-gateway`                             |
-|`gatewayNginxImage`              | The Nginx image                                                                             |`nginx`                                       |
-|`gatewayNginxImageVersion`       | The version of the Nginx image                                                              |`1.17`                                        |
-|`gatewayPort`                    | The port on which all the gateway will accept incoming traffic                              |`4143`                                        |
-|`gatewayProbePath`               | The path that will be used by remote clusters for determining whether the gateway is alive  |`/health`                                     |
-|`gatewayProbePort`               | The port used for liveliness probing                                                        |`4181`                                        |
-|`gatewayProbeSeconds`            | The interval (in seconds) between liveness probes                                           |`3`                                           |
-|`identityTrustDomain`            | Trust domain used for identity of the existing linkerd installation                         |`cluster.local`                               |
-|`installNamespace`               | If the namespace should be installed                                                        |`true`                                        |
-|`linkerdNamespace`               | The namespace of the existing Linkerd installation                                          |`linkerd`                                     |
-|`linkerdVersion`                 | Control plane version                                                                       | latest version                               |
-|`namespace`                      | Service Mirror component namespace                                                          |`linkerd-multicluster`                        |
-|`proxyOutboundPort`              | The port on which the proxy accepts outbound traffic                                        |`4140`                                        |
-|`remoteMirrorServiceAccountName` | The name of the service account used to allow remote clusters to mirror local services      |`linkerd-service-mirror-remote-access-default`|
-|`remoteMirrorServiceAccount`     | If the remote mirror service account should be installed                                    |`true`                                        |
-|`serviceMirror`                  | If the service mirror component should be installed                                         |`true`                                        |
-|`logLevel`                       | Log level for the Multicluster components                                                   |`info`                                        |
-|`serviceMirrorRetryLimit`        | Number of times update from the remote cluster is allowed to be requeued (retried)          |`3`                                           |
-|`serviceMirrorUID`               | User id under which the Service Mirror shall be ran                                         |`2103`                                        |
+Kubernetes: `>=1.13.0-0`
+
+## Values
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| controllerComponentLabel | string | `"linkerd.io/control-plane-component"` | Control plane label. Do not edit  |
+| controllerImage | string | `"ghcr.io/linkerd/controller"` | Docker image for the Service mirror component (uses the Linkerd controller image) |
+| controllerImageVersion | string | `"linkerdVersionValue"` | Tag for the Service Mirror container Docker image |
+| createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit. |
+| gatewayProbePort | int | `4181` | The port used for liveliness probing  |
+| logLevel | string | `"info"` | Log level for the Multicluster components  |
+| namespace | string | `"linkerd-multicluster"` | Service Mirror component namespace  |
+| serviceMirrorRetryLimit | int | `3` | Number of times update from the remote cluster is allowed to be requeued (retried) |
+| serviceMirrorUID | int | `2103` | User id under which the Service Mirror shall be ran  |
+
+----------------------------------------------
+Autogenerated from chart metadata using [helm-docs v1.4.0](https://github.com/norwoodj/helm-docs/releases/v1.4.0)
