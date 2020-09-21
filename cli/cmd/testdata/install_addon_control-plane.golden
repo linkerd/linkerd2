@@ -2550,6 +2550,8 @@ data:
         port: 55678
       zipkin:
         port: 9411
+      jaeger:
+        jaeger-thrift-http-port: 14268
     queued-exporters:
       jaeger-all-in-one:
         num-workers: 4
@@ -2581,6 +2583,10 @@ spec:
     port: 9411
     protocol: TCP
     targetPort: 9411
+  - name: jaeger
+    port: 14268
+    protocol: TCP
+    targetPort: 14268
   selector:
     linkerd.io/control-plane-component: linkerd-collector
 ---
@@ -2638,6 +2644,7 @@ spec:
         ports:
         - containerPort: 55678
         - containerPort: 9411
+        - containerPort: 14268
         readinessProbe:
           httpGet:
             path: /
