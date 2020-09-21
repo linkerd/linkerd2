@@ -183,6 +183,7 @@ start_kind_test() {
   if [ -z "$skip_cluster_create" ]; then
     create_kind_cluster "$name" "$config"
     "$bindir"/image-load --kind ${images:+'--images'} "$name"
+    exit_on_err "error calling '$bindir/image-load'"
   fi
   check_cluster
   run_"$name"_test
@@ -374,13 +375,15 @@ run_uninstall_test() {
 }
 
 run_multicluster_test() {
-  #placeholder for now
-  true
+  export context="k3d-source"
+  run_test "$test_directory/install_test.go" --multicluster
+  export context="k3d-target"
+  run_test "$test_directory/install_test.go" --multicluster
 }
 
 run_deep_test() {
   local tests=()
-  run_test "$test_directory/install_test.go" --multicluster
+  run_test "$test_directory/install_test.go"
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
     run_test "$test"
@@ -402,7 +405,7 @@ run_helm-deep_test() {
   helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2-multicluster
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
   --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
-  --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
+  --multicluster-helm-release="$helm_multicluster_release_name"
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
     run_test "$test"
@@ -411,12 +414,12 @@ run_helm-deep_test() {
 }
 
 run_external-issuer_test() {
-  run_test "$test_directory/install_test.go" --external-issuer=true --multicluster
+  run_test "$test_directory/install_test.go" --external-issuer=true
   run_test "$test_directory/externalissuer/external_issuer_test.go" --external-issuer=true
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install_test.go" --cluster-domain='custom.domain' --multicluster
+  run_test "$test_directory/install_test.go" --cluster-domain='custom.domain'
 }
 
 # exit_on_err should be called right after a command to check the result status
