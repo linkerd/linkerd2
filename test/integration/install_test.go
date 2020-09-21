@@ -217,13 +217,6 @@ func TestCalicoInstall(t *testing.T) {
 			"kubectl apply command failed\n%s", out)
 	}
 
-	// creating the necessary custom resource
-	out, err = TestHelper.Kubectl("", []string{"apply", "-f", "https://docs.projectcalico.org/manifests/custom-resources.yaml"}...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
-			"kubectl apply command failed\n%s", out)
-	}
-
 	// wait for the tigera-operator deployment
 	name := "tigera-operator"
 	ns := "tigera-operator"
@@ -233,6 +226,21 @@ func TestCalicoInstall(t *testing.T) {
 			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
 	}
 
+	// creating the necessary custom resource
+	out, err = TestHelper.Kubectl("", []string{"apply", "-f", "https://docs.projectcalico.org/manifests/custom-resources.yaml"}...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"kubectl apply command failed\n%s", out)
+	}
+
+	// Wait for Calico CNI Installation, which is created by the operator based on the custom resource applied above
+	time.Sleep(10 * time.Second)
+	ns = "calico-system"
+	o, err = TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/calico-kube-controllers", "deploy/calico-typha")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for resources in namespace %s", ns),
+			"failed to wait for condition=available for resources in namespace %s: %s: %s", ns, err, o)
+	}
 }
 
 func TestInstallOrUpgradeCli(t *testing.T) {
