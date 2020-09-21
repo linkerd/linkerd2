@@ -136,9 +136,11 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
+      if: startsWith(github.ref, 'refs/tags/stable')
       # actions/checkout@v2
       uses: actions/checkout@722adc6
     - name: Try to load cached Go modules
+      if: startsWith(github.ref, 'refs/tags/stable')
       # actions/cache@v1.1.2
       uses: actions/cache@70655ec
       with:
@@ -147,6 +149,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Install linkerd CLI
+      if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
@@ -157,22 +160,26 @@ jobs:
         echo "Installed Linkerd CLI version: $TAG"
         echo "::set-env name=CMD::$CMD"
     - name: Set KUBECONFIG environment variables
+      if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         mkdir -p $HOME/.kube
         echo "${{ secrets.ARM64_KUBECONFIG }}" > $HOME/.kube/config
         echo ::set-env name=KUBECONFIG::$HOME/.kube/config
         kubectl cluster-info
     - name: Run integration tests
+      if: startsWith(github.ref, 'refs/tags/stable')
       env:
         RUN_ARM_TEST: 1
       run: bin/tests --skip-kind-create "$CMD"
     - name: CNI tests
+      if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         export TAG="$($CMD version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
     - name: Test cleanup
       if: ${{ always() }}
-      run: bin/test-cleanup
+      # will fail if other steps didn't run, so ignore error
+      run: bin/test-cleanup || true
   choco_pack:
     # only runs for stable tags. The conditionals are at each step level instead of the job level
     # otherwise the jobs below that depend on this one won't run
