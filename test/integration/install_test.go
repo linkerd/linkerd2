@@ -930,10 +930,8 @@ func TestLogs(t *testing.T) {
 }
 
 func TestEvents(t *testing.T) {
-	if !TestHelper.Calico() {
-		for _, err := range testutil.FetchAndCheckEvents(TestHelper) {
-			testutil.AnnotatedError(t, "Error checking events", err)
-		}
+	for _, err := range testutil.FetchAndCheckEvents(TestHelper) {
+		testutil.AnnotatedError(t, "Error checking events", err)
 	}
 }
 
