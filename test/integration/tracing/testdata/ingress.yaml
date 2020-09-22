@@ -92,7 +92,7 @@ kind: ConfigMap
 metadata:
   name: nginx-ingress-controller
   labels:
-    app: nginx-ingress  
+    app: nginx-ingress
 data:
   ssl-redirect: "false"
   enable-opentracing: "true"

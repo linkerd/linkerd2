@@ -29,7 +29,7 @@ items:
                   value: voting-svc.emojivoto:8080
                 - name: INDEX_BUNDLE
                   value: dist/index_bundle.js
-              image: buoyantio/emojivoto-web:v3
+              image: buoyantio/emojivoto-web:v10
               name: web-svc
               ports:
                 - containerPort: 80
@@ -58,7 +58,7 @@ items:
             - env:
                 - name: GRPC_PORT
                   value: "8080"
-              image: buoyantio/emojivoto-emoji-svc:v3
+              image: buoyantio/emojivoto-emoji-svc:v10
               name: emoji-svc
               ports:
                 - containerPort: 8080

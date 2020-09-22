@@ -1,5 +1,123 @@
 # Changes
 
+## edge-20.9.3
+
+This edge release includes fixes and updates for the control plane and CLI.
+
+* Added `--dest-cni-bin-dir` flag to the `linkerd install-cni` command, to
+  configure the directory on the host where the CNI binary will be placed
+* Removed `collector.name` and `jaeger.name` config fields from the tracing
+  addon
+* Updated Jaeger to 1.19.2
+* Fixed a warning about deprecated Go packages in controller container logs
+
+## edge-20.9.2
+
+This edge release continues the work of adding support for mTLS for all TCP
+traffic and changes the default container registry to `ghcr.io` from `gcr.io`.
+
+If you are upgrading from `stable-2.8.x` with the Linkerd CLI using the
+`linkerd upgrade` command, you must add the `--addon-overwrite` flag to ensure
+that the grafana image is properly set.
+
+* Removed the default timeout for ServiceProfiles so that ServiceProfile routes
+  behave the same as when there is no ServiceProfile definition
+* Changed default docker image repository to ghcr.io from gcr.io. **Users who
+  pull the images into private repositories should take note of this change**
+* Added endpoint labels to outbound TCP metrics to provide more context and
+  detail for the metrics, add load balancing to TCP connections
+  (bypassing kube-proxy), and secure the connection with mTLS when both
+  endpoints are meshed
+* Made unnamed ServiceProfile discovery configurable using the
+  `proxy.destinationGetNetworks` variable to set the
+  `LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS` variable in the proxy chart
+  template
+* Added TLS certificate validation for the Injector, SP Validator, and Tap
+  webhooks to the `linkerd check` command
+
+## edge-20.9.1
+
+This edge release contains an important proxy update that allows linkerd to
+continue to operate normally in HA during node outages. We're also adding full
+Kubernetes 1.19 support!
+
+* Improved the proxy's error handling for DNS errors encountered when
+  discovering control plane addresses, which can be common during installation,
+  before all components have been started
+* The destination and identity services had to be made headless in order to
+  support that new controller discovery (which now can leverage SRV records)
+* Use SAN fields when generating the linkerd webhook configs; this completes the
+  Kubernetes 1.19 support which enforces them
+* Fixed `linkerd check` for multicluster that was spuriously claiming the
+  absence of some resources
+* Improved the injection test cleanup (thanks @zhouhao3!)
+* Added ability to run the integration test suite using a cluster in an ARM
+  architecture (thanks @aliariff!)
+
+## edge-20.8.4
+
+* Fixed a problem causing the `enable-endpoint-slices` flag to not be persisted
+  when set via `linkerd upgrade` (thanks @Matei207!)
+* Removed SMI-Metrics templates and experimental sub-commands
+* Use `--frozen-lockfile` to avoid accidental update of dashboard JS
+  dependencies in CI (thanks @tharun208!)
+
+## edge-20.8.3
+
+This edge release adds support for [topology-aware service routing][topology] to
+the Destination controller. When providing service discovery updates to proxies,
+the Destination controller will now filter endpoints based on the service's
+topology preferences. Additionally, this release includes bug fixes for the
+`linkerd check` CLI command and web dashboard.
+
+* CLI
+  * `linkerd check` will no longer warn about a looser webhook failure policy in
+    HA mode
+* Controller
+  * Added support for [topology-aware service routing][topology] to the Destination
+    controller (thanks @Matei207)
+  * Changed the Destination controller to always return destination overrides
+    for service profiles when no traffic split is present
+* Web UI
+  * Fixed Tap `Authority` dropdown not being populated (thanks to @tharun208!)
+  
+[topology]: https://kubernetes.io/docs/concepts/services-networking/service-topology/
+
+## edge-20.8.2
+
+This edge release adds an internationalization framework to the dashboard,
+Spanish translations to the dashboard UI, and a `linkerd multicluster uninstall`
+command for graceful removal of the multicluster components.
+
+* Web UI
+  * Added Spanish translations to the dashboard
+  * Added a framework and documentation to simplify creation of new
+    translations
+* Multicluster
+  * Added a multicluster uninstall command
+  * Added a warning from `linkerd check --multicluster` if the multicluster
+    support is not installed
+
+## edge-20.8.1
+
+This edge adds multi-arch support to Linkerd! Our docker images and CLI now
+support the amd64, arm64, and arm architectures.
+
+* Multicluster
+  * Added a multicluster unlink command for removing multicluster links
+  * Improved multicluster checks to be more informative when the remote API is
+    not reachable
+* Proxy
+  * Enabled a multi-threaded runtime to substantially improve latency especially
+    when the proxy is serving requests for many concurrent connections
+* Other
+  * Fixed an issue where the debug sidecar image was missing during upgrades
+    (thanks @javaducky!)
+  * Updated all control plane plane and proxy container images to be multi-arch
+    to support amd64, arm64, and arm (thanks @aliariff!)
+  * Fixed an issue where check was failing when DisableHeartBeat was set to true
+    (thanks @mvaal!)
+
 ## edge-20.7.5
 
 This edge brings a new approach to multicluster service mirror controllers and
@@ -36,7 +154,7 @@ Topologies (by @Matei207) and delivering image builds in multiple platforms (by
   * Added ability to set `priorityClassName` for CNI DaemonSet pods, and to
     install CNI in an existing namespace (both options provided through the CLI
     and as Helm configs) (thanks @alex-berger!)
-  * Added support for overriding the proxy's inbound and outbout TCP connection
+  * Added support for overriding the proxy's inbound and outbound TCP connection
     timeouts (thanks @mmiller1!)
   * Added library support for dashboard i18n. Strings still need to be tagged
     and translations to be added. More info
@@ -256,11 +374,11 @@ improvements and fixes for multicluster support.
   * Fixed shellcheck errors in all `bin/` scripts (thanks @joakimr-axis!)
 * Helm
   * Added support for `linkerd mc allow`
-  * Added ability to disable secret rescources for self-signed certs (thanks
+  * Added ability to disable secret resources for self-signed certs (thanks
     @cypherfox!)
 * Proxy
   * Modified the `linkerd-gateway` component to use the inbound proxy, rather
-    than nginx, for gateway; this allows Linkerd to detect loops and propogate
+    than nginx, for gateway; this allows Linkerd to detect loops and propagate
     identity
 
 ## edge-20.5.5
@@ -348,7 +466,7 @@ multicluster. For a tutorial on how to do that, check out the
   * Added multicluster checks to the `linkerd check` command
   * Hid development flags in the `linkerd install` command for release builds
 * Controller
-  * Added ability to configure Prometheus Altermanager as well as recording
+  * Added ability to configure Prometheus Alertmanager as well as recording
     and alerting rules on the Linkerd Prometheus (thanks @naseemkullah!)
   * Added ability to add more commandline flags to the Prometheus command
     (thanks @naseemkullah!)
@@ -699,7 +817,7 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-270).
     don't fail when the external version endpoint is unreachable (thanks
     @mayankshah1607!)
   * Added a new `tap` APIService check to aid with uncovering Kubernetes API
-    aggregatation layer issues (thanks @droidnoob!)
+    aggregation layer issues (thanks @droidnoob!)
   * Introduced CNI checks to confirm the CNI plugin is installed and ready;
     this is done through `linkerd check --pre --linkerd-cni-enabled` before
     installation and `linkerd check` after installation if the CNI plugin is
@@ -771,7 +889,7 @@ instructions](https://linkerd.io/2/tasks/upgrade/#upgrade-notice-stable-270).
   * Fixed an issue in the `identity` RBAC resource which caused start up
     errors in k8s 1.6 (thanks @Pothulapati!)
   * Added support for using trust anchors from an external certificate issuer
-    (such as `cert-mananger`) to the `linkerd-identity` service
+    (such as `cert-manager`) to the `linkerd-identity` service
   * Added support for headless services (thanks @JohannesEH!)
 * Helm
   * **Breaking change**: Renamed `noInitContainer` parameter to `cniEnabled`
@@ -865,7 +983,7 @@ debugging experience.
     don't fail when the external version endpoint is unreachable (thanks
     @mayankshah1607!)
   * Added a new `tap` APIService check to aid with uncovering Kubernetes API
-    aggregatation layer issues (thanks @droidnoob!)
+    aggregation layer issues (thanks @droidnoob!)
 
 ## edge-20.1.3
 
@@ -1092,7 +1210,7 @@ the Linkerd CLI.
     IPs that match multiple running pods
 * Controller
   * Added support for using trust anchors from an external certificate issuer
-    (such as `cert-mananger`) to the `linkerd-identity` service
+    (such as `cert-manager`) to the `linkerd-identity` service
 * Web UI
   * Added `Host:` header validation to the `linkerd-web` service, to protect
     against DNS rebinding attacks
@@ -3335,7 +3453,7 @@ this release!
 * Control plane
   * Injected proxy containers now have readiness and liveness probes enabled
 
-Special thanks to @sourishkrout for contributing a web readibility fix!
+Special thanks to @sourishkrout for contributing a web readability fix!
 
 ## v18.8.2
 

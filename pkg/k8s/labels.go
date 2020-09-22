@@ -264,7 +264,7 @@ const (
 	DebugSidecarName = "linkerd-debug"
 
 	// DebugSidecarImage is the image name of the default linkerd debug container
-	DebugSidecarImage = "gcr.io/linkerd-io/debug"
+	DebugSidecarImage = "ghcr.io/linkerd/debug"
 
 	// InitContainerName is the name assigned to the injected init container.
 	InitContainerName = "linkerd-init"
@@ -323,12 +323,6 @@ const (
 	// TapAPIRegistrationServiceName is the name of the tap APIService registration resource
 	TapAPIRegistrationServiceName = "v1alpha1.tap.linkerd.io"
 
-	// SmiMetricsServiceName is the name of the SMI metrics APIService
-	SmiMetricsServiceName = "linkerd-smi-metrics"
-
-	// SmiMetricsAPIRegistrationServiceName is the name of the SMI metrics APIService registration resource
-	SmiMetricsAPIRegistrationServiceName = "v1alpha1.metrics.smi-spec.io"
-
 	// AdmissionWebhookLabel indicates whether admission webhooks are enabled for a namespace
 	AdmissionWebhookLabel = ProxyConfigAnnotationsPrefix + "/admission-webhooks"
 
@@ -339,7 +333,7 @@ const (
 	// MountPathBase is the base directory of the mount path.
 	MountPathBase = "/var/run/linkerd"
 
-	// MountPathServiceAccount is the default path where Kuberenetes stores
+	// MountPathServiceAccount is the default path where Kubernetes stores
 	// the service account token
 	MountPathServiceAccount = "/var/run/secrets/kubernetes.io/serviceaccount"
 

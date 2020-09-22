@@ -66,7 +66,7 @@ type (
 	// ClusterUnregistered is issued when this ClusterWatcher is shut down.
 	ClusterUnregistered struct{}
 
-	// OprhanedServicesGcTriggered is a self-triggered event which aims to delete any
+	// OrphanedServicesGcTriggered is a self-triggered event which aims to delete any
 	// orphaned services that are no longer on the remote cluster. It is emitted every
 	// time a new remote cluster is registered for monitoring. The need for this arises
 	// because the following might happen.
@@ -80,7 +80,7 @@ type (
 	//
 	// This event indicates that we need to make a diff with all services on the remote
 	// cluster, ensuring that we do not keep any mirrors that are not relevant anymore
-	OprhanedServicesGcTriggered struct{}
+	OrphanedServicesGcTriggered struct{}
 
 	// OnAddCalled is issued when the onAdd function of the
 	// shared informer is called
@@ -297,14 +297,14 @@ func (rcsw *RemoteClusterServiceWatcher) cleanupMirroredResources() error {
 		return RetryableError{[]error{innerErr}}
 	}
 
-	for _, endpt := range endpoints {
-		if err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpt.Namespace).Delete(endpt.Name, &metav1.DeleteOptions{}); err != nil {
+	for _, endpoint := range endpoints {
+		if err := rcsw.localAPIClient.Client.CoreV1().Endpoints(endpoint.Namespace).Delete(endpoint.Name, &metav1.DeleteOptions{}); err != nil {
 			if kerrors.IsNotFound(err) {
 				continue
 			}
-			errors = append(errors, fmt.Errorf("Could not delete  Endpoints %s/%s: %s", endpt.Namespace, endpt.Name, err))
+			errors = append(errors, fmt.Errorf("Could not delete  Endpoints %s/%s: %s", endpoint.Namespace, endpoint.Name, err))
 		} else {
-			rcsw.log.Infof("Deleted Endpoints %s/%s", endpt.Namespace, endpt.Name)
+			rcsw.log.Infof("Deleted Endpoints %s/%s", endpoint.Namespace, endpoint.Name)
 		}
 	}
 
@@ -559,7 +559,7 @@ func (rcsw *RemoteClusterServiceWatcher) processNextEvent() (bool, interface{}, 
 		err = rcsw.handleRemoteServiceDeleted(ev)
 	case *ClusterUnregistered:
 		err = rcsw.cleanupMirroredResources()
-	case *OprhanedServicesGcTriggered:
+	case *OrphanedServicesGcTriggered:
 		err = rcsw.cleanupOrphanedServices()
 	case *RepairEndpoints:
 		rcsw.repairEndpoints()
@@ -612,7 +612,7 @@ func (rcsw *RemoteClusterServiceWatcher) processEvents() {
 // Start starts watching the remote cluster
 func (rcsw *RemoteClusterServiceWatcher) Start() error {
 	rcsw.remoteAPIClient.Sync(rcsw.stopper)
-	rcsw.eventsQueue.Add(&OprhanedServicesGcTriggered{})
+	rcsw.eventsQueue.Add(&OrphanedServicesGcTriggered{})
 	rcsw.remoteAPIClient.Svc().Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(svc interface{}) {

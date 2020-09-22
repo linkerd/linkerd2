@@ -104,7 +104,7 @@ func newBufferingEndpointListenerWithResVersion() *bufferingEndpointListenerWith
 	}
 }
 
-func addressStringWithResVerson(address Address) string {
+func addressStringWithResVersion(address Address) string {
 	return fmt.Sprintf("%s:%d:%s", address.IP, address.Port, address.Pod.ResourceVersion)
 }
 
@@ -126,7 +126,7 @@ func (bel *bufferingEndpointListenerWithResVersion) Add(set AddressSet) {
 	bel.Lock()
 	defer bel.Unlock()
 	for _, address := range set.Addresses {
-		bel.added = append(bel.added, addressStringWithResVerson(address))
+		bel.added = append(bel.added, addressStringWithResVersion(address))
 	}
 }
 
@@ -134,7 +134,7 @@ func (bel *bufferingEndpointListenerWithResVersion) Remove(set AddressSet) {
 	bel.Lock()
 	defer bel.Unlock()
 	for _, address := range set.Addresses {
-		bel.removed = append(bel.removed, addressStringWithResVerson(address))
+		bel.removed = append(bel.removed, addressStringWithResVersion(address))
 	}
 }
 

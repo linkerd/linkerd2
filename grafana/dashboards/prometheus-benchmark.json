@@ -1360,7 +1360,7 @@
           "step": 10
         },
         {
-          "expr": "rate(prometheus_tsdb_wal_truncate_duration_seconds_sum{job=\"prometheus\",instance=\"$Prometheus:9090\"}[1m]) / rate(prometheus_tsdb_wal_trunacte_duration_seconds_count{job=\"prometheus\",instance=\"$Prometheus:9090\"}[1m])",
+          "expr": "rate(prometheus_tsdb_wal_truncate_duration_seconds_sum{job=\"prometheus\",instance=\"$Prometheus:9090\"}[1m]) / rate(prometheus_tsdb_wal_truncate_duration_seconds_count{job=\"prometheus\",instance=\"$Prometheus:9090\"}[1m])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,

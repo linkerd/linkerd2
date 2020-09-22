@@ -23,8 +23,8 @@ const (
 	// multicluster setup.
 	LinkerdMulticlusterChecks CategoryID = "linkerd-multicluster"
 
-	linkerdServiceMirrorComponentName      = "linkerd-service-mirror"
-	linkerdServiceMirrorSerivceAccountName = "linkerd-service-mirror-%s"
+	linkerdServiceMirrorComponentName      = "service-mirror"
+	linkerdServiceMirrorServiceAccountName = "linkerd-service-mirror-%s"
 	linkerdServiceMirrorClusterRoleName    = "linkerd-service-mirror-access-local-resources-%s"
 	linkerdServiceMirrorRoleName           = "linkerd-service-mirror-read-remote-creds-%s"
 )
@@ -75,7 +75,7 @@ func (hc *HealthChecker) multiClusterCategory() []category {
 						return &SkipError{Reason: "not checking muticluster"}
 					},
 				},
-				/* Serivce mirror controller checks */
+				/* Service mirror controller checks */
 				{
 					description: "service mirror controller has required permissions",
 					hintAnchor:  "l5d-multicluster-source-rbac-correct",
@@ -166,7 +166,7 @@ func (hc *HealthChecker) checkLinks() error {
 	return &VerboseSuccess{Message: strings.Join(linkNames, "\n")}
 }
 
-/* Serivce mirror controller checks */
+/* Service mirror controller checks */
 
 func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 	links := []string{}
@@ -175,7 +175,7 @@ func (hc *HealthChecker) checkServiceMirrorLocalRBAC() error {
 	for _, link := range hc.links {
 
 		err := hc.checkServiceAccounts(
-			[]string{fmt.Sprintf(linkerdServiceMirrorSerivceAccountName, link.TargetClusterName)},
+			[]string{fmt.Sprintf(linkerdServiceMirrorServiceAccountName, link.TargetClusterName)},
 			link.Namespace,
 			serviceMirrorComponentsSelector(link.TargetClusterName),
 		)

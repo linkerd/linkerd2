@@ -15,8 +15,8 @@ func TestNewValues(t *testing.T) {
 
 	expected := &Values{
 		Stage:                       "",
-		ControllerImage:             "gcr.io/linkerd-io/controller",
-		WebImage:                    "gcr.io/linkerd-io/web",
+		ControllerImage:             "ghcr.io/linkerd/controller",
+		WebImage:                    "ghcr.io/linkerd/web",
 		ControllerReplicas:          1,
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
@@ -52,7 +52,7 @@ func TestNewValues(t *testing.T) {
 			Proxy: &Proxy{
 				EnableExternalProfiles: false,
 				Image: &Image{
-					Name:       "gcr.io/linkerd-io/proxy",
+					Name:       "ghcr.io/linkerd/proxy",
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
@@ -86,7 +86,7 @@ func TestNewValues(t *testing.T) {
 			},
 			ProxyInit: &ProxyInit{
 				Image: &Image{
-					Name:       "gcr.io/linkerd-io/proxy-init",
+					Name:       "ghcr.io/linkerd/proxy-init",
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
@@ -123,7 +123,7 @@ func TestNewValues(t *testing.T) {
 		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{
-				Name:       "gcr.io/linkerd-io/debug",
+				Name:       "ghcr.io/linkerd/debug",
 				PullPolicy: "IfNotPresent",
 				Version:    testVersion,
 			},
@@ -132,10 +132,6 @@ func TestNewValues(t *testing.T) {
 		ProxyInjector:    &ProxyInjector{TLS: &TLS{}},
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
 		Tap:              &Tap{TLS: &TLS{}},
-		SMIMetrics: &SMIMetrics{
-			Image: "deislabs/smi-metrics:v0.2.1",
-			TLS:   &TLS{},
-		},
 		Grafana: Grafana{
 			"enabled": true,
 		},

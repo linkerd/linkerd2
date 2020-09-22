@@ -449,7 +449,7 @@ kind: Service
 metadata:
   name: emoji-svc
   namespace: emojivoto
-  uid: serviceUIDdoesntMatter
+  uid: serviceUIDDoesNotMatter
 spec:
   type: ClusterIP
   selector:
@@ -1145,7 +1145,7 @@ spec:
     name: client`,
 			},
 		},
-		// Service porfile in client namespace takes priority
+		// Service profile in client namespace takes priority
 		{
 			expectedRouteNames: []string{"client"},
 			profileConfigs: []string{`

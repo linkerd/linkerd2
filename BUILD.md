@@ -340,6 +340,24 @@ cd web/app
 yarn add [dep]
 ```
 
+#### Translations
+
+To add a locale:
+
+```bash
+cd web/app
+yarn lingui add-locale [locales...] # will create a messages.json file for new locale(s)
+```
+
+To extract message keys from existing components:
+
+```bash
+cd web/app
+yarn lingui extract
+...
+yarn lingui compile # done automatically in bin/web run
+```
+
 ### Rust
 
 All Rust development happens in the

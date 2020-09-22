@@ -179,6 +179,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 			checks = append(checks, healthcheck.LinkerdControlPlaneExistenceChecks)
 			checks = append(checks, healthcheck.LinkerdAPIChecks)
 			checks = append(checks, healthcheck.LinkerdIdentity)
+			checks = append(checks, healthcheck.LinkerdWebhooksAndAPISvcTLS)
 
 			if options.dataPlaneOnly {
 				checks = append(checks, healthcheck.LinkerdDataPlaneChecks)
@@ -207,6 +208,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		RetryDeadline:         time.Now().Add(options.wait),
 		CNIEnabled:            options.cniEnabled,
 		InstallManifest:       installManifest,
+		MultiCluster:          options.multicluster,
 	})
 
 	success := runChecks(wout, werr, hc, options.output)

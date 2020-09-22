@@ -27,21 +27,21 @@ func TestCaIssuesCertsWithCorrectExpiration(t *testing.T) {
 		desc                   string
 		validFrom              time.Time
 		issuerLifeTime         time.Duration
-		endCertLifeime         time.Duration
+		endCertLifetime        time.Duration
 		expectedCertExpiration time.Time
 	}{
 		{
 			desc:                   "issuer cert expires after end cert",
 			validFrom:              validFrom,
 			issuerLifeTime:         time.Hour * 48,
-			endCertLifeime:         time.Hour * 24,
+			endCertLifetime:        time.Hour * 24,
 			expectedCertExpiration: validFrom.Add(time.Hour * 24).Add(DefaultClockSkewAllowance),
 		},
 		{
 			desc:                   "issuer cert expires before end cert",
 			validFrom:              validFrom,
 			issuerLifeTime:         time.Hour * 10,
-			endCertLifeime:         time.Hour * 24,
+			endCertLifetime:        time.Hour * 24,
 			expectedCertExpiration: validFrom.Add(time.Hour * 10).Add(DefaultClockSkewAllowance),
 		},
 	}
@@ -50,7 +50,7 @@ func TestCaIssuesCertsWithCorrectExpiration(t *testing.T) {
 		tc := tc
 		t.Run(tc.desc, func(t *testing.T) {
 
-			ca, err := getCa(tc.validFrom, tc.issuerLifeTime, tc.endCertLifeime)
+			ca, err := getCa(tc.validFrom, tc.issuerLifeTime, tc.endCertLifetime)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}
