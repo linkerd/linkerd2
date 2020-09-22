@@ -320,7 +320,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 
 	// if exist, re-use the proxy injector, profile validator and tap TLS secrets.
 	// otherwise, let Helm generate them by creating an empty charts.TLS struct here.
-	proxyInjectorTLS, err := fetchOrUpdateTLSSecret(k, k8s.ProxyInjectorWebhookServiceName, options)
+	proxyInjectorTLS, err := fetchTLSSecret(k, k8s.ProxyInjectorWebhookServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
@@ -329,7 +329,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	}
 	values.ProxyInjector = &charts.ProxyInjector{TLS: proxyInjectorTLS}
 
-	profileValidatorTLS, err := fetchOrUpdateTLSSecret(k, k8s.SPValidatorWebhookServiceName, options)
+	profileValidatorTLS, err := fetchTLSSecret(k, k8s.SPValidatorWebhookServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
@@ -338,7 +338,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	}
 	values.ProfileValidator = &charts.ProfileValidator{TLS: profileValidatorTLS}
 
-	tapTLS, err := fetchOrUpdateTLSSecret(k, k8s.TapServiceName, options)
+	tapTLS, err := fetchTLSSecret(k, k8s.TapServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("could not fetch existing tap secret: %s", err)
@@ -483,7 +483,7 @@ func injectCABundleFromAPIService(k *k8s.KubernetesAPI, resource string, value *
 	return nil
 }
 
-func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+func fetchLinkerdTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(webhookSecretName(webhook), metav1.GetOptions{})
@@ -538,7 +538,7 @@ func fetchK8sTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOpt
 }
 
 // try to fetch K8sTLSSecret, but revert to TLSSecret if the former fails
-func fetchOrUpdateTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	tls, err := fetchK8sTLSSecret(k, webhook, options)
 	if err == nil {
 		return tls, err
@@ -548,7 +548,7 @@ func fetchOrUpdateTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgra
 		return tls, err
 	}
 
-	return fetchTLSSecret(k, webhook, options)
+	return fetchLinkerdTLSSecret(k, webhook, options)
 }
 
 func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred) error {
