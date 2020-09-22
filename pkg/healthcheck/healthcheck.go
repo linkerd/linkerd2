@@ -157,9 +157,9 @@ const (
 	// the api service is available or not
 	linkerdTapAPIServiceName = "v1alpha1.tap.linkerd.io"
 
-	tapTLSSecretName           = "linkerd-tap-tls"
-	proxyInjectorTLSSecretName = "linkerd-proxy-injector-tls"
-	spValidatorTLSSecretName   = "linkerd-sp-validator-tls"
+	tapTLSSecretName           = "linkerd-tap-k8s-tls"
+	proxyInjectorTLSSecretName = "linkerd-proxy-injector-k8s-tls"
+	spValidatorTLSSecretName   = "linkerd-sp-validator-k8s-tls"
 	certKeyName                = "crt.pem"
 	keyKeyName                 = "key.pem"
 )
