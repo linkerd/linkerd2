@@ -14,17 +14,18 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
+	servicemirror "github.com/linkerd/linkerd2/controller/service-mirror"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/multicluster"
-	"github.com/linkerd/linkerd2/pkg/servicemirror"
+	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
 	log "github.com/sirupsen/logrus"
 )
 
 var (
-	clusterWatcher *RemoteClusterServiceWatcher
-	probeWorker    *ProbeWorker
+	clusterWatcher *servicemirror.RemoteClusterServiceWatcher
+	probeWorker    *servicemirror.ProbeWorker
 )
 
 // Main executes the service-mirror controller
@@ -66,7 +67,7 @@ func Main(args []string) {
 
 	linkClient := k8sAPI.DynamicClient.Resource(multicluster.LinkGVR).Namespace(*namespace)
 
-	metrics := newProbeMetricVecs()
+	metrics := servicemirror.NewProbeMetricVecs()
 	go admin.StartServer(*metricsAddr)
 
 	controllerK8sAPI.Sync(nil)
@@ -136,7 +137,7 @@ func loadCredentials(link multicluster.Link, namespace string, k8sAPI *k8s.Kuber
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load credentials secret %s: %s", link.ClusterCredentialsSecret, err)
 	}
-	return servicemirror.ParseRemoteClusterSecret(secret)
+	return sm.ParseRemoteClusterSecret(secret)
 }
 
 func restartClusterWatcher(
@@ -146,7 +147,7 @@ func restartClusterWatcher(
 	controllerK8sAPI *controllerK8s.API,
 	requeueLimit int,
 	repairPeriod time.Duration,
-	metrics probeMetricVecs,
+	metrics servicemirror.ProbeMetricVecs,
 ) {
 	if clusterWatcher != nil {
 		clusterWatcher.Stop(false)
@@ -161,7 +162,7 @@ func restartClusterWatcher(
 		return
 	}
 
-	clusterWatcher, err = NewRemoteClusterServiceWatcher(
+	clusterWatcher, err = servicemirror.NewRemoteClusterServiceWatcher(
 		namespace,
 		controllerK8sAPI,
 		cfg,
@@ -180,10 +181,10 @@ func restartClusterWatcher(
 		return
 	}
 
-	workerMetrics, err := metrics.newWorkerMetrics(link.TargetClusterName)
+	workerMetrics, err := metrics.NewWorkerMetrics(link.TargetClusterName)
 	if err != nil {
 		log.Errorf("Failed to create metrics for cluster watcher: %s", err)
 	}
-	probeWorker = NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
-	go probeWorker.run()
+	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
+	probeWorker.Start()
 }

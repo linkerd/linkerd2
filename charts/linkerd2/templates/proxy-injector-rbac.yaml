@@ -53,7 +53,8 @@ metadata:
     {{.Values.global.controllerComponentLabel}}: proxy-injector
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
 ---
-{{- $ca := genCA (printf "linkerd-proxy-injector.%s.svc" .Values.global.namespace) 365 }}
+{{- $host := printf "linkerd-proxy-injector.%s.svc" .Values.global.namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.proxyInjector.externalSecret) }}
 kind: Secret
 apiVersion: v1

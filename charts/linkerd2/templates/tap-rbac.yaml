@@ -91,7 +91,8 @@ subjects:
   name: linkerd-tap
   namespace: {{.Values.global.namespace}}
 ---
-{{-  $ca := genCA (printf "linkerd-tap.%s.svc" .Values.global.namespace) 365 }}
+{{- $host := printf "linkerd-tap.%s.svc" .Values.global.namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.tap.externalSecret) }}
 kind: Secret
 apiVersion: v1

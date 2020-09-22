@@ -192,7 +192,7 @@ spec:
         env:
         - name: WEB_HOST
           value: nginx-ingress:80
-        image: buoyantio/emojivoto-web:v8
+        image: buoyantio/emojivoto-web:v10
         name: vote-bot
         resources:
           requests:

@@ -1,10 +1,10 @@
 {
   "proxyImage": {
-    "imageName": "gcr.io/linkerd-io/proxy",
+    "imageName": "ghcr.io/linkerd/proxy",
     "pullPolicy": "IfNotPresent"
   },
   "proxyInitImage": {
-    "imageName": "gcr.io/linkerd-io/proxy-init",
+    "imageName": "ghcr.io/linkerd/proxy-init",
     "pullPolicy": "IfNotPresent"
   },
   "controlPort": {
@@ -37,7 +37,7 @@
   },
   "disableExternalProfiles": false,
   "debugImage": {
-    "imageName": "gcr.io/linkerd-io/debug",
+    "imageName": "ghcr.io/linkerd/debug",
     "pullPolicy": "IfNotPresent"
   },
   "debugImageVersion": "test-debug-version"

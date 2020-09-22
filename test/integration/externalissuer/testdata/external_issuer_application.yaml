@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: buoyantio/bb:v0.0.5
+        image: buoyantio/bb:v0.0.6
         args:
         - terminus
         - "--h1-server-port=8080"
@@ -51,14 +51,14 @@ spec:
     spec:
       containers:
       - name: slow-cooker
-        image: buoyantio/slow_cooker:1.1.1
+        image: buoyantio/slow_cooker:1.3.0
         command:
         - "/bin/sh"
         args:
         - "-c"
         - |
           sleep 5 # wait for pods to start
-          slow_cooker http://backend-svc:8080
+          /slow_cooker/slow_cooker http://backend-svc:8080
         ports:
         - containerPort: 9999
 ---

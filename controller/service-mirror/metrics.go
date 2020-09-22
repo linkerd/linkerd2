@@ -12,7 +12,9 @@ const (
 	probeSuccessfulLabel = "probe_successful"
 )
 
-type probeMetricVecs struct {
+// ProbeMetricVecs stores metrics about about gateways collected by probe
+// workers.
+type ProbeMetricVecs struct {
 	alive     *prometheus.GaugeVec
 	latencies *prometheus.HistogramVec
 	enqueues  *prometheus.CounterVec
@@ -20,7 +22,9 @@ type probeMetricVecs struct {
 	probes    *prometheus.CounterVec
 }
 
-type probeMetrics struct {
+// ProbeMetrics stores metrics about about a specific gateway collected by a
+// probe worker.
+type ProbeMetrics struct {
 	alive      prometheus.Gauge
 	latencies  prometheus.Observer
 	probes     *prometheus.CounterVec
@@ -39,7 +43,8 @@ func init() {
 	)
 }
 
-func newProbeMetricVecs() probeMetricVecs {
+// NewProbeMetricVecs creates a new ProbeMetricVecs.
+func NewProbeMetricVecs() ProbeMetricVecs {
 	labelNames := []string{gatewayClusterName}
 
 	probes := promauto.NewCounterVec(
@@ -88,7 +93,7 @@ func newProbeMetricVecs() probeMetricVecs {
 		},
 		labelNames)
 
-	return probeMetricVecs{
+	return ProbeMetricVecs{
 		alive:     alive,
 		latencies: latencies,
 		enqueues:  enqueues,
@@ -96,7 +101,10 @@ func newProbeMetricVecs() probeMetricVecs {
 		probes:    probes,
 	}
 }
-func (mv probeMetricVecs) newWorkerMetrics(remoteClusterName string) (*probeMetrics, error) {
+
+// NewWorkerMetrics creates a new ProbeMetrics by scoping to a specific target
+// cluster.
+func (mv ProbeMetricVecs) NewWorkerMetrics(remoteClusterName string) (*ProbeMetrics, error) {
 
 	labels := prometheus.Labels{
 		gatewayClusterName: remoteClusterName,
@@ -106,7 +114,7 @@ func (mv probeMetricVecs) newWorkerMetrics(remoteClusterName string) (*probeMetr
 	if err != nil {
 		return nil, err
 	}
-	return &probeMetrics{
+	return &ProbeMetrics{
 		alive:     mv.alive.With(labels),
 		latencies: mv.latencies.With(labels),
 		probes:    curriedProbes,
@@ -116,7 +124,7 @@ func (mv probeMetricVecs) newWorkerMetrics(remoteClusterName string) (*probeMetr
 	}, nil
 }
 
-func (mv probeMetricVecs) unregister(remoteClusterName string) {
+func (mv ProbeMetricVecs) unregister(remoteClusterName string) {
 	labels := prometheus.Labels{
 		gatewayClusterName: remoteClusterName,
 	}

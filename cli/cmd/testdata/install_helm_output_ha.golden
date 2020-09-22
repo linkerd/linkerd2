@@ -843,11 +843,11 @@ data:
   proxy: |
     {
       "proxyImage":{
-        "imageName":"gcr.io/linkerd-io/proxy",
+        "imageName":"ghcr.io/linkerd/proxy",
         "pullPolicy":"IfNotPresent"
       },
       "proxyInitImage":{
-        "imageName":"gcr.io/linkerd-io/proxy-init",
+        "imageName":"ghcr.io/linkerd/proxy-init",
         "pullPolicy":"IfNotPresent"
       },
       "controlPort":{
@@ -879,7 +879,7 @@ data:
       "proxyVersion": "test-proxy-version",
       "proxyInitImageVersion": "test-proxy-init-version",
       "debugImage":{
-        "imageName":"gcr.io/linkerd-io/debug",
+        "imageName":"ghcr.io/linkerd/debug",
         "pullPolicy":"IfNotPresent"
       },
       "debugImageVersion": "test-debug-version",
@@ -926,6 +926,25 @@ metadata:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
   type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: identity
+  ports:
+  - name: grpc
+    port: 8080
+    targetPort: 8080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-identity-headless
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: identity
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+spec:
+  clusterIP: None
   selector:
     linkerd.io/control-plane-component: identity
   ports:
@@ -994,7 +1013,7 @@ spec:
       - args:
         - identity
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:linkerd-version
+        image: ghcr.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1032,8 +1051,10 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
@@ -1091,7 +1112,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:test-proxy-version
+        image: ghcr.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1136,7 +1157,7 @@ spec:
         - 4190,4191,222
         - --outbound-ports-to-ignore
         - 443,111
-        image: gcr.io/linkerd-io/proxy-init:test-proxy-init-version
+        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1263,7 +1284,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
-        image: gcr.io/linkerd-io/controller:linkerd-version
+        image: ghcr.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1299,8 +1320,10 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
@@ -1341,7 +1364,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1358,7 +1381,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:test-proxy-version
+        image: ghcr.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1403,7 +1426,7 @@ spec:
         - 4190,4191,222
         - --outbound-ports-to-ignore
         - 443,111
-        image: gcr.io/linkerd-io/proxy-init:test-proxy-init-version
+        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1456,6 +1479,25 @@ metadata:
     linkerd.io/created-by: linkerd/helm linkerd-version
 spec:
   type: ClusterIP
+  selector:
+    linkerd.io/control-plane-component: destination
+  ports:
+  - name: grpc
+    port: 8086
+    targetPort: 8086
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-dst-headless
+  namespace: linkerd
+  labels:
+    linkerd.io/control-plane-component: destination
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    linkerd.io/created-by: linkerd/helm linkerd-version
+spec:
+  clusterIP: None
   selector:
     linkerd.io/control-plane-component: destination
   ports:
@@ -1528,7 +1570,7 @@ spec:
         - -enable-h2-upgrade=true
         - -log-level=info
         - -enable-endpoint-slices=false
-        image: gcr.io/linkerd-io/controller:linkerd-version
+        image: ghcr.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1566,6 +1608,8 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: localhost.:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
@@ -1606,7 +1650,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1623,7 +1667,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:test-proxy-version
+        image: ghcr.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1668,7 +1712,7 @@ spec:
         - 4190,4191,222
         - --outbound-ports-to-ignore
         - 443,111
-        image: gcr.io/linkerd-io/proxy-init:test-proxy-init-version
+        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1741,7 +1785,7 @@ spec:
           restartPolicy: Never
           containers:
           - name: heartbeat
-            image: gcr.io/linkerd-io/controller:linkerd-version
+            image: ghcr.io/linkerd/controller:linkerd-version
             imagePullPolicy: IfNotPresent
             args:
             - "heartbeat"
@@ -1827,7 +1871,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
-        image: gcr.io/linkerd-io/web:linkerd-version
+        image: ghcr.io/linkerd/web:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1863,8 +1907,10 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
@@ -1905,7 +1951,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -1922,7 +1968,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:test-proxy-version
+        image: ghcr.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1967,7 +2013,7 @@ spec:
         - 4190,4191,222
         - --outbound-ports-to-ignore
         - 443,111
-        image: gcr.io/linkerd-io/proxy-init:test-proxy-init-version
+        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2068,7 +2114,7 @@ spec:
       - args:
         - proxy-injector
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:linkerd-version
+        image: ghcr.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2107,8 +2153,10 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
@@ -2149,7 +2197,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -2166,7 +2214,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:test-proxy-version
+        image: ghcr.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2211,7 +2259,7 @@ spec:
         - 4190,4191,222
         - --outbound-ports-to-ignore
         - 443,111
-        image: gcr.io/linkerd-io/proxy-init:test-proxy-init-version
+        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2353,7 +2401,7 @@ spec:
       - args:
         - sp-validator
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:linkerd-version
+        image: ghcr.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2390,8 +2438,10 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
@@ -2432,7 +2482,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -2449,7 +2499,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:test-proxy-version
+        image: ghcr.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2494,7 +2544,7 @@ spec:
         - 4190,4191,222
         - --outbound-ports-to-ignore
         - 443,111
-        image: gcr.io/linkerd-io/proxy-init:test-proxy-init-version
+        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2620,7 +2670,7 @@ spec:
         - tap
         - -controller-namespace=linkerd
         - -log-level=info
-        image: gcr.io/linkerd-io/controller:linkerd-version
+        image: ghcr.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2661,8 +2711,10 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
@@ -2703,7 +2755,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -2720,7 +2772,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:test-proxy-version
+        image: ghcr.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2765,7 +2817,7 @@ spec:
         - 4190,4191,222
         - --outbound-ports-to-ignore
         - 443,111
-        image: gcr.io/linkerd-io/proxy-init:test-proxy-init-version
+        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2827,7 +2879,7 @@ data:
     grafana:
       enabled: true
       image:
-        name: gcr.io/linkerd-io/grafana
+        name: ghcr.io/linkerd/grafana
       resources:
         cpu:
           limit: "1"
@@ -2999,7 +3051,7 @@ spec:
         # see https://github.com/grafana/grafana/issues/20096
         - name: GODEBUG
           value: netdns=go
-        image: gcr.io/linkerd-io/grafana:linkerd-version
+        image: ghcr.io/linkerd/grafana:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3035,8 +3087,10 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
@@ -3077,7 +3131,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -3094,7 +3148,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:test-proxy-version
+        image: ghcr.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3139,7 +3193,7 @@ spec:
         - 4190,4191,222
         - --outbound-ports-to-ignore
         - 443,111
-        image: gcr.io/linkerd-io/proxy-init:test-proxy-init-version
+        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3478,8 +3532,10 @@ spec:
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst.linkerd.svc.cluster.local:8086
+          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
+          value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
           value: "100ms"
@@ -3522,7 +3578,7 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity.linkerd.svc.cluster.local:8080
+          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
         - name: _pod_sa
           valueFrom:
             fieldRef:
@@ -3539,7 +3595,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:test-proxy-version
+        image: ghcr.io/linkerd/proxy:test-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -3584,7 +3640,7 @@ spec:
         - 4190,4191,222
         - --outbound-ports-to-ignore
         - 443,111
-        image: gcr.io/linkerd-io/proxy-init:test-proxy-init-version
+        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

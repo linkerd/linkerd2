@@ -19,12 +19,12 @@ type ProbeWorker struct {
 	*sync.RWMutex
 	probeSpec *multicluster.ProbeSpec
 	stopCh    chan struct{}
-	metrics   *probeMetrics
+	metrics   *ProbeMetrics
 	log       *logging.Entry
 }
 
 // NewProbeWorker creates a new probe worker associated with a particular gateway
-func NewProbeWorker(localGatewayName string, spec *multicluster.ProbeSpec, metrics *probeMetrics, probekey string) *ProbeWorker {
+func NewProbeWorker(localGatewayName string, spec *multicluster.ProbeSpec, metrics *ProbeMetrics, probekey string) *ProbeWorker {
 	return &ProbeWorker{
 		localGatewayName: localGatewayName,
 		RWMutex:          &sync.RWMutex{},
@@ -84,7 +84,7 @@ func (pw *ProbeWorker) doProbe() {
 		Timeout: httpGatewayTimeoutMillis * time.Millisecond,
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/%s", pw.localGatewayName, pw.probeSpec.Port, pw.probeSpec.Path), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d%s", pw.localGatewayName, pw.probeSpec.Port, pw.probeSpec.Path), nil)
 	if err != nil {
 		pw.log.Errorf("Could not create a GET request to gateway: %s", err)
 		return
