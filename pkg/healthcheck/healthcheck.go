@@ -160,8 +160,8 @@ const (
 	tapTLSSecretName           = "linkerd-tap-k8s-tls"
 	proxyInjectorTLSSecretName = "linkerd-proxy-injector-k8s-tls"
 	spValidatorTLSSecretName   = "linkerd-sp-validator-k8s-tls"
-	certKeyName                = "crt.pem"
-	keyKeyName                 = "key.pem"
+	certKeyName                = "tls.crt"
+	keyKeyName                 = "tls.key"
 )
 
 // HintBaseURL is the base URL on the linkerd.io website that all check hints
