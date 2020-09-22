@@ -34,6 +34,8 @@ func TestSMIMetrics(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "failed to create %s namespace: %s", testNamespace, err)
 	}
 
+	// Currently, SMI-Metrics Helm chart is saved locally and can be updated to a newer version
+	// by downloading it from the GitHub release or Helm repo and moving it here.
 	args := []string{
 		"install",
 		"smi-metrics",
