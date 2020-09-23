@@ -897,9 +897,13 @@ func (hc *HealthChecker) allCategories() []category {
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
 					fatal:               true,
-					check: func(ctx context.Context) error {
+					check: func(ctx context.Context) (err error) {
 						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
+						}
+						hc.cniDaemonSet, err = hc.kubeAPI.Interface.AppsV1().DaemonSets(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
+						if kerrors.IsNotFound(err) {
+							return fmt.Errorf("missing DaemonSet: %s", linkerdCNIResourceName)
 						}
 						scheduled := hc.cniDaemonSet.Status.DesiredNumberScheduled
 						ready := hc.cniDaemonSet.Status.NumberReady

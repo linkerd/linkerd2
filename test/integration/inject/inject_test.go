@@ -268,10 +268,10 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 				if containers[0].Name != k8s.ProxyContainerName && containers[1].Name != k8s.ProxyContainerName {
 					testutil.Fatalf(t, "expected %s container in pod %s/%s, got %+v", ns, pods[0].GetName(), k8s.ProxyContainerName, containers[0])
 				}
-				if len(initContainers) != 1 {
+				if !TestHelper.CNI() && len(initContainers) != 1 {
 					testutil.Fatalf(t, "expected 1 init container for pod %s/%s, got %d", ns, pods[0].GetName(), len(initContainers))
 				}
-				if initContainers[0].Name != k8s.InitContainerName {
+				if !TestHelper.CNI() && initContainers[0].Name != k8s.InitContainerName {
 					testutil.Fatalf(t, "expected %s init container in pod %s/%s, got %+v", ns, pods[0].GetName(), k8s.InitContainerName, initContainers[0])
 				}
 			} else {
@@ -382,18 +382,19 @@ func TestInjectAutoPod(t *testing.T) {
 		testutil.Fatalf(t, "pod in namespace %s wasn't injected with the proxy container", ns)
 	}
 
-	initContainers := pods[0].Spec.InitContainers
-	if len(initContainers) == 0 {
-		testutil.Fatalf(t, "pod in namespace %s wasn't injected with the init container", ns)
+	if !TestHelper.CNI() {
+		initContainers := pods[0].Spec.InitContainers
+		if len(initContainers) == 0 {
+			testutil.Fatalf(t, "pod in namespace %s wasn't injected with the init container", ns)
+		}
+		initContainer := initContainers[0]
+		if mounts := initContainer.VolumeMounts; len(mounts) == 0 {
+			testutil.AnnotatedFatalf(t, "init container doesn't have volume mounts", "init container doesn't have volume mounts: %#v", initContainer)
+		}
+		// Removed token volume name from comparison because it contains a random string
+		initContainer.VolumeMounts[1].Name = ""
+		if !reflect.DeepEqual(expectedInitContainer, initContainer) {
+			testutil.AnnotatedFatalf(t, "malformed init container", "malformed init container:\nexpected:\n%#v\nactual:\n%#v", expectedInitContainer, initContainer)
+		}
 	}
-	initContainer := initContainers[0]
-	if mounts := initContainer.VolumeMounts; len(mounts) == 0 {
-		testutil.AnnotatedFatalf(t, "init container doesn't have volume mounts", "init container doesn't have volume mounts: %#v", initContainer)
-	}
-	// Removed token volume name from comparison because it contains a random string
-	initContainer.VolumeMounts[1].Name = ""
-	if !reflect.DeepEqual(expectedInitContainer, initContainer) {
-		testutil.AnnotatedFatalf(t, "malformed init container", "malformed init container:\nexpected:\n%#v\nactual:\n%#v", expectedInitContainer, initContainer)
-	}
-
 }
