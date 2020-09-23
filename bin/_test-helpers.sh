@@ -176,6 +176,7 @@ Help:
 start_test() {
   name=$1
   config=$2
+  export helm_path="$bindir"/helm 
 
   test_setup
   if [ -z "$skip_kind_create" ]; then
@@ -216,7 +217,7 @@ run_test(){
 
   printf 'Test script: [%s] Params: [%s]\n' "${filename##*/}" "$*"
   # Exit on failure here
-  GO111MODULE=on go test --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --k8s-context="$context" --integration-tests "$@" || exit 1
+  GO111MODULE=on go test --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --k8s-context="$context" --integration-tests "$@" || exit 1
 }
 
 # Returns the latest version for the release channel
