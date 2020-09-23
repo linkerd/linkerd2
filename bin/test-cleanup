@@ -83,6 +83,9 @@ echo "cleaning up rolebindings in kube-system namespace in k8s-context [${k8s_co
 
 populate_array rolebindings              rolebindings                    control-plane-ns
 
+echo "cleaning up multicluster resources, if present [${k8s_context}]"
+linkerd mc uninstall 2> /dev/null  | kubectl --context="$k8s_context" delete -f -
+
 # No action if array is empty
 if [[ ${rolebindings[*]} ]]; then
   kubectl --context="$k8s_context" delete "${rolebindings[@]}" -n kube-system

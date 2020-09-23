@@ -2659,11 +2659,9 @@ data:
     tracing:
       collector:
         image: omnition/opencensus-collector:0.1.11
-        name: linkerd-collector
       enabled: true
       jaeger:
-        image: jaegertracing/all-in-one:1.17.1
-        name: linkerd-jaeger
+        image: jaegertracing/all-in-one:1.19.2
 ---
 # Source: linkerd2/charts/grafana/templates/grafana-rbac.yaml
 ---
@@ -3458,6 +3456,8 @@ data:
         port: 55678
       zipkin:
         port: 9411
+      jaeger:
+        jaeger-thrift-http-port: 14268
     queued-exporters:
       jaeger-all-in-one:
         num-workers: 4
@@ -3489,6 +3489,10 @@ spec:
     port: 9411
     protocol: TCP
     targetPort: 9411
+  - name: jaeger
+    port: 14268
+    protocol: TCP
+    targetPort: 14268
   selector:
     linkerd.io/control-plane-component: linkerd-collector
 ---
@@ -3546,6 +3550,7 @@ spec:
         ports:
         - containerPort: 55678
         - containerPort: 9411
+        - containerPort: 14268
         readinessProbe:
           httpGet:
             path: /
@@ -3759,7 +3764,7 @@ spec:
       containers:
       - args:
         - --query.base-path=/jaeger
-        image: jaegertracing/all-in-one:1.17.1
+        image: jaegertracing/all-in-one:1.19.2
         imagePullPolicy: IfNotPresent
         name: jaeger
         ports:
