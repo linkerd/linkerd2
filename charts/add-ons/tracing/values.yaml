@@ -1,0 +1,6 @@
+# Default values for tracing.
+collector:
+  image: omnition/opencensus-collector:0.1.11
+  # resources:
+jaeger:
+  image: jaegertracing/all-in-one:1.19.2

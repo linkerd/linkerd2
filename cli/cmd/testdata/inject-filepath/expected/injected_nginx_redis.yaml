@@ -33,6 +33,8 @@ spec:
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
+          value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -65,14 +67,16 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
           value: |
             -----BEGIN CERTIFICATE-----
-            MIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy
-            LmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE
-            AxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0
-            xtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364
-            6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF
-            BQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE
-            AiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv
-            OLO4Zsk1XrGZHGsmyiEyvYF9lpY=
+            MIIBwTCCAWagAwIBAgIQeDZp5lDaIygQ5UfMKZrFATAKBggqhkjOPQQDAjApMScw
+            JQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwODI4
+            MDcxMjQ3WhcNMzAwODI2MDcxMjQ3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r
+            ZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARqc70Z
+            l1vgw79rjB5uSITICUA6GyfvSFfcuIis7B/XFSkkwAHU5S/s1AAP+R0TX7HBWUC4
+            uaG4WWsiwJKNn7mgo3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB
+            /wIBATAdBgNVHQ4EFgQU5YtjVVPfd7I7NLHsn2C26EByGV0wKQYDVR0RBCIwIIIe
+            aWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0kAMEYC
+            IQCN7lBFLDDvjx6V0+XkjpKERRsJYf5adMvnloFl48ilJgIhANtxhndcr+QJPuC8
+            vgUC0d2/9FMueIVMb+46WTCOjsqr
             -----END CERTIFICATE-----
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
@@ -94,7 +98,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:install-proxy-version
+        image: ghcr.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -130,7 +134,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -196,6 +200,8 @@ spec:
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
           value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
+          value: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
         - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
           value: 0.0.0.0:4190
         - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
@@ -228,14 +234,16 @@ spec:
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
           value: |
             -----BEGIN CERTIFICATE-----
-            MIIBYDCCAQegAwIBAgIBATAKBggqhkjOPQQDAjAYMRYwFAYDVQQDEw1jbHVzdGVy
-            LmxvY2FsMB4XDTE5MDMwMzAxNTk1MloXDTI5MDIyODAyMDM1MlowGDEWMBQGA1UE
-            AxMNY2x1c3Rlci5sb2NhbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABAChpAt0
-            xtgO9qbVtEtDK80N6iCL2Htyf2kIv2m5QkJ1y0TFQi5hTVe3wtspJ8YpZF0pl364
-            6TiYeXB8tOOhIACjQjBAMA4GA1UdDwEB/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEF
-            BQcDAQYIKwYBBQUHAwIwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE
-            AiBQ/AAwF8kG8VOmRSUTPakSSa/N4mqK2HsZuhQXCmiZHwIgZEzI5DCkpU7w3SIv
-            OLO4Zsk1XrGZHGsmyiEyvYF9lpY=
+            MIIBwTCCAWagAwIBAgIQeDZp5lDaIygQ5UfMKZrFATAKBggqhkjOPQQDAjApMScw
+            JQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwODI4
+            MDcxMjQ3WhcNMzAwODI2MDcxMjQ3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r
+            ZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARqc70Z
+            l1vgw79rjB5uSITICUA6GyfvSFfcuIis7B/XFSkkwAHU5S/s1AAP+R0TX7HBWUC4
+            uaG4WWsiwJKNn7mgo3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB
+            /wIBATAdBgNVHQ4EFgQU5YtjVVPfd7I7NLHsn2C26EByGV0wKQYDVR0RBCIwIIIe
+            aWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0kAMEYC
+            IQCN7lBFLDDvjx6V0+XkjpKERRsJYf5adMvnloFl48ilJgIhANtxhndcr+QJPuC8
+            vgUC0d2/9FMueIVMb+46WTCOjsqr
             -----END CERTIFICATE-----
         - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
@@ -257,7 +265,7 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: gcr.io/linkerd-io/proxy:install-proxy-version
+        image: ghcr.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -293,7 +301,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,4191
-        image: gcr.io/linkerd-io/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

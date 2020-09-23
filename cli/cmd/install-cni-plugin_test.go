@@ -15,7 +15,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 
 	fullyConfiguredOptions := &cniPluginOptions{
 		linkerdVersion:      "awesome-linkerd-version.1",
-		dockerRegistry:      "gcr.io/linkerd-io",
+		dockerRegistry:      "ghcr.io/linkerd",
 		proxyControlPort:    5190,
 		proxyAdminPort:      5191,
 		inboundPort:         5143,
@@ -35,7 +35,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 
 	fullyConfiguredOptionsEqualDsts := &cniPluginOptions{
 		linkerdVersion:      "awesome-linkerd-version.1",
-		dockerRegistry:      "gcr.io/linkerd-io",
+		dockerRegistry:      "ghcr.io/linkerd",
 		proxyControlPort:    5190,
 		proxyAdminPort:      5191,
 		inboundPort:         5143,
@@ -53,7 +53,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 
 	fullyConfiguredOptionsNoNamespace := &cniPluginOptions{
 		linkerdVersion:      "awesome-linkerd-version.1",
-		dockerRegistry:      "gcr.io/linkerd-io",
+		dockerRegistry:      "ghcr.io/linkerd",
 		proxyControlPort:    5190,
 		proxyAdminPort:      5191,
 		inboundPort:         5143,
@@ -69,6 +69,14 @@ func TestRenderCNIPlugin(t *testing.T) {
 		installNamespace:    false,
 	}
 
+	defaultOptionsWithSkipPorts, err := newCNIInstallOptionsWithDefaults()
+	if err != nil {
+		t.Fatalf("Unexpected error from newCNIInstallOptionsWithDefaults(): %v", err)
+	}
+
+	defaultOptionsWithSkipPorts.ignoreInboundPorts = append(defaultOptionsWithSkipPorts.ignoreInboundPorts, []string{"80", "8080"}...)
+	defaultOptionsWithSkipPorts.ignoreOutboundPorts = append(defaultOptionsWithSkipPorts.ignoreOutboundPorts, []string{"443", "1000"}...)
+
 	testCases := []struct {
 		*cniPluginOptions
 		namespace      string
@@ -78,6 +86,7 @@ func TestRenderCNIPlugin(t *testing.T) {
 		{fullyConfiguredOptions, otherNamespace, "install-cni-plugin_fully_configured.golden"},
 		{fullyConfiguredOptionsEqualDsts, otherNamespace, "install-cni-plugin_fully_configured_equal_dsts.golden"},
 		{fullyConfiguredOptionsNoNamespace, otherNamespace, "install-cni-plugin_fully_configured_no_namespace.golden"},
+		{defaultOptionsWithSkipPorts, defaultCniNamespace, "install-cni-plugin_skip_ports.golden"},
 	}
 
 	for i, tc := range testCases {

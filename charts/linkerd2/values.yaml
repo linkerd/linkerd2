@@ -36,7 +36,7 @@ global:
     outboundConnectTimeout: 1000ms
     inboundConnectTimeout: 100ms
     image:
-      name: gcr.io/linkerd-io/proxy
+      name: ghcr.io/linkerd/proxy
       pullPolicy: *image_pull_policy
       version: *linkerd_version
     logLevel: warn,linkerd=info
@@ -70,7 +70,7 @@ global:
     ignoreInboundPorts: ""
     ignoreOutboundPorts: ""
     image:
-      name: gcr.io/linkerd-io/proxy-init
+      name: ghcr.io/linkerd/proxy-init
       pullPolicy: *image_pull_policy
       version: v1.3.6
     resources:
@@ -110,7 +110,7 @@ omitWebhookSideEffects: false
 webhookFailurePolicy: Ignore
 
 # controller configuration
-controllerImage: gcr.io/linkerd-io/controller
+controllerImage: ghcr.io/linkerd/controller
 controllerReplicas: 1
 controllerUID: 2103
 
@@ -129,7 +129,7 @@ dashboard:
 # debug configuration
 debugContainer:
   image:
-    name: gcr.io/linkerd-io/debug
+    name: ghcr.io/linkerd/debug
     pullPolicy: *image_pull_policy
     version: *linkerd_version
 
@@ -218,7 +218,7 @@ tap:
 #tapProxyResources:
 
 # web configuration
-webImage: gcr.io/linkerd-io/web
+webImage: ghcr.io/linkerd/web
 # set resources for web UI and its linkerd proxy respectively
 # see global.proxy.resources for details.
 #webResources:
@@ -247,7 +247,7 @@ nodeSelector:
 grafana:
   enabled: true
   # image:
-  #   name: gcr.io/linkerd-io/grafana
+  #   name: ghcr.io/linkerd/grafana
   #   tag: latest
   # set resource requests and limits for grafana and its linkerd proxy respectively
   # see global.proxy.resources in the linkerd2 chart for details.
@@ -328,11 +328,9 @@ prometheus:
 
 tracing:
   enabled: false
-  collector:
-    name: linkerd-collector
-    image: omnition/opencensus-collector:0.1.11
-    # resources:
-  jaeger:
-    name: linkerd-jaeger
-    image: jaegertracing/all-in-one:1.17.1
-    # resources:
+  # collector:
+  #  image: omnition/opencensus-collector:0.1.11
+  #  resources:
+  # jaeger:
+  #  image: jaegertracing/all-in-one:1.19.2
+  #  resources:
