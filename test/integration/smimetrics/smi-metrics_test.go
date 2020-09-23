@@ -35,11 +35,12 @@ func TestSMIMetrics(t *testing.T) {
 	}
 
 	// Currently, SMI-Metrics Helm chart is saved locally and can be updated to a newer version
-	// by downloading it from the GitHub release or Helm repo and moving it here.
+	// by downloading from https://github.com/servicemeshinterface/smi-metrics/releases and
+	// moving the package here, along with a version bump below
 	args := []string{
 		"install",
 		"smi-metrics",
-		"smi-metrics.tgz",
+		"smi-metrics-0.2.1.tgz",
 		"--set",
 		"adapter=linkerd",
 		"--namespace",
