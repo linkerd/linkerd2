@@ -157,11 +157,16 @@ const (
 	// the api service is available or not
 	linkerdTapAPIServiceName = "v1alpha1.tap.linkerd.io"
 
-	tapTLSSecretName           = "linkerd-tap-k8s-tls"
-	proxyInjectorTLSSecretName = "linkerd-proxy-injector-k8s-tls"
-	spValidatorTLSSecretName   = "linkerd-sp-validator-k8s-tls"
-	certKeyName                = "tls.crt"
-	keyKeyName                 = "tls.key"
+	tapOldTLSSecretName           = "linkerd-tap-tls"
+	tapTLSSecretName              = "linkerd-tap-k8s-tls"
+	proxyInjectorOldTLSSecretName = "linkerd-proxy-injector-tls"
+	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
+	spValidatorOldTLSSecretName   = "linkerd-sp-validator-tls"
+	spValidatorTLSSecretName      = "linkerd-sp-validator-k8s-tls"
+	certOldKeyName                = "crt.pem"
+	certKeyName                   = "tls.crt"
+	keyOldKeyName                 = "key.pem"
+	keyKeyName                    = "tls.key"
 )
 
 // HintBaseURL is the base URL on the linkerd.io website that all check hints
@@ -1031,7 +1036,10 @@ func (hc *HealthChecker) allCategories() []category {
 						}
 						cert, err := hc.fetchCredsFromSecret(tapTLSSecretName)
 						if err != nil {
-							return err
+							cert, err = hc.fetchCredsFromOldSecret(tapOldTLSSecretName)
+							if err != nil {
+								return err
+							}
 						}
 						identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.ControlPlaneNamespace)
 						return hc.checkCertAndAnchors(cert, anchors, identityName)
@@ -1048,7 +1056,10 @@ func (hc *HealthChecker) allCategories() []category {
 						}
 						cert, err := hc.fetchCredsFromSecret(proxyInjectorTLSSecretName)
 						if err != nil {
-							return err
+							cert, err = hc.fetchCredsFromOldSecret(proxyInjectorOldTLSSecretName)
+							if err != nil {
+								return err
+							}
 						}
 						identityName := fmt.Sprintf("linkerd-proxy-injector.%s.svc", hc.ControlPlaneNamespace)
 						return hc.checkCertAndAnchors(cert, anchors, identityName)
@@ -1065,7 +1076,10 @@ func (hc *HealthChecker) allCategories() []category {
 						}
 						cert, err := hc.fetchCredsFromSecret(spValidatorTLSSecretName)
 						if err != nil {
-							return err
+							cert, err = hc.fetchCredsFromOldSecret(spValidatorOldTLSSecretName)
+							if err != nil {
+								return err
+							}
 						}
 						identityName := fmt.Sprintf("linkerd-sp-validator.%s.svc", hc.ControlPlaneNamespace)
 						return hc.checkCertAndAnchors(cert, anchors, identityName)
@@ -1664,6 +1678,33 @@ func (hc *HealthChecker) fetchCredsFromSecret(secretName string) (*tls.Cred, err
 	}
 
 	key, ok := secret.Data[keyKeyName]
+	if !ok {
+		return nil, fmt.Errorf("key %s needs to exist in secret %s", keyKeyName, secretName)
+	}
+
+	cred, err := tls.ValidateAndCreateCreds(string(crt), string(key))
+	if err != nil {
+		return nil, err
+	}
+
+	return cred, nil
+}
+
+// this function can be removed in later versions, once eihter all webhook secrets are recreated for each update
+// (see https://github.com/linkerd/linkerd2/issues/4813)
+// or later releases are only expected to update from the new names.
+func (hc *HealthChecker) fetchCredsFromOldSecret(secretName string) (*tls.Cred, error) {
+	secret, err := hc.kubeAPI.CoreV1().Secrets(hc.ControlPlaneNamespace).Get(secretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	crt, ok := secret.Data[certOldKeyName]
+	if !ok {
+		return nil, fmt.Errorf("key %s needs to exist in secret %s", certKeyName, secretName)
+	}
+
+	key, ok := secret.Data[keyOldKeyName]
 	if !ok {
 		return nil, fmt.Errorf("key %s needs to exist in secret %s", keyKeyName, secretName)
 	}
