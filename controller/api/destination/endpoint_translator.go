@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"context"
 	"fmt"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
@@ -31,6 +32,7 @@ type endpointTranslator struct {
 }
 
 func newEndpointTranslator(
+	ctx context.Context,
 	controllerNS string,
 	identityTrustDomain string,
 	enableH2Upgrade bool,
@@ -45,7 +47,7 @@ func newEndpointTranslator(
 		"service":   service,
 	})
 
-	nodeTopologyLabels, err := getK8sNodeTopology(k8sClient, srcNodeName)
+	nodeTopologyLabels, err := getK8sNodeTopology(ctx, k8sClient, srcNodeName)
 	if err != nil {
 		log.Errorf("Failed to get node topology for node %s: %s", srcNodeName, err)
 	}
@@ -344,9 +346,9 @@ func (et *endpointTranslator) toWeightedAddr(address watcher.Address) (*pb.Weigh
 	}, nil
 }
 
-func getK8sNodeTopology(k8sClient kubernetes.Interface, srcNode string) (map[string]string, error) {
+func getK8sNodeTopology(ctx context.Context, k8sClient kubernetes.Interface, srcNode string) (map[string]string, error) {
 	nodeTopology := make(map[string]string)
-	node, err := k8sClient.CoreV1().Nodes().Get(srcNode, metav1.GetOptions{})
+	node, err := k8sClient.CoreV1().Nodes().Get(ctx, srcNode, metav1.GetOptions{})
 	if err != nil {
 		return nodeTopology, err
 	}

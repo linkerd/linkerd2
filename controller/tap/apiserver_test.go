@@ -1,6 +1,7 @@
 package tap
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -43,6 +44,7 @@ data:
 		},
 	}
 
+	ctx := context.Background()
 	for i, exp := range expectations {
 		exp := exp // pin
 
@@ -54,7 +56,7 @@ data:
 
 			fakeGrpcServer := newGRPCTapServer(4190, "controller-ns", "cluster.local", k8sAPI)
 
-			_, _, err = NewAPIServer("localhost:0", tls.Certificate{}, k8sAPI, fakeGrpcServer, false)
+			_, _, err = NewAPIServer(ctx, "localhost:0", tls.Certificate{}, k8sAPI, fakeGrpcServer, false)
 			if !reflect.DeepEqual(err, exp.err) {
 				t.Errorf("NewAPIServer returned unexpected error: %s, expected: %s", err, exp.err)
 			}
@@ -98,6 +100,7 @@ data:
 		},
 	}
 
+	ctx := context.Background()
 	for i, exp := range expectations {
 		exp := exp // pin
 
@@ -107,7 +110,7 @@ data:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			clientCAPem, allowedNames, usernameHeader, groupHeader, err := apiServerAuth(k8sAPI)
+			clientCAPem, allowedNames, usernameHeader, groupHeader, err := apiServerAuth(ctx, k8sAPI)
 			if !reflect.DeepEqual(err, exp.err) {
 				t.Errorf("apiServerAuth returned unexpected error: %s, expected: %s", err, exp.err)
 			}

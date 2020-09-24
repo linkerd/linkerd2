@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -141,6 +142,7 @@ metadata:
 
 	mockGetServer := &mockDestinationGetServer{updatesReceived: []*pb.Update{}}
 	translator := newEndpointTranslator(
+		context.Background(),
 		"linkerd",
 		"trust.domain",
 		true,

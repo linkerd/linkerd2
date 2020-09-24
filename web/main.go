@@ -78,7 +78,7 @@ func main() {
 		APIAddr:               *apiAddr,
 	})
 
-	cm, _, err := healthcheck.FetchLinkerdConfigMap(k8sAPI, *controllerNamespace)
+	cm, _, err := healthcheck.FetchLinkerdConfigMap(context.Background(), k8sAPI, *controllerNamespace)
 	if err != nil {
 		log.Errorf("Failed to fetch linkerd-config: %s", err)
 	}

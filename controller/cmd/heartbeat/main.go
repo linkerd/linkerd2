@@ -1,6 +1,7 @@
 package heartbeat
 
 import (
+	"context"
 	"flag"
 	"net/url"
 
@@ -42,7 +43,7 @@ func Main(args []string) {
 	if err != nil {
 		log.Errorf("Failed to initialize k8s API: %s", err)
 	} else {
-		k8sV := heartbeat.K8sValues(kubeAPI, *controllerNamespace)
+		k8sV := heartbeat.K8sValues(context.Background(), kubeAPI, *controllerNamespace)
 		v = heartbeat.MergeValues(v, k8sV)
 	}
 
