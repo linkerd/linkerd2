@@ -210,6 +210,9 @@ const (
 	// timeout in the proxy
 	ProxyInboundConnectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-connect-timeout"
 
+	// ProxyDNSCanonicalizeTimeout can be used to configure the timeout for DNS refinement
+	ProxyDNSCanonicalizeTimeout = ProxyConfigAnnotationsPrefix + "/proxy-dns-canonicalize-timeout"
+
 	// ProxyEnableGatewayAnnotation can be used to configure the proxy
 	// to operate as a gateway, routing requests that target the inbound router.
 	ProxyEnableGatewayAnnotation = ProxyConfigAnnotationsPrefix + "/enable-gateway"

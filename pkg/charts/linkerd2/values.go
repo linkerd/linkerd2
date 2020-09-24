@@ -125,6 +125,7 @@ type (
 		RequireIdentityOnInboundPorts string           `json:"requireIdentityOnInboundPorts"`
 		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
 		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
+		DNSCanonicalizeTimeout        string           `json:"dnsCanonicalizeTimeout"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

@@ -70,6 +70,7 @@ var (
 		k8s.ProxyTraceCollectorSvcAddrAnnotation,
 		k8s.ProxyOutboundConnectTimeout,
 		k8s.ProxyInboundConnectTimeout,
+		k8s.ProxyDNSCanonicalizeTimeout,
 	}
 )
 
@@ -516,6 +517,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		DestinationGetNetworks:        conf.destinationGetNetworks(),
 		OutboundConnectTimeout:        conf.getOutboundConnectTimeout(),
 		InboundConnectTimeout:         conf.getInboundConnectTimeout(),
+		DNSCanonicalizeTimeout:        conf.getDNSCanonicalizeTimeout(),
 	}
 
 	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
@@ -889,6 +891,28 @@ func (conf *ResourceConfig) getInboundConnectTimeout() string {
 	}
 
 	return conf.configs.GetProxy().InboundConnectTimeout
+}
+
+func (conf *ResourceConfig) getDNSCanonicalizeTimeout() string {
+	if podOverride, hasPodOverride := conf.pod.meta.Annotations[k8s.ProxyDNSCanonicalizeTimeout]; hasPodOverride {
+		duration, err := time.ParseDuration(podOverride)
+		if err != nil {
+			log.Warnf("unrecognized proxy-dns-canonicalize-timeout duration value found on pod annotation: %s", err.Error())
+		} else {
+			return fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+		}
+	}
+
+	if nsOverride, hasNsOverride := conf.nsAnnotations[k8s.ProxyDNSCanonicalizeTimeout]; hasNsOverride {
+		duration, err := time.ParseDuration(nsOverride)
+		if err != nil {
+			log.Warnf("unrecognized proxy-dns-canonicalize-timeout duration value found on namespace annotation: %s", err.Error())
+		} else {
+			return fmt.Sprintf("%dms", int(duration.Seconds()*1000))
+		}
+	}
+
+	return ""
 }
 
 func (conf *ResourceConfig) isGateway() bool {

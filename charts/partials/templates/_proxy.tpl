@@ -24,6 +24,10 @@ env:
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
   value: "{{.Values.global.proxy.outboundConnectTimeout }}"
 {{ end -}}
+{{ if .Values.global.proxy.dnsCanonicalizeTimeout -}}
+- name: LINKERD2_PROXY_DNS_CANONICALIZE_TIMEOUT
+  value: "{{.Values.global.proxy.dnsCanonicalizeTimeout }}"
+{{ end -}}
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.global.proxy.ports.control}}
 - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
