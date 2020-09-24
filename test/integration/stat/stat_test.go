@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -33,8 +34,9 @@ func TestMain(m *testing.M) {
 // failed attempts will eventually be recorded in the stats that we're
 // requesting, and the test will pass.
 func TestCliStatForLinkerdNamespace(t *testing.T) {
+	ctx := context.Background()
 
-	pods, err := TestHelper.GetPodNamesForDeployment(TestHelper.GetLinkerdNamespace(), "linkerd-prometheus")
+	pods, err := TestHelper.GetPodNamesForDeployment(ctx, TestHelper.GetLinkerdNamespace(), "linkerd-prometheus")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to get pods for prometheus",
 			"failed to get pods for prometheus: %s", err)
@@ -44,7 +46,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	}
 	prometheusPod := pods[0]
 
-	pods, err = TestHelper.GetPodNamesForDeployment(TestHelper.GetLinkerdNamespace(), "linkerd-controller")
+	pods, err = TestHelper.GetPodNamesForDeployment(ctx, TestHelper.GetLinkerdNamespace(), "linkerd-controller")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to get pods for controller",
 			"failed to get pods for controller: %s", err)

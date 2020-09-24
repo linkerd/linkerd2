@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -37,6 +38,7 @@ spec:
 		},
 	}
 
+	ctx := context.Background()
 	for i, test := range tests {
 		test := test // pin
 		t.Run(fmt.Sprintf("%d: getAllContainersWithPort returns expected result", i), func(t *testing.T) {
@@ -44,7 +46,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
 			}
-			pod, err := k8sClient.CoreV1().Pods(test.ns).Get(test.name, metav1.GetOptions{})
+			pod, err := k8sClient.CoreV1().Pods(test.ns).Get(ctx, test.name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
 			}

@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -46,7 +47,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
 			}
-			pod, err := k8sClient.CoreV1().Pods(test.ns).Get(test.name, metav1.GetOptions{})
+			pod, err := k8sClient.CoreV1().Pods(test.ns).Get(context.Background(), test.name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
 			}
@@ -123,7 +124,7 @@ status:
 			if err != nil {
 				t.Fatalf("Unexpected error %s", err)
 			}
-			_, err = NewPortForward(&KubernetesAPI{Interface: k8sClient}, test.ns, test.deployName, "localhost", 0, 0, false)
+			_, err = NewPortForward(context.Background(), &KubernetesAPI{Interface: k8sClient}, test.ns, test.deployName, "localhost", 0, 0, false)
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||

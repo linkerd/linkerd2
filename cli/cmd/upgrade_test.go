@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -97,7 +98,7 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 		},
 	}
 	installOpts.recordFlags(installFlags)
-	values, _, err := installOpts.validateAndBuildWithIdentity("", &identity)
+	values, _, err := installOpts.validateAndBuildWithIdentity(context.Background(), "", &identity)
 	install := renderInstall(t, values)
 	if err != nil {
 		t.Fatalf("Failed to build install values: %s", err)
@@ -138,7 +139,7 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 		},
 	}
 	installOpts.recordFlags(installFlags)
-	values, _, err := installOpts.validateAndBuildWithIdentity("", &identity)
+	values, _, err := installOpts.validateAndBuildWithIdentity(context.Background(), "", &identity)
 	install := renderInstall(t, values)
 	if err != nil {
 		t.Fatalf("Failed to build install values: %s", err)
@@ -639,7 +640,7 @@ func pathMatch(path []string, template []string) bool {
 }
 
 func installValues(t *testing.T, installOpts *installOptions, installFlags *pflag.FlagSet) *linkerd2.Values {
-	installValues, _, err := installOpts.validateAndBuild("", installFlags)
+	installValues, _, err := installOpts.validateAndBuild(context.Background(), "", installFlags)
 	if err != nil {
 		t.Fatalf("Unexpected error validating install options: %v", err)
 	}
@@ -661,7 +662,7 @@ func renderUpgrade(t *testing.T, installManifest string, upgradeOpts *upgradeOpt
 		t.Fatalf("could not initialize fake k8s API: %s", err)
 	}
 
-	upgradeValues, err := upgradeOpts.validateAndBuild("", clientset, upgradeFlags)
+	upgradeValues, err := upgradeOpts.validateAndBuild(context.Background(), "", clientset, upgradeFlags)
 
 	if err != nil {
 		return bytes.Buffer{}, err
