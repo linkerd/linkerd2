@@ -3,12 +3,12 @@ package identity
 import (
 	"context"
 	"fmt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
 
 	"github.com/linkerd/linkerd2/pkg/identity"
 	kauthnApi "k8s.io/api/authentication/v1"
 	kauthzApi "k8s.io/api/authorization/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	k8s "k8s.io/client-go/kubernetes"
 	kauthn "k8s.io/client-go/kubernetes/typed/authentication/v1"
