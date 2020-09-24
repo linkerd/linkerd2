@@ -259,7 +259,7 @@ func (m *MockProm) LabelNames(ctx context.Context, startTime time.Time, endTime 
 	return []string{}, nil, nil
 }
 
-// RuntimeInfo returns the runtime info about Prometheus
+// Runtimeinfo returns the runtime info about Prometheus
 func (m *MockProm) Runtimeinfo(ctx context.Context) (promv1.RuntimeinfoResult, error) {
 	return promv1.RuntimeinfoResult{}, nil
 }
