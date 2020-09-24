@@ -1,5 +1,18 @@
 # Changes
 
+## edge-20.9.4
+
+This edge release introduces support for authenticated docker registries and
+fixes a recent multicluster regression.
+
+* Fixed a regression in multicluster gateway configurations that would forbid
+  inbound gateway traffic
+* Upgraded bundled Grafana to v7.1.5
+* Enabled Jaeger receiver in collector configuration in Helm chart (thanks
+  @olivierboudet!)
+* Fixed skip port configuration being skipped in CNI plugin
+* Introduced support for authenticated docker registries (thanks @c-n-c!)
+
 ## edge-20.9.3
 
 This edge release includes fixes and updates for the control plane and CLI.
