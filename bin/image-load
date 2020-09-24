@@ -49,7 +49,7 @@ bindir=$( cd "${0%/*}" && pwd )
 if [ -n "$k3d" ]; then
   if [ -n "$kind" ]; then
     echo $k3d
-    echo "Error: --kind and --k3d can't be use simultaneously" >&2
+    echo "Error: --kind and --k3d can't be used simultaneously" >&2
     exit 1
   fi
   cluster=${1:-"k3s-default"}
