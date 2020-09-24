@@ -95,7 +95,7 @@ type API struct {
 }
 
 // InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
-func InitializeAPI(ctx context.Context,kubeConfig string, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
+func InitializeAPI(ctx context.Context, kubeConfig string, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
 	config, err := k8s.GetConfig(kubeConfig, "")
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
@@ -124,7 +124,7 @@ func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, kubeConfig *rest
 	var err error
 
 	if ensureClusterWideAccess {
-		err := k8s.ClusterAccess(ctx,k8sClient)
+		err := k8s.ClusterAccess(ctx, k8sClient)
 		if err != nil {
 			return nil, err
 		}
@@ -454,7 +454,7 @@ func (api *API) GetObjects(namespace, restype, name string, label labels.Selecto
 // singular resource type (e.g. deployment, daemonset, job, etc.).
 // If retry is true, when the shared informer cache doesn't return anything
 // we try again with a direct Kubernetes API call.
-func (api *API) GetOwnerKindAndName(ctx context.Context,pod *corev1.Pod, retry bool) (string, string) {
+func (api *API) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry bool) (string, string) {
 	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		// pod without a parent

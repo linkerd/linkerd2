@@ -577,7 +577,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "no CustomResourceDefinitions exist",
 					hintAnchor:  "pre-l5d-existence",
 					check: func(ctx context.Context) error {
-						return hc.checkCustomResourceDefinitions(ctx,false)
+						return hc.checkCustomResourceDefinitions(ctx, false)
 					},
 				},
 				{
@@ -2069,7 +2069,7 @@ func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error
 	return pods, nil
 }
 
-func (hc *HealthChecker) checkCanPerformAction(ctx context.Context,api *k8s.KubernetesAPI, verb, namespace, group, version, resource string) error {
+func (hc *HealthChecker) checkCanPerformAction(ctx context.Context, api *k8s.KubernetesAPI, verb, namespace, group, version, resource string) error {
 	if api == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")

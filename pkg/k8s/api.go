@@ -147,7 +147,7 @@ func (kubeAPI *KubernetesAPI) NamespaceExists(ctx context.Context, namespace str
 }
 
 // GetPodsByNamespace returns all pods in a given namespace
-func (kubeAPI *KubernetesAPI) GetPodsByNamespace(ctx context.Context,namespace string) ([]corev1.Pod, error) {
+func (kubeAPI *KubernetesAPI) GetPodsByNamespace(ctx context.Context, namespace string) ([]corev1.Pod, error) {
 	podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err

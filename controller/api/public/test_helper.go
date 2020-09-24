@@ -259,12 +259,12 @@ func (m *MockProm) LabelNames(ctx context.Context, startTime time.Time, endTime 
 	return []string{}, nil, nil
 }
 
-// RuntimeInfo returns all the unique label names present in the block in sorted order.
+// RuntimeInfo returns the runtime info about Prometheus
 func (m *MockProm) Runtimeinfo(ctx context.Context) (promv1.RuntimeinfoResult, error) {
 	return promv1.RuntimeinfoResult{}, nil
 }
 
-// Metadata returns all the unique label names present in the block in sorted order.
+// Metadata returns the metadata of the specified metric
 func (m *MockProm) Metadata(ctx context.Context, metric string, limit string) (map[string][]promv1.Metadata, error) {
 	return nil, nil
 }

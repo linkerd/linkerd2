@@ -48,7 +48,7 @@ func FetchIssuerData(ctx context.Context, api kubernetes.Interface, trustAnchors
 }
 
 // FetchExternalIssuerData fetches the issuer data from the linkerd-identity-issuer secrets (used for kubernetes.io/tls schemed secrets)
-func FetchExternalIssuerData(ctx context.Context,api kubernetes.Interface, controlPlaneNamespace string) (*IssuerCertData, error) {
+func FetchExternalIssuerData(ctx context.Context, api kubernetes.Interface, controlPlaneNamespace string) (*IssuerCertData, error) {
 	secret, err := api.CoreV1().Secrets(controlPlaneNamespace).Get(ctx, k8s.IdentityIssuerSecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err

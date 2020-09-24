@@ -47,7 +47,7 @@ func ResourceAuthz(
 // given action.
 func ResourceAuthzForUser(
 	ctx context.Context,
-    client kubernetes.Interface,
+	client kubernetes.Interface,
 	namespace, verb, group, version, resource, subresource, name, user string, userGroups []string) error {
 	sar := &authV1.SubjectAccessReview{
 		Spec: authV1.SubjectAccessReviewSpec{
@@ -112,7 +112,7 @@ func ServiceProfilesAccess(ctx context.Context, k8sClient kubernetes.Interface) 
 
 // EndpointSliceAccess verifies whether the K8s cluster has
 // access to EndpointSlice resources.
-func EndpointSliceAccess(ctx context.Context,k8sClient kubernetes.Interface) error {
+func EndpointSliceAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
 	gv := discovery.SchemeGroupVersion.String()
 	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(gv)
 	if err != nil {
