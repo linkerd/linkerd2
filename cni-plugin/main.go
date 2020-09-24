@@ -19,6 +19,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -166,7 +167,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 			return err
 		}
 
-		pod, err := client.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -270,7 +271,7 @@ func getAnnotationOverride(api *k8s.KubernetesAPI, pod *v1.Pod, key string) (str
 	}
 
 	// Check if the annotation is present on the namespace
-	ns, err := api.CoreV1().Namespaces().Get(pod.GetObjectMeta().GetNamespace(), metav1.GetOptions{})
+	ns, err := api.CoreV1().Namespaces().Get(context.Background(), pod.GetObjectMeta().GetNamespace(), metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
