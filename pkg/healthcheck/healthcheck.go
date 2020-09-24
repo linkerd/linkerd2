@@ -458,79 +458,79 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
-					check: func(context.Context) error {
-						return hc.checkNamespace(hc.ControlPlaneNamespace, false)
+					check: func(ctx context.Context) error {
+						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, false)
 					},
 				},
 				{
 					description: "can create non-namespaced resources",
 					hintAnchor:  "pre-k8s-cluster-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreateNonNamespacedResources()
+					check: func(ctx context.Context) error {
+						return hc.checkCanCreateNonNamespacedResources(ctx)
 					},
 				},
 				{
 					description: "can create ServiceAccounts",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "serviceaccounts")
+					check: func(ctx context.Context) error {
+						return hc.checkCanCreate(ctx, hc.ControlPlaneNamespace, "", "v1", "serviceaccounts")
 					},
 				},
 				{
 					description: "can create Services",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "services")
+					check: func(ctx context.Context) error {
+						return hc.checkCanCreate(ctx, hc.ControlPlaneNamespace, "", "v1", "services")
 					},
 				},
 				{
 					description: "can create Deployments",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "apps", "v1", "deployments")
+					check: func(ctx context.Context) error {
+						return hc.checkCanCreate(ctx, hc.ControlPlaneNamespace, "apps", "v1", "deployments")
 					},
 				},
 				{
 					description: "can create CronJobs",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "batch", "v1beta1", "cronjobs")
+					check: func(ctx context.Context) error {
+						return hc.checkCanCreate(ctx, hc.ControlPlaneNamespace, "batch", "v1beta1", "cronjobs")
 					},
 				},
 				{
 					description: "can create ConfigMaps",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "configmaps")
+					check: func(ctx context.Context) error {
+						return hc.checkCanCreate(ctx, hc.ControlPlaneNamespace, "", "v1", "configmaps")
 					},
 				},
 				{
 					description: "can create Secrets",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanCreate(hc.ControlPlaneNamespace, "", "v1", "secrets")
+					check: func(ctx context.Context) error {
+						return hc.checkCanCreate(ctx, hc.ControlPlaneNamespace, "", "v1", "secrets")
 					},
 				},
 				{
 					description: "can read Secrets",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkCanGet(hc.ControlPlaneNamespace, "", "v1", "secrets")
+					check: func(ctx context.Context) error {
+						return hc.checkCanGet(ctx, hc.ControlPlaneNamespace, "", "v1", "secrets")
 					},
 				},
 				{
 					description: "can read extension-apiserver-authentication configmap",
 					hintAnchor:  "pre-k8s",
-					check: func(context.Context) error {
-						return hc.checkExtensionAPIServerAuthentication()
+					check: func(ctx context.Context) error {
+						return hc.checkExtensionAPIServerAuthentication(ctx)
 					},
 				},
 				{
 					description: "no clock skew detected",
 					hintAnchor:  "pre-k8s-clock-skew",
 					warning:     true,
-					check: func(context.Context) error {
-						return hc.checkClockSkew()
+					check: func(ctx context.Context) error {
+						return hc.checkClockSkew(ctx)
 					},
 				},
 			},
@@ -542,16 +542,16 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "has NET_ADMIN capability",
 					hintAnchor:  "pre-k8s-cluster-net-admin",
 					warning:     true,
-					check: func(context.Context) error {
-						return hc.checkCapability("NET_ADMIN")
+					check: func(ctx context.Context) error {
+						return hc.checkCapability(ctx, "NET_ADMIN")
 					},
 				},
 				{
 					description: "has NET_RAW capability",
 					hintAnchor:  "pre-k8s-cluster-net-raw",
 					warning:     true,
-					check: func(context.Context) error {
-						return hc.checkCapability("NET_RAW")
+					check: func(ctx context.Context) error {
+						return hc.checkCapability(ctx, "NET_RAW")
 					},
 				},
 			},
@@ -562,43 +562,43 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "no ClusterRoles exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkClusterRoles(false, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
+					check: func(ctx context.Context) error {
+						return hc.checkClusterRoles(ctx, false, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
 					},
 				},
 				{
 					description: "no ClusterRoleBindings exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkClusterRoleBindings(false, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
+					check: func(ctx context.Context) error {
+						return hc.checkClusterRoleBindings(ctx, false, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
 					},
 				},
 				{
 					description: "no CustomResourceDefinitions exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkCustomResourceDefinitions(false)
+					check: func(ctx context.Context) error {
+						return hc.checkCustomResourceDefinitions(ctx,false)
 					},
 				},
 				{
 					description: "no MutatingWebhookConfigurations exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkMutatingWebhookConfigurations(false)
+					check: func(ctx context.Context) error {
+						return hc.checkMutatingWebhookConfigurations(ctx, false)
 					},
 				},
 				{
 					description: "no ValidatingWebhookConfigurations exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkValidatingWebhookConfigurations(false)
+					check: func(ctx context.Context) error {
+						return hc.checkValidatingWebhookConfigurations(ctx, false)
 					},
 				},
 				{
 					description: "no PodSecurityPolicies exist",
 					hintAnchor:  "pre-l5d-existence",
-					check: func(context.Context) error {
-						return hc.checkPodSecurityPolicies(false)
+					check: func(ctx context.Context) error {
+						return hc.checkPodSecurityPolicies(ctx, false)
 					},
 				},
 			},
@@ -610,8 +610,8 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "'linkerd-config' config map exists",
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
-					check: func(context.Context) (err error) {
-						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
+					check: func(ctx context.Context) (err error) {
+						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap(ctx)
 						if hc.linkerdConfig != nil {
 							hc.CNIEnabled = hc.linkerdConfig.Global.CniEnabled
 						}
@@ -622,11 +622,11 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "heartbeat ServiceAccount exist",
 					hintAnchor:  "l5d-existence-sa",
 					fatal:       true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if hc.isHeartbeatDisabled() {
 							return nil
 						}
-						return hc.checkServiceAccounts([]string{"linkerd-heartbeat"}, hc.ControlPlaneNamespace, hc.controlPlaneComponentsSelector())
+						return hc.checkServiceAccounts(ctx, []string{"linkerd-heartbeat"}, hc.ControlPlaneNamespace, hc.controlPlaneComponentsSelector())
 					},
 				},
 				{
@@ -634,8 +634,8 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:    "l5d-existence-replicasets",
 					retryDeadline: hc.RetryDeadline,
 					fatal:         true,
-					check: func(context.Context) error {
-						controlPlaneReplicaSet, err := hc.kubeAPI.GetReplicaSets(hc.ControlPlaneNamespace)
+					check: func(ctx context.Context) error {
+						controlPlaneReplicaSet, err := hc.kubeAPI.GetReplicaSets(ctx, hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
@@ -648,10 +648,10 @@ func (hc *HealthChecker) allCategories() []category {
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
 					warning:             true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						// do not save this into hc.controlPlanePods, as this check may
 						// succeed prior to all expected control plane pods being up
-						controlPlanePods, err := hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+						controlPlanePods, err := hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
@@ -668,7 +668,7 @@ func (hc *HealthChecker) allCategories() []category {
 						// save this into hc.controlPlanePods, since this check only
 						// succeeds when all pods are up
 						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
@@ -680,11 +680,11 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "can initialize the client",
 					hintAnchor:  "l5d-existence-client",
 					fatal:       true,
-					check: func(context.Context) (err error) {
+					check: func(ctx context.Context) (err error) {
 						if hc.APIAddr != "" {
 							hc.apiClient, err = public.NewInternalClient(hc.ControlPlaneNamespace, hc.APIAddr)
 						} else {
-							hc.apiClient, err = public.NewExternalClient(hc.ControlPlaneNamespace, hc.kubeAPI)
+							hc.apiClient, err = public.NewExternalClient(ctx, hc.ControlPlaneNamespace, hc.kubeAPI)
 						}
 						return
 					},
@@ -708,64 +708,64 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "control plane Namespace exists",
 					hintAnchor:  "l5d-existence-ns",
 					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkNamespace(hc.ControlPlaneNamespace, true)
+					check: func(ctx context.Context) error {
+						return hc.checkNamespace(ctx, hc.ControlPlaneNamespace, true)
 					},
 				},
 				{
 					description: "control plane ClusterRoles exist",
 					hintAnchor:  "l5d-existence-cr",
 					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkClusterRoles(true, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
+					check: func(ctx context.Context) error {
+						return hc.checkClusterRoles(ctx, true, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
 					},
 				},
 				{
 					description: "control plane ClusterRoleBindings exist",
 					hintAnchor:  "l5d-existence-crb",
 					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkClusterRoleBindings(true, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
+					check: func(ctx context.Context) error {
+						return hc.checkClusterRoleBindings(ctx, true, hc.expectedRBACNames(), hc.controlPlaneComponentsSelector())
 					},
 				},
 				{
 					description: "control plane ServiceAccounts exist",
 					hintAnchor:  "l5d-existence-sa",
 					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkServiceAccounts(ExpectedServiceAccountNames, hc.ControlPlaneNamespace, hc.controlPlaneComponentsSelector())
+					check: func(ctx context.Context) error {
+						return hc.checkServiceAccounts(ctx, ExpectedServiceAccountNames, hc.ControlPlaneNamespace, hc.controlPlaneComponentsSelector())
 					},
 				},
 				{
 					description: "control plane CustomResourceDefinitions exist",
 					hintAnchor:  "l5d-existence-crd",
 					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkCustomResourceDefinitions(true)
+					check: func(ctx context.Context) error {
+						return hc.checkCustomResourceDefinitions(ctx, true)
 					},
 				},
 				{
 					description: "control plane MutatingWebhookConfigurations exist",
 					hintAnchor:  "l5d-existence-mwc",
 					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkMutatingWebhookConfigurations(true)
+					check: func(ctx context.Context) error {
+						return hc.checkMutatingWebhookConfigurations(ctx, true)
 					},
 				},
 				{
 					description: "control plane ValidatingWebhookConfigurations exist",
 					hintAnchor:  "l5d-existence-vwc",
 					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkValidatingWebhookConfigurations(true)
+					check: func(ctx context.Context) error {
+						return hc.checkValidatingWebhookConfigurations(ctx, true)
 					},
 				},
 				{
 					description: "control plane PodSecurityPolicies exist",
 					hintAnchor:  "l5d-existence-psp",
 					fatal:       true,
-					check: func(context.Context) error {
-						return hc.checkPodSecurityPolicies(true)
+					check: func(ctx context.Context) error {
+						return hc.checkPodSecurityPolicies(ctx, true)
 					},
 				},
 			},
@@ -777,11 +777,11 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "cni plugin ConfigMap exists",
 					hintAnchor:  "cni-plugin-cm-exists",
 					fatal:       true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.CNINamespace).Get(linkerdCNIConfigMapName, metav1.GetOptions{})
+						_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.CNINamespace).Get(ctx, linkerdCNIConfigMapName, metav1.GetOptions{})
 						return err
 					},
 				},
@@ -789,12 +789,12 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "cni plugin PodSecurityPolicy exists",
 					hintAnchor:  "cni-plugin-psp-exists",
 					fatal:       true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
 						pspName := fmt.Sprintf("linkerd-%s-cni", hc.CNINamespace)
-						_, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().Get(pspName, metav1.GetOptions{})
+						_, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().Get(ctx, pspName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing PodSecurityPolicy: %s", pspName)
 						}
@@ -805,11 +805,11 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "cni plugin ClusterRole exists",
 					hintAnchor:  "cni-plugin-cr-exists",
 					fatal:       true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						_, err := hc.kubeAPI.RbacV1().ClusterRoles().Get(linkerdCNIResourceName, metav1.GetOptions{})
+						_, err := hc.kubeAPI.RbacV1().ClusterRoles().Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing ClusterRole: %s", linkerdCNIResourceName)
 						}
@@ -820,11 +820,11 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "cni plugin ClusterRoleBinding exists",
 					hintAnchor:  "cni-plugin-crb-exists",
 					fatal:       true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						_, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().Get(linkerdCNIResourceName, metav1.GetOptions{})
+						_, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing ClusterRoleBinding: %s", linkerdCNIResourceName)
 						}
@@ -835,11 +835,11 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "cni plugin Role exists",
 					hintAnchor:  "cni-plugin-r-exists",
 					fatal:       true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						_, err := hc.kubeAPI.RbacV1().Roles(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
+						_, err := hc.kubeAPI.RbacV1().Roles(hc.CNINamespace).Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing Role: %s", linkerdCNIResourceName)
 						}
@@ -850,11 +850,11 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "cni plugin RoleBinding exists",
 					hintAnchor:  "cni-plugin-rb-exists",
 					fatal:       true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						_, err := hc.kubeAPI.RbacV1().RoleBindings(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
+						_, err := hc.kubeAPI.RbacV1().RoleBindings(hc.CNINamespace).Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing RoleBinding: %s", linkerdCNIResourceName)
 						}
@@ -865,11 +865,11 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "cni plugin ServiceAccount exists",
 					hintAnchor:  "cni-plugin-sa-exists",
 					fatal:       true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						_, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
+						_, err := hc.kubeAPI.CoreV1().ServiceAccounts(hc.CNINamespace).Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing ServiceAccount: %s", linkerdCNIResourceName)
 						}
@@ -880,11 +880,11 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "cni plugin DaemonSet exists",
 					hintAnchor:  "cni-plugin-ds-exists",
 					fatal:       true,
-					check: func(context.Context) (err error) {
+					check: func(ctx context.Context) (err error) {
 						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						hc.cniDaemonSet, err = hc.kubeAPI.Interface.AppsV1().DaemonSets(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
+						hc.cniDaemonSet, err = hc.kubeAPI.Interface.AppsV1().DaemonSets(hc.CNINamespace).Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing DaemonSet: %s", linkerdCNIResourceName)
 						}
@@ -901,7 +901,7 @@ func (hc *HealthChecker) allCategories() []category {
 						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
 						}
-						hc.cniDaemonSet, err = hc.kubeAPI.Interface.AppsV1().DaemonSets(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
+						hc.cniDaemonSet, err = hc.kubeAPI.Interface.AppsV1().DaemonSets(hc.CNINamespace).Get(ctx, linkerdCNIResourceName, metav1.GetOptions{})
 						if kerrors.IsNotFound(err) {
 							return fmt.Errorf("missing DaemonSet: %s", linkerdCNIResourceName)
 						}
@@ -922,8 +922,8 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "certificate config is valid",
 					hintAnchor:  "l5d-identity-cert-config-valid",
 					fatal:       true,
-					check: func(context.Context) (err error) {
-						hc.issuerCert, hc.trustAnchors, err = hc.checkCertificatesConfig()
+					check: func(ctx context.Context) (err error) {
+						hc.issuerCert, hc.trustAnchors, err = hc.checkCertificatesConfig(ctx)
 						return
 					},
 				},
@@ -1028,12 +1028,12 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "tap API server has valid cert",
 					hintAnchor:  "l5d-tap-cert-valid",
 					fatal:       true,
-					check: func(context.Context) (err error) {
-						anchors, err := hc.fetchTapCaBundle()
+					check: func(ctx context.Context) (err error) {
+						anchors, err := hc.fetchTapCaBundle(ctx)
 						if err != nil {
 							return err
 						}
-						cert, err := hc.fetchCredsFromSecret(tapTLSSecretName)
+						cert, err := hc.fetchCredsFromSecret(ctx, tapTLSSecretName)
 						if err != nil {
 							return err
 						}
@@ -1045,12 +1045,12 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "proxy-injector webhook has valid cert",
 					hintAnchor:  "l5d-proxy-injector-webhook-cert-valid",
 					fatal:       true,
-					check: func(context.Context) (err error) {
-						anchors, err := hc.fetchProxyInjectorCaBundle()
+					check: func(ctx context.Context) (err error) {
+						anchors, err := hc.fetchProxyInjectorCaBundle(ctx)
 						if err != nil {
 							return err
 						}
-						cert, err := hc.fetchCredsFromSecret(proxyInjectorTLSSecretName)
+						cert, err := hc.fetchCredsFromSecret(ctx, proxyInjectorTLSSecretName)
 						if err != nil {
 							return err
 						}
@@ -1062,12 +1062,12 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "sp-validator webhook has valid cert",
 					hintAnchor:  "l5d-sp-validator-webhook-cert-valid",
 					fatal:       true,
-					check: func(context.Context) (err error) {
-						anchors, err := hc.fetchSpValidatorCaBundle()
+					check: func(ctx context.Context) (err error) {
+						anchors, err := hc.fetchSpValidatorCaBundle(ctx)
 						if err != nil {
 							return err
 						}
-						cert, err := hc.fetchCredsFromSecret(spValidatorTLSSecretName)
+						cert, err := hc.fetchCredsFromSecret(ctx, spValidatorTLSSecretName)
 						if err != nil {
 							return err
 						}
@@ -1085,7 +1085,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-identity-data-plane-proxies-certs-match-ca",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						return hc.checkDataPlaneProxiesCertificate()
+						return hc.checkDataPlaneProxiesCertificate(ctx)
 					},
 				},
 			},
@@ -1099,9 +1099,9 @@ func (hc *HealthChecker) allCategories() []category {
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
 					fatal:               true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						var err error
-						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+						hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
 						if err != nil {
 							return err
 						}
@@ -1126,7 +1126,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-tap-api",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						return hc.checkAPIService(linkerdTapAPIServiceName)
+						return hc.checkAPIService(ctx, linkerdTapAPIServiceName)
 					},
 				},
 			},
@@ -1192,12 +1192,12 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "data plane namespace exists",
 					hintAnchor:  "l5d-data-plane-exists",
 					fatal:       true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if hc.DataPlaneNamespace == "" {
 							// when checking proxies in all namespaces, this check is a no-op
 							return nil
 						}
-						return hc.checkNamespace(hc.DataPlaneNamespace, true)
+						return hc.checkNamespace(ctx, hc.DataPlaneNamespace, true)
 					},
 				},
 				{
@@ -1278,13 +1278,13 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "pod injection disabled on kube-system",
 					hintAnchor:  "l5d-injection-disabled",
 					warning:     true,
-					check: func(context.Context) error {
-						policy, err := hc.getMutatingWebhookFailurePolicy()
+					check: func(ctx context.Context) error {
+						policy, err := hc.getMutatingWebhookFailurePolicy(ctx)
 						if err != nil {
 							return err
 						}
 						if policy != nil && *policy == admissionRegistration.Fail {
-							return hc.checkHAMetadataPresentOnKubeSystemNamespace()
+							return hc.checkHAMetadataPresentOnKubeSystemNamespace(ctx)
 						}
 						return &SkipError{Reason: "not run for non HA installs"}
 					},
@@ -1296,7 +1296,7 @@ func (hc *HealthChecker) allCategories() []category {
 					warning:       true,
 					check: func(ctx context.Context) error {
 						if hc.isHA() {
-							return hc.checkMinReplicasAvailable()
+							return hc.checkMinReplicasAvailable(ctx)
 						}
 						return &SkipError{Reason: "not run for non HA installs"}
 					},
@@ -1348,11 +1348,11 @@ func (hc *HealthChecker) checkCertAndAnchors(cert *tls.Cred, trustAnchors []*x50
 	return nil
 }
 
-func (hc *HealthChecker) checkMinReplicasAvailable() error {
+func (hc *HealthChecker) checkMinReplicasAvailable(ctx context.Context) error {
 	faulty := []string{}
 
 	for _, component := range linkerdHAControlPlaneComponents {
-		conf, err := hc.kubeAPI.AppsV1().Deployments(hc.ControlPlaneNamespace).Get(component, metav1.GetOptions{})
+		conf, err := hc.kubeAPI.AppsV1().Deployments(hc.ControlPlaneNamespace).Get(ctx, component, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -1556,8 +1556,8 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkLinkerdConfigConfigMap() (string, *configPb.All, error) {
-	cm, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (string, *configPb.All, error) {
+	cm, configPB, err := FetchLinkerdConfigMap(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return "", nil, err
 	}
@@ -1570,8 +1570,8 @@ func (hc *HealthChecker) checkLinkerdConfigConfigMap() (string, *configPb.All, e
 // 2. The scheme in the identity context corresponds to the format of the issuer secret
 // 3. The trust anchors (if scheme == kubernetes.io/tls) in the secret equal the ones in config
 // 4. The certs and key are parsable
-func (hc *HealthChecker) checkCertificatesConfig() (*tls.Cred, []*x509.Certificate, error) {
-	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred, []*x509.Certificate, error) {
+	_, configPB, err := FetchLinkerdConfigMap(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1580,9 +1580,9 @@ func (hc *HealthChecker) checkCertificatesConfig() (*tls.Cred, []*x509.Certifica
 	var data *issuercerts.IssuerCertData
 
 	if idctx.Scheme == "" || idctx.Scheme == k8s.IdentityIssuerSchemeLinkerd {
-		data, err = issuercerts.FetchIssuerData(hc.kubeAPI, idctx.TrustAnchorsPem, hc.ControlPlaneNamespace)
+		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, idctx.TrustAnchorsPem, hc.ControlPlaneNamespace)
 	} else {
-		data, err = issuercerts.FetchExternalIssuerData(hc.kubeAPI, hc.ControlPlaneNamespace)
+		data, err = issuercerts.FetchExternalIssuerData(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 		// ensure trust anchors in config matches what's in the secret
 		if data != nil && strings.TrimSpace(idctx.TrustAnchorsPem) != strings.TrimSpace(data.TrustAnchors) {
 			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
@@ -1607,8 +1607,8 @@ func (hc *HealthChecker) checkCertificatesConfig() (*tls.Cred, []*x509.Certifica
 	return issuerCreds, anchors, nil
 }
 
-func (hc *HealthChecker) fetchProxyInjectorCaBundle() ([]*x509.Certificate, error) {
-	mwh, err := hc.getProxyInjectorMutatingWebhook()
+func (hc *HealthChecker) fetchProxyInjectorCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
+	mwh, err := hc.getProxyInjectorMutatingWebhook(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1620,9 +1620,9 @@ func (hc *HealthChecker) fetchProxyInjectorCaBundle() ([]*x509.Certificate, erro
 	return caBundle, nil
 }
 
-func (hc *HealthChecker) fetchSpValidatorCaBundle() ([]*x509.Certificate, error) {
+func (hc *HealthChecker) fetchSpValidatorCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
 
-	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1638,13 +1638,13 @@ func (hc *HealthChecker) fetchSpValidatorCaBundle() ([]*x509.Certificate, error)
 	return caBundle, nil
 }
 
-func (hc *HealthChecker) fetchTapCaBundle() ([]*x509.Certificate, error) {
+func (hc *HealthChecker) fetchTapCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
 	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	apiService, err := apiServiceClient.APIServices().Get(linkerdTapAPIServiceName, metav1.GetOptions{})
+	apiService, err := apiServiceClient.APIServices().Get(ctx, linkerdTapAPIServiceName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1656,8 +1656,8 @@ func (hc *HealthChecker) fetchTapCaBundle() ([]*x509.Certificate, error) {
 	return caBundle, nil
 }
 
-func (hc *HealthChecker) fetchCredsFromSecret(secretName string) (*tls.Cred, error) {
-	secret, err := hc.kubeAPI.CoreV1().Secrets(hc.ControlPlaneNamespace).Get(secretName, metav1.GetOptions{})
+func (hc *HealthChecker) fetchCredsFromSecret(ctx context.Context, secretName string) (*tls.Cred, error) {
+	secret, err := hc.kubeAPI.CoreV1().Secrets(hc.ControlPlaneNamespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1686,8 +1686,8 @@ func (hc *HealthChecker) fetchCredsFromSecret(secretName string) (*tls.Cred, err
 // healthcheck package because healthcheck depends on it, along with other
 // packages that also depend on healthcheck. This function depends on both
 // `pkg/k8s` and `pkg/config`, which do not depend on each other.
-func FetchLinkerdConfigMap(k kubernetes.Interface, controlPlaneNamespace string) (*corev1.ConfigMap, *configPb.All, error) {
-	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
+func FetchLinkerdConfigMap(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*corev1.ConfigMap, *configPb.All, error) {
+	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1702,8 +1702,8 @@ func FetchLinkerdConfigMap(k kubernetes.Interface, controlPlaneNamespace string)
 
 // checkNamespace checks whether the given namespace exists, and returns an
 // error if it does not match `shouldExist`.
-func (hc *HealthChecker) checkNamespace(namespace string, shouldExist bool) error {
-	exists, err := hc.kubeAPI.NamespaceExists(namespace)
+func (hc *HealthChecker) checkNamespace(ctx context.Context, namespace string, shouldExist bool) error {
+	exists, err := hc.kubeAPI.NamespaceExists(ctx, namespace)
 	if err != nil {
 		return err
 	}
@@ -1726,11 +1726,11 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 	}
 }
 
-func (hc *HealthChecker) checkRoles(shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
+func (hc *HealthChecker) checkRoles(ctx context.Context, shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
 	options := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
-	crList, err := hc.kubeAPI.RbacV1().Roles(namespace).List(options)
+	crList, err := hc.kubeAPI.RbacV1().Roles(namespace).List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1745,11 +1745,11 @@ func (hc *HealthChecker) checkRoles(shouldExist bool, namespace string, expected
 	return checkResources("Roles", objects, expectedNames, shouldExist)
 }
 
-func (hc *HealthChecker) checkRoleBindings(shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
+func (hc *HealthChecker) checkRoleBindings(ctx context.Context, shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
 	options := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
-	crbList, err := hc.kubeAPI.RbacV1().RoleBindings(namespace).List(options)
+	crbList, err := hc.kubeAPI.RbacV1().RoleBindings(namespace).List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1764,11 +1764,11 @@ func (hc *HealthChecker) checkRoleBindings(shouldExist bool, namespace string, e
 	return checkResources("RoleBindings", objects, expectedNames, shouldExist)
 }
 
-func (hc *HealthChecker) checkClusterRoles(shouldExist bool, expectedNames []string, labelSelector string) error {
+func (hc *HealthChecker) checkClusterRoles(ctx context.Context, shouldExist bool, expectedNames []string, labelSelector string) error {
 	options := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
-	crList, err := hc.kubeAPI.RbacV1().ClusterRoles().List(options)
+	crList, err := hc.kubeAPI.RbacV1().ClusterRoles().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1783,11 +1783,11 @@ func (hc *HealthChecker) checkClusterRoles(shouldExist bool, expectedNames []str
 	return checkResources("ClusterRoles", objects, expectedNames, shouldExist)
 }
 
-func (hc *HealthChecker) checkClusterRoleBindings(shouldExist bool, expectedNames []string, labelSelector string) error {
+func (hc *HealthChecker) checkClusterRoleBindings(ctx context.Context, shouldExist bool, expectedNames []string, labelSelector string) error {
 	options := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
-	crbList, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().List(options)
+	crbList, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1820,11 +1820,11 @@ func (hc *HealthChecker) isHeartbeatDisabled() bool {
 	return false
 }
 
-func (hc *HealthChecker) checkServiceAccounts(saNames []string, ns, labelSelector string) error {
+func (hc *HealthChecker) checkServiceAccounts(ctx context.Context, saNames []string, ns, labelSelector string) error {
 	options := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
-	saList, err := hc.kubeAPI.CoreV1().ServiceAccounts(ns).List(options)
+	saList, err := hc.kubeAPI.CoreV1().ServiceAccounts(ns).List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1839,11 +1839,11 @@ func (hc *HealthChecker) checkServiceAccounts(saNames []string, ns, labelSelecto
 	return checkResources("ServiceAccounts", objects, saNames, true)
 }
 
-func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error {
+func (hc *HealthChecker) checkCustomResourceDefinitions(ctx context.Context, shouldExist bool) error {
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(options)
+	crdList, err := hc.kubeAPI.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1857,8 +1857,8 @@ func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error 
 	return checkResources("CustomResourceDefinitions", objects, []string{"serviceprofiles.linkerd.io"}, shouldExist)
 }
 
-func (hc *HealthChecker) getProxyInjectorMutatingWebhook() (*admissionRegistration.MutatingWebhook, error) {
-	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
+func (hc *HealthChecker) getProxyInjectorMutatingWebhook(ctx context.Context) (*admissionRegistration.MutatingWebhook, error) {
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(ctx, k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1868,19 +1868,19 @@ func (hc *HealthChecker) getProxyInjectorMutatingWebhook() (*admissionRegistrati
 	return &mwc.Webhooks[0], nil
 }
 
-func (hc *HealthChecker) getMutatingWebhookFailurePolicy() (*admissionRegistration.FailurePolicyType, error) {
-	mwh, err := hc.getProxyInjectorMutatingWebhook()
+func (hc *HealthChecker) getMutatingWebhookFailurePolicy(ctx context.Context) (*admissionRegistration.FailurePolicyType, error) {
+	mwh, err := hc.getProxyInjectorMutatingWebhook(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return mwh.FailurePolicy, nil
 }
 
-func (hc *HealthChecker) checkMutatingWebhookConfigurations(shouldExist bool) error {
+func (hc *HealthChecker) checkMutatingWebhookConfigurations(ctx context.Context, shouldExist bool) error {
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().List(options)
+	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1894,11 +1894,11 @@ func (hc *HealthChecker) checkMutatingWebhookConfigurations(shouldExist bool) er
 	return checkResources("MutatingWebhookConfigurations", objects, []string{k8s.ProxyInjectorWebhookConfigName}, shouldExist)
 }
 
-func (hc *HealthChecker) checkValidatingWebhookConfigurations(shouldExist bool) error {
+func (hc *HealthChecker) checkValidatingWebhookConfigurations(ctx context.Context, shouldExist bool) error {
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().List(options)
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1912,11 +1912,11 @@ func (hc *HealthChecker) checkValidatingWebhookConfigurations(shouldExist bool) 
 	return checkResources("ValidatingWebhookConfigurations", objects, []string{k8s.SPValidatorWebhookConfigName}, shouldExist)
 }
 
-func (hc *HealthChecker) checkPodSecurityPolicies(shouldExist bool) error {
+func (hc *HealthChecker) checkPodSecurityPolicies(ctx context.Context, shouldExist bool) error {
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),
 	}
-	psp, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().List(options)
+	psp, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1937,8 +1937,8 @@ type MeshedPodIdentityData struct {
 }
 
 // GetMeshedPodsIdentityData obtains the identity data (trust anchors) for all meshed pods
-func GetMeshedPodsIdentityData(api kubernetes.Interface, dataPlaneNamespace string) ([]MeshedPodIdentityData, error) {
-	podList, err := api.CoreV1().Pods(dataPlaneNamespace).List(metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
+func GetMeshedPodsIdentityData(ctx context.Context, api kubernetes.Interface, dataPlaneNamespace string) ([]MeshedPodIdentityData, error) {
+	podList, err := api.CoreV1().Pods(dataPlaneNamespace).List(ctx, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
 	if err != nil {
 		return nil, err
 	}
@@ -1964,13 +1964,13 @@ func GetMeshedPodsIdentityData(api kubernetes.Interface, dataPlaneNamespace stri
 	return pods, nil
 }
 
-func (hc *HealthChecker) checkDataPlaneProxiesCertificate() error {
-	meshedPods, err := GetMeshedPodsIdentityData(hc.kubeAPI.Interface, hc.DataPlaneNamespace)
+func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) error {
+	meshedPods, err := GetMeshedPodsIdentityData(ctx, hc.kubeAPI.Interface, hc.DataPlaneNamespace)
 	if err != nil {
 		return err
 	}
 
-	_, configPB, err := FetchLinkerdConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+	_, configPB, err := FetchLinkerdConfigMap(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return err
 	}
@@ -2069,13 +2069,14 @@ func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error
 	return pods, nil
 }
 
-func (hc *HealthChecker) checkCanPerformAction(api *k8s.KubernetesAPI, verb, namespace, group, version, resource string) error {
+func (hc *HealthChecker) checkCanPerformAction(ctx context.Context,api *k8s.KubernetesAPI, verb, namespace, group, version, resource string) error {
 	if api == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
 	}
 
 	return k8s.ResourceAuthz(
+		ctx,
 		api,
 		namespace,
 		verb,
@@ -2086,8 +2087,8 @@ func (hc *HealthChecker) checkCanPerformAction(api *k8s.KubernetesAPI, verb, nam
 	)
 }
 
-func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace() error {
-	ns, err := hc.kubeAPI.CoreV1().Namespaces().Get("kube-system", metav1.GetOptions{})
+func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
+	ns, err := hc.kubeAPI.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -2100,11 +2101,11 @@ func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace() error {
 	return nil
 }
 
-func (hc *HealthChecker) checkCanCreate(namespace, group, version, resource string) error {
-	return hc.checkCanPerformAction(hc.kubeAPI, "create", namespace, group, version, resource)
+func (hc *HealthChecker) checkCanCreate(ctx context.Context, namespace, group, version, resource string) error {
+	return hc.checkCanPerformAction(ctx, hc.kubeAPI, "create", namespace, group, version, resource)
 }
 
-func (hc *HealthChecker) checkCanCreateNonNamespacedResources() error {
+func (hc *HealthChecker) checkCanCreateNonNamespacedResources(ctx context.Context) error {
 	var errs []string
 	dryRun := metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}
 
@@ -2139,7 +2140,7 @@ func (hc *HealthChecker) checkCanCreateNonNamespacedResources() error {
 		}
 		// Attempt to create resource using dry-run
 		resource, _ := meta.UnsafeGuessKindToResource(obj.GroupVersionKind())
-		_, err = hc.kubeAPI.DynamicClient.Resource(resource).Create(obj, dryRun)
+		_, err = hc.kubeAPI.DynamicClient.Resource(resource).Create(ctx, obj, dryRun)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("cannot create %s/%s: %v", obj.GetKind(), obj.GetName(), err))
 		}
@@ -2151,17 +2152,17 @@ func (hc *HealthChecker) checkCanCreateNonNamespacedResources() error {
 	return nil
 }
 
-func (hc *HealthChecker) checkCanGet(namespace, group, version, resource string) error {
-	return hc.checkCanPerformAction(hc.kubeAPI, "get", namespace, group, version, resource)
+func (hc *HealthChecker) checkCanGet(ctx context.Context, namespace, group, version, resource string) error {
+	return hc.checkCanPerformAction(ctx, hc.kubeAPI, "get", namespace, group, version, resource)
 }
 
-func (hc *HealthChecker) checkAPIService(serviceName string) error {
+func (hc *HealthChecker) checkAPIService(ctx context.Context, serviceName string) error {
 	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
 	if err != nil {
 		return err
 	}
 
-	apiStatus, err := apiServiceClient.APIServices().Get(serviceName, metav1.GetOptions{})
+	apiStatus, err := apiServiceClient.APIServices().Get(ctx, serviceName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -2178,13 +2179,13 @@ func (hc *HealthChecker) checkAPIService(serviceName string) error {
 	return fmt.Errorf("%s service not available", linkerdTapAPIServiceName)
 }
 
-func (hc *HealthChecker) checkCapability(cap string) error {
+func (hc *HealthChecker) checkCapability(ctx context.Context, cap string) error {
 	if hc.kubeAPI == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
 	}
 
-	pspList, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().List(metav1.ListOptions{})
+	pspList, err := hc.kubeAPI.PolicyV1beta1().PodSecurityPolicies().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -2200,6 +2201,7 @@ func (hc *HealthChecker) checkCapability(cap string) error {
 	// 2) provides the specified capability
 	for _, psp := range pspList.Items {
 		err := k8s.ResourceAuthz(
+			ctx,
 			hc.kubeAPI,
 			"",
 			"use",
@@ -2219,11 +2221,11 @@ func (hc *HealthChecker) checkCapability(cap string) error {
 
 	return fmt.Errorf("found %d PodSecurityPolicies, but none provide %s, proxy injection will fail if the PSP admission controller is running", len(pspList.Items), cap)
 }
-func (hc *HealthChecker) checkExtensionAPIServerAuthentication() error {
+func (hc *HealthChecker) checkExtensionAPIServerAuthentication(ctx context.Context) error {
 	if hc.kubeAPI == nil {
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
 	}
-	m, err := hc.kubeAPI.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(k8s.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
+	m, err := hc.kubeAPI.CoreV1().ConfigMaps(metav1.NamespaceSystem).Get(ctx, k8s.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -2232,7 +2234,7 @@ func (hc *HealthChecker) checkExtensionAPIServerAuthentication() error {
 	}
 	return nil
 }
-func (hc *HealthChecker) checkClockSkew() error {
+func (hc *HealthChecker) checkClockSkew(ctx context.Context) error {
 	if hc.kubeAPI == nil {
 		// we should never get here
 		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
@@ -2240,7 +2242,7 @@ func (hc *HealthChecker) checkClockSkew() error {
 
 	var clockSkewNodes []string
 
-	nodeList, err := hc.kubeAPI.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodeList, err := hc.kubeAPI.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

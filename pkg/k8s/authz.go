@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -14,6 +15,7 @@ import (
 // ResourceAuthz checks whether a given Kubernetes client is authorized to
 // perform a given action.
 func ResourceAuthz(
+	ctx context.Context,
 	k8sClient kubernetes.Interface,
 	namespace, verb, group, version, resource, name string,
 ) error {
@@ -33,7 +35,7 @@ func ResourceAuthz(
 	result, err := k8sClient.
 		AuthorizationV1().
 		SelfSubjectAccessReviews().
-		Create(ssar)
+		Create(ctx, ssar, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -44,7 +46,8 @@ func ResourceAuthz(
 // ResourceAuthzForUser checks whether a given user is authorized to perform a
 // given action.
 func ResourceAuthzForUser(
-	client kubernetes.Interface,
+	ctx context.Context,
+    client kubernetes.Interface,
 	namespace, verb, group, version, resource, subresource, name, user string, userGroups []string) error {
 	sar := &authV1.SubjectAccessReview{
 		Spec: authV1.SubjectAccessReviewSpec{
@@ -65,7 +68,7 @@ func ResourceAuthzForUser(
 	result, err := client.
 		AuthorizationV1().
 		SubjectAccessReviews().
-		Create(sar)
+		Create(ctx, sar, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -90,7 +93,7 @@ func evaluateAccessReviewStatus(group, resource string, status authV1.SubjectAcc
 
 // ServiceProfilesAccess checks whether the ServiceProfile CRD is installed
 // on the cluster and the client is authorized to access ServiceProfiles.
-func ServiceProfilesAccess(k8sClient kubernetes.Interface) error {
+func ServiceProfilesAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
 	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(ServiceProfileAPIVersion)
 	if err != nil {
 		return err
@@ -99,7 +102,7 @@ func ServiceProfilesAccess(k8sClient kubernetes.Interface) error {
 	if res.GroupVersion == ServiceProfileAPIVersion {
 		for _, apiRes := range res.APIResources {
 			if apiRes.Kind == ServiceProfileKind {
-				return ResourceAuthz(k8sClient, "", "list", "linkerd.io", "", "serviceprofiles", "")
+				return ResourceAuthz(ctx, k8sClient, "", "list", "linkerd.io", "", "serviceprofiles", "")
 			}
 		}
 	}
@@ -109,7 +112,7 @@ func ServiceProfilesAccess(k8sClient kubernetes.Interface) error {
 
 // EndpointSliceAccess verifies whether the K8s cluster has
 // access to EndpointSlice resources.
-func EndpointSliceAccess(k8sClient kubernetes.Interface) error {
+func EndpointSliceAccess(ctx context.Context,k8sClient kubernetes.Interface) error {
 	gv := discovery.SchemeGroupVersion.String()
 	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(gv)
 	if err != nil {
@@ -119,7 +122,7 @@ func EndpointSliceAccess(k8sClient kubernetes.Interface) error {
 	if res.GroupVersion == gv {
 		for _, apiRes := range res.APIResources {
 			if apiRes.Kind == "EndpointSlice" {
-				return checkEndpointSlicesExist(k8sClient)
+				return checkEndpointSlicesExist(ctx, k8sClient)
 			}
 		}
 	}
@@ -127,8 +130,8 @@ func EndpointSliceAccess(k8sClient kubernetes.Interface) error {
 	return errors.New("EndpointSlice resource not found")
 }
 
-func checkEndpointSlicesExist(k8sClient kubernetes.Interface) error {
-	sliceList, err := k8sClient.DiscoveryV1beta1().EndpointSlices("").List(metav1.ListOptions{})
+func checkEndpointSlicesExist(ctx context.Context, k8sClient kubernetes.Interface) error {
+	sliceList, err := k8sClient.DiscoveryV1beta1().EndpointSlices("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -142,7 +145,7 @@ func checkEndpointSlicesExist(k8sClient kubernetes.Interface) error {
 
 // LinkAccess checks whether the Link CRD is installed on the cluster and the
 // client is authorized to access Links.
-func LinkAccess(k8sClient kubernetes.Interface) error {
+func LinkAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
 	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(LinkAPIGroupVersion)
 	if err != nil {
 		return err
@@ -151,7 +154,7 @@ func LinkAccess(k8sClient kubernetes.Interface) error {
 	if res.GroupVersion == LinkAPIGroupVersion {
 		for _, apiRes := range res.APIResources {
 			if apiRes.Kind == LinkKind {
-				return ResourceAuthz(k8sClient, "", "list", LinkAPIGroup, LinkAPIVersion, "links", "")
+				return ResourceAuthz(ctx, k8sClient, "", "list", LinkAPIGroup, LinkAPIVersion, "links", "")
 			}
 		}
 	}
@@ -161,6 +164,6 @@ func LinkAccess(k8sClient kubernetes.Interface) error {
 
 // ClusterAccess verifies whether k8sClient is authorized to access all pods in
 // all namespaces in the cluster.
-func ClusterAccess(k8sClient kubernetes.Interface) error {
-	return ResourceAuthz(k8sClient, "", "list", "", "", "pods", "")
+func ClusterAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
+	return ResourceAuthz(ctx, k8sClient, "", "list", "", "", "pods", "")
 }

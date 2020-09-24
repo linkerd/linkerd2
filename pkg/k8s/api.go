@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -133,8 +134,8 @@ func (kubeAPI *KubernetesAPI) CheckVersion(versionInfo *version.Info) error {
 }
 
 // NamespaceExists validates whether a given namespace exists.
-func (kubeAPI *KubernetesAPI) NamespaceExists(namespace string) (bool, error) {
-	ns, err := kubeAPI.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
+func (kubeAPI *KubernetesAPI) NamespaceExists(ctx context.Context, namespace string) (bool, error) {
+	ns, err := kubeAPI.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 	if kerrors.IsNotFound(err) {
 		return false, nil
 	}
@@ -146,8 +147,8 @@ func (kubeAPI *KubernetesAPI) NamespaceExists(namespace string) (bool, error) {
 }
 
 // GetPodsByNamespace returns all pods in a given namespace
-func (kubeAPI *KubernetesAPI) GetPodsByNamespace(namespace string) ([]corev1.Pod, error) {
-	podList, err := kubeAPI.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+func (kubeAPI *KubernetesAPI) GetPodsByNamespace(ctx context.Context,namespace string) ([]corev1.Pod, error) {
+	podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -155,8 +156,8 @@ func (kubeAPI *KubernetesAPI) GetPodsByNamespace(namespace string) ([]corev1.Pod
 }
 
 // GetReplicaSets returns all replicasets in a given namespace
-func (kubeAPI *KubernetesAPI) GetReplicaSets(namespace string) ([]appsv1.ReplicaSet, error) {
-	replicaSetList, err := kubeAPI.AppsV1().ReplicaSets(namespace).List(metav1.ListOptions{})
+func (kubeAPI *KubernetesAPI) GetReplicaSets(ctx context.Context, namespace string) ([]appsv1.ReplicaSet, error) {
+	replicaSetList, err := kubeAPI.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -230,8 +231,8 @@ func GetPodStatus(pod corev1.Pod) string {
 }
 
 // GetAddOnsConfigMap returns the data in the add-ons configmap
-func GetAddOnsConfigMap(kubeAPI kubernetes.Interface, namespace string) (map[string]string, error) {
-	cm, err := kubeAPI.CoreV1().ConfigMaps(namespace).Get(AddOnsConfigMapName, metav1.GetOptions{})
+func GetAddOnsConfigMap(ctx context.Context, kubeAPI kubernetes.Interface, namespace string) (map[string]string, error) {
+	cm, err := kubeAPI.CoreV1().ConfigMaps(namespace).Get(ctx, AddOnsConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
