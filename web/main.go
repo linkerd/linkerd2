@@ -40,6 +40,7 @@ func main() {
 	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, os.Args[1:])
+	ctx := context.Background()
 
 	_, _, err := net.SplitHostPort(*apiAddr) // Verify apiAddr is of the form host:port.
 	if err != nil {
@@ -78,7 +79,7 @@ func main() {
 		APIAddr:               *apiAddr,
 	})
 
-	cm, _, err := healthcheck.FetchLinkerdConfigMap(context.Background(), k8sAPI, *controllerNamespace)
+	cm, _, err := healthcheck.FetchLinkerdConfigMap(ctx, k8sAPI, *controllerNamespace)
 	if err != nil {
 		log.Errorf("Failed to fetch linkerd-config: %s", err)
 	}
@@ -111,7 +112,7 @@ func main() {
 	<-stop
 
 	log.Infof("shutting down HTTP server on %+v", *addr)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	server.Shutdown(ctx)
 }

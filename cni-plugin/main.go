@@ -162,12 +162,13 @@ func cmdAdd(args *skel.CmdArgs) error {
 	})
 
 	if namespace != "" && podName != "" {
+		ctx := context.Background()
 		client, err := k8s.NewAPI(conf.Kubernetes.Kubeconfig, "linkerd-cni-context", "", []string{}, 0)
 		if err != nil {
 			return err
 		}
 
-		pod, err := client.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+		pod, err := client.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -203,7 +204,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 			}
 
 			// Check if there are any overridden ports to be skipped
-			outboundSkipOverride, err := getAnnotationOverride(client, pod, k8s.ProxyIgnoreOutboundPortsAnnotation)
+			outboundSkipOverride, err := getAnnotationOverride(ctx, client, pod, k8s.ProxyIgnoreOutboundPortsAnnotation)
 			if err != nil {
 				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %v", err)
 				return err
@@ -214,7 +215,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 				options.OutboundPortsToIgnore = strings.Split(outboundSkipOverride, ",")
 			}
 
-			inboundSkipOverride, err := getAnnotationOverride(client, pod, k8s.ProxyIgnoreInboundPortsAnnotation)
+			inboundSkipOverride, err := getAnnotationOverride(ctx, client, pod, k8s.ProxyIgnoreInboundPortsAnnotation)
 			if err != nil {
 				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %v", err)
 				return err
@@ -264,14 +265,14 @@ func cmdDel(args *skel.CmdArgs) error {
 	return nil
 }
 
-func getAnnotationOverride(api *k8s.KubernetesAPI, pod *v1.Pod, key string) (string, error) {
+func getAnnotationOverride(ctx context.Context, api *k8s.KubernetesAPI, pod *v1.Pod, key string) (string, error) {
 	// Check if the annotation is present on the pod
 	if override := pod.GetObjectMeta().GetAnnotations()[key]; override != "" {
 		return override, nil
 	}
 
 	// Check if the annotation is present on the namespace
-	ns, err := api.CoreV1().Namespaces().Get(context.Background(), pod.GetObjectMeta().GetNamespace(), metav1.GetOptions{})
+	ns, err := api.CoreV1().Namespaces().Get(ctx, pod.GetObjectMeta().GetNamespace(), metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}

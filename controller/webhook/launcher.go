@@ -53,7 +53,7 @@ func Launch(ctx context.Context, APIResources []k8s.APIResource, metricsPort uin
 
 	<-stop
 	log.Info("shutting down webhook server")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err := s.Shutdown(ctx); err != nil {
 		log.Error(err)
