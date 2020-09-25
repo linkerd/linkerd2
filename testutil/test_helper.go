@@ -30,6 +30,8 @@ type TestHelper struct {
 	externalIssuer     bool
 	multicluster       bool
 	uninstall          bool
+	cni                bool
+	calico             bool
 	httpClient         http.Client
 	KubernetesHelper
 	helm
@@ -83,6 +85,8 @@ func NewGenericTestHelper(
 	helmMulticlusterChart string,
 	externalIssuer,
 	multicluster,
+	cni,
+	calico,
 	uninstall bool,
 	httpClient http.Client,
 	kubernetesHelper KubernetesHelper,
@@ -104,6 +108,8 @@ func NewGenericTestHelper(
 		clusterDomain:    clusterDomain,
 		externalIssuer:   externalIssuer,
 		uninstall:        uninstall,
+		cni:              cni,
+		calico:           calico,
 		httpClient:       httpClient,
 		multicluster:     multicluster,
 		KubernetesHelper: kubernetesHelper,
@@ -141,6 +147,9 @@ func NewTestHelper() *TestHelper {
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	upgradeHelmFromVersion := flag.String("upgrade-helm-from-version", "", "Indicate a version of the Linkerd helm chart from which the helm installation is being upgraded")
 	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
+	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
+	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
+
 	flag.Parse()
 
 	if !*runTests {
@@ -182,6 +191,8 @@ func NewTestHelper() *TestHelper {
 		},
 		clusterDomain:  *clusterDomain,
 		externalIssuer: *externalIssuer,
+		cni:            *cni,
+		calico:         *calico,
 		uninstall:      *uninstall,
 	}
 
@@ -284,6 +295,16 @@ func (h *TestHelper) GetClusterDomain() string {
 	return h.clusterDomain
 }
 
+// CNI determines whether CNI should be enabled
+func (h *TestHelper) CNI() bool {
+	return h.cni
+}
+
+// Calico determines whether Calico CNI plug-in is enabled
+func (h *TestHelper) Calico() bool {
+	return h.calico
+}
+
 // CreateTLSSecret creates a TLS Kubernetes secret
 func (h *TestHelper) CreateTLSSecret(name, root, cert, key string) error {
 	secret := fmt.Sprintf(`
@@ -312,6 +333,18 @@ func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
 func (h *TestHelper) PipeToLinkerdRun(stdin string, arg ...string) (string, string, error) {
 	withParams := append([]string{"--linkerd-namespace", h.namespace, "--context=" + h.k8sContext}, arg...)
 	return combinedOutput(stdin, h.linkerd, withParams...)
+}
+
+// HelmRun executes a helm command appended with the --context
+func (h *TestHelper) HelmRun(arg ...string) (string, string, error) {
+	return h.PipeToHelmRun("", arg...)
+}
+
+// PipeToHelmRun executes a Helm command appended with the
+// --context flag, and provides a string at Stdin.
+func (h *TestHelper) PipeToHelmRun(stdin string, arg ...string) (string, string, error) {
+	withParams := append([]string{"--kube-context=" + h.k8sContext}, arg...)
+	return combinedOutput(stdin, h.helm.path, withParams...)
 }
 
 // LinkerdRunStream initiates a linkerd command appended with the

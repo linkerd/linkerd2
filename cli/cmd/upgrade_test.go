@@ -303,8 +303,8 @@ func TestUpgradeOverwriteTracingAddon(t *testing.T) {
 
 	installOpts.addOnConfig = filepath.Join("testdata", "addon_config.yaml")
 	upgradeOpts.addOnConfig = filepath.Join("testdata", "addon_config_overwrite.yaml")
-	upgradeOpts.traceCollector = "overwrite-collector"
-	upgradeOpts.traceCollectorSvcAccount = "overwrite-collector.default"
+	upgradeOpts.traceCollector = "linkerd-collector"
+	upgradeOpts.traceCollectorSvcAccount = "linkerd-collector.default"
 	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
 	if err != nil {
 		t.Fatal(err)
@@ -314,11 +314,7 @@ func TestUpgradeOverwriteTracingAddon(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
 	tracingManifests := []string{
-		"ConfigMap/linkerd-config-addons",
-		"Service/overwrite-collector", "ConfigMap/overwrite-collector-config",
-		"ServiceAccount/overwrite-collector", "Deployment/overwrite-collector",
-		"Service/linkerd-collector", "ConfigMap/linkerd-collector-config",
-		"ServiceAccount/linkerd-collector", "Deployment/linkerd-collector",
+		"ConfigMap/linkerd-config-addons", "Deployment/linkerd-collector",
 	}
 	for _, id := range tracingManifests {
 		if _, ok := diffMap[id]; ok {
@@ -620,7 +616,7 @@ spec:
     - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
       value: |
 %s
-    image: gcr.io/linkerd-io/proxy:some-version
+    image: ghcr.io/linkerd/proxy:some-version
     name: linkerd-proxy
 `, indentLines(certs.ca, "        "))
 }

@@ -14,7 +14,7 @@ and their default values.
 
 | Parameter                            | Description                                                           | Default                       |
 |--------------------------------------|-----------------------------------------------------------------------|-------------------------------|
-|`cniPluginImage`                      | Docker image for the CNI plugin                                       |`gcr.io/linkerd-io/cni-plugin`|
+|`cniPluginImage`                      | Docker image for the CNI plugin                                       |`ghcr.io/linkerd/cni-plugin`|
 |`cniPluginVersion`                    | Tag for the CNI container Docker image                                |latest version|
 |`cniResourceAnnotation`               | CNI resource annotation. Do not edit                                  |`linkerd.io/cni-resource`
 |`controllerNamespaceLabel`            | Control plane label. Do not edit                                      |`linkerd.io/control-plane-ns`|

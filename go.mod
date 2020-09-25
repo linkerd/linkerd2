@@ -53,7 +53,7 @@ require (
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 	golang.org/x/sys v0.0.0-20200124204421-9fbb57f87de9 // indirect
 	golang.org/x/tools v0.0.0-20191009213438-b090f1f24028
-	google.golang.org/grpc v1.29.1
+	google.golang.org/grpc v1.31.1
 	google.golang.org/protobuf v1.24.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	k8s.io/api v0.17.4
@@ -67,4 +67,9 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 )
 
-replace github.com/wercker/stern => github.com/linkerd/stern v0.0.0-20200331220320-37779ceb2c32
+replace (
+	// to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
+	// (see https://github.com/golang/protobuf/issues/1104)
+	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.14.8
+	github.com/wercker/stern => github.com/linkerd/stern v0.0.0-20200331220320-37779ceb2c32
+)

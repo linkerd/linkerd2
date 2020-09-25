@@ -93,6 +93,10 @@ const (
 	// that the control plane is configured with
 	LinkerdIdentity CategoryID = "linkerd-identity"
 
+	// LinkerdWebhooksAndAPISvcTLS the integrity of the mTLS certificates
+	// that of the for the injector and sp webhooks and the tap api svc
+	LinkerdWebhooksAndAPISvcTLS CategoryID = "linkerd-webhooks-and-apisvc-tls"
+
 	// LinkerdIdentityDataPlane checks that integrity of the mTLS
 	// certificates that the proxies are configured with and tries to
 	// report useful information with respect to whether the configuration
@@ -153,6 +157,12 @@ const (
 	// This key is passed to checkApiService method to check whether
 	// the api service is available or not
 	linkerdTapAPIServiceName = "v1alpha1.tap.linkerd.io"
+
+	tapTLSSecretName           = "linkerd-tap-tls"
+	proxyInjectorTLSSecretName = "linkerd-proxy-injector-tls"
+	spValidatorTLSSecretName   = "linkerd-sp-validator-tls"
+	certKeyName                = "crt.pem"
+	keyKeyName                 = "key.pem"
 )
 
 // HintBaseURL is the base URL on the linkerd.io website that all check hints
@@ -890,9 +900,13 @@ func (hc *HealthChecker) allCategories() []category {
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
 					fatal:               true,
-					check: func(ctx context.Context) error {
+					check: func(ctx context.Context) (err error) {
 						if !hc.CNIEnabled {
 							return &SkipError{Reason: linkerdCNIDisabledSkipReason}
+						}
+						hc.cniDaemonSet, err = hc.kubeAPI.Interface.AppsV1().DaemonSets(hc.CNINamespace).Get(linkerdCNIResourceName, metav1.GetOptions{})
+						if kerrors.IsNotFound(err) {
+							return fmt.Errorf("missing DaemonSet: %s", linkerdCNIResourceName)
 						}
 						scheduled := hc.cniDaemonSet.Status.DesiredNumberScheduled
 						ready := hc.cniDaemonSet.Status.NumberReady
@@ -1006,6 +1020,62 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-identity-issuer-cert-issued-by-trust-anchor",
 					check: func(ctx context.Context) error {
 						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.trustAnchors), hc.issuerIdentity(), time.Time{})
+					},
+				},
+			},
+		},
+		{
+			id: LinkerdWebhooksAndAPISvcTLS,
+			checkers: []checker{
+				{
+					description: "tap API server has valid cert",
+					hintAnchor:  "l5d-tap-cert-valid",
+					fatal:       true,
+					check: func(context.Context) (err error) {
+						anchors, err := hc.fetchTapCaBundle()
+						if err != nil {
+							return err
+						}
+						cert, err := hc.fetchCredsFromSecret(tapTLSSecretName)
+						if err != nil {
+							return err
+						}
+						identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.ControlPlaneNamespace)
+						return hc.checkCertAndAnchors(cert, anchors, identityName)
+					},
+				},
+				{
+					description: "proxy-injector webhook has valid cert",
+					hintAnchor:  "l5d-proxy-injector-webhook-cert-valid",
+					fatal:       true,
+					check: func(context.Context) (err error) {
+						anchors, err := hc.fetchProxyInjectorCaBundle()
+						if err != nil {
+							return err
+						}
+						cert, err := hc.fetchCredsFromSecret(proxyInjectorTLSSecretName)
+						if err != nil {
+							return err
+						}
+						identityName := fmt.Sprintf("linkerd-proxy-injector.%s.svc", hc.ControlPlaneNamespace)
+						return hc.checkCertAndAnchors(cert, anchors, identityName)
+					},
+				},
+				{
+					description: "sp-validator webhook has valid cert",
+					hintAnchor:  "l5d-sp-validator-webhook-cert-valid",
+					fatal:       true,
+					check: func(context.Context) (err error) {
+						anchors, err := hc.fetchSpValidatorCaBundle()
+						if err != nil {
+							return err
+						}
+						cert, err := hc.fetchCredsFromSecret(spValidatorTLSSecretName)
+						if err != nil {
+							return err
+						}
+						identityName := fmt.Sprintf("linkerd-sp-validator.%s.svc", hc.ControlPlaneNamespace)
+						return hc.checkCertAndAnchors(cert, anchors, identityName)
 					},
 				},
 			},
@@ -1237,6 +1307,48 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 	}
+}
+
+func (hc *HealthChecker) checkCertAndAnchors(cert *tls.Cred, trustAnchors []*x509.Certificate, identityName string) error {
+
+	// check anchors time validity
+	var expiredAnchors []string
+	for _, anchor := range trustAnchors {
+		if err := issuercerts.CheckCertValidityPeriod(anchor); err != nil {
+			expiredAnchors = append(expiredAnchors, fmt.Sprintf("* %v %s %s", anchor.SerialNumber, anchor.Subject.CommonName, err))
+		}
+	}
+	if len(expiredAnchors) > 0 {
+		return fmt.Errorf("Anchors not within their validity period:\n\t%s", strings.Join(expiredAnchors, "\n\t"))
+	}
+
+	// check anchors not expiring soon
+	var expiringAnchors []string
+	for _, anchor := range trustAnchors {
+		anchor := anchor
+		if err := issuercerts.CheckExpiringSoon(anchor); err != nil {
+			expiringAnchors = append(expiringAnchors, fmt.Sprintf("* %v %s %s", anchor.SerialNumber, anchor.Subject.CommonName, err))
+		}
+	}
+	if len(expiringAnchors) > 0 {
+		return fmt.Errorf("Anchors expiring soon:\n\t%s", strings.Join(expiringAnchors, "\n\t"))
+	}
+
+	// check cert validity
+	if err := issuercerts.CheckCertValidityPeriod(cert.Certificate); err != nil {
+		return fmt.Errorf("certificate is %s", err)
+	}
+
+	// check cert not expiring soon
+	if err := issuercerts.CheckExpiringSoon(cert.Certificate); err != nil {
+		return fmt.Errorf("certificate %s", err)
+	}
+
+	if err := cert.Verify(tls.CertificatesToPool(trustAnchors), identityName, time.Time{}); err != nil {
+		return fmt.Errorf("cert is not issued by the trust anchor: %s", err)
+	}
+
+	return nil
 }
 
 func (hc *HealthChecker) checkMinReplicasAvailable() error {
@@ -1537,12 +1649,80 @@ func FetchCurrentConfiguration(k kubernetes.Interface, controlPlaneNamespace str
 	}
 
 	configPB, err := config.FromConfigMap(cm.Data)
+	return config.ToValues(configPB), nil
+}
+
+func (hc *HealthChecker) fetchProxyInjectorCaBundle() ([]*x509.Certificate, error) {
+	mwh, err := hc.getProxyInjectorMutatingWebhook()
 	if err != nil {
 		return nil, err
 	}
 
-	return config.ToValues(configPB), nil
+	caBundle, err := tls.DecodePEMCertificates(string(mwh.ClientConfig.CABundle))
+	if err != nil {
+		return nil, err
+	}
+	return caBundle, nil
+}
 
+func (hc *HealthChecker) fetchSpValidatorCaBundle() ([]*x509.Certificate, error) {
+
+	vwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(k8s.SPValidatorWebhookConfigName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(vwc.Webhooks) != 1 {
+		return nil, fmt.Errorf("expected 1 webhooks, found %d", len(vwc.Webhooks))
+	}
+
+	caBundle, err := tls.DecodePEMCertificates(string(vwc.Webhooks[0].ClientConfig.CABundle))
+	if err != nil {
+		return nil, err
+	}
+	return caBundle, nil
+}
+
+func (hc *HealthChecker) fetchTapCaBundle() ([]*x509.Certificate, error) {
+	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	apiService, err := apiServiceClient.APIServices().Get(linkerdTapAPIServiceName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	caBundle, err := tls.DecodePEMCertificates(string(apiService.Spec.CABundle))
+	if err != nil {
+		return nil, err
+	}
+	return caBundle, nil
+}
+
+func (hc *HealthChecker) fetchCredsFromSecret(secretName string) (*tls.Cred, error) {
+	secret, err := hc.kubeAPI.CoreV1().Secrets(hc.ControlPlaneNamespace).Get(secretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	crt, ok := secret.Data[certKeyName]
+	if !ok {
+		return nil, fmt.Errorf("key %s needs to exist in secret %s", certKeyName, secretName)
+	}
+
+	key, ok := secret.Data[keyKeyName]
+	if !ok {
+		return nil, fmt.Errorf("key %s needs to exist in secret %s", keyKeyName, secretName)
+	}
+
+	cred, err := tls.ValidateAndCreateCreds(string(crt), string(key))
+	if err != nil {
+		return nil, err
+	}
+
+	return cred, nil
 }
 
 // FetchLinkerdConfigMap retrieves the `linkerd-config` ConfigMap from
@@ -1712,7 +1892,7 @@ func (hc *HealthChecker) checkCustomResourceDefinitions(shouldExist bool) error 
 	return checkResources("CustomResourceDefinitions", objects, []string{"serviceprofiles.linkerd.io"}, shouldExist)
 }
 
-func (hc *HealthChecker) getMutatingWebhookFailurePolicy() (*admissionRegistration.FailurePolicyType, error) {
+func (hc *HealthChecker) getProxyInjectorMutatingWebhook() (*admissionRegistration.MutatingWebhook, error) {
 	mwc, err := hc.kubeAPI.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(k8s.ProxyInjectorWebhookConfigName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -1720,7 +1900,15 @@ func (hc *HealthChecker) getMutatingWebhookFailurePolicy() (*admissionRegistrati
 	if len(mwc.Webhooks) != 1 {
 		return nil, fmt.Errorf("expected 1 webhooks, found %d", len(mwc.Webhooks))
 	}
-	return mwc.Webhooks[0].FailurePolicy, nil
+	return &mwc.Webhooks[0], nil
+}
+
+func (hc *HealthChecker) getMutatingWebhookFailurePolicy() (*admissionRegistration.FailurePolicyType, error) {
+	mwh, err := hc.getProxyInjectorMutatingWebhook()
+	if err != nil {
+		return nil, err
+	}
+	return mwh.FailurePolicy, nil
 }
 
 func (hc *HealthChecker) checkMutatingWebhookConfigurations(shouldExist bool) error {

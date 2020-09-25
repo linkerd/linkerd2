@@ -6,7 +6,7 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable)
+export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable cni-calico-deep)
 export all_test_names=(cluster-domain "${default_test_names[*]}")
 
 handle_input() {
@@ -176,6 +176,7 @@ Help:
 start_test() {
   name=$1
   config=$2
+  export helm_path="$bindir"/helm 
 
   test_setup
   if [ -z "$skip_kind_create" ]; then
@@ -200,6 +201,9 @@ get_test_config() {
     cluster-domain)
       config='cluster-domain'
       ;;
+    cni-calico-deep)
+      config='cni-calico'
+      ;;
     *)
       config='default'
       ;;
@@ -213,7 +217,7 @@ run_test(){
 
   printf 'Test script: [%s] Params: [%s]\n' "${filename##*/}" "$*"
   # Exit on failure here
-  GO111MODULE=on go test --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --k8s-context="$context" --integration-tests "$@" || exit 1
+  GO111MODULE=on go test --failfast --mod=readonly "$filename" --linkerd="$linkerd_path" --helm-path="$helm_path" --k8s-context="$context" --integration-tests "$@" || exit 1
 }
 
 # Returns the latest version for the release channel
@@ -347,6 +351,15 @@ run_deep_test() {
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
     run_test "$test"
+  done
+}
+
+run_cni-calico-deep_test() {
+  local tests=()
+  run_test "$test_directory/install_test.go" --cni --calico
+  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  for test in "${tests[@]}"; do
+    run_test "$test" --cni
   done
 }
 

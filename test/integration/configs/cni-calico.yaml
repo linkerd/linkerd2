@@ -1,0 +1,6 @@
+# Reference: https://alexbrand.dev/post/creating-a-kind-cluster-with-calico-networking/
+kind: Cluster
+apiVersion: kind.sigs.k8s.io/v1alpha3
+networking:
+  disableDefaultCNI: true # disable kindnet
+  podSubnet: 192.168.0.0/16 # set to Calico's default subnet

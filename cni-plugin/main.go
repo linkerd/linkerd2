@@ -32,6 +32,7 @@ import (
 	"github.com/linkerd/linkerd2-proxy-init/iptables"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -199,6 +200,36 @@ func cmdAdd(args *skel.CmdArgs) error {
 				NetNs:                 args.Netns,
 				UseWaitFlag:           conf.ProxyInit.UseWaitFlag,
 			}
+
+			// Check if there are any overridden ports to be skipped
+			outboundSkipOverride, err := getAnnotationOverride(client, pod, k8s.ProxyIgnoreOutboundPortsAnnotation)
+			if err != nil {
+				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %v", err)
+				return err
+			}
+
+			if outboundSkipOverride != "" {
+				logEntry.Debugf("linkerd-cni: overriding OutboundPortsToIgnore to %s", outboundSkipOverride)
+				options.OutboundPortsToIgnore = strings.Split(outboundSkipOverride, ",")
+			}
+
+			inboundSkipOverride, err := getAnnotationOverride(client, pod, k8s.ProxyIgnoreInboundPortsAnnotation)
+			if err != nil {
+				logEntry.Errorf("linkerd-cni: could not retrieve overridden annotations: %v", err)
+				return err
+			}
+
+			if inboundSkipOverride != "" {
+				logEntry.Debugf("linkerd-cni: overriding InboundPortsToIgnore to %s", inboundSkipOverride)
+				options.InboundPortsToIgnore = strings.Split(inboundSkipOverride, ",")
+			}
+
+			if pod.GetLabels()[k8s.ControllerComponentLabel] != "" {
+				// Skip 443 outbound port if its a control plane component
+				logEntry.Debug("linkerd-cni: adding 443 to OutboundPortsToIgnore as its a control plane component")
+				options.OutboundPortsToIgnore = append(options.OutboundPortsToIgnore, "443")
+			}
+
 			firewallConfiguration, err := cmd.BuildFirewallConfiguration(&options)
 			if err != nil {
 				logEntry.Errorf("linkerd-cni: could not create a Firewall Configuration from the options: %v", options)
@@ -230,4 +261,23 @@ func cmdAdd(args *skel.CmdArgs) error {
 func cmdDel(args *skel.CmdArgs) error {
 	logrus.Debug("linkerd-cni: cmdDel not implemented")
 	return nil
+}
+
+func getAnnotationOverride(api *k8s.KubernetesAPI, pod *v1.Pod, key string) (string, error) {
+	// Check if the annotation is present on the pod
+	if override := pod.GetObjectMeta().GetAnnotations()[key]; override != "" {
+		return override, nil
+	}
+
+	// Check if the annotation is present on the namespace
+	ns, err := api.CoreV1().Namespaces().Get(pod.GetObjectMeta().GetNamespace(), metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	if override := ns.GetObjectMeta().GetAnnotations()[key]; override != "" {
+		return override, nil
+	}
+
+	return "", nil
 }

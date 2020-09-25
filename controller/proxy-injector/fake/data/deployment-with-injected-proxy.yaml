@@ -19,7 +19,7 @@ spec:
     spec:
       initContainers:
       - name: linkerd-init
-        image: gcr.io/linkerd-io/proxy-init
+        image: ghcr.io/linkerd/proxy-init
       containers:
       - name: nginx
         image: nginx
