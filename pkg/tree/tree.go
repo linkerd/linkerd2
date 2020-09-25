@@ -101,6 +101,21 @@ func MarshalToTree(obj interface{}) (Tree, error) {
 	return tree, nil
 }
 
+// Diff mashals two objects into their yaml representations and then performs
+// a diff on those Trees.  It returns a Tree which represents all of the fields
+// in y which differ from x.
+func Diff(x interface{}, y interface{}) (Tree, error) {
+	xTree, err := MarshalToTree(x)
+	if err != nil {
+		return nil, err
+	}
+	yTree, err := MarshalToTree(y)
+	if err != nil {
+		return nil, err
+	}
+	return xTree.Diff(yTree)
+}
+
 // coerceToTree recursively casts all instances of map[string]interface{} into
 // Tree within this Tree.  When a tree document is unmarshaled, the subtrees
 // will typically be unmarshaled as map[string]interface{} values.  We cast
