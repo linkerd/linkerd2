@@ -7,7 +7,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // ConfigureAndParse adds flags that are common to all go processes. This
