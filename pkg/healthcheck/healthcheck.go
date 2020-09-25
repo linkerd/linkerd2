@@ -1614,30 +1614,13 @@ func (hc *HealthChecker) checkCertificatesConfig() (*tls.Cred, []*x509.Certifica
 // in the cluster
 func FetchCurrentConfiguration(k kubernetes.Interface, controlPlaneNamespace string) (*l5dcharts.Values, error) {
 
-	secret, err := k.CoreV1().Secrets(controlPlaneNamespace).Get("linkerd-config-overrides", metav1.GetOptions{})
-	if err == nil {
-		// get default values
-		defaultValues, err := l5dcharts.NewValues(false)
-		if err != nil {
-			return nil, err
-		}
-
-		rawDefaultValues, err := yaml.Marshal(defaultValues)
-		if err != nil {
-			return nil, err
-		}
-
-		rawFullValues, err := l5dcharts.MergeRaw(rawDefaultValues, secret.Data["linkerd-config-overrides"])
-		if err != nil {
-			return nil, err
-		}
-
+	// Get the linkerd-state cm if present
+	if configMap, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get("linkerd-state", metav1.GetOptions{}); err == nil {
 		var fullValues *l5dcharts.Values
-		err = yaml.Unmarshal(rawFullValues, &fullValues)
+		err = yaml.Unmarshal([]byte(configMap.Data["values"]), &fullValues)
 		if err != nil {
 			return nil, err
 		}
-
 		return fullValues, nil
 	}
 

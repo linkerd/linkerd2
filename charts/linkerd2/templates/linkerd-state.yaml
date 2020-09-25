@@ -1,0 +1,17 @@
+---
+###
+### linkerd state
+###
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-state
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+data:
+  values: |-
+    {{- toYaml .Values | trim | nindent 4 -}}
