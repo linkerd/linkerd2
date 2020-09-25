@@ -544,7 +544,7 @@ func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOption
 		return tls, err
 	}
 
-	if kerrors.IsNotFound(err) {
+	if !kerrors.IsNotFound(err) {
 		return tls, err
 	}
 

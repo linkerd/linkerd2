@@ -360,6 +360,7 @@ func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
 	rendered := renderInstall(t, values)
 	expected := replaceVersions(rendered.String())
 
+	// switch back to old tls secret names.
 	install := replaceK8sSecrets(expected)
 
 	upgrade, err := renderUpgrade(t, install, upgradeOpts, upgradeFlags)
@@ -370,17 +371,18 @@ func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
-			fmt.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
-			// t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
 }
 
 func replaceK8sSecrets(input string) string {
 	manifest := strings.ReplaceAll(input, "kubernetes.io/tls", "Opaque")
+	manifest = strings.ReplaceAll(manifest, "tls.key", "key.pem")
+	manifest = strings.ReplaceAll(manifest, "tls.crt", "crt.pem")
+	manifest = strings.ReplaceAll(manifest, "linkerd-proxy-injector-k8s-tls", "linkerd-proxy-injector-tls")
 	manifest = strings.ReplaceAll(manifest, "linkerd-tap-k8s-tls", "linkerd-tap-tls")
 	manifest = strings.ReplaceAll(manifest, "linkerd-sp-validator-k8s-tls", "linkerd-sp-validator-tls")
-	manifest = strings.ReplaceAll(manifest, "linkerd-tap-k8s-tls", "linkerd-tap-tls")
 	return manifest
 }
 
