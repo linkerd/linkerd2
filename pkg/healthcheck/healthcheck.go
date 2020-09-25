@@ -1649,6 +1649,10 @@ func FetchCurrentConfiguration(k kubernetes.Interface, controlPlaneNamespace str
 	}
 
 	configPB, err := config.FromConfigMap(cm.Data)
+	if err != nil {
+		return nil, err
+	}
+
 	return config.ToValues(configPB), nil
 }
 
