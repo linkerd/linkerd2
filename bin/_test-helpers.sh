@@ -6,14 +6,13 @@ set +e
 
 ##### Test setup helpers #####
 
-export default_test_names=(deep external-issuer helm-deep helm-upgrade uninstall upgrade-edge upgrade-stable cni-calico-deep)
+export default_test_names=(deep external-issuer helm-deep helm-upgrade multicluster uninstall upgrade-edge upgrade-stable cni-calico-deep)
 export all_test_names=(cluster-domain "${default_test_names[*]}")
 
 handle_input() {
   export images=''
-  export images_host=''
   export test_name=''
-  export skip_kind_create=''
+  export skip_cluster_create=''
 
   while :
   do
@@ -26,7 +25,7 @@ Optionally specify a test with the --name flag: [${all_test_names[*]}]
 Note: The cluster-domain test requires a cluster configuration with a custom cluster domain (see test/configs/cluster-domain.yaml)
 
 Usage:
-    ${0##*/} [--images] [--images-host ssh://linkerd-docker] [--name test-name] [--skip-kind-create] /path/to/linkerd
+    ${0##*/} [--images] [--name test-name] [--skip-cluster-create] /path/to/linkerd
 
 Examples:
     # Run all tests in isolated clusters
@@ -35,34 +34,21 @@ Examples:
     # Run single test in isolated clusters
     ${0##*/} --name test-name /path/to/linkerd
 
-    # Skip KinD cluster creation and run all tests in default cluster context
-    ${0##*/} --skip-kind-create /path/to/linkerd
+    # Skip KinD/k3d cluster creation and run all tests in default cluster context
+    ${0##*/} --skip-cluster-create /path/to/linkerd
 
     # Load images from tar files located under the 'image-archives' directory
     # Note: This is primarily for CI
     ${0##*/} --images /path/to/linkerd
 
-    # Retrieve images from a remote docker instance and then load them into KinD
-    # Note: This is primarily for CI
-    ${0##*/} --images --images-host ssh://linkerd-docker /path/to/linkerd
-
 Available Commands:
     --name: the argument to this option is the specific test to run
-    --skip-kind-create: skip KinD cluster creation step and run tests in an existing cluster.
-    --images: (Primarily for CI) use 'kind load image-archive' to load the images from local .tar files in the current directory.
-    --images-host: (Primarily for CI) the argument to this option is used as the remote docker instance from which images are first retrieved (using 'docker save') to be then loaded into KinD. This command requires --images."
+    --skip-cluster-create: skip KinD/k3d cluster creation step and run tests in an existing cluster.
+    --images: (Primarily for CI) load the images from local .tar files in the current directory."
         exit 0
         ;;
       --images)
         images=1
-        ;;
-      --images-host)
-        images_host=$2
-        if [ -z "$images_host" ]; then
-          echo 'Error: the argument for --images-host was not specified'
-          exit 1
-        fi
-        shift
         ;;
       --name)
         test_name=$2
@@ -72,19 +58,14 @@ Available Commands:
         fi
         shift
         ;;
-      --skip-kind-create)
-        skip_kind_create=1
+      --skip-cluster-create)
+        skip_cluster_create=1
         ;;
       *)
         break
     esac
     shift
   done
-
-  if [ "$images_host" ] && [ -z "$images" ]; then
-    echo 'Error: --images-host needs to be used with --images' >&2
-    exit 1
-  fi
 
   export linkerd_path="$1"
   if [ -z "$linkerd_path" ]; then
@@ -124,7 +105,7 @@ check_linkerd_binary() {
 
 ##### Cluster helpers #####
 
-create_cluster() {
+create_kind_cluster() {
   local name=$1
   local config=$2
   "$bindir"/kind create cluster --name "$name" --config "$test_directory"/configs/"$config".yaml --wait 300s 2>&1
@@ -132,14 +113,26 @@ create_cluster() {
   export context="kind-$name"
 }
 
+create_k3d_cluster() {
+  local name=$1
+  local network=$2
+  "$bindir"/k3d cluster create "$name" --wait --network "$network"
+}
+
 check_cluster() {
   check_if_k8s_reachable
   check_if_l5d_exists
 }
 
-delete_cluster() {
+delete_kind_cluster() {
   local name=$1
   "$bindir"/kind delete cluster --name "$name" 2>&1
+  exit_on_err 'error deleting cluster'
+}
+
+delete_k3d_cluster() {
+  local name=$1
+  "$bindir"/k3d cluster delete "$name"
   exit_on_err 'error deleting cluster'
 }
 
@@ -174,22 +167,58 @@ Help:
 ##### Test runner helpers #####
 
 start_test() {
+  if [ "$1" == multicluster ]; then
+    start_k3d_test
+  else
+    start_kind_test "$@"
+  fi
+}
+
+start_kind_test() {
   name=$1
   config=$2
   export helm_path="$bindir"/helm 
 
   test_setup
-  if [ -z "$skip_kind_create" ]; then
-    create_cluster "$name" "$config"
-    "$bindir"/kind-load ${images:+'--images'} ${images_host:+'--images-host' "$images_host"} "$name"
+  if [ -z "$skip_cluster_create" ]; then
+    create_kind_cluster "$name" "$config"
+    "$bindir"/image-load --kind ${images:+'--images'} "$name"
+    exit_on_err "error calling '$bindir/image-load'"
   fi
   check_cluster
   run_"$name"_test
   exit_on_err "error calling 'run_${name}_test'"
 
-  if [ -z "$skip_kind_create" ]; then
-    delete_cluster "$name"
+  if [ -z "$skip_cluster_create" ]; then
+    delete_kind_cluster "$name"
   else
+    cleanup_cluster
+  fi
+}
+
+start_k3d_test() {
+  test_setup
+  if [ -z "$skip_cluster_create" ]; then
+    create_k3d_cluster source multicluster-test
+    "$bindir"/image-load --k3d ${images:+'--images'} source
+    create_k3d_cluster target multicluster-test
+    "$bindir"/image-load --k3d ${images:+'--images'} target
+  fi
+  export context="k3d-source"
+  check_cluster
+  export context="k3d-target"
+  check_cluster
+
+  run_multicluster_test
+  exit_on_err "error calling 'run_multicluster_test'"
+
+  if [ -z "$skip_cluster_create" ]; then
+    delete_k3d_cluster source
+    delete_k3d_cluster target
+  else
+    export context="k3d-source"
+    cleanup_cluster
+    export context="k3d-target"
     cleanup_cluster
   fi
 }
@@ -345,9 +374,16 @@ run_uninstall_test() {
   run_test "$test_directory/uninstall/uninstall_test.go" --uninstall=true
 }
 
+run_multicluster_test() {
+  export context="k3d-source"
+  run_test "$test_directory/install_test.go" --multicluster
+  export context="k3d-target"
+  run_test "$test_directory/install_test.go" --multicluster
+}
+
 run_deep_test() {
   local tests=()
-  run_test "$test_directory/install_test.go" --multicluster
+  run_test "$test_directory/install_test.go"
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
     run_test "$test"
@@ -369,7 +405,7 @@ run_helm-deep_test() {
   helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/charts/linkerd2-multicluster
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
   --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
-  --multicluster-helm-release="$helm_multicluster_release_name" --multicluster
+  --multicluster-helm-release="$helm_multicluster_release_name"
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
     run_test "$test"
@@ -378,12 +414,12 @@ run_helm-deep_test() {
 }
 
 run_external-issuer_test() {
-  run_test "$test_directory/install_test.go" --external-issuer=true --multicluster
+  run_test "$test_directory/install_test.go" --external-issuer=true
   run_test "$test_directory/externalissuer/external_issuer_test.go" --external-issuer=true
 }
 
 run_cluster-domain_test() {
-  run_test "$test_directory/install_test.go" --cluster-domain='custom.domain' --multicluster
+  run_test "$test_directory/install_test.go" --cluster-domain='custom.domain'
 }
 
 # exit_on_err should be called right after a command to check the result status

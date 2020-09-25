@@ -462,9 +462,6 @@ func TestControlPlaneResourcesPostInstall(t *testing.T) {
 }
 
 func TestInstallMulticluster(t *testing.T) {
-	if !TestHelper.Multicluster() {
-		return
-	}
 	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
 		flags := []string{
 			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
@@ -474,7 +471,7 @@ func TestInstallMulticluster(t *testing.T) {
 			testutil.AnnotatedFatalf(t, "'helm install' command failed",
 				"'helm install' command failed\n%s\n%s", stdout, stderr)
 		}
-	} else {
+	} else if TestHelper.Multicluster() {
 		exec := append([]string{"multicluster"}, []string{
 			"install",
 			"--namespace", TestHelper.GetMulticlusterNamespace(),
@@ -687,7 +684,7 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 	var golden string
 	if stage == "proxy" {
 		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=0"}
-		if TestHelper.Multicluster() {
+		if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
 			golden = "check.multicluster.proxy.golden"
 		} else if TestHelper.CNI() {
 			golden = "check.cni.proxy.golden"
@@ -699,7 +696,7 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		golden = "check.config.golden"
 	} else {
 		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=0"}
-		if TestHelper.Multicluster() {
+		if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
 			golden = "check.multicluster.golden"
 		} else if TestHelper.CNI() {
 			golden = "check.cni.golden"
@@ -951,36 +948,6 @@ func TestRestarts(t *testing.T) {
 			} else {
 				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
 			}
-		}
-	}
-}
-
-//TODO Put that in test_cleanup when we have adequate resource labels
-func TestUninstallMulticluster(t *testing.T) {
-	if !TestHelper.Multicluster() {
-		return
-	}
-
-	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
-		if stdout, stderr, err := TestHelper.HelmUninstallMulticluster(TestHelper.GetMulticlusterHelmChart()); err != nil {
-			testutil.AnnotatedFatalf(t, "'helm delete' command failed",
-				"'helm delete' command failed\n%s\n%s", stdout, stderr)
-		}
-	} else {
-		exec := append([]string{"multicluster"}, []string{
-			"install",
-			"--namespace", TestHelper.GetMulticlusterNamespace(),
-		}...)
-		out, stderr, err := TestHelper.LinkerdRun(exec...)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
-				"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
-		}
-
-		out, err = TestHelper.Kubectl(out, []string{"delete", "-f", "-"}...)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl delete' command failed",
-				"'kubectl apply' command failed\n%s", out)
 		}
 	}
 }
