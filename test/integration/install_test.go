@@ -258,6 +258,14 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 	)
 
+	if certsPath := TestHelper.CertsPath(); certsPath != "" {
+		args = append(args,
+			"--identity-trust-anchors-file", certsPath+"/ca.crt",
+			"--identity-issuer-certificate-file", certsPath+"/issuer.crt",
+			"--identity-issuer-key-file", certsPath+"/issuer.key",
+		)
+	}
+
 	if TestHelper.GetClusterDomain() != "cluster.local" {
 		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())
 	}
