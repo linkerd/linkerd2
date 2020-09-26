@@ -166,7 +166,11 @@ heartbeatSchedule: "0 0 * * *"
 
 # proxy injector configuration
 proxyInjector:
+  enableNamespacesByDefault: false
   externalSecret: false
+  objectSelector:
+    enabled: true
+    autoInject: false
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 

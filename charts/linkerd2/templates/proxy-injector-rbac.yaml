@@ -83,12 +83,37 @@ metadata:
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
+{{- if .Values.proxyInjector.enableNamespacesByDefault }}
     matchExpressions:
+    - key: name
+      operator: NotIn
+      values:
+      - {{ .Release.Namespace }}
     - key: config.linkerd.io/admission-webhooks
       operator: NotIn
       values:
       - disabled
-  clientConfig:
+{{- else }}
+    matchLabels:
+      config.linkerd.io/admission-webhooks: enabled
+{{- end }}
+{{/* Object selectors are supported in k8s 1.15+ */}}
+{{- $kubeTargetVersion := default .Capabilities.KubeVersion.GitVersion .Values.kubeTargetVersionOverride }}
+{{- if semverCompare "> 1.15.0-0" $kubeTargetVersion }}
+{{- if .Values.proxyInjector.objectSelector.enabled }}
+  objectSelector:
+{{- if .Values.proxyInjector.objectSelector.autoInject }}
+    matchExpressions:
+    - key: linkerd.io/inject
+      operator: NotIn
+      values:
+      - "false"
+{{- else }}
+    matchLabels:
+      "linkerd.io/inject": "true"
+{{- end }}
+{{- end }}
+{{- end }}  clientConfig:
     service:
       name: linkerd-proxy-injector
       namespace: {{ .Values.global.namespace }}
