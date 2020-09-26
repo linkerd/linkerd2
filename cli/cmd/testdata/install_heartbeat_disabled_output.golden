@@ -417,11 +417,8 @@ metadata:
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
+    matchLabels:
+      config.linkerd.io/admission-webhooks: enabled
   clientConfig:
     service:
       name: linkerd-proxy-injector

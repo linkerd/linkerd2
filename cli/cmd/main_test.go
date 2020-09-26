@@ -62,6 +62,7 @@ func writeRejects(t *testing.T, origFileName string, data []byte) {
 
 // TODO: share this with integration tests
 func diffTestdata(t *testing.T, path, actual string) {
+	t.Helper()
 	expected := readTestdata(t, path)
 	if actual == expected {
 		return

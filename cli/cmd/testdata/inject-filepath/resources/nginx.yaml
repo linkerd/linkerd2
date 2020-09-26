@@ -11,6 +11,7 @@ spec:
     metadata:
       labels:
         app: nginx
+        linkerd.io/inject: "true"
     spec:
       containers:
       - name: nginx

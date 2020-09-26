@@ -476,11 +476,8 @@ metadata:
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
+    matchLabels:
+      config.linkerd.io/admission-webhooks: enabled
   clientConfig:
     service:
       name: linkerd-proxy-injector
@@ -2078,7 +2075,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: ba3686271c366717fdceb99d6391b8a4c74a07f06e361a76754ca2231c69b7c8
+        checksum/config: 6b703206d392312183616ebf06519270506302d531a120b04c6889ea9916f153
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
