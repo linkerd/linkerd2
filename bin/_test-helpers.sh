@@ -223,6 +223,11 @@ start_k3d_test() {
   fi
 }
 
+multicluster_link() {
+  lbIP=$(kubectl --context="$context" get svc -n kube-system traefik -o 'go-template={{ (index .status.loadBalancer.ingress 0).ip }}')
+  "$linkerd_path" multicluster link --api-server-address "https://${lbIP}:6443" --cluster-name "$1"
+}
+
 get_test_config() {
   local name=$1
   config=''
@@ -375,10 +380,23 @@ run_uninstall_test() {
 }
 
 run_multicluster_test() {
-  export context="k3d-source"
-  run_test "$test_directory/install_test.go" --multicluster
+  tmp=$(mktemp -d -t l5dcerts.XXX)
+  pwd=$PWD
+  cd "$tmp"
+  "$bindir"/certs-openssl
+  cd "$pwd"
   export context="k3d-target"
-  run_test "$test_directory/install_test.go" --multicluster
+  run_test "$test_directory/install_test.go" --multicluster --certs-path "$tmp"
+  run_test "$test_directory/multicluster/target1" --multicluster
+  link=$(multicluster_link target)
+
+  export context="k3d-source"
+  run_test "$test_directory/install_test.go" --multicluster --certs-path "$tmp"
+  echo "$link" | kubectl --context="$context" apply -f -
+  run_test "$test_directory/multicluster/source" --multicluster
+
+  export context="k3d-target"
+  run_test "$test_directory/multicluster/target2" --multicluster
 }
 
 run_deep_test() {
