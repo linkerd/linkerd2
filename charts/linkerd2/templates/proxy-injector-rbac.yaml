@@ -97,7 +97,6 @@ webhooks:
     matchLabels:
       config.linkerd.io/admission-webhooks: enabled
 {{- end }}
-{{/* Object selectors are supported in k8s 1.15+ */}}
 {{- $kubeTargetVersion := default .Capabilities.KubeVersion.GitVersion .Values.kubeTargetVersionOverride }}
 {{- if semverCompare "> 1.15.0-0" $kubeTargetVersion }}
 {{- if .Values.proxyInjector.objectSelector.enabled }}
@@ -113,7 +112,8 @@ webhooks:
       "linkerd.io/inject": "true"
 {{- end }}
 {{- end }}
-{{- end }}  clientConfig:
+{{- end }}
+  clientConfig:
     service:
       name: linkerd-proxy-injector
       namespace: {{ .Values.global.namespace }}
