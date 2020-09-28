@@ -1035,12 +1035,13 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 						cert, err := hc.fetchCredsFromSecret(tapTLSSecretName)
-						if err != nil {
+						if kerrors.IsNotFound(err) {
 							cert, err = hc.fetchCredsFromOldSecret(tapOldTLSSecretName)
-							if err != nil {
-								return err
-							}
 						}
+						if err != nil {
+							return err
+						}
+
 						identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.ControlPlaneNamespace)
 						return hc.checkCertAndAnchors(cert, anchors, identityName)
 					},
@@ -1076,11 +1077,11 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 						cert, err := hc.fetchCredsFromSecret(spValidatorTLSSecretName)
-						if err != nil {
+						if kerrors.IsNotFound(err) {
 							cert, err = hc.fetchCredsFromOldSecret(spValidatorOldTLSSecretName)
-							if err != nil {
-								return err
-							}
+						}
+						if err != nil {
+							return err
 						}
 						identityName := fmt.Sprintf("linkerd-sp-validator.%s.svc", hc.ControlPlaneNamespace)
 						return hc.checkCertAndAnchors(cert, anchors, identityName)
