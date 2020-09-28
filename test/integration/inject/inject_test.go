@@ -1,6 +1,7 @@
 package inject
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"reflect"
@@ -109,8 +110,9 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 		k8s.ProxyMemoryRequestAnnotation: nsProxyMemReq,
 	}
 
+	ctx := context.Background()
 	ns := TestHelper.GetTestNamespace(injectNS)
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ns, nsAnnotations)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, ns, nsAnnotations)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", ns, err)
 	}
@@ -139,7 +141,7 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", deployName, ns, err, o)
 	}
 
-	pods, err := TestHelper.GetPodsForDeployment(ns, deployName)
+	pods, err := TestHelper.GetPodsForDeployment(ctx, ns, deployName)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to get pods for namespace %s", ns),
 			"failed to get pods for namespace %s: %s", ns, err)
@@ -171,6 +173,7 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 	injectAnnotations := []string{"", k8s.ProxyInjectDisabled, k8s.ProxyInjectEnabled}
 
 	// deploy
+	ctx := context.Background()
 	for _, nsAnnotation := range injectAnnotations {
 		nsPrefix := injectNS
 		nsAnnotations := map[string]string{}
@@ -180,7 +183,7 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 		}
 		ns := TestHelper.GetTestNamespace(nsPrefix)
 
-		err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ns, nsAnnotations)
+		err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, ns, nsAnnotations)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace with annotation %s", ns, nsAnnotation),
 				"failed to create %s namespace with annotation %s: %s", ns, nsAnnotation, err)
@@ -231,7 +234,7 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 					"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
 			}
 
-			pods, err := TestHelper.GetPodsForDeployment(ns, name)
+			pods, err := TestHelper.GetPodsForDeployment(ctx, ns, name)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to get pods for namespace %s", ns),
 					"failed to get pods for namespace %s: %s", ns, err)
@@ -351,8 +354,9 @@ func TestInjectAutoPod(t *testing.T) {
 		TerminationMessagePolicy: v1.TerminationMessagePolicy("FallbackToLogsOnError"),
 	}
 
+	ctx := context.Background()
 	ns := TestHelper.GetTestNamespace(injectNS)
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ns, nsAnnotations)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, ns, nsAnnotations)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", ns, err)
 	}
@@ -369,7 +373,7 @@ func TestInjectAutoPod(t *testing.T) {
 			"failed to wait for condition=initialized for pod/%s in namespace %s: %s: %s", podName, ns, err, o)
 	}
 
-	pods, err := TestHelper.GetPods(ns, map[string]string{"app": podName})
+	pods, err := TestHelper.GetPods(ctx, ns, map[string]string{"app": podName})
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to get pods", "failed to get pods for namespace %s: %s", ns, err)
 	}

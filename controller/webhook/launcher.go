@@ -18,7 +18,7 @@ import (
 )
 
 // Launch sets up and starts the webhook and metrics servers
-func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerFunc, component, subcommand string, args []string) {
+func Launch(ctx context.Context, APIResources []k8s.APIResource, metricsPort uint32, handler handlerFunc, component, subcommand string, args []string) {
 	cmd := flag.NewFlagSet(subcommand, flag.ExitOnError)
 
 	metricsAddr := cmd.String("metrics-addr", fmt.Sprintf(":%d", metricsPort), "address to serve scrapable metrics on")
@@ -31,7 +31,7 @@ func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerF
 	defer close(stop)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	k8sAPI, err := k8s.InitializeAPI(*kubeconfig, true, APIResources...)
+	k8sAPI, err := k8s.InitializeAPI(ctx, *kubeconfig, true, APIResources...)
 	if err != nil {
 		log.Fatalf("failed to initialize Kubernetes API: %s", err)
 	}
@@ -53,7 +53,7 @@ func Launch(APIResources []k8s.APIResource, metricsPort uint32, handler handlerF
 
 	<-stop
 	log.Info("shutting down webhook server")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err := s.Shutdown(ctx); err != nil {
 		log.Error(err)

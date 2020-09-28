@@ -1,6 +1,7 @@
 package smimetrics
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -27,9 +28,10 @@ func TestMain(m *testing.M) {
 
 func TestSMIMetrics(t *testing.T) {
 
+	ctx := context.Background()
 	// Install smi-metrics using Helm chart
 	testNamespace := TestHelper.GetTestNamespace("smi-metrics-test")
-	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(testNamespace, nil)
+	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, testNamespace, nil)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create %s namespace: %s", testNamespace, err)
 	}
@@ -51,7 +53,7 @@ func TestSMIMetrics(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed\n%s\n%s\n%v", stdout, stderr, err)
 	}
 
-	if err := TestHelper.CheckPods(testNamespace, "smi-metrics", 1); err != nil {
+	if err := TestHelper.CheckPods(ctx, testNamespace, "smi-metrics", 1); err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 		} else {
@@ -59,7 +61,7 @@ func TestSMIMetrics(t *testing.T) {
 		}
 	}
 
-	if err := TestHelper.CheckDeployment(testNamespace, "smi-metrics", 1); err != nil {
+	if err := TestHelper.CheckDeployment(ctx, testNamespace, "smi-metrics", 1); err != nil {
 		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "error validating deployment [%s]:\n%s", "terminus", err)
 	}
 

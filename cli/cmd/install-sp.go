@@ -27,7 +27,7 @@ support, verify "kubectl api-versions" outputs "linkerd.io/v1alpha2".`,
 				return err
 			}
 
-			_, configs, err := healthcheck.FetchLinkerdConfigMap(k8sAPI, controlPlaneNamespace)
+			_, configs, err := healthcheck.FetchLinkerdConfigMap(cmd.Context(), k8sAPI, controlPlaneNamespace)
 			if err != nil {
 				return err
 			}

@@ -1,6 +1,7 @@
 package egress
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -24,13 +25,14 @@ func TestMain(m *testing.M) {
 //////////////////////
 
 func TestEgressHttp(t *testing.T) {
+	ctx := context.Background()
 	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/proxy.yaml")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\n%s", err, stderr)
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace("egress-test")
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(prefixedNs, nil)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", prefixedNs, err)
 	}
@@ -39,7 +41,7 @@ func TestEgressHttp(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
 	}
 
-	err = TestHelper.CheckPods(prefixedNs, "egress-test", 1)
+	err = TestHelper.CheckPods(ctx, prefixedNs, "egress-test", 1)
 	if err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
