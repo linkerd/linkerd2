@@ -90,9 +90,10 @@ func toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error
 		budget.Ttl = toDuration(ttl)
 	}
 	return &pb.DestinationProfile{
-		Routes:       routes,
-		RetryBudget:  budget,
-		DstOverrides: toDstOverrides(profile.Spec.DstOverrides),
+		Routes:             routes,
+		RetryBudget:        budget,
+		DstOverrides:       toDstOverrides(profile.Spec.DstOverrides),
+		FullyQualifiedName: profile.Spec.FullyQualifiedName,
 	}, nil
 }
 
