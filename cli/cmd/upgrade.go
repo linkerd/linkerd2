@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
@@ -587,6 +588,16 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 		}
 	}
 
+	clockSkewDuration, err := ptypes.Duration(idctx.GetClockSkewAllowance())
+	if err != nil {
+		return nil, fmt.Errorf("could not convert clock skew protobuf Duration format into golang Duration: %s", err)
+	}
+
+	issuanceLifetimeDuration, err := ptypes.Duration(idctx.GetIssuanceLifetime())
+	if err != nil {
+		return nil, fmt.Errorf("could not convert issuance Lifetime protobuf Duration format into golang Duration: %s", err)
+	}
+
 	return &identityWithAnchorsAndTrustDomain{
 		TrustDomain:     idctx.GetTrustDomain(),
 		TrustAnchorsPEM: trustAnchorsPEM,
@@ -594,8 +605,8 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 
 			Issuer: &charts.Issuer{
 				Scheme:              idctx.Scheme,
-				ClockSkewAllowance:  idctx.GetClockSkewAllowance().String(),
-				IssuanceLifetime:    idctx.GetIssuanceLifetime().String(),
+				ClockSkewAllowance:  clockSkewDuration.String(),
+				IssuanceLifetime:    issuanceLifetimeDuration.String(),
 				CrtExpiry:           *issuerData.Expiry,
 				CrtExpiryAnnotation: k8s.IdentityIssuerExpiryAnnotation,
 				TLS: &charts.IssuerTLS{

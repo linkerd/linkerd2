@@ -93,6 +93,8 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 					CrtPEM: issuer.crt,
 					KeyPEM: issuer.key,
 				},
+				ClockSkewAllowance: "20s",
+				IssuanceLifetime:   "24h0m0s",
 			},
 		},
 	}
