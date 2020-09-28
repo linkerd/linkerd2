@@ -57,8 +57,9 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
+	ctx := context.Background()
 	controllerK8sAPI, err := controllerK8s.InitializeAPI(
-		context.Background(),
+		ctx,
 		*kubeConfigPath,
 		false,
 		controllerK8s.NS,
@@ -78,7 +79,6 @@ func Main(args []string) {
 
 main:
 	for {
-		ctx := context.Background()
 		// Start link watch
 		linkWatch, err := linkClient.Watch(ctx, metav1.ListOptions{})
 		if err != nil {
