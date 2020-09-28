@@ -1,3 +1,28 @@
+{{- $dupValues := deepCopy .Values -}}
+{{- $dupValues := omit $dupValues "partials" -}}
+{{- range $key, $value := $dupValues -}}
+  {{- if kindIs "map" $value -}}
+    {{- if and (hasKey $value "global") (ne $key "configs" ) -}}
+      {{- $dupValues := set $dupValues $key (unset $value "global") -}}
+    {{- end -}}
+    {{- if hasKey $value "partials" -}}
+      {{- $dupValues := set $dupValues $key (unset $value "partials") -}}
+    {{- end -}}
+    {{- if hasKey $value "KeyPEM" -}}
+      {{- $dupValues := set $dupValues $key (unset $value "keyPEM") -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- /* Unset known private fields */ -}}
+{{- if $dupValues.identity.issuer.tls.keyPEM -}}
+  {{- $_ := set $dupValues.identity.issuer.tls "keyPEM" "" -}}
+{{- end -}}
+{{- if $dupValues.profileValidator.keyPEM -}}
+  {{- $_ := set $dupValues.profileValidator "keyPEM" "" -}}
+{{- end -}}
+{{- if $dupValues.proxyInjector.keyPEM -}}
+  {{- $_ := set $dupValues.proxyInjector "keyPEM" "" -}}
+{{- end -}}
 ---
 ###
 ### linkerd state
@@ -14,4 +39,4 @@ metadata:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
   values: |-
-    {{- toYaml .Values | trim | nindent 4 -}}
+    {{- toYaml $dupValues | trim | nindent 4 -}}

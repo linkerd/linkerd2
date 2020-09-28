@@ -1566,7 +1566,7 @@ func (hc *HealthChecker) checkLinkerdConfigConfigMap() (string, *l5dcharts.Value
 	}
 
 	// TODO: set the correct UID
-	return string(values.ControllerUID), values, nil
+	return fmt.Sprintf("%d", values.ControllerUID), values, nil
 }
 
 // Checks whether the configuration of the linkerd-identity-issuer is correct. This means:
