@@ -71,6 +71,7 @@ func TestTrafficSplitAdaptor(t *testing.T) {
 						Weight:    resource.MustParse("1000m"),
 					},
 				},
+				FullyQualifiedName: "foo.ns.svc.cluster.local",
 			},
 		}
 
