@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -63,18 +64,18 @@ func NewKubernetesHelper(k8sContext string, retryFor func(time.Duration, func() 
 }
 
 // CheckIfNamespaceExists checks if a namespace exists.
-func (h *KubernetesHelper) CheckIfNamespaceExists(namespace string) error {
-	_, err := h.clientset.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
+func (h *KubernetesHelper) CheckIfNamespaceExists(ctx context.Context, namespace string) error {
+	_, err := h.clientset.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 	return err
 }
 
 // GetSecret retrieves a Kubernetes Secret
-func (h *KubernetesHelper) GetSecret(namespace, name string) (*corev1.Secret, error) {
-	return h.clientset.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+func (h *KubernetesHelper) GetSecret(ctx context.Context, namespace, name string) (*corev1.Secret, error) {
+	return h.clientset.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 }
 
-func (h *KubernetesHelper) createNamespaceIfNotExists(namespace string, annotations, labels map[string]string) error {
-	err := h.CheckIfNamespaceExists(namespace)
+func (h *KubernetesHelper) createNamespaceIfNotExists(ctx context.Context, namespace string, annotations, labels map[string]string) error {
+	err := h.CheckIfNamespaceExists(ctx, namespace)
 
 	if err != nil {
 		ns := &corev1.Namespace{
@@ -84,7 +85,7 @@ func (h *KubernetesHelper) createNamespaceIfNotExists(namespace string, annotati
 				Name:        namespace,
 			},
 		}
-		_, err = h.clientset.CoreV1().Namespaces().Create(ns)
+		_, err = h.clientset.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{})
 
 		if err != nil {
 			return err
@@ -95,16 +96,16 @@ func (h *KubernetesHelper) createNamespaceIfNotExists(namespace string, annotati
 }
 
 // CreateControlPlaneNamespaceIfNotExists creates linkerd control plane namespace.
-func (h *KubernetesHelper) CreateControlPlaneNamespaceIfNotExists(namespace string) error {
+func (h *KubernetesHelper) CreateControlPlaneNamespaceIfNotExists(ctx context.Context, namespace string) error {
 	labels := map[string]string{"linkerd.io/is-control-plane": "true", "config.linkerd.io/admission-webhooks": "disabled", "linkerd.io/control-plane-ns": namespace}
 	annotations := map[string]string{"linkerd.io/inject": "disabled"}
-	return h.createNamespaceIfNotExists(namespace, annotations, labels)
+	return h.createNamespaceIfNotExists(ctx, namespace, annotations, labels)
 }
 
 // CreateDataPlaneNamespaceIfNotExists creates a dataplane namespace if it does not already exist,
 // with a linkerd.io/is-test-data-plane label for easier cleanup afterwards
-func (h *KubernetesHelper) CreateDataPlaneNamespaceIfNotExists(namespace string, annotations map[string]string) error {
-	return h.createNamespaceIfNotExists(namespace, annotations, map[string]string{"linkerd.io/is-test-data-plane": "true"})
+func (h *KubernetesHelper) CreateDataPlaneNamespaceIfNotExists(ctx context.Context, namespace string, annotations map[string]string) error {
+	return h.createNamespaceIfNotExists(ctx, namespace, annotations, map[string]string{"linkerd.io/is-test-data-plane": "true"})
 }
 
 // KubectlApply applies a given configuration string in a namespace. If the
@@ -130,8 +131,8 @@ func (h *KubernetesHelper) Kubectl(stdin string, arg ...string) (string, error) 
 
 // getDeployments gets all deployments with a count of their ready replicas in
 // the specified namespace.
-func (h *KubernetesHelper) getDeployments(namespace string) (map[string]int, error) {
-	deploys, err := h.clientset.AppsV1().Deployments(namespace).List(metav1.ListOptions{})
+func (h *KubernetesHelper) getDeployments(ctx context.Context, namespace string) (map[string]int, error) {
+	deploys, err := h.clientset.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -145,9 +146,9 @@ func (h *KubernetesHelper) getDeployments(namespace string) (map[string]int, err
 
 // CheckDeployment checks that a deployment in a namespace contains the expected
 // number of replicas.
-func (h *KubernetesHelper) CheckDeployment(namespace string, deploymentName string, replicas int) error {
+func (h *KubernetesHelper) CheckDeployment(ctx context.Context, namespace string, deploymentName string, replicas int) error {
 	return h.retryFor(30*time.Second, func() error {
-		deploys, err := h.getDeployments(namespace)
+		deploys, err := h.getDeployments(ctx, namespace)
 		if err != nil {
 			return err
 		}
@@ -169,8 +170,8 @@ func (h *KubernetesHelper) CheckDeployment(namespace string, deploymentName stri
 
 // GetConfigUID returns the uid associated to the linkerd-config ConfigMap resource
 // in the given namespace
-func (h *KubernetesHelper) GetConfigUID(namespace string) (string, error) {
-	cm, err := h.clientset.CoreV1().ConfigMaps(namespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
+func (h *KubernetesHelper) GetConfigUID(ctx context.Context, namespace string) (string, error) {
+	cm, err := h.clientset.CoreV1().ConfigMaps(namespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -179,8 +180,8 @@ func (h *KubernetesHelper) GetConfigUID(namespace string) (string, error) {
 
 // GetResources returns the resource limits and requests set on a deployment
 // of the set name in the given namespace
-func (h *KubernetesHelper) GetResources(containerName, deploymentName, namespace string) (corev1.ResourceRequirements, error) {
-	dep, err := h.clientset.AppsV1().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
+func (h *KubernetesHelper) GetResources(ctx context.Context, containerName, deploymentName, namespace string) (corev1.ResourceRequirements, error) {
+	dep, err := h.clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return corev1.ResourceRequirements{}, err
 	}
@@ -195,12 +196,12 @@ func (h *KubernetesHelper) GetResources(containerName, deploymentName, namespace
 
 // CheckPods checks that a deployment in a namespace contains the expected
 // number of pods in the Running state, and that no pods have been restarted.
-func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, replicas int) error {
+func (h *KubernetesHelper) CheckPods(ctx context.Context, namespace string, deploymentName string, replicas int) error {
 	var checkedPods []corev1.Pod
 
 	err := h.retryFor(6*time.Minute, func() error {
 		checkedPods = []corev1.Pod{}
-		pods, err := h.clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+		pods, err := h.clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -253,16 +254,16 @@ func (h *KubernetesHelper) CheckPods(namespace string, deploymentName string, re
 }
 
 // CheckService checks that a service exists in a namespace.
-func (h *KubernetesHelper) CheckService(namespace string, serviceName string) error {
+func (h *KubernetesHelper) CheckService(ctx context.Context, namespace string, serviceName string) error {
 	return h.retryFor(10*time.Second, func() error {
-		_, err := h.clientset.CoreV1().Services(namespace).Get(serviceName, metav1.GetOptions{})
+		_, err := h.clientset.CoreV1().Services(namespace).Get(ctx, serviceName, metav1.GetOptions{})
 		return err
 	})
 }
 
 // GetPods returns all pods with the given labels
-func (h *KubernetesHelper) GetPods(namespace string, podLabels map[string]string) ([]corev1.Pod, error) {
-	podList, err := h.clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
+func (h *KubernetesHelper) GetPods(ctx context.Context, namespace string, podLabels map[string]string) ([]corev1.Pod, error) {
+	podList, err := h.clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.Set(podLabels).AsSelector().String(),
 	})
 	if err != nil {
@@ -273,17 +274,17 @@ func (h *KubernetesHelper) GetPods(namespace string, podLabels map[string]string
 }
 
 // GetPodsForDeployment returns all pods for the given deployment
-func (h *KubernetesHelper) GetPodsForDeployment(namespace string, deploymentName string) ([]corev1.Pod, error) {
-	deploy, err := h.clientset.AppsV1().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
+func (h *KubernetesHelper) GetPodsForDeployment(ctx context.Context, namespace string, deploymentName string) ([]corev1.Pod, error) {
+	deploy, err := h.clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return h.GetPods(namespace, deploy.Spec.Selector.MatchLabels)
+	return h.GetPods(ctx, namespace, deploy.Spec.Selector.MatchLabels)
 }
 
 // GetPodNamesForDeployment returns all pod names for the given deployment
-func (h *KubernetesHelper) GetPodNamesForDeployment(namespace string, deploymentName string) ([]string, error) {
-	podList, err := h.GetPodsForDeployment(namespace, deploymentName)
+func (h *KubernetesHelper) GetPodNamesForDeployment(ctx context.Context, namespace string, deploymentName string) ([]string, error) {
+	podList, err := h.GetPodsForDeployment(ctx, namespace, deploymentName)
 	if err != nil {
 		return nil, err
 	}
@@ -311,13 +312,13 @@ func (h *KubernetesHelper) ParseNamespacedResource(resource string) (string, str
 // URLFor creates a kubernetes port-forward, runs it, and returns the URL that
 // tests can use for access to the given deployment. Note that the port-forward
 // remains running for the duration of the test.
-func (h *KubernetesHelper) URLFor(namespace, deployName string, remotePort int) (string, error) {
+func (h *KubernetesHelper) URLFor(ctx context.Context, namespace, deployName string, remotePort int) (string, error) {
 	k8sAPI, err := k8s.NewAPI("", h.k8sContext, "", []string{}, 0)
 	if err != nil {
 		return "", err
 	}
 
-	pf, err := k8s.NewPortForward(k8sAPI, namespace, deployName, "localhost", 0, remotePort, false)
+	pf, err := k8s.NewPortForward(ctx, k8sAPI, namespace, deployName, "localhost", 0, remotePort, false)
 	if err != nil {
 		return "", err
 	}

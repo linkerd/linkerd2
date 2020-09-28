@@ -1,6 +1,7 @@
 package tap
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -25,13 +26,14 @@ type apiServer struct {
 
 // NewAPIServer creates a new server that implements the Tap APIService.
 func NewAPIServer(
+	ctx context.Context,
 	addr string,
 	cert tls.Certificate,
 	k8sAPI *k8s.API,
 	grpcTapServer tap.TapServer,
 	disableCommonNames bool,
 ) (*http.Server, net.Listener, error) {
-	clientCAPem, allowedNames, usernameHeader, groupHeader, err := apiServerAuth(k8sAPI)
+	clientCAPem, allowedNames, usernameHeader, groupHeader, err := apiServerAuth(ctx, k8sAPI)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -122,11 +124,11 @@ func (a *apiServer) validate(req *http.Request) error {
 // TLS authentication.
 // kubectl -n kube-system get cm/extension-apiserver-authentication
 // accessible via the extension-apiserver-authentication-reader role
-func apiServerAuth(k8sAPI *k8s.API) (string, []string, string, string, error) {
+func apiServerAuth(ctx context.Context, k8sAPI *k8s.API) (string, []string, string, string, error) {
 
 	cm, err := k8sAPI.Client.CoreV1().
 		ConfigMaps(metav1.NamespaceSystem).
-		Get(k8sutils.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
+		Get(ctx, k8sutils.ExtensionAPIServerAuthenticationConfigMapName, metav1.GetOptions{})
 
 	if err != nil {
 		return "", nil, "", "", fmt.Errorf("failed to load [%s] config: %s", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, err)

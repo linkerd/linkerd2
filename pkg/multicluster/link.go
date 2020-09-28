@@ -1,6 +1,7 @@
 package multicluster
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -217,8 +218,8 @@ func ExtractProbeSpec(gateway *corev1.Service) (ProbeSpec, error) {
 }
 
 // GetLinks fetches a list of all Link objects in the cluster.
-func GetLinks(client dynamic.Interface) ([]Link, error) {
-	list, err := client.Resource(LinkGVR).List(metav1.ListOptions{})
+func GetLinks(ctx context.Context, client dynamic.Interface) ([]Link, error) {
+	list, err := client.Resource(LinkGVR).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -239,8 +240,8 @@ func GetLinks(client dynamic.Interface) ([]Link, error) {
 }
 
 // GetLink fetches a Link object from Kubernetes by name/namespace.
-func GetLink(client dynamic.Interface, namespace, name string) (Link, error) {
-	unstructured, err := client.Resource(LinkGVR).Namespace(namespace).Get(name, metav1.GetOptions{})
+func GetLink(ctx context.Context, client dynamic.Interface, namespace, name string) (Link, error) {
+	unstructured, err := client.Resource(LinkGVR).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return Link{}, err
 	}

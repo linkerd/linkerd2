@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -78,7 +79,7 @@ func newCmdMetrics() *cobra.Command {
 				return err
 			}
 
-			pods, err := getPodsFor(k8sAPI, options.namespace, args[0])
+			pods, err := getPodsFor(cmd.Context(), k8sAPI, options.namespace, args[0])
 			if err != nil {
 				return err
 			}
@@ -109,7 +110,7 @@ func newCmdMetrics() *cobra.Command {
 // getPodsFor takes a resource string, queries the Kubernetes API, and returns a
 // list of pods belonging to that resource.
 // This could move into `pkg/k8s` if becomes more generally useful.
-func getPodsFor(clientset kubernetes.Interface, namespace string, resource string) ([]corev1.Pod, error) {
+func getPodsFor(ctx context.Context, clientset kubernetes.Interface, namespace string, resource string) ([]corev1.Pod, error) {
 	// TODO: BuildResource parses a resource string (which we need), but returns
 	// objects in Public API protobuf form for submission to the Public API
 	// (which we don't need). Refactor this API to strictly support parsing
@@ -125,7 +126,7 @@ func getPodsFor(clientset kubernetes.Interface, namespace string, resource strin
 
 	// special case if a single pod was specified
 	if res.GetType() == k8s.Pod {
-		pod, err := clientset.CoreV1().Pods(namespace).Get(res.GetName(), metav1.GetOptions{})
+		pod, err := clientset.CoreV1().Pods(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -135,14 +136,14 @@ func getPodsFor(clientset kubernetes.Interface, namespace string, resource strin
 	var matchLabels map[string]string
 	switch res.GetType() {
 	case k8s.CronJob:
-		jobs, err := clientset.BatchV1().Jobs(namespace).List(metav1.ListOptions{})
+		jobs, err := clientset.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
 		var pods []corev1.Pod
 		for _, job := range jobs.Items {
 			if isOwner(res.GetName(), job.GetOwnerReferences()) {
-				jobPods, err := getPodsFor(clientset, namespace, fmt.Sprintf("%s/%s", k8s.Job, job.GetName()))
+				jobPods, err := getPodsFor(ctx, clientset, namespace, fmt.Sprintf("%s/%s", k8s.Job, job.GetName()))
 				if err != nil {
 					return nil, err
 				}
@@ -152,42 +153,42 @@ func getPodsFor(clientset kubernetes.Interface, namespace string, resource strin
 		return pods, nil
 
 	case k8s.DaemonSet:
-		ds, err := clientset.AppsV1().DaemonSets(namespace).Get(res.GetName(), metav1.GetOptions{})
+		ds, err := clientset.AppsV1().DaemonSets(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 		matchLabels = ds.Spec.Selector.MatchLabels
 
 	case k8s.Deployment:
-		deployment, err := clientset.AppsV1().Deployments(namespace).Get(res.GetName(), metav1.GetOptions{})
+		deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 		matchLabels = deployment.Spec.Selector.MatchLabels
 
 	case k8s.Job:
-		job, err := clientset.BatchV1().Jobs(namespace).Get(res.GetName(), metav1.GetOptions{})
+		job, err := clientset.BatchV1().Jobs(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 		matchLabels = job.Spec.Selector.MatchLabels
 
 	case k8s.ReplicaSet:
-		rs, err := clientset.AppsV1().ReplicaSets(namespace).Get(res.GetName(), metav1.GetOptions{})
+		rs, err := clientset.AppsV1().ReplicaSets(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 		matchLabels = rs.Spec.Selector.MatchLabels
 
 	case k8s.ReplicationController:
-		rc, err := clientset.CoreV1().ReplicationControllers(namespace).Get(res.GetName(), metav1.GetOptions{})
+		rc, err := clientset.CoreV1().ReplicationControllers(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
 		matchLabels = rc.Spec.Selector
 
 	case k8s.StatefulSet:
-		ss, err := clientset.AppsV1().StatefulSets(namespace).Get(res.GetName(), metav1.GetOptions{})
+		ss, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -201,6 +202,7 @@ func getPodsFor(clientset kubernetes.Interface, namespace string, resource strin
 		CoreV1().
 		Pods(namespace).
 		List(
+			ctx,
 			metav1.ListOptions{
 				LabelSelector: labels.Set(matchLabels).AsSelector().String(),
 			},

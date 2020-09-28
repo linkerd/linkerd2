@@ -1,6 +1,7 @@
 package tap
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -73,8 +74,9 @@ func TestCliTap(t *testing.T) {
 			"'linkerd inject' command failed\n%s\n%s", out, stderr)
 	}
 
+	ctx := context.Background()
 	prefixedNs := TestHelper.GetTestNamespace("tap-test")
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(prefixedNs, nil)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", prefixedNs),
 			"failed to create %s namespace: %s", prefixedNs, err)
@@ -87,7 +89,7 @@ func TestCliTap(t *testing.T) {
 
 	// wait for deployments to start
 	for _, deploy := range []string{"t1", "t2", "t3", "gateway"} {
-		if err := TestHelper.CheckPods(prefixedNs, deploy, 1); err != nil {
+		if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, 1); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
@@ -95,7 +97,7 @@ func TestCliTap(t *testing.T) {
 			}
 		}
 
-		if err := TestHelper.CheckDeployment(prefixedNs, deploy, 1); err != nil {
+		if err := TestHelper.CheckDeployment(ctx, prefixedNs, deploy, 1); err != nil {
 			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}
@@ -169,7 +171,7 @@ func TestCliTap(t *testing.T) {
 
 	t.Run("tap a pod", func(t *testing.T) {
 		deploy := "t3"
-		pods, err := TestHelper.GetPodNamesForDeployment(prefixedNs, deploy)
+		pods, err := TestHelper.GetPodNamesForDeployment(ctx, prefixedNs, deploy)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to get pods for deployment t3",
 				"failed to get pods for deployment [%s]\n%s", deploy, err)

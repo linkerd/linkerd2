@@ -25,7 +25,8 @@ GO111MODULE='on' "${codegen_pkg}/generate-groups.sh" \
   'deepcopy,client,informer,lister' \
   "${ROOT_PACKAGE}/controller/gen/client" \
   "${ROOT_PACKAGE}/controller/gen/apis" \
-  "${CUSTOM_RESOURCE_NAME}:${CUSTOM_RESOURCE_VERSION}"
+  "${CUSTOM_RESOURCE_NAME}:${CUSTOM_RESOURCE_VERSION}" \
+  --go-header-file "${codegen_pkg}"/hack/boilerplate.go.txt
 
 # copy generated code out of GOPATH
 cp -R "${GOPATH}/src/${ROOT_PACKAGE}/controller/gen" 'controller/'

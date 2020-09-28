@@ -1,6 +1,7 @@
 package source
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -55,7 +56,7 @@ func TestGateways(t *testing.T) {
 }
 
 func TestInstallVoteBot(t *testing.T) {
-	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists("emojivoto", nil); err != nil {
+	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(context.Background(), "emojivoto", nil); err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create emojivoto namespace",
 			"failed to create emojivoto namespace: %s", err)
 	}

@@ -604,6 +604,7 @@ status:
 		},
 	}
 
+	ctx := context.Background()
 	for i, exp := range expectations {
 		exp := exp // pin
 		t.Run(fmt.Sprintf("%d: Returns expected response", i), func(t *testing.T) {
@@ -619,7 +620,7 @@ status:
 			if err != nil {
 				t.Fatalf("Error parsing IP %s: %s", exp.requestedIP, err)
 			}
-			s.hydrateIPLabels(ip, labels)
+			s.hydrateIPLabels(ctx, ip, labels)
 			if !reflect.DeepEqual(labels, exp.labels) {
 				t.Fatalf("Unexpected labels: [%#v], expected: [%#v]", labels, exp.labels)
 			}

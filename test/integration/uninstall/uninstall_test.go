@@ -1,6 +1,7 @@
 package uninstall
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -41,8 +42,9 @@ func TestInstall(t *testing.T) {
 }
 
 func TestResourcesPostInstall(t *testing.T) {
+	ctx := context.Background()
 	// Tests Namespace
-	err := TestHelper.CheckIfNamespaceExists(TestHelper.GetLinkerdNamespace())
+	err := TestHelper.CheckIfNamespaceExists(ctx, TestHelper.GetLinkerdNamespace())
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output",
 			"received unexpected output\n%s", err.Error())
@@ -50,14 +52,14 @@ func TestResourcesPostInstall(t *testing.T) {
 
 	// Tests Pods and Deployments
 	for deploy, spec := range testutil.LinkerdDeployReplicas {
-		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+		if err := TestHelper.CheckPods(ctx, TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
 				testutil.AnnotatedError(t, "CheckPods timed-out", err)
 			}
 		}
-		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+		if err := TestHelper.CheckDeployment(ctx, TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
 			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}

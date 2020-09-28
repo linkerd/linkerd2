@@ -144,13 +144,13 @@ func getControlPlaneComponentsAndContainers(pods *corev1.PodList) ([]string, []s
 	return controlPlaneComponents, containers
 }
 
-func newLogCmdConfig(options *logsOptions, kubeconfigPath, kubeContext, impersonate string, impersonateGroup []string) (*logCmdConfig, error) {
+func newLogCmdConfig(ctx context.Context, options *logsOptions, kubeconfigPath, kubeContext, impersonate string, impersonateGroup []string) (*logCmdConfig, error) {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	podList, err := kubeAPI.CoreV1().Pods(controlPlaneNamespace).List(metav1.ListOptions{})
+	podList, err := kubeAPI.CoreV1().Pods(controlPlaneNamespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +190,7 @@ func newCmdLogs() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			color.NoColor = options.noColor
 
-			opts, err := newLogCmdConfig(options, kubeconfigPath, kubeContext, impersonate, impersonateGroup)
+			opts, err := newLogCmdConfig(cmd.Context(), options, kubeconfigPath, kubeContext, impersonate, impersonateGroup)
 
 			if err != nil {
 				return err

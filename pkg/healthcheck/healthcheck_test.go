@@ -388,7 +388,7 @@ func TestCheckCanCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	err = hc.checkCanCreate("", "apps", "v1", "deployments")
+	err = hc.checkCanCreate(context.Background(), "", "apps", "v1", "deployments")
 	if err == nil ||
 		err.Error() != exp.Error() {
 		t.Fatalf("Unexpected error (Expected: %s, Got: %s)", exp, err)
@@ -440,7 +440,7 @@ data:
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = hc.checkExtensionAPIServerAuthentication()
+			err = hc.checkExtensionAPIServerAuthentication(context.Background())
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
@@ -490,7 +490,7 @@ status:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			err = hc.checkClockSkew()
+			err = hc.checkClockSkew(context.Background())
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
@@ -539,7 +539,7 @@ spec:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			err = hc.checkCapability("TEST_CAP")
+			err = hc.checkCapability(context.Background(), "TEST_CAP")
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
@@ -1921,7 +1921,7 @@ data:
 				t.Fatalf("Unexpected error: %q", err)
 			}
 
-			err = hc.checkDataPlaneProxiesCertificate()
+			err = hc.checkDataPlaneProxiesCertificate(context.Background())
 			if !reflect.DeepEqual(err, testCase.expectedErr) {
 				t.Fatalf("Error %q does not match expected error: %q", err, testCase.expectedErr)
 			}
@@ -2510,7 +2510,7 @@ data:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			_, configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
+			_, configs, err := FetchLinkerdConfigMap(context.Background(), clientset, "linkerd")
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
 			}
@@ -2587,7 +2587,7 @@ type lifeSpan struct {
 	ends   time.Time
 }
 
-func runIdentityCheckTestCase(t *testing.T, testID int, testDescription string, checkerToTest string, fakeConfigMap string, fakeSecret string, expectedOutput []string) {
+func runIdentityCheckTestCase(ctx context.Context, t *testing.T, testID int, testDescription string, checkerToTest string, fakeConfigMap string, fakeSecret string, expectedOutput []string) {
 	t.Run(fmt.Sprintf("%d/%s", testID, testDescription), func(t *testing.T) {
 		hc := NewHealthChecker(
 			[]CategoryID{},
@@ -2599,10 +2599,10 @@ func runIdentityCheckTestCase(t *testing.T, testID int, testDescription string, 
 		var err error
 		hc.ControlPlaneNamespace = "linkerd"
 		hc.kubeAPI, err = k8s.NewFakeAPI(fakeConfigMap, fakeSecret)
-		_, hc.linkerdConfig, _ = hc.checkLinkerdConfigConfigMap()
+		_, hc.linkerdConfig, _ = hc.checkLinkerdConfigConfigMap(ctx)
 
 		if testDescription != "certificate config is valid" {
-			hc.issuerCert, hc.trustAnchors, _ = hc.checkCertificatesConfig()
+			hc.issuerCert, hc.trustAnchors, _ = hc.checkCertificatesConfig(ctx)
 		}
 
 		if err != nil {
@@ -2722,7 +2722,7 @@ func TestLinkerdIdentityCheckCertConfig(t *testing.T) {
 		} else {
 			fakeSecret = getFakeSecret(testCase.tlsSecretScheme, issuerData)
 		}
-		runIdentityCheckTestCase(t, id, testCase.checkDescription, "certificate config is valid", fakeConfigMap, fakeSecret, testCase.expectedOutput)
+		runIdentityCheckTestCase(context.Background(), t, id, testCase.checkDescription, "certificate config is valid", fakeConfigMap, fakeSecret, testCase.expectedOutput)
 	}
 }
 
@@ -2776,7 +2776,7 @@ func TestLinkerdIdentityCheckCertValidity(t *testing.T) {
 		issuerData := createIssuerData("identity.linkerd.cluster.local", testCase.lifespan.starts, testCase.lifespan.ends)
 		fakeConfigMap := getFakeConfigMap(k8s.IdentityIssuerSchemeLinkerd, issuerData)
 		fakeSecret := getFakeSecret(k8s.IdentityIssuerSchemeLinkerd, issuerData)
-		runIdentityCheckTestCase(t, id, testCase.checkDescription, testCase.checkerToTest, fakeConfigMap, fakeSecret, testCase.expectedOutput)
+		runIdentityCheckTestCase(context.Background(), t, id, testCase.checkDescription, testCase.checkerToTest, fakeConfigMap, fakeSecret, testCase.expectedOutput)
 	}
 }
 
@@ -2785,7 +2785,7 @@ func TestLinkerdIdentityCheckWrongDns(t *testing.T) {
 	issuerData := createIssuerData("wrong.linkerd.cluster.local", time.Now().AddDate(-1, 0, 0), time.Now().AddDate(1, 0, 0))
 	fakeConfigMap := getFakeConfigMap(k8s.IdentityIssuerSchemeLinkerd, issuerData)
 	fakeSecret := getFakeSecret(k8s.IdentityIssuerSchemeLinkerd, issuerData)
-	runIdentityCheckTestCase(t, 0, "fails when cert dns is wrong", "issuer cert is issued by the trust anchor", fakeConfigMap, fakeSecret, expectedOutput)
+	runIdentityCheckTestCase(context.Background(), t, 0, "fails when cert dns is wrong", "issuer cert is issued by the trust anchor", fakeConfigMap, fakeSecret, expectedOutput)
 
 }
 
@@ -3213,7 +3213,7 @@ func TestMinReplicaCheck(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = hc.checkMinReplicasAvailable()
+			err = hc.checkMinReplicasAvailable(context.Background())
 			if err == nil && tc.expected != nil {
 				t.Log("Expected error: nil")
 				t.Logf("Received error: %s\n", err)

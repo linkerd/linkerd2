@@ -1,6 +1,7 @@
 package servicemirror
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -58,7 +59,11 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	controllerK8sAPI, err := controllerK8s.InitializeAPI(*kubeConfigPath, false,
+	ctx := context.Background()
+	controllerK8sAPI, err := controllerK8s.InitializeAPI(
+		ctx,
+		*kubeConfigPath,
+		false,
 		controllerK8s.NS,
 		controllerK8s.Svc,
 		controllerK8s.Endpoint,
@@ -77,7 +82,7 @@ func Main(args []string) {
 main:
 	for {
 		// Start link watch
-		linkWatch, err := linkClient.Watch(metav1.ListOptions{})
+		linkWatch, err := linkClient.Watch(ctx, metav1.ListOptions{})
 		if err != nil {
 			log.Fatalf("Failed to watch Link %s: %s", linkName, err)
 		}
@@ -105,11 +110,11 @@ main:
 								continue
 							}
 							log.Infof("Got updated link %s: %+v", linkName, link)
-							creds, err := loadCredentials(link, *namespace, k8sAPI)
+							creds, err := loadCredentials(ctx, link, *namespace, k8sAPI)
 							if err != nil {
 								log.Errorf("Failed to load remote cluster credentials: %s", err)
 							}
-							err = restartClusterWatcher(link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics)
+							err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics)
 							if err != nil {
 								// failed to restart cluster watcher; give a bit of slack
 								// and restart the link watch to give it another try
@@ -140,9 +145,9 @@ main:
 	log.Info("Shutting down")
 }
 
-func loadCredentials(link multicluster.Link, namespace string, k8sAPI *k8s.KubernetesAPI) ([]byte, error) {
+func loadCredentials(ctx context.Context, link multicluster.Link, namespace string, k8sAPI *k8s.KubernetesAPI) ([]byte, error) {
 	// Load the credentials secret
-	secret, err := k8sAPI.Interface.CoreV1().Secrets(namespace).Get(link.ClusterCredentialsSecret, metav1.GetOptions{})
+	secret, err := k8sAPI.Interface.CoreV1().Secrets(namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load credentials secret %s: %s", link.ClusterCredentialsSecret, err)
 	}
@@ -150,6 +155,7 @@ func loadCredentials(link multicluster.Link, namespace string, k8sAPI *k8s.Kuber
 }
 
 func restartClusterWatcher(
+	ctx context.Context,
 	link multicluster.Link,
 	namespace string,
 	creds []byte,
@@ -171,6 +177,7 @@ func restartClusterWatcher(
 	}
 
 	clusterWatcher, err = servicemirror.NewRemoteClusterServiceWatcher(
+		ctx,
 		namespace,
 		controllerK8sAPI,
 		cfg,
@@ -182,7 +189,7 @@ func restartClusterWatcher(
 		return fmt.Errorf("Unable to create cluster watcher: %s", err)
 	}
 
-	err = clusterWatcher.Start()
+	err = clusterWatcher.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to start cluster watcher: %s", err)
 	}
