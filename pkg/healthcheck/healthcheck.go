@@ -1055,12 +1055,13 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 						cert, err := hc.fetchCredsFromSecret(proxyInjectorTLSSecretName)
-						if err != nil {
+						if kerrors.IsNotFound(err) {
 							cert, err = hc.fetchCredsFromOldSecret(proxyInjectorOldTLSSecretName)
-							if err != nil {
-								return err
-							}
 						}
+						if err != nil {
+							return err
+						}
+
 						identityName := fmt.Sprintf("linkerd-proxy-injector.%s.svc", hc.ControlPlaneNamespace)
 						return hc.checkCertAndAnchors(cert, anchors, identityName)
 					},
