@@ -66,5 +66,5 @@ replace (
 	// to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
 	// (see https://github.com/golang/protobuf/issues/1104)
 	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.14.8
-	github.com/wercker/stern => github.com/Pothulapati/stern v0.0.0-20200924090734-6fb6701edd91
+	github.com/wercker/stern => github.com/linkerd/stern v0.0.0-20200928153157-a99050c4c372
 )
