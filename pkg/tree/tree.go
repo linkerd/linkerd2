@@ -17,7 +17,7 @@ func (t Tree) ToYAML() (string, error) {
 	return string(bytes), nil
 }
 
-// String returns a yaml represetation of the Tree or an error string if
+// String returns a yaml representation of the Tree or an error string if
 // serialization fails.
 func (t Tree) String() string {
 	s, err := t.ToYAML()
@@ -42,7 +42,7 @@ func (t Tree) Diff(other Tree) (Tree, error) {
 				}
 				diff[k] = subdiff
 			} else if !tvIsTree && !vIsTree {
-				if v != tv {
+				if !equal(v, tv) {
 					diff[k] = v
 				}
 			} else {
@@ -56,7 +56,43 @@ func (t Tree) Diff(other Tree) (Tree, error) {
 	return diff, nil
 }
 
-// Prune removes all empty subtress.  A subtree is considered empty if it does
+func equal(x interface{}, y interface{}) bool {
+	xt, xIsTree := x.(Tree)
+	yt, yIsTree := y.(Tree)
+	if xIsTree && yIsTree {
+		if len(xt) != len(yt) {
+			return false
+		}
+		for k := range xt {
+			if !equal(xt[k], yt[k]) {
+				return false
+			}
+		}
+		return true
+	}
+	if xIsTree || yIsTree {
+		return false
+	}
+	xs, xIsSlice := x.([]interface{})
+	ys, yIsSlice := x.([]interface{})
+	if xIsSlice && yIsSlice {
+		if len(xs) != len(ys) {
+			return false
+		}
+		for i := range xs {
+			if !equal(xs[i], ys[i]) {
+				return false
+			}
+		}
+		return true
+	}
+	if xIsSlice || yIsSlice {
+		return false
+	}
+	return x == y
+}
+
+// Prune removes all empty subtrees.  A subtree is considered empty if it does
 // not contain any leaf values.
 func (t Tree) Prune() {
 	for k, v := range t {
