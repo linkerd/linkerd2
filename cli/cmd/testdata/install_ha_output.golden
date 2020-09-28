@@ -804,6 +804,244 @@ data:
     {"proxyImage":{"imageName":"ghcr.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"ghcr.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"100m","requestMemory":"20Mi","limitCpu":"1","limitMemory":"250Mi"},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxyInitImageVersion":"v1.3.6","debugImage":{"imageName":"ghcr.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version","destinationGetNetworks":"10.0.0.0/8,172.16.0.0/12,192.168.0.0/16","logFormat":"plain","outboundConnectTimeout":"","inboundConnectTimeout":""}
   install: |
     {"cliVersion":"dev-undefined","flags":[{"name":"ha","value":"true"}]}
+  values: |
+    controllerImage: ghcr.io/linkerd/controller
+    controllerImageVersion: ""
+    controllerReplicas: 3
+    controllerUID: 2103
+    dashboard:
+      replicas: 1
+    debugContainer:
+      image:
+        name: ghcr.io/linkerd/debug
+        pullPolicy: IfNotPresent
+        version: install-debug-version
+    destinationProxyResources: null
+    destinationResources:
+      cpu:
+        limit: "1"
+        request: 100m
+      memory:
+        limit: 250Mi
+        request: 50Mi
+    disableHeartBeat: false
+    enableH2Upgrade: true
+    enablePodAntiAffinity: true
+    global:
+      cliVersion: linkerd/cli dev-undefined
+      clusterDomain: cluster.local
+      cniEnabled: false
+      controlPlaneTracing: false
+      controllerComponentLabel: linkerd.io/control-plane-component
+      controllerImageVersion: install-control-plane-version
+      controllerLogLevel: info
+      controllerNamespaceLabel: linkerd.io/control-plane-ns
+      createdByAnnotation: linkerd.io/created-by
+      enableEndpointSlices: false
+      grafanaUrl: ""
+      highAvailability: true
+      identityTrustAnchorsPEM: |
+        -----BEGIN CERTIFICATE-----
+        MIIBwTCCAWagAwIBAgIQeDZp5lDaIygQ5UfMKZrFATAKBggqhkjOPQQDAjApMScw
+        JQYDVQQDEx5pZGVudGl0eS5saW5rZXJkLmNsdXN0ZXIubG9jYWwwHhcNMjAwODI4
+        MDcxMjQ3WhcNMzAwODI2MDcxMjQ3WjApMScwJQYDVQQDEx5pZGVudGl0eS5saW5r
+        ZXJkLmNsdXN0ZXIubG9jYWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARqc70Z
+        l1vgw79rjB5uSITICUA6GyfvSFfcuIis7B/XFSkkwAHU5S/s1AAP+R0TX7HBWUC4
+        uaG4WWsiwJKNn7mgo3AwbjAOBgNVHQ8BAf8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB
+        /wIBATAdBgNVHQ4EFgQU5YtjVVPfd7I7NLHsn2C26EByGV0wKQYDVR0RBCIwIIIe
+        aWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMAoGCCqGSM49BAMCA0kAMEYC
+        IQCN7lBFLDDvjx6V0+XkjpKERRsJYf5adMvnloFl48ilJgIhANtxhndcr+QJPuC8
+        vgUC0d2/9FMueIVMb+46WTCOjsqr
+        -----END CERTIFICATE-----
+      identityTrustDomain: cluster.local
+      imagePullPolicy: IfNotPresent
+      imagePullSecrets: null
+      linkerdNamespaceLabel: linkerd.io/is-control-plane
+      namespace: linkerd
+      prometheusUrl: ""
+      proxy:
+        capabilities: null
+        component: linkerd-controller
+        destinationGetNetworks: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+        disableIdentity: false
+        disableTap: false
+        enableExternalProfiles: false
+        image:
+          name: ghcr.io/linkerd/proxy
+          pullPolicy: IfNotPresent
+          version: install-proxy-version
+        inboundConnectTimeout: 100ms
+        isGateway: false
+        logFormat: plain
+        logLevel: warn,linkerd=info
+        opaquePorts: ""
+        outboundConnectTimeout: 1000ms
+        ports:
+          admin: 4191
+          control: 4190
+          inbound: 4143
+          outbound: 4140
+        requireIdentityOnInboundPorts: ""
+        resources:
+          cpu:
+            limit: "1"
+            request: 100m
+          memory:
+            limit: 250Mi
+            request: 20Mi
+        saMountPath: null
+        trace:
+          collectorSvcAccount: default
+          collectorSvcAddr: ""
+        uid: 2102
+        waitBeforeExitSeconds: 0
+        workloadKind: deployment
+      proxyContainerName: linkerd-proxy
+      proxyInit:
+        capabilities: null
+        closeWaitTimeoutSecs: 0
+        ignoreInboundPorts: ""
+        ignoreOutboundPorts: ""
+        image:
+          name: ghcr.io/linkerd/proxy-init
+          pullPolicy: IfNotPresent
+          version: v1.3.6
+        resources:
+          cpu:
+            limit: 100m
+            request: 10m
+          memory:
+            limit: 50Mi
+            request: 10Mi
+        saMountPath: null
+        xtMountPath:
+          mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          readOnly: false
+      proxyInjectAnnotation: linkerd.io/inject
+      proxyInjectDisabled: disabled
+      workloadNamespaceLabel: linkerd.io/workload-ns
+    grafana:
+      enabled: true
+      resources:
+        cpu:
+          limit: "1"
+          request: 100m
+        memory:
+          limit: 1024Mi
+          request: 50Mi
+    heartbeatResources:
+      cpu:
+        limit: "1"
+        request: 100m
+      memory:
+        limit: 250Mi
+        request: 50Mi
+    heartbeatSchedule: 1 2 3 4 5
+    identity:
+      issuer:
+        clockSkewAllowance: 20s
+        crtExpiry: "2030-08-26T07:13:47Z"
+        crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
+        issuanceLifetime: 24h0m0s
+        scheme: linkerd.io/tls
+        tls:
+          crtPEM: |
+            -----BEGIN CERTIFICATE-----
+            MIIBwDCCAWegAwIBAgIRAJRIgZ8RtO8Ewg1Xepf8T44wCgYIKoZIzj0EAwIwKTEn
+            MCUGA1UEAxMeaWRlbnRpdHkubGlua2VyZC5jbHVzdGVyLmxvY2FsMB4XDTIwMDgy
+            ODA3MTM0N1oXDTMwMDgyNjA3MTM0N1owKTEnMCUGA1UEAxMeaWRlbnRpdHkubGlu
+            a2VyZC5jbHVzdGVyLmxvY2FsMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1/Fp
+            fcRnDcedL6AjUaXYPv4DIMBaJufOI5NWty+XSX7JjXgZtM72dQvRaYanuxD36Dt1
+            2/JxyiSgxKWRdoay+aNwMG4wDgYDVR0PAQH/BAQDAgEGMBIGA1UdEwEB/wQIMAYB
+            Af8CAQAwHQYDVR0OBBYEFI1WnrqMYKaHHOo+zpyiiDq2pO0KMCkGA1UdEQQiMCCC
+            HmlkZW50aXR5LmxpbmtlcmQuY2x1c3Rlci5sb2NhbDAKBggqhkjOPQQDAgNHADBE
+            AiAtuoI5XuCtrGVRzSmRTl2ra28aV9MyTU7d5qnTAFHKSgIgRKCvluOSgA5O21p5
+            51tdrmkHEZRr0qlLSJdHYgEfMzk=
+            -----END CERTIFICATE-----
+    identityProxyResources: null
+    identityResources:
+      cpu:
+        limit: "1"
+        request: 100m
+      memory:
+        limit: 250Mi
+        request: 10Mi
+    installNamespace: true
+    nodeSelector:
+      beta.kubernetes.io/os: linux
+    omitWebhookSideEffects: false
+    profileValidator:
+      caBundle: profile validator CA bundle
+      crtPEM: profile validator crt
+      externalSecret: false
+      keyPEM: profile validator key
+    prometheus:
+      enabled: true
+      resources:
+        cpu:
+          limit: "4"
+          request: 300m
+        memory:
+          limit: 8192Mi
+          request: 300Mi
+    proxyInjector:
+      caBundle: proxy injector CA bundle
+      crtPEM: proxy injector crt
+      externalSecret: false
+      keyPEM: proxy injector key
+    proxyInjectorProxyResources: null
+    proxyInjectorResources:
+      cpu:
+        limit: "1"
+        request: 100m
+      memory:
+        limit: 250Mi
+        request: 50Mi
+    publicAPIProxyResources: null
+    publicAPIResources:
+      cpu:
+        limit: "1"
+        request: 100m
+      memory:
+        limit: 250Mi
+        request: 50Mi
+    restrictDashboardPrivileges: false
+    spValidatorProxyResources: null
+    spValidatorResources:
+      cpu:
+        limit: "1"
+        request: 100m
+      memory:
+        limit: 250Mi
+        request: 50Mi
+    stage: ""
+    tap:
+      caBundle: tap CA bundle
+      crtPEM: tap crt
+      externalSecret: false
+      keyPEM: tap key
+    tapProxyResources: null
+    tapResources:
+      cpu:
+        limit: "1"
+        request: 100m
+      memory:
+        limit: 250Mi
+        request: 50Mi
+    tolerations: null
+    tracing:
+      enabled: false
+    webImage: ghcr.io/linkerd/web
+    webProxyResources: null
+    webResources:
+      cpu:
+        limit: "1"
+        request: 100m
+      memory:
+        limit: 250Mi
+        request: 50Mi
+    webhookFailurePolicy: Fail
 ---
 ###
 ### Identity Controller Service

@@ -892,6 +892,505 @@ data:
       "cliVersion":"linkerd-version",
       "flags":[]
     }
+  values: |
+    controllerImage: ghcr.io/linkerd/controller
+    controllerImageVersion: ""
+    controllerReplicas: 1
+    controllerUID: 2103
+    dashboard:
+      replicas: 1
+    debugContainer:
+      image:
+        name: ghcr.io/linkerd/debug
+        pullPolicy: IfNotPresent
+        version: test-debug-version
+    destinationProxyResources: null
+    destinationResources: null
+    disableHeartBeat: false
+    enableH2Upgrade: true
+    enablePodAntiAffinity: false
+    global:
+      cliVersion: ""
+      clusterDomain: cluster.local
+      cniEnabled: false
+      controlPlaneTracing: false
+      controllerComponentLabel: linkerd.io/control-plane-component
+      controllerImageVersion: ""
+      controllerLogLevel: info
+      controllerNamespaceLabel: linkerd.io/control-plane-ns
+      createdByAnnotation: linkerd.io/created-by
+      enableEndpointSlices: false
+      grafanaUrl: ""
+      highAvailability: false
+      identityTrustAnchorsPEM: test-trust-anchor
+      identityTrustDomain: test.trust.domain
+      imagePullPolicy: IfNotPresent
+      imagePullSecrets: []
+      linkerdNamespaceLabel: linkerd.io/is-control-plane
+      linkerdVersion: linkerd-version
+      namespace: linkerd
+      prometheusUrl: ""
+      proxy:
+        capabilities: null
+        component: linkerd-controller
+        destinationGetNetworks: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+        disableIdentity: false
+        disableTap: false
+        enableExternalProfiles: false
+        image:
+          name: ghcr.io/linkerd/proxy
+          pullPolicy: IfNotPresent
+          version: test-proxy-version
+        inboundConnectTimeout: 100ms
+        isGateway: false
+        logFormat: plain
+        logLevel: warn,linkerd=info
+        opaquePorts: ""
+        outboundConnectTimeout: 1000ms
+        ports:
+          admin: 4191
+          control: 4190
+          inbound: 4143
+          outbound: 4140
+        requireIdentityOnInboundPorts: ""
+        resources:
+          cpu:
+            limit: ""
+            request: ""
+          memory:
+            limit: ""
+            request: ""
+        saMountPath: null
+        trace:
+          collectorSvcAccount: default
+          collectorSvcAddr: ""
+        uid: 2102
+        waitBeforeExitSeconds: 0
+        workloadKind: deployment
+      proxyContainerName: linkerd-proxy
+      proxyInit:
+        capabilities: null
+        closeWaitTimeoutSecs: 0
+        ignoreInboundPorts: "222"
+        ignoreOutboundPorts: "111"
+        image:
+          name: ghcr.io/linkerd/proxy-init
+          pullPolicy: IfNotPresent
+          version: test-proxy-init-version
+        resources:
+          cpu:
+            limit: 100m
+            request: 10m
+          memory:
+            limit: 50Mi
+            request: 10Mi
+        saMountPath: null
+        xtMountPath:
+          mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          readOnly: false
+      proxyInjectAnnotation: linkerd.io/inject
+      proxyInjectDisabled: disabled
+      workloadNamespaceLabel: linkerd.io/workload-ns
+    grafana:
+      enabled: true
+      global:
+        cliVersion: ""
+        clusterDomain: cluster.local
+        cniEnabled: false
+        controlPlaneTracing: false
+        controllerComponentLabel: linkerd.io/control-plane-component
+        controllerImageVersion: ""
+        controllerLogLevel: info
+        controllerNamespaceLabel: linkerd.io/control-plane-ns
+        createdByAnnotation: linkerd.io/created-by
+        enableEndpointSlices: false
+        grafanaUrl: ""
+        highAvailability: false
+        identityTrustAnchorsPEM: test-trust-anchor
+        identityTrustDomain: test.trust.domain
+        imagePullPolicy: IfNotPresent
+        imagePullSecrets: []
+        linkerdNamespaceLabel: linkerd.io/is-control-plane
+        linkerdVersion: linkerd-version
+        namespace: linkerd
+        prometheusUrl: ""
+        proxy:
+          capabilities: null
+          component: linkerd-controller
+          destinationGetNetworks: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+          disableIdentity: false
+          disableTap: false
+          enableExternalProfiles: false
+          image:
+            name: ghcr.io/linkerd/proxy
+            pullPolicy: IfNotPresent
+            version: test-proxy-version
+          inboundConnectTimeout: 100ms
+          isGateway: false
+          logFormat: plain
+          logLevel: warn,linkerd=info
+          opaquePorts: ""
+          outboundConnectTimeout: 1000ms
+          ports:
+            admin: 4191
+            control: 4190
+            inbound: 4143
+            outbound: 4140
+          requireIdentityOnInboundPorts: ""
+          resources:
+            cpu:
+              limit: ""
+              request: ""
+            memory:
+              limit: ""
+              request: ""
+          saMountPath: null
+          trace:
+            collectorSvcAccount: default
+            collectorSvcAddr: ""
+          uid: 2102
+          waitBeforeExitSeconds: 0
+          workloadKind: deployment
+        proxyContainerName: linkerd-proxy
+        proxyInit:
+          capabilities: null
+          closeWaitTimeoutSecs: 0
+          ignoreInboundPorts: "222"
+          ignoreOutboundPorts: "111"
+          image:
+            name: ghcr.io/linkerd/proxy-init
+            pullPolicy: IfNotPresent
+            version: test-proxy-init-version
+          resources:
+            cpu:
+              limit: 100m
+              request: 10m
+            memory:
+              limit: 50Mi
+              request: 10Mi
+          saMountPath: null
+          xtMountPath:
+            mountPath: /run
+            name: linkerd-proxy-init-xtables-lock
+            readOnly: false
+        proxyInjectAnnotation: linkerd.io/inject
+        proxyInjectDisabled: disabled
+        workloadNamespaceLabel: linkerd.io/workload-ns
+      image:
+        name: ghcr.io/linkerd/grafana
+      partials:
+        global:
+          cliVersion: ""
+          clusterDomain: cluster.local
+          cniEnabled: false
+          controlPlaneTracing: false
+          controllerComponentLabel: linkerd.io/control-plane-component
+          controllerImageVersion: ""
+          controllerLogLevel: info
+          controllerNamespaceLabel: linkerd.io/control-plane-ns
+          createdByAnnotation: linkerd.io/created-by
+          enableEndpointSlices: false
+          grafanaUrl: ""
+          highAvailability: false
+          identityTrustAnchorsPEM: test-trust-anchor
+          identityTrustDomain: test.trust.domain
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          linkerdNamespaceLabel: linkerd.io/is-control-plane
+          linkerdVersion: linkerd-version
+          namespace: linkerd
+          prometheusUrl: ""
+          proxy:
+            capabilities: null
+            component: linkerd-controller
+            destinationGetNetworks: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+            disableIdentity: false
+            disableTap: false
+            enableExternalProfiles: false
+            image:
+              name: ghcr.io/linkerd/proxy
+              pullPolicy: IfNotPresent
+              version: test-proxy-version
+            inboundConnectTimeout: 100ms
+            isGateway: false
+            logFormat: plain
+            logLevel: warn,linkerd=info
+            opaquePorts: ""
+            outboundConnectTimeout: 1000ms
+            ports:
+              admin: 4191
+              control: 4190
+              inbound: 4143
+              outbound: 4140
+            requireIdentityOnInboundPorts: ""
+            resources:
+              cpu:
+                limit: ""
+                request: ""
+              memory:
+                limit: ""
+                request: ""
+            saMountPath: null
+            trace:
+              collectorSvcAccount: default
+              collectorSvcAddr: ""
+            uid: 2102
+            waitBeforeExitSeconds: 0
+            workloadKind: deployment
+          proxyContainerName: linkerd-proxy
+          proxyInit:
+            capabilities: null
+            closeWaitTimeoutSecs: 0
+            ignoreInboundPorts: "222"
+            ignoreOutboundPorts: "111"
+            image:
+              name: ghcr.io/linkerd/proxy-init
+              pullPolicy: IfNotPresent
+              version: test-proxy-init-version
+            resources:
+              cpu:
+                limit: 100m
+                request: 10m
+              memory:
+                limit: 50Mi
+                request: 10Mi
+            saMountPath: null
+            xtMountPath:
+              mountPath: /run
+              name: linkerd-proxy-init-xtables-lock
+              readOnly: false
+          proxyInjectAnnotation: linkerd.io/inject
+          proxyInjectDisabled: disabled
+          workloadNamespaceLabel: linkerd.io/workload-ns
+    heartbeatResources: null
+    heartbeatSchedule: 0 0 * * *
+    identity:
+      issuer:
+        clockSkewAllowance: 20s
+        crtExpiry: Jul 30 17:21:14 2020
+        crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
+        issuanceLifetime: 86400s
+        scheme: linkerd.io/tls
+        tls:
+          crtPEM: test-crt-pem
+    identityProxyResources: null
+    identityResources: null
+    installNamespace: true
+    nodeSelector:
+      beta.kubernetes.io/os: linux
+    omitWebhookSideEffects: false
+    profileValidator:
+      caBundle: test-profile-validator-ca-bundle
+      crtPEM: test-profile-validator-crt-pem
+      externalSecret: false
+      keyPEM: test-profile-validator-key-pem
+    prometheus:
+      args:
+        config.file: /etc/prometheus/prometheus.yml
+        log.level: info
+        storage.tsdb.path: /data
+        storage.tsdb.retention.time: 6h
+      enabled: true
+      global:
+        cliVersion: ""
+        clusterDomain: cluster.local
+        cniEnabled: false
+        controlPlaneTracing: false
+        controllerComponentLabel: linkerd.io/control-plane-component
+        controllerImageVersion: ""
+        controllerLogLevel: info
+        controllerNamespaceLabel: linkerd.io/control-plane-ns
+        createdByAnnotation: linkerd.io/created-by
+        enableEndpointSlices: false
+        grafanaUrl: ""
+        highAvailability: false
+        identityTrustAnchorsPEM: test-trust-anchor
+        identityTrustDomain: test.trust.domain
+        imagePullPolicy: IfNotPresent
+        imagePullSecrets: []
+        linkerdNamespaceLabel: linkerd.io/is-control-plane
+        linkerdVersion: linkerd-version
+        namespace: linkerd
+        prometheusUrl: ""
+        proxy:
+          capabilities: null
+          component: linkerd-controller
+          destinationGetNetworks: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+          disableIdentity: false
+          disableTap: false
+          enableExternalProfiles: false
+          image:
+            name: ghcr.io/linkerd/proxy
+            pullPolicy: IfNotPresent
+            version: test-proxy-version
+          inboundConnectTimeout: 100ms
+          isGateway: false
+          logFormat: plain
+          logLevel: warn,linkerd=info
+          opaquePorts: ""
+          outboundConnectTimeout: 1000ms
+          ports:
+            admin: 4191
+            control: 4190
+            inbound: 4143
+            outbound: 4140
+          requireIdentityOnInboundPorts: ""
+          resources:
+            cpu:
+              limit: ""
+              request: ""
+            memory:
+              limit: ""
+              request: ""
+          saMountPath: null
+          trace:
+            collectorSvcAccount: default
+            collectorSvcAddr: ""
+          uid: 2102
+          waitBeforeExitSeconds: 0
+          workloadKind: deployment
+        proxyContainerName: linkerd-proxy
+        proxyInit:
+          capabilities: null
+          closeWaitTimeoutSecs: 0
+          ignoreInboundPorts: "222"
+          ignoreOutboundPorts: "111"
+          image:
+            name: ghcr.io/linkerd/proxy-init
+            pullPolicy: IfNotPresent
+            version: test-proxy-init-version
+          resources:
+            cpu:
+              limit: 100m
+              request: 10m
+            memory:
+              limit: 50Mi
+              request: 10Mi
+          saMountPath: null
+          xtMountPath:
+            mountPath: /run
+            name: linkerd-proxy-init-xtables-lock
+            readOnly: false
+        proxyInjectAnnotation: linkerd.io/inject
+        proxyInjectDisabled: disabled
+        workloadNamespaceLabel: linkerd.io/workload-ns
+      globalConfig:
+        evaluation_interval: 10s
+        scrape_interval: 10s
+        scrape_timeout: 10s
+      image: prom/prometheus:v2.19.3
+      partials:
+        global:
+          cliVersion: ""
+          clusterDomain: cluster.local
+          cniEnabled: false
+          controlPlaneTracing: false
+          controllerComponentLabel: linkerd.io/control-plane-component
+          controllerImageVersion: ""
+          controllerLogLevel: info
+          controllerNamespaceLabel: linkerd.io/control-plane-ns
+          createdByAnnotation: linkerd.io/created-by
+          enableEndpointSlices: false
+          grafanaUrl: ""
+          highAvailability: false
+          identityTrustAnchorsPEM: test-trust-anchor
+          identityTrustDomain: test.trust.domain
+          imagePullPolicy: IfNotPresent
+          imagePullSecrets: []
+          linkerdNamespaceLabel: linkerd.io/is-control-plane
+          linkerdVersion: linkerd-version
+          namespace: linkerd
+          prometheusUrl: ""
+          proxy:
+            capabilities: null
+            component: linkerd-controller
+            destinationGetNetworks: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+            disableIdentity: false
+            disableTap: false
+            enableExternalProfiles: false
+            image:
+              name: ghcr.io/linkerd/proxy
+              pullPolicy: IfNotPresent
+              version: test-proxy-version
+            inboundConnectTimeout: 100ms
+            isGateway: false
+            logFormat: plain
+            logLevel: warn,linkerd=info
+            opaquePorts: ""
+            outboundConnectTimeout: 1000ms
+            ports:
+              admin: 4191
+              control: 4190
+              inbound: 4143
+              outbound: 4140
+            requireIdentityOnInboundPorts: ""
+            resources:
+              cpu:
+                limit: ""
+                request: ""
+              memory:
+                limit: ""
+                request: ""
+            saMountPath: null
+            trace:
+              collectorSvcAccount: default
+              collectorSvcAddr: ""
+            uid: 2102
+            waitBeforeExitSeconds: 0
+            workloadKind: deployment
+          proxyContainerName: linkerd-proxy
+          proxyInit:
+            capabilities: null
+            closeWaitTimeoutSecs: 0
+            ignoreInboundPorts: "222"
+            ignoreOutboundPorts: "111"
+            image:
+              name: ghcr.io/linkerd/proxy-init
+              pullPolicy: IfNotPresent
+              version: test-proxy-init-version
+            resources:
+              cpu:
+                limit: 100m
+                request: 10m
+              memory:
+                limit: 50Mi
+                request: 10Mi
+            saMountPath: null
+            xtMountPath:
+              mountPath: /run
+              name: linkerd-proxy-init-xtables-lock
+              readOnly: false
+          proxyInjectAnnotation: linkerd.io/inject
+          proxyInjectDisabled: disabled
+          workloadNamespaceLabel: linkerd.io/workload-ns
+    proxyInjector:
+      caBundle: test-proxy-injector-ca-bundle
+      crtPEM: test-proxy-injector-crt-pem
+      externalSecret: false
+      keyPEM: test-proxy-injector-key-pem
+    proxyInjectorProxyResources: null
+    proxyInjectorResources: null
+    publicAPIProxyResources: null
+    publicAPIResources: null
+    restrictDashboardPrivileges: false
+    spValidatorProxyResources: null
+    spValidatorResources: null
+    stage: ""
+    tap:
+      caBundle: test-tap-ca-bundle
+      crtPEM: test-tap-crt-pem
+      externalSecret: false
+      keyPEM: test-tap-key-pem
+    tapProxyResources: null
+    tapResources: null
+    tolerations: null
+    tracing:
+      enabled: false
+    webImage: ghcr.io/linkerd/web
+    webProxyResources: null
+    webResources: null
+    webhookFailurePolicy: Ignore
 ---
 # Source: linkerd2/templates/identity.yaml
 ---

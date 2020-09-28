@@ -59,6 +59,9 @@ func TestUpgradeDefault(t *testing.T) {
 			continue
 		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -80,6 +83,9 @@ func TestUpgradeHA(t *testing.T) {
 			continue
 		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -124,6 +130,9 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 			continue
 		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -191,6 +200,9 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			if isProxyEnvDiff(diff.path) {
 				continue
 			}
@@ -307,6 +319,9 @@ func TestUpgradeTracingAddon(t *testing.T) {
 			continue
 		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			if id == "Deployment/linkerd-web" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args"}) {
 				continue
 			}
@@ -345,6 +360,9 @@ func TestUpgradeOverwriteTracingAddon(t *testing.T) {
 			continue
 		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -449,6 +467,9 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 			continue
 		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -470,6 +491,9 @@ func TestUpgradeWithAddonDisabled(t *testing.T) {
 			continue
 		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -504,6 +528,9 @@ func TestUpgradeEnableAddon(t *testing.T) {
 			continue
 		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			if id == "RoleBinding/linkerd-psp" && pathMatch(diff.path, []string{"subjects"}) {
 				continue
 			}
@@ -532,6 +559,9 @@ func TestUpgradeRemoveAddonKeys(t *testing.T) {
 			continue
 		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -561,6 +591,9 @@ func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
 			continue
 		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			if id == "Deployment/linkerd-grafana" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "resources"}) {
 				continue
 			}
@@ -774,4 +807,15 @@ func renderInstallAndUpgrade(t *testing.T, installOpts *installOptions, installF
 	installBuf := renderInstall(t, installValues(t, installOpts, installFlags))
 	upgradeBuf, err := renderUpgrade(t, installBuf.String(), upgradeOpts, upgradeFlags)
 	return installBuf, upgradeBuf, err
+}
+
+// Certain resources are expected to change during an upgrade. We can safely
+// ignore these diffs in every test.
+func ignorableDiff(id string, diff diff) bool {
+	if id == "ConfigMap/linkerd-config" && pathMatch(diff.path, []string{"data", "values"}) {
+		// The stored values will always change because at least the control
+		// plane and proxy versions will change.
+		return true
+	}
+	return false
 }

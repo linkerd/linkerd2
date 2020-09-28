@@ -34,3 +34,13 @@ data:
   {{- else -}}
   {{- include "linkerd.configs.install" . | nindent 4}}
   {{- end }}
+  values: |
+  {{- $values := deepCopy .Values }}
+  {{- /*
+    WARNING! All sensitive or private data such as TLS keys must be removed
+    here to avoid it being publicly readable.
+  */ -}}
+  {{- $_ := unset $values.identity.issuer.tls "keyPEM"}}
+  {{- $_ := unset $values "partials"}}
+  {{- $_ := unset $values "configs"}}
+  {{- toYaml $values | trim | nindent 4 }}
