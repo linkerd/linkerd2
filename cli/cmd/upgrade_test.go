@@ -22,6 +22,7 @@ const (
 	upgradeProxyVersion        = "UPGRADE-PROXY-VERSION"
 	upgradeControlPlaneVersion = "UPGRADE-CONTROL-PLANE-VERSION"
 	upgradeDebugVersion        = "UPGRADE-DEBUG-VERSION"
+	overridesSecret            = "Secret/linkerd-config-overrides"
 )
 
 type (
@@ -54,6 +55,9 @@ func TestUpgradeDefault(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -72,6 +76,9 @@ func TestUpgradeHA(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -113,6 +120,9 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -182,6 +192,9 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
 			if isProxyEnvDiff(diff.path) {
+				continue
+			}
+			if id == overridesSecret {
 				continue
 			}
 			if id == "ConfigMap/linkerd-config" {
@@ -290,6 +303,9 @@ func TestUpgradeTracingAddon(t *testing.T) {
 		}
 	}
 	for id, diffs := range diffMap {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			if id == "Deployment/linkerd-web" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args"}) {
 				continue
@@ -325,6 +341,9 @@ func TestUpgradeOverwriteTracingAddon(t *testing.T) {
 		}
 	}
 	for id, diffs := range diffMap {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -423,6 +442,9 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -441,6 +463,9 @@ func TestUpgradeWithAddonDisabled(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -472,6 +497,9 @@ func TestUpgradeEnableAddon(t *testing.T) {
 		}
 	}
 	for id, diffs := range diffMap {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			if id == "RoleBinding/linkerd-psp" && pathMatch(diff.path, []string{"subjects"}) {
 				continue
@@ -497,6 +525,9 @@ func TestUpgradeRemoveAddonKeys(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -523,6 +554,9 @@ func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
 		t.Error("Expected ConfigMap/linkerd-config-addons in upgrade output diff but was absent")
 	}
 	for id, diffs := range diffMap {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			if id == "Deployment/linkerd-grafana" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "resources"}) {
 				continue

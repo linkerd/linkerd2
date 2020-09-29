@@ -13,7 +13,7 @@ import (
 	"k8s.io/helm/pkg/timeconv"
 )
 
-const versionPlaceholder = "{version}"
+const versionPlaceholder = "linkerdVersionValue"
 
 // Chart holds the necessary info to render a Helm chart
 type Chart struct {
