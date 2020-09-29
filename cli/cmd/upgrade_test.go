@@ -390,6 +390,9 @@ func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
