@@ -1293,7 +1293,7 @@ spec:
         name: config
       - name: tls
         secret:
-          secretName: linkerd-proxy-injector-tls
+          secretName: linkerd-proxy-injector-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -1547,7 +1547,7 @@ spec:
       volumes:
       - name: tls
         secret:
-          secretName: linkerd-sp-validator-tls
+          secretName: linkerd-sp-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -1800,7 +1800,8 @@ spec:
         name: linkerd-identity-end-entity
       - name: tls
         secret:
-          secretName: linkerd-tap-tls
+          secretName: linkerd-tap-k8s-tls
+
 ---
 ###
 ### linkerd add-ons configuration

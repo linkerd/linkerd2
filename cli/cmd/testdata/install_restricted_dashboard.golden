@@ -368,17 +368,17 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-injector-tls
+  name: linkerd-proxy-injector-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: cHJveHkgaW5qZWN0b3IgY3J0
-  key.pem: cHJveHkgaW5qZWN0b3Iga2V5
+  tls.crt: cHJveHkgaW5qZWN0b3IgY3J0
+  tls.key: cHJveHkgaW5qZWN0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -454,17 +454,17 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-sp-validator-tls
+  name: linkerd-sp-validator-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: sp-validator
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
-  key.pem: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
+  tls.crt: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  tls.key: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -590,17 +590,17 @@ subjects:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-tap-tls
+  name: linkerd-tap-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: tap
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: dGFwIGNydA==
-  key.pem: dGFwIGtleQ==
+  tls.crt: dGFwIGNydA==
+  tls.key: dGFwIGtleQ==
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
@@ -2012,7 +2012,7 @@ spec:
         name: config
       - name: tls
         secret:
-          secretName: linkerd-proxy-injector-tls
+          secretName: linkerd-proxy-injector-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2266,7 +2266,7 @@ spec:
       volumes:
       - name: tls
         secret:
-          secretName: linkerd-sp-validator-tls
+          secretName: linkerd-sp-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2519,7 +2519,8 @@ spec:
         name: linkerd-identity-end-entity
       - name: tls
         secret:
-          secretName: linkerd-tap-tls
+          secretName: linkerd-tap-k8s-tls
+
 ---
 ###
 ### linkerd add-ons configuration
