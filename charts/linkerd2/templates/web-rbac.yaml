@@ -114,3 +114,4 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: web
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- include "partials.image-pull-secrets" . }}

@@ -44,8 +44,8 @@ func (hc *HealthChecker) addOnCategories() []category {
 				{
 					description: fmt.Sprintf("'%s' config map exists", k8s.AddOnsConfigMapName),
 					warning:     true,
-					check: func(context.Context) error {
-						return hc.checkIfAddOnsConfigMapExists()
+					check: func(ctx context.Context) error {
+						return hc.checkIfAddOnsConfigMapExists(ctx)
 					},
 				},
 			},
@@ -56,9 +56,9 @@ func (hc *HealthChecker) addOnCategories() []category {
 				{
 					description: "prometheus add-on service account exists",
 					warning:     true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if _, ok := hc.addOns[l5dcharts.PrometheusAddOn]; ok {
-							return hc.checkServiceAccounts([]string{"linkerd-prometheus"}, hc.ControlPlaneNamespace, "")
+							return hc.checkServiceAccounts(ctx, []string{"linkerd-prometheus"}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "prometheus add-on not enabled"}
 					},
@@ -66,9 +66,9 @@ func (hc *HealthChecker) addOnCategories() []category {
 				{
 					description: "prometheus add-on config map exists",
 					warning:     true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if _, ok := hc.addOns[l5dcharts.PrometheusAddOn]; ok {
-							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get("linkerd-prometheus-config", metav1.GetOptions{})
+							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(ctx, "linkerd-prometheus-config", metav1.GetOptions{})
 							return err
 						}
 						return &SkipError{Reason: "prometheus add-on not enabled"}
@@ -79,11 +79,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:             true,
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if _, ok := hc.addOns[l5dcharts.PrometheusAddOn]; ok {
 							// populate controlPlanePods to get the latest status, during retries
 							var err error
-							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
 							if err != nil {
 								return err
 							}
@@ -101,7 +101,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 				{
 					description: "grafana add-on service account exists",
 					warning:     true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							name, err := getString(grafana, "name")
 							if err != nil && !errors.Is(err, errorKeyNotFound) {
@@ -113,7 +113,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 								name = "linkerd-grafana"
 							}
 
-							return hc.checkServiceAccounts([]string{name}, hc.ControlPlaneNamespace, "")
+							return hc.checkServiceAccounts(ctx, []string{name}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
 					},
@@ -121,7 +121,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 				{
 					description: "grafana add-on config map exists",
 					warning:     true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							name, err := getString(grafana, "name")
 							if err != nil && !errors.Is(err, errorKeyNotFound) {
@@ -133,7 +133,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 								name = "linkerd-grafana"
 							}
 
-							_, err = hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", name), metav1.GetOptions{})
+							_, err = hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(ctx, fmt.Sprintf("%s-config", name), metav1.GetOptions{})
 							if err != nil {
 								return err
 							}
@@ -147,11 +147,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:             true,
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if _, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
 							// populate controlPlanePods to get the latest status, during retries
 							var err error
-							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
 							if err != nil {
 								return err
 							}
@@ -169,7 +169,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 				{
 					description: "collector service account exists",
 					warning:     true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
 
 							collector, mapError := getMap(tracing, "collector")
@@ -188,7 +188,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 								}
 							}
 
-							return hc.checkServiceAccounts([]string{collectorName}, hc.ControlPlaneNamespace, "")
+							return hc.checkServiceAccounts(ctx, []string{collectorName}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "tracing add-on not enabled"}
 					},
@@ -196,7 +196,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 				{
 					description: "jaeger service account exists",
 					warning:     true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
 							jaeger, mapError := getMap(tracing, "jaeger")
 
@@ -214,7 +214,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 								}
 							}
 
-							return hc.checkServiceAccounts([]string{jaegerName}, hc.ControlPlaneNamespace, "")
+							return hc.checkServiceAccounts(ctx, []string{jaegerName}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "tracing add-on not enabled"}
 					},
@@ -222,7 +222,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 				{
 					description: "collector config map exists",
 					warning:     true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
 							collector, mapError := getMap(tracing, "collector")
 
@@ -240,7 +240,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 								}
 							}
 
-							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(fmt.Sprintf("%s-config", collectorName), metav1.GetOptions{})
+							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(ctx, fmt.Sprintf("%s-config", collectorName), metav1.GetOptions{})
 							if err != nil {
 								return err
 							}
@@ -254,11 +254,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:             true,
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if _, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
 							// populate controlPlanePods to get the latest status, during retries
 							var err error
-							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
 							if err != nil {
 								return err
 							}
@@ -273,11 +273,11 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:             true,
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
-					check: func(context.Context) error {
+					check: func(ctx context.Context) error {
 						if _, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
 							// populate controlPlanePods to get the latest status, during retries
 							var err error
-							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(hc.ControlPlaneNamespace)
+							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
 							if err != nil {
 								return err
 							}
@@ -292,10 +292,10 @@ func (hc *HealthChecker) addOnCategories() []category {
 	}
 }
 
-func (hc *HealthChecker) checkIfAddOnsConfigMapExists() error {
+func (hc *HealthChecker) checkIfAddOnsConfigMapExists(ctx context.Context) error {
 
 	// Check if linkerd-config-addons ConfigMap present, If not skip the next checks
-	cm, err := hc.checkForAddOnCM()
+	cm, err := hc.checkForAddOnCM(ctx)
 	if err != nil {
 		return err
 	}
@@ -328,8 +328,8 @@ func (hc *HealthChecker) checkIfAddOnsConfigMapExists() error {
 	return nil
 }
 
-func (hc *HealthChecker) checkForAddOnCM() (string, error) {
-	cm, err := k8s.GetAddOnsConfigMap(hc.kubeAPI, hc.ControlPlaneNamespace)
+func (hc *HealthChecker) checkForAddOnCM(ctx context.Context) (string, error) {
+	cm, err := k8s.GetAddOnsConfigMap(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return "", err
 	}

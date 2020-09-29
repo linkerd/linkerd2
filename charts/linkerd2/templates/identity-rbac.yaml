@@ -46,4 +46,5 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: identity
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- include "partials.image-pull-secrets" . }}
 {{ end -}}

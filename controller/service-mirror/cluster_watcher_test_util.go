@@ -1,6 +1,7 @@
 package servicemirror
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"reflect"
@@ -70,7 +71,7 @@ func (te *testEnvironment) runEnvironment(watcherQueue workqueue.RateLimitingInt
 	}
 
 	for range te.events {
-		watcher.processNextEvent()
+		watcher.processNextEvent(context.Background())
 	}
 
 	localAPI.Sync(nil)

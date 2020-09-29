@@ -19,10 +19,10 @@ import (
 )
 
 // K8sValues gathers relevant heartbeat information from Kubernetes
-func K8sValues(kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) url.Values {
+func K8sValues(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) url.Values {
 	v := url.Values{}
 
-	cm, _, err := healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
+	cm, _, err := healthcheck.FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		log.Errorf("Failed to fetch linkerd-config: %s", err)
 	} else {

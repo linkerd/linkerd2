@@ -11,6 +11,7 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: linkerd-collector
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- include "partials.image-pull-secrets" . }}
 ---
 ###
 ### linkerd-jaeger RBAC
@@ -24,3 +25,4 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: linkerd-jaeger
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- include "partials.image-pull-secrets" . }}
