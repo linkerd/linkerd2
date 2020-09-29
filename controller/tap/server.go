@@ -315,7 +315,7 @@ func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *pro
 				return
 			}
 
-			translatedEvent := s.translateEvent(event)
+			translatedEvent := s.translateEvent(ctx, event)
 
 			select {
 			case <-ctx.Done():
@@ -331,7 +331,7 @@ func (s *GRPCTapServer) tapProxy(ctx context.Context, maxRps float32, match *pro
 	}
 }
 
-func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
+func (s *GRPCTapServer) translateEvent(ctx context.Context, orig *proxy.TapEvent) *public.TapEvent {
 	direction := func(orig proxy.TapEvent_ProxyDirection) public.TapEvent_ProxyDirection {
 		switch orig {
 		case proxy.TapEvent_INBOUND:
@@ -504,7 +504,7 @@ func (s *GRPCTapServer) translateEvent(orig *proxy.TapEvent) *public.TapEvent {
 		Event:          event(orig.GetHttp()),
 	}
 
-	s.hydrateEventLabels(ev)
+	s.hydrateEventLabels(ctx, ev)
 
 	return ev
 }
@@ -564,8 +564,8 @@ func indexByIP(obj interface{}) ([]string, error) {
 //
 // Since errors encountered while hydrating metadata are non-fatal and result
 // only in missing labels, any errors are logged at the WARN level.
-func (s *GRPCTapServer) hydrateEventLabels(ev *public.TapEvent) {
-	err := s.hydrateIPLabels(ev.GetSource().GetIp(), ev.GetSourceMeta().GetLabels())
+func (s *GRPCTapServer) hydrateEventLabels(ctx context.Context, ev *public.TapEvent) {
+	err := s.hydrateIPLabels(ctx, ev.GetSource().GetIp(), ev.GetSourceMeta().GetLabels())
 	if err != nil {
 		log.Warnf("error hydrating source labels: %s", err)
 	}
@@ -574,7 +574,7 @@ func (s *GRPCTapServer) hydrateEventLabels(ev *public.TapEvent) {
 		// Events emitted by an inbound proxies don't have destination labels,
 		// since the inbound proxy _is_ the destination, and proxies don't know
 		// their own labels.
-		err = s.hydrateIPLabels(ev.GetDestination().GetIp(), ev.GetDestinationMeta().GetLabels())
+		err = s.hydrateIPLabels(ctx, ev.GetDestination().GetIp(), ev.GetDestinationMeta().GetLabels())
 		if err != nil {
 			log.Warnf("error hydrating destination labels: %s", err)
 		}
@@ -584,7 +584,7 @@ func (s *GRPCTapServer) hydrateEventLabels(ev *public.TapEvent) {
 
 // hydrateIPMeta attempts to determine the metadata labels for `ip` and, if
 // successful, adds them to `labels`.
-func (s *GRPCTapServer) hydrateIPLabels(ip *public.IPAddress, labels map[string]string) error {
+func (s *GRPCTapServer) hydrateIPLabels(ctx context.Context, ip *public.IPAddress, labels map[string]string) error {
 	res, err := s.resourceForIP(ip)
 	if err != nil {
 		return err
@@ -596,7 +596,7 @@ func (s *GRPCTapServer) hydrateIPLabels(ip *public.IPAddress, labels map[string]
 			log.Debugf("no pod found for IP %s", addr.PublicIPToString(ip))
 			return nil
 		}
-		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(v, false)
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(ctx, v, false)
 		podLabels := pkgK8s.GetPodLabels(ownerKind, ownerName, v)
 		for key, value := range podLabels {
 			labels[key] = value

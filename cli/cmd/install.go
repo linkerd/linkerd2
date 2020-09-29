@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -273,7 +274,7 @@ resources for the Linkerd control plane. This command should be followed by
 					os.Exit(1)
 				}
 			}
-			return installRunE(options, configStage, parentFlags)
+			return installRunE(cmd.Context(), options, configStage, parentFlags)
 		},
 	}
 
@@ -317,14 +318,14 @@ control plane. It should be run after "linkerd install config".`,
 			}
 
 			if !options.ignoreCluster {
-				if err := errIfLinkerdConfigConfigMapExists(); err != nil {
+				if err := errIfLinkerdConfigConfigMapExists(cmd.Context()); err != nil {
 					fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, err.Error())
 					os.Exit(1)
 				}
 
 			}
 
-			return installRunE(options, controlPlaneStage, flags)
+			return installRunE(cmd.Context(), options, controlPlaneStage, flags)
 		},
 	}
 
@@ -380,7 +381,7 @@ control plane.`,
 				}
 			}
 
-			return installRunE(options, "", flags)
+			return installRunE(cmd.Context(), options, "", flags)
 		},
 	}
 
@@ -396,8 +397,8 @@ control plane.`,
 	return cmd
 }
 
-func installRunE(options *installOptions, stage string, flags *pflag.FlagSet) error {
-	values, _, err := options.validateAndBuild(stage, flags)
+func installRunE(ctx context.Context, options *installOptions, stage string, flags *pflag.FlagSet) error {
+	values, _, err := options.validateAndBuild(ctx, stage, flags)
 	if err != nil {
 		return err
 	}
@@ -405,21 +406,21 @@ func installRunE(options *installOptions, stage string, flags *pflag.FlagSet) er
 	return render(os.Stdout, values)
 }
 
-func (options *installOptions) validateAndBuild(stage string, flags *pflag.FlagSet) (*l5dcharts.Values, *pb.All, error) {
+func (options *installOptions) validateAndBuild(ctx context.Context, stage string, flags *pflag.FlagSet) (*l5dcharts.Values, *pb.All, error) {
 	if err := options.validate(); err != nil {
 		return nil, nil, err
 	}
 
 	options.recordFlags(flags)
 
-	identityValues, err := options.identityOptions.validateAndBuild()
+	identityValues, err := options.identityOptions.validateAndBuild(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	return options.validateAndBuildWithIdentity(stage, identityValues)
+	return options.validateAndBuildWithIdentity(ctx, stage, identityValues)
 }
 
-func (options *installOptions) validateAndBuildWithIdentity(stage string, identityValues *identityWithAnchorsAndTrustDomain) (*l5dcharts.Values, *pb.All, error) {
+func (options *installOptions) validateAndBuildWithIdentity(ctx context.Context, stage string, identityValues *identityWithAnchorsAndTrustDomain) (*l5dcharts.Values, *pb.All, error) {
 	configs := options.configs(toIdentityContext(identityValues))
 
 	values, err := options.buildValuesWithoutIdentity(configs)
@@ -438,7 +439,7 @@ func (options *installOptions) validateAndBuildWithIdentity(stage string, identi
 	}
 
 	if options.enableEndpointSlices {
-		if err = validateEndpointSlicesFeature(); err != nil {
+		if err = validateEndpointSlicesFeature(ctx); err != nil {
 			return nil, nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
 		}
 	}
@@ -675,13 +676,13 @@ func (options *installOptions) validate() error {
 	return nil
 }
 
-func validateEndpointSlicesFeature() error {
+func validateEndpointSlicesFeature(ctx context.Context) error {
 	k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return err
 	}
 
-	return k8s.EndpointSliceAccess(k8sAPI)
+	return k8s.EndpointSliceAccess(ctx, k8sAPI)
 }
 
 // buildValuesWithoutIdentity builds the values that will be used to render
@@ -1042,13 +1043,13 @@ func errAfterRunningChecks(options *installOptions) error {
 	return nil
 }
 
-func errIfLinkerdConfigConfigMapExists() error {
+func errIfLinkerdConfigConfigMapExists(ctx context.Context) error {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return err
 	}
 
-	_, err = kubeAPI.CoreV1().Namespaces().Get(controlPlaneNamespace, metav1.GetOptions{})
+	_, err = kubeAPI.CoreV1().Namespaces().Get(ctx, controlPlaneNamespace, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -1122,7 +1123,7 @@ func (idopts *installIdentityOptions) validate() error {
 	return nil
 }
 
-func (idopts *installIdentityOptions) validateAndBuild() (*identityWithAnchorsAndTrustDomain, error) {
+func (idopts *installIdentityOptions) validateAndBuild(ctx context.Context) (*identityWithAnchorsAndTrustDomain, error) {
 	if idopts == nil {
 		return nil, nil
 	}
@@ -1132,7 +1133,7 @@ func (idopts *installIdentityOptions) validateAndBuild() (*identityWithAnchorsAn
 	}
 
 	if idopts.identityExternalIssuer {
-		return idopts.readExternallyManaged()
+		return idopts.readExternallyManaged(ctx)
 	} else if idopts.trustPEMFile != "" && idopts.crtPEMFile != "" && idopts.keyPEMFile != "" {
 		return idopts.readValues()
 	} else {
@@ -1169,14 +1170,14 @@ func (idopts *installIdentityOptions) genValues() (*identityWithAnchorsAndTrustD
 	}, nil
 }
 
-func (idopts *installIdentityOptions) readExternallyManaged() (*identityWithAnchorsAndTrustDomain, error) {
+func (idopts *installIdentityOptions) readExternallyManaged(ctx context.Context) (*identityWithAnchorsAndTrustDomain, error) {
 
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching external issuer config: %s", err)
 	}
 
-	externalIssuerData, err := issuercerts.FetchExternalIssuerData(kubeAPI, controlPlaneNamespace)
+	externalIssuerData, err := issuercerts.FetchExternalIssuerData(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		return nil, err
 	}

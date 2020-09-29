@@ -1,6 +1,7 @@
 package servicemirror
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -30,7 +31,7 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 
 		if tc.expectedLocalServices == nil {
 			// ensure the are no local services
-			services, err := localAPI.Client.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{})
+			services, err := localAPI.Client.CoreV1().Services(corev1.NamespaceAll).List(context.Background(), metav1.ListOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -40,7 +41,7 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 			}
 		} else {
 			for _, expected := range tc.expectedLocalServices {
-				actual, err := localAPI.Client.CoreV1().Services(expected.Namespace).Get(expected.Name, metav1.GetOptions{})
+				actual, err := localAPI.Client.CoreV1().Services(expected.Namespace).Get(context.Background(), expected.Name, metav1.GetOptions{})
 				if err != nil {
 					t.Fatalf("Could not find mirrored service with name %s", expected.Name)
 				}
@@ -56,7 +57,7 @@ func (tc *mirroringTestCase) run(t *testing.T) {
 			// to delete the endpoints.
 		} else {
 			for _, expected := range tc.expectedLocalEndpoints {
-				actual, err := localAPI.Client.CoreV1().Endpoints(expected.Namespace).Get(expected.Name, metav1.GetOptions{})
+				actual, err := localAPI.Client.CoreV1().Endpoints(expected.Namespace).Get(context.Background(), expected.Name, metav1.GetOptions{})
 				if err != nil {
 					t.Fatalf("Could not find endpoints with name %s", expected.Name)
 				}

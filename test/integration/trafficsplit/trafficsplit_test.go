@@ -1,6 +1,7 @@
 package trafficsplit
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -153,8 +154,9 @@ func TestTrafficSplitCli(t *testing.T) {
 			"'linkerd inject' command failed\n%s\n%s", out, stderr)
 	}
 
+	ctx := context.Background()
 	prefixedNs := TestHelper.GetTestNamespace("trafficsplit-test")
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(prefixedNs, nil)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", prefixedNs),
 			"failed to create %s namespace: %s", prefixedNs, err)
@@ -167,7 +169,7 @@ func TestTrafficSplitCli(t *testing.T) {
 
 	// wait for deployments to start
 	for _, deploy := range []string{"backend", "failing", "slow-cooker"} {
-		if err := TestHelper.CheckPods(prefixedNs, deploy, 1); err != nil {
+		if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, 1); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
@@ -175,7 +177,7 @@ func TestTrafficSplitCli(t *testing.T) {
 			}
 		}
 
-		if err := TestHelper.CheckDeployment(prefixedNs, deploy, 1); err != nil {
+		if err := TestHelper.CheckDeployment(ctx, prefixedNs, deploy, 1); err != nil {
 			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}

@@ -49,6 +49,10 @@ env:
 - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
   value: /var/run/linkerd/podinfo/labels
 {{ end -}}
+{{ if .Values.global.proxy.opaquePorts -}}
+- name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+  value: "{{.Values.global.proxy.opaquePorts}}"
+{{ end -}}
 - name: _pod_ns
   valueFrom:
     fieldRef:

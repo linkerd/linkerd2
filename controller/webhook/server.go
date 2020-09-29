@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-type handlerFunc func(*k8s.API, *admissionv1beta1.AdmissionRequest, record.EventRecorder) (*admissionv1beta1.AdmissionResponse, error)
+type handlerFunc func(context.Context, *k8s.API, *admissionv1beta1.AdmissionRequest, record.EventRecorder) (*admissionv1beta1.AdmissionResponse, error)
 
 // Server describes the https server implementing the webhook
 type Server struct {
@@ -90,7 +90,7 @@ func (s *Server) serve(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response := s.processReq(data)
+	response := s.processReq(req.Context(), data)
 	responseJSON, err := json.Marshal(response)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -103,7 +103,7 @@ func (s *Server) serve(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) processReq(data []byte) *admissionv1beta1.AdmissionReview {
+func (s *Server) processReq(ctx context.Context, data []byte) *admissionv1beta1.AdmissionReview {
 	admissionReview, err := decode(data)
 	if err != nil {
 		log.Errorf("failed to decode data. Reason: %s", err)
@@ -119,7 +119,7 @@ func (s *Server) processReq(data []byte) *admissionv1beta1.AdmissionReview {
 	log.Infof("received admission review request %s", admissionReview.Request.UID)
 	log.Debugf("admission request: %+v", admissionReview.Request)
 
-	admissionResponse, err := s.handler(s.api, admissionReview.Request, s.recorder)
+	admissionResponse, err := s.handler(ctx, s.api, admissionReview.Request, s.recorder)
 	if err != nil {
 		log.Error("failed to inject sidecar. Reason: ", err)
 		admissionReview.Response = &admissionv1beta1.AdmissionResponse{

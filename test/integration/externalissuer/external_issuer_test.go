@@ -1,6 +1,7 @@
 package externalissuer
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -30,20 +31,21 @@ func TestMain(m *testing.M) {
 func TestExternalIssuer(t *testing.T) {
 	verifyInstallApp(t)
 	verifyAppWorksBeforeCertRotation(t)
-	verifyRotateExternalCerts(t)
+	verifyRotateExternalCerts(context.Background(), t)
 	verifyIdentityServiceReloadsIssuerCert(t)
 	ensureNewCSRSAreServed()
 	verifyAppWorksAfterCertRotation(t)
 }
 
 func verifyInstallApp(t *testing.T) {
+	ctx := context.Background()
 	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/external_issuer_application.yaml")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "'linkerd inject' command failed\n%s\n%s", out, stderr)
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace(TestAppNamespaceSuffix)
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(prefixedNs, nil)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", prefixedNs, err)
 	}
@@ -52,7 +54,7 @@ func verifyInstallApp(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed", "'kubectl apply' command failed\n%s", out)
 	}
 
-	if err := TestHelper.CheckPods(prefixedNs, TestAppBackendDeploymentName, 1); err != nil {
+	if err := TestHelper.CheckPods(ctx, prefixedNs, TestAppBackendDeploymentName, 1); err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 		} else {
@@ -60,7 +62,7 @@ func verifyInstallApp(t *testing.T) {
 		}
 	}
 
-	if err := TestHelper.CheckPods(prefixedNs, "slow-cooker", 1); err != nil {
+	if err := TestHelper.CheckPods(ctx, prefixedNs, "slow-cooker", 1); err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 		} else {
@@ -98,11 +100,11 @@ func verifyAppWorksBeforeCertRotation(t *testing.T) {
 	}
 }
 
-func verifyRotateExternalCerts(t *testing.T) {
+func verifyRotateExternalCerts(ctx context.Context, t *testing.T) {
 	// We rotate the certificates here by simply grabbing
 	// the key and cert values from the temporary secret we have
 	// created
-	secretWithUpdatedData, err := TestHelper.KubernetesHelper.GetSecret(TestHelper.GetLinkerdNamespace(), k8s.IdentityIssuerSecretName+"-new")
+	secretWithUpdatedData, err := TestHelper.KubernetesHelper.GetSecret(ctx, TestHelper.GetLinkerdNamespace(), k8s.IdentityIssuerSecretName+"-new")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to fetch new secret data resource", "failed to fetch new secret data resource: %s", err)
 	}

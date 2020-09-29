@@ -2,6 +2,7 @@ package edges
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -60,10 +61,11 @@ func TestEdges(t *testing.T) {
 // sends traffic directly to the pod ip of the terminus pod.
 func TestDirectEdges(t *testing.T) {
 
+	ctx := context.Background()
 	// setup
 
 	testNamespace := TestHelper.GetTestNamespace("direct-edges-test")
-	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(testNamespace, nil)
+	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, testNamespace, nil)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", testNamespace, err)
 	}
@@ -82,7 +84,7 @@ func TestDirectEdges(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "kubectl apply command failed", "kubectl apply command failed\n%s", out)
 	}
 
-	if err := TestHelper.CheckPods(testNamespace, "terminus", 1); err != nil {
+	if err := TestHelper.CheckPods(ctx, testNamespace, "terminus", 1); err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 		} else {
@@ -90,7 +92,7 @@ func TestDirectEdges(t *testing.T) {
 		}
 	}
 
-	if err := TestHelper.CheckDeployment(testNamespace, "terminus", 1); err != nil {
+	if err := TestHelper.CheckDeployment(ctx, testNamespace, "terminus", 1); err != nil {
 		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", "terminus", err)
 	}
 
@@ -124,7 +126,7 @@ func TestDirectEdges(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "kubectl apply command failed", "kubectl apply command failed\n%s", out)
 	}
 
-	if err := TestHelper.CheckPods(testNamespace, "slow-cooker", 1); err != nil {
+	if err := TestHelper.CheckPods(ctx, testNamespace, "slow-cooker", 1); err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 		} else {
@@ -132,7 +134,7 @@ func TestDirectEdges(t *testing.T) {
 		}
 	}
 
-	if err := TestHelper.CheckDeployment(testNamespace, "slow-cooker", 1); err != nil {
+	if err := TestHelper.CheckDeployment(ctx, testNamespace, "slow-cooker", 1); err != nil {
 		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "error validating deployment [%s]:\n%s", "terminus", err)
 	}
 

@@ -26,8 +26,10 @@ import (
 )
 
 // ServiceProfileLister helps list ServiceProfiles.
+// All objects returned here must be treated as read-only.
 type ServiceProfileLister interface {
 	// List lists all ServiceProfiles in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha2.ServiceProfile, err error)
 	// ServiceProfiles returns an object that can list and get ServiceProfiles.
 	ServiceProfiles(namespace string) ServiceProfileNamespaceLister
@@ -58,10 +60,13 @@ func (s *serviceProfileLister) ServiceProfiles(namespace string) ServiceProfileN
 }
 
 // ServiceProfileNamespaceLister helps list and get ServiceProfiles.
+// All objects returned here must be treated as read-only.
 type ServiceProfileNamespaceLister interface {
 	// List lists all ServiceProfiles in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha2.ServiceProfile, err error)
 	// Get retrieves the ServiceProfile from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha2.ServiceProfile, error)
 	ServiceProfileNamespaceListerExpansion
 }

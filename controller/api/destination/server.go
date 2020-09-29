@@ -102,6 +102,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	}
 
 	translator := newEndpointTranslator(
+		stream.Context(),
 		s.controllerNS,
 		s.identityTrustDomain,
 		s.enableH2Upgrade,
