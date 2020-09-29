@@ -122,7 +122,7 @@ func getLinkerdConfigMap(ctx context.Context) (*linkerd2.Values, error) {
 		return nil, err
 	}
 
-	values, err := healthcheck.FetchCurrentConfiguration(kubeAPI, controlPlaneNamespace)
+	values, err := healthcheck.FetchCurrentConfiguration(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		return nil, err
 	}

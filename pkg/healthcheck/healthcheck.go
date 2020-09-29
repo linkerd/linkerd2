@@ -613,7 +613,7 @@ func (hc *HealthChecker) allCategories() []category {
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
 						// TODO: Set hc.uuid to the current value here
-						hc.linkerdConfig, err = FetchCurrentConfiguration(hc.kubeAPI, hc.ControlPlaneNamespace)
+						hc.linkerdConfig, err = FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 
 						if hc.linkerdConfig != nil {
 							hc.CNIEnabled = hc.linkerdConfig.Global.CNIEnabled
@@ -1560,7 +1560,7 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 }
 
 func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (string, *l5dcharts.Values, error) {
-	values, err := FetchCurrentConfiguration(hc.kubeAPI, hc.ControlPlaneNamespace)
+	values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return "", nil, err
 	}
@@ -1575,7 +1575,7 @@ func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (strin
 // 3. The trust anchors (if scheme == kubernetes.io/tls) in the secret equal the ones in config
 // 4. The certs and key are parsable
 func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred, []*x509.Certificate, error) {
-	values, err := FetchCurrentConfiguration(hc.kubeAPI, hc.ControlPlaneNamespace)
+	values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1612,10 +1612,10 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 
 // FetchCurrentConfiguration retrieves the current Linkerd configuration
 // in the cluster
-func FetchCurrentConfiguration(k kubernetes.Interface, controlPlaneNamespace string) (*l5dcharts.Values, error) {
+func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*l5dcharts.Values, error) {
 
 	// Get the linkerd-state cm if present
-	if configMap, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get("linkerd-state", metav1.GetOptions{}); err == nil {
+	if configMap, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, "linkerd-state", metav1.GetOptions{}); err == nil {
 		var fullValues *l5dcharts.Values
 		err = yaml.Unmarshal([]byte(configMap.Data["values"]), &fullValues)
 		if err != nil {
@@ -1626,7 +1626,7 @@ func FetchCurrentConfiguration(k kubernetes.Interface, controlPlaneNamespace str
 
 	// fall back to the older configMap
 	// TODO: remove this once the newer config override secret becomes the default i.e 2.10
-	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(k8s.ConfigConfigMapName, metav1.GetOptions{})
+	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1992,7 +1992,7 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) e
 		return err
 	}
 
-	values, err := FetchCurrentConfiguration(hc.kubeAPI, hc.ControlPlaneNamespace)
+	values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return err
 	}

@@ -105,7 +105,7 @@ func newCmdProfile() *cobra.Command {
 				return err
 			}
 
-			values, err := healthcheck.FetchCurrentConfiguration(k8sAPI, controlPlaneNamespace)
+			values, err := healthcheck.FetchCurrentConfiguration(cmd.Context(), k8sAPI, controlPlaneNamespace)
 			if err != nil {
 				return err
 			}

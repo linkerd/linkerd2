@@ -373,7 +373,7 @@ func (hc *HealthChecker) checkRemoteClusterAnchors(ctx context.Context) error {
 			continue
 		}
 
-		values, err := FetchCurrentConfiguration(remoteAPI, link.TargetClusterLinkerdNamespace)
+		values, err := FetchCurrentConfiguration(ctx, remoteAPI, link.TargetClusterLinkerdNamespace)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("* %s: unable to fetch anchors: %s", link.TargetClusterName, err))
 			continue
