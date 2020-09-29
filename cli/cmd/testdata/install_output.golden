@@ -847,6 +847,7 @@ data:
       imagePullPolicy: ImagePullPolicy
       imagePullSecrets: null
       linkerdNamespaceLabel: LinkerdNamespaceLabel
+      linkerdVersion: ""
       namespace: Namespace
       prometheusUrl: ""
       proxy:
@@ -940,7 +941,6 @@ data:
       caBundle: profile validator CA bundle
       crtPEM: profile validator crt
       externalSecret: false
-      keyPEM: profile validator key
     prometheus:
       enabled: true
       image: PrometheusImage
@@ -948,7 +948,6 @@ data:
       caBundle: proxy injector CA bundle
       crtPEM: proxy injector crt
       externalSecret: false
-      keyPEM: proxy injector key
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     publicAPIProxyResources: null
@@ -961,7 +960,6 @@ data:
       caBundle: tap CA bundle
       crtPEM: tap crt
       externalSecret: false
-      keyPEM: tap key
     tapProxyResources: null
     tapResources: null
     tolerations: null

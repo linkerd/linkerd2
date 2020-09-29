@@ -1170,7 +1170,7 @@ data:
         clockSkewAllowance: 20s
         crtExpiry: Jul 30 17:21:14 2020
         crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
-        issuanceLifetime: 86400s
+        issuanceLifetime: 24h0m0s
         scheme: linkerd.io/tls
         tls:
           crtPEM: test-crt-pem
@@ -1184,7 +1184,6 @@ data:
       caBundle: test-profile-validator-ca-bundle
       crtPEM: test-profile-validator-crt-pem
       externalSecret: false
-      keyPEM: test-profile-validator-key-pem
     prometheus:
       args:
         config.file: /etc/prometheus/prometheus.yml
@@ -1368,7 +1367,6 @@ data:
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: test-proxy-injector-crt-pem
       externalSecret: false
-      keyPEM: test-proxy-injector-key-pem
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     publicAPIProxyResources: null
@@ -1381,7 +1379,6 @@ data:
       caBundle: test-tap-ca-bundle
       crtPEM: test-tap-crt-pem
       externalSecret: false
-      keyPEM: test-tap-key-pem
     tapProxyResources: null
     tapResources: null
     tolerations: null

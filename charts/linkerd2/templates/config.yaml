@@ -41,6 +41,9 @@ data:
     here to avoid it being publicly readable.
   */ -}}
   {{- $_ := unset $values.identity.issuer.tls "keyPEM"}}
+  {{- $_ := unset $values.profileValidator "keyPEM"}}
+  {{- $_ := unset $values.proxyInjector "keyPEM"}}
+  {{- $_ := unset $values.tap "keyPEM"}}
   {{- $_ := unset $values "partials"}}
   {{- $_ := unset $values "configs"}}
   {{- toYaml $values | trim | nindent 4 }}

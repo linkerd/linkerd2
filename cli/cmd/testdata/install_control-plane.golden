@@ -63,6 +63,7 @@ data:
       imagePullPolicy: IfNotPresent
       imagePullSecrets: []
       linkerdNamespaceLabel: linkerd.io/is-control-plane
+      linkerdVersion: dev-undefined
       namespace: linkerd
       prometheusUrl: ""
       proxy:
@@ -162,14 +163,12 @@ data:
       caBundle: ""
       crtPEM: ""
       externalSecret: false
-      keyPEM: ""
     prometheus:
       enabled: true
     proxyInjector:
       caBundle: ""
       crtPEM: ""
       externalSecret: false
-      keyPEM: ""
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     publicAPIProxyResources: null
@@ -182,7 +181,6 @@ data:
       caBundle: ""
       crtPEM: ""
       externalSecret: false
-      keyPEM: ""
     tapProxyResources: null
     tapResources: null
     tolerations: null
