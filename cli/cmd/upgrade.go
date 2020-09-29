@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -87,7 +88,7 @@ Note that this command should be followed by "linkerd upgrade control-plane".`,
 		Example: `  # Default upgrade.
   linkerd upgrade config | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return upgradeRunE(options, configStage, options.recordableFlagSet())
+			return upgradeRunE(cmd.Context(), options, configStage, options.recordableFlagSet())
 		},
 	}
 
@@ -112,7 +113,7 @@ install command. It should be run after "linkerd upgrade config".`,
 		Example: `  # Default upgrade.
   linkerd upgrade control-plane | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return upgradeRunE(options, controlPlaneStage, flags)
+			return upgradeRunE(cmd.Context(), options, controlPlaneStage, flags)
 		},
 	}
 
@@ -146,7 +147,7 @@ install command.`,
   # Similar to install, upgrade may also be broken up into two stages, by user
   # privilege.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return upgradeRunE(options, "", flags)
+			return upgradeRunE(cmd.Context(), options, "", flags)
 		},
 	}
 
@@ -159,7 +160,7 @@ install command.`,
 	return cmd
 }
 
-func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) error {
+func upgradeRunE(ctx context.Context, options *upgradeOptions, stage string, flags *pflag.FlagSet) error {
 	if options.ignoreCluster {
 		panic("ignore cluster must be unset") // Programmer error.
 	}
@@ -184,7 +185,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 		}
 	}
 
-	values, err := options.validateAndBuild(stage, k, flags)
+	values, err := options.validateAndBuild(ctx, stage, k, flags)
 	if err != nil {
 		upgradeErrorf("Failed to build upgrade configuration: %s", err)
 	}
@@ -209,7 +210,7 @@ func upgradeRunE(options *upgradeOptions, stage string, flags *pflag.FlagSet) er
 	return nil
 }
 
-func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesAPI, flags *pflag.FlagSet) (*charts.Values, error) {
+func (options *upgradeOptions) validateAndBuild(ctx context.Context, stage string, k *k8s.KubernetesAPI, flags *pflag.FlagSet) (*charts.Values, error) {
 	if err := options.validate(); err != nil {
 		return nil, err
 	}
@@ -218,7 +219,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	// to upgrade/reinstall the control plane when the API is not available; and
 	// this also serves as a passive check that we have privileges to access this
 	// control plane.
-	_, configs, err := healthcheck.FetchLinkerdConfigMap(k, controlPlaneNamespace)
+	_, configs, err := healthcheck.FetchLinkerdConfigMap(ctx, k, controlPlaneNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch configs from kubernetes: %s", err)
 	}
@@ -243,7 +244,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	options.overrideConfigs(configs, map[string]string{})
 
 	if options.enableEndpointSlices {
-		if err = validateEndpointSlicesFeature(); err != nil {
+		if err = validateEndpointSlicesFeature(ctx); err != nil {
 			return nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
 		}
 	}
@@ -294,7 +295,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 		}
 		configs.GetGlobal().IdentityContext = toIdentityContext(identity)
 	} else {
-		identity, err = options.fetchIdentityValues(k, idctx)
+		identity, err = options.fetchIdentityValues(ctx, k, idctx)
 		if err != nil {
 			return nil, err
 		}
@@ -320,7 +321,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 
 	// if exist, re-use the proxy injector, profile validator and tap TLS secrets.
 	// otherwise, let Helm generate them by creating an empty charts.TLS struct here.
-	proxyInjectorTLS, err := fetchTLSSecret(k, k8s.ProxyInjectorWebhookServiceName, options)
+	proxyInjectorTLS, err := fetchTLSSecret(ctx, k, k8s.ProxyInjectorWebhookServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("could not fetch existing proxy injector secret: %s", err)
@@ -329,7 +330,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	}
 	values.ProxyInjector = &charts.ProxyInjector{TLS: proxyInjectorTLS}
 
-	profileValidatorTLS, err := fetchTLSSecret(k, k8s.SPValidatorWebhookServiceName, options)
+	profileValidatorTLS, err := fetchTLSSecret(ctx, k, k8s.SPValidatorWebhookServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("could not fetch existing profile validator secret: %s", err)
@@ -338,7 +339,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 	}
 	values.ProfileValidator = &charts.ProfileValidator{TLS: profileValidatorTLS}
 
-	tapTLS, err := fetchTLSSecret(k, k8s.TapServiceName, options)
+	tapTLS, err := fetchTLSSecret(ctx, k, k8s.TapServiceName, options)
 	if err != nil {
 		if !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("could not fetch existing tap secret: %s", err)
@@ -351,7 +352,7 @@ func (options *upgradeOptions) validateAndBuild(stage string, k *k8s.KubernetesA
 
 	if !options.addOnOverwrite {
 		// Update Add-Ons Configuration from the linkerd-value cm
-		cmRawValues, _ := k8s.GetAddOnsConfigMap(k, controlPlaneNamespace)
+		cmRawValues, _ := k8s.GetAddOnsConfigMap(ctx, k, controlPlaneNamespace)
 		if cmRawValues != nil {
 			//Cm is present now get the data
 			cmData, ok := cmRawValues["values"]
@@ -426,17 +427,17 @@ func repairConfigs(configs *pb.All) {
 	}
 }
 
-func injectCABundle(k *k8s.KubernetesAPI, webhook string, value *charts.TLS) error {
+func injectCABundle(ctx context.Context, k *k8s.KubernetesAPI, webhook string, value *charts.TLS) error {
 
 	var err error
 
 	switch webhook {
 	case k8s.ProxyInjectorWebhookServiceName:
-		err = injectCABundleFromMutatingWebhook(k, k8s.ProxyInjectorWebhookConfigName, value)
+		err = injectCABundleFromMutatingWebhook(ctx, k, k8s.ProxyInjectorWebhookConfigName, value)
 	case k8s.SPValidatorWebhookServiceName:
-		err = injectCABundleFromValidatingWebhook(k, k8s.SPValidatorWebhookConfigName, value)
+		err = injectCABundleFromValidatingWebhook(ctx, k, k8s.SPValidatorWebhookConfigName, value)
 	case k8s.TapServiceName:
-		err = injectCABundleFromAPIService(k, k8s.TapAPIRegistrationServiceName, value)
+		err = injectCABundleFromAPIService(ctx, k, k8s.TapAPIRegistrationServiceName, value)
 	default:
 		err = fmt.Errorf("unknown webhook for retrieving CA bundle: %s", webhook)
 	}
@@ -451,8 +452,8 @@ func injectCABundle(k *k8s.KubernetesAPI, webhook string, value *charts.TLS) err
 	return nil
 }
 
-func injectCABundleFromMutatingWebhook(k kubernetes.Interface, resource string, value *charts.TLS) error {
-	webhookConf, err := k.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(resource, metav1.GetOptions{})
+func injectCABundleFromMutatingWebhook(ctx context.Context, k kubernetes.Interface, resource string, value *charts.TLS) error {
+	webhookConf, err := k.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().Get(ctx, resource, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -463,8 +464,8 @@ func injectCABundleFromMutatingWebhook(k kubernetes.Interface, resource string, 
 	return nil
 }
 
-func injectCABundleFromValidatingWebhook(k kubernetes.Interface, resource string, value *charts.TLS) error {
-	webhookConf, err := k.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(resource, metav1.GetOptions{})
+func injectCABundleFromValidatingWebhook(ctx context.Context, k kubernetes.Interface, resource string, value *charts.TLS) error {
+	webhookConf, err := k.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().Get(ctx, resource, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -473,8 +474,8 @@ func injectCABundleFromValidatingWebhook(k kubernetes.Interface, resource string
 	return nil
 }
 
-func injectCABundleFromAPIService(k *k8s.KubernetesAPI, resource string, value *charts.TLS) error {
-	apiService, err := k.Apiregistration.ApiregistrationV1().APIServices().Get(resource, metav1.GetOptions{})
+func injectCABundleFromAPIService(ctx context.Context, k *k8s.KubernetesAPI, resource string, value *charts.TLS) error {
+	apiService, err := k.Apiregistration.ApiregistrationV1().APIServices().Get(ctx, resource, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -483,10 +484,10 @@ func injectCABundleFromAPIService(k *k8s.KubernetesAPI, resource string, value *
 	return nil
 }
 
-func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+func fetchLinkerdTLSSecret(ctx context.Context, k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
-		Get(webhookSecretName(webhook), metav1.GetOptions{})
+		Get(ctx, webhookSecretName(webhook), metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -496,7 +497,7 @@ func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOption
 		CrtPEM: string(secret.Data["crt.pem"]),
 	}
 
-	if err := injectCABundle(k, webhook, value); err != nil {
+	if err := injectCABundle(ctx, k, webhook, value); err != nil {
 		return nil, err
 	}
 
@@ -507,8 +508,52 @@ func fetchTLSSecret(k *k8s.KubernetesAPI, webhook string, options *upgradeOption
 	return value, nil
 }
 
-func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred) error {
-	meshedPods, err := healthcheck.GetMeshedPodsIdentityData(k, "")
+func fetchK8sTLSSecret(ctx context.Context, k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+	webhookSecretNameStr := webhookK8sSecretName(webhook)
+
+	secret, err := k.CoreV1().
+		Secrets(controlPlaneNamespace).
+		Get(ctx, webhookSecretNameStr, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	if secret.Data == nil || secret.Data["tls.key"] == nil || secret.Data["tls.crt"] == nil {
+		return nil, fmt.Errorf("TLS Secret %s is missing data fields (data.tls.key and data.tls.crt expected)", webhookSecretNameStr)
+	}
+
+	value := &charts.TLS{
+		KeyPEM: string(secret.Data["tls.key"]),
+		CrtPEM: string(secret.Data["tls.crt"]),
+	}
+
+	if err := injectCABundle(ctx, k, webhook, value); err != nil {
+		return nil, err
+	}
+
+	if err := options.verifyTLS(value, webhook); err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+// try to fetch K8sTLSSecret, but revert to LinkerdTLSSecret if the former fails
+func fetchTLSSecret(ctx context.Context, k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+	tls, err := fetchK8sTLSSecret(ctx, k, webhook, options)
+	if err == nil {
+		return tls, err
+	}
+
+	if !kerrors.IsNotFound(err) {
+		return tls, err
+	}
+
+	return fetchLinkerdTLSSecret(ctx, k, webhook, options)
+}
+
+func ensureIssuerCertWorksWithAllProxies(ctx context.Context, k kubernetes.Interface, cred *tls.Cred) error {
+	meshedPods, err := healthcheck.GetMeshedPodsIdentityData(ctx, k, "")
 	var problematicPods []string
 	if err != nil {
 		return err
@@ -538,7 +583,7 @@ func ensureIssuerCertWorksWithAllProxies(k kubernetes.Interface, cred *tls.Cred)
 //
 // This bypasses the public API so that we can access secrets and validate
 // permissions.
-func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx *pb.IdentityContext) (*identityWithAnchorsAndTrustDomain, error) {
+func (options *upgradeOptions) fetchIdentityValues(ctx context.Context, k kubernetes.Interface, idctx *pb.IdentityContext) (*identityWithAnchorsAndTrustDomain, error) {
 	if idctx == nil {
 		return nil, nil
 	}
@@ -569,7 +614,7 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 	if updatingIssuerCert {
 		issuerData, err = readIssuer(trustAnchorsPEM, options.identityOptions.crtPEMFile, options.identityOptions.keyPEMFile)
 	} else {
-		issuerData, err = fetchIssuer(k, trustAnchorsPEM, idctx.Scheme)
+		issuerData, err = fetchIssuer(ctx, k, trustAnchorsPEM, idctx.Scheme)
 	}
 	if err != nil {
 		return nil, err
@@ -582,7 +627,7 @@ func (options *upgradeOptions) fetchIdentityValues(k kubernetes.Interface, idctx
 	issuerData.Expiry = &cred.Crt.Certificate.NotAfter
 
 	if updatingIssuerCert && !options.force {
-		if err := ensureIssuerCertWorksWithAllProxies(k, cred); err != nil {
+		if err := ensureIssuerCertWorksWithAllProxies(ctx, k, cred); err != nil {
 			return nil, err
 		}
 	}
@@ -622,16 +667,16 @@ func readIssuer(trustPEM, issuerCrtPath, issuerKeyPath string) (*issuercerts.Iss
 	return issuerData, nil
 }
 
-func fetchIssuer(k kubernetes.Interface, trustPEM string, scheme string) (*issuercerts.IssuerCertData, error) {
+func fetchIssuer(ctx context.Context, k kubernetes.Interface, trustPEM string, scheme string) (*issuercerts.IssuerCertData, error) {
 	var (
 		issuerData *issuercerts.IssuerCertData
 		err        error
 	)
 	switch scheme {
 	case string(corev1.SecretTypeTLS):
-		issuerData, err = issuercerts.FetchExternalIssuerData(k, controlPlaneNamespace)
+		issuerData, err = issuercerts.FetchExternalIssuerData(ctx, k, controlPlaneNamespace)
 	default:
-		issuerData, err = issuercerts.FetchIssuerData(k, trustPEM, controlPlaneNamespace)
+		issuerData, err = issuercerts.FetchIssuerData(ctx, k, trustPEM, controlPlaneNamespace)
 		if issuerData != nil && issuerData.TrustAnchors != trustPEM {
 			issuerData.TrustAnchors = trustPEM
 		}
@@ -656,6 +701,10 @@ func webhookCommonName(webhook string) string {
 
 func webhookSecretName(webhook string) string {
 	return fmt.Sprintf("%s-tls", webhook)
+}
+
+func webhookK8sSecretName(webhook string) string {
+	return fmt.Sprintf("%s-k8s-tls", webhook)
 }
 
 func verifyWebhookTLS(value *charts.TLS, webhook string) error {

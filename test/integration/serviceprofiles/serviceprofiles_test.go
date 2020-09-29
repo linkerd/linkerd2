@@ -1,6 +1,7 @@
 package serviceprofiles
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -32,8 +33,9 @@ func TestMain(m *testing.M) {
 
 func TestServiceProfiles(t *testing.T) {
 
+	ctx := context.Background()
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
-	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(testNamespace, nil)
+	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, testNamespace, nil)
 	if err != nil {
 		testutil.Fatalf(t, "failed to create %s namespace: %s", testNamespace, err)
 	}
@@ -51,7 +53,7 @@ func TestServiceProfiles(t *testing.T) {
 
 	// wait for deployments to start
 	for _, deploy := range []string{"t1", "t2", "t3", "gateway"} {
-		if err := TestHelper.CheckPods(testNamespace, deploy, 1); err != nil {
+		if err := TestHelper.CheckPods(ctx, testNamespace, deploy, 1); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
@@ -59,7 +61,7 @@ func TestServiceProfiles(t *testing.T) {
 			}
 		}
 
-		if err := TestHelper.CheckDeployment(testNamespace, deploy, 1); err != nil {
+		if err := TestHelper.CheckDeployment(ctx, testNamespace, deploy, 1); err != nil {
 			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}

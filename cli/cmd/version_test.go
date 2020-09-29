@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -11,8 +12,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 )
 
-func mkMockClient(version string, publicAPIErr error, mkClientErr error) func() (pb.ApiClient, error) {
-	return func() (pb.ApiClient, error) {
+func mkMockClient(version string, publicAPIErr error, mkClientErr error) func(ctx context.Context) (pb.ApiClient, error) {
+	return func(ctx context.Context) (pb.ApiClient, error) {
 		return &public.MockAPIClient{
 			ErrorToReturn: publicAPIErr,
 			VersionInfoToReturn: &pb.VersionInfo{
@@ -25,7 +26,7 @@ func mkMockClient(version string, publicAPIErr error, mkClientErr error) func() 
 func TestConfigureAndRunVersion(t *testing.T) {
 	testCases := []struct {
 		options  *versionOptions
-		mkClient func() (pb.ApiClient, error)
+		mkClient func(ctx context.Context) (pb.ApiClient, error)
 		out      string
 	}{
 		{
@@ -65,7 +66,7 @@ func TestConfigureAndRunVersion(t *testing.T) {
 		t.Run(fmt.Sprintf("test %d TestConfigureAndRunVersion()", i), func(t *testing.T) {
 			wout := bytes.NewBufferString("")
 
-			configureAndRunVersion(tc.options, wout, tc.mkClient)
+			configureAndRunVersion(context.Background(), tc.options, wout, tc.mkClient)
 
 			if tc.out != wout.String() {
 				t.Fatalf("Expected output: \"%s\", got: \"%s\"", tc.out, wout)

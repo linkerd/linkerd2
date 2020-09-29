@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -831,7 +832,7 @@ func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName
 	if err != nil {
 		return Address{}, PodID{}, fmt.Errorf("unable to fetch pod %v:%v", id, err)
 	}
-	ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(pod, false)
+	ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(context.Background(), pod, false)
 	addr := Address{
 		IP:             endpointIP,
 		Port:           endpointPort,

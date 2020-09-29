@@ -56,11 +56,11 @@ func buildGatewaysRequestLabels(req *pb.GatewaysRequest) (labels model.LabelSet,
 
 // this function returns a map of target cluster to the number of services mirrored
 // from it
-func (s *grpcServer) getNumServicesMap() (map[string]uint64, error) {
+func (s *grpcServer) getNumServicesMap(ctx context.Context) (map[string]uint64, error) {
 
 	results := make(map[string]uint64)
 	selector := fmt.Sprintf("%s,!%s", k8s.MirroredResourceLabel, k8s.MirroredGatewayLabel)
-	services, err := s.k8sAPI.Client.CoreV1().Services(corev1.NamespaceAll).List(metav1.ListOptions{LabelSelector: selector})
+	services, err := s.k8sAPI.Client.CoreV1().Services(corev1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector})
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (s *grpcServer) getGatewaysMetrics(ctx context.Context, req *pb.GatewaysReq
 	if err != nil {
 		return nil, err
 	}
-	numSvcMap, err := s.getNumServicesMap()
+	numSvcMap, err := s.getNumServicesMap(ctx)
 
 	if err != nil {
 		return nil, err

@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -55,8 +56,9 @@ func TestCliGet(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\n%s", err, stderr)
 	}
 
+	ctx := context.Background()
 	prefixedNs := TestHelper.GetTestNamespace("get-test")
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(prefixedNs, nil)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", prefixedNs, err)
 	}
@@ -77,7 +79,7 @@ func TestCliGet(t *testing.T) {
 
 	// wait for pods to start
 	for deploy, replicas := range deployReplicas {
-		if err := TestHelper.CheckPods(prefixedNs, deploy, replicas); err != nil {
+		if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {

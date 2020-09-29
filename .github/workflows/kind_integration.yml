@@ -101,6 +101,7 @@ jobs:
         - external-issuer
         - helm-deep
         - helm-upgrade
+        - multicluster
         - uninstall
         - upgrade-edge
         - upgrade-stable

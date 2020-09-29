@@ -32,6 +32,7 @@ type TestHelper struct {
 	uninstall          bool
 	cni                bool
 	calico             bool
+	certsPath          string
 	httpClient         http.Client
 	KubernetesHelper
 	helm
@@ -149,7 +150,7 @@ func NewTestHelper() *TestHelper {
 	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
 	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
 	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
-
+	certsPath := flag.String("certs-path", "", "if non-empty, 'linkerd install' will use the files ca.crt, issuer.crt and issuer.key under this path in its --identity-* flags")
 	flag.Parse()
 
 	if !*runTests {
@@ -194,6 +195,7 @@ func NewTestHelper() *TestHelper {
 		cni:            *cni,
 		calico:         *calico,
 		uninstall:      *uninstall,
+		certsPath:      *certsPath,
 	}
 
 	version, stderr, err := testHelper.LinkerdRun("version", "--client", "--short")
@@ -283,6 +285,12 @@ func (h *TestHelper) Multicluster() bool {
 // Uninstall determines whether the "linkerd uninstall" integration test should be run
 func (h *TestHelper) Uninstall() bool {
 	return h.uninstall
+}
+
+// CertsPath returns the path for the ca.cert, issuer.crt and issuer.key files that `linkerd install`
+// will use in its --identity-* flags
+func (h *TestHelper) CertsPath() string {
+	return h.certsPath
 }
 
 // UpgradeFromVersion returns the base version of the upgrade test.

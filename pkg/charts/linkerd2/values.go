@@ -92,6 +92,7 @@ type (
 		PrometheusURL            string              `json:"prometheusUrl"`
 		GrafanaURL               string              `json:"grafanaUrl"`
 		ImagePullSecrets         []map[string]string `json:"imagePullSecrets"`
+		LinkerdVersion           string              `json:"linkerdVersion"`
 
 		Proxy     *Proxy     `json:"proxy"`
 		ProxyInit *ProxyInit `json:"proxyInit"`
@@ -125,6 +126,7 @@ type (
 		RequireIdentityOnInboundPorts string           `json:"requireIdentityOnInboundPorts"`
 		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
 		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
+		OpaquePorts                   string           `json:"opaquePorts"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

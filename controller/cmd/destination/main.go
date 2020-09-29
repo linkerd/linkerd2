@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"context"
 	"flag"
 	"net"
 	"os"
@@ -75,7 +76,9 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API Client: %s", err)
 	}
 
-	err = pkgK8s.EndpointSliceAccess(k8Client)
+	ctx := context.Background()
+
+	err = pkgK8s.EndpointSliceAccess(ctx, k8Client)
 	if *enableEndpointSlices && err != nil {
 		log.Fatalf("Failed to start with EndpointSlices enabled: %s", err)
 	}
@@ -83,12 +86,16 @@ func Main(args []string) {
 	var k8sAPI *k8s.API
 	if *enableEndpointSlices {
 		k8sAPI, err = k8s.InitializeAPI(
-			*kubeConfigPath, true,
+			ctx,
+			*kubeConfigPath,
+			true,
 			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
-			*kubeConfigPath, true,
+			ctx,
+			*kubeConfigPath,
+			true,
 			k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
 		)
 	}
