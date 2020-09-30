@@ -58,6 +58,28 @@ global:
 		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "333", "444")
 		testRenderHelm(t, chartControlPlane, "install_helm_output_ha_labels.golden")
 	})
+
+	t.Run("HA mode with custom namespaceSelector", func(t *testing.T) {
+		ha := true
+		additionalConfig := `
+proxyInjector:
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: In
+      values:
+      - enabled
+profileValidator:
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: In
+      values:
+      - enabled
+`
+		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "111", "222")
+		testRenderHelm(t, chartControlPlane, "install_helm_output_ha_namespace_selector.golden")
+	})
 }
 
 func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
@@ -101,11 +123,33 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
     }
   },
   "proxyInjector":{
+	"namespaceSelector":{
+      "matchExpressions":[
+        {
+          "key": "config.linkerd.io/admission-webhooks",
+          "operator": "NotIn",
+          "values": [
+            "disabled"
+          ]
+        }
+      ]
+    },
     "keyPEM":"test-proxy-injector-key-pem",
 	"crtPEM":"test-proxy-injector-crt-pem",
 	"caBundle":"test-proxy-injector-ca-bundle"
   },
   "profileValidator":{
+    "namespaceSelector":{
+      "matchExpressions":[
+        {
+          "key": "config.linkerd.io/admission-webhooks",
+          "operator": "NotIn",
+          "values": [
+            "disabled"
+          ]
+        }
+      ]
+    },
     "keyPEM":"test-profile-validator-key-pem",
     "crtPEM":"test-profile-validator-crt-pem",
 	"caBundle":"test-profile-validator-ca-bundle"

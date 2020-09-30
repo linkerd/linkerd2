@@ -325,7 +325,7 @@ func (options *upgradeOptions) validateAndBuild(ctx context.Context, stage strin
 		}
 		proxyInjectorTLS = &charts.TLS{}
 	}
-	values.ProxyInjector = &charts.ProxyInjector{TLS: proxyInjectorTLS}
+	values.ProxyInjector.TLS = proxyInjectorTLS
 
 	profileValidatorTLS, err := fetchTLSSecret(ctx, k, k8s.SPValidatorWebhookServiceName, options)
 	if err != nil {
@@ -334,7 +334,7 @@ func (options *upgradeOptions) validateAndBuild(ctx context.Context, stage strin
 		}
 		profileValidatorTLS = &charts.TLS{}
 	}
-	values.ProfileValidator = &charts.ProfileValidator{TLS: profileValidatorTLS}
+	values.ProfileValidator.TLS = profileValidatorTLS
 
 	tapTLS, err := fetchTLSSecret(ctx, k, k8s.TapServiceName, options)
 	if err != nil {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/imdario/mergo"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -214,11 +216,13 @@ type (
 	// ProxyInjector has all the proxy injector's Helm variables
 	ProxyInjector struct {
 		*TLS
+		NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector"`
 	}
 
 	// ProfileValidator has all the profile validator's Helm variables
 	ProfileValidator struct {
 		*TLS
+		NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector"`
 	}
 
 	// Tap has all the Tap's Helm variables
@@ -258,8 +262,8 @@ func NewValues(ha bool) (*Values, error) {
 	}
 
 	v.Global.CliVersion = k8s.CreatedByAnnotationValue()
-	v.ProfileValidator = &ProfileValidator{TLS: &TLS{}}
-	v.ProxyInjector = &ProxyInjector{TLS: &TLS{}}
+	v.ProfileValidator.TLS = &TLS{}
+	v.ProxyInjector.TLS = &TLS{}
 	v.Global.ProxyContainerName = k8s.ProxyContainerName
 	v.Tap = &Tap{TLS: &TLS{}}
 

@@ -885,12 +885,24 @@ data:
       caBundle: profile validator CA bundle
       crtPEM: profile validator crt
       externalSecret: false
+      namespaceSelector:
+        matchExpressions:
+        - key: config.linkerd.io/admission-webhooks
+          operator: NotIn
+          values:
+          - disabled
     prometheus:
       enabled: true
     proxyInjector:
       caBundle: proxy injector CA bundle
       crtPEM: proxy injector crt
       externalSecret: false
+      namespaceSelector:
+        matchExpressions:
+        - key: config.linkerd.io/admission-webhooks
+          operator: NotIn
+          values:
+          - disabled
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     publicAPIProxyResources: null
