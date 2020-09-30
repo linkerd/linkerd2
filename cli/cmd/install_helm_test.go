@@ -36,12 +36,27 @@ func TestRenderHelm(t *testing.T) {
 
 	t.Run("Non-HA with add-ons mode", func(t *testing.T) {
 		ha := false
-		addOnConfig := `
+		additionalConfig := `
 tracing:
   enabled: true
 `
-		chartControlPlane := chartControlPlane(t, ha, addOnConfig, "111", "222")
+		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "111", "222")
 		testRenderHelm(t, chartControlPlane, "install_helm_output_addons.golden")
+	})
+
+	t.Run("HA mode with podLabels and podAnnotations", func(t *testing.T) {
+		ha := true
+		additionalConfig := `
+global:
+  podLabels:
+    foo: bar
+    fiz: buz
+  podAnnotations:
+    bingo: bongo
+    asda: fasda
+`
+		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "333", "444")
+		testRenderHelm(t, chartControlPlane, "install_helm_output_ha_labels.golden")
 	})
 }
 
@@ -148,14 +163,14 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 	diffTestdata(t, goldenFileName, buf.String())
 }
 
-func chartControlPlane(t *testing.T, ha bool, addOnConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
+func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
 	rawValues, err := readTestValues(t, ha, ignoreOutboundPorts, ignoreInboundPorts)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
 
-	if addOnConfig != "" {
-		mergedConfig, err := mergeRaw(rawValues, []byte(addOnConfig))
+	if additionalConfig != "" {
+		mergedConfig, err := mergeRaw(rawValues, []byte(additionalConfig))
 		if err != nil {
 			t.Fatal("Unexpected error", err)
 		}
