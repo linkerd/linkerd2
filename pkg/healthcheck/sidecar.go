@@ -11,7 +11,7 @@ import (
 // and sidecar containers injected. Otherwise, it returns false.
 func HasExistingSidecars(podSpec *corev1.PodSpec) bool {
 	for _, container := range podSpec.Containers {
-		if strings.HasPrefix(container.Image, "gcr.io/linkerd-io/proxy:") ||
+		if strings.HasPrefix(container.Image, "ghcr.io/linkerd/proxy:") ||
 			strings.HasPrefix(container.Image, "gcr.io/istio-release/proxyv2:") ||
 			container.Name == k8s.ProxyContainerName ||
 			container.Name == "istio-proxy" {
@@ -20,7 +20,7 @@ func HasExistingSidecars(podSpec *corev1.PodSpec) bool {
 	}
 
 	for _, ic := range podSpec.InitContainers {
-		if strings.HasPrefix(ic.Image, "gcr.io/linkerd-io/proxy-init:") ||
+		if strings.HasPrefix(ic.Image, "ghcr.io/linkerd/proxy-init:") ||
 			strings.HasPrefix(ic.Image, "gcr.io/istio-release/proxy_init:") ||
 			ic.Name == "linkerd-init" ||
 			ic.Name == "istio-init" {

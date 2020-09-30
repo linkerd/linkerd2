@@ -151,6 +151,10 @@ const (
 	// ignoreInboundPorts config.
 	ProxyIgnoreInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-inbound-ports"
 
+	// ProxyOpaquePortsAnnotation can be used to override the opaquePorts
+	// config.
+	ProxyOpaquePortsAnnotation = ProxyConfigAnnotationsPrefix + "/opaque-ports"
+
 	// ProxyIgnoreOutboundPortsAnnotation can be used to override the
 	// ignoreOutboundPorts config.
 	ProxyIgnoreOutboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-outbound-ports"
@@ -264,7 +268,7 @@ const (
 	DebugSidecarName = "linkerd-debug"
 
 	// DebugSidecarImage is the image name of the default linkerd debug container
-	DebugSidecarImage = "gcr.io/linkerd-io/debug"
+	DebugSidecarImage = "ghcr.io/linkerd/debug"
 
 	// InitContainerName is the name assigned to the injected init container.
 	InitContainerName = "linkerd-init"
@@ -351,10 +355,10 @@ const (
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
 
 	// MountPathTLSKeyPEM is the path at which the TLS key PEM file is mounted.
-	MountPathTLSKeyPEM = MountPathBase + "/tls/key.pem"
+	MountPathTLSKeyPEM = MountPathBase + "/tls/tls.key"
 
 	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
-	MountPathTLSCrtPEM = MountPathBase + "/tls/crt.pem"
+	MountPathTLSCrtPEM = MountPathBase + "/tls/tls.crt"
 
 	// MountPathXtablesLock is the path at which the proxy init container mounts xtables
 	// This is necessary for xtables-legacy support

@@ -3,6 +3,8 @@ package linkerd2
 import (
 	"reflect"
 	"testing"
+
+	"github.com/linkerd/linkerd2/pkg/version"
 )
 
 func TestNewValues(t *testing.T) {
@@ -15,8 +17,8 @@ func TestNewValues(t *testing.T) {
 
 	expected := &Values{
 		Stage:                       "",
-		ControllerImage:             "gcr.io/linkerd-io/controller",
-		WebImage:                    "gcr.io/linkerd-io/web",
+		ControllerImage:             "ghcr.io/linkerd/controller",
+		WebImage:                    "ghcr.io/linkerd/web",
 		ControllerReplicas:          1,
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
@@ -38,6 +40,7 @@ func TestNewValues(t *testing.T) {
 			ControllerComponentLabel: "linkerd.io/control-plane-component",
 			ControllerLogLevel:       "info",
 			ControllerImageVersion:   testVersion,
+			LinkerdVersion:           version.Version,
 			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
 			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
 			CreatedByAnnotation:      "linkerd.io/created-by",
@@ -52,7 +55,7 @@ func TestNewValues(t *testing.T) {
 			Proxy: &Proxy{
 				EnableExternalProfiles: false,
 				Image: &Image{
-					Name:       "gcr.io/linkerd-io/proxy",
+					Name:       "ghcr.io/linkerd/proxy",
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
@@ -86,7 +89,7 @@ func TestNewValues(t *testing.T) {
 			},
 			ProxyInit: &ProxyInit{
 				Image: &Image{
-					Name:       "gcr.io/linkerd-io/proxy-init",
+					Name:       "ghcr.io/linkerd/proxy-init",
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
@@ -109,7 +112,7 @@ func TestNewValues(t *testing.T) {
 		Identity: &Identity{
 			Issuer: &Issuer{
 				ClockSkewAllowance:  "20s",
-				IssuanceLifetime:    "86400s",
+				IssuanceLifetime:    "24h0m0s",
 				CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
 				TLS:                 &IssuerTLS{},
 				Scheme:              "linkerd.io/tls",
@@ -123,7 +126,7 @@ func TestNewValues(t *testing.T) {
 		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{
-				Name:       "gcr.io/linkerd-io/debug",
+				Name:       "ghcr.io/linkerd/debug",
 				PullPolicy: "IfNotPresent",
 				Version:    testVersion,
 			},
@@ -147,6 +150,7 @@ func TestNewValues(t *testing.T) {
 
 	// Make Add-On Values nil to not have to check for their defaults
 	actual.Tracing = nil
+	actual.Global.ImagePullSecrets = nil
 
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected, actual)

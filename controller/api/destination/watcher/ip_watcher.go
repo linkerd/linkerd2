@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -273,7 +274,7 @@ func (iw *IPWatcher) getServiceSubscriptions(clusterIP string) (ss *serviceSubsc
 }
 
 func (iw *IPWatcher) podToAddressSet(pod *corev1.Pod) AddressSet {
-	ownerKind, ownerName := iw.k8sAPI.GetOwnerKindAndName(pod, true)
+	ownerKind, ownerName := iw.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
 	return AddressSet{
 		Addresses: map[PodID]Address{
 			PodID{

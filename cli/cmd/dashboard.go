@@ -92,6 +92,7 @@ func newCmdDashboard() *cobra.Command {
 			defer signal.Stop(signals)
 
 			portforward, err := k8s.NewPortForward(
+				cmd.Context(),
 				k8sAPI,
 				controlPlaneNamespace,
 				webDeployment,

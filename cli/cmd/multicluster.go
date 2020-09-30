@@ -116,13 +116,13 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 	}, nil
 }
 
-func getLinkerdConfigMap() (*configPb.All, error) {
+func getLinkerdConfigMap(ctx context.Context) (*configPb.All, error) {
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	_, global, err := healthcheck.FetchLinkerdConfigMap(kubeAPI, controlPlaneNamespace)
+	_, global, err := healthcheck.FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -163,9 +163,9 @@ func buildServiceMirrorValues(opts *linkOptions) (*multicluster.Values, error) {
 	return defaults, nil
 }
 
-func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multicluster.Values, error) {
+func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInstallOptions) (*multicluster.Values, error) {
 
-	global, err := getLinkerdConfigMap()
+	global, err := getLinkerdConfigMap(ctx)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil, errors.New("you need Linkerd to be installed in order to install multicluster addons")
@@ -202,7 +202,7 @@ func buildMulticlusterInstallValues(opts *multiclusterInstallOptions) (*multiclu
 	return defaults, nil
 }
 
-func buildMulticlusterAllowValues(opts *allowOptions) (*mccharts.Values, error) {
+func buildMulticlusterAllowValues(ctx context.Context, opts *allowOptions) (*mccharts.Values, error) {
 
 	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
@@ -234,7 +234,7 @@ func buildMulticlusterAllowValues(opts *allowOptions) (*mccharts.Values, error) 
 	defaults.RemoteMirrorServiceAccountName = opts.serviceAccountName
 
 	if !opts.ignoreCluster {
-		acc, err := kubeAPI.CoreV1().ServiceAccounts(defaults.Namespace).Get(defaults.RemoteMirrorServiceAccountName, metav1.GetOptions{})
+		acc, err := kubeAPI.CoreV1().ServiceAccounts(defaults.Namespace).Get(ctx, defaults.RemoteMirrorServiceAccountName, metav1.GetOptions{})
 		if err == nil && acc != nil {
 			return nil, fmt.Errorf("Service account with name %s already exists, use --ignore-cluster for force operation", defaults.RemoteMirrorServiceAccountName)
 		}
@@ -259,7 +259,7 @@ func newAllowCommand() *cobra.Command {
 		Args:   cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			values, err := buildMulticlusterAllowValues(&opts)
+			values, err := buildMulticlusterAllowValues(cmd.Context(), &opts)
 			if err != nil {
 				return err
 			}
@@ -347,7 +347,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			values, err := buildMulticlusterInstallValues(options)
+			values, err := buildMulticlusterInstallValues(cmd.Context(), options)
 
 			if err != nil {
 				return err
@@ -439,7 +439,7 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 				return err
 			}
 
-			links, err := mc.GetLinks(k.DynamicClient)
+			links, err := mc.GetLinks(cmd.Context(), k.DynamicClient)
 			if err != nil {
 				return err
 			}
@@ -452,7 +452,7 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 				return errors.New(strings.Join(err, "\n"))
 			}
 
-			values, err := buildMulticlusterInstallValues(options)
+			values, err := buildMulticlusterInstallValues(cmd.Context(), options)
 
 			if err != nil {
 				return err
@@ -512,7 +512,7 @@ func newLinkCommand() *cobra.Command {
 				return errors.New("You need to specify cluster name")
 			}
 
-			configMap, err := getLinkerdConfigMap()
+			configMap, err := getLinkerdConfigMap(cmd.Context())
 			if err != nil {
 				if kerrors.IsNotFound(err) {
 					return errors.New("you need Linkerd to be installed on a cluster in order to get its credentials")
@@ -537,7 +537,7 @@ func newLinkCommand() *cobra.Command {
 				return err
 			}
 
-			sa, err := k.CoreV1().ServiceAccounts(opts.namespace).Get(opts.serviceAccountName, metav1.GetOptions{})
+			sa, err := k.CoreV1().ServiceAccounts(opts.namespace).Get(cmd.Context(), opts.serviceAccountName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -553,7 +553,7 @@ func newLinkCommand() *cobra.Command {
 				return fmt.Errorf("could not find service account token secret for %s", sa.Name)
 			}
 
-			secret, err := k.CoreV1().Secrets(opts.namespace).Get(secretName, metav1.GetOptions{})
+			secret, err := k.CoreV1().Secrets(opts.namespace).Get(cmd.Context(), secretName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -610,7 +610,7 @@ func newLinkCommand() *cobra.Command {
 				return err
 			}
 
-			gateway, err := k.CoreV1().Services(opts.gatewayNamespace).Get(opts.gatewayName, metav1.GetOptions{})
+			gateway, err := k.CoreV1().Services(opts.gatewayNamespace).Get(cmd.Context(), opts.gatewayName, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -756,7 +756,7 @@ func newUnlinkCommand() *cobra.Command {
 				return err
 			}
 
-			_, err = mc.GetLink(k.DynamicClient, opts.namespace, opts.clusterName)
+			_, err = mc.GetLink(cmd.Context(), k.DynamicClient, opts.namespace, opts.clusterName)
 			if err != nil {
 				return err
 			}
@@ -780,7 +780,7 @@ func newUnlinkCommand() *cobra.Command {
 				k8s.MirroredResourceLabel, "true",
 				k8s.RemoteClusterNameLabel, opts.clusterName,
 			)
-			svcList, err := k.CoreV1().Services(metav1.NamespaceAll).List(metav1.ListOptions{LabelSelector: selector})
+			svcList, err := k.CoreV1().Services(metav1.NamespaceAll).List(cmd.Context(), metav1.ListOptions{LabelSelector: selector})
 			if err != nil {
 				return err
 			}

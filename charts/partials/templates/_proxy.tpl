@@ -13,6 +13,8 @@ env:
 {{ if .Values.global.proxy.destinationGetNetworks -}}
 - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
   value: "{{.Values.global.proxy.destinationGetNetworks}}"
+- name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
+  value: "{{.Values.global.proxy.destinationGetNetworks}}"
 {{ end -}}
 {{ if .Values.global.proxy.inboundConnectTimeout -}}
 - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -46,6 +48,10 @@ env:
 {{ if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing) -}}
 - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
   value: /var/run/linkerd/podinfo/labels
+{{ end -}}
+{{ if .Values.global.proxy.opaquePorts -}}
+- name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
+  value: "{{.Values.global.proxy.opaquePorts}}"
 {{ end -}}
 - name: _pod_ns
   valueFrom:

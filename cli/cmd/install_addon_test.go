@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -17,7 +18,9 @@ func TestAddOnRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	withTracingAddonValues, _, _ := withTracingAddon.validateAndBuild("", nil)
+	ctx := context.Background()
+
+	withTracingAddonValues, _, _ := withTracingAddon.validateAndBuild(ctx, "", nil)
 	withTracingAddonValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withTracingAddonValues)
 
@@ -26,7 +29,7 @@ func TestAddOnRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withTracingOverwrite.addOnConfig = filepath.Join("testdata", "addon_config_overwrite.yaml")
-	withTracingOverwriteValues, _, _ := withTracingOverwrite.validateAndBuild("", nil)
+	withTracingOverwriteValues, _, _ := withTracingOverwrite.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(withTracingOverwriteValues)
 
 	withExistingGrafana, err := testInstallOptions()
@@ -34,7 +37,7 @@ func TestAddOnRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withExistingGrafana.addOnConfig = filepath.Join("testdata", "existing-grafana-config.yaml")
-	withExistingGrafanaValues, _, _ := withExistingGrafana.validateAndBuild("", nil)
+	withExistingGrafanaValues, _, _ := withExistingGrafana.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(withExistingGrafanaValues)
 
 	withPrometheusAddOnOverwrite, err := testInstallOptions()
@@ -42,7 +45,7 @@ func TestAddOnRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withPrometheusAddOnOverwrite.addOnConfig = filepath.Join("testdata", "prom-config.yaml")
-	withPrometheusAddOnOverwriteValues, _, _ := withPrometheusAddOnOverwrite.validateAndBuild("", nil)
+	withPrometheusAddOnOverwriteValues, _, _ := withPrometheusAddOnOverwrite.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(withPrometheusAddOnOverwriteValues)
 
 	testCases := []struct {

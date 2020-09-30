@@ -39,7 +39,7 @@ func newCmdVersion() *cobra.Command {
 		Short: "Print the client and server version information",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			configureAndRunVersion(options, os.Stdout, rawPublicAPIClient)
+			configureAndRunVersion(cmd.Context(), options, os.Stdout, rawPublicAPIClient)
 		},
 	}
 
@@ -52,9 +52,10 @@ func newCmdVersion() *cobra.Command {
 }
 
 func configureAndRunVersion(
+	ctx context.Context,
 	options *versionOptions,
 	stdout io.Writer,
-	mkClient func() (pb.ApiClient, error),
+	mkClient func(ctx context.Context) (pb.ApiClient, error),
 ) {
 	clientVersion := version.Version
 	if options.shortVersion {
@@ -65,7 +66,7 @@ func configureAndRunVersion(
 
 	if !options.onlyClientVersion {
 		serverVersion := defaultVersionString
-		client, clientErr := mkClient()
+		client, clientErr := mkClient(ctx)
 		if clientErr == nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()

@@ -1,6 +1,7 @@
 package injector
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -40,7 +41,9 @@ func NewInjection(global *pb.Global, proxy *pb.Proxy) *Injection {
 
 // Inject returns an AdmissionResponse containing the patch, if any, to apply
 // to the pod (proxy sidecar and eventually the init container to set it up)
-func (i *Injection) Inject(api *k8s.API,
+func (i *Injection) Inject(
+	ctx context.Context,
+	api *k8s.API,
 	request *admissionv1beta1.AdmissionRequest,
 	recorder record.EventRecorder,
 ) (*admissionv1beta1.AdmissionResponse, error) {
@@ -54,7 +57,7 @@ func (i *Injection) Inject(api *k8s.API,
 
 	configs := &pb.All{Global: i.global, Proxy: i.proxy}
 	resourceConfig := inject.NewResourceConfig(configs, inject.OriginWebhook).
-		WithOwnerRetriever(ownerRetriever(api, request.Namespace)).
+		WithOwnerRetriever(ownerRetriever(ctx, api, request.Namespace)).
 		WithNsAnnotations(nsAnnotations).
 		WithKind(request.Kind.Kind)
 	report, err := resourceConfig.ParseMetaAndYAML(request.Object.Raw)
@@ -128,9 +131,9 @@ func (i *Injection) Inject(api *k8s.API,
 	return admissionResponse, nil
 }
 
-func ownerRetriever(api *k8s.API, ns string) inject.OwnerRetrieverFunc {
+func ownerRetriever(ctx context.Context, api *k8s.API, ns string) inject.OwnerRetrieverFunc {
 	return func(p *v1.Pod) (string, string) {
 		p.SetNamespace(ns)
-		return api.GetOwnerKindAndName(p, true)
+		return api.GetOwnerKindAndName(ctx, p, true)
 	}
 }

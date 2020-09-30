@@ -1,6 +1,7 @@
 package servicemirror
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -22,6 +23,8 @@ import (
 	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
 	log "github.com/sirupsen/logrus"
 )
+
+const linkWatchRestartAfter = 10 * time.Second
 
 var (
 	clusterWatcher *servicemirror.RemoteClusterServiceWatcher
@@ -56,7 +59,11 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	controllerK8sAPI, err := controllerK8s.InitializeAPI(*kubeConfigPath, false,
+	ctx := context.Background()
+	controllerK8sAPI, err := controllerK8s.InitializeAPI(
+		ctx,
+		*kubeConfigPath,
+		false,
 		controllerK8s.NS,
 		controllerK8s.Svc,
 		controllerK8s.Endpoint,
@@ -75,7 +82,7 @@ func Main(args []string) {
 main:
 	for {
 		// Start link watch
-		linkWatch, err := linkClient.Watch(metav1.ListOptions{})
+		linkWatch, err := linkClient.Watch(ctx, metav1.ListOptions{})
 		if err != nil {
 			log.Fatalf("Failed to watch Link %s: %s", linkName, err)
 		}
@@ -103,11 +110,18 @@ main:
 								continue
 							}
 							log.Infof("Got updated link %s: %+v", linkName, link)
-							creds, err := loadCredentials(link, *namespace, k8sAPI)
+							creds, err := loadCredentials(ctx, link, *namespace, k8sAPI)
 							if err != nil {
 								log.Errorf("Failed to load remote cluster credentials: %s", err)
 							}
-							restartClusterWatcher(link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics)
+							err = restartClusterWatcher(ctx, link, *namespace, creds, controllerK8sAPI, *requeueLimit, *repairPeriod, metrics)
+							if err != nil {
+								// failed to restart cluster watcher; give a bit of slack
+								// and restart the link watch to give it another try
+								log.Error(err)
+								time.Sleep(linkWatchRestartAfter)
+								linkWatch.Stop()
+							}
 						case watch.Deleted:
 							log.Infof("Link %s deleted", linkName)
 							if clusterWatcher != nil {
@@ -131,9 +145,9 @@ main:
 	log.Info("Shutting down")
 }
 
-func loadCredentials(link multicluster.Link, namespace string, k8sAPI *k8s.KubernetesAPI) ([]byte, error) {
+func loadCredentials(ctx context.Context, link multicluster.Link, namespace string, k8sAPI *k8s.KubernetesAPI) ([]byte, error) {
 	// Load the credentials secret
-	secret, err := k8sAPI.Interface.CoreV1().Secrets(namespace).Get(link.ClusterCredentialsSecret, metav1.GetOptions{})
+	secret, err := k8sAPI.Interface.CoreV1().Secrets(namespace).Get(ctx, link.ClusterCredentialsSecret, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load credentials secret %s: %s", link.ClusterCredentialsSecret, err)
 	}
@@ -141,6 +155,7 @@ func loadCredentials(link multicluster.Link, namespace string, k8sAPI *k8s.Kuber
 }
 
 func restartClusterWatcher(
+	ctx context.Context,
 	link multicluster.Link,
 	namespace string,
 	creds []byte,
@@ -148,7 +163,7 @@ func restartClusterWatcher(
 	requeueLimit int,
 	repairPeriod time.Duration,
 	metrics servicemirror.ProbeMetricVecs,
-) {
+) error {
 	if clusterWatcher != nil {
 		clusterWatcher.Stop(false)
 	}
@@ -158,11 +173,11 @@ func restartClusterWatcher(
 
 	cfg, err := clientcmd.RESTConfigFromKubeConfig(creds)
 	if err != nil {
-		log.Errorf("Unable to parse kube config: %s", err)
-		return
+		return fmt.Errorf("Unable to parse kube config: %s", err)
 	}
 
 	clusterWatcher, err = servicemirror.NewRemoteClusterServiceWatcher(
+		ctx,
 		namespace,
 		controllerK8sAPI,
 		cfg,
@@ -171,20 +186,19 @@ func restartClusterWatcher(
 		repairPeriod,
 	)
 	if err != nil {
-		log.Errorf("Unable to create cluster watcher: %s", err)
-		return
+		return fmt.Errorf("Unable to create cluster watcher: %s", err)
 	}
 
-	err = clusterWatcher.Start()
+	err = clusterWatcher.Start(ctx)
 	if err != nil {
-		log.Errorf("Failed to start cluster watcher: %s", err)
-		return
+		return fmt.Errorf("Failed to start cluster watcher: %s", err)
 	}
 
 	workerMetrics, err := metrics.NewWorkerMetrics(link.TargetClusterName)
 	if err != nil {
-		log.Errorf("Failed to create metrics for cluster watcher: %s", err)
+		return fmt.Errorf("Failed to create metrics for cluster watcher: %s", err)
 	}
 	probeWorker = servicemirror.NewProbeWorker(fmt.Sprintf("probe-gateway-%s", link.TargetClusterName), &link.ProbeSpec, workerMetrics, link.TargetClusterName)
 	probeWorker.Start()
+	return nil
 }

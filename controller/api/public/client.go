@@ -205,8 +205,9 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (APICli
 
 // NewExternalClient creates a new Public API client intended to run from
 // outside a Kubernetes cluster.
-func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (APIClient, error) {
+func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (APIClient, error) {
 	portforward, err := k8s.NewPortForward(
+		ctx,
 		kubeAPI,
 		controlPlaneNamespace,
 		apiDeployment,

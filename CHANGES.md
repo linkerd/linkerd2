@@ -1,5 +1,53 @@
 # Changes
 
+## edge-20.9.4
+
+This edge release introduces support for authenticated docker registries and
+fixes a recent multicluster regression.
+
+* Fixed a regression in multicluster gateway configurations that would forbid
+  inbound gateway traffic
+* Upgraded bundled Grafana to v7.1.5
+* Enabled Jaeger receiver in collector configuration in Helm chart (thanks
+  @olivierboudet!)
+* Fixed skip port configuration being skipped in CNI plugin
+* Introduced support for authenticated docker registries (thanks @c-n-c!)
+
+## edge-20.9.3
+
+This edge release includes fixes and updates for the control plane and CLI.
+
+* Added `--dest-cni-bin-dir` flag to the `linkerd install-cni` command, to
+  configure the directory on the host where the CNI binary will be placed
+* Removed `collector.name` and `jaeger.name` config fields from the tracing
+  addon
+* Updated Jaeger to 1.19.2
+* Fixed a warning about deprecated Go packages in controller container logs
+
+## edge-20.9.2
+
+This edge release continues the work of adding support for mTLS for all TCP
+traffic and changes the default container registry to `ghcr.io` from `gcr.io`.
+
+If you are upgrading from `stable-2.8.x` with the Linkerd CLI using the
+`linkerd upgrade` command, you must add the `--addon-overwrite` flag to ensure
+that the grafana image is properly set.
+
+* Removed the default timeout for ServiceProfiles so that ServiceProfile routes
+  behave the same as when there is no ServiceProfile definition
+* Changed default docker image repository to ghcr.io from gcr.io. **Users who
+  pull the images into private repositories should take note of this change**
+* Added endpoint labels to outbound TCP metrics to provide more context and
+  detail for the metrics, add load balancing to TCP connections
+  (bypassing kube-proxy), and secure the connection with mTLS when both
+  endpoints are meshed
+* Made unnamed ServiceProfile discovery configurable using the
+  `proxy.destinationGetNetworks` variable to set the
+  `LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS` variable in the proxy chart
+  template
+* Added TLS certificate validation for the Injector, SP Validator, and Tap
+  webhooks to the `linkerd check` command
+
 ## edge-20.9.1
 
 This edge release contains an important proxy update that allows linkerd to

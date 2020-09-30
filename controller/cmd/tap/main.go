@@ -36,11 +36,13 @@ func Main(args []string) {
 	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
+	ctx := context.Background()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	k8sAPI, err := k8s.InitializeAPI(
+		ctx,
 		*kubeConfigPath,
 		true,
 		k8s.CJ,
@@ -74,7 +76,7 @@ func Main(args []string) {
 		log.Fatal(err.Error())
 	}
 
-	apiServer, apiLis, err := tap.NewAPIServer(*apiServerAddr, cert, k8sAPI, grpcTapServer, *disableCommonNames)
+	apiServer, apiLis, err := tap.NewAPIServer(ctx, *apiServerAddr, cert, k8sAPI, grpcTapServer, *disableCommonNames)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -91,5 +93,5 @@ func Main(args []string) {
 	<-stop
 
 	log.Infof("shutting down APIServer on %s", *apiServerAddr)
-	apiServer.Shutdown(context.Background())
+	apiServer.Shutdown(ctx)
 }

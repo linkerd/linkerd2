@@ -34,6 +34,7 @@ func Main(args []string) {
 	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
+	ctx := context.Background()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -45,7 +46,9 @@ func Main(args []string) {
 	defer destinationConn.Close()
 
 	k8sAPI, err := k8s.InitializeAPI(
-		*kubeConfigPath, true,
+		ctx,
+		*kubeConfigPath,
+		true,
 		k8s.CJ, k8s.DS, k8s.Deploy, k8s.Job, k8s.NS, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc, k8s.SS, k8s.SP, k8s.TS,
 	)
 	if err != nil {
@@ -90,5 +93,5 @@ func Main(args []string) {
 	<-stop
 
 	log.Infof("shutting down HTTP server on %+v", *addr)
-	server.Shutdown(context.Background())
+	server.Shutdown(ctx)
 }

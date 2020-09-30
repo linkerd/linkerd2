@@ -69,28 +69,30 @@ type (
 
 	// Global values common across all charts
 	Global struct {
-		Namespace                string `json:"namespace"`
-		ClusterDomain            string `json:"clusterDomain"`
-		ImagePullPolicy          string `json:"imagePullPolicy"`
-		CliVersion               string `json:"cliVersion"`
-		ControllerComponentLabel string `json:"controllerComponentLabel"`
-		ControllerImageVersion   string `json:"controllerImageVersion"`
-		ControllerLogLevel       string `json:"controllerLogLevel"`
-		ControllerNamespaceLabel string `json:"controllerNamespaceLabel"`
-		WorkloadNamespaceLabel   string `json:"workloadNamespaceLabel"`
-		CreatedByAnnotation      string `json:"createdByAnnotation"`
-		ProxyInjectAnnotation    string `json:"proxyInjectAnnotation"`
-		ProxyInjectDisabled      string `json:"proxyInjectDisabled"`
-		LinkerdNamespaceLabel    string `json:"linkerdNamespaceLabel"`
-		ProxyContainerName       string `json:"proxyContainerName"`
-		HighAvailability         bool   `json:"highAvailability"`
-		CNIEnabled               bool   `json:"cniEnabled"`
-		EnableEndpointSlices     bool   `json:"enableEndpointSlices"`
-		ControlPlaneTracing      bool   `json:"controlPlaneTracing"`
-		IdentityTrustAnchorsPEM  string `json:"identityTrustAnchorsPEM"`
-		IdentityTrustDomain      string `json:"identityTrustDomain"`
-		PrometheusURL            string `json:"prometheusUrl"`
-		GrafanaURL               string `json:"grafanaUrl"`
+		Namespace                string              `json:"namespace"`
+		ClusterDomain            string              `json:"clusterDomain"`
+		ImagePullPolicy          string              `json:"imagePullPolicy"`
+		CliVersion               string              `json:"cliVersion"`
+		ControllerComponentLabel string              `json:"controllerComponentLabel"`
+		ControllerImageVersion   string              `json:"controllerImageVersion"`
+		ControllerLogLevel       string              `json:"controllerLogLevel"`
+		ControllerNamespaceLabel string              `json:"controllerNamespaceLabel"`
+		WorkloadNamespaceLabel   string              `json:"workloadNamespaceLabel"`
+		CreatedByAnnotation      string              `json:"createdByAnnotation"`
+		ProxyInjectAnnotation    string              `json:"proxyInjectAnnotation"`
+		ProxyInjectDisabled      string              `json:"proxyInjectDisabled"`
+		LinkerdNamespaceLabel    string              `json:"linkerdNamespaceLabel"`
+		ProxyContainerName       string              `json:"proxyContainerName"`
+		HighAvailability         bool                `json:"highAvailability"`
+		CNIEnabled               bool                `json:"cniEnabled"`
+		EnableEndpointSlices     bool                `json:"enableEndpointSlices"`
+		ControlPlaneTracing      bool                `json:"controlPlaneTracing"`
+		IdentityTrustAnchorsPEM  string              `json:"identityTrustAnchorsPEM"`
+		IdentityTrustDomain      string              `json:"identityTrustDomain"`
+		PrometheusURL            string              `json:"prometheusUrl"`
+		GrafanaURL               string              `json:"grafanaUrl"`
+		ImagePullSecrets         []map[string]string `json:"imagePullSecrets"`
+		LinkerdVersion           string              `json:"linkerdVersion"`
 
 		Proxy     *Proxy     `json:"proxy"`
 		ProxyInit *ProxyInit `json:"proxyInit"`
@@ -124,6 +126,7 @@ type (
 		RequireIdentityOnInboundPorts string           `json:"requireIdentityOnInboundPorts"`
 		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
 		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`
+		OpaquePorts                   string           `json:"opaquePorts"`
 	}
 
 	// ProxyInit contains the fields to set the proxy-init container

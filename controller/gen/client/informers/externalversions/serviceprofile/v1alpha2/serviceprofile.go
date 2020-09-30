@@ -19,6 +19,7 @@ limitations under the License.
 package v1alpha2
 
 import (
+	"context"
 	time "time"
 
 	serviceprofilev1alpha2 "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -61,13 +62,13 @@ func NewFilteredServiceProfileInformer(client versioned.Interface, namespace str
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.LinkerdV1alpha2().ServiceProfiles(namespace).List(options)
+				return client.LinkerdV1alpha2().ServiceProfiles(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.LinkerdV1alpha2().ServiceProfiles(namespace).Watch(options)
+				return client.LinkerdV1alpha2().ServiceProfiles(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&serviceprofilev1alpha2.ServiceProfile{},

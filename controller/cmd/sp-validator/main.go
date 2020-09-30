@@ -1,6 +1,7 @@
 package spvalidator
 
 import (
+	"context"
 	"flag"
 	"fmt"
 
@@ -19,6 +20,7 @@ func Main(args []string) {
 
 	flags.ConfigureAndParse(cmd, args)
 	webhook.Launch(
+		context.Background(),
 		nil,
 		validator.AdmitSP,
 		"linkerd-sp-validator",

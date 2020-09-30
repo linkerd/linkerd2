@@ -8,6 +8,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/identity"
 	kauthnApi "k8s.io/api/authentication/v1"
 	kauthzApi "k8s.io/api/authorization/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	k8s "k8s.io/client-go/kubernetes"
 	kauthn "k8s.io/client-go/kubernetes/typed/authentication/v1"
@@ -27,10 +28,11 @@ type K8sTokenValidator struct {
 // sufficient privileges to perform token reviews. An error is returned if this
 // access check fails.
 func NewK8sTokenValidator(
+	ctx context.Context,
 	k8s k8s.Interface,
 	domain *TrustDomain,
 ) (identity.Validator, error) {
-	if err := checkAccess(k8s.AuthorizationV1()); err != nil {
+	if err := checkAccess(ctx, k8s.AuthorizationV1()); err != nil {
 		return nil, err
 	}
 
@@ -39,10 +41,10 @@ func NewK8sTokenValidator(
 }
 
 // Validate accepts kubernetes bearer tokens and returns a DNS-form linkerd ID.
-func (k *K8sTokenValidator) Validate(_ context.Context, tok []byte) (string, error) {
+func (k *K8sTokenValidator) Validate(ctx context.Context, tok []byte) (string, error) {
 	// TODO: Set/check `audience`
 	tr := kauthnApi.TokenReview{Spec: kauthnApi.TokenReviewSpec{Token: string(tok)}}
-	rvw, err := k.authn.TokenReviews().Create(&tr)
+	rvw, err := k.authn.TokenReviews().Create(ctx, &tr, metav1.CreateOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -70,7 +72,7 @@ func (k *K8sTokenValidator) Validate(_ context.Context, tok []byte) (string, err
 	return k.domain.Identity(uns[0], uns[2], uns[1])
 }
 
-func checkAccess(authz kauthz.AuthorizationV1Interface) error {
+func checkAccess(ctx context.Context, authz kauthz.AuthorizationV1Interface) error {
 	r := &kauthzApi.SelfSubjectAccessReview{
 		Spec: kauthzApi.SelfSubjectAccessReviewSpec{
 			ResourceAttributes: &kauthzApi.ResourceAttributes{
@@ -81,7 +83,7 @@ func checkAccess(authz kauthz.AuthorizationV1Interface) error {
 			},
 		},
 	}
-	rvw, err := authz.SelfSubjectAccessReviews().Create(r)
+	rvw, err := authz.SelfSubjectAccessReviews().Create(ctx, r, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}

@@ -52,6 +52,7 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: proxy-injector
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- include "partials.image-pull-secrets" . }}
 ---
 {{- $host := printf "linkerd-proxy-injector.%s.svc" .Values.global.namespace }}
 {{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
@@ -59,17 +60,17 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-injector-tls
+  name: linkerd-proxy-injector-k8s-tls
   namespace: {{ .Values.global.namespace }}
   labels:
     {{.Values.global.controllerComponentLabel}}: proxy-injector
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.proxyInjector.crtPEM)) (empty .Values.proxyInjector.crtPEM) }}
-  key.pem: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.proxyInjector.keyPEM)) (empty .Values.proxyInjector.keyPEM) }}
+  tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.proxyInjector.crtPEM)) (empty .Values.proxyInjector.crtPEM) }}
+  tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.proxyInjector.keyPEM)) (empty .Values.proxyInjector.keyPEM) }}
 ---
 {{- end }}
 apiVersion: admissionregistration.k8s.io/v1beta1

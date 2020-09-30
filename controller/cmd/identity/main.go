@@ -130,7 +130,7 @@ func Main(args []string) {
 	if err != nil {
 		log.Fatalf("Failed to load kubeconfig: %s: %s", *kubeConfigPath, err)
 	}
-	v, err := idctl.NewK8sTokenValidator(k8sAPI, dom)
+	v, err := idctl.NewK8sTokenValidator(ctx, k8sAPI, dom)
 	if err != nil {
 		log.Fatalf("Failed to initialize identity service: %s", err)
 	}
@@ -141,7 +141,7 @@ func Main(args []string) {
 		Interface: k8sAPI.CoreV1().Events(*controllerNS),
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: componentName})
-	deployment, err := k8sAPI.AppsV1().Deployments(*controllerNS).Get(componentName, v1machinery.GetOptions{})
+	deployment, err := k8sAPI.AppsV1().Deployments(*controllerNS).Get(ctx, componentName, v1machinery.GetOptions{})
 
 	if err != nil {
 		log.Fatalf("Failed to construct k8s event recorder: %s", err)
