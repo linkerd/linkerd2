@@ -436,17 +436,17 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-injector-tls
+  name: linkerd-proxy-injector-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: cHJveHkgaW5qZWN0b3IgY3J0
-  key.pem: cHJveHkgaW5qZWN0b3Iga2V5
+  tls.crt: cHJveHkgaW5qZWN0b3IgY3J0
+  tls.key: cHJveHkgaW5qZWN0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -522,17 +522,17 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-sp-validator-tls
+  name: linkerd-sp-validator-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: sp-validator
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
-  key.pem: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
+  tls.crt: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  tls.key: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -658,17 +658,17 @@ subjects:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-tap-tls
+  name: linkerd-tap-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: tap
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: dGFwIGNydA==
-  key.pem: dGFwIGtleQ==
+  tls.crt: dGFwIGNydA==
+  tls.key: dGFwIGtleQ==
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
@@ -2244,7 +2244,7 @@ spec:
         name: config
       - name: tls
         secret:
-          secretName: linkerd-proxy-injector-tls
+          secretName: linkerd-proxy-injector-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2534,7 +2534,7 @@ spec:
       volumes:
       - name: tls
         secret:
-          secretName: linkerd-sp-validator-tls
+          secretName: linkerd-sp-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2823,7 +2823,8 @@ spec:
         name: linkerd-identity-end-entity
       - name: tls
         secret:
-          secretName: linkerd-tap-tls
+          secretName: linkerd-tap-k8s-tls
+
 ---
 ###
 ### linkerd add-ons configuration
@@ -3645,3 +3646,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+---
+apiVersion: v1
+data:
+  linkerd-config-overrides: Y29udHJvbGxlclJlcGxpY2FzOiAzCmRlYnVnQ29udGFpbmVyOgogIGltYWdlOgogICAgdmVyc2lvbjogaW5zdGFsbC1kZWJ1Zy12ZXJzaW9uCmRlc3RpbmF0aW9uUmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiMSIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDUwTWkKZW5hYmxlUG9kQW50aUFmZmluaXR5OiB0cnVlCmdsb2JhbDoKICBjb250cm9sbGVySW1hZ2VWZXJzaW9uOiBpbnN0YWxsLWNvbnRyb2wtcGxhbmUtdmVyc2lvbgogIGhpZ2hBdmFpbGFiaWxpdHk6IHRydWUKICBpZGVudGl0eVRydXN0QW5jaG9yc1BFTTogfAogICAgLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiAgICBNSUlCd1RDQ0FXYWdBd0lCQWdJUWVEWnA1bERhSXlnUTVVZk1LWnJGQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3CiAgICBKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3SGhjTk1qQXdPREk0CiAgICBNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyCiAgICBaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUnFjNzBaCiAgICBsMXZndzc5cmpCNXVTSVRJQ1VBNkd5ZnZTRmZjdUlpczdCL1hGU2trd0FIVTVTL3MxQUFQK1IwVFg3SEJXVUM0CiAgICB1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCiAgICAvd0lCQVRBZEJnTlZIUTRFRmdRVTVZdGpWVlBmZDdJN05MSHNuMkMyNkVCeUdWMHdLUVlEVlIwUkJDSXdJSUllCiAgICBhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUFvR0NDcUdTTTQ5QkFNQ0Ewa0FNRVlDCiAgICBJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CiAgICB2Z1VDMGQyLzlGTXVlSVZNYis0NldUQ09qc3FyCiAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgaW1hZ2VQdWxsU2VjcmV0czogbnVsbAogIHByb3h5OgogICAgaW1hZ2U6CiAgICAgIHZlcnNpb246IGluc3RhbGwtcHJveHktdmVyc2lvbgogICAgcmVzb3VyY2VzOgogICAgICBjcHU6CiAgICAgICAgbGltaXQ6ICIxIgogICAgICAgIHJlcXVlc3Q6IDEwMG0KICAgICAgbWVtb3J5OgogICAgICAgIGxpbWl0OiAyNTBNaQogICAgICAgIHJlcXVlc3Q6IDIwTWkKZ3JhZmFuYToKICByZXNvdXJjZXM6CiAgICBjcHU6CiAgICAgIGxpbWl0OiAiMSIKICAgICAgcmVxdWVzdDogMTAwbQogICAgbWVtb3J5OgogICAgICBsaW1pdDogMTAyNE1pCiAgICAgIHJlcXVlc3Q6IDUwTWkKaGVhcnRiZWF0UmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiMSIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDUwTWkKaGVhcnRiZWF0U2NoZWR1bGU6IDEgMiAzIDQgNQppZGVudGl0eToKICBpc3N1ZXI6CiAgICBjcnRFeHBpcnk6ICIyMDMwLTA4LTI2VDA3OjEzOjQ3WiIKICAgIHRsczoKICAgICAgY3J0UEVNOiB8CiAgICAgICAgLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiAgICAgICAgTUlJQndEQ0NBV2VnQXdJQkFnSVJBSlJJZ1o4UnRPOEV3ZzFYZXBmOFQ0NHdDZ1lJS29aSXpqMEVBd0l3S1RFbgogICAgICAgIE1DVUdBMVVFQXhNZWFXUmxiblJwZEhrdWJHbHVhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNQjRYRFRJd01EZ3kKICAgICAgICBPREEzTVRNME4xb1hEVE13TURneU5qQTNNVE0wTjFvd0tURW5NQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1CiAgICAgICAgYTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFMS9GcAogICAgICAgIGZjUm5EY2VkTDZBalVhWFlQdjRESU1CYUp1Zk9JNU5XdHkrWFNYN0pqWGdadE03MmRRdlJhWWFudXhEMzZEdDEKICAgICAgICAyL0p4eWlTZ3hLV1Jkb2F5K2FOd01HNHdEZ1lEVlIwUEFRSC9CQVFEQWdFR01CSUdBMVVkRXdFQi93UUlNQVlCCiAgICAgICAgQWY4Q0FRQXdIUVlEVlIwT0JCWUVGSTFXbnJxTVlLYUhIT28renB5aWlEcTJwTzBLTUNrR0ExVWRFUVFpTUNDQwogICAgICAgIEhtbGtaVzUwYVhSNUxteHBibXRsY21RdVkyeDFjM1JsY2k1c2IyTmhiREFLQmdncWhrak9QUVFEQWdOSEFEQkUKICAgICAgICBBaUF0dW9JNVh1Q3RyR1ZSelNtUlRsMnJhMjhhVjlNeVRVN2Q1cW5UQUZIS1NnSWdSS0N2bHVPU2dBNU8yMXA1CiAgICAgICAgNTF0ZHJta0hFWlJyMHFsTFNKZEhZZ0VmTXprPQogICAgICAgIC0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KICAgICAga2V5UEVNOiB8CiAgICAgICAgLS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCiAgICAgICAgTUhjQ0FRRUVJQUFlOG5mYnpadTljL09CMis4eEpNMEZ6N05Vd1RRYXp1bGtGTnM0VEk1K29Bb0dDQ3FHU000OQogICAgICAgIEF3RUhvVVFEUWdBRTEvRnBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzIKICAgICAgICBkUXZSYVlhbnV4RDM2RHQxMi9KeHlpU2d4S1dSZG9heStRPT0KICAgICAgICAtLS0tLUVORCBFQyBQUklWQVRFIEtFWS0tLS0tCmlkZW50aXR5UmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiMSIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDEwTWkKcHJvZmlsZVZhbGlkYXRvcjoKICBjYUJ1bmRsZTogcHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxlCiAgY3J0UEVNOiBwcm9maWxlIHZhbGlkYXRvciBjcnQKICBrZXlQRU06IHByb2ZpbGUgdmFsaWRhdG9yIGtleQpwcm9tZXRoZXVzOgogIHJlc291cmNlczoKICAgIGNwdToKICAgICAgbGltaXQ6ICI0IgogICAgICByZXF1ZXN0OiAzMDBtCiAgICBtZW1vcnk6CiAgICAgIGxpbWl0OiA4MTkyTWkKICAgICAgcmVxdWVzdDogMzAwTWkKcHJveHlJbmplY3RvcjoKICBjYUJ1bmRsZTogcHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxlCiAgY3J0UEVNOiBwcm94eSBpbmplY3RvciBjcnQKICBrZXlQRU06IHByb3h5IGluamVjdG9yIGtleQpwcm94eUluamVjdG9yUmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiMSIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDUwTWkKcHVibGljQVBJUmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiMSIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDUwTWkKc3BWYWxpZGF0b3JSZXNvdXJjZXM6CiAgY3B1OgogICAgbGltaXQ6ICIxIgogICAgcmVxdWVzdDogMTAwbQogIG1lbW9yeToKICAgIGxpbWl0OiAyNTBNaQogICAgcmVxdWVzdDogNTBNaQp0YXA6CiAgY2FCdW5kbGU6IHRhcCBDQSBidW5kbGUKICBjcnRQRU06IHRhcCBjcnQKICBrZXlQRU06IHRhcCBrZXkKdGFwUmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiMSIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDUwTWkKd2ViUmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiMSIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDUwTWkKd2ViaG9va0ZhaWx1cmVQb2xpY3k6IEZhaWwK
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: linkerd-config-overrides
+  namespace: linkerd

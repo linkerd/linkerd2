@@ -395,17 +395,17 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-injector-tls
+  name: linkerd-proxy-injector-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: cHJveHkgaW5qZWN0b3IgY3J0
-  key.pem: cHJveHkgaW5qZWN0b3Iga2V5
+  tls.crt: cHJveHkgaW5qZWN0b3IgY3J0
+  tls.key: cHJveHkgaW5qZWN0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -481,17 +481,17 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-sp-validator-tls
+  name: linkerd-sp-validator-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: sp-validator
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
-  key.pem: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
+  tls.crt: cHJvZmlsZSB2YWxpZGF0b3IgY3J0
+  tls.key: cHJvZmlsZSB2YWxpZGF0b3Iga2V5
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -617,17 +617,17 @@ subjects:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-tap-tls
+  name: linkerd-tap-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: tap
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/cli dev-undefined
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: dGFwIGNydA==
-  key.pem: dGFwIGtleQ==
+  tls.crt: dGFwIGNydA==
+  tls.key: dGFwIGtleQ==
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
@@ -1991,7 +1991,7 @@ spec:
         name: config
       - name: tls
         secret:
-          secretName: linkerd-proxy-injector-tls
+          secretName: linkerd-proxy-injector-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2245,7 +2245,7 @@ spec:
       volumes:
       - name: tls
         secret:
-          secretName: linkerd-sp-validator-tls
+          secretName: linkerd-sp-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2498,7 +2498,8 @@ spec:
         name: linkerd-identity-end-entity
       - name: tls
         secret:
-          secretName: linkerd-tap-tls
+          secretName: linkerd-tap-k8s-tls
+
 ---
 ###
 ### linkerd add-ons configuration
@@ -3280,3 +3281,12 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+---
+apiVersion: v1
+data:
+  linkerd-config-overrides: ZGVidWdDb250YWluZXI6CiAgaW1hZ2U6CiAgICB2ZXJzaW9uOiBpbnN0YWxsLWRlYnVnLXZlcnNpb24KZGlzYWJsZUhlYXJ0QmVhdDogdHJ1ZQpnbG9iYWw6CiAgY29udHJvbGxlckltYWdlVmVyc2lvbjogaW5zdGFsbC1jb250cm9sLXBsYW5lLXZlcnNpb24KICBpZGVudGl0eVRydXN0QW5jaG9yc1BFTTogfAogICAgLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCiAgICBNSUlCd1RDQ0FXYWdBd0lCQWdJUWVEWnA1bERhSXlnUTVVZk1LWnJGQVRBS0JnZ3Foa2pPUFFRREFqQXBNU2N3CiAgICBKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3SGhjTk1qQXdPREk0CiAgICBNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyCiAgICBaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dXVEFUQmdjcWhrak9QUUlCQmdncWhrak9QUU1CQndOQ0FBUnFjNzBaCiAgICBsMXZndzc5cmpCNXVTSVRJQ1VBNkd5ZnZTRmZjdUlpczdCL1hGU2trd0FIVTVTL3MxQUFQK1IwVFg3SEJXVUM0CiAgICB1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCiAgICAvd0lCQVRBZEJnTlZIUTRFRmdRVTVZdGpWVlBmZDdJN05MSHNuMkMyNkVCeUdWMHdLUVlEVlIwUkJDSXdJSUllCiAgICBhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUFvR0NDcUdTTTQ5QkFNQ0Ewa0FNRVlDCiAgICBJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CiAgICB2Z1VDMGQyLzlGTXVlSVZNYis0NldUQ09qc3FyCiAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgcHJveHk6CiAgICBpbWFnZToKICAgICAgdmVyc2lvbjogaW5zdGFsbC1wcm94eS12ZXJzaW9uCmhlYXJ0YmVhdFNjaGVkdWxlOiAxIDIgMyA0IDUKaWRlbnRpdHk6CiAgaXNzdWVyOgogICAgY3J0RXhwaXJ5OiAiMjAzMC0wOC0yNlQwNzoxMzo0N1oiCiAgICB0bHM6CiAgICAgIGNydFBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogICAgICAgIE1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUpSSWdaOFJ0TzhFd2cxWGVwZjhUNDR3Q2dZSUtvWkl6ajBFQXdJd0tURW4KICAgICAgICBNQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUI0WERUSXdNRGd5CiAgICAgICAgT0RBM01UTTBOMW9YRFRNd01EZ3lOakEzTVRNME4xb3dLVEVuTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdQogICAgICAgIGEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTEvRnAKICAgICAgICBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzJkUXZSYVlhbnV4RDM2RHQxCiAgICAgICAgMi9KeHlpU2d4S1dSZG9heSthTndNRzR3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQgogICAgICAgIEFmOENBUUF3SFFZRFZSME9CQllFRkkxV25ycU1ZS2FISE9vK3pweWlpRHEycE8wS01Da0dBMVVkRVFRaU1DQ0MKICAgICAgICBIbWxrWlc1MGFYUjVMbXhwYm10bGNtUXVZMngxYzNSbGNpNXNiMk5oYkRBS0JnZ3Foa2pPUFFRREFnTkhBREJFCiAgICAgICAgQWlBdHVvSTVYdUN0ckdWUnpTbVJUbDJyYTI4YVY5TXlUVTdkNXFuVEFGSEtTZ0lnUktDdmx1T1NnQTVPMjFwNQogICAgICAgIDUxdGRybWtIRVpScjBxbExTSmRIWWdFZk16az0KICAgICAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgICAgIGtleVBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gRUMgUFJJVkFURSBLRVktLS0tLQogICAgICAgIE1IY0NBUUVFSUFBZThuZmJ6WnU5Yy9PQjIrOHhKTTBGejdOVXdUUWF6dWxrRk5zNFRJNStvQW9HQ0NxR1NNNDkKICAgICAgICBBd0VIb1VRRFFnQUUxL0ZwZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyCiAgICAgICAgZFF2UmFZYW51eEQzNkR0MTIvSnh5aVNneEtXUmRvYXkrUT09CiAgICAgICAgLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQpwcm9maWxlVmFsaWRhdG9yOgogIGNhQnVuZGxlOiBwcm9maWxlIHZhbGlkYXRvciBDQSBidW5kbGUKICBjcnRQRU06IHByb2ZpbGUgdmFsaWRhdG9yIGNydAogIGtleVBFTTogcHJvZmlsZSB2YWxpZGF0b3Iga2V5CnByb3h5SW5qZWN0b3I6CiAgY2FCdW5kbGU6IHByb3h5IGluamVjdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJveHkgaW5qZWN0b3IgY3J0CiAga2V5UEVNOiBwcm94eSBpbmplY3RvciBrZXkKdGFwOgogIGNhQnVuZGxlOiB0YXAgQ0EgYnVuZGxlCiAgY3J0UEVNOiB0YXAgY3J0CiAga2V5UEVNOiB0YXAga2V5Cg==
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: linkerd-config-overrides
+  namespace: linkerd

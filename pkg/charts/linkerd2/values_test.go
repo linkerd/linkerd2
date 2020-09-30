@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/linkerd/linkerd2/pkg/version"
 	"sigs.k8s.io/yaml"
 )
 
@@ -40,6 +41,7 @@ func TestNewValues(t *testing.T) {
 			ControllerComponentLabel: "linkerd.io/control-plane-component",
 			ControllerLogLevel:       "info",
 			ControllerImageVersion:   testVersion,
+			LinkerdVersion:           version.Version,
 			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
 			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
 			CreatedByAnnotation:      "linkerd.io/created-by",
@@ -111,7 +113,7 @@ func TestNewValues(t *testing.T) {
 		Identity: &Identity{
 			Issuer: &Issuer{
 				ClockSkewAllowance:  "20s",
-				IssuanceLifetime:    "86400s",
+				IssuanceLifetime:    "24h0m0s",
 				CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
 				TLS:                 &IssuerTLS{},
 				Scheme:              "linkerd.io/tls",

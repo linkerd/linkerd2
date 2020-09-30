@@ -98,17 +98,17 @@ subjects:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-tap-tls
+  name: linkerd-tap-k8s-tls
   namespace: {{ .Values.global.namespace }}
   labels:
     {{.Values.global.controllerComponentLabel}}: tap
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
-  key.pem: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.tap.keyPEM)) (empty .Values.tap.keyPEM) }}
+  tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
+  tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.tap.keyPEM)) (empty .Values.tap.keyPEM) }}
 ---
 {{- end }}
 apiVersion: apiregistration.k8s.io/v1

@@ -484,7 +484,7 @@ func injectCABundleFromAPIService(ctx context.Context, k *k8s.KubernetesAPI, res
 	return nil
 }
 
-func fetchTLSSecret(ctx context.Context, k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+func fetchLinkerdTLSSecret(ctx context.Context, k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
 	secret, err := k.CoreV1().
 		Secrets(controlPlaneNamespace).
 		Get(ctx, webhookSecretName(webhook), metav1.GetOptions{})
@@ -506,6 +506,50 @@ func fetchTLSSecret(ctx context.Context, k *k8s.KubernetesAPI, webhook string, o
 	}
 
 	return value, nil
+}
+
+func fetchK8sTLSSecret(ctx context.Context, k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+	webhookSecretNameStr := webhookK8sSecretName(webhook)
+
+	secret, err := k.CoreV1().
+		Secrets(controlPlaneNamespace).
+		Get(ctx, webhookSecretNameStr, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	if secret.Data == nil || secret.Data["tls.key"] == nil || secret.Data["tls.crt"] == nil {
+		return nil, fmt.Errorf("TLS Secret %s is missing data fields (data.tls.key and data.tls.crt expected)", webhookSecretNameStr)
+	}
+
+	value := &charts.TLS{
+		KeyPEM: string(secret.Data["tls.key"]),
+		CrtPEM: string(secret.Data["tls.crt"]),
+	}
+
+	if err := injectCABundle(ctx, k, webhook, value); err != nil {
+		return nil, err
+	}
+
+	if err := options.verifyTLS(value, webhook); err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+// try to fetch K8sTLSSecret, but revert to LinkerdTLSSecret if the former fails
+func fetchTLSSecret(ctx context.Context, k *k8s.KubernetesAPI, webhook string, options *upgradeOptions) (*charts.TLS, error) {
+	tls, err := fetchK8sTLSSecret(ctx, k, webhook, options)
+	if err == nil {
+		return tls, err
+	}
+
+	if !kerrors.IsNotFound(err) {
+		return tls, err
+	}
+
+	return fetchLinkerdTLSSecret(ctx, k, webhook, options)
 }
 
 func ensureIssuerCertWorksWithAllProxies(ctx context.Context, k kubernetes.Interface, cred *tls.Cred) error {
@@ -657,6 +701,10 @@ func webhookCommonName(webhook string) string {
 
 func webhookSecretName(webhook string) string {
 	return fmt.Sprintf("%s-tls", webhook)
+}
+
+func webhookK8sSecretName(webhook string) string {
+	return fmt.Sprintf("%s-k8s-tls", webhook)
 }
 
 func verifyWebhookTLS(value *charts.TLS, webhook string) error {

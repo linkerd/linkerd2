@@ -22,6 +22,7 @@ const (
 	upgradeProxyVersion        = "UPGRADE-PROXY-VERSION"
 	upgradeControlPlaneVersion = "UPGRADE-CONTROL-PLANE-VERSION"
 	upgradeDebugVersion        = "UPGRADE-DEBUG-VERSION"
+	overridesSecret            = "Secret/linkerd-config-overrides"
 )
 
 type (
@@ -54,6 +55,9 @@ func TestUpgradeDefault(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -72,6 +76,9 @@ func TestUpgradeHA(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -113,6 +120,9 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -182,6 +192,9 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
 			if isProxyEnvDiff(diff.path) {
+				continue
+			}
+			if id == overridesSecret {
 				continue
 			}
 			if id == "ConfigMap/linkerd-config" {
@@ -290,6 +303,9 @@ func TestUpgradeTracingAddon(t *testing.T) {
 		}
 	}
 	for id, diffs := range diffMap {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			if id == "Deployment/linkerd-web" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args"}) {
 				continue
@@ -325,10 +341,72 @@ func TestUpgradeOverwriteTracingAddon(t *testing.T) {
 		}
 	}
 	for id, diffs := range diffMap {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
+}
+
+// this test constructs a set of secrets resources
+func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
+	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+
+	values := installValues(t, installOpts, installFlags)
+	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
+	defer injectorCerts.cleanup()
+	values.ProxyInjector.TLS = &linkerd2.TLS{
+		CaBundle: injectorCerts.ca,
+		CrtPEM:   injectorCerts.crt,
+		KeyPEM:   injectorCerts.key,
+	}
+	tapCerts := generateCerts(t, "linkerd-tap.linkerd.svc", false)
+	defer tapCerts.cleanup()
+	values.Tap.TLS = &linkerd2.TLS{
+		CaBundle: tapCerts.ca,
+		CrtPEM:   tapCerts.crt,
+		KeyPEM:   tapCerts.key,
+	}
+	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
+	defer validatorCerts.cleanup()
+	values.ProfileValidator.TLS = &linkerd2.TLS{
+		CaBundle: validatorCerts.ca,
+		CrtPEM:   validatorCerts.crt,
+		KeyPEM:   validatorCerts.key,
+	}
+
+	rendered := renderInstall(t, values)
+	expected := replaceVersions(rendered.String())
+
+	// switch back to old tls secret names.
+	install := replaceK8sSecrets(expected)
+
+	upgrade, err := renderUpgrade(t, install, upgradeOpts, upgradeFlags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
+		for _, diff := range diffs {
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func replaceK8sSecrets(input string) string {
+	manifest := strings.ReplaceAll(input, "kubernetes.io/tls", "Opaque")
+	manifest = strings.ReplaceAll(manifest, "tls.key", "key.pem")
+	manifest = strings.ReplaceAll(manifest, "tls.crt", "crt.pem")
+	manifest = strings.ReplaceAll(manifest, "linkerd-proxy-injector-k8s-tls", "linkerd-proxy-injector-tls")
+	manifest = strings.ReplaceAll(manifest, "linkerd-tap-k8s-tls", "linkerd-tap-tls")
+	manifest = strings.ReplaceAll(manifest, "linkerd-sp-validator-k8s-tls", "linkerd-sp-validator-tls")
+	return manifest
 }
 
 func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
@@ -367,6 +445,9 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -385,6 +466,9 @@ func TestUpgradeWithAddonDisabled(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -416,6 +500,9 @@ func TestUpgradeEnableAddon(t *testing.T) {
 		}
 	}
 	for id, diffs := range diffMap {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			if id == "RoleBinding/linkerd-psp" && pathMatch(diff.path, []string{"subjects"}) {
 				continue
@@ -441,6 +528,9 @@ func TestUpgradeRemoveAddonKeys(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
@@ -467,6 +557,9 @@ func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
 		t.Error("Expected ConfigMap/linkerd-config-addons in upgrade output diff but was absent")
 	}
 	for id, diffs := range diffMap {
+		if id == overridesSecret {
+			continue
+		}
 		for _, diff := range diffs {
 			if id == "Deployment/linkerd-grafana" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "resources"}) {
 				continue

@@ -454,17 +454,17 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-injector-tls
+  name: linkerd-proxy-injector-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: proxy-injector
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: dGVzdC1wcm94eS1pbmplY3Rvci1jcnQtcGVt
-  key.pem: dGVzdC1wcm94eS1pbmplY3Rvci1rZXktcGVt
+  tls.crt: dGVzdC1wcm94eS1pbmplY3Rvci1jcnQtcGVt
+  tls.key: dGVzdC1wcm94eS1pbmplY3Rvci1rZXktcGVt
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
@@ -542,17 +542,17 @@ metadata:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-sp-validator-tls
+  name: linkerd-sp-validator-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: sp-validator
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jcnQtcGVt
-  key.pem: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1rZXktcGVt
+  tls.crt: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1jcnQtcGVt
+  tls.key: dGVzdC1wcm9maWxlLXZhbGlkYXRvci1rZXktcGVt
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
@@ -680,17 +680,17 @@ subjects:
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-tap-tls
+  name: linkerd-tap-k8s-tls
   namespace: linkerd
   labels:
     linkerd.io/control-plane-component: tap
     linkerd.io/control-plane-ns: linkerd
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: dGVzdC10YXAtY3J0LXBlbQ==
-  key.pem: dGVzdC10YXAta2V5LXBlbQ==
+  tls.crt: dGVzdC10YXAtY3J0LXBlbQ==
+  tls.key: dGVzdC10YXAta2V5LXBlbQ==
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
@@ -832,7 +832,7 @@ data:
       "identityContext":{
         "trustDomain": "test.trust.domain",
         "trustAnchorsPem": "test-trust-anchor",
-        "issuanceLifetime": "86400s",
+        "issuanceLifetime": "24h0m0s",
         "clockSkewAllowance": "20s",
         "scheme": "linkerd.io/tls"
       },
@@ -1947,7 +1947,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 6e734f618da84e77b839fe4aef71fef3292e197e2315d8f5c96811ce4ee133e3
+        checksum/config: 2dec8ad53cfb62eb135ea83b83d613b8287798861447f19c9ef6a0431b0027c0
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2126,7 +2126,7 @@ spec:
         name: config
       - name: tls
         secret:
-          secretName: linkerd-proxy-injector-tls
+          secretName: linkerd-proxy-injector-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2198,7 +2198,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 2ef69096dc03ab049c6767f057e2360ec556c8dfb7290cee5d471f2a8b366cfe
+        checksum/config: a7be91627e3c678c3c221f1e074f7d4b612e213bdb27eb9f1e169b0f14526b57
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2372,7 +2372,7 @@ spec:
       volumes:
       - name: tls
         secret:
-          secretName: linkerd-sp-validator-tls
+          secretName: linkerd-sp-validator-k8s-tls
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2430,7 +2430,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 394865b9065b74cd3fbb50fc96923c65e29bd4345c2574b5d2511a20effedadb
+        checksum/config: 494b55fb8f6819248b77bc13baf3fd41675475ad771fbe9696ff25fdc6e7405a
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2617,7 +2617,8 @@ spec:
         name: linkerd-identity-end-entity
       - name: tls
         secret:
-          secretName: linkerd-tap-tls
+          secretName: linkerd-tap-k8s-tls
+
 ---
 # Source: linkerd2/templates/linkerd-config-addons.yaml
 ---

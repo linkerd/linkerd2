@@ -146,7 +146,7 @@ identity:
     # control plane annotation - do not edit
     crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
 
-    issuanceLifetime: 86400s
+    issuanceLifetime: 24h0m0s
 
     tls:
       # PEM-encoded certificate

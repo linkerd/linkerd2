@@ -244,5 +244,5 @@ spec:
       - name: tls
         secret:
           defaultMode: 420
-          secretName: linkerd-tap-tls
+          secretName: linkerd-tap-k8s-tls
 status: {}
