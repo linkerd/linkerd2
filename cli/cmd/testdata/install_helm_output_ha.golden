@@ -1015,11 +1015,11 @@ spec:
         - -log-level=info
         - -controller-namespace=linkerd
         - -identity-trust-domain=test.trust.domain
-        - -identity-issuance-lifetime=86400s
+        - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
         - -identity-trust-anchors-pem=dGVzdC10cnVzdC1hbmNob3I=
         - -identity-scheme=linkerd.io/tls
-        image: gcr.io/linkerd-io/controller:linkerd-version
+        image: ghcr.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1568,7 +1568,7 @@ spec:
         - -enable-endpoint-slices=false
         - -cluster-domain=cluster.local
         - -identity-trust-domain=test.trust.domain
-        image: gcr.io/linkerd-io/controller:linkerd-version
+        image: ghcr.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2103,14 +2103,14 @@ spec:
         - -log-level=info
         - -controller-namespace=linkerd
         - -identity-trust-domain=test.trust.domain
-        - -identity-issuance-lifetime=86400s
+        - -identity-issuance-lifetime=24h0m0s
         - -identity-clock-skew-allowance=20s
         - -identity-trust-anchors-pem=dGVzdC10cnVzdC1hbmNob3I=
         - -identity-scheme=linkerd.io/tls
         - -cluster-domain=cluster.local
-        - -proxy-image=gcr.io/linkerd-io/proxy
+        - -proxy-image=ghcr.io/linkerd/proxy
         - -proxy-image-pull-policy=IfNotPresent
-        - -proxy-init-image=gcr.io/linkerd-io/proxy-init
+        - -proxy-init-image=ghcr.io/linkerd/proxy-init
         - -proxy-init-image-pull-policy=IfNotPresent
         - -control-port=4190
         - -ignore-inbound-ports=222
@@ -2127,7 +2127,7 @@ spec:
         - -proxy-log-format=plain
         - -proxy-version=test-proxy-version
         - -proxy-init-image-version=test-proxy-init-version
-        - -debug-image=gcr.io/linkerd-io/debug
+        - -debug-image=ghcr.io/linkerd/debug
         - -debug-image-pull-policy=IfNotPresent
         - -debug-image-version=test-debug-version
         - -destination-get-networks=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
@@ -2136,7 +2136,7 @@ spec:
         - -omit-webhook-side-effects=false
         - -cni-enabled=false
         - -enable-external-profiles=false
-        image: gcr.io/linkerd-io/controller:linkerd-version
+        image: ghcr.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -2688,7 +2688,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -identity-trust-domain=test.trust.domain
-        image: gcr.io/linkerd-io/controller:linkerd-version
+        image: ghcr.io/linkerd/controller:linkerd-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

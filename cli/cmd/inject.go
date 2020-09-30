@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -78,7 +79,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			configs, err := options.fetchConfigsOrDefault()
+			configs, err := options.fetchConfigsOrDefault(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -334,7 +335,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	output.Write([]byte("\n"))
 }
 
-func (options *proxyConfigOptions) fetchConfigsOrDefault() (*cfg.All, error) {
+func (options *proxyConfigOptions) fetchConfigsOrDefault(ctx context.Context) (*cfg.All, error) {
 	if options.ignoreCluster {
 		if !options.disableIdentity {
 			return nil, errors.New("--disable-identity must be set with --ignore-cluster")
@@ -349,7 +350,7 @@ func (options *proxyConfigOptions) fetchConfigsOrDefault() (*cfg.All, error) {
 	}
 
 	checkPublicAPIClientOrExit()
-	config, err := getLinkerdConfigMap()
+	config, err := getLinkerdConfigMap(ctx)
 	if err != nil {
 		return nil, err
 	}
