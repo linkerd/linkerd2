@@ -52,8 +52,6 @@ func (tsa *trafficSplitAdaptor) publish() {
 	merged := sp.ServiceProfile{}
 	if tsa.profile != nil {
 		merged = *tsa.profile
-	} else {
-		merged.Name = fmt.Sprintf("%s.%s.svc.%s", tsa.id.Name, tsa.id.Namespace, tsa.clusterDomain)
 	}
 	if tsa.split != nil {
 		overrides := []*sp.WeightedDst{}

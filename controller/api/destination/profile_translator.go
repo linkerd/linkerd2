@@ -37,10 +37,10 @@ func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.E
 
 func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
-		pt.stream.Send(defaultServiceProfile(pt.fullyQualifiedName))
+		pt.stream.Send(pt.defaultServiceProfile())
 		return
 	}
-	destinationProfile, err := toServiceProfile(profile)
+	destinationProfile, err := pt.toServiceProfile(profile)
 	if err != nil {
 		pt.log.Error(err)
 		return
@@ -49,11 +49,11 @@ func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	pt.stream.Send(destinationProfile)
 }
 
-func defaultServiceProfile(fullyQualifiedName string) *pb.DestinationProfile {
+func (pt *profileTranslator) defaultServiceProfile() *pb.DestinationProfile {
 	return &pb.DestinationProfile{
 		Routes:             []*pb.Route{},
 		RetryBudget:        defaultRetryBudget(),
-		FullyQualifiedName: fullyQualifiedName,
+		FullyQualifiedName: pt.fullyQualifiedName,
 	}
 }
 
@@ -79,7 +79,7 @@ func toDuration(d time.Duration) *duration.Duration {
 
 // toServiceProfile returns a Proxy API DestinationProfile, given a
 // ServiceProfile.
-func toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error) {
+func (pt *profileTranslator) toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error) {
 	routes := make([]*pb.Route, 0)
 	for _, route := range profile.Spec.Routes {
 		pbRoute, err := toRoute(profile, route)
@@ -102,7 +102,7 @@ func toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error
 		Routes:             routes,
 		RetryBudget:        budget,
 		DstOverrides:       toDstOverrides(profile.Spec.DstOverrides),
-		FullyQualifiedName: profile.Name,
+		FullyQualifiedName: pt.fullyQualifiedName,
 	}, nil
 }
 
