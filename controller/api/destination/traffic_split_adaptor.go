@@ -50,7 +50,7 @@ func (tsa *trafficSplitAdaptor) UpdateTrafficSplit(split *ts.TrafficSplit) {
 
 func (tsa *trafficSplitAdaptor) publish() {
 	merged := sp.ServiceProfile{}
-	merged.Spec.FullyQualifiedName = fmt.Sprintf(fmt.Sprintf("%s.%s.svc.%s", tsa.id.Name, tsa.id.Namespace, tsa.clusterDomain))
+	merged.Name = fmt.Sprintf("%s.%s.svc.%s", tsa.id.Name, tsa.id.Namespace, tsa.clusterDomain)
 	if tsa.profile != nil {
 		merged = *tsa.profile
 	}

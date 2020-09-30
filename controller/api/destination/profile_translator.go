@@ -2,10 +2,12 @@ package destination
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -18,18 +20,24 @@ const millisPerDecimilli = 10
 type profileTranslator struct {
 	stream pb.Destination_GetProfileServer
 	log    *logging.Entry
+	fqn    string
 }
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry) *profileTranslator {
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, id *watcher.ServiceID, clusterDomain string) *profileTranslator {
+	var fqn string
+	if id != nil {
+		fqn = fmt.Sprintf("%s.%s.svc.%s", id.Name, id.Namespace, clusterDomain)
+	}
 	return &profileTranslator{
 		stream: stream,
 		log:    log.WithField("component", "profile-translator"),
+		fqn:    fqn,
 	}
 }
 
 func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
-		pt.stream.Send(defaultServiceProfile())
+		pt.stream.Send(defaultServiceProfile(pt.fqn))
 		return
 	}
 	destinationProfile, err := toServiceProfile(profile)
@@ -41,10 +49,11 @@ func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	pt.stream.Send(destinationProfile)
 }
 
-func defaultServiceProfile() *pb.DestinationProfile {
+func defaultServiceProfile(fqn string) *pb.DestinationProfile {
 	return &pb.DestinationProfile{
-		Routes:      []*pb.Route{},
-		RetryBudget: defaultRetryBudget(),
+		Routes:             []*pb.Route{},
+		RetryBudget:        defaultRetryBudget(),
+		FullyQualifiedName: fqn,
 	}
 }
 
@@ -93,7 +102,7 @@ func toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error
 		Routes:             routes,
 		RetryBudget:        budget,
 		DstOverrides:       toDstOverrides(profile.Spec.DstOverrides),
-		FullyQualifiedName: profile.Spec.FullyQualifiedName,
+		FullyQualifiedName: profile.Name,
 	}, nil
 }
 
