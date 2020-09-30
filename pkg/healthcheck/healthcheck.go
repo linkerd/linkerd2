@@ -1630,10 +1630,15 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 // in the cluster
 func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*l5dcharts.Values, error) {
 
-	// Get the linkerd-state cm if present
-	if configMap, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, "linkerd-state", metav1.GetOptions{}); err == nil {
+	// Get the linkerd-config values if present
+	configMap, _, err := FetchLinkerdConfigMap(ctx, k, controlPlaneNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	if rawValues := configMap.Data["values"]; rawValues != "" {
 		var fullValues *l5dcharts.Values
-		err = yaml.Unmarshal([]byte(configMap.Data["values"]), &fullValues)
+		err = yaml.Unmarshal([]byte(rawValues), &fullValues)
 		if err != nil {
 			return nil, err
 		}

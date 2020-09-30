@@ -147,7 +147,6 @@ var (
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
 		"templates/linkerd-config-addons.yaml",
-		"templates/linkerd-state.yaml",
 	}
 )
 
