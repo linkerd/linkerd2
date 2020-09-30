@@ -15,6 +15,7 @@ import (
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
@@ -371,7 +372,7 @@ type HealthChecker struct {
 	apiClient        public.APIClient
 	latestVersions   version.Channels
 	serverVersion    string
-	linkerdConfig    *configPb.All
+	linkerdConfig    *l5dcharts.Values
 	uuid             string
 	issuerCert       *tls.Cred
 	trustAnchors     []*x509.Certificate
@@ -616,9 +617,11 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
-						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap(ctx)
+						// TODO: Set hc.uuid to the current value here
+						hc.linkerdConfig, err = FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
+
 						if hc.linkerdConfig != nil {
-							hc.CNIEnabled = hc.linkerdConfig.Global.CniEnabled
+							hc.CNIEnabled = hc.linkerdConfig.Global.CNIEnabled
 						}
 						return
 					},
@@ -1385,7 +1388,7 @@ func (hc *HealthChecker) checkMinReplicasAvailable(ctx context.Context) error {
 }
 
 func (hc *HealthChecker) issuerIdentity() string {
-	return fmt.Sprintf("identity.%s.%s", hc.ControlPlaneNamespace, hc.linkerdConfig.Global.IdentityContext.TrustDomain)
+	return fmt.Sprintf("identity.%s.%s", hc.ControlPlaneNamespace, hc.linkerdConfig.Global.IdentityTrustDomain)
 }
 
 // Add adds an arbitrary checker. This should only be used for testing. For
@@ -1572,13 +1575,14 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 	return hc.apiClient
 }
 
-func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (string, *configPb.All, error) {
-	cm, configPB, err := FetchLinkerdConfigMap(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
+func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (string, *l5dcharts.Values, error) {
+	values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return "", nil, err
 	}
 
-	return string(cm.GetUID()), configPB, nil
+	// TODO: set the correct UID
+	return fmt.Sprintf("%d", values.ControllerUID), values, nil
 }
 
 // Checks whether the configuration of the linkerd-identity-issuer is correct. This means:
@@ -1587,20 +1591,19 @@ func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (strin
 // 3. The trust anchors (if scheme == kubernetes.io/tls) in the secret equal the ones in config
 // 4. The certs and key are parsable
 func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred, []*x509.Certificate, error) {
-	_, configPB, err := FetchLinkerdConfigMap(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
+	values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	idctx := configPB.Global.IdentityContext
 	var data *issuercerts.IssuerCertData
 
-	if idctx.Scheme == "" || idctx.Scheme == k8s.IdentityIssuerSchemeLinkerd {
-		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, idctx.TrustAnchorsPem, hc.ControlPlaneNamespace)
+	if values.Identity.Issuer.Scheme == "" || values.Identity.Issuer.Scheme == k8s.IdentityIssuerSchemeLinkerd {
+		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.Global.IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 		// ensure trust anchors in config matches what's in the secret
-		if data != nil && strings.TrimSpace(idctx.TrustAnchorsPem) != strings.TrimSpace(data.TrustAnchors) {
+		if data != nil && strings.TrimSpace(values.Global.IdentityTrustAnchorsPEM) != strings.TrimSpace(data.TrustAnchors) {
 			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
 			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
 		}
@@ -1621,6 +1624,40 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 	}
 
 	return issuerCreds, anchors, nil
+}
+
+// FetchCurrentConfiguration retrieves the current Linkerd configuration
+// in the cluster
+func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*l5dcharts.Values, error) {
+
+	// Get the linkerd-config values if present
+	configMap, _, err := FetchLinkerdConfigMap(ctx, k, controlPlaneNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	if rawValues := configMap.Data["values"]; rawValues != "" {
+		var fullValues *l5dcharts.Values
+		err = yaml.Unmarshal([]byte(rawValues), &fullValues)
+		if err != nil {
+			return nil, err
+		}
+		return fullValues, nil
+	}
+
+	// fall back to the older configMap
+	// TODO: remove this once the newer config override secret becomes the default i.e 2.10
+	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	configPB, err := config.FromConfigMap(cm.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	return config.ToValues(configPB), nil
 }
 
 func (hc *HealthChecker) fetchProxyInjectorCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
@@ -1846,21 +1883,11 @@ func (hc *HealthChecker) checkClusterRoleBindings(ctx context.Context, shouldExi
 }
 
 func (hc *HealthChecker) isHA() bool {
-	for _, flag := range hc.linkerdConfig.GetInstall().GetFlags() {
-		if flag.GetName() == "ha" && flag.GetValue() == "true" {
-			return true
-		}
-	}
-	return false
+	return hc.linkerdConfig.Global.HighAvailability
 }
 
 func (hc *HealthChecker) isHeartbeatDisabled() bool {
-	for _, flag := range hc.linkerdConfig.GetInstall().GetFlags() {
-		if flag.GetName() == "disable-heartbeat" && flag.GetValue() == "true" {
-			return true
-		}
-	}
-	return false
+	return hc.linkerdConfig.DisableHeartBeat
 }
 
 func (hc *HealthChecker) checkServiceAccounts(ctx context.Context, saNames []string, ns, labelSelector string) error {
@@ -2013,12 +2040,12 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) e
 		return err
 	}
 
-	_, configPB, err := FetchLinkerdConfigMap(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
+	values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return err
 	}
 
-	trustAnchorsPem := configPB.GetGlobal().GetIdentityContext().GetTrustAnchorsPem()
+	trustAnchorsPem := values.Global.IdentityTrustAnchorsPEM
 	offendingPods := []string{}
 	for _, pod := range meshedPods {
 		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {
