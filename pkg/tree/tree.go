@@ -152,20 +152,30 @@ func Diff(x interface{}, y interface{}) (Tree, error) {
 	return xTree.Diff(yTree)
 }
 
+// coerceTreeValue accepts a value and returns a value where all child values
+// have been coerced to a Tree where such a coercion is possible
+func coerceTreeValue(v interface{}) interface{} {
+	if vt, ok := v.(Tree); ok {
+		vt.coerceToTree()
+	} else if vm, ok := v.(map[string]interface{}); ok {
+		tree := Tree(vm)
+		tree.coerceToTree()
+		return tree
+	} else if va, ok := v.([]interface{}); ok {
+		for i, v := range va {
+			va[i] = coerceTreeValue(v)
+		}
+	}
+	return v
+}
+
 // coerceToTree recursively casts all instances of map[string]interface{} into
 // Tree within this Tree.  When a tree document is unmarshaled, the subtrees
 // will typically be unmarshaled as map[string]interface{} values.  We cast
 // each of these into the Tree newtype so that the Tree type is used uniformly
-// throughout the tree.
+// throughout the tree. Will additionally recurse through arrays
 func (t Tree) coerceToTree() {
 	for k, v := range t {
-		if vt, ok := v.(Tree); ok {
-			vt.coerceToTree()
-		}
-		if vm, ok := v.(map[string]interface{}); ok {
-			vt := Tree(vm)
-			vt.coerceToTree()
-			t[k] = vt
-		}
+		t[k] = coerceTreeValue(v)
 	}
 }
