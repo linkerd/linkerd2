@@ -617,8 +617,7 @@ func (hc *HealthChecker) allCategories() []category {
 					hintAnchor:  "l5d-existence-linkerd-config",
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
-						// TODO: Set hc.uuid to the current value here
-						hc.linkerdConfig, err = FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
+						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap(ctx)
 
 						if hc.linkerdConfig != nil {
 							hc.CNIEnabled = hc.linkerdConfig.Global.CNIEnabled
@@ -1576,13 +1575,12 @@ func (hc *HealthChecker) PublicAPIClient() public.APIClient {
 }
 
 func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (string, *l5dcharts.Values, error) {
-	values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
+	configMap, values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return "", nil, err
 	}
 
-	// TODO: set the correct UID
-	return fmt.Sprintf("%d", values.ControllerUID), values, nil
+	return string(configMap.GetUID()), values, nil
 }
 
 // Checks whether the configuration of the linkerd-identity-issuer is correct. This means:
@@ -1591,7 +1589,7 @@ func (hc *HealthChecker) checkLinkerdConfigConfigMap(ctx context.Context) (strin
 // 3. The trust anchors (if scheme == kubernetes.io/tls) in the secret equal the ones in config
 // 4. The certs and key are parsable
 func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred, []*x509.Certificate, error) {
-	values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
+	_, values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1627,37 +1625,26 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 }
 
 // FetchCurrentConfiguration retrieves the current Linkerd configuration
-// in the cluster
-func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*l5dcharts.Values, error) {
+func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, controlPlaneNamespace string) (*corev1.ConfigMap, *l5dcharts.Values, error) {
 
 	// Get the linkerd-config values if present
-	configMap, _, err := FetchLinkerdConfigMap(ctx, k, controlPlaneNamespace)
+	configMap, configPb, err := FetchLinkerdConfigMap(ctx, k, controlPlaneNamespace)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if rawValues := configMap.Data["values"]; rawValues != "" {
 		var fullValues *l5dcharts.Values
 		err = yaml.Unmarshal([]byte(rawValues), &fullValues)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return fullValues, nil
+		return configMap, fullValues, nil
 	}
 
 	// fall back to the older configMap
 	// TODO: remove this once the newer config override secret becomes the default i.e 2.10
-	cm, err := k.CoreV1().ConfigMaps(controlPlaneNamespace).Get(ctx, k8s.ConfigConfigMapName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	configPB, err := config.FromConfigMap(cm.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	return config.ToValues(configPB), nil
+	return configMap, config.ToValues(configPb), nil
 }
 
 func (hc *HealthChecker) fetchProxyInjectorCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
@@ -2040,7 +2027,7 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) e
 		return err
 	}
 
-	values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
+	_, values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 	if err != nil {
 		return err
 	}

@@ -102,8 +102,6 @@ func ToJSON(configs *pb.All) (global, proxy, install string, err error) {
 // TODO: Remove this once the newer configuration becomes the default i.e 2.10
 func ToValues(configs *pb.All) *l5dcharts.Values {
 	// convert install flags into values
-	// TODO: add version field
-	// TODO: add UUID into values
 	values := &l5dcharts.Values{
 		Global: &l5dcharts.Global{
 			CNIEnabled:              configs.GetGlobal().GetCniEnabled(),
@@ -111,7 +109,7 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 			IdentityTrustAnchorsPEM: configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem(),
 			IdentityTrustDomain:     configs.GetGlobal().GetIdentityContext().GetTrustDomain(),
 			ClusterDomain:           configs.GetGlobal().GetClusterDomain(),
-
+			LinkerdVersion:          configs.GetGlobal().GetVersion(),
 			Proxy: &l5dcharts.Proxy{
 				Image: &l5dcharts.Image{
 					Name:       configs.GetProxy().GetProxyImage().GetImageName(),
