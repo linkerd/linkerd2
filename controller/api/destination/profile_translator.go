@@ -18,26 +18,26 @@ const millisPerDecimilli = 10
 
 // implements the ProfileUpdateListener interface
 type profileTranslator struct {
-	stream pb.Destination_GetProfileServer
-	log    *logging.Entry
-	fqn    string
+	stream             pb.Destination_GetProfileServer
+	log                *logging.Entry
+	fullyQualifiedName string
 }
 
 func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, id *watcher.ServiceID, clusterDomain string) *profileTranslator {
-	var fqn string
+	var fullyQualifiedName string
 	if id != nil {
-		fqn = fmt.Sprintf("%s.%s.svc.%s", id.Name, id.Namespace, clusterDomain)
+		fullyQualifiedName = fmt.Sprintf("%s.%s.svc.%s", id.Name, id.Namespace, clusterDomain)
 	}
 	return &profileTranslator{
-		stream: stream,
-		log:    log.WithField("component", "profile-translator"),
-		fqn:    fqn,
+		stream:             stream,
+		log:                log.WithField("component", "profile-translator"),
+		fullyQualifiedName: fullyQualifiedName,
 	}
 }
 
 func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
-		pt.stream.Send(defaultServiceProfile(pt.fqn))
+		pt.stream.Send(defaultServiceProfile(pt.fullyQualifiedName))
 		return
 	}
 	destinationProfile, err := toServiceProfile(profile)
@@ -49,11 +49,11 @@ func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	pt.stream.Send(destinationProfile)
 }
 
-func defaultServiceProfile(fqn string) *pb.DestinationProfile {
+func defaultServiceProfile(fullyQualifiedName string) *pb.DestinationProfile {
 	return &pb.DestinationProfile{
 		Routes:             []*pb.Route{},
 		RetryBudget:        defaultRetryBudget(),
-		FullyQualifiedName: fqn,
+		FullyQualifiedName: fullyQualifiedName,
 	}
 }
 
