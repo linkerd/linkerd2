@@ -1,5 +1,21 @@
 # Changes
 
+## edge-20.10.1
+
+This edge release includes a couple of external contributions towards
+cert-manager improved support and Grafana charts fixes, among other
+enhancements.
+
+* Changed the type of the injector and tap API secrets to `kubernetes.io/tls`,
+  so they can be provisioned by cert-manager (thanks @cypherfox!)
+* Fixed the "Kubernetes cluster monitoring" Grafana dashboard that had a few
+  charts with incomplete data (thanks @aimbot31!)
+* Fixed the `service-mirror` multicluster component so that it retries
+  connections to the target cluster's Kubernetes API when it's not reachable,
+  instead of blocking
+* Increased the proxy's default timeout for DNS resolution to 500ms, as there
+  were reports that 100ms was too restrictive
+
 ## edge-20.9.4
 
 This edge release introduces support for authenticated docker registries and
