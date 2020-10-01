@@ -206,11 +206,12 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 			}
 
 			if id == "Deployment/linkerd-identity" || id == "Deployment/linkerd-proxy-injector" {
-				if !pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args", "*"}) || strings.TrimPrefix(diff.b.(string), "-identity-trust-anchors-pem=") != issuerCerts.ca {
-					t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+				if pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args", "*"}) && strings.TrimPrefix(diff.b.(string), "-identity-trust-anchors-pem=") == issuerCerts.ca {
+					continue
 				}
-				continue
+				t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 			}
+
 			if id == "Secret/linkerd-identity-issuer" {
 				if pathMatch(diff.path, []string{"data", "crt.pem"}) {
 					if diff.b.(string) != issuerCerts.crt {
