@@ -3,7 +3,7 @@
 ## edge-20.10.1
 
 This edge release includes a couple of external contributions towards
-cert-manager improved support and Grafana charts fixes, among other
+improved cert-manager support and Grafana charts fixes, among other
 enhancements.
 
 * Changed the type of the injector and tap API secrets to `kubernetes.io/tls`,
