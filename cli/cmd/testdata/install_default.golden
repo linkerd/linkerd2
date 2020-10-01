@@ -2067,35 +2067,6 @@ spec:
       - args:
         - proxy-injector
         - -log-level=info
-        - -controller-namespace=linkerd
-        - -identity-trust-domain=cluster.local
-        - -identity-issuance-lifetime=24h0m0s
-        - -identity-clock-skew-allowance=20s
-        - -identity-trust-anchors-pem=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNApNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyClpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAp1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCi93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwpJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CnZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
-        - -identity-scheme=linkerd.io/tls
-        - -cluster-domain=cluster.local
-        - -proxy-image=ghcr.io/linkerd/proxy
-        - -proxy-image-pull-policy=IfNotPresent
-        - -proxy-init-image=ghcr.io/linkerd/proxy-init
-        - -proxy-init-image-pull-policy=IfNotPresent
-        - -control-port=4190
-        - -inbound-port=4143
-        - -admin-port=4191
-        - -outbound-port=4140
-        - -proxy-uid=2102
-        - -proxy-log-level=warn,linkerd=info
-        - -proxy-log-format=plain
-        - -proxy-version=install-proxy-version
-        - -proxy-init-image-version=v1.3.6
-        - -debug-image=ghcr.io/linkerd/debug
-        - -debug-image-pull-policy=IfNotPresent
-        - -debug-image-version=install-debug-version
-        - -destination-get-networks=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-        - -outbound-connect-timeout=1000ms
-        - -inbound-connect-timeout=100ms
-        - -omit-webhook-side-effects=false
-        - -cni-enabled=false
-        - -enable-external-profiles=false
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2117,6 +2088,8 @@ spec:
         securityContext:
           runAsUser: 2103
         volumeMounts:
+        - mountPath: /var/run/linkerd/config
+          name: config
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
@@ -2263,6 +2236,9 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-proxy-injector
       volumes:
+      - configMap:
+          name: linkerd-config
+        name: config
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls

@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/controller/k8s"
+	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -25,23 +26,9 @@ const (
 	eventTypeTracing  = "Tracing"
 )
 
-// Injection type represents the data required to perform a inject event
-type Injection struct {
-	global *pb.Global
-	proxy  *pb.Proxy
-}
-
-// NewInjection returns a Injection object with the provided configuration
-func NewInjection(global *pb.Global, proxy *pb.Proxy) *Injection {
-	return &Injection{
-		global: global,
-		proxy:  proxy,
-	}
-}
-
 // Inject returns an AdmissionResponse containing the patch, if any, to apply
 // to the pod (proxy sidecar and eventually the init container to set it up)
-func (i *Injection) Inject(
+func Inject(
 	ctx context.Context,
 	api *k8s.API,
 	request *admissionv1beta1.AdmissionRequest,
@@ -49,13 +36,23 @@ func (i *Injection) Inject(
 ) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
+	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	proxyConfig, err := config.Proxy(pkgK8s.MountPathProxyConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	namespace, err := api.NS().Lister().Get(request.Namespace)
 	if err != nil {
 		return nil, err
 	}
 	nsAnnotations := namespace.GetAnnotations()
 
-	configs := &pb.All{Global: i.global, Proxy: i.proxy}
+	configs := &pb.All{Global: globalConfig, Proxy: proxyConfig}
 	resourceConfig := inject.NewResourceConfig(configs, inject.OriginWebhook).
 		WithOwnerRetriever(ownerRetriever(ctx, api, request.Namespace)).
 		WithNsAnnotations(nsAnnotations).

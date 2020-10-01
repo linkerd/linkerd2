@@ -54,42 +54,7 @@ spec:
       containers:
       - args:
         - proxy-injector
-        {{- list "log-level" .Values.global.controllerLogLevel | include "partials.FlagIfNotEmpty" -}}
-        {{- list "controller-namespace" .Values.global.namespace | include "partials.FlagIfNotEmpty" -}}
-        {{- list "identity-trust-domain" .Values.global.identityTrustDomain | include "partials.FlagIfNotEmpty" -}}
-        {{- list "identity-issuance-lifetime" .Values.identity.issuer.issuanceLifetime | include "partials.FlagIfNotEmpty" -}}
-        {{- list "identity-clock-skew-allowance" .Values.identity.issuer.clockSkewAllowance | include "partials.FlagIfNotEmpty" -}}
-        {{- list "identity-trust-anchors-pem" (b64enc .Values.global.identityTrustAnchorsPEM) | include "partials.FlagIfNotEmpty" -}}
-        {{- list "identity-scheme" .Values.identity.issuer.scheme | include "partials.FlagIfNotEmpty" -}}
-        {{- list "cluster-domain" .Values.global.clusterDomain | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-image" .Values.global.proxy.image.name | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-image-pull-policy" .Values.global.proxy.image.pullPolicy | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-init-image" .Values.global.proxyInit.image.name | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-init-image-pull-policy" .Values.global.proxyInit.image.pullPolicy | include "partials.FlagIfNotEmpty" -}}
-        {{- list "control-port" .Values.global.proxy.ports.control | include "partials.FlagIfNotEmpty" -}}
-        {{- list "ignore-inbound-ports" .Values.global.proxyInit.ignoreInboundPorts | include "partials.FlagIfNotEmpty" -}}
-        {{- list "ignore-outbound-ports" .Values.global.proxyInit.ignoreOutboundPorts | include "partials.FlagIfNotEmpty" -}}
-        {{- list "inbound-port" .Values.global.proxy.ports.inbound | include "partials.FlagIfNotEmpty" -}}
-        {{- list "admin-port" .Values.global.proxy.ports.admin | include "partials.FlagIfNotEmpty" -}}
-        {{- list "outbound-port" .Values.global.proxy.ports.outbound | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-cpu-request" .Values.global.proxy.resources.cpu.request | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-cpu-limit" .Values.global.proxy.resources.cpu.limit | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-memory-request" .Values.global.proxy.resources.memory.request | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-memory-limit" .Values.global.proxy.resources.memory.limit | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-uid" .Values.global.proxy.uid | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-log-level" .Values.global.proxy.logLevel | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-log-format" .Values.global.proxy.logFormat | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-version" .Values.global.proxy.image.version | include "partials.FlagIfNotEmpty" -}}
-        {{- list "proxy-init-image-version" .Values.global.proxyInit.image.version | include "partials.FlagIfNotEmpty" -}}
-        {{- list "debug-image" .Values.debugContainer.image.name | include "partials.FlagIfNotEmpty" -}}
-        {{- list "debug-image-pull-policy" .Values.debugContainer.image.pullPolicy | include "partials.FlagIfNotEmpty" -}}
-        {{- list "debug-image-version" .Values.debugContainer.image.version | include "partials.FlagIfNotEmpty" -}}
-        {{- list "destination-get-networks" .Values.global.proxy.destinationGetNetworks | include "partials.FlagIfNotEmpty" -}}
-        {{- list "outbound-connect-timeout" .Values.global.proxy.outboundConnectTimeout| include "partials.FlagIfNotEmpty" -}}
-        {{- list "inbound-connect-timeout" .Values.global.proxy.inboundConnectTimeout | include "partials.FlagIfNotEmpty"}}
-        - -omit-webhook-side-effects={{.Values.omitWebhookSideEffects}}
-        - -cni-enabled={{.Values.global.cniEnabled}}
-        - -enable-external-profiles={{.Values.global.proxy.enableExternalProfiles}}
+        - -log-level={{.Values.global.controllerLogLevel}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
@@ -114,6 +79,8 @@ spec:
         securityContext:
           runAsUser: {{.Values.controllerUID}}
         volumeMounts:
+        - mountPath: /var/run/linkerd/config
+          name: config
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
@@ -129,6 +96,9 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-proxy-injector
       volumes:
+      - configMap:
+          name: linkerd-config
+        name: config
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls
