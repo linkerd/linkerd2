@@ -55,11 +55,10 @@ func TestUpgradeDefault(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
-		if id == overridesSecret {
-			continue
-		}
 		for _, diff := range diffs {
-
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -77,10 +76,10 @@ func TestUpgradeHA(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
-		if id == overridesSecret {
-			continue
-		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -123,10 +122,10 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
-		if id == overridesSecret {
-			continue
-		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -194,13 +193,15 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
-			if isProxyEnvDiff(diff.path) {
+			if ignorableDiff(id, diff) {
 				continue
 			}
-			if id == overridesSecret {
+			if isProxyEnvDiff(diff.path) {
+				// Trust root has changed.
 				continue
 			}
 			if id == "ConfigMap/linkerd-config" {
+				// Trust root has changed.
 				continue
 			}
 
@@ -313,10 +314,10 @@ func TestUpgradeTracingAddon(t *testing.T) {
 		}
 	}
 	for id, diffs := range diffMap {
-		if id == overridesSecret {
-			continue
-		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			if id == "Deployment/linkerd-web" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args"}) {
 				continue
 			}
@@ -351,10 +352,10 @@ func TestUpgradeOverwriteTracingAddon(t *testing.T) {
 		}
 	}
 	for id, diffs := range diffMap {
-		if id == overridesSecret {
-			continue
-		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -400,10 +401,10 @@ func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
-		if id == overridesSecret {
-			continue
-		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -455,10 +456,10 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
-		if id == overridesSecret {
-			continue
-		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -476,10 +477,10 @@ func TestUpgradeWithAddonDisabled(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
-		if id == overridesSecret {
-			continue
-		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -510,10 +511,10 @@ func TestUpgradeEnableAddon(t *testing.T) {
 		}
 	}
 	for id, diffs := range diffMap {
-		if id == overridesSecret {
-			continue
-		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			if id == "RoleBinding/linkerd-psp" && pathMatch(diff.path, []string{"subjects"}) {
 				continue
 			}
@@ -538,10 +539,10 @@ func TestUpgradeRemoveAddonKeys(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
-		if id == overridesSecret {
-			continue
-		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
@@ -567,10 +568,10 @@ func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
 		t.Error("Expected ConfigMap/linkerd-config-addons in upgrade output diff but was absent")
 	}
 	for id, diffs := range diffMap {
-		if id == overridesSecret {
-			continue
-		}
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			if id == "Deployment/linkerd-grafana" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "resources"}) {
 				continue
 			}
@@ -784,4 +785,20 @@ func renderInstallAndUpgrade(t *testing.T, installOpts *installOptions, installF
 	installBuf := renderInstall(t, installValues(t, installOpts, installFlags))
 	upgradeBuf, err := renderUpgrade(t, installBuf.String(), upgradeOpts, upgradeFlags)
 	return installBuf, upgradeBuf, err
+}
+
+// Certain resources are expected to change during an upgrade. We can safely
+// ignore these diffs in every test.
+func ignorableDiff(id string, diff diff) bool {
+	if id == overridesSecret {
+		// The stored values overrides will always change because at least the
+		// control plane and proxy versions will change.
+		return true
+	}
+	if id == "ConfigMap/linkerd-config" && pathMatch(diff.path, []string{"data", "values"}) {
+		// The stored values will always change because at least the control
+		// plane and proxy versions will change.
+		return true
+	}
+	return false
 }
