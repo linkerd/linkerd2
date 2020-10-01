@@ -16,3 +16,6 @@ namespace: linkerd-multicluster
 proxyOutboundPort: 4140
 remoteMirrorServiceAccount: true
 remoteMirrorServiceAccountName: linkerd-service-mirror-remote-access-default
+service:
+  labels: {}
+  annotations: {}

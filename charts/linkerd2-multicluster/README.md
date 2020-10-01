@@ -13,7 +13,7 @@ linkerd2-multicluster chart and their default values.
 | Parameter                       | Description                                                                                 | Default                                      |
 |---------------------------------|---------------------------------------------------------------------------------------------|----------------------------------------------|
 |`controllerComponentLabel`       | Control plane label. Do not edit                                                            |`linkerd.io/control-plane-component`          |
-|`controllerImage`                | Docker image for the Service mirror component (uses the Linkerd controller image)           |`ghcr.io/linkerd/controller`                |
+|`controllerImage`                | Docker image for the Service mirror component (uses the Linkerd controller image)           |`ghcr.io/linkerd/controller`                  |
 |`controllerImageVersion`         | Tag for the Service Mirror container Docker image                                           |`latest version`                              |
 |`createdByAnnotation`            | Annotation label for the proxy create. Do not edit.                                         |`linkerd.io/created-by`                       |
 |`gateway`                        | If the gateway component should be installed                                                |`true`                                        |
@@ -38,3 +38,5 @@ linkerd2-multicluster chart and their default values.
 |`logLevel`                       | Log level for the Multicluster components                                                   |`info`                                        |
 |`serviceMirrorRetryLimit`        | Number of times update from the remote cluster is allowed to be requeued (retried)          |`3`                                           |
 |`serviceMirrorUID`               | User id under which the Service Mirror shall be ran                                         |`2103`                                        |
+|`service.annotations`            | Annotations to add to the service                                                           |`{}`                                          |
+|`service.labels`                 | Labels to add to the service                                                                |`{}`                                          |
