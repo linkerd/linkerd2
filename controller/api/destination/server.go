@@ -165,11 +165,6 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	}
 	log.Debugf("GetProfile(%+v)", dest)
 
-	// We build up the pipeline of profile updaters backwards, starting from
-	// the translator which takes profile updates, translates them to protobuf
-	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log)
-
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
@@ -196,6 +191,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			// If no service or error are returned, the IP address does not map
 			// to a service. Send the default profile and return the stream
 			// without subscribing for future updates.
+			translator := newProfileTranslator(stream, log, nil, "")
 			translator.Update(nil)
 
 			select {
@@ -214,6 +210,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		}
 		path = dest.GetPath()
 	}
+
+	// We build up the pipeline of profile updaters backwards, starting from
+	// the translator which takes profile updates, translates them to protobuf
+	// and pushes them onto the gRPC stream.
+	translator := newProfileTranslator(stream, log, &service, s.clusterDomain)
 
 	// The adaptor merges profile updates with traffic split updates and
 	// publishes the result to the translator.
