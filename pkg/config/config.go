@@ -101,6 +101,7 @@ func ToJSON(configs *pb.All) (global, proxy, install string, err error) {
 // ToValues converts configuration into a Values struct, i.e to be consumed by check
 // TODO: Remove this once the newer configuration becomes the default i.e 2.10
 func ToValues(configs *pb.All) *l5dcharts.Values {
+
 	// convert install flags into values
 	values := &l5dcharts.Values{
 		Global: &l5dcharts.Global{
@@ -132,7 +133,6 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 						Request: configs.GetProxy().GetResource().GetRequestMemory(),
 					},
 				},
-				LogLevel:               configs.GetProxy().GetLogLevel().String(),
 				EnableExternalProfiles: !configs.Proxy.GetDisableExternalProfiles(),
 				DestinationGetNetworks: configs.GetProxy().GetDestinationGetNetworks(),
 				LogFormat:              configs.GetProxy().GetLogFormat(),
@@ -151,9 +151,7 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 		},
 		Identity: &l5dcharts.Identity{
 			Issuer: &l5dcharts.Issuer{
-				IssuanceLifetime:   configs.GetGlobal().GetIdentityContext().GetIssuanceLifetime().String(),
-				ClockSkewAllowance: configs.GetGlobal().GetIdentityContext().GetClockSkewAllowance().String(),
-				Scheme:             configs.GetGlobal().GetIdentityContext().GetScheme(),
+				Scheme: configs.GetGlobal().GetIdentityContext().GetScheme(),
 			},
 		},
 		OmitWebhookSideEffects: configs.GetGlobal().GetOmitWebhookSideEffects(),
@@ -164,6 +162,19 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 				Version:    configs.GetProxy().GetDebugImageVersion(),
 			},
 		},
+	}
+
+	// for non-primitive types set only if they are not nil
+	if configs.GetGlobal().GetIdentityContext().GetIssuanceLifetime() != nil {
+		values.Identity.Issuer.IssuanceLifetime = configs.GetGlobal().GetIdentityContext().GetIssuanceLifetime().String()
+	}
+	if configs.GetGlobal().GetIdentityContext().GetClockSkewAllowance() != nil {
+		values.Identity.Issuer.ClockSkewAllowance = configs.GetGlobal().GetIdentityContext().GetClockSkewAllowance().String()
+	}
+
+	if configs.GetProxy().GetLogLevel() != nil {
+		values.Global.Proxy.LogLevel = configs.GetProxy().GetLogLevel().String()
+
 	}
 
 	// set HA, and Heartbeat flags as health-check needs them for old config installs

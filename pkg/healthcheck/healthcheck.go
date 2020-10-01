@@ -1634,12 +1634,12 @@ func FetchCurrentConfiguration(ctx context.Context, k kubernetes.Interface, cont
 	}
 
 	if rawValues := configMap.Data["values"]; rawValues != "" {
-		var fullValues *l5dcharts.Values
+		var fullValues l5dcharts.Values
 		err = yaml.Unmarshal([]byte(rawValues), &fullValues)
 		if err != nil {
 			return nil, nil, err
 		}
-		return configMap, fullValues, nil
+		return configMap, &fullValues, nil
 	}
 
 	// fall back to the older configMap
