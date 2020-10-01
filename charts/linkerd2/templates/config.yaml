@@ -34,3 +34,24 @@ data:
   {{- else -}}
   {{- include "linkerd.configs.install" . | nindent 4}}
   {{- end }}
+  values: |
+  {{- $values := deepCopy .Values }}
+  {{- /*
+    WARNING! All sensitive or private data such as TLS keys must be removed
+    here to avoid it being publicly readable.
+  */ -}}
+  {{- if kindIs "map" $values.identity.issuer.tls -}}
+    {{- $_ := unset $values.identity.issuer.tls "keyPEM"}}
+  {{- end -}}
+  {{- if kindIs "map" $values.profileValidator -}}
+    {{- $_ := unset $values.profileValidator "keyPEM"}}
+  {{- end -}}
+  {{- if kindIs "map" $values.proxyInjector -}}
+    {{- $_ := unset $values.proxyInjector "keyPEM"}}
+  {{- end -}}
+  {{- if kindIs "map" $values.tap -}}
+    {{- $_ := unset $values.tap "keyPEM"}}
+  {{- end -}}
+  {{- $_ := unset $values "partials"}}
+  {{- $_ := unset $values "configs"}}
+  {{- toYaml $values | trim | nindent 4 }}
