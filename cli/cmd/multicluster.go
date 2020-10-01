@@ -58,6 +58,12 @@ type (
 		gatewayNginxVersion     string
 		dockerRegistry          string
 		remoteMirrorCredentials bool
+		service                 *service
+	}
+
+	service struct {
+		annotations []map[string]string
+		labels      []map[string]string
 	}
 
 	linkOptions struct {
@@ -97,6 +103,10 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
 		dockerRegistry:          defaultDockerRegistry,
 		remoteMirrorCredentials: true,
+		service: &service{
+			annotations: defaults.Service.Annotations,
+			labels:      defaults.Service.Labels,
+		},
 	}, nil
 }
 
@@ -198,6 +208,8 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.ProxyOutboundPort = global.Proxy.OutboundPort.Port
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
+	defaults.Service.Annotations = opts.service.annotations
+	defaults.Service.Labels = opts.service.labels
 
 	return defaults, nil
 }
