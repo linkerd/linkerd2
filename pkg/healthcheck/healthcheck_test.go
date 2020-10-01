@@ -11,18 +11,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/issuercerts"
-	"github.com/linkerd/linkerd2/pkg/tls"
-	"github.com/linkerd/linkerd2/testutil"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/identity"
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/testutil"
+	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -2517,6 +2517,305 @@ data:
 
 			if !proto.Equal(configs, tc.expected) {
 				t.Fatalf("Unexpected config:\nExpected:\n%+v\nGot:\n%+v", tc.expected, configs)
+			}
+		})
+	}
+}
+
+func TestFetchCurrentConfiguration(t *testing.T) {
+	defaultValues, err := linkerd2.NewValues(false)
+
+	if err != nil {
+		t.Fatalf("Unexpected error validating options: %v", err)
+	}
+
+	testCases := []struct {
+		k8sConfigs []string
+		expected   *linkerd2.Values
+		err        error
+	}{
+		{
+			[]string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+data:
+  global: |
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
+  proxy: |
+    {"proxyImage":{"imageName":"ghcr.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"ghcr.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.6","debugImage":{"imageName":"ghcr.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+  install: |
+    {"cliVersion":"dev-undefined","flags":[]}
+  values: |
+    controllerImage: ControllerImage
+    controllerImageVersion: ""
+    controllerReplicas: 1
+    controllerUID: 2103
+    dashboard:
+      replicas: 1
+    debugContainer: null
+    destinationProxyResources: null
+    destinationResources: null
+    disableHeartBeat: false
+    enableH2Upgrade: true
+    enablePodAntiAffinity: false
+    global:
+      cliVersion: CliVersion
+      clusterDomain: cluster.local
+      cniEnabled: false
+      controlPlaneTracing: false
+      controllerComponentLabel: ControllerComponentLabel
+      controllerImageVersion: ControllerImageVersion
+      controllerLogLevel: ControllerLogLevel
+      controllerNamespaceLabel: ControllerNamespaceLabel
+      createdByAnnotation: CreatedByAnnotation
+      enableEndpointSlices: false
+      grafanaUrl: ""
+      highAvailability: false
+      identityTrustDomain: cluster.local
+      imagePullPolicy: ImagePullPolicy
+      imagePullSecrets: null
+      linkerdNamespaceLabel: LinkerdNamespaceLabel
+      linkerdVersion: ""
+      namespace: Namespace
+      prometheusUrl: ""
+      proxy:
+        capabilities: null
+        component: linkerd-controller
+        destinationGetNetworks: DestinationGetNetworks
+        disableIdentity: false
+        disableTap: false
+        enableExternalProfiles: false
+        image:
+          name: ProxyImageName
+          pullPolicy: ImagePullPolicy
+          version: ProxyVersion
+        inboundConnectTimeout: ""
+        isGateway: false
+        logFormat: plain
+        logLevel: warn,linkerd=info
+        opaquePorts: ""
+        outboundConnectTimeout: ""
+        ports:
+          admin: 4191
+          control: 4190
+          inbound: 4143
+          outbound: 4140
+        requireIdentityOnInboundPorts: ""
+        resources: null
+        saMountPath: null
+        trace:
+          collectorSvcAccount: ""
+          collectorSvcAddr: ""
+        uid: 2102
+        waitBeforeExitSeconds: 0
+        workloadKind: deployment
+      proxyContainerName: ProxyContainerName
+      proxyInit:
+        capabilities: null
+        closeWaitTimeoutSecs: 0
+        ignoreInboundPorts: ""
+        ignoreOutboundPorts: ""
+        image:
+          name: ProxyInitImageName
+          pullPolicy: ImagePullPolicy
+          version: ProxyInitVersion
+        resources:
+          cpu:
+            limit: 100m
+            request: 10m
+          memory:
+            limit: 50Mi
+            request: 10Mi
+        saMountPath: null
+        xtMountPath:
+          mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          readOnly: false
+      proxyInjectAnnotation: ProxyInjectAnnotation
+      proxyInjectDisabled: ProxyInjectDisabled
+      workloadNamespaceLabel: WorkloadNamespaceLabel
+    grafana:
+      enabled: true
+    heartbeatResources: null
+    heartbeatSchedule: ""
+    identityProxyResources: null
+    identityResources: null
+    installNamespace: true
+    nodeSelector:
+      beta.kubernetes.io/os: linux
+    omitWebhookSideEffects: false
+    prometheus:
+      enabled: true
+      image: PrometheusImage
+    proxyInjectorProxyResources: null
+    proxyInjectorResources: null
+    publicAPIProxyResources: null
+    publicAPIResources: null
+    restrictDashboardPrivileges: false
+    spValidatorProxyResources: null
+    spValidatorResources: null
+    stage: ""
+    tapProxyResources: null
+    tapResources: null
+    tolerations: null
+    tracing:
+      enabled: false
+    webImage: WebImage
+    webProxyResources: null
+    webResources: null
+    webhookFailurePolicy: WebhookFailurePolicy
+`,
+			},
+			&linkerd2.Values{
+				ControllerImage:             "ControllerImage",
+				WebImage:                    "WebImage",
+				ControllerUID:               2103,
+				EnableH2Upgrade:             true,
+				WebhookFailurePolicy:        "WebhookFailurePolicy",
+				OmitWebhookSideEffects:      false,
+				RestrictDashboardPrivileges: false,
+				InstallNamespace:            true,
+				NodeSelector:                defaultValues.NodeSelector,
+				Tolerations:                 defaultValues.Tolerations,
+				Global: &linkerd2.Global{
+					Namespace:                "Namespace",
+					ClusterDomain:            "cluster.local",
+					ImagePullPolicy:          "ImagePullPolicy",
+					CliVersion:               "CliVersion",
+					ControllerComponentLabel: "ControllerComponentLabel",
+					ControllerLogLevel:       "ControllerLogLevel",
+					ControllerImageVersion:   "ControllerImageVersion",
+					ControllerNamespaceLabel: "ControllerNamespaceLabel",
+					WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
+					CreatedByAnnotation:      "CreatedByAnnotation",
+					ProxyInjectAnnotation:    "ProxyInjectAnnotation",
+					ProxyInjectDisabled:      "ProxyInjectDisabled",
+					LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
+					ProxyContainerName:       "ProxyContainerName",
+					CNIEnabled:               false,
+					IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
+					Proxy: &linkerd2.Proxy{
+						Component:              "linkerd-controller",
+						DestinationGetNetworks: "DestinationGetNetworks",
+						Image: &linkerd2.Image{
+							Name:       "ProxyImageName",
+							PullPolicy: "ImagePullPolicy",
+							Version:    "ProxyVersion",
+						},
+						LogLevel:  "warn,linkerd=info",
+						LogFormat: "plain",
+						Ports: &linkerd2.Ports{
+							Admin:    4191,
+							Control:  4190,
+							Inbound:  4143,
+							Outbound: 4140,
+						},
+						UID:   2102,
+						Trace: &linkerd2.Trace{},
+					},
+					ProxyInit: &linkerd2.ProxyInit{
+						Image: &linkerd2.Image{
+							Name:       "ProxyInitImageName",
+							PullPolicy: "ImagePullPolicy",
+							Version:    "ProxyInitVersion",
+						},
+						Resources: &linkerd2.Resources{
+							CPU: linkerd2.Constraints{
+								Limit:   "100m",
+								Request: "10m",
+							},
+							Memory: linkerd2.Constraints{
+								Limit:   "50Mi",
+								Request: "10Mi",
+							},
+						},
+						XTMountPath: &linkerd2.VolumeMountPath{
+							MountPath: "/run",
+							Name:      "linkerd-proxy-init-xtables-lock",
+						},
+					},
+				},
+				ControllerReplicas: 1,
+				Dashboard: &linkerd2.Dashboard{
+					Replicas: 1,
+				},
+				Prometheus: linkerd2.Prometheus{
+					"enabled": true,
+					"image":   "PrometheusImage",
+				},
+				Tracing: map[string]interface{}{
+					"enabled": false,
+				},
+				Grafana: defaultValues.Grafana,
+			},
+			nil,
+		},
+		{
+			[]string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+data:
+  global: |
+    {"linkerdNamespace":"ns","identityContext":null, "cniEnabled": true}
+  proxy: |
+    {"proxyImage":{"imageName":"registry", "pullPolicy":"Always"}}
+  install: |
+    {"flags":[{"name":"ha","value":"true"}]}`,
+			},
+			&linkerd2.Values{
+				Global: &linkerd2.Global{
+					Namespace:        "ns",
+					CNIEnabled:       true,
+					HighAvailability: true,
+					Proxy: &linkerd2.Proxy{
+						EnableExternalProfiles: true,
+						Image: &linkerd2.Image{
+							Name:       "registry",
+							PullPolicy: "Always",
+						},
+						LogLevel: "",
+						Ports:    &linkerd2.Ports{},
+						Resources: &linkerd2.Resources{
+							CPU:    linkerd2.Constraints{},
+							Memory: linkerd2.Constraints{},
+						},
+					},
+					ProxyInit: &linkerd2.ProxyInit{
+						Image: &linkerd2.Image{},
+					},
+				},
+				Identity: &linkerd2.Identity{
+					Issuer: &linkerd2.Issuer{},
+				},
+				DebugContainer: &linkerd2.DebugContainer{
+					Image: &linkerd2.Image{},
+				},
+			},
+			nil,
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			_, values, err := FetchCurrentConfiguration(context.Background(), clientset, "linkerd")
+			if !reflect.DeepEqual(err, tc.err) {
+				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
+			}
+
+			if !reflect.DeepEqual(values, tc.expected) {
+				t.Fatalf("Unexpected values:\nExpected:\n%+v\nGot:\n%+v", tc.expected, values)
 			}
 		})
 	}
