@@ -49,42 +49,15 @@ func TestConfigAccessors(t *testing.T) {
 	// ensures that the defaults in the config map is used.
 
 	var (
-		controlPlaneVersion  = "control-plane-version"
 		proxyVersion         = "proxy-version"
 		proxyVersionOverride = "proxy-version-override"
 	)
 
-	proxyConfig := &config.Proxy{
-		ProxyImage:          &config.Image{ImageName: "ghcr.io/linkerd/proxy", PullPolicy: "IfNotPresent"},
-		ProxyInitImage:      &config.Image{ImageName: "ghcr.io/linkerd/proxy-init", PullPolicy: "IfNotPresent"},
-		ControlPort:         &config.Port{Port: 9000},
-		InboundPort:         &config.Port{Port: 6000},
-		AdminPort:           &config.Port{Port: 6001},
-		OutboundPort:        &config.Port{Port: 6002},
-		IgnoreInboundPorts:  []*config.PortRange{{PortRange: "53,58-59"}},
-		IgnoreOutboundPorts: []*config.PortRange{{PortRange: "9079-9080"}},
-		Resource: &config.ResourceRequirements{
-			RequestCpu:    "0.2",
-			RequestMemory: "64",
-			LimitCpu:      "1",
-			LimitMemory:   "128",
-		},
-		ProxyUid:                8888,
-		LogLevel:                &config.LogLevel{Level: "info,linkerd2_proxy=debug"},
-		LogFormat:               "plain",
-		DisableExternalProfiles: false,
-		ProxyVersion:            proxyVersion,
-		DestinationGetNetworks:  "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+	testConfig, err := l5dcharts.NewValues(false)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-
-	globalConfig := &config.Global{
-		LinkerdNamespace: "linkerd",
-		Version:          controlPlaneVersion,
-		IdentityContext:  &config.IdentityContext{},
-		ClusterDomain:    "cluster.local",
-	}
-
-	configs := &config.All{Global: globalConfig, Proxy: proxyConfig}
+	// TODO: Override with config present here
 
 	var testCases = []struct {
 		id            string
@@ -518,7 +491,7 @@ func TestConfigAccessors(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			resourceConfig := NewResourceConfig(configs, OriginUnknown).WithKind("Deployment").WithNsAnnotations(testCase.nsAnnotations)
+			resourceConfig := NewResourceConfig(testConfig, OriginUnknown).WithKind("Deployment").WithNsAnnotations(testCase.nsAnnotations)
 			if err := resourceConfig.parse(data); err != nil {
 				t.Fatal(err)
 			}

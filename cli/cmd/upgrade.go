@@ -241,7 +241,8 @@ func (options *upgradeOptions) validateAndBuild(ctx context.Context, stage strin
 
 	// Update the configs from the synthesized options.
 	// The overrideConfigs() is used to override proxy configs only.
-	options.overrideConfigs(configs, map[string]string{})
+	// TODO: Check does this even matter now?
+	// options.overrideConfigs(configs, map[string]string{})
 
 	if options.enableEndpointSlices {
 		if err = validateEndpointSlicesFeature(ctx); err != nil {

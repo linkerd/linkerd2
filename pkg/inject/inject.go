@@ -99,7 +99,7 @@ type OwnerRetrieverFunc func(*corev1.Pod) (string, string)
 
 // ResourceConfig contains the parsed information for a given workload
 type ResourceConfig struct {
-	configs        *config.All
+	values         *l5dcharts.Values
 	nsAnnotations  map[string]string
 	ownerRetriever OwnerRetrieverFunc
 	origin         Origin
@@ -137,14 +137,14 @@ type patch struct {
 }
 
 // NewResourceConfig creates and initializes a ResourceConfig
-func NewResourceConfig(configs *config.All, origin Origin) *ResourceConfig {
+func NewResourceConfig(values *l5dcharts.Values, origin Origin) *ResourceConfig {
 	config := &ResourceConfig{
-		configs: configs,
-		origin:  origin,
+		values: values,
+		origin: origin,
 	}
 
 	config.pod.meta = &metav1.ObjectMeta{}
-	config.pod.labels = map[string]string{k8s.ControllerNSLabel: configs.GetGlobal().GetLinkerdNamespace()}
+	config.pod.labels = map[string]string{k8s.ControllerNSLabel: values.Global.Namespace}
 	config.pod.annotations = map[string]string{}
 	return config
 }
@@ -162,7 +162,7 @@ func (conf *ResourceConfig) WithNsAnnotations(m map[string]string) *ResourceConf
 	return conf
 }
 
-// WithOwnerRetriever enriches ResourceConfig with a function that allows to retrieve
+// WithOwnerRetriever enriches ResourceConfig with a function that allows to retrieveq
 // the kind and name of the workload's owner reference
 func (conf *ResourceConfig) WithOwnerRetriever(f OwnerRetrieverFunc) *ResourceConfig {
 	conf.ownerRetriever = f
@@ -221,17 +221,13 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 		}
 	}
 
-	clusterDomain := conf.configs.GetGlobal().GetClusterDomain()
+	clusterDomain := conf.values.Global.ClusterDomain
 	if clusterDomain == "" {
 		clusterDomain = "cluster.local"
 	}
 	values := &patch{
-		Values: l5dcharts.Values{
-			Global: &l5dcharts.Global{
-				Namespace:     conf.configs.GetGlobal().GetLinkerdNamespace(),
-				ClusterDomain: clusterDomain,
-			},
-		},
+		// Set default values
+		Values:      *conf.values,
 		Annotations: map[string]string{},
 		Labels:      map[string]string{},
 	}
@@ -572,27 +568,11 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		}
 	}
 
-	if !conf.configs.GetGlobal().GetCniEnabled() {
+	if !conf.values.Global.CNIEnabled {
 		conf.injectProxyInit(values)
 	}
 
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
-
-	values.Global.Proxy.Trace = &l5dcharts.Trace{}
-	if trace := conf.trace(); trace != nil {
-		log.Infof("tracing enabled: remote service=%s, service account=%s", trace.CollectorSvcAddr, trace.CollectorSvcAccount)
-		values.Global.Proxy.Trace = trace
-	}
-
-	idctx := conf.identityContext()
-	if idctx == nil {
-		values.Global.Proxy.DisableIdentity = true
-		return
-	}
-	values.Global.IdentityTrustAnchorsPEM = idctx.GetTrustAnchorsPem()
-	values.Global.IdentityTrustDomain = idctx.GetTrustDomain()
-	values.Identity = &l5dcharts.Identity{}
-
 }
 
 func (conf *ResourceConfig) injectProxyInit(values *patch) {
@@ -726,24 +706,24 @@ func (conf *ResourceConfig) proxyImage() string {
 	if override := conf.getOverride(k8s.ProxyImageAnnotation); override != "" {
 		return override
 	}
-	return conf.configs.GetProxy().GetProxyImage().GetImageName()
+	return conf.values.Global.Proxy.Image.Name
 }
 
 func (conf *ResourceConfig) proxyImagePullPolicy() string {
 	if override := conf.getOverride(k8s.ProxyImagePullPolicyAnnotation); override != "" {
 		return override
 	}
-	return conf.configs.GetProxy().GetProxyImage().GetPullPolicy()
+	return conf.values.Global.Proxy.Image.PullPolicy
 }
 
 func (conf *ResourceConfig) proxyVersion() string {
 	if override := conf.getOverride(k8s.ProxyVersionOverrideAnnotation); override != "" {
 		return override
 	}
-	if proxyVersion := conf.configs.GetProxy().GetProxyVersion(); proxyVersion != "" {
+	if proxyVersion := conf.values.Global.Proxy.Image.Version; proxyVersion != "" {
 		return proxyVersion
 	}
-	if controlPlaneVersion := conf.configs.GetGlobal().GetVersion(); controlPlaneVersion != "" {
+	if controlPlaneVersion := conf.values.Global.LinkerdVersion; controlPlaneVersion != "" {
 		return controlPlaneVersion
 	}
 	return version.Version
@@ -753,7 +733,7 @@ func (conf *ResourceConfig) proxyInitVersion() string {
 	if override := conf.getOverride(k8s.ProxyInitImageVersionAnnotation); override != "" {
 		return override
 	}
-	if v := conf.configs.GetProxy().GetProxyInitImageVersion(); v != "" {
+	if v := conf.values.Global.ProxyInit.Image.Version; v != "" {
 		return v
 	}
 	return version.ProxyInitVersion
@@ -767,7 +747,7 @@ func (conf *ResourceConfig) proxyControlPort() int32 {
 		}
 	}
 
-	return int32(conf.configs.GetProxy().GetControlPort().GetPort())
+	return conf.values.Global.Proxy.Ports.Control
 }
 
 func (conf *ResourceConfig) proxyInboundPort() int32 {
@@ -778,7 +758,7 @@ func (conf *ResourceConfig) proxyInboundPort() int32 {
 		}
 	}
 
-	return int32(conf.configs.GetProxy().GetInboundPort().GetPort())
+	return conf.values.Global.Proxy.Ports.Inbound
 }
 
 func (conf *ResourceConfig) proxyAdminPort() int32 {
@@ -788,7 +768,7 @@ func (conf *ResourceConfig) proxyAdminPort() int32 {
 			return int32(adminPort)
 		}
 	}
-	return int32(conf.configs.GetProxy().GetAdminPort().GetPort())
+	return conf.values.Global.Proxy.Ports.Admin
 }
 
 func (conf *ResourceConfig) proxyOutboundPort() int32 {
@@ -799,7 +779,7 @@ func (conf *ResourceConfig) proxyOutboundPort() int32 {
 		}
 	}
 
-	return int32(conf.configs.GetProxy().GetOutboundPort().GetPort())
+	return conf.values.Global.Proxy.Ports.Outbound
 }
 
 func (conf *ResourceConfig) proxyLogLevel() string {
@@ -807,7 +787,7 @@ func (conf *ResourceConfig) proxyLogLevel() string {
 		return override
 	}
 
-	return conf.configs.GetProxy().GetLogLevel().GetLevel()
+	return conf.values.Global.Proxy.LogLevel
 }
 
 func (conf *ResourceConfig) proxyLogFormat() string {
@@ -815,10 +795,10 @@ func (conf *ResourceConfig) proxyLogFormat() string {
 		return override
 	}
 
-	return conf.configs.GetProxy().GetLogFormat()
+	return conf.values.Global.Proxy.LogFormat
 }
 
-func (conf *ResourceConfig) identityContext() *config.IdentityContext {
+func (conf *ResourceConfig) identityContext() *l5dcharts.Identity {
 	if override := conf.getOverride(k8s.ProxyDisableIdentityAnnotation); override != "" {
 		value, err := strconv.ParseBool(override)
 		if err == nil && value {
@@ -826,7 +806,7 @@ func (conf *ResourceConfig) identityContext() *config.IdentityContext {
 		}
 	}
 
-	return conf.configs.GetGlobal().GetIdentityContext()
+	return conf.values.Identity
 }
 
 func (conf *ResourceConfig) tapDisabled() bool {
@@ -852,7 +832,7 @@ func (conf *ResourceConfig) destinationGetNetworks() string {
 		return nsOverride
 	}
 
-	return conf.configs.GetProxy().DestinationGetNetworks
+	return conf.values.Global.Proxy.DestinationGetNetworks
 }
 
 func (conf *ResourceConfig) getOutboundConnectTimeout() string {
@@ -874,7 +854,7 @@ func (conf *ResourceConfig) getOutboundConnectTimeout() string {
 		}
 	}
 
-	return conf.configs.GetProxy().OutboundConnectTimeout
+	return conf.values.Global.Proxy.OutboundConnectTimeout
 }
 
 func (conf *ResourceConfig) getInboundConnectTimeout() string {
@@ -896,7 +876,7 @@ func (conf *ResourceConfig) getInboundConnectTimeout() string {
 		}
 	}
 
-	return conf.configs.GetProxy().InboundConnectTimeout
+	return conf.values.Global.Proxy.InboundConnectTimeout
 }
 
 func (conf *ResourceConfig) isGateway() bool {
@@ -934,7 +914,7 @@ func (conf *ResourceConfig) proxyResourceRequirements() *l5dcharts.Resources {
 
 	if override := conf.getOverride(k8s.ProxyCPURequestAnnotation); override != "" {
 		requestCPU, err = k8sResource.ParseQuantity(override)
-	} else if defaultRequest := conf.configs.GetProxy().GetResource().GetRequestCpu(); defaultRequest != "" {
+	} else if defaultRequest := conf.values.Global.Proxy.Resources.CPU.Request; defaultRequest != "" {
 		requestCPU, err = k8sResource.ParseQuantity(defaultRequest)
 	}
 	if err != nil {
@@ -946,7 +926,7 @@ func (conf *ResourceConfig) proxyResourceRequirements() *l5dcharts.Resources {
 
 	if override := conf.getOverride(k8s.ProxyMemoryRequestAnnotation); override != "" {
 		requestMemory, err = k8sResource.ParseQuantity(override)
-	} else if defaultRequest := conf.configs.GetProxy().GetResource().GetRequestMemory(); defaultRequest != "" {
+	} else if defaultRequest := conf.values.Global.Proxy.Resources.Memory.Request; defaultRequest != "" {
 		requestMemory, err = k8sResource.ParseQuantity(defaultRequest)
 	}
 	if err != nil {
@@ -958,7 +938,7 @@ func (conf *ResourceConfig) proxyResourceRequirements() *l5dcharts.Resources {
 
 	if override := conf.getOverride(k8s.ProxyCPULimitAnnotation); override != "" {
 		limitCPU, err = k8sResource.ParseQuantity(override)
-	} else if defaultLimit := conf.configs.GetProxy().GetResource().GetLimitCpu(); defaultLimit != "" {
+	} else if defaultLimit := conf.values.Global.Proxy.Resources.CPU.Limit; defaultLimit != "" {
 		limitCPU, err = k8sResource.ParseQuantity(defaultLimit)
 	}
 	if err != nil {
@@ -970,7 +950,7 @@ func (conf *ResourceConfig) proxyResourceRequirements() *l5dcharts.Resources {
 
 	if override := conf.getOverride(k8s.ProxyMemoryLimitAnnotation); override != "" {
 		limitMemory, err = k8sResource.ParseQuantity(override)
-	} else if defaultLimit := conf.configs.GetProxy().GetResource().GetLimitMemory(); defaultLimit != "" {
+	} else if defaultLimit := conf.values.Global.Proxy.Resources.Memory.Limit; defaultLimit != "" {
 		limitMemory, err = k8sResource.ParseQuantity(defaultLimit)
 	}
 	if err != nil {
@@ -991,11 +971,11 @@ func (conf *ResourceConfig) proxyUID() int64 {
 		}
 	}
 
-	return conf.configs.GetProxy().GetProxyUid()
+	return conf.values.Global.Proxy.UID
 }
 
 func (conf *ResourceConfig) enableExternalProfiles() bool {
-	disableExternalProfiles := conf.configs.GetProxy().GetDisableExternalProfiles()
+	disableExternalProfiles := !conf.values.Global.Proxy.EnableExternalProfiles
 	if override := conf.getOverride(k8s.ProxyEnableExternalProfilesAnnotation); override != "" {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
@@ -1010,14 +990,14 @@ func (conf *ResourceConfig) proxyInitImage() string {
 	if override := conf.getOverride(k8s.ProxyInitImageAnnotation); override != "" {
 		return override
 	}
-	return conf.configs.GetProxy().GetProxyInitImage().GetImageName()
+	return conf.values.Global.ProxyInit.Image.Name
 }
 
 func (conf *ResourceConfig) proxyInitImagePullPolicy() string {
 	if override := conf.getOverride(k8s.ProxyImagePullPolicyAnnotation); override != "" {
 		return override
 	}
-	return conf.configs.GetProxy().GetProxyInitImage().GetPullPolicy()
+	return conf.values.Global.ProxyInit.Image.PullPolicy
 }
 
 func (conf *ResourceConfig) proxyInboundSkipPorts() string {
@@ -1025,11 +1005,7 @@ func (conf *ResourceConfig) proxyInboundSkipPorts() string {
 		return override
 	}
 
-	portRanges := []string{}
-	for _, portOrRange := range conf.configs.GetProxy().GetIgnoreInboundPorts() {
-		portRanges = append(portRanges, portOrRange.GetPortRange())
-	}
-	return strings.Join(portRanges, ",")
+	return conf.values.Global.ProxyInit.IgnoreInboundPorts
 }
 
 func (conf *ResourceConfig) proxyOpaquePorts() (string, error) {
@@ -1077,28 +1053,24 @@ func (conf *ResourceConfig) proxyOutboundSkipPorts() string {
 		return override
 	}
 
-	portRanges := []string{}
-	for _, port := range conf.configs.GetProxy().GetIgnoreOutboundPorts() {
-		portRanges = append(portRanges, port.GetPortRange())
-	}
-	return strings.Join(portRanges, ",")
+	return conf.values.Global.ProxyInit.IgnoreOutboundPorts
 }
 
 func (conf *ResourceConfig) debugSidecarImage() string {
 	if override := conf.getOverride(k8s.DebugImageAnnotation); override != "" {
 		return override
 	}
-	return conf.configs.GetProxy().GetDebugImage().GetImageName()
+	return conf.values.DebugContainer.Image.Name
 }
 
 func (conf *ResourceConfig) debugSidecarImageVersion() string {
 	if override := conf.getOverride(k8s.DebugImageVersionAnnotation); override != "" {
 		return override
 	}
-	if debugVersion := conf.configs.GetProxy().GetDebugImageVersion(); debugVersion != "" {
+	if debugVersion := conf.values.DebugContainer.Image.Version; debugVersion != "" {
 		return debugVersion
 	}
-	if controlPlaneVersion := conf.configs.GetGlobal().GetVersion(); controlPlaneVersion != "" {
+	if controlPlaneVersion := conf.values.Global.LinkerdVersion; controlPlaneVersion != "" {
 		return controlPlaneVersion
 	}
 	return version.Version
@@ -1108,7 +1080,7 @@ func (conf *ResourceConfig) debugSidecarImagePullPolicy() string {
 	if override := conf.getOverride(k8s.DebugImagePullPolicyAnnotation); override != "" {
 		return override
 	}
-	return conf.configs.GetProxy().GetDebugImage().GetPullPolicy()
+	return conf.values.DebugContainer.Image.PullPolicy
 }
 
 // GetOverriddenConfiguration returns a map of the overridden proxy annotations

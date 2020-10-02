@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
@@ -22,7 +22,7 @@ type testCase struct {
 	goldenFileName         string
 	reportFileName         string
 	injectProxy            bool
-	testInjectConfig       *config.All
+	testInjectConfig       *linkerd2.Values
 	overrideAnnotations    map[string]string
 	enableDebugSidecarFlag bool
 }
@@ -46,7 +46,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	report := new(bytes.Buffer)
 	transformer := &resourceTransformerInject{
 		injectProxy:         tc.injectProxy,
-		configs:             tc.testInjectConfig,
+		values:              tc.testInjectConfig,
 		overrideAnnotations: tc.overrideAnnotations,
 		enableDebugSidecar:  tc.enableDebugSidecarFlag,
 		allowNsInject:       true,
@@ -61,60 +61,64 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	diffTestdata(t, reportFileName, report.String())
 }
 
-func testInstallConfig(ctx context.Context) *pb.All {
-	installOptions, err := testInstallOptions()
-	if err != nil {
-		log.Fatalf("Unexpected error: %v", err)
-	}
-
-	_, c, err := installOptions.validateAndBuild(ctx, "", nil)
-	if err != nil {
-		log.Fatalf("test install options must be valid: %s", err)
-	}
-	return c
-}
-
 func TestUninjectAndInject(t *testing.T) {
-	ctx := context.Background()
-	defaultConfig := testInstallConfig(ctx)
-	defaultConfig.Global.Version = "test-inject-control-plane-version"
-	defaultConfig.Proxy.ProxyVersion = "test-inject-proxy-version"
-	defaultConfig.Proxy.DebugImageVersion = "test-inject-debug-version"
-
-	emptyVersionConfig := testInstallConfig(ctx)
-	emptyVersionConfig.Global.Version = ""
-	emptyVersionConfig.Proxy.ProxyVersion = ""
-
-	emptyProxyVersionConfig := testInstallConfig(ctx)
-	emptyProxyVersionConfig.Global.Version = "test-inject-control-plane-version"
-	emptyProxyVersionConfig.Proxy.ProxyVersion = ""
-
-	overrideConfig := testInstallConfig(ctx)
-	overrideConfig.Proxy.ProxyVersion = "override"
-
-	proxyResourceConfig := testInstallConfig(ctx)
-	proxyResourceConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
-	proxyResourceConfig.Proxy.Resource = &config.ResourceRequirements{
-		RequestCpu:    "110m",
-		RequestMemory: "100Mi",
-		LimitCpu:      "160m",
-		LimitMemory:   "150Mi",
-	}
-
-	cniEnabledConfig := testInstallConfig(ctx)
-	cniEnabledConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
-	cniEnabledConfig.Global.CniEnabled = true
-
-	proxyIgnorePortsOptions, err := testInstallOptions()
+	defaultConfig, err := linkerd2.NewValues(false)
 	if err != nil {
 		log.Fatalf("Unexpected error: %v", err)
 	}
-	proxyIgnorePortsOptions.ignoreInboundPorts = []string{"22", "8100-8102"}
-	proxyIgnorePortsOptions.ignoreOutboundPorts = []string{"5432"}
-	_, proxyIgnorePortsConfig, err := proxyIgnorePortsOptions.validateAndBuild(ctx, "", nil)
+	defaultConfig.Global.LinkerdVersion = "test-inject-control-plane-version"
+	defaultConfig.Global.Proxy.Image.Version = "test-inject-proxy-version"
+	defaultConfig.DebugContainer.Image.Version = "test-inject-debug-version"
+
+	emptyVersionConfig, err := linkerd2.NewValues(false)
 	if err != nil {
-		log.Fatalf("test install proxy-ignore options must be valid: %s", err)
+		log.Fatalf("Unexpected error: %v", err)
 	}
+	emptyVersionConfig.Global.LinkerdVersion = ""
+	emptyVersionConfig.Global.Proxy.Image.Version = ""
+
+	emptyProxyVersionConfig, err := linkerd2.NewValues(false)
+	if err != nil {
+		log.Fatalf("Unexpected error: %v", err)
+	}
+	emptyProxyVersionConfig.Global.LinkerdVersion = "test-inject-control-plane-version"
+	emptyProxyVersionConfig.Global.Proxy.Image.Version = ""
+
+	overrideConfig, err := linkerd2.NewValues(false)
+	if err != nil {
+		log.Fatalf("Unexpected error: %v", err)
+	}
+	overrideConfig.Global.Proxy.Image.Version = "override"
+
+	proxyResourceConfig, err := linkerd2.NewValues(false)
+	if err != nil {
+		log.Fatalf("Unexpected error: %v", err)
+	}
+	proxyResourceConfig.Global.Proxy.Image.Version = defaultConfig.Global.Proxy.Image.Version
+	proxyResourceConfig.Global.Proxy.Resources = &linkerd2.Resources{
+		CPU: linkerd2.Constraints{
+			Request: "110m",
+			Limit:   "150Mi",
+		},
+		Memory: linkerd2.Constraints{
+			Request: "100Mi",
+			Limit:   "160m",
+		},
+	}
+
+	cniEnabledConfig, err := linkerd2.NewValues(false)
+	if err != nil {
+		log.Fatalf("Unexpected error: %v", err)
+	}
+	cniEnabledConfig.Global.Proxy.Image.Version = defaultConfig.Global.Proxy.Image.Version
+	cniEnabledConfig.Global.CNIEnabled = true
+
+	proxyIgnorePortsConfig, err := linkerd2.NewValues(false)
+	if err != nil {
+		log.Fatalf("Unexpected error: %v", err)
+	}
+	proxyIgnorePortsConfig.Global.ProxyInit.IgnoreInboundPorts = "22,8100-8102"
+	proxyIgnorePortsConfig.Global.ProxyInit.IgnoreOutboundPorts = "5432"
 
 	testCases := []testCase{
 		{
@@ -360,8 +364,11 @@ type injectCmd struct {
 }
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
-	testConfig := testInstallConfig(context.Background())
-	testConfig.Proxy.ProxyVersion = "testinjectversion"
+	testConfig, err := linkerd2.NewValues(false)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	testConfig.Global.Proxy.Image.Version = "testinjectversion"
 
 	errBuffer := &bytes.Buffer{}
 	outBuffer := &bytes.Buffer{}
@@ -373,7 +380,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 
 	transformer := &resourceTransformerInject{
 		injectProxy: tc.injectProxy,
-		configs:     testConfig,
+		values:      testConfig,
 	}
 	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer)
 	if exitCode != tc.exitCode {
@@ -461,9 +468,13 @@ func testInjectFilePath(ctx context.Context, t *testing.T, tc injectFilePath) {
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
+	testConfig, err := linkerd2.NewValues(false)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 	transformer := &resourceTransformerInject{
 		injectProxy: true,
-		configs:     testInstallConfig(ctx),
+		values:      testConfig,
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
@@ -482,9 +493,13 @@ func testReadFromFolder(ctx context.Context, t *testing.T, resourceFolder string
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
+	testConfig, err := linkerd2.NewValues(false)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 	transformer := &resourceTransformerInject{
 		injectProxy: true,
-		configs:     testInstallConfig(ctx),
+		values:      testConfig,
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
@@ -725,7 +740,11 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt // pin
 		t.Run(tt.description, func(t *testing.T) {
-			defaultConfig := testInstallConfig(context.Background())
+
+			defaultConfig, err := linkerd2.NewValues(false)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
 			actualOverrides := map[string]string{}
 			tt.configOptions.overrideConfigs(defaultConfig, actualOverrides)
 			if len(tt.expectedOverrides) != len(actualOverrides) {
@@ -806,6 +825,7 @@ func TestOverrideConfigsWithCustomRegistryInstall(t *testing.T) {
 	}
 
 	// Setup the registry used when "installing" linkerd
+	// TODO: Update this test once the new flags arrive as it tests overriding using flags
 	customRegistryAtInstall := "custom.install.registry/linkerd-io"
 	installFlags := make([]*pb.Install_Flag, 0)
 	installFlags = append(installFlags, &pb.Install_Flag{
@@ -817,11 +837,13 @@ func TestOverrideConfigsWithCustomRegistryInstall(t *testing.T) {
 		tt := tt // pin
 		t.Run(tt.description, func(t *testing.T) {
 
-			defaultConfig := testInstallConfig(context.Background())
-			defaultConfig.Install.Flags = installFlags
-			defaultConfig.Proxy.ProxyImage.ImageName = customRegistryAtInstall + "/proxy"
-			defaultConfig.Proxy.ProxyInitImage.ImageName = customRegistryAtInstall + "/proxy-init"
-			defaultConfig.Proxy.DebugImage.ImageName = customRegistryAtInstall + "/debug"
+			defaultConfig, err := linkerd2.NewValues(false)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			defaultConfig.Global.Proxy.Image.Name = customRegistryAtInstall + "/proxy"
+			defaultConfig.Global.ProxyInit.Image.Name = customRegistryAtInstall + "/proxy-init"
+			defaultConfig.DebugContainer.Image.Name = customRegistryAtInstall + "/debug"
 
 			actualOverrides := map[string]string{}
 			tt.configOptions.overrideConfigs(defaultConfig, actualOverrides)

@@ -13,7 +13,8 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	cfg "github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -36,7 +37,7 @@ const (
 type resourceTransformerInject struct {
 	allowNsInject       bool
 	injectProxy         bool
-	configs             *cfg.All
+	values              *linkerd2.Values
 	overrideAnnotations map[string]string
 	enableDebugSidecar  bool
 	closeWaitTimeout    time.Duration
@@ -80,17 +81,17 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			configs, err := options.fetchConfigsOrDefault()
+			values, err := options.fetchConfigsOrDefault()
 			if err != nil {
 				return err
 			}
 			overrideAnnotations := map[string]string{}
-			options.overrideConfigs(configs, overrideAnnotations)
+			options.overrideConfigs(values, overrideAnnotations)
 
 			transformer := &resourceTransformerInject{
 				allowNsInject:       true,
 				injectProxy:         manualOption,
-				configs:             configs,
+				values:              values,
 				overrideAnnotations: overrideAnnotations,
 				enableDebugSidecar:  enableDebugSidecar,
 				closeWaitTimeout:    closeWaitTimeout,
@@ -149,14 +150,14 @@ sub-folders, or coming from stdin.`,
 
 func uninjectAndInject(inputs []io.Reader, errWriter, outWriter io.Writer, transformer *resourceTransformerInject) int {
 	var out bytes.Buffer
-	if exitCode := runUninjectSilentCmd(inputs, errWriter, &out, transformer.configs); exitCode != 0 {
+	if exitCode := runUninjectSilentCmd(inputs, errWriter, &out, transformer.values); exitCode != 0 {
 		return exitCode
 	}
 	return runInjectCmd([]io.Reader{&out}, errWriter, outWriter, transformer)
 }
 
 func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Report, error) {
-	conf := inject.NewResourceConfig(rt.configs, inject.OriginCLI)
+	conf := inject.NewResourceConfig(rt.values, inject.OriginCLI)
 
 	if rt.enableDebugSidecar {
 		conf.AppendPodAnnotation(k8s.ProxyEnableDebugAnnotation, "true")
@@ -336,119 +337,119 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	output.Write([]byte("\n"))
 }
 
-func (options *proxyConfigOptions) fetchConfigsOrDefault() (*cfg.All, error) {
+func (options *proxyConfigOptions) fetchConfigsOrDefault() (*linkerd2.Values, error) {
 	if options.ignoreCluster {
 		if !options.disableIdentity {
 			return nil, errors.New("--disable-identity must be set with --ignore-cluster")
 		}
 
-		install, err := newInstallOptionsWithDefaults()
-		if err != nil {
-			return nil, err
-		}
-
-		return install.configs(nil), nil
+		return linkerd2.NewValues(false)
 	}
 
-	api := checkPublicAPIClientOrExit()
-	config, err := api.Config(context.Background(), &public.Empty{})
+	checkPublicAPIClientOrExit()
+	api, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	return config, nil
+	// Get the New Linkerd Configuration
+	// TODO: Fix context
+	_, values, err := healthcheck.FetchCurrentConfiguration(context.Background(), api, controlPlaneNamespace)
+	return values, err
 }
 
 // overrideConfigs uses command-line overrides to update the provided configs.
 // the overrideAnnotations map keeps track of which configs are overridden, by
 // storing the corresponding annotations and values.
-func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnnotations map[string]string) {
+func (options *proxyConfigOptions) overrideConfigs(values *linkerd2.Values, overrideAnnotations map[string]string) {
 	if options.proxyVersion != "" {
-		configs.Proxy.ProxyVersion = options.proxyVersion
+		values.Global.LinkerdVersion = options.proxyVersion
 		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = options.proxyVersion
 	}
 
 	if len(options.ignoreInboundPorts) > 0 {
-		configs.Proxy.IgnoreInboundPorts = inject.ToPortRanges(options.ignoreInboundPorts)
-		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = parsePortRanges(configs.Proxy.IgnoreInboundPorts)
+		values.Global.ProxyInit.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
+		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = values.Global.ProxyInit.IgnoreInboundPorts
 	}
 	if len(options.ignoreOutboundPorts) > 0 {
-		configs.Proxy.IgnoreOutboundPorts = inject.ToPortRanges(options.ignoreOutboundPorts)
-		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = parsePortRanges(configs.Proxy.IgnoreOutboundPorts)
+		values.Global.ProxyInit.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
+		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = values.Global.ProxyInit.IgnoreOutboundPorts
 	}
 
 	if options.proxyAdminPort != 0 {
-		configs.Proxy.AdminPort = toPort(options.proxyAdminPort)
-		overrideAnnotations[k8s.ProxyAdminPortAnnotation] = parsePort(configs.Proxy.AdminPort)
+		values.Global.Proxy.Ports.Admin = int32(options.proxyAdminPort)
+		overrideAnnotations[k8s.ProxyAdminPortAnnotation] = string(values.Global.Proxy.Ports.Admin)
 	}
 	if options.proxyControlPort != 0 {
-		configs.Proxy.ControlPort = toPort(options.proxyControlPort)
-		overrideAnnotations[k8s.ProxyControlPortAnnotation] = parsePort(configs.Proxy.ControlPort)
+		values.Global.Proxy.Ports.Control = int32(options.proxyControlPort)
+		overrideAnnotations[k8s.ProxyControlPortAnnotation] = string(values.Global.Proxy.Ports.Control)
 	}
 	if options.proxyInboundPort != 0 {
-		configs.Proxy.InboundPort = toPort(options.proxyInboundPort)
-		overrideAnnotations[k8s.ProxyInboundPortAnnotation] = parsePort(configs.Proxy.InboundPort)
+		values.Global.Proxy.Ports.Inbound = int32(options.proxyInboundPort)
+		overrideAnnotations[k8s.ProxyInboundPortAnnotation] = string(values.Global.Proxy.Ports.Inbound)
 	}
 	if options.proxyOutboundPort != 0 {
-		configs.Proxy.OutboundPort = toPort(options.proxyOutboundPort)
-		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = parsePort(configs.Proxy.OutboundPort)
+		values.Global.Proxy.Ports.Outbound = int32(options.proxyOutboundPort)
+		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = string(values.Global.Proxy.Ports.Outbound)
 	}
 
+	// TODO: Fix all these stuff
+
 	if options.dockerRegistry != "" {
-		debugImage := configs.GetProxy().GetDebugImage().GetImageName()
+		debugImage := values.DebugContainer.Image.Name
 		if debugImage == "" {
 			debugImage = k8s.DebugSidecarImage
 		}
-		overrideAnnotations[k8s.ProxyImageAnnotation] = overwriteRegistry(configs.GetProxy().GetProxyImage().GetImageName(), options.dockerRegistry)
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = overwriteRegistry(configs.GetProxy().GetProxyInitImage().GetImageName(), options.dockerRegistry)
+		overrideAnnotations[k8s.ProxyImageAnnotation] = overwriteRegistry(values.Global.Proxy.Image.Name, options.dockerRegistry)
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = overwriteRegistry(values.Global.ProxyInit.Image.Name, options.dockerRegistry)
 		overrideAnnotations[k8s.DebugImageAnnotation] = overwriteRegistry(debugImage, options.dockerRegistry)
 	}
 
 	if options.proxyImage != "" {
-		configs.Proxy.ProxyImage.ImageName = options.proxyImage
-		overrideAnnotations[k8s.ProxyImageAnnotation] = configs.Proxy.ProxyImage.ImageName
+		values.Global.Proxy.Image.Name = options.proxyImage
+		overrideAnnotations[k8s.ProxyImageAnnotation] = values.Global.Proxy.Image.Name
 	}
 
 	if options.initImage != "" {
-		configs.Proxy.ProxyInitImage.ImageName = options.initImage
-
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = configs.Proxy.ProxyInitImage.ImageName
+		values.Global.ProxyInit.Image.Name = options.initImage
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = values.Global.ProxyInit.Image.Name
 	}
 
 	if options.initImageVersion != "" {
-		configs.Proxy.ProxyInitImageVersion = options.initImageVersion
-		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = configs.Proxy.ProxyInitImageVersion
+		values.Global.ProxyInit.Image.Version = options.initImageVersion
+		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = values.Global.ProxyInit.Image.Version
 	}
 
 	if options.debugImageVersion != "" {
-		configs.Proxy.DebugImageVersion = options.debugImageVersion
-		overrideAnnotations[k8s.DebugImageVersionAnnotation] = options.debugImageVersion
+		values.DebugContainer.Image.Version = options.debugImageVersion
+		overrideAnnotations[k8s.DebugImageVersionAnnotation] = values.DebugContainer.Image.Version
 	}
 
 	if options.imagePullPolicy != "" {
-		configs.Proxy.ProxyImage.PullPolicy = options.imagePullPolicy
-		configs.Proxy.ProxyInitImage.PullPolicy = options.imagePullPolicy
-		configs.Proxy.DebugImage.PullPolicy = options.imagePullPolicy
+		values.Global.Proxy.Image.PullPolicy = options.imagePullPolicy
+		values.Global.ProxyInit.Image.PullPolicy = options.imagePullPolicy
+		values.DebugContainer.Image.PullPolicy = options.imagePullPolicy
 		overrideAnnotations[k8s.ProxyImagePullPolicyAnnotation] = options.imagePullPolicy
 	}
 
 	if options.proxyUID != 0 {
-		configs.Proxy.ProxyUid = options.proxyUID
+		values.Global.Proxy.UID = options.proxyUID
 		overrideAnnotations[k8s.ProxyUIDAnnotation] = strconv.FormatInt(options.proxyUID, 10)
 	}
 
 	if options.proxyLogLevel != "" {
-		configs.Proxy.LogLevel = &cfg.LogLevel{Level: options.proxyLogLevel}
+		values.Global.Proxy.LogLevel = options.proxyLogLevel
 		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = options.proxyLogLevel
 	}
 
 	if options.proxyLogFormat != "" {
-		configs.Proxy.LogFormat = options.proxyLogFormat
+		values.Global.Proxy.LogFormat = options.proxyLogFormat
 		overrideAnnotations[k8s.ProxyLogFormatAnnotation] = options.proxyLogFormat
 	}
 
 	if options.disableIdentity {
-		configs.Global.IdentityContext = nil
+		// TODO: Is nil'ing Identity enough?
+		values.Identity = nil
 		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = strconv.FormatBool(true)
 	}
 
@@ -463,25 +464,25 @@ func (options *proxyConfigOptions) overrideConfigs(configs *cfg.All, overrideAnn
 	// keep track of this option because its true/false value results in different
 	// values being assigned to the LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
 	// env var. Its annotation is added only if its value is true.
-	configs.Proxy.DisableExternalProfiles = !options.enableExternalProfiles
+	values.Global.Proxy.EnableExternalProfiles = options.enableExternalProfiles
 	if options.enableExternalProfiles {
 		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = strconv.FormatBool(true)
 	}
 
 	if options.proxyCPURequest != "" {
-		configs.Proxy.Resource.RequestCpu = options.proxyCPURequest
+		values.Global.Proxy.Resources.CPU.Request = options.proxyCPURequest
 		overrideAnnotations[k8s.ProxyCPURequestAnnotation] = options.proxyCPURequest
 	}
 	if options.proxyCPULimit != "" {
-		configs.Proxy.Resource.LimitCpu = options.proxyCPULimit
+		values.Global.Proxy.Resources.CPU.Limit = options.proxyCPULimit
 		overrideAnnotations[k8s.ProxyCPULimitAnnotation] = options.proxyCPULimit
 	}
 	if options.proxyMemoryRequest != "" {
-		configs.Proxy.Resource.RequestMemory = options.proxyMemoryRequest
+		values.Global.Proxy.Resources.Memory.Request = options.proxyMemoryRequest
 		overrideAnnotations[k8s.ProxyMemoryRequestAnnotation] = options.proxyMemoryRequest
 	}
 	if options.proxyMemoryLimit != "" {
-		configs.Proxy.Resource.LimitMemory = options.proxyMemoryLimit
+		values.Global.Proxy.Resources.Memory.Limit = options.proxyMemoryLimit
 		overrideAnnotations[k8s.ProxyMemoryLimitAnnotation] = options.proxyMemoryLimit
 	}
 
