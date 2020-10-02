@@ -13,6 +13,7 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	cfg "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -350,7 +351,12 @@ func (options *proxyConfigOptions) fetchConfigsOrDefault(ctx context.Context) (*
 	}
 
 	checkPublicAPIClientOrExit()
-	config, err := getLinkerdConfigMap(ctx)
+	api, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	_, config, err := healthcheck.FetchLinkerdConfigMap(ctx, api, controlPlaneNamespace)
 	if err != nil {
 		return nil, err
 	}
