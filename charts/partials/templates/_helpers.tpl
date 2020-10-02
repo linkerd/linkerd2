@@ -59,16 +59,3 @@ For example "11,22,55" will become{"portRange":11},{"portRange":22},
 {{- end -}}
 {{- end -}}
 {{- end -}}
-
-{{/*
-Returns an arg, only if the field value is not empty.
-This has to be used only with strings, as false is also considered as empty.
-*/}}
-{{- define "partials.FlagIfNotEmpty" -}}
-  {{- $field := index . 0 -}}
-  {{- $value := index . 1 -}}
-  {{- if (not (empty $value)) -}}
-    {{printf "- -%s=%v" $field $value | nindent 8 -}}
-  {{- end -}}
-{{- end -}}
-

@@ -75,7 +75,7 @@ spec:
         - -destination-addr=linkerd-dst.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8086
         - -controller-namespace={{.Values.global.namespace}}
         - -log-level={{.Values.global.controllerLogLevel}}
-        {{- list "cluster-domain" .Values.global.clusterDomain | include "partials.FlagIfNotEmpty" -}}
+        - -cluster-domain={{.Values.global.clusterDomain}}
         {{- if .Values.global.prometheusUrl }}
         - -prometheus-url={{.Values.global.prometheusUrl}}
         {{- else if .Values.prometheus.enabled }}

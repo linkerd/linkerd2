@@ -96,8 +96,8 @@ spec:
         - -enable-h2-upgrade={{.Values.enableH2Upgrade}}
         - -log-level={{.Values.global.controllerLogLevel}}
         - -enable-endpoint-slices={{.Values.global.enableEndpointSlices}}
-        {{- list "cluster-domain" .Values.global.clusterDomain | include "partials.FlagIfNotEmpty" -}}
-        {{- list "identity-trust-domain" .Values.global.identityTrustDomain | include "partials.FlagIfNotEmpty" -}}
+        - -cluster-domain={{.Values.global.clusterDomain}}
+        - -identity-trust-domain={{.Values.global.identityTrustDomain}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
