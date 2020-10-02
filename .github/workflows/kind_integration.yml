@@ -145,4 +145,4 @@ jobs:
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
     - name: Run integration tests
       run: |
-        bin/tests --images --name ${{ matrix.integration_test }} "$HOME/.linkerd"
+        bin/tests --images archive --name ${{ matrix.integration_test }} "$HOME/.linkerd"
