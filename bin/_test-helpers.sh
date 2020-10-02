@@ -10,7 +10,7 @@ export default_test_names=(deep external-issuer helm-deep helm-upgrade multiclus
 export all_test_names=(cluster-domain "${default_test_names[*]}")
 
 handle_input() {
-  export images=''
+  export images="docker"
   export test_name=''
   export skip_cluster_create=''
 
@@ -25,7 +25,7 @@ Optionally specify a test with the --name flag: [${all_test_names[*]}]
 Note: The cluster-domain test requires a cluster configuration with a custom cluster domain (see test/configs/cluster-domain.yaml)
 
 Usage:
-    ${0##*/} [--images] [--name test-name] [--skip-cluster-create] /path/to/linkerd
+    ${0##*/} [--images docker|archive|skip] [--name test-name] [--skip-cluster-create] /path/to/linkerd
 
 Examples:
     # Run all tests in isolated clusters
@@ -39,16 +39,25 @@ Examples:
 
     # Load images from tar files located under the 'image-archives' directory
     # Note: This is primarily for CI
-    ${0##*/} --images /path/to/linkerd
+    ${0##*/} --images archive /path/to/linkerd
 
 Available Commands:
     --name: the argument to this option is the specific test to run
     --skip-cluster-create: skip KinD/k3d cluster creation step and run tests in an existing cluster.
-    --images: (Primarily for CI) load the images from local .tar files in the current directory."
+    --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)."
         exit 0
         ;;
       --images)
-        images=1
+        images=$2
+        if [ -z "$images" ]; then
+          echo 'Error: the argument for --images was not specified'
+          exit 1
+        fi
+        if [[ $images != "docker" && $images != "archive" && $images != "skip" ]]; then
+          echo 'Error: the argument for --images was invalid'
+          exit 1
+        fi
+        shift
         ;;
       --name)
         test_name=$2
@@ -174,6 +183,21 @@ start_test() {
   fi
 }
 
+image_load() {
+  cluster_type=$1
+  cluster_name=$2
+  case $images in
+    docker)
+      "$bindir"/image-load "$cluster_type" "$cluster_name"
+      exit_on_err "error calling '$bindir/image-load'"
+      ;;
+    archive)
+      "$bindir"/image-load "$cluster_type" --archive "$cluster_name"
+      exit_on_err "error calling '$bindir/image-load'"
+      ;;
+  esac
+}
+
 start_kind_test() {
   name=$1
   config=$2
@@ -182,8 +206,7 @@ start_kind_test() {
   test_setup
   if [ -z "$skip_cluster_create" ]; then
     create_kind_cluster "$name" "$config"
-    "$bindir"/image-load --kind ${images:+'--images'} "$name"
-    exit_on_err "error calling '$bindir/image-load'"
+    image_load --kind "$name"
   fi
   check_cluster
   run_"$name"_test
@@ -200,9 +223,9 @@ start_k3d_test() {
   test_setup
   if [ -z "$skip_cluster_create" ]; then
     create_k3d_cluster source multicluster-test
-    "$bindir"/image-load --k3d ${images:+'--images'} source
+    image_load --k3d source
     create_k3d_cluster target multicluster-test
-    "$bindir"/image-load --k3d ${images:+'--images'} target
+    image_load --k3d target
   fi
   export context="k3d-source"
   check_cluster

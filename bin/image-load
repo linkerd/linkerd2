@@ -4,7 +4,7 @@ set -eo pipefail
 
 kind=""
 k3d=""
-images=""
+archive=""
 
 while :
 do
@@ -13,7 +13,7 @@ do
       echo "Load into KinD/k3d the images for Linkerd's proxy, controller, web, grafana, cli-bin, debug and cni-plugin."
       echo ""
       echo "Usage:"
-      echo "    bin/image-load [--kind] [--k3d] [--images]"
+      echo "    bin/image-load [--kind] [--k3d] [--archive]"
       echo ""
       echo "Examples:"
       echo ""
@@ -21,12 +21,12 @@ do
       echo "    bin/image-load"
       echo ""
       echo "    # Load images from tar files located under the 'image-archives' directory into k3d"
-      echo "    bin/image-load --k3d --images"
+      echo "    bin/image-load --k3d --archive"
       echo ""
       echo "Available Commands:"
       echo "    --kind: use a KinD cluster (default)."
       echo "    --k3d: use a k3d cluster."
-      echo "    --images: Load the images from local .tar files in the current directory."
+      echo "    --archive: load the images from local .tar files in the current directory."
       exit 0
       ;;
     --kind)
@@ -35,8 +35,8 @@ do
     --k3d)
       k3d=1
       ;;
-    --images)
-      images=1
+    --archive)
+      archive=1
       ;;
     *)
       break
@@ -59,14 +59,14 @@ else
   kind=1
   cluster=${1:-"kind"}
   bin="$bindir"/kind
-  if [ $images ]; then
+  if [ $archive ]; then
     image_sub_cmd=(load image-archive --name "$cluster")
   else
     image_sub_cmd=(load docker-image --name "$cluster")
   fi
 fi
 
-if [ -z "$images" ]; then
+if [ -z "$archive" ]; then
   # shellcheck source=_tag.sh
   . "$bindir"/_tag.sh
   # shellcheck source=_docker.sh
@@ -80,7 +80,7 @@ fi
 
 rm -f load_fail
 for img in proxy controller web grafana cli-bin debug cni-plugin ; do
-  if [ $images ]; then
+  if [ $archive ]; then
     param="image-archives/$img.tar"
   else
     param="$DOCKER_REGISTRY/$img:$TAG"

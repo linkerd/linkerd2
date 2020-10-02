@@ -1124,7 +1124,7 @@ func errIfLinkerdConfigConfigMapExists(ctx context.Context) error {
 		return err
 	}
 
-	_, _, err = healthcheck.FetchLinkerdConfigMap(ctx, kubeAPI, controlPlaneNamespace)
+	_, _, err = healthcheck.FetchCurrentConfiguration(ctx, kubeAPI, controlPlaneNamespace)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			return nil
