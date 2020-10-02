@@ -174,9 +174,9 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	// The stream will subscribe to profile updates for `service`.
 	var service watcher.ServiceID
-	// If `host` is an IP address, path must be constructed from the namespace
+	// If `host` is an IP address, fqn must be constructed from the namespace
 	// and name of the service that the address maps to.
-	var path string
+	var fqn string
 
 	if ip := net.ParseIP(host); ip != nil {
 		// Get the service that the IP address currently maps to.
@@ -186,12 +186,12 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		}
 		if svc != nil {
 			service = *svc
-			path = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
+			fqn = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
 		} else {
 			// If no service or error are returned, the IP address does not map
 			// to a service. Send the default profile and return the stream
 			// without subscribing for future updates.
-			translator := newProfileTranslator(stream, log, nil, "")
+			translator := newProfileTranslator(stream, log, fqn)
 			translator.Update(nil)
 
 			select {
@@ -208,13 +208,13 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			log.Debugf("Invalid service %s", dest.GetPath())
 			return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
 		}
-		path = dest.GetPath()
+		fqn = host
 	}
 
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log, &service, s.clusterDomain)
+	translator := newProfileTranslator(stream, log, fqn)
 
 	// The adaptor merges profile updates with traffic split updates and
 	// publishes the result to the translator.
@@ -223,7 +223,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// Subscribe the adaptor to traffic split updates.
 	err = s.trafficSplits.Subscribe(service, tsAdaptor)
 	if err != nil {
-		log.Warnf("Failed to subscribe to traffic split for %s: %s", path, err)
+		log.Warnf("Failed to subscribe to traffic split for %s: %s", dest.GetPath(), err)
 		return err
 	}
 	defer s.trafficSplits.Unsubscribe(service, tsAdaptor)
@@ -240,28 +240,28 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	if dest.GetContextToken() != "" {
 		ctxToken := s.parseContextToken(dest.GetContextToken())
 
-		profile, err := profileID(path, ctxToken, s.clusterDomain)
+		profile, err := profileID(fqn, ctxToken, s.clusterDomain)
 		if err != nil {
-			log.Debugf("Invalid service %s", path)
+			log.Debugf("Invalid service %s", dest.GetPath())
 			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 		}
 
 		err = s.profiles.Subscribe(profile, primary)
 		if err != nil {
-			log.Warnf("Failed to subscribe to profile %s: %s", path, err)
+			log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
 			return err
 		}
 		defer s.profiles.Unsubscribe(profile, primary)
 	}
 
-	profile, err := profileID(path, contextToken{}, s.clusterDomain)
+	profile, err := profileID(fqn, contextToken{}, s.clusterDomain)
 	if err != nil {
-		log.Debugf("Invalid service %s", path)
+		log.Debugf("Invalid service %s", dest.GetPath())
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 	}
 	err = s.profiles.Subscribe(profile, secondary)
 	if err != nil {
-		log.Warnf("Failed to subscribe to profile %s: %s", path, err)
+		log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
 		return err
 	}
 	defer s.profiles.Unsubscribe(profile, secondary)

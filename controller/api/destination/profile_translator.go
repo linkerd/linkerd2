@@ -2,12 +2,10 @@ package destination
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
-	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -23,15 +21,11 @@ type profileTranslator struct {
 	fullyQualifiedName string
 }
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, id *watcher.ServiceID, clusterDomain string) *profileTranslator {
-	var fullyQualifiedName string
-	if id != nil {
-		fullyQualifiedName = fmt.Sprintf("%s.%s.svc.%s", id.Name, id.Namespace, clusterDomain)
-	}
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string) *profileTranslator {
 	return &profileTranslator{
 		stream:             stream,
 		log:                log.WithField("component", "profile-translator"),
-		fullyQualifiedName: fullyQualifiedName,
+		fullyQualifiedName: fqn,
 	}
 }
 
