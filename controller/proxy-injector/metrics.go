@@ -3,9 +3,8 @@ package injector
 import (
 	"strings"
 
-	"github.com/linkerd/linkerd2/pkg/k8s"
-
 	"github.com/linkerd/linkerd2/pkg/inject"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )

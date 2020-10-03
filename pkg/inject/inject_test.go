@@ -1,14 +1,12 @@
 package inject
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
-	"github.com/linkerd/linkerd2/testutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -495,164 +493,6 @@ func TestConfigAccessors(t *testing.T) {
 			if err := resourceConfig.parse(data); err != nil {
 				t.Fatal(err)
 			}
-
-			t.Run("identityContext", func(t *testing.T) {
-				expected := testCase.expected.identityContext
-				if actual := resourceConfig.identityContext(); !reflect.DeepEqual(expected, actual) {
-					testutil.Errorf(t, "Expected: %+v Actual: %+v", expected, actual)
-				}
-			})
-
-			t.Run("proxyImage", func(t *testing.T) {
-				expected := testCase.expected.image
-				if actual := resourceConfig.proxyImage(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyImagePullPolicy", func(t *testing.T) {
-				expected := testCase.expected.imagePullPolicy
-				if actual := resourceConfig.proxyImagePullPolicy(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyVersion", func(t *testing.T) {
-				expected := testCase.expected.proxyVersion
-				if actual := resourceConfig.proxyVersion(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyInitVersion", func(t *testing.T) {
-				expected := testCase.expected.initVersion
-				if actual := resourceConfig.proxyInitVersion(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyControlPort", func(t *testing.T) {
-				expected := testCase.expected.controlPort
-				if actual := resourceConfig.proxyControlPort(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyInboundPort", func(t *testing.T) {
-				expected := testCase.expected.inboundPort
-				if actual := resourceConfig.proxyInboundPort(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyAdminPort", func(t *testing.T) {
-				expected := testCase.expected.adminPort
-				if actual := resourceConfig.proxyAdminPort(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyOutboundPort", func(t *testing.T) {
-				expected := testCase.expected.outboundPort
-				if actual := resourceConfig.proxyOutboundPort(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyWaitBeforeExitSeconds", func(t *testing.T) {
-				expected := testCase.expected.proxyWaitBeforeExitSeconds
-				if actual := resourceConfig.proxyWaitBeforeExitSeconds(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyLogLevel", func(t *testing.T) {
-				expected := testCase.expected.logLevel
-				if actual := resourceConfig.proxyLogLevel(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyResourceRequirements", func(t *testing.T) {
-				expected := testCase.expected.resourceRequirements
-				if actual := resourceConfig.proxyResourceRequirements(); !reflect.DeepEqual(expected, actual) {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyUID", func(t *testing.T) {
-				expected := testCase.expected.proxyUID
-				if actual := resourceConfig.proxyUID(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyInitImage", func(t *testing.T) {
-				expected := testCase.expected.initImage
-				if actual := resourceConfig.proxyInitImage(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyInitImagePullPolicy", func(t *testing.T) {
-				expected := testCase.expected.initImagePullPolicy
-				if actual := resourceConfig.proxyInitImagePullPolicy(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyInboundSkipPorts", func(t *testing.T) {
-				expected := testCase.expected.inboundSkipPorts
-				if actual := resourceConfig.proxyInboundSkipPorts(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyOutboundSkipPorts", func(t *testing.T) {
-				expected := testCase.expected.outboundSkipPorts
-				if actual := resourceConfig.proxyOutboundSkipPorts(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyRequireIdentityOnInboundPorts", func(t *testing.T) {
-				expected := testCase.expected.requireIdentityOnInboundPorts
-				if actual := resourceConfig.requireIdentityOnInboundPorts(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("destinationGetNetworks", func(t *testing.T) {
-				expected := testCase.expected.destinationGetNetworks
-				if actual := resourceConfig.destinationGetNetworks(); expected != actual {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
-
-			t.Run("proxyTraceCollectorService", func(t *testing.T) {
-				var expected *l5dcharts.Trace
-				if testCase.expected.trace != nil {
-					expected = &l5dcharts.Trace{
-						CollectorSvcAddr:    testCase.expected.trace.CollectorSvcAddr,
-						CollectorSvcAccount: testCase.expected.trace.CollectorSvcAccount,
-					}
-				}
-
-				if actual := resourceConfig.trace(); !reflect.DeepEqual(expected, actual) {
-					t.Errorf("Expected: %+v Actual: %+v", expected, actual)
-				}
-			})
-
-			t.Run("opaquePorts", func(t *testing.T) {
-				expected := testCase.expected.opaquePorts
-				actual, err := resourceConfig.proxyOpaquePorts()
-				if err != nil {
-					t.Fatal(err)
-				}
-				if actual != expected {
-					t.Errorf("Expected: %v Actual: %v", expected, actual)
-				}
-			})
 		})
 	}
 }
