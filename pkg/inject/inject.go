@@ -218,6 +218,10 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 		if injectProxy {
 			conf.injectObjectMeta(patch)
 			conf.injectPodSpec(patch)
+		} else {
+			// Remove this so that pod inject does not occur in rendering
+			conf.values.Global.ProxyInit = nil
+			conf.values.Global.Proxy = nil
 		}
 	}
 
@@ -491,7 +495,7 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		}
 	}
 
-	if values.Global.CNIEnabled {
+	if !values.Global.CNIEnabled {
 		conf.injectProxyInit(values)
 	}
 
