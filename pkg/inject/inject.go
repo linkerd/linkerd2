@@ -114,6 +114,7 @@ type ResourceConfig struct {
 
 type patch struct {
 	l5dcharts.Values
+	Injection             bool                      `json:"injection"`
 	PathPrefix            string                    `json:"pathPrefix"`
 	AddRootMetadata       bool                      `json:"addRootMetadata"`
 	AddRootAnnotations    bool                      `json:"addRootAnnotations"`
@@ -216,12 +217,11 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	if conf.pod.spec != nil {
 		conf.injectPodAnnotations(patch)
 		if injectProxy {
+			// Distinguish manual and normal injection in templates by setting the below flag
+			// as full `Values` is present in both cases
+			patch.Injection = true
 			conf.injectObjectMeta(patch)
 			conf.injectPodSpec(patch)
-		} else {
-			// Remove this so that pod inject does not occur in rendering
-			conf.values.Global.ProxyInit = nil
-			conf.values.Global.Proxy = nil
 		}
 	}
 
@@ -500,6 +500,10 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	}
 
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
+
+	if values.Identity.Issuer.TLS.CrtPEM == "" || values.Identity.Issuer.TLS.KeyPEM == "" {
+		values.Global.Proxy.DisableIdentity = true
+	}
 }
 
 func (conf *ResourceConfig) injectProxyInit(values *patch) {
@@ -532,6 +536,16 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
 // annotations.
 func (conf *ResourceConfig) injectObjectMeta(values *patch) {
+
+	values.Annotations[k8s.ProxyVersionAnnotation] = conf.values.Global.Proxy.Image.Version
+
+	if conf.values.Identity != nil {
+		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDefault
+	} else {
+		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDisabled
+	}
+
+
 	if len(conf.pod.labels) > 0 {
 		values.AddRootLabels = len(conf.pod.meta.Labels) == 0
 		for _, k := range sortedKeys(conf.pod.labels) {
