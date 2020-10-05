@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 )
 
@@ -333,6 +335,38 @@ func testInstallOptions() (*installOptions, error) {
 	o.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
 	o.identityOptions.trustPEMFile = filepath.Join("testdata", "valid-trust-anchors.pem")
 	return o, nil
+}
+
+func testInstallValues() (*linkerd2.Values, error) {
+	values, err := linkerd2.NewValues(false)
+	if err != nil {
+		return nil, err
+	}
+
+	values.Global.Proxy.Image.Version = installProxyVersion
+	values.Global.ProxyInit.Image.Version = installProxyVersion
+	values.DebugContainer.Image.Version = installDebugVersion
+	values.Global.LinkerdVersion = installControlPlaneVersion
+	values.Global.ControllerImageVersion = installControlPlaneVersion
+	values.HeartbeatSchedule = fakeHeartbeatSchedule()
+
+	identityCert, err := ioutil.ReadFile(filepath.Join("testdata", "valid-crt.pem"))
+	if err != nil {
+		return nil, err
+	}
+	identityKey, err := ioutil.ReadFile(filepath.Join("testdata", "valid-key.pem"))
+	if err != nil {
+		return nil, err
+	}
+	trustAnchorsPEM, err := ioutil.ReadFile(filepath.Join("testdata", "valid-trust-anchors.pem"))
+	if err != nil {
+		return nil, err
+	}
+
+	values.Identity.Issuer.TLS.CrtPEM = string(identityCert)
+	values.Identity.Issuer.TLS.KeyPEM = string(identityKey)
+	values.Global.IdentityTrustAnchorsPEM = string(trustAnchorsPEM)
+	return values, nil
 }
 
 func TestValidate(t *testing.T) {

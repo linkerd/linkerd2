@@ -786,6 +786,12 @@ func ignorableDiff(id string, diff diff) bool {
 		// control plane and proxy versions will change.
 		return true
 	}
+
+	if id == "ConfigMap/linkerd-config" && pathMatch(diff.path, []string{"data", "proxy"}) {
+		// Skip this as we are not planning to keep this for 2.9
+		return true
+	}
+
 	if id == "ConfigMap/linkerd-config" && pathMatch(diff.path, []string{"data", "values"}) {
 		// The stored values will always change because at least the control
 		// plane and proxy versions will change.

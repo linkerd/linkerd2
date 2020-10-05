@@ -12,7 +12,6 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
-	cfg "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/inject"
@@ -479,23 +478,6 @@ func (options *proxyConfigOptions) overrideConfigs(values *linkerd2.Values, over
 
 func uintToString(v uint64) string {
 	return strconv.FormatUint(v, 10)
-}
-
-func toPort(p uint) *cfg.Port {
-	return &cfg.Port{Port: uint32(p)}
-}
-
-func parsePort(port *cfg.Port) string {
-	return strconv.FormatUint(uint64(port.GetPort()), 10)
-}
-
-func parsePortRanges(portRanges []*cfg.PortRange) string {
-	var str string
-	for _, p := range portRanges {
-		str += p.GetPortRange() + ","
-	}
-
-	return strings.TrimSuffix(str, ",")
 }
 
 // overwriteRegistry replaces the registry-portion of the provided image with the provided registry.
