@@ -156,7 +156,7 @@ func (flag *UintFlag) Apply(values *charts.Values) error {
 	return flag.apply(values, flag.Value)
 }
 
-// IsSet returns true iff the Flag has been explicitly set with a value.
+// IsSet returns true if and only if the Flag has been explicitly set with a value.
 func (flag *UintFlag) IsSet() bool {
 	return flag.flagSet.Changed(flag.name)
 }
@@ -171,7 +171,7 @@ func (flag *Int64Flag) Apply(values *charts.Values) error {
 	return flag.apply(values, flag.Value)
 }
 
-// IsSet returns true iff the Flag has been explicitly set with a value.
+// IsSet returns true if and only if the Flag has been explicitly set with a value.
 func (flag *Int64Flag) IsSet() bool {
 	return flag.flagSet.Changed(flag.name)
 }
@@ -186,7 +186,7 @@ func (flag *StringFlag) Apply(values *charts.Values) error {
 	return flag.apply(values, flag.Value)
 }
 
-// IsSet returns true iff the Flag has been explicitly set with a value.
+// IsSet returns true if and only if the Flag has been explicitly set with a value.
 func (flag *StringFlag) IsSet() bool {
 	return flag.flagSet.Changed(flag.name)
 }
@@ -201,7 +201,7 @@ func (flag *StringSliceFlag) Apply(values *charts.Values) error {
 	return flag.apply(values, flag.Value)
 }
 
-// IsSet returns true iff the Flag has been explicitly set with a value.
+// IsSet returns true if and only if the Flag has been explicitly set with a value.
 func (flag *StringSliceFlag) IsSet() bool {
 	return flag.flagSet.Changed(flag.name)
 }
@@ -216,7 +216,7 @@ func (flag *BoolFlag) Apply(values *charts.Values) error {
 	return flag.apply(values, flag.Value)
 }
 
-// IsSet returns true iff the Flag has been explicitly set with a value.
+// IsSet returns true if and only if the Flag has been explicitly set with a value.
 func (flag *BoolFlag) IsSet() bool {
 	return flag.flagSet.Changed(flag.name)
 }
@@ -231,7 +231,7 @@ func (flag *DurationFlag) Apply(values *charts.Values) error {
 	return flag.apply(values, flag.Value)
 }
 
-// IsSet returns true iff the Flag has been explicitly set with a value.
+// IsSet returns true if and only if the Flag has been explicitly set with a value.
 func (flag *DurationFlag) IsSet() bool {
 	return flag.flagSet.Changed(flag.name)
 }
