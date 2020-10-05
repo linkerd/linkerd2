@@ -32,42 +32,42 @@ func (s *grpcServer) Edges(ctx context.Context, req *pb.EdgesRequest) (*pb.Edges
 		return edgesError(req, "Edges request missing Selector Resource"), nil
 	}
 
-	edgesHttp, err := s.getEdges(ctx, req, "response_total")
+	edgesHTTP, err := s.getEdges(ctx, req, "response_total")
 	if err != nil {
 		return edgesError(req, err.Error()), nil
 	}
-	edgesTcp, err := s.getEdges(ctx, req, "tcp_open_total")
+	edgesTCP, err := s.getEdges(ctx, req, "tcp_open_total")
 	if err != nil {
 		return edgesError(req, err.Error()), nil
 	}
 
 	edges := []*pb.Edge{}
 	// iterate over tcp_open_total metrics
-	for _, edgeTcp := range edgesTcp {
-		edgeHttpIndex := -1
+	for _, edgeTCP := range edgesTCP {
+		edgeHTTPIndex := -1
 		// find the corresponding response_total entry
-		for i, edgeHttp := range edgesHttp {
-			if equalEdges(edgeTcp, edgeHttp) {
-				edgeHttpIndex = i
+		for i, edgeHTTP := range edgesHTTP {
+			if equalEdges(edgeTCP, edgeHTTP) {
+				edgeHTTPIndex = i
 				break
 			}
 		}
 
-		edge := edgeTcp
-		if edgeHttpIndex > -1 {
+		edge := edgeTCP
+		if edgeHTTPIndex > -1 {
 			// if tcp_open_total doesn't have client_id info,
 			// use the response_total metric instead
 			if edge.ClientId == "" {
-				edge = edgesHttp[edgeHttpIndex]
+				edge = edgesHTTP[edgeHTTPIndex]
 			}
 			// trick to remove element quickly
-			edgesHttp[edgeHttpIndex] = edgesHttp[len(edgesHttp)-1]
-			edgesHttp = edgesHttp[:len(edgesHttp)-1]
+			edgesHTTP[edgeHTTPIndex] = edgesHTTP[len(edgesHTTP)-1]
+			edgesHTTP = edgesHTTP[:len(edgesHTTP)-1]
 		}
 		edges = append(edges, edge)
 	}
 
-	edges = append(edges, edgesHttp...)
+	edges = append(edges, edgesHTTP...)
 	edges = sortEdgeRows(edges)
 
 	return &pb.EdgesResponse{
