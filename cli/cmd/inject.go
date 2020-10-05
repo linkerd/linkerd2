@@ -385,7 +385,6 @@ func (options *proxyConfigOptions) overrideConfigs(values *linkerd2.Values, over
 		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = fmt.Sprint(options.proxyOutboundPort)
 	}
 
-
 	if options.dockerRegistry != "" {
 		debugImage := values.DebugContainer.Image.Name
 		if debugImage == "" {

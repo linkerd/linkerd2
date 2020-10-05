@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,7 +11,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 )
@@ -61,19 +59,6 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	diffTestdata(t, reportFileName, report.String())
 }
 
-func testInstallConfig(ctx context.Context) *pb.All {
-	installOptions, err := testInstallOptions()
-	if err != nil {
-		log.Fatalf("Unexpected error: %v", err)
-	}
-
-	_, c, err := installOptions.validateAndBuild(ctx, "", nil)
-	if err != nil {
-		log.Fatalf("test install options must be valid: %s", err)
-	}
-	return c
-}
-
 func defaultConfig() *linkerd2.Values {
 	defaultConfig, err := testInstallValues()
 	if err != nil {
@@ -109,11 +94,11 @@ func TestUninjectAndInject(t *testing.T) {
 	proxyResourceConfig.Global.Proxy.Resources = &linkerd2.Resources{
 		CPU: linkerd2.Constraints{
 			Request: "110m",
-			Limit: "160m",
+			Limit:   "160m",
 		},
 		Memory: linkerd2.Constraints{
 			Request: "100Mi",
-			Limit: "150Mi",
+			Limit:   "150Mi",
 		},
 	}
 
@@ -362,6 +347,9 @@ type injectCmd struct {
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
 	testConfig, err := testInstallValues()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 	testConfig.Global.Proxy.Image.Version = "testinjectversion"
 
 	errBuffer := &bytes.Buffer{}
@@ -374,7 +362,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 
 	transformer := &resourceTransformerInject{
 		injectProxy: tc.injectProxy,
-		values:     testConfig,
+		values:      testConfig,
 	}
 	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer)
 	if exitCode != tc.exitCode {
@@ -454,7 +442,7 @@ type injectFilePath struct {
 	stdErrFile   string
 }
 
-func testInjectFilePath(ctx context.Context, t *testing.T, tc injectFilePath) {
+func testInjectFilePath(t *testing.T, tc injectFilePath) {
 	in, err := read("testdata/" + tc.resourceFile)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
@@ -468,7 +456,7 @@ func testInjectFilePath(ctx context.Context, t *testing.T, tc injectFilePath) {
 	}
 	transformer := &resourceTransformerInject{
 		injectProxy: true,
-		values:     values,
+		values:      values,
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
@@ -479,7 +467,7 @@ func testInjectFilePath(ctx context.Context, t *testing.T, tc injectFilePath) {
 	diffTestdata(t, stdErrFile, errBuf.String())
 }
 
-func testReadFromFolder(ctx context.Context, t *testing.T, resourceFolder string, expectedFolder string) {
+func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder string) {
 	in, err := read("testdata/" + resourceFolder)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
@@ -493,7 +481,7 @@ func testReadFromFolder(ctx context.Context, t *testing.T, resourceFolder string
 	actual := &bytes.Buffer{}
 	transformer := &resourceTransformerInject{
 		injectProxy: true,
-		values:     values,
+		values:      values,
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
@@ -511,8 +499,6 @@ func TestInjectFilePath(t *testing.T) {
 		resourceFolder = filepath.Join("inject-filepath", "resources")
 		expectedFolder = filepath.Join("inject-filepath", "expected")
 	)
-
-	ctx := context.Background()
 
 	t.Run("read from files", func(t *testing.T) {
 		testCases := []injectFilePath{
@@ -534,22 +520,22 @@ func TestInjectFilePath(t *testing.T) {
 			testCase := testCase // pin
 			verbose = true
 			t.Run(fmt.Sprintf("%d %s", i, testCase.resource), func(t *testing.T) {
-				testInjectFilePath(ctx, t, testCase)
+				testInjectFilePath(t, testCase)
 			})
 			verbose = false
 			t.Run(fmt.Sprintf("%d %s", i, testCase.resource), func(t *testing.T) {
-				testInjectFilePath(ctx, t, testCase)
+				testInjectFilePath(t, testCase)
 			})
 		}
 	})
 
 	verbose = true
 	t.Run("read from folder --verbose", func(t *testing.T) {
-		testReadFromFolder(ctx, t, resourceFolder, expectedFolder)
+		testReadFromFolder(t, resourceFolder, expectedFolder)
 	})
 	verbose = false
 	t.Run("read from folder --verbose", func(t *testing.T) {
-		testReadFromFolder(ctx, t, resourceFolder, expectedFolder)
+		testReadFromFolder(t, resourceFolder, expectedFolder)
 	})
 }
 

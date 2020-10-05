@@ -26,19 +26,19 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	defaultValues, _, err := defaultOptions.validateAndBuild(ctx, "", nil)
+	defaultValues, err := defaultOptions.validateAndBuild(ctx, "", nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
 	addFakeTLSSecrets(defaultValues)
 
-	configValues, _, err := defaultOptions.validateAndBuild(ctx, configStage, nil)
+	configValues, err := defaultOptions.validateAndBuild(ctx, configStage, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
 	addFakeTLSSecrets(configValues)
 
-	controlPlaneValues, _, err := defaultOptions.validateAndBuild(ctx, controlPlaneStage, nil)
+	controlPlaneValues, err := defaultOptions.validateAndBuild(ctx, controlPlaneStage, nil)
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestRender(t *testing.T) {
 
 	haOptions.recordedFlags = []*config.Install_Flag{{Name: "ha", Value: "true"}}
 	haOptions.highAvailability = true
-	haValues, _, _ := haOptions.validateAndBuild(ctx, "", nil)
+	haValues, _ := haOptions.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(haValues)
 
 	haWithOverridesOptions, err := testInstallOptions()
@@ -178,7 +178,7 @@ func TestRender(t *testing.T) {
 	haWithOverridesOptions.controllerReplicas = 2
 	haWithOverridesOptions.proxyCPURequest = "400m"
 	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
-	haWithOverridesValues, _, _ := haWithOverridesOptions.validateAndBuild(ctx, "", nil)
+	haWithOverridesValues, _ := haWithOverridesOptions.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(haWithOverridesValues)
 
 	cniEnabledOptions, err := testInstallOptions()
@@ -188,7 +188,7 @@ func TestRender(t *testing.T) {
 
 	cniEnabledOptions.recordedFlags = []*config.Install_Flag{{Name: "linkerd-cni-enabled", Value: "true"}}
 	cniEnabledOptions.cniEnabled = true
-	cniEnabledValues, _, _ := cniEnabledOptions.validateAndBuild(ctx, "", nil)
+	cniEnabledValues, _ := cniEnabledOptions.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(cniEnabledValues)
 
 	withProxyIgnoresOptions, err := testInstallOptions()
@@ -197,7 +197,7 @@ func TestRender(t *testing.T) {
 	}
 	withProxyIgnoresOptions.ignoreInboundPorts = []string{"22", "8100-8102"}
 	withProxyIgnoresOptions.ignoreOutboundPorts = []string{"5432"}
-	withProxyIgnoresValues, _, _ := withProxyIgnoresOptions.validateAndBuild(ctx, "", nil)
+	withProxyIgnoresValues, _ := withProxyIgnoresOptions.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(withProxyIgnoresValues)
 
 	withHeartBeatDisabled, err := testInstallOptions()
@@ -205,7 +205,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withHeartBeatDisabled.disableHeartbeat = true
-	withHeartBeatDisabledValues, _, _ := withHeartBeatDisabled.validateAndBuild(ctx, "", nil)
+	withHeartBeatDisabledValues, _ := withHeartBeatDisabled.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(withHeartBeatDisabledValues)
 
 	withRestrictedDashboardPrivileges, err := testInstallOptions()
@@ -213,7 +213,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withRestrictedDashboardPrivileges.restrictDashboardPrivileges = true
-	withRestrictedDashboardPrivilegesValues, _, _ := withRestrictedDashboardPrivileges.validateAndBuild(ctx, "", nil)
+	withRestrictedDashboardPrivilegesValues, _ := withRestrictedDashboardPrivileges.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(withRestrictedDashboardPrivilegesValues)
 
 	withControlPlaneTracing, err := testInstallOptions()
@@ -221,7 +221,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withControlPlaneTracing.controlPlaneTracing = true
-	withControlPlaneTracingValues, _, _ := withControlPlaneTracing.validateAndBuild(ctx, "", nil)
+	withControlPlaneTracingValues, _ := withControlPlaneTracing.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(withControlPlaneTracingValues)
 
 	customRegistryOverride := "my.custom.registry/linkerd-io"
@@ -233,14 +233,14 @@ func TestRender(t *testing.T) {
 	withCustomRegistryOptions.recordedFlags = []*config.Install_Flag{
 		{Name: "registry", Value: customRegistryOverride},
 	}
-	withCustomRegistryValues, _, _ := withCustomRegistryOptions.validateAndBuild(ctx, "", nil)
+	withCustomRegistryValues, _ := withCustomRegistryOptions.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(withCustomRegistryValues)
 
 	withAddOnConfigStage, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withAddOnConfigStageValues, _, _ := withAddOnConfigStage.validateAndBuild(ctx, configStage, nil)
+	withAddOnConfigStageValues, _ := withAddOnConfigStage.validateAndBuild(ctx, configStage, nil)
 	withAddOnConfigStageValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withAddOnConfigStageValues)
 
@@ -248,7 +248,7 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withAddOnControlPlaneStageValues, _, _ := withAddOnControlPlaneStage.validateAndBuild(ctx, controlPlaneStage, nil)
+	withAddOnControlPlaneStageValues, _ := withAddOnControlPlaneStage.validateAndBuild(ctx, controlPlaneStage, nil)
 	withAddOnControlPlaneStageValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withAddOnControlPlaneStageValues)
 
@@ -257,7 +257,7 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 	withCustomDestinationGetNets.destinationGetNetworks = []string{"10.0.0.0/8", "172.0.0.0/8"}
-	withCustomDestinationGetNetsValues, _, _ := withCustomDestinationGetNets.validateAndBuild(ctx, "", nil)
+	withCustomDestinationGetNetsValues, _ := withCustomDestinationGetNets.validateAndBuild(ctx, "", nil)
 	addFakeTLSSecrets(withCustomDestinationGetNetsValues)
 
 	testCases := []struct {
@@ -301,7 +301,7 @@ func TestValidateAndBuild_Errors(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 		installOptions.ignoreInboundPorts = []string{"-25"}
-		_, _, err = installOptions.validateAndBuild(ctx, "", nil)
+		_, err = installOptions.validateAndBuild(ctx, "", nil)
 		if err == nil {
 			t.Fatal("expected error but got nothing")
 		}
@@ -313,7 +313,7 @@ func TestValidateAndBuild_Errors(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 		installOptions.ignoreOutboundPorts = []string{"-25"}
-		_, _, err = installOptions.validateAndBuild(ctx, "", nil)
+		_, err = installOptions.validateAndBuild(ctx, "", nil)
 		if err == nil {
 			t.Fatal("expected error but got nothing")
 		}

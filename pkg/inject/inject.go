@@ -520,8 +520,6 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		}
 	}
 
-
-
 	conf.injectProxyInit(values)
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
 
@@ -842,7 +840,7 @@ func (conf *ResourceConfig) GetOverriddenConfiguration() map[string]string {
 
 func (conf *ResourceConfig) getOverride(annotation string) (string, bool) {
 
-	// pod.annotations are set by the CLI overriden logic
+	// pod.annotations are set by the CLI overridden logic
 	if override, ok := conf.pod.annotations[annotation]; ok && override != "" {
 		return override, ok
 	}
