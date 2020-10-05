@@ -134,7 +134,13 @@ func NewResourceConfig(values *l5dcharts.Values, origin Origin) *ResourceConfig 
 	}
 
 	config.pod.meta = &metav1.ObjectMeta{}
-	config.pod.labels = map[string]string{k8s.ControllerNSLabel: values.Global.Namespace}
+
+	// Values can be nil for commands like Uninject
+	var ns string
+	if values != nil {
+		ns = values.Global.Namespace
+	}
+	config.pod.labels = map[string]string{k8s.ControllerNSLabel: ns}
 	config.pod.annotations = map[string]string{}
 	return config
 }
@@ -495,6 +501,27 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		}
 	}
 
+	if v := conf.pod.meta.Annotations[k8s.ProxyEnableDebugAnnotation]; v != "" {
+		debug, err := strconv.ParseBool(v)
+		if err != nil {
+			log.Warnf("unrecognized value used for the %s annotation: %s", k8s.ProxyEnableDebugAnnotation, v)
+			debug = false
+		}
+
+		if debug {
+			log.Infof("inject debug container")
+			values.DebugContainer = &l5dcharts.DebugContainer{
+				Image: &l5dcharts.Image{
+					Name:       conf.values.DebugContainer.Image.Name,
+					Version:    conf.values.DebugContainer.Image.Version,
+					PullPolicy: conf.values.DebugContainer.Image.PullPolicy,
+				},
+			}
+		}
+	}
+
+
+
 	conf.injectProxyInit(values)
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
 
@@ -538,12 +565,11 @@ func (conf *ResourceConfig) injectObjectMeta(values *patch) {
 
 	values.Annotations[k8s.ProxyVersionAnnotation] = conf.values.Global.Proxy.Image.Version
 
-	if conf.values.Identity != nil {
-		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDefault
-	} else {
+	if conf.values.Identity == nil || conf.values.Global.Proxy.DisableIdentity {
 		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDisabled
+	} else {
+		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDefault
 	}
-
 
 	if len(conf.pod.labels) > 0 {
 		values.AddRootLabels = len(conf.pod.meta.Labels) == 0
@@ -572,96 +598,81 @@ func (conf *ResourceConfig) injectPodAnnotations(values *patch) {
 }
 
 func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
-	annotations := conf.pod.annotations
-
-	if override, ok := annotations[k8s.ProxyImageAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyImageAnnotation); ok {
 		values.Global.Proxy.Image.Name = override
 	}
 
-	if override, ok := annotations[k8s.ProxyVersionOverrideAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyVersionOverrideAnnotation); ok {
 		values.Global.Proxy.Image.Version = override
 	}
 
-	if override, ok := annotations[k8s.ProxyImagePullPolicyAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyImagePullPolicyAnnotation); ok {
 		values.Global.Proxy.Image.PullPolicy = override
 	}
 
-	if override, ok := annotations[k8s.ProxyInitImageVersionAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyInitImageVersionAnnotation); ok {
 		values.Global.ProxyInit.Image.Version = override
 	}
 
-	if override, ok := annotations[k8s.ProxyControlPortAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyControlPortAnnotation); ok {
 		controlPort, err := strconv.ParseInt(override, 10, 32)
 		if err == nil {
 			values.Global.Proxy.Ports.Control = int32(controlPort)
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyInboundPortAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyInboundPortAnnotation); ok {
 		inboundPort, err := strconv.ParseInt(override, 10, 32)
 		if err == nil {
 			values.Global.Proxy.Ports.Inbound = int32(inboundPort)
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyAdminPortAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyAdminPortAnnotation); ok {
 		adminPort, err := strconv.ParseInt(override, 10, 32)
 		if err == nil {
 			values.Global.Proxy.Ports.Admin = int32(adminPort)
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyOutboundPortAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyOutboundPortAnnotation); ok {
 		outboundPort, err := strconv.ParseInt(override, 10, 32)
 		if err == nil {
 			values.Global.Proxy.Ports.Outbound = int32(outboundPort)
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyLogLevelAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyLogLevelAnnotation); ok {
 		values.Global.Proxy.LogLevel = override
 	}
 
-	if override, ok := annotations[k8s.ProxyLogFormatAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyLogFormatAnnotation); ok {
 		values.Global.Proxy.LogFormat = override
 	}
 
-	if override, ok := annotations[k8s.ProxyDisableIdentityAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyDisableIdentityAnnotation); ok {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
 			values.Global.Proxy.DisableIdentity = value
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyDisableTapAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyDisableTapAnnotation); ok {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
 			values.Global.Proxy.DisableTap = value
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyRequireIdentityOnInboundPortsAnnotation); ok {
 		values.Global.Proxy.RequireIdentityOnInboundPorts = override
 	}
 
-	if override, ok := conf.nsAnnotations[k8s.ProxyDestinationGetNetworks]; ok {
-		values.Global.Proxy.DestinationGetNetworks = override
-	}
-	// Pod annotation overrides ns annotation for DestinationGetNetworks.
-	if override, ok := annotations[k8s.ProxyDestinationGetNetworks]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyDestinationGetNetworks); ok {
 		values.Global.Proxy.DestinationGetNetworks = override
 	}
 
-	if override, ok := conf.nsAnnotations[k8s.ProxyOutboundConnectTimeout]; ok {
-		duration, err := time.ParseDuration(override)
-		if err != nil {
-			log.Warnf("unrecognized proxy-outbound-connect-timeout duration value found on pod annotation: %s", err.Error())
-		} else {
-			values.Global.Proxy.OutboundConnectTimeout = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
-		}
-	}
-	// Pod annotation overrides ns annotation for ProxyOutboundConnectTimeout.
-	if override, ok := annotations[k8s.ProxyOutboundConnectTimeout]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyOutboundConnectTimeout); ok {
 		duration, err := time.ParseDuration(override)
 		if err != nil {
 			log.Warnf("unrecognized proxy-outbound-connect-timeout duration value found on pod annotation: %s", err.Error())
@@ -670,16 +681,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
-	if override, ok := conf.nsAnnotations[k8s.ProxyInboundConnectTimeout]; ok {
-		duration, err := time.ParseDuration(override)
-		if err != nil {
-			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on pod annotation: %s", err.Error())
-		} else {
-			values.Global.Proxy.InboundConnectTimeout = fmt.Sprintf("%dms", int(duration.Seconds()*1000))
-		}
-	}
-	// Pod annotation overrides ns annotation for ProxyInboundConnectTimeout.
-	if override, ok := annotations[k8s.ProxyInboundConnectTimeout]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyInboundConnectTimeout); ok {
 		duration, err := time.ParseDuration(override)
 		if err != nil {
 			log.Warnf("unrecognized proxy-inbound-connect-timeout duration value found on pod annotation: %s", err.Error())
@@ -688,14 +690,14 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyEnableGatewayAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyEnableGatewayAnnotation); ok {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
 			values.Global.Proxy.IsGateway = value
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyWaitBeforeExitSecondsAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyWaitBeforeExitSecondsAnnotation); ok {
 		waitBeforeExitSeconds, err := strconv.ParseUint(override, 10, 64)
 		if nil != err {
 			log.Warnf("unrecognized value used for the %s annotation, uint64 is expected: %s",
@@ -705,7 +707,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyCPURequestAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyCPURequestAnnotation); ok {
 		_, err := k8sResource.ParseQuantity(override)
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyCPURequestAnnotation)
@@ -714,7 +716,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyMemoryRequestAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyMemoryRequestAnnotation); ok {
 		_, err := k8sResource.ParseQuantity(override)
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyMemoryRequestAnnotation)
@@ -723,7 +725,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyCPULimitAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyCPULimitAnnotation); ok {
 		_, err := k8sResource.ParseQuantity(override)
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyCPULimitAnnotation)
@@ -732,7 +734,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyMemoryLimitAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyMemoryLimitAnnotation); ok {
 		_, err := k8sResource.ParseQuantity(override)
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyMemoryLimitAnnotation)
@@ -741,37 +743,37 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyUIDAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyUIDAnnotation); ok {
 		v, err := strconv.ParseInt(override, 10, 64)
 		if err == nil {
 			values.Global.Proxy.UID = v
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyEnableExternalProfilesAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyEnableExternalProfilesAnnotation); ok {
 		value, err := strconv.ParseBool(override)
 		if err == nil {
 			values.Global.Proxy.EnableExternalProfiles = value
 		}
 	}
 
-	if override, ok := annotations[k8s.ProxyInitImageAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyInitImageAnnotation); ok {
 		values.Global.ProxyInit.Image.Name = override
 	}
 
-	if override, ok := annotations[k8s.ProxyImagePullPolicyAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyImagePullPolicyAnnotation); ok {
 		values.Global.ProxyInit.Image.PullPolicy = override
 	}
 
-	if override, ok := annotations[k8s.ProxyIgnoreInboundPortsAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyIgnoreInboundPortsAnnotation); ok {
 		values.Global.ProxyInit.IgnoreInboundPorts = override
 	}
 
-	if override, ok := annotations[k8s.ProxyIgnoreOutboundPortsAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyIgnoreOutboundPortsAnnotation); ok {
 		values.Global.ProxyInit.IgnoreOutboundPorts = override
 	}
 
-	if override, ok := annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyOpaquePortsAnnotation); ok {
 		var portRanges []*config.PortRange
 		split := strings.Split(strings.TrimSuffix(override, ","), ",")
 		portRanges = ToPortRanges(split)
@@ -807,23 +809,23 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		values.Global.Proxy.OpaquePorts = strings.TrimSuffix(str, ",")
 	}
 
-	if override, ok := annotations[k8s.DebugImageAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.DebugImageAnnotation); ok {
 		values.DebugContainer.Image.Name = override
 	}
 
-	if override, ok := annotations[k8s.DebugImageVersionAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.DebugImageVersionAnnotation); ok {
 		values.DebugContainer.Image.Version = override
 	}
 
-	if override, ok := annotations[k8s.DebugImagePullPolicyAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.DebugImagePullPolicyAnnotation); ok {
 		values.DebugContainer.Image.PullPolicy = override
 	}
 
-	if override, ok := annotations[k8s.ProxyTraceCollectorSvcAddrAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyTraceCollectorSvcAddrAnnotation); ok {
 		values.Global.Proxy.Trace.CollectorSvcAddr = override
 	}
 
-	if override, ok := annotations[k8s.ProxyTraceCollectorSvcAccountAnnotation]; ok {
+	if override, ok := conf.getOverride(k8s.ProxyTraceCollectorSvcAccountAnnotation); ok {
 		values.Global.Proxy.Trace.CollectorSvcAccount = override
 	}
 }
@@ -832,17 +834,27 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 func (conf *ResourceConfig) GetOverriddenConfiguration() map[string]string {
 	proxyOverrideConfig := map[string]string{}
 	for _, annotation := range ProxyAnnotations {
-		proxyOverrideConfig[annotation] = conf.getOverride(annotation)
+		proxyOverrideConfig[annotation], _ = conf.getOverride(annotation)
 	}
 
 	return proxyOverrideConfig
 }
 
-func (conf *ResourceConfig) getOverride(annotation string) string {
-	if override := conf.pod.meta.Annotations[annotation]; override != "" {
-		return override
+func (conf *ResourceConfig) getOverride(annotation string) (string, bool) {
+
+	// pod.annotations are set by the CLI overriden logic
+	if override, ok := conf.pod.annotations[annotation]; ok && override != "" {
+		return override, ok
 	}
-	return conf.nsAnnotations[annotation]
+
+	if override, ok := conf.pod.meta.Annotations[annotation]; ok && override != "" {
+		return override, ok
+	}
+	if override, ok := conf.nsAnnotations[annotation]; ok && override != "" {
+		return override, ok
+	}
+
+	return "", false
 }
 
 // IsControlPlaneComponent returns true if the component is part of linkerd control plane

@@ -363,37 +363,29 @@ func (options *proxyConfigOptions) fetchConfigsOrDefault() (*linkerd2.Values, er
 // storing the corresponding annotations and values.
 func (options *proxyConfigOptions) overrideConfigs(values *linkerd2.Values, overrideAnnotations map[string]string) {
 	if options.proxyVersion != "" {
-		values.Global.LinkerdVersion = options.proxyVersion
 		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = options.proxyVersion
 	}
 
 	if len(options.ignoreInboundPorts) > 0 {
-		values.Global.ProxyInit.IgnoreInboundPorts = strings.Join(options.ignoreInboundPorts, ",")
-		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = values.Global.ProxyInit.IgnoreInboundPorts
+		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = strings.Join(options.ignoreInboundPorts, ",")
 	}
 	if len(options.ignoreOutboundPorts) > 0 {
-		values.Global.ProxyInit.IgnoreOutboundPorts = strings.Join(options.ignoreOutboundPorts, ",")
-		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = values.Global.ProxyInit.IgnoreOutboundPorts
+		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = strings.Join(options.ignoreOutboundPorts, ",")
 	}
 
 	if options.proxyAdminPort != 0 {
-		values.Global.Proxy.Ports.Admin = int32(options.proxyAdminPort)
-		overrideAnnotations[k8s.ProxyAdminPortAnnotation] = string(values.Global.Proxy.Ports.Admin)
+		overrideAnnotations[k8s.ProxyAdminPortAnnotation] = fmt.Sprint(options.proxyAdminPort)
 	}
 	if options.proxyControlPort != 0 {
-		values.Global.Proxy.Ports.Control = int32(options.proxyControlPort)
-		overrideAnnotations[k8s.ProxyControlPortAnnotation] = string(values.Global.Proxy.Ports.Control)
+		overrideAnnotations[k8s.ProxyControlPortAnnotation] = fmt.Sprint(options.proxyControlPort)
 	}
 	if options.proxyInboundPort != 0 {
-		values.Global.Proxy.Ports.Inbound = int32(options.proxyInboundPort)
-		overrideAnnotations[k8s.ProxyInboundPortAnnotation] = string(values.Global.Proxy.Ports.Inbound)
+		overrideAnnotations[k8s.ProxyInboundPortAnnotation] = fmt.Sprint(options.proxyInboundPort)
 	}
 	if options.proxyOutboundPort != 0 {
-		values.Global.Proxy.Ports.Outbound = int32(options.proxyOutboundPort)
-		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = string(values.Global.Proxy.Ports.Outbound)
+		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = fmt.Sprint(options.proxyOutboundPort)
 	}
 
-	// TODO: Fix all these stuff
 
 	if options.dockerRegistry != "" {
 		debugImage := values.DebugContainer.Image.Name
@@ -406,50 +398,38 @@ func (options *proxyConfigOptions) overrideConfigs(values *linkerd2.Values, over
 	}
 
 	if options.proxyImage != "" {
-		values.Global.Proxy.Image.Name = options.proxyImage
-		overrideAnnotations[k8s.ProxyImageAnnotation] = values.Global.Proxy.Image.Name
+		overrideAnnotations[k8s.ProxyImageAnnotation] = options.proxyImage
 	}
 
 	if options.initImage != "" {
-		values.Global.ProxyInit.Image.Name = options.initImage
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = values.Global.ProxyInit.Image.Name
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = options.initImage
 	}
 
 	if options.initImageVersion != "" {
-		values.Global.ProxyInit.Image.Version = options.initImageVersion
-		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = values.Global.ProxyInit.Image.Version
+		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = options.initImageVersion
 	}
 
 	if options.debugImageVersion != "" {
-		values.DebugContainer.Image.Version = options.debugImageVersion
-		overrideAnnotations[k8s.DebugImageVersionAnnotation] = values.DebugContainer.Image.Version
+		overrideAnnotations[k8s.DebugImageVersionAnnotation] = options.debugImageVersion
 	}
 
 	if options.imagePullPolicy != "" {
-		values.Global.Proxy.Image.PullPolicy = options.imagePullPolicy
-		values.Global.ProxyInit.Image.PullPolicy = options.imagePullPolicy
-		values.DebugContainer.Image.PullPolicy = options.imagePullPolicy
 		overrideAnnotations[k8s.ProxyImagePullPolicyAnnotation] = options.imagePullPolicy
 	}
 
 	if options.proxyUID != 0 {
-		values.Global.Proxy.UID = options.proxyUID
 		overrideAnnotations[k8s.ProxyUIDAnnotation] = strconv.FormatInt(options.proxyUID, 10)
 	}
 
 	if options.proxyLogLevel != "" {
-		values.Global.Proxy.LogLevel = options.proxyLogLevel
 		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = options.proxyLogLevel
 	}
 
 	if options.proxyLogFormat != "" {
-		values.Global.Proxy.LogFormat = options.proxyLogFormat
 		overrideAnnotations[k8s.ProxyLogFormatAnnotation] = options.proxyLogFormat
 	}
 
 	if options.disableIdentity {
-		// TODO: Is nil'ing Identity enough?
-		values.Identity = nil
 		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = strconv.FormatBool(true)
 	}
 
@@ -464,21 +444,17 @@ func (options *proxyConfigOptions) overrideConfigs(values *linkerd2.Values, over
 	// keep track of this option because its true/false value results in different
 	// values being assigned to the LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
 	// env var. Its annotation is added only if its value is true.
-	values.Global.Proxy.EnableExternalProfiles = options.enableExternalProfiles
 	if options.enableExternalProfiles {
 		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = strconv.FormatBool(true)
 	}
 
 	if options.proxyCPURequest != "" {
-		values.Global.Proxy.Resources.CPU.Request = options.proxyCPURequest
 		overrideAnnotations[k8s.ProxyCPURequestAnnotation] = options.proxyCPURequest
 	}
 	if options.proxyCPULimit != "" {
-		values.Global.Proxy.Resources.CPU.Limit = options.proxyCPULimit
 		overrideAnnotations[k8s.ProxyCPULimitAnnotation] = options.proxyCPULimit
 	}
 	if options.proxyMemoryRequest != "" {
-		values.Global.Proxy.Resources.Memory.Request = options.proxyMemoryRequest
 		overrideAnnotations[k8s.ProxyMemoryRequestAnnotation] = options.proxyMemoryRequest
 	}
 	if options.proxyMemoryLimit != "" {
@@ -496,6 +472,9 @@ func (options *proxyConfigOptions) overrideConfigs(values *linkerd2.Values, over
 	if options.waitBeforeExitSeconds != 0 {
 		overrideAnnotations[k8s.ProxyWaitBeforeExitSecondsAnnotation] = uintToString(options.waitBeforeExitSeconds)
 	}
+
+	// Set fields that can't be converted into annotations
+	values.Global.Namespace = controlPlaneNamespace
 }
 
 func uintToString(v uint64) string {
