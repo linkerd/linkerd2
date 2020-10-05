@@ -495,18 +495,17 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 		}
 	}
 
-	if !values.Global.CNIEnabled {
-		conf.injectProxyInit(values)
-	}
-
+	conf.injectProxyInit(values)
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
 
-	if values.Identity.Issuer.TLS.CrtPEM == "" || values.Identity.Issuer.TLS.KeyPEM == "" {
-		values.Global.Proxy.DisableIdentity = true
-	}
 }
 
 func (conf *ResourceConfig) injectProxyInit(values *patch) {
+
+	// Fill common fields from Proxy into ProxyInit
+	values.Global.ProxyInit.Capabilities = values.Global.Proxy.Capabilities
+	values.Global.ProxyInit.SAMountPath = values.Global.Proxy.SAMountPath
+
 	if v := conf.pod.meta.Annotations[k8s.CloseWaitTimeoutAnnotation]; v != "" {
 		closeWait, err := time.ParseDuration(v)
 		if err != nil {
