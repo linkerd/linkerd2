@@ -23,7 +23,7 @@ const (
 	upgradeControlPlaneVersion = "UPGRADE-CONTROL-PLANE-VERSION"
 	upgradeDebugVersion        = "UPGRADE-DEBUG-VERSION"
 	overridesSecret            = "Secret/linkerd-config-overrides"
-	LinkerdCOnfigMap           = "ConfigMap/linkerd-config"
+	LinkerdConfigMap           = "ConfigMap/linkerd-config"
 )
 
 type (
@@ -201,7 +201,7 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 				// Trust root has changed.
 				continue
 			}
-			if id == LinkerdCOnfigMap {
+			if id == LinkerdConfigMap {
 				// Trust root has changed.
 				continue
 			}
@@ -798,12 +798,12 @@ func ignorableDiff(id string, diff diff) bool {
 		return true
 	}
 
-	if id == LinkerdCOnfigMap && pathMatch(diff.path, []string{"data", "proxy"}) {
+	if id == LinkerdConfigMap && pathMatch(diff.path, []string{"data", "proxy"}) {
 		// Skip this as we are not planning to keep this for 2.9
 		return true
 	}
 
-	if id == LinkerdCOnfigMap && pathMatch(diff.path, []string{"data", "values"}) {
+	if id == LinkerdConfigMap && pathMatch(diff.path, []string{"data", "values"}) {
 		// The stored values will always change because at least the control
 		// plane and proxy versions will change.
 		return true
