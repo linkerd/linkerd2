@@ -102,6 +102,8 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 					CrtPEM: issuer.crt,
 					KeyPEM: issuer.key,
 				},
+				ClockSkewAllowance: "20s",
+				IssuanceLifetime:   "24h0m0s",
 			},
 		},
 	}
@@ -203,6 +205,14 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 				// Trust root has changed.
 				continue
 			}
+
+			if id == "Deployment/linkerd-identity" || id == "Deployment/linkerd-proxy-injector" {
+				if pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args", "*"}) && diff.b.(string) == "-identity-trust-anchors-pem="+issuerCerts.ca {
+					continue
+				}
+				t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+			}
+
 			if id == "Secret/linkerd-identity-issuer" {
 				if pathMatch(diff.path, []string{"data", "crt.pem"}) {
 					if diff.b.(string) != issuerCerts.crt {

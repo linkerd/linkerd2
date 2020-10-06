@@ -12,9 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
-	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
 	promApi "github.com/prometheus/client_golang/api"
 	log "github.com/sirupsen/logrus"
@@ -31,6 +29,7 @@ func Main(args []string) {
 	destinationAPIAddr := cmd.String("destination-addr", "127.0.0.1:8086", "address of destination service")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
+	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -64,15 +63,7 @@ func Main(args []string) {
 		}
 	}
 
-	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
-	clusterDomain := globalConfig.GetClusterDomain()
-	if clusterDomain == "" {
-		clusterDomain = "cluster.local"
-	}
-	log.Info("Using cluster domain: ", clusterDomain)
+	log.Info("Using cluster domain: ", *clusterDomain)
 
 	if *traceCollector != "" {
 		if err := trace.InitializeTracing("linkerd-public-api", *traceCollector); err != nil {
@@ -86,7 +77,7 @@ func Main(args []string) {
 		destinationClient,
 		k8sAPI,
 		*controllerNamespace,
-		clusterDomain,
+		*clusterDomain,
 		strings.Split(*ignoredNamespaces, ","),
 	)
 

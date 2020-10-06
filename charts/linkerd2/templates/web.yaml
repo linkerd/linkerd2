@@ -66,6 +66,7 @@ spec:
       containers:
       - args:
         - -api-addr=linkerd-controller-api.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8085
+        - -cluster-domain={{.Values.global.clusterDomain}}
         {{- if .Values.global.grafanaUrl }}
         - -grafana-addr={{.Values.global.grafanaUrl}}
         {{- else if .Values.grafana.enabled }}
@@ -107,9 +108,6 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
       {{- $tree := deepCopy . }}
       {{- if not (empty .Values.webProxyResources) }}
       {{- $r := merge .Values.webProxyResources .Values.global.proxy.resources }}
@@ -122,9 +120,6 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-web
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}

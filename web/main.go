@@ -12,11 +12,9 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
 	"github.com/linkerd/linkerd2/web/srv"
 	log "github.com/sirupsen/logrus"
@@ -36,6 +34,7 @@ func main() {
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	enforcedHost := cmd.String("enforced-host", "", "regexp describing the allowed values for the Host header; protects from DNS-rebinding attacks")
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
+	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
@@ -51,11 +50,9 @@ func main() {
 		log.Fatalf("failed to construct client for API server URL %s", *apiAddr)
 	}
 
-	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
-	clusterDomain := globalConfig.GetClusterDomain()
-	if err != nil || clusterDomain == "" {
-		clusterDomain = "cluster.local"
-		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
+	if *clusterDomain == "" {
+		*clusterDomain = "cluster.local"
+		log.Warnf("expected cluster domain through args (falling back to %s)", *clusterDomain)
 	}
 
 	k8sAPI, err := k8s.NewAPI(*kubeConfigPath, "", "", []string{}, 0)
@@ -100,7 +97,7 @@ func main() {
 	}
 
 	server := srv.NewServer(*addr, *grafanaAddr, *jaegerAddr, *templateDir, *staticDir, uuid,
-		*controllerNamespace, clusterDomain, *reload, reHost, client, k8sAPI, hc)
+		*controllerNamespace, *clusterDomain, *reload, reHost, client, k8sAPI, hc)
 
 	go func() {
 		log.Infof("starting HTTP server on %+v", *addr)

@@ -80,7 +80,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			values, err := options.fetchConfigsOrDefault()
+			values, err := options.fetchConfigsOrDefault(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -336,7 +336,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	output.Write([]byte("\n"))
 }
 
-func (options *proxyConfigOptions) fetchConfigsOrDefault() (*linkerd2.Values, error) {
+func (options *proxyConfigOptions) fetchConfigsOrDefault(ctx context.Context) (*linkerd2.Values, error) {
 	if options.ignoreCluster {
 		if !options.disableIdentity {
 			return nil, errors.New("--disable-identity must be set with --ignore-cluster")

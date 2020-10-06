@@ -1131,6 +1131,12 @@ spec:
       - args:
         - identity
         - -log-level=info
+        - -controller-namespace=linkerd
+        - -identity-trust-domain=cluster.local
+        - -identity-issuance-lifetime=24h0m0s
+        - -identity-clock-skew-allowance=20s
+        - -identity-trust-anchors-pem=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNApNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyClpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAp1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCi93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwpJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CnZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+        - -identity-scheme=linkerd.io/tls
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1152,8 +1158,6 @@ spec:
         securityContext:
           runAsUser: 2103
         volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
         - mountPath: /var/run/linkerd/identity/issuer
           name: identity-issuer
       - env:
@@ -1299,9 +1303,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-identity
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
@@ -1374,6 +1375,7 @@ spec:
         - -destination-addr=linkerd-dst.linkerd.svc.cluster.local:8086
         - -controller-namespace=linkerd
         - -log-level=info
+        - -cluster-domain=cluster.local
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
@@ -1395,9 +1397,6 @@ spec:
             port: 9995
         securityContext:
           runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -1541,9 +1540,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-controller
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -1634,6 +1630,8 @@ spec:
         - -enable-h2-upgrade=true
         - -log-level=info
         - -enable-endpoint-slices=false
+        - -cluster-domain=cluster.local
+        - -identity-trust-domain=cluster.local
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1654,9 +1652,6 @@ spec:
             port: 9996
         securityContext:
           runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -1800,9 +1795,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-destination
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -1918,6 +1910,7 @@ spec:
       containers:
       - args:
         - -api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
+        - -cluster-domain=cluster.local
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
         - -controller-namespace=linkerd
         - -log-level=info
@@ -1942,9 +1935,6 @@ spec:
             port: 9994
         securityContext:
           runAsUser: 2103
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -2088,9 +2078,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-web
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2637,6 +2624,7 @@ spec:
         - tap
         - -controller-namespace=linkerd
         - -log-level=info
+        - -identity-trust-domain=cluster.local
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2663,8 +2651,6 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
-        - mountPath: /var/run/linkerd/config
-          name: config
       - env:
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
@@ -2808,9 +2794,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-tap
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
