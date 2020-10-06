@@ -352,8 +352,7 @@ func (options *proxyConfigOptions) fetchConfigsOrDefault(ctx context.Context) (*
 	}
 
 	// Get the New Linkerd Configuration
-	// TODO: Fix context
-	_, values, err := healthcheck.FetchCurrentConfiguration(context.Background(), api, controlPlaneNamespace)
+	_, values, err := healthcheck.FetchCurrentConfiguration(ctx, api, controlPlaneNamespace)
 	return values, err
 }
 
