@@ -120,7 +120,7 @@ spec:
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
           value: linkerd-collector
         - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-          value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+          value: linkerd-collector.linkerd..serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ghcr.io/linkerd/proxy:test-inject-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:

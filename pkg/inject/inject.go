@@ -30,6 +30,11 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+
+const (
+
+	traceDefaultSvcAccount = "default"
+)
 var (
 	rTrail = regexp.MustCompile(`\},\s*\]`)
 
@@ -536,6 +541,11 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 	conf.injectProxyInit(values)
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
 
+
+	// Configure Tracing values based on svcAddr, as it is the main toggle for tracing
+	if conf.values.Global.Proxy.Trace.CollectorSvcAddr != "" {
+		values.Global.Proxy.Trace = conf.trace(conf.values.Global.Proxy.Trace.CollectorSvcAddr, conf.values.Global.Proxy.Trace.CollectorSvcAccount)
+	}
 }
 
 func (conf *ResourceConfig) injectProxyInit(values *patch) {
@@ -568,6 +578,31 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 		}
 	}
 	return nil
+}
+
+func (conf *ResourceConfig) trace(svcAddr, svcAccount string) *l5dcharts.Trace {
+	if svcAddr == "" {
+		return nil
+	}
+
+	if svcAccount == "" {
+		svcAccount = traceDefaultSvcAccount
+	}
+
+	hostAndPort := strings.Split(svcAddr, ":")
+	hostname := strings.Split(hostAndPort[0], ".")
+
+	var ns string
+	if len(hostname) == 1 {
+		ns = conf.pod.meta.Namespace
+	} else {
+		ns = hostname[1]
+	}
+
+	return &l5dcharts.Trace{
+		CollectorSvcAddr:    svcAddr,
+		CollectorSvcAccount: fmt.Sprintf("%s.%s", svcAccount, ns),
+	}
 }
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
@@ -832,12 +867,19 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		values.DebugContainer.Image.PullPolicy = override
 	}
 
+	// Get Trace Overrides
+	var svcAddr, svcAccount string
 	if override, ok := conf.getOverride(k8s.ProxyTraceCollectorSvcAddrAnnotation); ok {
-		values.Global.Proxy.Trace.CollectorSvcAddr = override
+		svcAddr = override
 	}
 
 	if override, ok := conf.getOverride(k8s.ProxyTraceCollectorSvcAccountAnnotation); ok {
-		values.Global.Proxy.Trace.CollectorSvcAccount = override
+		svcAccount = override
+	}
+
+	// Configure Tracing values based on svcAddr, as it is the main toggle for tracing
+	if svcAddr != "" {
+		values.Global.Proxy.Trace = conf.trace(svcAddr, svcAccount)
 	}
 }
 
