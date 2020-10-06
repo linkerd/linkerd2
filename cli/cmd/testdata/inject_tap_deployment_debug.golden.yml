@@ -205,7 +205,7 @@ spec:
         - 4190,4191
         - --outbound-ports-to-ignore
         - "443"
-        image: ghcr.io/linkerd/proxy-init:install-proxy-version
+        image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

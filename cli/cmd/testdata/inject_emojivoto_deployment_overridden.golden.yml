@@ -150,7 +150,7 @@ spec:
         - "2102"
         - --inbound-ports-to-ignore
         - 4190,1234
-        image: ghcr.io/linkerd/proxy-init:install-proxy-version
+        image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

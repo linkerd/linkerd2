@@ -361,7 +361,6 @@ func testInstallValues() (*linkerd2.Values, error) {
 	}
 
 	values.Global.Proxy.Image.Version = installProxyVersion
-	values.Global.ProxyInit.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
 	values.Global.LinkerdVersion = installControlPlaneVersion
 	values.Global.ControllerImageVersion = installControlPlaneVersion
