@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"reflect"
 	"regexp"
 	"sort"
@@ -222,6 +223,18 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	}
 
 	conf.applyAnnotationOverrides(&copyValues)
+
+	if copyValues.Global.Proxy.RequireIdentityOnInboundPorts != "" && copyValues.Global.Proxy.DisableIdentity {
+		return nil, fmt.Errorf("%s cannot be set when identity is disabled", k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
+	}
+
+	if copyValues.Global.Proxy.DestinationGetNetworks != "" {
+		for _, network := range strings.Split(strings.Trim(copyValues.Global.Proxy.DestinationGetNetworks, ","), ",") {
+			if _, _, err := net.ParseCIDR(network); err != nil {
+				return nil, fmt.Errorf("cannot parse destination get networks: %s", err)
+			}
+		}
+	}
 
 	patch := &patch{
 		Values:      copyValues,
