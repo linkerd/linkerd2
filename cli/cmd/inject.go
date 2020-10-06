@@ -13,7 +13,7 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	cfg "github.com/linkerd/linkerd2/controller/gen/config"
-	"github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -80,7 +80,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			configs, err := options.fetchConfigsOrDefault()
+			configs, err := options.fetchConfigsOrDefault(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -336,7 +336,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	output.Write([]byte("\n"))
 }
 
-func (options *proxyConfigOptions) fetchConfigsOrDefault() (*cfg.All, error) {
+func (options *proxyConfigOptions) fetchConfigsOrDefault(ctx context.Context) (*cfg.All, error) {
 	if options.ignoreCluster {
 		if !options.disableIdentity {
 			return nil, errors.New("--disable-identity must be set with --ignore-cluster")
@@ -350,8 +350,13 @@ func (options *proxyConfigOptions) fetchConfigsOrDefault() (*cfg.All, error) {
 		return install.configs(nil), nil
 	}
 
-	api := checkPublicAPIClientOrExit()
-	config, err := api.Config(context.Background(), &public.Empty{})
+	checkPublicAPIClientOrExit()
+	api, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	_, config, err := healthcheck.FetchLinkerdConfigMap(ctx, api, controlPlaneNamespace)
 	if err != nil {
 		return nil, err
 	}

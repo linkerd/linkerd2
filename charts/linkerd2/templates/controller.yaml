@@ -75,6 +75,7 @@ spec:
         - -destination-addr=linkerd-dst.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:8086
         - -controller-namespace={{.Values.global.namespace}}
         - -log-level={{.Values.global.controllerLogLevel}}
+        - -cluster-domain={{.Values.global.clusterDomain}}
         {{- if .Values.global.prometheusUrl }}
         - -prometheus-url={{.Values.global.prometheusUrl}}
         {{- else if .Values.prometheus.enabled }}
@@ -104,9 +105,6 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
       {{- $tree := deepCopy . }}      
       {{- if not (empty .Values.publicAPIProxyResources) }}
       {{- $r := merge .Values.publicAPIProxyResources .Values.global.proxy.resources }}
@@ -119,9 +117,6 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-controller
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}

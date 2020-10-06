@@ -96,6 +96,8 @@ spec:
         - -enable-h2-upgrade={{.Values.enableH2Upgrade}}
         - -log-level={{.Values.global.controllerLogLevel}}
         - -enable-endpoint-slices={{.Values.global.enableEndpointSlices}}
+        - -cluster-domain={{.Values.global.clusterDomain}}
+        - -identity-trust-domain={{.Values.global.identityTrustDomain}}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
@@ -120,9 +122,6 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
-        volumeMounts:
-        - mountPath: /var/run/linkerd/config
-          name: config
       {{- $tree := deepCopy . }}
       {{- if not (empty .Values.destinationProxyResources) }}
       {{- $r := merge .Values.destinationProxyResources .Values.global.proxy.resources }}
@@ -135,9 +134,6 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-destination
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
       {{ if .Values.global.controlPlaneTracing -}}
       - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}

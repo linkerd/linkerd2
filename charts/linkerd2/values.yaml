@@ -21,6 +21,11 @@ global:
   # the feature is still experimental.
   enableEndpointSlices: false
 
+  # enabling this omits the NET_ADMIN capability in the PSP
+  # and the proxy-init container when injecting the proxy;
+  # requires the linkerd-cni plugin to already be installed
+  cniEnabled: false
+
   identityTrustAnchorsPEM: |
 
   identityTrustDomain: *cluster_domain
