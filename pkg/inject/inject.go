@@ -119,7 +119,6 @@ type ResourceConfig struct {
 
 type patch struct {
 	l5dcharts.Values
-	Injection             bool                      `json:"injection"`
 	PathPrefix            string                    `json:"pathPrefix"`
 	AddRootMetadata       bool                      `json:"addRootMetadata"`
 	AddRootAnnotations    bool                      `json:"addRootAnnotations"`
@@ -240,11 +239,11 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	if conf.pod.spec != nil {
 		conf.injectPodAnnotations(patch)
 		if injectProxy {
-			// Distinguish manual and normal injection in templates by setting the below flag
-			// as full `Values` is present in both cases
-			patch.Injection = true
 			conf.injectObjectMeta(patch)
 			conf.injectPodSpec(patch)
+		} else {
+			patch.Global.Proxy = nil
+			patch.Global.ProxyInit = nil
 		}
 	}
 

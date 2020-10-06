@@ -35,7 +35,6 @@
     "value": "{{$value}}"
   },
   {{- end }}
-  {{- if .Values.injection }}
   {{- if or .Values.global.proxyInit .Values.global.proxy }}
   {{- if .Values.addRootVolumes }}
   {
@@ -103,6 +102,5 @@
     "value":
       {{- include "partials.proxy" . | fromYaml | toPrettyJson | nindent 6 }}
   },
-  {{- end }}
   {{- end }}
 ]
