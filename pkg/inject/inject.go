@@ -15,6 +15,7 @@ import (
 	"github.com/linkerd/linkerd2-proxy-init/ports"
 	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
@@ -205,10 +206,22 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 // If injectProxy is false, only the config.linkerd.io annotations are set.
 func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 
-	conf.applyAnnotationOverrides(conf.values)
+	// Make a copy of Values and mutate that
+	var copyValues linkerd2.Values
+	copyRawValues, err := yaml.Marshal(conf.values)
+	if err != nil {
+		return nil, err
+	}
+
+	err = yaml.Unmarshal(copyRawValues, &copyValues)
+	if err != nil {
+		return nil, err
+	}
+
+	conf.applyAnnotationOverrides(&copyValues)
 
 	patch := &patch{
-		Values:      *conf.values,
+		Values:      copyValues,
 		Annotations: map[string]string{},
 		Labels:      map[string]string{},
 	}
@@ -563,7 +576,7 @@ func (conf *ResourceConfig) injectObjectMeta(values *patch) {
 
 	values.Annotations[k8s.ProxyVersionAnnotation] = conf.values.Global.Proxy.Image.Version
 
-	if conf.values.Identity == nil || conf.values.Global.Proxy.DisableIdentity {
+	if values.Identity == nil || values.Global.Proxy.DisableIdentity {
 		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDisabled
 	} else {
 		values.Annotations[k8s.IdentityModeAnnotation] = k8s.IdentityModeDefault
