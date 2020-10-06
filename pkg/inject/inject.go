@@ -30,11 +30,10 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-
 const (
-
 	traceDefaultSvcAccount = "default"
 )
+
 var (
 	rTrail = regexp.MustCompile(`\},\s*\]`)
 
@@ -540,7 +539,6 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 
 	conf.injectProxyInit(values)
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
-
 
 	// Configure Tracing values based on svcAddr, as it is the main toggle for tracing
 	if conf.values.Global.Proxy.Trace.CollectorSvcAddr != "" {
