@@ -455,7 +455,6 @@ func (options *proxyConfigOptions) overrideConfigs(values *linkerd2.Values, over
 		overrideAnnotations[k8s.ProxyMemoryRequestAnnotation] = options.proxyMemoryRequest
 	}
 	if options.proxyMemoryLimit != "" {
-		values.Global.Proxy.Resources.Memory.Limit = options.proxyMemoryLimit
 		overrideAnnotations[k8s.ProxyMemoryLimitAnnotation] = options.proxyMemoryLimit
 	}
 

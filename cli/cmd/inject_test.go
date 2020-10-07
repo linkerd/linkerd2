@@ -804,7 +804,6 @@ func TestOverrideConfigsWithCustomRegistryInstall(t *testing.T) {
 	}
 
 	// Setup the registry used when "installing" linkerd
-	// TODO: Update this test once the new flags arrive as it tests overriding using flags
 	customRegistryAtInstall := "custom.install.registry/linkerd-io"
 
 	for _, tt := range tests {
