@@ -206,9 +206,9 @@ func (conf *ResourceConfig) ParseMetaAndYAML(bytes []byte) (*Report, error) {
 	return newReport(conf), nil
 }
 
-// GetPatch returns the JSON patch containing the proxy and init containers specs, if any.
-// If injectProxy is false, only the config.linkerd.io annotations are set.
-func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
+// GetOverriddenValues returns the final Values struct which is created
+// by overiding annoatated configuration on top of default Values
+func (conf *ResourceConfig) GetOverriddenValues() (*linkerd2.Values, error) {
 
 	// Make a copy of Values and mutate that
 	var copyValues linkerd2.Values
@@ -223,13 +223,24 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	}
 
 	conf.applyAnnotationOverrides(&copyValues)
+	return &copyValues, nil
+}
 
-	if copyValues.Global.Proxy.RequireIdentityOnInboundPorts != "" && copyValues.Global.Proxy.DisableIdentity {
+// GetPatch returns the JSON patch containing the proxy and init containers specs, if any.
+// If injectProxy is false, only the config.linkerd.io annotations are set.
+func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
+
+	values, err := conf.GetOverriddenValues()
+	if err != nil {
+		return nil, fmt.Errorf("could not generate Overridden Values: %s", err)
+	}
+
+	if values.Global.Proxy.RequireIdentityOnInboundPorts != "" && values.Global.Proxy.DisableIdentity {
 		return nil, fmt.Errorf("%s cannot be set when identity is disabled", k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
 	}
 
-	if copyValues.Global.Proxy.DestinationGetNetworks != "" {
-		for _, network := range strings.Split(strings.Trim(copyValues.Global.Proxy.DestinationGetNetworks, ","), ",") {
+	if values.Global.Proxy.DestinationGetNetworks != "" {
+		for _, network := range strings.Split(strings.Trim(values.Global.Proxy.DestinationGetNetworks, ","), ",") {
 			if _, _, err := net.ParseCIDR(network); err != nil {
 				return nil, fmt.Errorf("cannot parse destination get networks: %s", err)
 			}
@@ -237,7 +248,7 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 	}
 
 	patch := &patch{
-		Values:      copyValues,
+		Values:      *values,
 		Annotations: map[string]string{},
 		Labels:      map[string]string{},
 	}
@@ -764,38 +775,38 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 	}
 
 	if override, ok := conf.getOverride(k8s.ProxyCPURequestAnnotation); ok {
-		_, err := k8sResource.ParseQuantity(override)
+		res, err := k8sResource.ParseQuantity(override)
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyCPURequestAnnotation)
 		} else {
-			values.Global.Proxy.Resources.CPU.Request = override
+			values.Global.Proxy.Resources.CPU.Request = res.String()
 		}
 	}
 
 	if override, ok := conf.getOverride(k8s.ProxyMemoryRequestAnnotation); ok {
-		_, err := k8sResource.ParseQuantity(override)
+		res, err := k8sResource.ParseQuantity(override)
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyMemoryRequestAnnotation)
 		} else {
-			values.Global.Proxy.Resources.Memory.Request = override
+			values.Global.Proxy.Resources.Memory.Request = res.String()
 		}
 	}
 
 	if override, ok := conf.getOverride(k8s.ProxyCPULimitAnnotation); ok {
-		_, err := k8sResource.ParseQuantity(override)
+		res, err := k8sResource.ParseQuantity(override)
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyCPULimitAnnotation)
 		} else {
-			values.Global.Proxy.Resources.CPU.Limit = override
+			values.Global.Proxy.Resources.CPU.Limit = res.String()
 		}
 	}
 
 	if override, ok := conf.getOverride(k8s.ProxyMemoryLimitAnnotation); ok {
-		_, err := k8sResource.ParseQuantity(override)
+		res, err := k8sResource.ParseQuantity(override)
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyMemoryLimitAnnotation)
 		} else {
-			values.Global.Proxy.Resources.Memory.Limit = override
+			values.Global.Proxy.Resources.Memory.Limit = res.String()
 		}
 	}
 
@@ -906,14 +917,14 @@ func (conf *ResourceConfig) GetOverriddenConfiguration() map[string]string {
 func (conf *ResourceConfig) getOverride(annotation string) (string, bool) {
 
 	// pod.annotations are set by the CLI overridden logic
-	if override, ok := conf.pod.annotations[annotation]; ok && override != "" {
+	if override, ok := conf.pod.annotations[annotation]; ok {
 		return override, ok
 	}
 
-	if override, ok := conf.pod.meta.Annotations[annotation]; ok && override != "" {
+	if override, ok := conf.pod.meta.Annotations[annotation]; ok {
 		return override, ok
 	}
-	if override, ok := conf.nsAnnotations[annotation]; ok && override != "" {
+	if override, ok := conf.nsAnnotations[annotation]; ok {
 		return override, ok
 	}
 
