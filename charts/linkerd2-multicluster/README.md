@@ -38,4 +38,4 @@ linkerd2-multicluster chart and their default values.
 |`logLevel`                       | Log level for the Multicluster components                                                   |`info`                                        |
 |`serviceMirrorRetryLimit`        | Number of times update from the remote cluster is allowed to be requeued (retried)          |`3`                                           |
 |`serviceMirrorUID`               | User id under which the Service Mirror shall be ran                                         |`2103`                                        |
-|`loadBalancerIP:               | If you for example reserved and IP in GKE and want to use exactly that IP for your gateway                                  |emptyString                                        |
+|`loadBalancerIP`               | If you for example reserved and IP in GKE and want to use exactly that IP for your gateway                                  |emptyString                                        |
