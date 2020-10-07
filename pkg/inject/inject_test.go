@@ -1,9 +1,9 @@
 package inject
 
 import (
+	"reflect"
 	"testing"
 
-	"github.com/linkerd/linkerd2/controller/gen/config"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -13,55 +13,25 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-type expectedProxyConfigs struct {
-	identityContext               *config.IdentityContext
-	image                         string
-	imagePullPolicy               string
-	proxyVersion                  string
-	controlPort                   int32
-	inboundPort                   int32
-	adminPort                     int32
-	outboundPort                  int32
-	proxyWaitBeforeExitSeconds    uint64
-	logLevel                      string
-	logFormat                     string
-	resourceRequirements          *l5dcharts.Resources
-	proxyUID                      int64
-	initImage                     string
-	initImagePullPolicy           string
-	initVersion                   string
-	inboundSkipPorts              string
-	outboundSkipPorts             string
-	requireIdentityOnInboundPorts string
-	destinationGetNetworks        string
-	outboundConnectTimeout        string
-	inboundConnectTimeout         string
-	trace                         *l5dcharts.Trace
-	opaquePorts                   string
-}
-
-func TestConfigAccessors(t *testing.T) {
-	// this test uses an annotated deployment and a proxyConfig object to verify
-	// all the proxy config accessors. The first test suite ensures that the
-	// accessors picks up the pod-level config annotations. The second test suite
-	// ensures that the defaults in the config map is used.
+func TestGetOverriddenValues(t *testing.T) {
+	// this test uses an annotated deployment and a expected Values object to verify
+	// the GetOverriddenValues function.
 
 	var (
-		proxyVersion         = "proxy-version"
 		proxyVersionOverride = "proxy-version-override"
+		pullPolicy           = "Always"
 	)
 
 	testConfig, err := l5dcharts.NewValues(false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	// TODO: Override with config present here
 
 	var testCases = []struct {
 		id            string
 		nsAnnotations map[string]string
 		spec          appsv1.DeploymentSpec
-		expected      expectedProxyConfigs
+		expected      func() *l5dcharts.Values
 	}{
 		{id: "use overrides",
 			spec: appsv1.DeploymentSpec{
@@ -70,7 +40,7 @@ func TestConfigAccessors(t *testing.T) {
 						Annotations: map[string]string{
 							k8s.ProxyDisableIdentityAnnotation:               "true",
 							k8s.ProxyImageAnnotation:                         "ghcr.io/linkerd/proxy",
-							k8s.ProxyImagePullPolicyAnnotation:               "Always",
+							k8s.ProxyImagePullPolicyAnnotation:               pullPolicy,
 							k8s.ProxyInitImageAnnotation:                     "ghcr.io/linkerd/proxy-init",
 							k8s.ProxyControlPortAnnotation:                   "4000",
 							k8s.ProxyInboundPortAnnotation:                   "5000",
@@ -100,18 +70,22 @@ func TestConfigAccessors(t *testing.T) {
 					Spec: corev1.PodSpec{},
 				},
 			},
-			expected: expectedProxyConfigs{
-				image:                      "ghcr.io/linkerd/proxy",
-				imagePullPolicy:            "Always",
-				proxyVersion:               proxyVersionOverride,
-				controlPort:                int32(4000),
-				inboundPort:                int32(5000),
-				adminPort:                  int32(5001),
-				outboundPort:               int32(5002),
-				proxyWaitBeforeExitSeconds: 123,
-				logLevel:                   "debug,linkerd2_proxy=debug",
-				logFormat:                  "json",
-				resourceRequirements: &l5dcharts.Resources{
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues(false)
+
+				values.Global.Proxy.DisableIdentity = true
+				values.Global.Proxy.DestinationGetNetworks = "10.0.0.0/8"
+				values.Global.Proxy.Image.Name = "ghcr.io/linkerd/proxy"
+				values.Global.Proxy.Image.PullPolicy = pullPolicy
+				values.Global.Proxy.Image.Version = proxyVersionOverride
+				values.Global.Proxy.Ports.Control = 4000
+				values.Global.Proxy.Ports.Inbound = 5000
+				values.Global.Proxy.Ports.Admin = 5001
+				values.Global.Proxy.Ports.Outbound = 5002
+				values.Global.Proxy.WaitBeforeExitSeconds = 123
+				values.Global.Proxy.LogLevel = "debug,linkerd2_proxy=debug"
+				values.Global.Proxy.LogFormat = "json"
+				values.Global.Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1500m",
 						Request: "150m",
@@ -120,22 +94,22 @@ func TestConfigAccessors(t *testing.T) {
 						Limit:   "256",
 						Request: "120",
 					},
-				},
-				proxyUID:            int64(8500),
-				initImage:           "ghcr.io/linkerd/proxy-init",
-				initImagePullPolicy: "Always",
-				initVersion:         version.ProxyInitVersion,
-				inboundSkipPorts:    "4222,6222",
-				outboundSkipPorts:   "8079,8080",
-				trace: &l5dcharts.Trace{
+				}
+				values.Global.Proxy.UID = 8500
+				values.Global.ProxyInit.Image.Name = "ghcr.io/linkerd/proxy-init"
+				values.Global.ProxyInit.Image.PullPolicy = pullPolicy
+				values.Global.ProxyInit.Image.Version = version.ProxyInitVersion
+				values.Global.ProxyInit.IgnoreInboundPorts = "4222,6222"
+				values.Global.ProxyInit.IgnoreOutboundPorts = "8079,8080"
+				values.Global.Proxy.Trace = &l5dcharts.Trace{
 					CollectorSvcAddr:    "oc-collector.tracing:55678",
 					CollectorSvcAccount: "default.tracing",
-				},
-				requireIdentityOnInboundPorts: "8888,9999",
-				destinationGetNetworks:        "10.0.0.0/8",
-				outboundConnectTimeout:        "6000ms",
-				inboundConnectTimeout:         "600ms",
-				opaquePorts:                   "4320,4321,4322,4323,4324,4325,3306",
+				}
+				values.Global.Proxy.RequireIdentityOnInboundPorts = "8888,9999"
+				values.Global.Proxy.OutboundConnectTimeout = "6000ms"
+				values.Global.Proxy.InboundConnectTimeout = "600ms"
+				values.Global.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
+				return values
 			},
 		},
 		{id: "use defaults",
@@ -145,44 +119,16 @@ func TestConfigAccessors(t *testing.T) {
 					Spec:       corev1.PodSpec{},
 				},
 			},
-			expected: expectedProxyConfigs{
-				identityContext:            &config.IdentityContext{},
-				image:                      "ghcr.io/linkerd/proxy",
-				imagePullPolicy:            "IfNotPresent",
-				proxyVersion:               proxyVersion,
-				controlPort:                int32(9000),
-				inboundPort:                int32(6000),
-				adminPort:                  int32(6001),
-				outboundPort:               int32(6002),
-				proxyWaitBeforeExitSeconds: 0,
-				logLevel:                   "info,linkerd2_proxy=debug",
-				logFormat:                  "plain",
-				resourceRequirements: &l5dcharts.Resources{
-					CPU: l5dcharts.Constraints{
-						Limit:   "1",
-						Request: "200m",
-					},
-					Memory: l5dcharts.Constraints{
-						Limit:   "128",
-						Request: "64",
-					},
-				},
-				proxyUID:               int64(8888),
-				initImage:              "ghcr.io/linkerd/proxy-init",
-				initImagePullPolicy:    "IfNotPresent",
-				initVersion:            version.ProxyInitVersion,
-				inboundSkipPorts:       "53,58-59",
-				outboundSkipPorts:      "9079-9080",
-				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-				outboundConnectTimeout: "1000ms",
-				inboundConnectTimeout:  "100ms",
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues(false)
+				return values
 			},
 		},
 		{id: "use namespace overrides",
 			nsAnnotations: map[string]string{
 				k8s.ProxyDisableIdentityAnnotation:          "true",
 				k8s.ProxyImageAnnotation:                    "ghcr.io/linkerd/proxy",
-				k8s.ProxyImagePullPolicyAnnotation:          "Always",
+				k8s.ProxyImagePullPolicyAnnotation:          pullPolicy,
 				k8s.ProxyInitImageAnnotation:                "ghcr.io/linkerd/proxy-init",
 				k8s.ProxyControlPortAnnotation:              "4000",
 				k8s.ProxyInboundPortAnnotation:              "5000",
@@ -211,18 +157,21 @@ func TestConfigAccessors(t *testing.T) {
 					Spec: corev1.PodSpec{},
 				},
 			},
-			expected: expectedProxyConfigs{
-				image:                      "ghcr.io/linkerd/proxy",
-				imagePullPolicy:            "Always",
-				proxyVersion:               proxyVersionOverride,
-				controlPort:                int32(4000),
-				inboundPort:                int32(5000),
-				adminPort:                  int32(5001),
-				outboundPort:               int32(5002),
-				proxyWaitBeforeExitSeconds: 123,
-				logLevel:                   "debug,linkerd2_proxy=debug",
-				logFormat:                  "json",
-				resourceRequirements: &l5dcharts.Resources{
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues(false)
+
+				values.Global.Proxy.DisableIdentity = true
+				values.Global.Proxy.Image.Name = "ghcr.io/linkerd/proxy"
+				values.Global.Proxy.Image.PullPolicy = pullPolicy
+				values.Global.Proxy.Image.Version = proxyVersionOverride
+				values.Global.Proxy.Ports.Control = 4000
+				values.Global.Proxy.Ports.Inbound = 5000
+				values.Global.Proxy.Ports.Admin = 5001
+				values.Global.Proxy.Ports.Outbound = 5002
+				values.Global.Proxy.WaitBeforeExitSeconds = 123
+				values.Global.Proxy.LogLevel = "debug,linkerd2_proxy=debug"
+				values.Global.Proxy.LogFormat = "json"
+				values.Global.Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1500m",
 						Request: "150m",
@@ -231,64 +180,21 @@ func TestConfigAccessors(t *testing.T) {
 						Limit:   "256",
 						Request: "120",
 					},
-				},
-				proxyUID:            int64(8500),
-				initImage:           "ghcr.io/linkerd/proxy-init",
-				initImagePullPolicy: "Always",
-				initVersion:         version.ProxyInitVersion,
-				inboundSkipPorts:    "4222,6222",
-				outboundSkipPorts:   "8079,8080",
-				trace: &l5dcharts.Trace{
+				}
+				values.Global.Proxy.UID = 8500
+				values.Global.ProxyInit.Image.Name = "ghcr.io/linkerd/proxy-init"
+				values.Global.ProxyInit.Image.PullPolicy = pullPolicy
+				values.Global.ProxyInit.Image.Version = version.ProxyInitVersion
+				values.Global.ProxyInit.IgnoreInboundPorts = "4222,6222"
+				values.Global.ProxyInit.IgnoreOutboundPorts = "8079,8080"
+				values.Global.Proxy.Trace = &l5dcharts.Trace{
 					CollectorSvcAddr:    "oc-collector.tracing:55678",
 					CollectorSvcAccount: "default.tracing",
-				},
-				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-				outboundConnectTimeout: "6000ms",
-				inboundConnectTimeout:  "600ms",
-				opaquePorts:            "4320,4321,4322,4323,4324,4325,3306",
-			},
-		},
-		{id: "use not a uint value for ProxyWaitBeforeExitSecondsAnnotation annotation",
-			nsAnnotations: map[string]string{
-				k8s.ProxyWaitBeforeExitSecondsAnnotation: "-111",
-			},
-			spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{},
-					Spec:       corev1.PodSpec{},
-				},
-			},
-			expected: expectedProxyConfigs{
-				identityContext:            &config.IdentityContext{},
-				image:                      "ghcr.io/linkerd/proxy",
-				imagePullPolicy:            "IfNotPresent",
-				proxyVersion:               proxyVersion,
-				controlPort:                int32(9000),
-				inboundPort:                int32(6000),
-				adminPort:                  int32(6001),
-				outboundPort:               int32(6002),
-				proxyWaitBeforeExitSeconds: 0,
-				logLevel:                   "info,linkerd2_proxy=debug",
-				logFormat:                  "plain",
-				resourceRequirements: &l5dcharts.Resources{
-					CPU: l5dcharts.Constraints{
-						Limit:   "1",
-						Request: "200m",
-					},
-					Memory: l5dcharts.Constraints{
-						Limit:   "128",
-						Request: "64",
-					},
-				},
-				proxyUID:               int64(8888),
-				initImage:              "ghcr.io/linkerd/proxy-init",
-				initImagePullPolicy:    "IfNotPresent",
-				initVersion:            version.ProxyInitVersion,
-				inboundSkipPorts:       "53,58-59",
-				outboundSkipPorts:      "9079-9080",
-				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-				outboundConnectTimeout: "1000ms",
-				inboundConnectTimeout:  "100ms",
+				}
+				values.Global.Proxy.OutboundConnectTimeout = "6000ms"
+				values.Global.Proxy.InboundConnectTimeout = "600ms"
+				values.Global.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
+				return values
 			},
 		},
 		{id: "use empty string for dst networks",
@@ -301,37 +207,10 @@ func TestConfigAccessors(t *testing.T) {
 					Spec:       corev1.PodSpec{},
 				},
 			},
-			expected: expectedProxyConfigs{
-				identityContext:            &config.IdentityContext{},
-				image:                      "ghcr.io/linkerd/proxy",
-				imagePullPolicy:            "IfNotPresent",
-				proxyVersion:               proxyVersion,
-				controlPort:                int32(9000),
-				inboundPort:                int32(6000),
-				adminPort:                  int32(6001),
-				outboundPort:               int32(6002),
-				proxyWaitBeforeExitSeconds: 0,
-				logLevel:                   "info,linkerd2_proxy=debug",
-				logFormat:                  "plain",
-				resourceRequirements: &l5dcharts.Resources{
-					CPU: l5dcharts.Constraints{
-						Limit:   "1",
-						Request: "200m",
-					},
-					Memory: l5dcharts.Constraints{
-						Limit:   "128",
-						Request: "64",
-					},
-				},
-				proxyUID:               int64(8888),
-				initImage:              "ghcr.io/linkerd/proxy-init",
-				initImagePullPolicy:    "IfNotPresent",
-				initVersion:            version.ProxyInitVersion,
-				inboundSkipPorts:       "53,58-59",
-				outboundSkipPorts:      "9079-9080",
-				destinationGetNetworks: "",
-				outboundConnectTimeout: "1000ms",
-				inboundConnectTimeout:  "100ms",
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues(false)
+				values.Global.Proxy.DestinationGetNetworks = ""
+				return values
 			},
 		},
 		{id: "use invalid duration for TCP connect timeouts",
@@ -345,44 +224,16 @@ func TestConfigAccessors(t *testing.T) {
 					Spec:       corev1.PodSpec{},
 				},
 			},
-			expected: expectedProxyConfigs{
-				identityContext:            &config.IdentityContext{},
-				image:                      "ghcr.io/linkerd/proxy",
-				imagePullPolicy:            "IfNotPresent",
-				proxyVersion:               proxyVersion,
-				controlPort:                int32(9000),
-				inboundPort:                int32(6000),
-				adminPort:                  int32(6001),
-				outboundPort:               int32(6002),
-				proxyWaitBeforeExitSeconds: 0,
-				logLevel:                   "info,linkerd2_proxy=debug",
-				logFormat:                  "plain",
-				resourceRequirements: &l5dcharts.Resources{
-					CPU: l5dcharts.Constraints{
-						Limit:   "1",
-						Request: "200m",
-					},
-					Memory: l5dcharts.Constraints{
-						Limit:   "128",
-						Request: "64",
-					},
-				},
-				proxyUID:               int64(8888),
-				initImage:              "ghcr.io/linkerd/proxy-init",
-				initImagePullPolicy:    "IfNotPresent",
-				initVersion:            version.ProxyInitVersion,
-				inboundSkipPorts:       "53,58-59",
-				outboundSkipPorts:      "9079-9080",
-				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-				outboundConnectTimeout: "1000ms",
-				inboundConnectTimeout:  "100ms",
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues(false)
+				return values
 			},
 		},
 		{id: "use valid duration for TCP connect timeouts",
 			nsAnnotations: map[string]string{
 				// Validate we're converting time values into ms for the proxy to parse correctly.
 				k8s.ProxyOutboundConnectTimeout: "6s5ms",
-				k8s.ProxyInboundConnectTimeout:  "1s5ms",
+				k8s.ProxyInboundConnectTimeout:  "2s5ms",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -390,37 +241,11 @@ func TestConfigAccessors(t *testing.T) {
 					Spec:       corev1.PodSpec{},
 				},
 			},
-			expected: expectedProxyConfigs{
-				identityContext:            &config.IdentityContext{},
-				image:                      "ghcr.io/linkerd/proxy",
-				imagePullPolicy:            "IfNotPresent",
-				proxyVersion:               proxyVersion,
-				controlPort:                int32(9000),
-				inboundPort:                int32(6000),
-				adminPort:                  int32(6001),
-				outboundPort:               int32(6002),
-				proxyWaitBeforeExitSeconds: 0,
-				logLevel:                   "info,linkerd2_proxy=debug",
-				logFormat:                  "plain",
-				resourceRequirements: &l5dcharts.Resources{
-					CPU: l5dcharts.Constraints{
-						Limit:   "1",
-						Request: "200m",
-					},
-					Memory: l5dcharts.Constraints{
-						Limit:   "128",
-						Request: "64",
-					},
-				},
-				proxyUID:               int64(8888),
-				initImage:              "ghcr.io/linkerd/proxy-init",
-				initImagePullPolicy:    "IfNotPresent",
-				initVersion:            version.ProxyInitVersion,
-				inboundSkipPorts:       "53,58-59",
-				outboundSkipPorts:      "9079-9080",
-				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-				outboundConnectTimeout: "6005ms",
-				inboundConnectTimeout:  "1005ms",
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues(false)
+				values.Global.Proxy.OutboundConnectTimeout = "6005ms"
+				values.Global.Proxy.InboundConnectTimeout = "2005ms"
+				return values
 			},
 		},
 		{id: "use named port for opaque ports",
@@ -445,38 +270,10 @@ func TestConfigAccessors(t *testing.T) {
 					},
 				},
 			},
-			expected: expectedProxyConfigs{
-				identityContext:            &config.IdentityContext{},
-				image:                      "ghcr.io/linkerd/proxy",
-				imagePullPolicy:            "IfNotPresent",
-				proxyVersion:               proxyVersion,
-				controlPort:                int32(9000),
-				inboundPort:                int32(6000),
-				adminPort:                  int32(6001),
-				outboundPort:               int32(6002),
-				proxyWaitBeforeExitSeconds: 0,
-				logLevel:                   "info,linkerd2_proxy=debug",
-				logFormat:                  "plain",
-				resourceRequirements: &l5dcharts.Resources{
-					CPU: l5dcharts.Constraints{
-						Limit:   "1",
-						Request: "200m",
-					},
-					Memory: l5dcharts.Constraints{
-						Limit:   "128",
-						Request: "64",
-					},
-				},
-				proxyUID:               int64(8888),
-				initImage:              "ghcr.io/linkerd/proxy-init",
-				initImagePullPolicy:    "IfNotPresent",
-				initVersion:            version.ProxyInitVersion,
-				inboundSkipPorts:       "53,58-59",
-				outboundSkipPorts:      "9079-9080",
-				destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-				outboundConnectTimeout: "1000ms",
-				inboundConnectTimeout:  "100ms",
-				opaquePorts:            "3306",
+			expected: func() *l5dcharts.Values {
+				values, _ := l5dcharts.NewValues(false)
+				values.Global.Proxy.OpaquePorts = "3306"
+				return values
 			},
 		},
 	}
@@ -493,6 +290,16 @@ func TestConfigAccessors(t *testing.T) {
 			if err := resourceConfig.parse(data); err != nil {
 				t.Fatal(err)
 			}
+
+			actual, err := resourceConfig.GetOverriddenValues()
+			if err != nil {
+				t.Fatal(err)
+			}
+			expected := testCase.expected()
+			if !reflect.DeepEqual(actual, expected) {
+				t.Fatalf("Expected values to be \n%v\n but was \n%v", actual, expected)
+			}
+
 		})
 	}
 }
