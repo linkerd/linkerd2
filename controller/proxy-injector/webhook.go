@@ -7,7 +7,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/inject"
@@ -36,12 +35,7 @@ func Inject(
 ) (*admissionv1beta1.AdmissionResponse, error) {
 	log.Debugf("request object bytes: %s", request.Object.Raw)
 
-	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	proxyConfig, err := config.Proxy(pkgK8s.MountPathProxyConfig)
+	valuesConfig, err := config.Values(pkgK8s.MountPathValuesConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +46,7 @@ func Inject(
 	}
 	nsAnnotations := namespace.GetAnnotations()
 
-	configs := &pb.All{Global: globalConfig, Proxy: proxyConfig}
-	resourceConfig := inject.NewResourceConfig(configs, inject.OriginWebhook).
+	resourceConfig := inject.NewResourceConfig(valuesConfig, inject.OriginWebhook).
 		WithOwnerRetriever(ownerRetriever(ctx, api, request.Namespace)).
 		WithNsAnnotations(nsAnnotations).
 		WithKind(request.Kind.Kind)

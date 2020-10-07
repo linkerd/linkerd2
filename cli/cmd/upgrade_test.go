@@ -23,6 +23,7 @@ const (
 	upgradeControlPlaneVersion = "UPGRADE-CONTROL-PLANE-VERSION"
 	upgradeDebugVersion        = "UPGRADE-DEBUG-VERSION"
 	overridesSecret            = "Secret/linkerd-config-overrides"
+	LinkerdConfigMap           = "ConfigMap/linkerd-config"
 )
 
 type (
@@ -107,7 +108,7 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 		},
 	}
 	installOpts.recordFlags(installFlags)
-	values, _, err := installOpts.validateAndBuildWithIdentity(context.Background(), "", &identity)
+	values, err := installOpts.validateAndBuildWithIdentity(context.Background(), "", &identity)
 	install := renderInstall(t, values)
 	if err != nil {
 		t.Fatalf("Failed to build install values: %s", err)
@@ -151,7 +152,7 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 		},
 	}
 	installOpts.recordFlags(installFlags)
-	values, _, err := installOpts.validateAndBuildWithIdentity(context.Background(), "", &identity)
+	values, err := installOpts.validateAndBuildWithIdentity(context.Background(), "", &identity)
 	install := renderInstall(t, values)
 	if err != nil {
 		t.Fatalf("Failed to build install values: %s", err)
@@ -200,7 +201,7 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 				// Trust root has changed.
 				continue
 			}
-			if id == "ConfigMap/linkerd-config" {
+			if id == LinkerdConfigMap {
 				// Trust root has changed.
 				continue
 			}
@@ -745,7 +746,7 @@ func pathMatch(path []string, template []string) bool {
 }
 
 func installValues(t *testing.T, installOpts *installOptions, installFlags *pflag.FlagSet) *linkerd2.Values {
-	installValues, _, err := installOpts.validateAndBuild(context.Background(), "", installFlags)
+	installValues, err := installOpts.validateAndBuild(context.Background(), "", installFlags)
 	if err != nil {
 		t.Fatalf("Unexpected error validating install options: %v", err)
 	}
@@ -796,7 +797,13 @@ func ignorableDiff(id string, diff diff) bool {
 		// control plane and proxy versions will change.
 		return true
 	}
-	if id == "ConfigMap/linkerd-config" && pathMatch(diff.path, []string{"data", "values"}) {
+
+	if id == LinkerdConfigMap && pathMatch(diff.path, []string{"data", "proxy"}) {
+		// Skip this as we are not planning to keep this for 2.9
+		return true
+	}
+
+	if id == LinkerdConfigMap && pathMatch(diff.path, []string{"data", "values"}) {
 		// The stored values will always change because at least the control
 		// plane and proxy versions will change.
 		return true

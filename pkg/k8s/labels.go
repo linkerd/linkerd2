@@ -350,6 +350,9 @@ const (
 	// MountPathInstallConfig is the path at which the install config file is mounted.
 	MountPathInstallConfig = MountPathBase + "/config/install"
 
+	// MountPathValuesConfig is the path at which the values config file is mounted.
+	MountPathValuesConfig = MountPathBase + "/config/values"
+
 	// MountPathEndEntity is the path at which a tmpfs directory is mounted to
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"

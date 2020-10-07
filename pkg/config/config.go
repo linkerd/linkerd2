@@ -10,6 +10,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/config"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	log "github.com/sirupsen/logrus"
+	"sigs.k8s.io/yaml"
 )
 
 // Global returns the Global protobuf config from the linkerd-config ConfigMap
@@ -31,6 +32,21 @@ func Install(filepath string) (*pb.Install, error) {
 	config := &pb.Install{}
 	err := unmarshalFile(filepath, config)
 	return config, err
+}
+
+// Values returns the Value struct from the linkerd-config ConfigMap
+func Values(filepath string) (*l5dcharts.Values, error) {
+	values := &l5dcharts.Values{}
+	configYaml, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %s", err)
+	}
+
+	log.Debugf("%s config YAML: %s", filepath, configYaml)
+	if err = yaml.Unmarshal(configYaml, values); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON from: %s: %s", filepath, err)
+	}
+	return values, err
 }
 
 func unmarshalFile(filepath string, msg proto.Message) error {

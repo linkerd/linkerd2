@@ -3,7 +3,6 @@ package cmd
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,8 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerd/linkerd2/controller/gen/config"
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
@@ -22,7 +20,7 @@ type testCase struct {
 	goldenFileName         string
 	reportFileName         string
 	injectProxy            bool
-	testInjectConfig       *config.All
+	testInjectConfig       *linkerd2.Values
 	overrideAnnotations    map[string]string
 	enableDebugSidecarFlag bool
 }
@@ -46,7 +44,7 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	report := new(bytes.Buffer)
 	transformer := &resourceTransformerInject{
 		injectProxy:         tc.injectProxy,
-		configs:             tc.testInjectConfig,
+		values:              tc.testInjectConfig,
 		overrideAnnotations: tc.overrideAnnotations,
 		enableDebugSidecar:  tc.enableDebugSidecarFlag,
 		allowNsInject:       true,
@@ -61,60 +59,62 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	diffTestdata(t, reportFileName, report.String())
 }
 
-func testInstallConfig(ctx context.Context) *pb.All {
-	installOptions, err := testInstallOptions()
+func defaultConfig() *linkerd2.Values {
+	defaultConfig, err := testInstallValues()
 	if err != nil {
 		log.Fatalf("Unexpected error: %v", err)
 	}
+	defaultConfig.Global.LinkerdVersion = "test-inject-control-plane-version"
+	defaultConfig.Global.Proxy.Image.Version = "test-inject-proxy-version"
+	defaultConfig.DebugContainer.Image.Version = "test-inject-debug-version"
 
-	_, c, err := installOptions.validateAndBuild(ctx, "", nil)
-	if err != nil {
-		log.Fatalf("test install options must be valid: %s", err)
-	}
-	return c
+	return defaultConfig
 }
 
 func TestUninjectAndInject(t *testing.T) {
-	ctx := context.Background()
-	defaultConfig := testInstallConfig(ctx)
-	defaultConfig.Global.Version = "test-inject-control-plane-version"
-	defaultConfig.Proxy.ProxyVersion = "test-inject-proxy-version"
-	defaultConfig.Proxy.DebugImageVersion = "test-inject-debug-version"
-
-	emptyVersionConfig := testInstallConfig(ctx)
-	emptyVersionConfig.Global.Version = ""
-	emptyVersionConfig.Proxy.ProxyVersion = ""
-
-	emptyProxyVersionConfig := testInstallConfig(ctx)
-	emptyProxyVersionConfig.Global.Version = "test-inject-control-plane-version"
-	emptyProxyVersionConfig.Proxy.ProxyVersion = ""
-
-	overrideConfig := testInstallConfig(ctx)
-	overrideConfig.Proxy.ProxyVersion = "override"
-
-	proxyResourceConfig := testInstallConfig(ctx)
-	proxyResourceConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
-	proxyResourceConfig.Proxy.Resource = &config.ResourceRequirements{
-		RequestCpu:    "110m",
-		RequestMemory: "100Mi",
-		LimitCpu:      "160m",
-		LimitMemory:   "150Mi",
-	}
-
-	cniEnabledConfig := testInstallConfig(ctx)
-	cniEnabledConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
-	cniEnabledConfig.Global.CniEnabled = true
-
-	proxyIgnorePortsOptions, err := testInstallOptions()
+	defaultValues, err := testInstallValues()
 	if err != nil {
 		log.Fatalf("Unexpected error: %v", err)
 	}
-	proxyIgnorePortsOptions.ignoreInboundPorts = []string{"22", "8100-8102"}
-	proxyIgnorePortsOptions.ignoreOutboundPorts = []string{"5432"}
-	_, proxyIgnorePortsConfig, err := proxyIgnorePortsOptions.validateAndBuild(ctx, "", nil)
+	defaultValues.Global.LinkerdVersion = "test-inject-control-plane-version"
+	defaultValues.Global.Proxy.Image.Version = "test-inject-proxy-version"
+	defaultValues.DebugContainer.Image.Version = "test-inject-debug-version"
+
+	overrideConfig, err := testInstallValues()
 	if err != nil {
-		log.Fatalf("test install proxy-ignore options must be valid: %s", err)
+		log.Fatalf("Unexpected error: %v", err)
 	}
+	overrideConfig.Global.Proxy.Image.Version = "override"
+
+	proxyResourceConfig, err := testInstallValues()
+	if err != nil {
+		log.Fatalf("Unexpected error: %v", err)
+	}
+	proxyResourceConfig.Global.Proxy.Image.Version = defaultValues.Global.Proxy.Image.Version
+	proxyResourceConfig.Global.Proxy.Resources = &linkerd2.Resources{
+		CPU: linkerd2.Constraints{
+			Request: "110m",
+			Limit:   "160m",
+		},
+		Memory: linkerd2.Constraints{
+			Request: "100Mi",
+			Limit:   "150Mi",
+		},
+	}
+
+	cniEnabledConfig, err := testInstallValues()
+	if err != nil {
+		log.Fatalf("Unexpected error: %v", err)
+	}
+	cniEnabledConfig.Global.Proxy.Image.Version = defaultValues.Global.Proxy.Image.Version
+	cniEnabledConfig.Global.CNIEnabled = true
+
+	proxyIgnorePortsConfig, err := testInstallValues()
+	if err != nil {
+		log.Fatalf("Unexpected error: %v", err)
+	}
+	proxyIgnorePortsConfig.Global.ProxyInit.IgnoreInboundPorts = "22,8100-8102"
+	proxyIgnorePortsConfig.Global.ProxyInit.IgnoreOutboundPorts = "5432"
 
 	testCases := []testCase{
 		{
@@ -122,28 +122,14 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_deployment.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
-		},
-		{
-			inputFileName:    "inject_emojivoto_deployment.input.yml",
-			goldenFileName:   "inject_emojivoto_deployment_empty_version_config.golden.yml",
-			reportFileName:   "inject_emojivoto_deployment.report",
-			injectProxy:      true,
-			testInjectConfig: emptyVersionConfig,
-		},
-		{
-			inputFileName:    "inject_emojivoto_deployment.input.yml",
-			goldenFileName:   "inject_emojivoto_deployment_empty_proxy_version_config.golden.yml",
-			reportFileName:   "inject_emojivoto_deployment.report",
-			injectProxy:      true,
-			testInjectConfig: emptyProxyVersionConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_overridden_noinject.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      false,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 			overrideAnnotations: map[string]string{
 				k8s.ProxyAdminPortAnnotation: "1234",
 			},
@@ -153,7 +139,7 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_deployment_overridden.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 			overrideAnnotations: map[string]string{
 				k8s.ProxyAdminPortAnnotation: "1234",
 			},
@@ -163,63 +149,63 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_list.golden.yml",
 			reportFileName:   "inject_emojivoto_list.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_hostNetwork_false.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_false.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_hostNetwork_false.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_capabilities.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_capabilities.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_injectDisabled.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_injectDisabled.input.yml",
 			reportFileName:   "inject_emojivoto_deployment_injectDisabled.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_controller_name.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_controller_name.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_controller_name.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_statefulset.input.yml",
 			goldenFileName:   "inject_emojivoto_statefulset.golden.yml",
 			reportFileName:   "inject_emojivoto_statefulset.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_cronjob.input.yml",
 			goldenFileName:   "inject_emojivoto_cronjob.golden.yml",
 			reportFileName:   "inject_emojivoto_cronjob.report",
 			injectProxy:      false,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_cronjob_nometa.input.yml",
 			goldenFileName:   "inject_emojivoto_cronjob_nometa.golden.yml",
 			reportFileName:   "inject_emojivoto_cronjob.report",
 			injectProxy:      false,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod.input.yml",
 			goldenFileName:   "inject_emojivoto_pod.golden.yml",
 			reportFileName:   "inject_emojivoto_pod.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod_with_requests.input.yml",
@@ -233,35 +219,35 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_deployment_udp.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_udp.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_already_injected.input.yml",
 			goldenFileName:   "inject_emojivoto_already_injected.golden.yml",
 			reportFileName:   "inject_emojivoto_already_injected.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_contour.input.yml",
 			goldenFileName:   "inject_contour.golden.yml",
 			reportFileName:   "inject_contour.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_empty_resources.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_empty_resources.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_empty_resources.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_list_empty_resources.input.yml",
 			goldenFileName:   "inject_emojivoto_list_empty_resources.golden.yml",
 			reportFileName:   "inject_emojivoto_list_empty_resources.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
@@ -282,7 +268,7 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:         "inject_emojivoto_deployment_debug.golden.yml",
 			reportFileName:         "inject_emojivoto_deployment.report",
 			injectProxy:            true,
-			testInjectConfig:       defaultConfig,
+			testInjectConfig:       defaultConfig(),
 			enableDebugSidecarFlag: true,
 		},
 		{
@@ -290,7 +276,7 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:         "inject_tap_deployment_debug.golden.yml",
 			reportFileName:         "inject_tap_deployment_debug.report",
 			injectProxy:            true,
-			testInjectConfig:       defaultConfig,
+			testInjectConfig:       defaultConfig(),
 			enableDebugSidecarFlag: true,
 		},
 		{
@@ -298,14 +284,14 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_namespace_good.golden.yml",
 			reportFileName:   "inject_emojivoto_namespace_good.golden.report",
 			injectProxy:      false,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_namespace_good.input.yml",
 			goldenFileName:   "inject_emojivoto_namespace_overidden_good.golden.yml",
 			reportFileName:   "inject_emojivoto_namespace_good.golden.report",
 			injectProxy:      false,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 			overrideAnnotations: map[string]string{
 				k8s.IdentityModeAnnotation: "default",
 				k8s.CreatedByAnnotation:    "linkerd/cli dev-undefined",
@@ -330,7 +316,7 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_deployment_trace.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_trace.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 			overrideAnnotations: map[string]string{
 				k8s.ProxyTraceCollectorSvcAddrAnnotation:    "linkerd-collector",
 				k8s.ProxyTraceCollectorSvcAccountAnnotation: "linkerd-collector.linkerd",
@@ -360,8 +346,11 @@ type injectCmd struct {
 }
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
-	testConfig := testInstallConfig(context.Background())
-	testConfig.Proxy.ProxyVersion = "testinjectversion"
+	testConfig, err := testInstallValues()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	testConfig.Global.Proxy.Image.Version = "testinjectversion"
 
 	errBuffer := &bytes.Buffer{}
 	outBuffer := &bytes.Buffer{}
@@ -373,7 +362,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 
 	transformer := &resourceTransformerInject{
 		injectProxy: tc.injectProxy,
-		configs:     testConfig,
+		values:      testConfig,
 	}
 	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer)
 	if exitCode != tc.exitCode {
@@ -453,7 +442,7 @@ type injectFilePath struct {
 	stdErrFile   string
 }
 
-func testInjectFilePath(ctx context.Context, t *testing.T, tc injectFilePath) {
+func testInjectFilePath(t *testing.T, tc injectFilePath) {
 	in, err := read("testdata/" + tc.resourceFile)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
@@ -461,9 +450,13 @@ func testInjectFilePath(ctx context.Context, t *testing.T, tc injectFilePath) {
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
+	values, err := testInstallValues()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 	transformer := &resourceTransformerInject{
 		injectProxy: true,
-		configs:     testInstallConfig(ctx),
+		values:      values,
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
@@ -474,17 +467,21 @@ func testInjectFilePath(ctx context.Context, t *testing.T, tc injectFilePath) {
 	diffTestdata(t, stdErrFile, errBuf.String())
 }
 
-func testReadFromFolder(ctx context.Context, t *testing.T, resourceFolder string, expectedFolder string) {
+func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder string) {
 	in, err := read("testdata/" + resourceFolder)
 	if err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
 
+	values, err := testInstallValues()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
 	transformer := &resourceTransformerInject{
 		injectProxy: true,
-		configs:     testInstallConfig(ctx),
+		values:      values,
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
@@ -502,8 +499,6 @@ func TestInjectFilePath(t *testing.T) {
 		resourceFolder = filepath.Join("inject-filepath", "resources")
 		expectedFolder = filepath.Join("inject-filepath", "expected")
 	)
-
-	ctx := context.Background()
 
 	t.Run("read from files", func(t *testing.T) {
 		testCases := []injectFilePath{
@@ -525,22 +520,22 @@ func TestInjectFilePath(t *testing.T) {
 			testCase := testCase // pin
 			verbose = true
 			t.Run(fmt.Sprintf("%d %s", i, testCase.resource), func(t *testing.T) {
-				testInjectFilePath(ctx, t, testCase)
+				testInjectFilePath(t, testCase)
 			})
 			verbose = false
 			t.Run(fmt.Sprintf("%d %s", i, testCase.resource), func(t *testing.T) {
-				testInjectFilePath(ctx, t, testCase)
+				testInjectFilePath(t, testCase)
 			})
 		}
 	})
 
 	verbose = true
 	t.Run("read from folder --verbose", func(t *testing.T) {
-		testReadFromFolder(ctx, t, resourceFolder, expectedFolder)
+		testReadFromFolder(t, resourceFolder, expectedFolder)
 	})
 	verbose = false
 	t.Run("read from folder --verbose", func(t *testing.T) {
-		testReadFromFolder(ctx, t, resourceFolder, expectedFolder)
+		testReadFromFolder(t, resourceFolder, expectedFolder)
 	})
 }
 
@@ -725,7 +720,10 @@ func TestOverrideConfigsParameterized(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt // pin
 		t.Run(tt.description, func(t *testing.T) {
-			defaultConfig := testInstallConfig(context.Background())
+			defaultConfig, err := testInstallValues()
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
 			actualOverrides := map[string]string{}
 			tt.configOptions.overrideConfigs(defaultConfig, actualOverrides)
 			if len(tt.expectedOverrides) != len(actualOverrides) {
@@ -807,21 +805,18 @@ func TestOverrideConfigsWithCustomRegistryInstall(t *testing.T) {
 
 	// Setup the registry used when "installing" linkerd
 	customRegistryAtInstall := "custom.install.registry/linkerd-io"
-	installFlags := make([]*pb.Install_Flag, 0)
-	installFlags = append(installFlags, &pb.Install_Flag{
-		Name:  "registry",
-		Value: customRegistryAtInstall,
-	})
 
 	for _, tt := range tests {
 		tt := tt // pin
 		t.Run(tt.description, func(t *testing.T) {
 
-			defaultConfig := testInstallConfig(context.Background())
-			defaultConfig.Install.Flags = installFlags
-			defaultConfig.Proxy.ProxyImage.ImageName = customRegistryAtInstall + "/proxy"
-			defaultConfig.Proxy.ProxyInitImage.ImageName = customRegistryAtInstall + "/proxy-init"
-			defaultConfig.Proxy.DebugImage.ImageName = customRegistryAtInstall + "/debug"
+			defaultConfig, err := testInstallValues()
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			defaultConfig.Global.Proxy.Image.Name = customRegistryAtInstall + "/proxy"
+			defaultConfig.Global.ProxyInit.Image.Name = customRegistryAtInstall + "/proxy-init"
+			defaultConfig.DebugContainer.Image.Name = customRegistryAtInstall + "/debug"
 
 			actualOverrides := map[string]string{}
 			tt.configOptions.overrideConfigs(defaultConfig, actualOverrides)

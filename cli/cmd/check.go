@@ -371,7 +371,7 @@ func renderInstallManifest(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	values, _, err := options.validateAndBuild(ctx, "", nil)
+	values, err := options.validateAndBuild(ctx, "", nil)
 	if err != nil {
 		return "", err
 	}

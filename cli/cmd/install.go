@@ -398,7 +398,7 @@ control plane.`,
 }
 
 func installRunE(ctx context.Context, options *installOptions, stage string, flags *pflag.FlagSet) error {
-	values, _, err := options.validateAndBuild(ctx, stage, flags)
+	values, err := options.validateAndBuild(ctx, stage, flags)
 	if err != nil {
 		return err
 	}
@@ -406,26 +406,26 @@ func installRunE(ctx context.Context, options *installOptions, stage string, fla
 	return render(os.Stdout, values)
 }
 
-func (options *installOptions) validateAndBuild(ctx context.Context, stage string, flags *pflag.FlagSet) (*l5dcharts.Values, *pb.All, error) {
+func (options *installOptions) validateAndBuild(ctx context.Context, stage string, flags *pflag.FlagSet) (*l5dcharts.Values, error) {
 	if err := options.validate(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	options.recordFlags(flags)
 
 	identityValues, err := options.identityOptions.validateAndBuild(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	return options.validateAndBuildWithIdentity(ctx, stage, identityValues)
 }
 
-func (options *installOptions) validateAndBuildWithIdentity(ctx context.Context, stage string, identityValues *identityWithAnchorsAndTrustDomain) (*l5dcharts.Values, *pb.All, error) {
+func (options *installOptions) validateAndBuildWithIdentity(ctx context.Context, stage string, identityValues *identityWithAnchorsAndTrustDomain) (*l5dcharts.Values, error) {
 	configs := options.configs(toIdentityContext(identityValues))
 
 	values, err := options.buildValuesWithoutIdentity(configs)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	values.Identity = identityValues.Identity
 	values.Global.IdentityTrustAnchorsPEM = identityValues.TrustAnchorsPEM
@@ -435,16 +435,16 @@ func (options *installOptions) validateAndBuildWithIdentity(ctx context.Context,
 	// Update Configuration of Add-ons from config file
 	err = options.UpdateAddOnValuesFromConfig(values)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if options.enableEndpointSlices {
 		if err = validateEndpointSlicesFeature(ctx); err != nil {
-			return nil, nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
+			return nil, fmt.Errorf("--enableEndpointSlice=true not supported: %s", err)
 		}
 	}
 
-	return values, configs, nil
+	return values, nil
 }
 
 // renderOverrides outputs the Secret/linkerd-config-overrides resource which
