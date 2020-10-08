@@ -8,7 +8,7 @@ configuration is stored within the cluster.
 
 * Changed TCP metrics exported by the proxy to ensure that peer
   identities are encoded via the `client_id` and `server_id` labels.
-* Removed the dependency of control plane component on `linkerd-config`
+* Removed the dependency of control plane components on `linkerd-config`
 * Updated the data structure `proxy-injector` uses to derive the configuration
   used when injecting workloads
 
