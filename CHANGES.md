@@ -1,5 +1,17 @@
 # Changes
 
+## edge-20.10.2
+
+This edge release adds more improvements for mTLS for all TCP traffic.
+It also includes significant internal improvements to the way Linkerd
+configuration is stored within the cluster.
+
+* Changed TCP metrics exported by the proxy to ensure that peer
+  identities are encoded via the `client_id` and `server_id` labels.
+* Removed the dependency of control plane components on `linkerd-config`
+* Updated the data structure `proxy-injector` uses to derive the configuration
+  used when injecting workloads
+
 ## edge-20.10.1
 
 This edge release includes a couple of external contributions towards
