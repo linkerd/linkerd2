@@ -18,6 +18,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type containerMeta struct {
+	name model.LabelValue
+	ns   model.LabelValue
+}
+
 // K8sValues gathers relevant heartbeat information from Kubernetes
 func K8sValues(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) url.Values {
 	v := url.Values{}
@@ -87,10 +92,7 @@ func PromValues(promAPI promv1.API, controlPlaneNamespace string) url.Values {
 	}
 
 	// container metrics
-	for _, container := range []struct {
-		name model.LabelValue
-		ns   model.LabelValue
-	}{
+	for _, container := range []containerMeta{
 		{
 			name: "linkerd-proxy",
 		},
@@ -103,16 +105,13 @@ func PromValues(promAPI promv1.API, controlPlaneNamespace string) url.Values {
 			ns:   "linkerd",
 		},
 	} {
-		containerLabels := model.LabelSet{
-			"job":            "kubernetes-nodes-cadvisor",
-			"container_name": container.name,
-		}
-		if container.ns != "" {
-			containerLabels["namespace"] = container.ns
-		}
+		// as of k8s 1.16 cadvisor labels container names with just `container`
+		containerLabelsPre16 := getLabelSet(container, "container_name")
+		containerLabelsPost16 := getLabelSet(container, "container")
 
 		// max-mem
-		query = fmt.Sprintf("max(container_memory_working_set_bytes%s)", containerLabels)
+		query = fmt.Sprintf("max(container_memory_working_set_bytes%s or container_memory_working_set_bytes%s)",
+			containerLabelsPre16, containerLabelsPost16)
 		value, err = promQuery(promAPI, query, 0)
 		if err != nil {
 			log.Errorf("Prometheus query failed: %s", err)
@@ -122,7 +121,9 @@ func PromValues(promAPI promv1.API, controlPlaneNamespace string) url.Values {
 		}
 
 		// p95-cpu
-		query = fmt.Sprintf("max(quantile_over_time(0.95,rate(container_cpu_usage_seconds_total%s[5m])[24h:5m]))", containerLabels)
+		query = fmt.Sprintf("max(quantile_over_time(0.95,rate(container_cpu_usage_seconds_total%s[5m])[24h:5m]) "+
+			"or quantile_over_time(0.95,rate(container_cpu_usage_seconds_total%s[5m])[24h:5m]))",
+			containerLabelsPre16, containerLabelsPost16)
 		value, err = promQuery(promAPI, query, 3)
 		if err != nil {
 			log.Errorf("Prometheus query failed: %s", err)
@@ -133,6 +134,17 @@ func PromValues(promAPI promv1.API, controlPlaneNamespace string) url.Values {
 	}
 
 	return v
+}
+
+func getLabelSet(container containerMeta, containerKey model.LabelName) model.LabelSet {
+	containerLabels := model.LabelSet{
+		"job":        "kubernetes-nodes-cadvisor",
+		containerKey: container.name,
+	}
+	if container.ns != "" {
+		containerLabels["namespace"] = container.ns
+	}
+	return containerLabels
 }
 
 func promQuery(promAPI promv1.API, query string, precision int) (string, error) {
