@@ -69,8 +69,9 @@ func parseStatTsRow(out string, expectedRowCount, expectedColumnCount int) (map[
 
 func statTrafficSplit(from string, ns string) (map[string]*statTsRow, error) {
 	cmd := []string{"stat", "ts", "--from", from, "--namespace", ns, "-t", "30s", "--unmeshed"}
-	stdOut, _, err := TestHelper.LinkerdRun(cmd...)
+	stdOut, stdErr, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, stdErr)
 		return nil, fmt.Errorf("CLI exited abnormally: %s", err)
 	}
 	return parseStatTsRow(stdOut, 2, 9)
