@@ -20,6 +20,7 @@ const debugContainerName = "linkerd-debug"
 // correct injector flags and annotations and verify
 // injected pods
 type InjectValidator struct {
+	NoInitContainer          bool
 	DisableIdentity          bool
 	AutoInject               bool
 	AdminPort                int
@@ -310,6 +311,9 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.Pod) error {
 }
 
 func (iv *InjectValidator) validateInitContainer(pod *v1.Pod) error {
+	if iv.NoInitContainer {
+		return nil
+	}
 	initContainer := iv.getContainer(pod, initContainerName, true)
 	if initContainer == nil {
 		return fmt.Errorf("container %s missing", initContainerName)

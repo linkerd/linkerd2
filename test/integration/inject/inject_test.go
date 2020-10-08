@@ -116,6 +116,7 @@ func TestAutoInjectParams(t *testing.T) {
 	}
 
 	injectionValidator := testutil.InjectValidator{
+		NoInitContainer:          TestHelper.CNI() || TestHelper.Calico(),
 		AutoInject:               true,
 		AdminPort:                8888,
 		ControlPort:              8881,
