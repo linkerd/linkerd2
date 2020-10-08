@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -53,32 +55,38 @@ func TestInjectManual(t *testing.T) {
 }
 
 func TestInjectManualParams(t *testing.T) {
+
+	injectionValidator := testutil.InjectValidator{
+		DisableIdentity:        true,
+		DisableTap:             true,
+		Version:                "proxy-version",
+		Image:                  "proxy-image",
+		InitImage:              "init-image",
+		ImagePullPolicy:        "Never",
+		ControlPort:            123,
+		SkipInboundPorts:       "234,345",
+		SkipOutboundPorts:      "456,567",
+		InboundPort:            678,
+		AdminPort:              789,
+		OutboundPort:           890,
+		CPURequest:             "10m",
+		MemoryRequest:          "10Mi",
+		CPULimit:               "20m",
+		MemoryLimit:            "20Mi",
+		UID:                    1337,
+		LogLevel:               "warn",
+		EnableExternalProfiles: true,
+	}
+	flags, _ := injectionValidator.GetFlagsAndAnnotations()
+
 	// TODO: test config.linkerd.io/proxy-version
-	cmd := []string{"inject",
+	cmd := append([]string{"inject",
 		"--manual",
 		"--linkerd-namespace=fake-ns",
-		"--disable-identity",
-		"--disable-tap",
 		"--ignore-cluster",
-		"--proxy-version=proxy-version",
-		"--proxy-image=proxy-image",
-		"--init-image=init-image",
-		"--image-pull-policy=Never",
-		"--control-port=123",
-		"--skip-inbound-ports=234,345",
-		"--skip-outbound-ports=456,567",
-		"--inbound-port=678",
-		"--admin-port=789",
-		"--outbound-port=890",
-		"--proxy-cpu-request=10m",
-		"--proxy-memory-request=10Mi",
-		"--proxy-cpu-limit=20m",
-		"--proxy-memory-limit=20Mi",
-		"--proxy-uid=1337",
-		"--proxy-log-level=warn",
-		"--enable-external-profiles",
-		"testdata/inject_test.yaml",
-	}
+	}, flags...)
+
+	cmd = append(cmd, "testdata/inject_test.yaml")
 
 	out, stderr, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
@@ -89,6 +97,98 @@ func TestInjectManualParams(t *testing.T) {
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
 	}
+}
+
+func TestAutoInjectParams(t *testing.T) {
+	injectYAML, err := testutil.ReadFile("testdata/inject_test.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to read inject test file", "failed to read inject test file: %s", err)
+	}
+
+	injectNS := "inj-auto-params-test"
+	deployName := "inject-test-terminus-auto"
+
+	ctx := context.Background()
+	ns := TestHelper.GetTestNamespace(injectNS)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, ns, map[string]string{})
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", ns, err)
+	}
+
+	injectionValidator := testutil.InjectValidator{
+		AutoInject:               true,
+		AdminPort:                8888,
+		ControlPort:              8881,
+		DestinationGetNetworks:   "192.168.0.0/16",
+		DisableTap:               true,
+		EnableExternalProfiles:   true,
+		EnableDebug:              true,
+		ImagePullPolicy:          "Never",
+		InboundPort:              8882,
+		InitImage:                "init-image",
+		InitImageVersion:         "init-image-version",
+		OutboundPort:             8883,
+		CPULimit:                 "160m",
+		CPURequest:               "150m",
+		MemoryLimit:              "150Mi",
+		MemoryRequest:            "100Mi",
+		Image:                    "proxy-image",
+		LogLevel:                 "proxy-log-level",
+		UID:                      10,
+		Version:                  "proxy-version",
+		RequireIdentityOnPorts:   "8884,8885",
+		OpaquePorts:              "8888,8889",
+		TraceCollector:           "oc-collector.tracing:55671",
+		TraceCollectorSvcAccount: "collector-svc-acc",
+		OutboundConnectTimeout:   "888ms",
+		InboundConnectTimeout:    "999ms",
+		SkipOutboundPorts:        "1111,2222,3333",
+		SkipInboundPorts:         "4444,5555,6666",
+		WaitBeforeExitSeconds:    10,
+	}
+
+	_, annotations := injectionValidator.GetFlagsAndAnnotations()
+
+	patchedYAML, err := testutil.PatchDeploy(injectYAML, deployName, annotations)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to patch inject test YAML",
+			"failed to patch inject test YAML in namespace %s for deploy/%s: %s", ns, deployName, err)
+	}
+
+	o, err := TestHelper.Kubectl(patchedYAML, "--namespace", ns, "create", "-f", "-")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to create deployment", "failed to create deploy/%s in namespace %s for  %s: %s", deployName, ns, err, o)
+	}
+
+	// allow some time for the auto injector to do its
+	// TODO: have a more reliable way to do that, maybe by
+	// waiting on an injection event
+	time.Sleep(5 * time.Second)
+
+	pods, err := TestHelper.GetPodsForDeployment(ctx, ns, deployName)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to get pods for namespace %s", ns),
+			"failed to get pods for namespace %s: %s", ns, err)
+	}
+
+	var pod *v1.Pod
+	for _, p := range pods {
+		p := p //pin
+		creator, ok := p.Annotations[k8s.CreatedByAnnotation]
+		if ok && strings.Contains(creator, "proxy-injector") {
+			pod = &p
+			break
+		}
+	}
+
+	if pod == nil {
+		testutil.AnnotatedFatalf(t, "failed to find auto injected pod", "deployment: %s", deployName)
+	}
+
+	if err := injectionValidator.ValidatePod(pod); err != nil {
+		testutil.AnnotatedFatalf(t, "failed to validate auto injection", err.Error())
+	}
+
 }
 
 func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
