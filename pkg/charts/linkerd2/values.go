@@ -94,6 +94,9 @@ type (
 		ImagePullSecrets         []map[string]string `json:"imagePullSecrets"`
 		LinkerdVersion           string              `json:"linkerdVersion"`
 
+		PodAnnotations map[string]string `json:"podAnnotations"`
+		PodLabels      map[string]string `json:"podLabels"`
+
 		Proxy     *Proxy     `json:"proxy"`
 		ProxyInit *ProxyInit `json:"proxyInit"`
 	}
