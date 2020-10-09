@@ -218,11 +218,13 @@ spec:
       annotations:
         {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
         {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
+        {{- with .Values.global.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
         {{.Values.global.controllerComponentLabel}}: prometheus
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
         {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
         {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
+        {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
       {{- include "linkerd.tolerations" . | nindent 6 }}
@@ -276,7 +278,7 @@ spec:
           name: prometheus-config
           subPath: prometheus.yml
           readOnly: true
-      {{- $tree := deepCopy . }}      
+      {{- $tree := deepCopy . }}
       {{- if not (empty .Values.proxy) }}
       {{- if not (empty .Values.proxy.resources) }}
       {{- $r := merge .Values.proxy.resources .Values.global.proxy.resources }}
