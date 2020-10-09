@@ -182,7 +182,7 @@ func TestTrafficSplitCli(t *testing.T) {
 	}
 
 	t.Run("ensure traffic is sent to one backend only", func(t *testing.T) {
-		timeout := 30 * time.Second
+		timeout := 60 * time.Second
 		err := TestHelper.RetryFor(timeout, func() error {
 
 			rows, err := statTrafficSplit("deploy/slow-cooker", prefixedNs)
