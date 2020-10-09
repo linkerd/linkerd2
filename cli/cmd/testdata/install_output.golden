@@ -853,6 +853,8 @@ data:
       linkerdNamespaceLabel: LinkerdNamespaceLabel
       linkerdVersion: ""
       namespace: Namespace
+      podAnnotations: {}
+      podLabels: {}
       prometheusUrl: ""
       proxy:
         capabilities: null

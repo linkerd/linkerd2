@@ -935,6 +935,8 @@ data:
       linkerdNamespaceLabel: linkerd.io/is-control-plane
       linkerdVersion: linkerd-version
       namespace: linkerd
+      podAnnotations: {}
+      podLabels: {}
       prometheusUrl: ""
       proxy:
         capabilities: null
@@ -1019,6 +1021,8 @@ data:
         linkerdNamespaceLabel: linkerd.io/is-control-plane
         linkerdVersion: linkerd-version
         namespace: linkerd
+        podAnnotations: {}
+        podLabels: {}
         prometheusUrl: ""
         proxy:
           capabilities: null
@@ -1104,6 +1108,8 @@ data:
           linkerdNamespaceLabel: linkerd.io/is-control-plane
           linkerdVersion: linkerd-version
           namespace: linkerd
+          podAnnotations: {}
+          podLabels: {}
           prometheusUrl: ""
           proxy:
             capabilities: null
@@ -1233,6 +1239,8 @@ data:
         linkerdNamespaceLabel: linkerd.io/is-control-plane
         linkerdVersion: linkerd-version
         namespace: linkerd
+        podAnnotations: {}
+        podLabels: {}
         prometheusUrl: ""
         proxy:
           capabilities: null
@@ -1321,6 +1329,8 @@ data:
           linkerdNamespaceLabel: linkerd.io/is-control-plane
           linkerdVersion: linkerd-version
           namespace: linkerd
+          podAnnotations: {}
+          podLabels: {}
           prometheusUrl: ""
           proxy:
             capabilities: null

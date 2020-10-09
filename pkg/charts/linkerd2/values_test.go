@@ -52,6 +52,8 @@ func TestNewValues(t *testing.T) {
 			ControlPlaneTracing:      false,
 			HighAvailability:         false,
 			IdentityTrustDomain:      "cluster.local",
+			PodAnnotations:           map[string]string{},
+			PodLabels:                map[string]string{},
 			Proxy: &Proxy{
 				EnableExternalProfiles: false,
 				Image: &Image{

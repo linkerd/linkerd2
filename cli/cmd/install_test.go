@@ -91,6 +91,8 @@ func TestRender(t *testing.T) {
 			CNIEnabled:               false,
 			IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
 			IdentityTrustAnchorsPEM:  defaultValues.Global.IdentityTrustAnchorsPEM,
+			PodAnnotations:           map[string]string{},
+			PodLabels:                map[string]string{},
 			Proxy: &charts.Proxy{
 				DestinationGetNetworks: "DestinationGetNetworks",
 				Image: &charts.Image{
