@@ -85,6 +85,13 @@ handle_input() {
           usage "$0" >&2
           exit 64
         fi
+        if [ -n "$linkerd_path" ]; then
+          echo "Multliple linkerd paths specified:" >&2
+          echo "  $linkerd_path" >&2
+          echo "  $1" >&2
+          usage "$0" >&2
+          exit 64
+        fi
         linkerd_path="$1"
         shift
         ;;
