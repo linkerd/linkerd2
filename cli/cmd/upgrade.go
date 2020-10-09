@@ -361,6 +361,9 @@ func (options *upgradeOptions) validateAndBuild(ctx context.Context, stage strin
 				return nil, err
 			}
 
+			// repair Add-On configs
+			cmData = string(repairAddOnConfig([]byte(cmData)))
+
 			// over-write add-on values with cmValues
 			// Merge Add-On Values with Values
 			if rawValues, err = mergeRaw(rawValues, []byte(cmData)); err != nil {
@@ -381,6 +384,42 @@ func (options *upgradeOptions) validateAndBuild(ctx context.Context, stage strin
 	}
 
 	return values, nil
+}
+
+func repairAddOnConfig(rawValues []byte) []byte {
+
+	var values map[string]interface{}
+	yaml.Unmarshal(rawValues, &values)
+
+	// Grafana Depreciation Fix
+	// TODO: Remove this once 2.9 is released
+	// Convert into Map instead of Values, as the latter returns with empty values
+	if grafana, err := healthcheck.GetMap(values, "grafana"); err == nil {
+		image, err := healthcheck.GetMap(grafana, "image")
+		if err == nil {
+			// Remove image.name tag if only name is present and set to the older image tag
+			if val, err := healthcheck.GetString(image, "name"); err == nil && val == "gcr.io/linkerd-io/grafana" {
+				delete(image, "name")
+			}
+
+			// Remove image tag if its a empty map
+			if len(image) == 0 {
+				delete(grafana, "image")
+			}
+		}
+
+		// Handle removal of grafana.name field
+		name, err := healthcheck.GetString(grafana, "name")
+		if err == nil {
+			// If default, remove it as its no longer needed
+			if name == "linkerd-grafana" {
+				delete(grafana, "name")
+			}
+		}
+
+	}
+	rawValues, _ = yaml.Marshal(values)
+	return rawValues
 }
 
 func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) {
