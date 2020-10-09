@@ -42,8 +42,6 @@ Available Commands:
 
 
 handle_input() {
-  #shopt -s extglob
-
   export images="docker"
   export test_name=''
   export skip_cluster_create=''
@@ -58,12 +56,14 @@ handle_input() {
       --images)
         images=$2
         if [ -z "$images" ]; then
-          echo 'Error: the argument for --images was not specified'
-          exit 1
+          echo 'Error: the argument for --images was not specified' >&2
+          usage "$0" >&2
+          exit 64
         fi
         if [[ $images != "docker" && $images != "archive" && $images != "skip" ]]; then
-          echo 'Error: the argument for --images was invalid'
-          exit 1
+          echo 'Error: the argument for --images was invalid' >&2
+          usage "$0" >&2
+          exit 64
         fi
         shift
         shift
@@ -71,8 +71,9 @@ handle_input() {
       --name)
         test_name=$2
         if [ -z "$test_name" ]; then
-          echo 'Error: the argument for --name was not specified'
-          exit 1
+          echo 'Error: the argument for --name was not specified' >&2
+          usage "$0" >&2
+          exit 64
         fi
         shift
         shift
@@ -84,6 +85,13 @@ handle_input() {
       *)
         if echo "$1" | grep -q '^-.*' ; then
           echo "Unexpected flag: $1" >&2
+          usage "$0" >&2
+          exit 64
+        fi
+        if [ -n "$linkerd_path" ]; then
+          echo "Multliple linkerd paths specified:" >&2
+          echo "  $linkerd_path" >&2
+          echo "  $1" >&2
           usage "$0" >&2
           exit 64
         fi
