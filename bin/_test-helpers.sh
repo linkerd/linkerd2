@@ -9,42 +9,50 @@ set +e
 export default_test_names=(deep external-issuer helm-deep helm-upgrade multicluster uninstall upgrade-edge upgrade-stable cni-calico-deep)
 export all_test_names=(cluster-domain "${default_test_names[*]}")
 
-handle_input() {
-  export images="docker"
-  export test_name=''
-  export skip_cluster_create=''
-
-  while :
-  do
-    case $1 in
-      -h|--help)
-        echo "Run Linkerd integration tests.
+usage() {
+  progname="${0##*/}"
+  echo "Run Linkerd integration tests.
 
 Optionally specify a test with the --name flag: [${all_test_names[*]}]
 
 Note: The cluster-domain test requires a cluster configuration with a custom cluster domain (see test/configs/cluster-domain.yaml)
 
 Usage:
-    ${0##*/} [--images docker|archive|skip] [--name test-name] [--skip-cluster-create] /path/to/linkerd
+    ${progname} [--images docker|archive|skip] [--name test-name] [--skip-cluster-create] /path/to/linkerd
 
 Examples:
     # Run all tests in isolated clusters
-    ${0##*/} /path/to/linkerd
+    ${progname} /path/to/linkerd
 
     # Run single test in isolated clusters
-    ${0##*/} --name test-name /path/to/linkerd
+    ${progname} --name test-name /path/to/linkerd
 
     # Skip KinD/k3d cluster creation and run all tests in default cluster context
-    ${0##*/} --skip-cluster-create /path/to/linkerd
+    ${progname} --skip-cluster-create /path/to/linkerd
 
     # Load images from tar files located under the 'image-archives' directory
     # Note: This is primarily for CI
-    ${0##*/} --images archive /path/to/linkerd
+    ${progname} --images archive /path/to/linkerd
 
 Available Commands:
     --name: the argument to this option is the specific test to run
     --skip-cluster-create: skip KinD/k3d cluster creation step and run tests in an existing cluster.
     --images: by default load images into the cluster from the local docker cache (docker), or from tar files located under the 'image-archives' directory (archive), or completely skip image loading (skip)."
+}
+
+
+handle_input() {
+  #shopt -s extglob
+
+  export images="docker"
+  export test_name=''
+  export skip_cluster_create=''
+  export linkerd_path=""
+
+  while  [ "$#" -ne 0 ]; do
+    case $1 in
+      -h|--help)
+        usage "$0"
         exit 0
         ;;
       --images)
@@ -58,6 +66,7 @@ Available Commands:
           exit 1
         fi
         shift
+        shift
         ;;
       --name)
         test_name=$2
@@ -66,23 +75,27 @@ Available Commands:
           exit 1
         fi
         shift
+        shift
         ;;
       --skip-cluster-create)
         skip_cluster_create=1
+        shift
         ;;
       *)
-        break
+        if echo "$1" | grep -q '^-.*' ; then
+          echo "Unexpected flag: $1" >&2
+          usage "$0" >&2
+          exit 64
+        fi
+        linkerd_path="$1"
+        shift
+        ;;
     esac
-    shift
   done
 
-  export linkerd_path="$1"
   if [ -z "$linkerd_path" ]; then
-    echo "Error: path to linkerd binary is required
-Help:
-     ${0##*/} -h|--help
-Basic usage:
-     ${0##*/} /path/to/linkerd"
+    echo "Error: path to linkerd binary is required" >&2
+    usage "$0" >&2
     exit 64
   fi
 }
