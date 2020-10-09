@@ -38,9 +38,9 @@ func TestEdges(t *testing.T) {
 		"deploy",
 		"-ojson",
 	}
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	out, err := TestHelper.LinkerdRunOk(cmd...)
 	if err != nil {
-		t.Fatalf("Unexpected error: %v\nError output: %s", err, stderr)
+		t.Fatalf("%s", err)
 	}
 
 	tpl := template.Must(template.ParseFiles("testdata/linkerd_edges.golden"))

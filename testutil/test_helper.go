@@ -456,9 +456,9 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 
 // CheckVersion validates the output of the "linkerd version" command.
 func (h *TestHelper) CheckVersion(serverVersion string) error {
-	out, _, err := h.LinkerdRun("version")
+	out, err := h.LinkerdRunOk("version")
 	if err != nil {
-		return fmt.Errorf("Unexpected error: %s\n%s", err.Error(), out)
+		return err
 	}
 	if !strings.Contains(out, fmt.Sprintf("Client version: %s", h.version)) {
 		return fmt.Errorf("Expected client version [%s], got:\n%s", h.version, out)
