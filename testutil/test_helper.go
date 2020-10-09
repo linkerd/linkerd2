@@ -417,6 +417,7 @@ func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, e
 		chart,
 		"--kube-context", h.k8sContext,
 		"--set", "global.namespace=" + h.namespace,
+		"--set", "global.proxy.logLevel=warn,linkerd=debug",
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
 }
@@ -430,7 +431,6 @@ func (h *TestHelper) HelmInstallMulticluster(chart string, arg ...string) (strin
 		"--kube-context", h.k8sContext,
 		"--set", "namespace=" + h.GetMulticlusterNamespace(),
 		"--set", "linkerdNamespace=" + h.GetLinkerdNamespace(),
-		"--set", "proxy.logLevel=warn,linkerd=debug",
 	}, arg...)
 	return combinedOutput("", h.helm.path, withParams...)
 }
