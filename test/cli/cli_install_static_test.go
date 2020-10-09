@@ -39,14 +39,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestCliInstall(t *testing.T) {
-
-	var (
-		cmd  = "install"
-		args = []string{
-			"--ignore-cluster",
-		}
-	)
-
-	exec := append([]string{cmd}, args...)
-	TestHelper.LinkerdRunFatal(t, exec...)
+	_, err := TestHelper.LinkerdRunOk("install", "--ignore-cluster")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd install' command failed", "%s", err)
+	}
 }

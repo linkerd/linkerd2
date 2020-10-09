@@ -39,7 +39,10 @@ func TestServiceProfiles(t *testing.T) {
 	if err != nil {
 		testutil.Fatalf(t, "failed to create %s namespace: %s", testNamespace, err)
 	}
-	out := TestHelper.LinkerdRunFatal(t, "inject", "--manual", "testdata/tap_application.yaml")
+	out, err := TestHelper.LinkerdRunOk("inject", "--manual", "testdata/tap_application.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "%s", err)
+	}
 
 	out, err = TestHelper.KubectlApply(out, testNamespace)
 	if err != nil {
@@ -111,9 +114,13 @@ func TestServiceProfiles(t *testing.T) {
 			}
 
 			cmd = append(cmd, tc.args...)
-			out := TestHelper.LinkerdRunFatal(t, cmd...)
+			out, err := TestHelper.LinkerdRunOk(cmd...)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, fmt.Sprintf("'linkerd %s' command failed", cmd), "%s", err)
+			}
 
-			if _, err := TestHelper.KubectlApply(out, tc.namespace); err != nil {
+			_, err = TestHelper.KubectlApply(out, tc.namespace)
+			if err != nil {
 				testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 					"'kubectl apply' command failed:\n%s", err)
 			}
@@ -138,9 +145,13 @@ func TestServiceProfileMetrics(t *testing.T) {
 		testYAML             = "testdata/hello_world.yaml"
 	)
 
-	out := TestHelper.LinkerdRunFatal(t, "inject", "--manual", testYAML)
+	out, err := TestHelper.LinkerdRunOk("inject", "--manual", testYAML)
+	if err != nil {
+		testutil.AnnotatedErrorf(t, "'linkerd inject' command failed", "%s", err)
+	}
 
-	if out, err := TestHelper.KubectlApply(out, testNamespace); err != nil {
+	out, err = TestHelper.KubectlApply(out, testNamespace)
+	if err != nil {
 		testutil.AnnotatedErrorf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
@@ -154,9 +165,13 @@ func TestServiceProfileMetrics(t *testing.T) {
 		testSP,
 	}
 
-	out = TestHelper.LinkerdRunFatal(t, cmd...)
+	out, err = TestHelper.LinkerdRunOk(cmd...)
+	if err != nil {
+		testutil.AnnotatedErrorf(t, fmt.Sprintf("'linkerd %s' command failed", cmd), "%s", err)
+	}
 
-	if _, err := TestHelper.KubectlApply(out, testNamespace); err != nil {
+	_, err = TestHelper.KubectlApply(out, testNamespace)
+	if err != nil {
 		testutil.AnnotatedErrorf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", err)
 	}
@@ -171,7 +186,8 @@ func TestServiceProfileMetrics(t *testing.T) {
 	profile := &sp.ServiceProfile{}
 
 	// Grab the output and convert it to a service profile object for modification
-	if err := yaml.Unmarshal([]byte(out), profile); err != nil {
+	err = yaml.Unmarshal([]byte(out), profile)
+	if err != nil {
 		testutil.AnnotatedErrorf(t, "unable to unmarshal YAML",
 			"unable to unmarshal YAML: %s", err)
 	}
@@ -190,7 +206,8 @@ func TestServiceProfileMetrics(t *testing.T) {
 			"error marshalling service profile: %s", bytes)
 	}
 
-	if out, err := TestHelper.KubectlApply(string(bytes), testNamespace); err != nil {
+	out, err = TestHelper.KubectlApply(string(bytes), testNamespace)
+	if err != nil {
 		testutil.AnnotatedErrorf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed:\n%s :%s", err, out)
 	}
@@ -268,7 +285,7 @@ func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.J
 	var out, stderr string
 	err := TestHelper.RetryFor(2*time.Minute, func() error {
 		var err error
-		out, stderr, err = TestHelper.LinkerdRun(cmd...)
+		out, err = TestHelper.LinkerdRunOk(cmd...)
 		return err
 	})
 	if err != nil {

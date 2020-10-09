@@ -41,9 +41,12 @@ func TestInjectManual(t *testing.T) {
 		"--init-image=init-image",
 		"testdata/inject_test.yaml",
 	}
-	out := TestHelper.LinkerdRunFatal(t, cmd...)
+	out, err := TestHelper.LinkerdRunOk(cmd...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "unexpected error", "%s", err)
+	}
 
-	err := testutil.ValidateInject(out, "injected_default.golden", TestHelper)
+	err = testutil.ValidateInject(out, "injected_default.golden", TestHelper)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
 	}
@@ -77,9 +80,13 @@ func TestInjectManualParams(t *testing.T) {
 		"testdata/inject_test.yaml",
 	}
 
-	out := TestHelper.LinkerdRunFatal(t, cmd...)
+	out, err := TestHelper.LinkerdRunOk(cmd...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "unexpected error", "%s", err)
+	}
 
-	if err := testutil.ValidateInject(out, "injected_params.golden", TestHelper); err != nil {
+	err = testutil.ValidateInject(out, "injected_params.golden", TestHelper)
+	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
 	}
 }

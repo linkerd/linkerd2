@@ -67,9 +67,13 @@ func parseStatTsRow(out string, expectedRowCount, expectedColumnCount int) (map[
 	return statRows, nil
 }
 
-func statTrafficSplit(t *testing.T, from string, ns string) (map[string]*statTsRow, error) {
-	out := TestHelper.LinkerdRunFatal(t, "stat", "ts", "--from", from, "--namespace", ns, "-t", "30s", "--unmeshed")
-	return parseStatTsRow(out, 2, 9)
+func statTrafficSplit(from string, ns string) (map[string]*statTsRow, error) {
+	cmd := []string{"stat", "ts", "--from", from, "--namespace", ns, "-t", "30s", "--unmeshed"}
+	stdOut, _, err := TestHelper.LinkerdRun(cmd...)
+	if err != nil {
+		return nil, err
+	}
+	return parseStatTsRow(stdOut, 2, 9)
 }
 
 func validateTrafficSplit(actual *statTsRow, expected *statTsRow) error {
@@ -144,15 +148,20 @@ func validateExpectedTsOutput(rows map[string]*statTsRow, expectedBackendSvc, ex
 }
 
 func TestTrafficSplitCli(t *testing.T) {
-	out := TestHelper.LinkerdRunFatal(t, "inject", "--manual", "testdata/traffic_split_application.yaml")
+	out, err := TestHelper.LinkerdRunOk("inject", "--manual", "testdata/traffic_split_application.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "%s", err)
+	}
 
 	ctx := context.Background()
 	prefixedNs := TestHelper.GetTestNamespace("trafficsplit-test")
-	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil); err != nil {
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil)
+	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", prefixedNs),
 			"failed to create %s namespace: %s", prefixedNs, err)
 	}
-	if out, err := TestHelper.KubectlApply(out, prefixedNs); err != nil {
+	out, err = TestHelper.KubectlApply(out, prefixedNs)
+	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
@@ -176,7 +185,7 @@ func TestTrafficSplitCli(t *testing.T) {
 		timeout := 40 * time.Second
 		err := TestHelper.RetryFor(timeout, func() error {
 
-			rows, err := statTrafficSplit(t, "deploy/slow-cooker", prefixedNs)
+			rows, err := statTrafficSplit("deploy/slow-cooker", prefixedNs)
 			if err != nil {
 				testutil.AnnotatedFatal(t, "error ensuring traffic is sent to one backend only", err)
 			}
@@ -231,7 +240,7 @@ func TestTrafficSplitCli(t *testing.T) {
 	t.Run("ensure traffic is sent to both backends", func(t *testing.T) {
 		timeout := 40 * time.Second
 		err := TestHelper.RetryFor(timeout, func() error {
-			rows, err := statTrafficSplit(t, "deploy/slow-cooker", prefixedNs)
+			rows, err := statTrafficSplit("deploy/slow-cooker", prefixedNs)
 			if err != nil {
 				testutil.AnnotatedFatal(t, "error ensuring traffic is sent to both backends", err)
 			}

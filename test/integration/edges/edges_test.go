@@ -72,7 +72,10 @@ func TestDirectEdges(t *testing.T) {
 
 	// inject terminus
 
-	out := TestHelper.LinkerdRunFatal(t, "inject", "--manual", "testdata/terminus.yaml")
+	out, err := TestHelper.LinkerdRunOk("inject", "--manual", "testdata/terminus.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "%s", err)
+	}
 
 	// deploy terminus
 
@@ -138,7 +141,11 @@ func TestDirectEdges(t *testing.T) {
 	// check edges
 	timeout := 50 * time.Second
 	err = TestHelper.RetryFor(timeout, func() error {
-		out = TestHelper.LinkerdRunFatal(t, "-n", testNamespace, "-o", "json", "edges", "deploy")
+		out, err = TestHelper.LinkerdRunOk("-n", testNamespace, "-o", "json", "edges", "deploy")
+		if err != nil {
+			return fmt.Errorf("linkerd %s command failed with %s: %s", "edges", err, stderr)
+		}
+
 		tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
 		vars := struct {
 			Ns        string

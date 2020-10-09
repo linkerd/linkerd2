@@ -26,7 +26,10 @@ func TestMain(m *testing.M) {
 func TestGateways(t *testing.T) {
 	timeout := time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
-		out := TestHelper.LinkerdRunFatal(t, "multicluster", "gateways")
+		out, err := TestHelper.LinkerdRunOk("multicluster", "gateways")
+		if err != nil {
+			return err
+		}
 		rows := strings.Split(out, "\n")
 		if len(rows) < 2 {
 			return errors.New("response is empty")

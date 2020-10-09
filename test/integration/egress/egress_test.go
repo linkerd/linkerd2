@@ -26,17 +26,23 @@ func TestMain(m *testing.M) {
 
 func TestEgressHttp(t *testing.T) {
 	ctx := context.Background()
-	out := TestHelper.LinkerdRunFatal(t, "inject", "testdata/proxy.yaml")
+	out, err := TestHelper.LinkerdRunOk("inject", "testdata/proxy.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "unexpected error", "%s", err)
+	}
 
 	prefixedNs := TestHelper.GetTestNamespace("egress-test")
-	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil); err != nil {
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil)
+	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", prefixedNs, err)
 	}
-	if out, err := TestHelper.KubectlApply(out, prefixedNs); err != nil {
+	out, err = TestHelper.KubectlApply(out, prefixedNs)
+	if err != nil {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
 	}
 
-	if err := TestHelper.CheckPods(ctx, prefixedNs, "egress-test", 1); err != nil {
+	err = TestHelper.CheckPods(ctx, prefixedNs, "egress-test", 1)
+	if err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 		} else {

@@ -68,15 +68,20 @@ var (
 //////////////////////
 
 func TestCliTap(t *testing.T) {
-	out := TestHelper.LinkerdRunFatal(t, "inject", "--manual", "testdata/tap_application.yaml")
+	out, err := TestHelper.LinkerdRunOk("inject", "--manual", "testdata/tap_application.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "%s", err)
+	}
 
 	ctx := context.Background()
 	prefixedNs := TestHelper.GetTestNamespace("tap-test")
-	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil); err != nil {
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil)
+	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", prefixedNs),
 			"failed to create %s namespace: %s", prefixedNs, err)
 	}
-	if out, err := TestHelper.KubectlApply(out, prefixedNs); err != nil {
+	out, err = TestHelper.KubectlApply(out, prefixedNs)
+	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}

@@ -51,14 +51,19 @@ var (
 //////////////////////
 
 func TestCliGet(t *testing.T) {
-	out := TestHelper.LinkerdRunFatal(t, "inject", "testdata/to_be_injected_application.yaml")
+	out, err := TestHelper.LinkerdRunOk("inject", "testdata/to_be_injected_application.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "unexpected error", "%s", err)
+	}
 
 	ctx := context.Background()
 	prefixedNs := TestHelper.GetTestNamespace("get-test")
-	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil); err != nil {
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil)
+	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", prefixedNs, err)
 	}
-	if out, err := TestHelper.KubectlApply(out, prefixedNs); err != nil {
+	out, err = TestHelper.KubectlApply(out, prefixedNs)
+	if err != nil {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
 	}
 
@@ -84,7 +89,11 @@ func TestCliGet(t *testing.T) {
 	}
 
 	t.Run("get pods from --all-namespaces", func(t *testing.T) {
-		out := TestHelper.LinkerdRunFatal(t, "get", "pods", "--all-namespaces")
+		out, err = TestHelper.LinkerdRunOk("get", "pods", "--all-namespaces")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "unexpected error", "%s", err)
+		}
+
 		err := checkPodOutput(out, deployReplicas, "", prefixedNs)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "pod output check failed", "pod output check failed:\n%s\nCommand output:\n%s", err, out)
@@ -92,7 +101,11 @@ func TestCliGet(t *testing.T) {
 	})
 
 	t.Run("get pods from the linkerd namespace", func(t *testing.T) {
-		out := TestHelper.LinkerdRunFatal(t, "get", "pods", "-n", TestHelper.GetLinkerdNamespace())
+		out, err = TestHelper.LinkerdRunOk("get", "pods", "-n", TestHelper.GetLinkerdNamespace())
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "unexpected error", "%s", err)
+		}
+
 		err := checkPodOutput(out, linkerdPods, "linkerd-heartbeat", TestHelper.GetLinkerdNamespace())
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "pod output check failed", "pod output check failed:\n%s\nCommand output:\n%s", err, out)
@@ -105,7 +118,11 @@ func TestCliGet(t *testing.T) {
 			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
 		}
 
-		out = TestHelper.LinkerdRunFatal(t, "get", "pods")
+		out, err = TestHelper.LinkerdRunOk("get", "pods")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "unexpected error", "%s", err)
+		}
+
 		err = checkPodOutput(out, linkerdPods, "linkerd-heartbeat", TestHelper.GetLinkerdNamespace())
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "pod output check failed", "pod output check failed:\n%s\nCommand output:\n%s", err, out)

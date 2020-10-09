@@ -49,14 +49,18 @@ func TestTracing(t *testing.T) {
 	}
 
 	// Tracing Components
-	out := TestHelper.LinkerdRunFatal(t, "inject", "testdata/tracing.yaml")
+	out, err := TestHelper.LinkerdRunOk("inject", "testdata/tracing.yaml")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "%s", err)
+	}
 
 	tracingNs := TestHelper.GetTestNamespace("tracing")
-	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, tracingNs, nil); err != nil {
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, tracingNs, nil)
+	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", tracingNs),
 			"failed to create %s namespace: %s", tracingNs, err)
 	}
-	out, err := TestHelper.KubectlApply(out, tracingNs)
+	out, err = TestHelper.KubectlApply(out, tracingNs)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)

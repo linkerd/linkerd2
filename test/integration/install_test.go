@@ -115,9 +115,13 @@ func TestCheckPreInstall(t *testing.T) {
 
 	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.pre.golden"
-	out := TestHelper.LinkerdRunFatal(t, cmd...)
+	out, err := TestHelper.LinkerdRunOk(cmd...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "%s", err)
+	}
 
-	if err := TestHelper.ValidateOutput(out, golden); err != nil {
+	err = TestHelper.ValidateOutput(out, golden)
+	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
 	}
 }
@@ -215,17 +219,24 @@ func TestInstallCNIPlugin(t *testing.T) {
 	)
 
 	exec := append([]string{cmd}, args...)
-	out := TestHelper.LinkerdRunFatal(t, exec...)
+	out, err := TestHelper.LinkerdRunOk(exec...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd install-cni' command failed", "%s", err)
+	}
 
-	if out, err := TestHelper.KubectlApply(out, ""); err != nil {
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
 
 	// perform a linkerd check with --linkerd-cni-enabled
 	timeout := time.Minute
-	err := TestHelper.RetryFor(timeout, func() error {
-		out = TestHelper.LinkerdRunFatal(t, "check", "--pre", "--linkerd-cni-enabled", "--wait=0")
+	err = TestHelper.RetryFor(timeout, func() error {
+		out, err = TestHelper.LinkerdRunOk("check", "--pre", "--linkerd-cni-enabled", "--wait=0")
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -314,10 +325,14 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 		cmd = "upgrade"
 		// test 2-stage install during upgrade
-		out := TestHelper.LinkerdRunFatal(t, cmd, "config")
+		out, err := TestHelper.LinkerdRunOk(cmd, "config")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd upgrade config' command failed", "%s", err)
+		}
 
 		// apply stage 1
-		if out, err := TestHelper.KubectlApply(out, ""); err != nil {
+		out, err = TestHelper.KubectlApply(out, "")
+		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"kubectl apply command failed\n%s", out)
 		}
@@ -327,7 +342,10 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	}
 
 	exec := append([]string{cmd}, args...)
-	out := TestHelper.LinkerdRunFatal(t, exec...)
+	out, err := TestHelper.LinkerdRunOk(exec...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd install' command failed", "%s", err)
+	}
 
 	// test `linkerd upgrade --from-manifests`
 	if TestHelper.UpgradeFromVersion() != "" {
@@ -357,7 +375,12 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		if out != upgradeFromManifests {
 			// retry in case it's just a discrepancy in the heartbeat cron schedule
 			exec := append([]string{cmd}, args...)
-			out := TestHelper.LinkerdRunFatal(t, exec...)
+			out, err := TestHelper.LinkerdRunOk(exec...)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, fmt.Sprintf("command failed: %v", exec),
+					"command failed: %v\n%s\n%s", exec, out, stderr)
+			}
+
 			if out != upgradeFromManifests {
 				testutil.AnnotatedFatalf(t, "manifest upgrade differs from k8s upgrade",
 					"manifest upgrade differs from k8s upgrade.\nk8s upgrade:\n%s\nmanifest upgrade:\n%s", out, upgradeFromManifests)
@@ -365,7 +388,8 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 	}
 
-	if out, err := TestHelper.KubectlApply(out, ""); err != nil {
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
@@ -457,8 +481,13 @@ func TestInstallMulticluster(t *testing.T) {
 			"install",
 			"--namespace", TestHelper.GetMulticlusterNamespace(),
 		}...)
-		out := TestHelper.LinkerdRunFatal(t, exec...)
-		if out, err := TestHelper.KubectlApply(out, ""); err != nil {
+		out, err := TestHelper.LinkerdRunOk(exec...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed", "%s", err)
+		}
+
+		out, err = TestHelper.KubectlApply(out, "")
+		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 				"'kubectl apply' command failed\n%s", out)
 		}
@@ -686,13 +715,18 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 			cliVOverride := []string{"--cli-version-override", cliVersionOverride}
 			cmd = append(cmd, cliVOverride...)
 		}
-		out := TestHelper.LinkerdRunFatal(t, cmd...)
+		out, err := TestHelper.LinkerdRunOk(cmd...)
+
+		if err != nil {
+			return fmt.Errorf("'linkerd check' command failed\n%s", err)
+		}
 
 		if !compareOutput {
 			return nil
 		}
 
-		if err := TestHelper.ValidateOutput(out, golden); err != nil {
+		err = TestHelper.ValidateOutput(out, golden)
+		if err != nil {
 			return fmt.Errorf("received unexpected output\n%s", err.Error())
 		}
 
@@ -725,8 +759,15 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 }
 
 func TestInstallSP(t *testing.T) {
-	out := TestHelper.LinkerdRunFatal(t, "install-sp")
-	if out, err := TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace()); err != nil {
+	cmd := []string{"install-sp"}
+
+	out, err := TestHelper.LinkerdRunOk(cmd...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'linkerd install-sp' command failed", "%s", err)
+	}
+
+	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
+	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
