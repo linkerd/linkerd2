@@ -131,8 +131,9 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				tt.args = append(tt.args, "-t", "30s")
 				out, err := TestHelper.LinkerdRunOk(tt.args...)
 				if err != nil {
+					logs, _ := TestHelper.ControllerProxyLogs()
 					testutil.AnnotatedFatalf(t, "unexpected stat error",
-						"unexpected stat error: %s\n%s", err, out)
+						"unexpected stat error: %s\n%s", err, logs)
 				}
 
 				expectedColumnCount := 8

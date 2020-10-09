@@ -71,7 +71,8 @@ func statTrafficSplit(from string, ns string) (map[string]*statTsRow, error) {
 	cmd := []string{"stat", "ts", "--from", from, "--namespace", ns, "-t", "30s", "--unmeshed"}
 	out, err := TestHelper.LinkerdRunOk(cmd...)
 	if err != nil {
-		return nil, err
+		logs, _ := TestHelper.ControllerProxyLogs()
+		return nil, fmt.Errorf("error: %s\nlogs:\n%s", err, logs)
 	}
 	return parseStatTsRow(out, 2, 9)
 }
@@ -187,8 +188,7 @@ func TestTrafficSplitCli(t *testing.T) {
 
 			rows, err := statTrafficSplit("deploy/slow-cooker", prefixedNs)
 			if err != nil {
-				logs, _ := TestHelper.Kubectl("", "logs", "deploy/linkerd-controller", "--namespace=linkerd", "-c", "linkerd-proxy")
-				testutil.AnnotatedFatalf(t, "error ensuring traffic is sent to one backend only", "Error: %s\nLogs: %s", err, logs)
+				testutil.AnnotatedFatal(t, "error ensuring traffic is sent to one backend only", err)
 			}
 			expectedBackendSvcOutput := &statTsRow{
 				name:    "backend-traffic-split",
@@ -243,8 +243,7 @@ func TestTrafficSplitCli(t *testing.T) {
 		err := TestHelper.RetryFor(timeout, func() error {
 			rows, err := statTrafficSplit("deploy/slow-cooker", prefixedNs)
 			if err != nil {
-				logs, _ := TestHelper.Kubectl("", "logs", "deploy/linkerd-controller", "--namespace=linkerd", "-c", "linkerd-proxy")
-				testutil.AnnotatedFatalf(t, "error ensuring traffic is sent to both backends", "Error: %s\nLogs: %s", err, logs)
+				testutil.AnnotatedFatal(t, "error ensuring traffic is sent to both backends", err)
 			}
 			expectedBackendSvcOutput := &statTsRow{
 				name:    "backend-traffic-split",

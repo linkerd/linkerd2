@@ -346,6 +346,12 @@ func (h *TestHelper) LinkerdRunOk(arg ...string) (string, error) {
 	return out, nil
 }
 
+// ControllerProxyLogs executes kubectl to obtain the linkerd-controller's proxy
+// logs.
+func (h *TestHelper) ControllerProxyLogs() (string, error) {
+	return h.Kubectl("", "logs", "deploy/linkerd-controller", "--namespace=linkerd", "-c", "linkerd-proxy")
+}
+
 // PipeToLinkerdRun executes a linkerd command appended with the
 // --linkerd-namespace flag, and provides a string at Stdin.
 func (h *TestHelper) PipeToLinkerdRun(stdin string, arg ...string) (string, string, error) {
