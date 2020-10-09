@@ -344,7 +344,6 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				values.ControllerImage = registryOverride(values.ControllerImage, value)
 				values.DebugContainer.Image.Name = registryOverride(values.DebugContainer.Image.Name, value)
 				values.Global.Proxy.Image.Name = registryOverride(values.Global.Proxy.Image.Name, value)
-				values.DebugContainer.Image.Name = registryOverride(values.DebugContainer.Image.Name, value)
 				values.Global.ProxyInit.Image.Name = registryOverride(values.Global.ProxyInit.Image.Name, value)
 				return nil
 			}),
@@ -352,6 +351,9 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 		flag.NewStringFlag(proxyFlags, "image-pull-policy", defaults.Global.ImagePullPolicy,
 			"Docker image pull policy", func(values *l5dcharts.Values, value string) error {
 				values.Global.ImagePullPolicy = value
+				values.Global.Proxy.Image.PullPolicy = value
+				values.Global.ProxyInit.Image.PullPolicy = value
+				values.DebugContainer.Image.PullPolicy = value
 				return nil
 			}),
 
