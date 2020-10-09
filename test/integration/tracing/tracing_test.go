@@ -49,19 +49,14 @@ func TestTracing(t *testing.T) {
 	}
 
 	// Tracing Components
-	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/tracing.yaml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
-			"'linkerd inject' command failed\n%s\n%s", out, stderr)
-	}
+	out := TestHelper.LinkerdRunFatal(t, "inject", "testdata/tracing.yaml")
 
 	tracingNs := TestHelper.GetTestNamespace("tracing")
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, tracingNs, nil)
-	if err != nil {
+	if err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, tracingNs, nil); err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", tracingNs),
 			"failed to create %s namespace: %s", tracingNs, err)
 	}
-	out, err = TestHelper.KubectlApply(out, tracingNs)
+	out, err := TestHelper.KubectlApply(out, tracingNs)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
@@ -81,7 +76,7 @@ func TestTracing(t *testing.T) {
 			"failed to read emojivoto yaml\n%s\n", err)
 	}
 	emojivotoYaml = strings.ReplaceAll(emojivotoYaml, "___TRACING_NS___", tracingNs)
-	out, stderr, err = TestHelper.PipeToLinkerdRun(emojivotoYaml, "inject", "-")
+	out, stderr, err := TestHelper.PipeToLinkerdRun(emojivotoYaml, "inject", "-")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
 			"'linkerd inject' command failed\n%s\n%s", out, stderr)

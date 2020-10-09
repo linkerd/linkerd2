@@ -72,10 +72,7 @@ func TestDirectEdges(t *testing.T) {
 
 	// inject terminus
 
-	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/terminus.yaml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "'linkerd inject' command failed with %s: %s\n", err, stderr)
-	}
+	out := TestHelper.LinkerdRunFatal(t, "inject", "--manual", "testdata/terminus.yaml")
 
 	// deploy terminus
 
@@ -114,7 +111,7 @@ func TestDirectEdges(t *testing.T) {
 
 	// inject slow cooker
 
-	out, stderr, err = TestHelper.PipeToLinkerdRun(slowcooker, "inject", "--manual", "-")
+	out, stderr, err := TestHelper.PipeToLinkerdRun(slowcooker, "inject", "--manual", "-")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'linkerd 'inject' command failed", "'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
 	}
@@ -141,11 +138,7 @@ func TestDirectEdges(t *testing.T) {
 	// check edges
 	timeout := 50 * time.Second
 	err = TestHelper.RetryFor(timeout, func() error {
-		out, stderr, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "edges", "deploy")
-		if err != nil {
-			return fmt.Errorf("linkerd %s command failed with %s: %s", "edges", err, stderr)
-		}
-
+		out = TestHelper.LinkerdRunFatal(t, "-n", testNamespace, "-o", "json", "edges", "deploy")
 		tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
 		vars := struct {
 			Ns        string

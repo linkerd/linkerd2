@@ -48,10 +48,5 @@ func TestCliInstall(t *testing.T) {
 	)
 
 	exec := append([]string{cmd}, args...)
-	out, stderr, err := TestHelper.LinkerdRun(exec...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd install' command failed",
-			"'linkerd install' command failed: \n%s\n%s", out, stderr)
-	}
-
+	TestHelper.LinkerdRunFatal(t, exec...)
 }

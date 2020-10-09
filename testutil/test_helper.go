@@ -330,6 +330,16 @@ type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base6
 	return err
 }
 
+// LinkerdRunOrDie executes a linkerd command appended with the --linkerd-namespace
+// flag.
+func (h *TestHelper) LinkerdRunFatal(t *testing.T, arg ...string) string {
+	stdout, stderr, err := h.LinkerdRun(arg...)
+	if err != nil {
+		AnnotatedFatalf(t, "Command failed: %s\n%s", strings.Join(arg, " "), stderr)
+	}
+	return stdout
+}
+
 // LinkerdRun executes a linkerd command appended with the --linkerd-namespace
 // flag.
 func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
