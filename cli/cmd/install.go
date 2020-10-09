@@ -191,7 +191,7 @@ control plane. It should be run after "linkerd install config".`,
 
 			}
 
-			return install(cmd.Context(), values, flags, controlPlaneStage)
+			return install(cmd.Context(), os.Stdout, values, flags, controlPlaneStage)
 		},
 	}
 
@@ -234,7 +234,7 @@ control plane.`,
   # Installation may also be broken up into two stages by user privilege, via
   # subcommands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return install(cmd.Context(), values, flags, "")
+			return install(cmd.Context(), os.Stdout, values, flags, "")
 		},
 	}
 
@@ -251,7 +251,7 @@ control plane.`,
 	return cmd
 }
 
-func install(ctx context.Context, values *l5dcharts.Values, flags []flag.Flag, stage string) error {
+func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags []flag.Flag, stage string) error {
 	err := flag.ApplySetFlags(values, flags)
 	if err != nil {
 		return err
@@ -285,7 +285,7 @@ func install(ctx context.Context, values *l5dcharts.Values, flags []flag.Flag, s
 		return err
 	}
 
-	return render(os.Stdout, values, stage)
+	return render(w, values, stage)
 }
 
 func render(w io.Writer, values *l5dcharts.Values, stage string) error {

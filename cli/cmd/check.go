@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/version"
 
@@ -99,7 +101,7 @@ code.`,
 		Example: `  # Check that the Linkerd cluster-wide resource are installed correctly
   linkerd check config`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(stdout, stderr, configStage, options)
+			return configureAndRunChecks(cmd.Context(), stdout, stderr, configStage, options)
 		},
 	}
 
@@ -133,7 +135,7 @@ non-zero exit code.`,
   # Check that the Linkerd data plane proxies in the "app" namespace are up and running
   linkerd check --proxy --namespace app`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return configureAndRunChecks(stdout, stderr, "", options)
+			return configureAndRunChecks(cmd.Context(), stdout, stderr, "", options)
 		},
 	}
 
@@ -145,7 +147,7 @@ non-zero exit code.`,
 	return cmd
 }
 
-func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
+func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, stage string, options *checkOptions) error {
 	err := options.validate()
 	if err != nil {
 		return fmt.Errorf("Validation error when executing check command: %v", err)
@@ -169,7 +171,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, stage string, options
 		} else {
 			checks = append(checks, healthcheck.LinkerdPreInstallCapabilityChecks)
 		}
-		installManifest, err = renderInstallManifest()
+		installManifest, err = renderInstallManifest(ctx)
 		if err != nil {
 			return fmt.Errorf("Error rendering install manifest: %v", err)
 		}
@@ -366,13 +368,15 @@ func runChecksJSON(wout io.Writer, werr io.Writer, hc *healthcheck.HealthChecker
 	return result
 }
 
-func renderInstallManifest() (string, error) {
+func renderInstallManifest(ctx context.Context) (string, error) {
 	values, err := charts.NewValues(false)
 	if err != nil {
 		return "", err
 	}
+
 	var b strings.Builder
-	if err := render(&b, values, ""); err != nil {
+	err = install(ctx, &b, values, []flag.Flag{}, "")
+	if err != nil {
 		return "", err
 	}
 	return b.String(), nil

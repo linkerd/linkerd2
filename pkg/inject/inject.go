@@ -669,7 +669,10 @@ func (conf *ResourceConfig) injectPodAnnotations(values *patch) {
 }
 
 func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
-	annotations := conf.nsAnnotations
+	annotations := make(map[string]string)
+	for k, v := range conf.nsAnnotations {
+		annotations[k] = v
+	}
 	for k, v := range conf.pod.meta.Annotations {
 		annotations[k] = v
 	}
