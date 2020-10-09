@@ -54,10 +54,10 @@ type InjectValidator struct {
 	WaitBeforeExitSeconds    int
 }
 
-func (iv *InjectValidator) getContainer(pod *v1.Pod, name string, isInit bool) *v1.Container {
-	containers := pod.Spec.Containers
+func (iv *InjectValidator) getContainer(pod *v1.PodSpec, name string, isInit bool) *v1.Container {
+	containers := pod.Containers
 	if isInit {
-		containers = pod.Spec.InitContainers
+		containers = pod.InitContainers
 	}
 	for _, container := range containers {
 		if container.Name == name {
@@ -93,7 +93,7 @@ func (iv *InjectValidator) validatePort(container *v1.Container, portName string
 	return fmt.Errorf("cannot find port: %s", portName)
 }
 
-func (iv *InjectValidator) validateDebugContainer(pod *v1.Pod) error {
+func (iv *InjectValidator) validateDebugContainer(pod *v1.PodSpec) error {
 	if iv.EnableDebug {
 		proxyContainer := iv.getContainer(pod, debugContainerName, false)
 		if proxyContainer == nil {
@@ -103,7 +103,7 @@ func (iv *InjectValidator) validateDebugContainer(pod *v1.Pod) error {
 	return nil
 }
 
-func (iv *InjectValidator) validateProxyContainer(pod *v1.Pod) error {
+func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 	proxyContainer := iv.getContainer(pod, proxyContainerName, false)
 	if proxyContainer == nil {
 		return fmt.Errorf("container %s missing", proxyContainerName)
@@ -310,7 +310,7 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.Pod) error {
 	return nil
 }
 
-func (iv *InjectValidator) validateInitContainer(pod *v1.Pod) error {
+func (iv *InjectValidator) validateInitContainer(pod *v1.PodSpec) error {
 	if iv.NoInitContainer {
 		return nil
 	}
@@ -393,7 +393,7 @@ func (iv *InjectValidator) validateArg(container *v1.Container, argName, expecte
 
 // ValidatePod validates that the pod had been configured
 // according by the injector correctly
-func (iv *InjectValidator) ValidatePod(pod *v1.Pod) error {
+func (iv *InjectValidator) ValidatePod(pod *v1.PodSpec) error {
 
 	if err := iv.validateProxyContainer(pod); err != nil {
 		return err

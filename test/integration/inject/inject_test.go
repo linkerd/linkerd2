@@ -9,9 +9,12 @@ import (
 	"testing"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 
+	"github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
@@ -32,23 +35,48 @@ func TestMain(m *testing.M) {
 /// TEST EXECUTION ///
 //////////////////////
 
+func parseDeployment(yamlString string) (*appsv1.Deployment, error) {
+	s := json.NewYAMLSerializer(json.DefaultMetaFactory, scheme.Scheme,
+		scheme.Scheme)
+	var deploy appsv1.Deployment
+	_, _, err := s.Decode([]byte(yamlString), nil, &deploy)
+	if err != nil {
+		return nil, err
+	}
+
+	return &deploy, nil
+}
+
 func TestInjectManual(t *testing.T) {
-	cmd := []string{"inject",
+
+	injectionValidator := testutil.InjectValidator{
+		DisableIdentity: true,
+		Version:         "proxy-version",
+		Image:           "proxy-image",
+		InitImage:       "init-image",
+	}
+
+	flags, _ := injectionValidator.GetFlagsAndAnnotations()
+
+	cmd := append([]string{"inject",
 		"--manual",
 		"--linkerd-namespace=fake-ns",
-		"--disable-identity",
 		"--ignore-cluster",
-		"--proxy-version=proxy-version",
-		"--proxy-image=proxy-image",
-		"--init-image=init-image",
-		"testdata/inject_test.yaml",
-	}
+	}, flags...)
+
+	cmd = append(cmd, "testdata/inject_test.yaml")
+
 	out, stderr, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v: %s", stderr, err)
 	}
 
-	err = testutil.ValidateInject(out, "injected_default.golden", TestHelper)
+	deploy, err := parseDeployment(out)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed parsing deployment", "failed parsing deployment\n%s", err.Error())
+	}
+
+	err = injectionValidator.ValidatePod(&deploy.Spec.Template.Spec)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
 	}
@@ -89,17 +117,23 @@ func TestInjectManualParams(t *testing.T) {
 	cmd = append(cmd, "testdata/inject_test.yaml")
 
 	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v: %s", stderr, err)
 	}
 
-	err = testutil.ValidateInject(out, "injected_params.golden", TestHelper)
+	deploy, err := parseDeployment(out)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed parsing deployment", "failed parsing deployment\n%s", err.Error())
+	}
+
+	err = injectionValidator.ValidatePod(&deploy.Spec.Template.Spec)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
 	}
 }
 
-func TestAutoInjectParams(t *testing.T) {
+func TestInjectAutoParams(t *testing.T) {
 	injectYAML, err := testutil.ReadFile("testdata/inject_test.yaml")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to read inject test file", "failed to read inject test file: %s", err)
@@ -161,32 +195,32 @@ func TestAutoInjectParams(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "failed to create deployment", "failed to create deploy/%s in namespace %s for  %s: %s", deployName, ns, err, o)
 	}
 
-	// allow some time for the auto injector to do its
-	// TODO: have a more reliable way to do that, maybe by
-	// waiting on an injection event
-	time.Sleep(5 * time.Second)
-
-	pods, err := TestHelper.GetPodsForDeployment(ctx, ns, deployName)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to get pods for namespace %s", ns),
-			"failed to get pods for namespace %s: %s", ns, err)
-	}
-
 	var pod *v1.Pod
-	for _, p := range pods {
-		p := p //pin
-		creator, ok := p.Annotations[k8s.CreatedByAnnotation]
-		if ok && strings.Contains(creator, "proxy-injector") {
-			pod = &p
-			break
+	err = TestHelper.RetryFor(30*time.Second, func() error {
+		pods, err := TestHelper.GetPodsForDeployment(ctx, ns, deployName)
+		if err != nil {
+			return fmt.Errorf("failed to get pods for namespace %s", ns)
 		}
+
+		for _, p := range pods {
+			p := p //pin
+			creator, ok := p.Annotations[k8s.CreatedByAnnotation]
+			if ok && strings.Contains(creator, "proxy-injector") {
+				pod = &p
+				break
+			}
+		}
+		if pod == nil {
+			return fmt.Errorf("failed to find auto injected pod for deployment %s", deployName)
+		}
+		return nil
+	})
+
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "failed to find autoinjected pod: ", err.Error())
 	}
 
-	if pod == nil {
-		testutil.AnnotatedFatalf(t, "failed to find auto injected pod", "deployment: %s", deployName)
-	}
-
-	if err := injectionValidator.ValidatePod(pod); err != nil {
+	if err := injectionValidator.ValidatePod(&pod.Spec); err != nil {
 		testutil.AnnotatedFatalf(t, "failed to validate auto injection", err.Error())
 	}
 
