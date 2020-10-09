@@ -417,8 +417,7 @@ func (iv *InjectValidator) GetFlagsAndAnnotations() ([]string, map[string]string
 	var flags []string
 
 	if iv.AutoInject {
-		annotations["linkerd.io/inject"] = "enabled"
-
+		annotations[k8s.ProxyInjectAnnotation] = k8s.ProxyInjectEnabled
 	}
 
 	if iv.AdminPort != 0 {
