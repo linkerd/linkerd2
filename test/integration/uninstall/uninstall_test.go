@@ -28,10 +28,9 @@ func TestInstall(t *testing.T) {
 		"--proxy-version", TestHelper.GetVersion(),
 	}
 
-	out, stderr, err := TestHelper.LinkerdRun(args...)
+	out, err := TestHelper.LinkerdRunOk(args...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd install' command failed",
-			"'linkerd install' command failed: \n%s\n%s", out, stderr)
+		testutil.AnnotatedFatalf(t, "'linkerd install' command failed", "%s", err)
 	}
 
 	out, err = TestHelper.KubectlApply(out, "")
@@ -67,10 +66,9 @@ func TestResourcesPostInstall(t *testing.T) {
 
 func TestUninstall(t *testing.T) {
 	args := []string{"uninstall"}
-	out, stderr, err := TestHelper.LinkerdRun(args...)
+	out, err := TestHelper.LinkerdRunOk(args...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd install' command failed",
-			"'linkerd install' command failed: \n%s\n%s", out, stderr)
+		testutil.AnnotatedFatalf(t, "'linkerd install' command failed", "%s", err)
 	}
 
 	args = []string{"delete", "-f", "-"}
@@ -84,10 +82,9 @@ func TestUninstall(t *testing.T) {
 func TestCheckPostUninstall(t *testing.T) {
 	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.pre.golden"
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	out, err := TestHelper.LinkerdRunOk(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "check command failed",
-			"check command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatalf(t, "check command failed", "%s", err)
 	}
 
 	err = TestHelper.ValidateOutput(out, golden)

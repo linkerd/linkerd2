@@ -198,15 +198,15 @@ func NewTestHelper() *TestHelper {
 		certsPath:      *certsPath,
 	}
 
-	version, stderr, err := testHelper.LinkerdRun("version", "--client", "--short")
+	version, err := testHelper.LinkerdRunOk("version", "--client", "--short")
 	if err != nil {
-		exit(1, fmt.Sprintf("error getting linkerd version: %s\n%s", err.Error(), stderr))
+		exit(1, fmt.Sprintf("error getting linkerd version: %s", err.Error()))
 	}
 	testHelper.version = strings.TrimSpace(version)
 
 	kubernetesHelper, err := NewKubernetesHelper(*k8sContext, testHelper.RetryFor)
 	if err != nil {
-		exit(1, fmt.Sprintf("error creating kubernetes helper: %s\n%s", err.Error(), stderr))
+		exit(1, fmt.Sprintf("error creating kubernetes helper: %s", err.Error()))
 	}
 	testHelper.KubernetesHelper = *kubernetesHelper
 
@@ -334,6 +334,16 @@ type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base6
 // flag.
 func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
 	return h.PipeToLinkerdRun("", arg...)
+}
+
+// LinkerdRunOk executes a linkerd command appended with the --linkerd-namespace
+// flag.
+func (h *TestHelper) LinkerdRunOk(arg ...string) (string, error) {
+	out, stderr, err := h.PipeToLinkerdRun("", arg...)
+	if err != nil {
+		return out, fmt.Errorf("command failed: %s\n%s\n%s", strings.Join(arg, " "), err, stderr)
+	}
+	return out, nil
 }
 
 // PipeToLinkerdRun executes a linkerd command appended with the

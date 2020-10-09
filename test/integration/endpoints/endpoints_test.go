@@ -34,9 +34,9 @@ func TestGoodEndpoints(t *testing.T) {
 		fmt.Sprintf("linkerd-web.%s.svc.cluster.local:8084", ns),
 		"-ojson",
 	}
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	out, err := TestHelper.LinkerdRunOk(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\nError output: %s", err, stderr)
+		testutil.AnnotatedFatalf(t, "unexpected error", "%s", err)
 	}
 
 	tpl := template.Must(template.ParseFiles("testdata/linkerd_endpoints.golden"))

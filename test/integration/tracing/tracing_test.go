@@ -49,10 +49,9 @@ func TestTracing(t *testing.T) {
 	}
 
 	// Tracing Components
-	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/tracing.yaml")
+	out, err := TestHelper.LinkerdRunOk("inject", "testdata/tracing.yaml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
-			"'linkerd inject' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "%s", err)
 	}
 
 	tracingNs := TestHelper.GetTestNamespace("tracing")
@@ -81,7 +80,7 @@ func TestTracing(t *testing.T) {
 			"failed to read emojivoto yaml\n%s\n", err)
 	}
 	emojivotoYaml = strings.ReplaceAll(emojivotoYaml, "___TRACING_NS___", tracingNs)
-	out, stderr, err = TestHelper.PipeToLinkerdRun(emojivotoYaml, "inject", "-")
+	out, stderr, err := TestHelper.PipeToLinkerdRun(emojivotoYaml, "inject", "-")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
 			"'linkerd inject' command failed\n%s\n%s", out, stderr)

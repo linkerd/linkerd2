@@ -30,9 +30,9 @@ func TestMain(m *testing.M) {
 func TestRoutes(t *testing.T) {
 	// control-plane routes
 	cmd := []string{"routes", "--namespace", TestHelper.GetLinkerdNamespace(), "deploy"}
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	out, err := TestHelper.LinkerdRunOk(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd routes' command failed", "'linkerd routes' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatalf(t, "'linkerd routes' command failed", "%s", err)
 	}
 
 	routeStrings := []struct {
@@ -71,9 +71,9 @@ func TestRoutes(t *testing.T) {
 	cmd = []string{"routes", "--namespace", prefixedNs, "deploy"}
 	golden := "routes.smoke.golden"
 
-	out, stderr, err = TestHelper.LinkerdRun(cmd...)
+	out, err = TestHelper.LinkerdRunOk(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd routes' command failed", "'linkerd routes' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatalf(t, "'linkerd routes' command failed", "%s", err)
 	}
 
 	err = TestHelper.ValidateOutput(out, golden)

@@ -69,11 +69,8 @@ func parseStatTsRow(out string, expectedRowCount, expectedColumnCount int) (map[
 
 func statTrafficSplit(from string, ns string) (map[string]*statTsRow, error) {
 	cmd := []string{"stat", "ts", "--from", from, "--namespace", ns, "-t", "30s", "--unmeshed"}
-	stdOut, _, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		return nil, err
-	}
-	return parseStatTsRow(stdOut, 2, 9)
+	out, err := TestHelper.LinkerdRunOk(cmd...)
+	return parseStatTsRow(out, 2, 9)
 }
 
 func validateTrafficSplit(actual *statTsRow, expected *statTsRow) error {
@@ -148,10 +145,9 @@ func validateExpectedTsOutput(rows map[string]*statTsRow, expectedBackendSvc, ex
 }
 
 func TestTrafficSplitCli(t *testing.T) {
-	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/traffic_split_application.yaml")
+	out, err := TestHelper.LinkerdRunOk("inject", "--manual", "testdata/traffic_split_application.yaml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
-			"'linkerd inject' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "%s", err)
 	}
 
 	ctx := context.Background()
