@@ -446,10 +446,11 @@ run_multicluster_test() {
 run_deep_test() {
   local tests=()
   run_test "$test_directory/install_test.go"
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test"
-  done
+  run_test "$test_directory/trafficsplit_test.go"
+  # while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  # for test in "${tests[@]}"; do
+  #   run_test "$test"
+  # done
 }
 
 run_cni-calico-deep_test() {
@@ -468,10 +469,11 @@ run_helm-deep_test() {
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
   --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
   --multicluster-helm-release="$helm_multicluster_release_name"
-  while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
-  for test in "${tests[@]}"; do
-    run_test "$test"
-  done
+  run_test "$test_directory/trafficsplit_test.go"
+  # while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
+  # for test in "${tests[@]}"; do
+  #   run_test "$test"
+  # done
   helm_cleanup
 }
 
