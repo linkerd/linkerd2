@@ -12,13 +12,14 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/linkerd/linkerd2/cli/flag"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"sigs.k8s.io/yaml"
 )
 
@@ -47,7 +48,13 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transforme
 }
 
 func newCmdInject() *cobra.Command {
-	options := &proxyConfigOptions{}
+	defaults, err := charts.NewValues(false)
+	if err != nil {
+		fmt.Fprint(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+	flags, proxyFlagSet := makeProxyFlags(defaults)
+	injectFlags, injectFlagSet := makeInjectFlags(defaults)
 	var manualOption, enableDebugSidecar bool
 	var closeWaitTimeout time.Duration
 
@@ -71,7 +78,20 @@ sub-folders, or coming from stdin.`,
 				return fmt.Errorf("please specify a kubernetes resource file")
 			}
 
-			if err := options.validate(); err != nil {
+			values := defaults
+			if !ignoreCluster {
+				values, err = fetchConfigs(cmd.Context())
+				if err != nil {
+					return err
+				}
+			}
+
+			baseValues, err := values.DeepCopy()
+			if err != nil {
+				return err
+			}
+			err = flag.ApplySetFlags(values, append(flags, injectFlags...))
+			if err != nil {
 				return err
 			}
 
@@ -80,12 +100,7 @@ sub-folders, or coming from stdin.`,
 				return err
 			}
 
-			values, err := options.fetchConfigsOrDefault(cmd.Context())
-			if err != nil {
-				return err
-			}
-			overrideAnnotations := map[string]string{}
-			options.overrideConfigs(values, overrideAnnotations)
+			overrideAnnotations := getOverrideAnnotations(values, baseValues)
 
 			transformer := &resourceTransformerInject{
 				allowNsInject:       true,
@@ -101,48 +116,25 @@ sub-folders, or coming from stdin.`,
 		},
 	}
 
-	flags := options.flagSet(pflag.ExitOnError)
-	flags.BoolVar(
+	cmd.Flags().BoolVar(
 		&manualOption, "manual", manualOption,
 		"Include the proxy sidecar container spec in the YAML output (the auto-injector won't pick it up, so config annotations aren't supported) (default false)",
 	)
-	flags.Uint64Var(
-		&options.waitBeforeExitSeconds, "wait-before-exit-seconds", options.waitBeforeExitSeconds,
-		"The period during which the proxy sidecar must stay alive while its pod is terminating. "+
-			"Must be smaller than terminationGracePeriodSeconds for the pod (default 0)",
-	)
-	flags.BoolVar(
-		&options.disableIdentity, "disable-identity", options.disableIdentity,
-		"Disables resources from participating in TLS identity",
-	)
 
-	flags.BoolVar(
-		&options.disableTap, "disable-tap", options.disableTap,
-		"Disables resources from being tapped",
-	)
-
-	flags.BoolVar(
-		&options.ignoreCluster, "ignore-cluster", options.ignoreCluster,
+	cmd.Flags().BoolVar(
+		&ignoreCluster, "ignore-cluster", false,
 		"Ignore the current Kubernetes cluster when checking for existing cluster configuration (default false)",
 	)
 
-	flags.BoolVar(&enableDebugSidecar, "enable-debug-sidecar", enableDebugSidecar,
+	cmd.Flags().BoolVar(&enableDebugSidecar, "enable-debug-sidecar", enableDebugSidecar,
 		"Inject a debug sidecar for data plane debugging")
 
-	flags.StringVar(&options.traceCollector, "trace-collector", options.traceCollector,
-		"Collector Service address for the proxies to send Trace Data")
-
-	flags.StringVar(&options.traceCollectorSvcAccount, "trace-collector-svc-account", options.traceCollectorSvcAccount,
-		"Service account associated with the Trace collector instance")
-
-	flags.StringSliceVar(&options.requireIdentityOnInboundPorts, "require-identity-on-inbound-ports", options.requireIdentityOnInboundPorts,
-		"Inbound ports on which the proxy should require identity")
-
-	flags.DurationVar(
+	cmd.Flags().DurationVar(
 		&closeWaitTimeout, "close-wait-timeout", closeWaitTimeout,
 		"Sets nf_conntrack_tcp_timeout_close_wait")
 
-	cmd.PersistentFlags().AddFlagSet(flags)
+	cmd.Flags().AddFlagSet(proxyFlagSet)
+	cmd.Flags().AddFlagSet(injectFlagSet)
 
 	return cmd
 }
@@ -336,14 +328,7 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 	output.Write([]byte("\n"))
 }
 
-func (options *proxyConfigOptions) fetchConfigsOrDefault(ctx context.Context) (*linkerd2.Values, error) {
-	if options.ignoreCluster {
-		if !options.disableIdentity {
-			return nil, errors.New("--disable-identity must be set with --ignore-cluster")
-		}
-
-		return linkerd2.NewValues(false)
-	}
+func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 
 	checkPublicAPIClientOrExit()
 	api, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
@@ -359,136 +344,115 @@ func (options *proxyConfigOptions) fetchConfigsOrDefault(ctx context.Context) (*
 // overrideConfigs uses command-line overrides to update the provided configs.
 // the overrideAnnotations map keeps track of which configs are overridden, by
 // storing the corresponding annotations and values.
-func (options *proxyConfigOptions) overrideConfigs(values *linkerd2.Values, overrideAnnotations map[string]string) {
-	if options.proxyVersion != "" {
-		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = options.proxyVersion
+func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[string]string {
+	overrideAnnotations := make(map[string]string)
+
+	proxy := values.Global.Proxy
+	baseProxy := base.Global.Proxy
+	if proxy.Image.Version != baseProxy.Image.Version {
+		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = proxy.Image.Version
 	}
 
-	if len(options.ignoreInboundPorts) > 0 {
-		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = strings.Join(options.ignoreInboundPorts, ",")
+	if values.Global.ProxyInit.IgnoreInboundPorts != base.Global.ProxyInit.IgnoreInboundPorts {
+		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = values.Global.ProxyInit.IgnoreInboundPorts
 	}
-	if len(options.ignoreOutboundPorts) > 0 {
-		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = strings.Join(options.ignoreOutboundPorts, ",")
-	}
-
-	if options.proxyAdminPort != 0 {
-		overrideAnnotations[k8s.ProxyAdminPortAnnotation] = fmt.Sprint(options.proxyAdminPort)
-	}
-	if options.proxyControlPort != 0 {
-		overrideAnnotations[k8s.ProxyControlPortAnnotation] = fmt.Sprint(options.proxyControlPort)
-	}
-	if options.proxyInboundPort != 0 {
-		overrideAnnotations[k8s.ProxyInboundPortAnnotation] = fmt.Sprint(options.proxyInboundPort)
-	}
-	if options.proxyOutboundPort != 0 {
-		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = fmt.Sprint(options.proxyOutboundPort)
+	if values.Global.ProxyInit.IgnoreOutboundPorts != base.Global.ProxyInit.IgnoreOutboundPorts {
+		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = values.Global.ProxyInit.IgnoreOutboundPorts
 	}
 
-	if options.dockerRegistry != "" {
-		debugImage := values.DebugContainer.Image.Name
-		if debugImage == "" {
-			debugImage = k8s.DebugSidecarImage
-		}
-		overrideAnnotations[k8s.ProxyImageAnnotation] = overwriteRegistry(values.Global.Proxy.Image.Name, options.dockerRegistry)
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = overwriteRegistry(values.Global.ProxyInit.Image.Name, options.dockerRegistry)
-		overrideAnnotations[k8s.DebugImageAnnotation] = overwriteRegistry(debugImage, options.dockerRegistry)
+	if proxy.Ports.Admin != baseProxy.Ports.Admin {
+		overrideAnnotations[k8s.ProxyAdminPortAnnotation] = fmt.Sprintf("%d", proxy.Ports.Admin)
+	}
+	if proxy.Ports.Control != baseProxy.Ports.Control {
+		overrideAnnotations[k8s.ProxyControlPortAnnotation] = fmt.Sprintf("%d", proxy.Ports.Control)
+	}
+	if proxy.Ports.Inbound != baseProxy.Ports.Inbound {
+		overrideAnnotations[k8s.ProxyInboundPortAnnotation] = fmt.Sprintf("%d", proxy.Ports.Inbound)
+	}
+	if proxy.Ports.Outbound != baseProxy.Ports.Outbound {
+		overrideAnnotations[k8s.ProxyOutboundPortAnnotation] = fmt.Sprintf("%d", proxy.Ports.Outbound)
 	}
 
-	if options.proxyImage != "" {
-		overrideAnnotations[k8s.ProxyImageAnnotation] = options.proxyImage
+	if proxy.Image.Name != baseProxy.Image.Name {
+		overrideAnnotations[k8s.ProxyImageAnnotation] = proxy.Image.Name
+	}
+	if values.Global.ProxyInit.Image.Name != base.Global.ProxyInit.Image.Name {
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = values.Global.ProxyInit.Image.Name
+	}
+	if values.DebugContainer.Image.Name != base.DebugContainer.Image.Name {
+		overrideAnnotations[k8s.DebugImageAnnotation] = values.DebugContainer.Image.Name
 	}
 
-	if options.initImage != "" {
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = options.initImage
+	if values.Global.ProxyInit.Image.Version != base.Global.ProxyInit.Image.Version {
+		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = values.Global.ProxyInit.Image.Version
 	}
 
-	if options.initImageVersion != "" {
-		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = options.initImageVersion
+	if values.DebugContainer.Image.Version != base.DebugContainer.Image.Version {
+		overrideAnnotations[k8s.DebugImageVersionAnnotation] = values.DebugContainer.Image.Version
 	}
 
-	if options.debugImageVersion != "" {
-		overrideAnnotations[k8s.DebugImageVersionAnnotation] = options.debugImageVersion
+	if proxy.Image.PullPolicy != baseProxy.Image.PullPolicy {
+		overrideAnnotations[k8s.ProxyImagePullPolicyAnnotation] = proxy.Image.PullPolicy
 	}
 
-	if options.imagePullPolicy != "" {
-		overrideAnnotations[k8s.ProxyImagePullPolicyAnnotation] = options.imagePullPolicy
+	if proxy.UID != baseProxy.UID {
+		overrideAnnotations[k8s.ProxyUIDAnnotation] = strconv.FormatInt(proxy.UID, 10)
 	}
 
-	if options.proxyUID != 0 {
-		overrideAnnotations[k8s.ProxyUIDAnnotation] = strconv.FormatInt(options.proxyUID, 10)
+	if proxy.LogLevel != baseProxy.LogLevel {
+		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = proxy.LogLevel
 	}
 
-	if options.proxyLogLevel != "" {
-		overrideAnnotations[k8s.ProxyLogLevelAnnotation] = options.proxyLogLevel
+	if proxy.LogFormat != baseProxy.LogFormat {
+		overrideAnnotations[k8s.ProxyLogFormatAnnotation] = proxy.LogFormat
 	}
 
-	if options.proxyLogFormat != "" {
-		overrideAnnotations[k8s.ProxyLogFormatAnnotation] = options.proxyLogFormat
+	if proxy.DisableIdentity != baseProxy.DisableIdentity {
+		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = strconv.FormatBool(proxy.DisableIdentity)
 	}
 
-	if options.disableIdentity {
-		overrideAnnotations[k8s.ProxyDisableIdentityAnnotation] = strconv.FormatBool(true)
+	if proxy.RequireIdentityOnInboundPorts != baseProxy.RequireIdentityOnInboundPorts {
+		overrideAnnotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation] = proxy.RequireIdentityOnInboundPorts
 	}
 
-	if len(options.requireIdentityOnInboundPorts) > 0 {
-		overrideAnnotations[k8s.ProxyRequireIdentityOnInboundPortsAnnotation] = strings.Join(options.requireIdentityOnInboundPorts, ",")
+	if proxy.DisableTap != baseProxy.DisableTap {
+		overrideAnnotations[k8s.ProxyDisableTapAnnotation] = strconv.FormatBool(proxy.DisableTap)
 	}
 
-	if options.disableTap {
-		overrideAnnotations[k8s.ProxyDisableTapAnnotation] = strconv.FormatBool(true)
+	if proxy.EnableExternalProfiles != baseProxy.EnableExternalProfiles {
+		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = strconv.FormatBool(proxy.EnableExternalProfiles)
 	}
 
-	// keep track of this option because its true/false value results in different
-	// values being assigned to the LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
-	// env var. Its annotation is added only if its value is true.
-	if options.enableExternalProfiles {
-		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = strconv.FormatBool(true)
+	if proxy.Resources.CPU.Request != baseProxy.Resources.CPU.Request {
+		overrideAnnotations[k8s.ProxyCPURequestAnnotation] = proxy.Resources.CPU.Request
+	}
+	if proxy.Resources.CPU.Limit != baseProxy.Resources.CPU.Limit {
+		overrideAnnotations[k8s.ProxyCPULimitAnnotation] = proxy.Resources.CPU.Limit
+	}
+	if proxy.Resources.Memory.Request != baseProxy.Resources.Memory.Request {
+		overrideAnnotations[k8s.ProxyMemoryRequestAnnotation] = proxy.Resources.Memory.Request
+	}
+	if proxy.Resources.Memory.Limit != baseProxy.Resources.Memory.Limit {
+		overrideAnnotations[k8s.ProxyMemoryLimitAnnotation] = proxy.Resources.Memory.Limit
 	}
 
-	if options.proxyCPURequest != "" {
-		overrideAnnotations[k8s.ProxyCPURequestAnnotation] = options.proxyCPURequest
-	}
-	if options.proxyCPULimit != "" {
-		overrideAnnotations[k8s.ProxyCPULimitAnnotation] = options.proxyCPULimit
-	}
-	if options.proxyMemoryRequest != "" {
-		overrideAnnotations[k8s.ProxyMemoryRequestAnnotation] = options.proxyMemoryRequest
-	}
-	if options.proxyMemoryLimit != "" {
-		overrideAnnotations[k8s.ProxyMemoryLimitAnnotation] = options.proxyMemoryLimit
+	if proxy.Trace.CollectorSvcAddr != baseProxy.Trace.CollectorSvcAddr {
+		overrideAnnotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] = proxy.Trace.CollectorSvcAddr
 	}
 
-	if options.traceCollector != "" {
-		overrideAnnotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] = options.traceCollector
+	if proxy.Trace.CollectorSvcAccount != baseProxy.Trace.CollectorSvcAccount {
+		overrideAnnotations[k8s.ProxyTraceCollectorSvcAccountAnnotation] = proxy.Trace.CollectorSvcAccount
 	}
-
-	if options.traceCollectorSvcAccount != "" {
-		overrideAnnotations[k8s.ProxyTraceCollectorSvcAccountAnnotation] = options.traceCollectorSvcAccount
-	}
-	if options.waitBeforeExitSeconds != 0 {
-		overrideAnnotations[k8s.ProxyWaitBeforeExitSecondsAnnotation] = uintToString(options.waitBeforeExitSeconds)
+	if proxy.WaitBeforeExitSeconds != baseProxy.WaitBeforeExitSeconds {
+		overrideAnnotations[k8s.ProxyWaitBeforeExitSecondsAnnotation] = uintToString(proxy.WaitBeforeExitSeconds)
 	}
 
 	// Set fields that can't be converted into annotations
 	values.Global.Namespace = controlPlaneNamespace
+
+	return overrideAnnotations
 }
 
 func uintToString(v uint64) string {
 	return strconv.FormatUint(v, 10)
-}
-
-// overwriteRegistry replaces the registry-portion of the provided image with the provided registry.
-func overwriteRegistry(image, newRegistry string) string {
-	if image == "" {
-		return image
-	}
-	registry := newRegistry
-	if registry != "" && !strings.HasSuffix(registry, slash) {
-		registry += slash
-	}
-	imageName := image
-	if strings.Contains(image, slash) {
-		imageName = image[strings.LastIndex(image, slash)+1:]
-	}
-	return registry + imageName
 }

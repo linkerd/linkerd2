@@ -34,6 +34,7 @@ func TestGetOverriddenValues(t *testing.T) {
 		expected      func() *l5dcharts.Values
 	}{
 		{id: "use overrides",
+			nsAnnotations: make(map[string]string),
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
@@ -87,8 +88,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Global.Proxy.LogFormat = "json"
 				values.Global.Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
-						Limit:   "1500m",
-						Request: "150m",
+						Limit:   "1.5",
+						Request: "0.15",
 					},
 					Memory: l5dcharts.Constraints{
 						Limit:   "256",
@@ -113,6 +114,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			},
 		},
 		{id: "use defaults",
+			nsAnnotations: make(map[string]string),
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{},
@@ -173,8 +175,8 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Global.Proxy.LogFormat = "json"
 				values.Global.Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
-						Limit:   "1500m",
-						Request: "150m",
+						Limit:   "1.5",
+						Request: "0.15",
 					},
 					Memory: l5dcharts.Constraints{
 						Limit:   "256",
@@ -249,6 +251,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			},
 		},
 		{id: "use named port for opaque ports",
+			nsAnnotations: make(map[string]string),
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
@@ -297,7 +300,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			}
 			expected := testCase.expected()
 			if !reflect.DeepEqual(actual, expected) {
-				t.Fatalf("Expected values to be \n%v\n but was \n%v", actual, expected)
+				t.Fatalf("Expected values to be \n%v\n but was \n%v", expected.String(), actual.String())
 			}
 
 		})

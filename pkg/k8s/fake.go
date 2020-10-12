@@ -12,7 +12,6 @@ import (
 
 	spscheme "github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	tsscheme "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned/scheme"
-	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -150,7 +149,7 @@ func newFakeClientSetsFromManifests(readers []io.Reader) (
 
 			switch typeMeta.Kind {
 			case "":
-				log.Warnf("Kind missing from YAML, skipping")
+				// Kind missing from YAML, skipping
 
 			case "List":
 				var sourceList corev1.List
