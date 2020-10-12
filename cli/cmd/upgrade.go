@@ -362,7 +362,11 @@ func (options *upgradeOptions) validateAndBuild(ctx context.Context, stage strin
 			}
 
 			// repair Add-On configs
-			cmData = string(repairAddOnConfig([]byte(cmData)))
+			repairedCm, err := repairAddOnConfig([]byte(cmData))
+			if err == nil {
+				// Update only if there is no error
+				cmData = string(repairedCm)
+			}
 
 			// over-write add-on values with cmValues
 			// Merge Add-On Values with Values
@@ -386,13 +390,15 @@ func (options *upgradeOptions) validateAndBuild(ctx context.Context, stage strin
 	return values, nil
 }
 
-func repairAddOnConfig(rawValues []byte) []byte {
+func repairAddOnConfig(rawValues []byte) ([]byte, error) {
 
 	var values map[string]interface{}
-	yaml.Unmarshal(rawValues, &values)
+	err := yaml.Unmarshal(rawValues, &values)
+	if err != nil {
+		return nil, err
+	}
 
 	// Grafana Depreciation Fix
-	// TODO: Remove this once 2.9 is released
 	// Convert into Map instead of Values, as the latter returns with empty values
 	if grafana, err := healthcheck.GetMap(values, "grafana"); err == nil {
 		image, err := healthcheck.GetMap(grafana, "image")
@@ -418,8 +424,11 @@ func repairAddOnConfig(rawValues []byte) []byte {
 		}
 
 	}
-	rawValues, _ = yaml.Marshal(values)
-	return rawValues
+	rawValues, err = yaml.Marshal(values)
+	if err != nil {
+		return nil, err
+	}
+	return rawValues, nil
 }
 
 func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) {
