@@ -117,7 +117,29 @@ check_linkerd_binary() {
 create_kind_cluster() {
   local name=$1
   local config=$2
-  "$bindir"/kind create cluster --name "$name" --config "$test_directory"/configs/"$config".yaml --wait 300s 2>&1
+  if [ "$config" = "cni-calico" ]; then
+    # this is a workaround the fact that the --wait
+    # flag always times out with the calico setup
+    # the result of that is that we are always
+    # wasting 5m on this job
+    # issue: https://github.com/kubernetes-sigs/kind/issues/1889
+    cp_pod="kube-apiserver-cni-calico-deep-control-plane"
+    cm_pod="kube-controller-manager-cni-calico-deep-control-plane"
+    ks_pod="kube-scheduler-cni-calico-deep-control-plane"
+    etcd_pod="etcd-cni-calico-deep-control-plane"
+
+    "$bindir"/kind create cluster --name "$name" --config "$test_directory"/configs/"$config".yaml 2>&1
+    echo 'Waiting for api server'
+    kubectl --context="$context" -n kube-system wait --for=condition=initialized --timeout=120s pod/"$cp_pod" > /dev/null 2>&1
+    echo 'Waiting for kube controller'
+    kubectl --context="$context" -n kube-system wait --for=condition=initialized --timeout=120s pod/"$cm_pod" > /dev/null 2>&1
+    echo 'Waiting for kube scheduler'
+    kubectl --context="$context" -n kube-system wait --for=condition=initialized --timeout=120s pod/"$ks_pod" > /dev/null 2>&1
+    echo 'Waiting for kube etcd'
+    kubectl --context="$context" -n kube-system wait --for=condition=initialized --timeout=120s pod/"$etcd_pod" > /dev/null 2>&1
+  else
+    "$bindir"/kind create cluster --name "$name" --config "$test_directory"/configs/"$config".yaml --wait 300s 2>&1
+  fi
   exit_on_err 'error creating KinD cluster'
   export context="kind-$name"
 }
