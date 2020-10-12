@@ -798,12 +798,6 @@ metadata:
   annotations:
     CreatedByAnnotation: CliVersion
 data:
-  global: |
-    GlobalConfig
-  proxy: |
-    ProxyConfig
-  install: |
-    InstallConfig
   values: |
     controllerImage: ControllerImage
     controllerImageVersion: ControllerImageVersion

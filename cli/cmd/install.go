@@ -72,7 +72,6 @@ var (
 	}
 
 	templatesControlPlaneStage = []string{
-		"templates/_config.tpl",
 		"templates/_helpers.tpl",
 		"templates/config.yaml",
 		"templates/identity.yaml",
