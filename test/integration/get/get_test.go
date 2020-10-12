@@ -57,81 +57,79 @@ func TestCliGet(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	prefixedNs := TestHelper.GetTestNamespace("get-test")
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", prefixedNs, err)
-	}
-	out, err = TestHelper.KubectlApply(out, prefixedNs)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
-	}
+	TestHelper.WithDataPlaneNamespace(ctx, "get-test", map[string]string{}, t, TestHelper, func(t *testing.T, prefixedNs string) {
 
-	bytes, err := ioutil.ReadFile("testdata/not_to_be_injected_application.yaml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v", err)
-	}
+		out, err = TestHelper.KubectlApply(out, prefixedNs)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
+		}
 
-	out, err = TestHelper.KubectlApply(string(bytes), prefixedNs)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
-	}
+		bytes, err := ioutil.ReadFile("testdata/not_to_be_injected_application.yaml")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v", err)
+		}
 
-	// wait for pods to start
-	for deploy, replicas := range deployReplicas {
-		if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, replicas); err != nil {
-			if rce, ok := err.(*testutil.RestartCountError); ok {
-				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-			} else {
-				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		out, err = TestHelper.KubectlApply(string(bytes), prefixedNs)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
+		}
+
+		// wait for pods to start
+		for deploy, replicas := range deployReplicas {
+			if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, replicas); err != nil {
+				if rce, ok := err.(*testutil.RestartCountError); ok {
+					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+				} else {
+					testutil.AnnotatedError(t, "CheckPods timed-out", err)
+				}
 			}
 		}
-	}
 
-	t.Run("get pods from --all-namespaces", func(t *testing.T) {
-		out, stderr, err = TestHelper.LinkerdRun("get", "pods", "--all-namespaces")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s\n%s", err, out, stderr)
-		}
+		t.Run("get pods from --all-namespaces", func(t *testing.T) {
+			out, stderr, err = TestHelper.LinkerdRun("get", "pods", "--all-namespaces")
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s\n%s", err, out, stderr)
+			}
 
-		err := checkPodOutput(out, deployReplicas, "", prefixedNs)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "pod output check failed", "pod output check failed:\n%s\nCommand output:\n%s", err, out)
-		}
-	})
+			err := checkPodOutput(out, deployReplicas, "", prefixedNs)
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "pod output check failed", "pod output check failed:\n%s\nCommand output:\n%s", err, out)
+			}
+		})
 
-	t.Run("get pods from the linkerd namespace", func(t *testing.T) {
-		out, stderr, err = TestHelper.LinkerdRun("get", "pods", "-n", TestHelper.GetLinkerdNamespace())
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s\n%s", err, out, stderr)
-		}
+		t.Run("get pods from the linkerd namespace", func(t *testing.T) {
+			out, stderr, err = TestHelper.LinkerdRun("get", "pods", "-n", TestHelper.GetLinkerdNamespace())
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s\n%s", err, out, stderr)
+			}
 
-		err := checkPodOutput(out, linkerdPods, "linkerd-heartbeat", TestHelper.GetLinkerdNamespace())
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "pod output check failed", "pod output check failed:\n%s\nCommand output:\n%s", err, out)
-		}
-	})
+			err := checkPodOutput(out, linkerdPods, "linkerd-heartbeat", TestHelper.GetLinkerdNamespace())
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "pod output check failed", "pod output check failed:\n%s\nCommand output:\n%s", err, out)
+			}
+		})
 
-	t.Run("get pods from the default namespace of current context", func(t *testing.T) {
-		out, err := TestHelper.Kubectl("", "config", "set-context", "--namespace="+TestHelper.GetLinkerdNamespace(), "--current")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
-		}
+		t.Run("get pods from the default namespace of current context", func(t *testing.T) {
+			out, err := TestHelper.Kubectl("", "config", "set-context", "--namespace="+TestHelper.GetLinkerdNamespace(), "--current")
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
+			}
 
-		out, stderr, err = TestHelper.LinkerdRun("get", "pods")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s\n%s", err, out, stderr)
-		}
+			out, stderr, err = TestHelper.LinkerdRun("get", "pods")
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s\n%s", err, out, stderr)
+			}
 
-		err = checkPodOutput(out, linkerdPods, "linkerd-heartbeat", TestHelper.GetLinkerdNamespace())
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "pod output check failed", "pod output check failed:\n%s\nCommand output:\n%s", err, out)
-		}
+			err = checkPodOutput(out, linkerdPods, "linkerd-heartbeat", TestHelper.GetLinkerdNamespace())
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "pod output check failed", "pod output check failed:\n%s\nCommand output:\n%s", err, out)
+			}
 
-		out, err = TestHelper.Kubectl("", "config", "set-context", "--namespace=default", "--current")
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
-		}
+			out, err = TestHelper.Kubectl("", "config", "set-context", "--namespace=default", "--current")
+			if err != nil {
+				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
+			}
+		})
 	})
 }
 

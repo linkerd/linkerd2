@@ -7,10 +7,12 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/labels"
@@ -96,6 +98,15 @@ func (h *KubernetesHelper) createNamespaceIfNotExists(ctx context.Context, names
 	return nil
 }
 
+func (h *KubernetesHelper) deleteNamespaceIfExists(ctx context.Context, namespace string) error {
+	err := h.clientset.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+
+	if err != nil && !kerrors.IsNotFound(err) {
+		return err
+	}
+	return nil
+}
+
 // CreateControlPlaneNamespaceIfNotExists creates linkerd control plane namespace.
 func (h *KubernetesHelper) CreateControlPlaneNamespaceIfNotExists(ctx context.Context, namespace string) error {
 	labels := map[string]string{"linkerd.io/is-control-plane": "true", "config.linkerd.io/admission-webhooks": "disabled", "linkerd.io/control-plane-ns": namespace}
@@ -107,6 +118,20 @@ func (h *KubernetesHelper) CreateControlPlaneNamespaceIfNotExists(ctx context.Co
 // with a linkerd.io/is-test-data-plane label for easier cleanup afterwards
 func (h *KubernetesHelper) CreateDataPlaneNamespaceIfNotExists(ctx context.Context, namespace string, annotations map[string]string) error {
 	return h.createNamespaceIfNotExists(ctx, namespace, annotations, map[string]string{"linkerd.io/is-test-data-plane": "true"})
+}
+
+// WithDataPlaneNamespace is used to create a test namespace that is deleted before the function returns
+func (h *KubernetesHelper) WithDataPlaneNamespace(ctx context.Context, testName string, annotations map[string]string, t *testing.T, helper *TestHelper, test func(t *testing.T, ns string)) {
+	prefixedNs := helper.GetTestNamespace(testName)
+	if err := helper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, annotations); err != nil {
+		AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", prefixedNs),
+			"failed to create %s namespace: %s", prefixedNs, err)
+	}
+	test(t, prefixedNs)
+	if err := h.deleteNamespaceIfExists(ctx, prefixedNs); err != nil {
+		AnnotatedFatalf(t, fmt.Sprintf("failed to delete %s namespace", prefixedNs),
+			"failed to delete %s namespace: %s", prefixedNs, err)
+	}
 }
 
 // KubectlApply applies a given configuration string in a namespace. If the
