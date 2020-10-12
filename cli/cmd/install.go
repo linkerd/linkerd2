@@ -177,6 +177,8 @@ control plane. It should be run after "linkerd install config".`,
 				// stage succeeded
 				if err := errAfterRunningChecks(values.Global.CNIEnabled); err == nil {
 					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
+						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
+					} else {
 						fmt.Fprintf(os.Stderr, errMsgGlobalResourcesMissing, controlPlaneNamespace)
 					}
 					os.Exit(1)
@@ -199,6 +201,11 @@ control plane. It should be run after "linkerd install config".`,
 	cmd.Flags().AddFlagSet(installOnlyFlagSet)
 	cmd.Flags().AddFlagSet(installUpgradeFlagSet)
 	cmd.Flags().AddFlagSet(proxyFlagSet)
+
+	cmd.Flags().BoolVar(
+		&skipChecks, "skip-checks", false,
+		`Skip checks for namespace existence`,
+	)
 
 	return cmd
 }
@@ -374,12 +381,14 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 		}
 	}
 
-	overrides, err := renderOverrides(values, values.Global.Namespace)
-	if err != nil {
-		return err
+	if stage == "" || stage == controlPlaneStage {
+		overrides, err := renderOverrides(values, values.Global.Namespace)
+		if err != nil {
+			return err
+		}
+		buf.WriteString(yamlSep)
+		buf.WriteString(string(overrides))
 	}
-	buf.WriteString(yamlSep)
-	buf.WriteString(string(overrides))
 
 	_, err = w.Write(buf.Bytes())
 	return err
