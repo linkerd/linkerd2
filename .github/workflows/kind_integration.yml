@@ -24,11 +24,11 @@ jobs:
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
-        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+        echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
 
         . bin/_docker.sh
-        echo ::set-env name=DOCKER_REGISTRY::$DOCKER_REGISTRY
-        echo ::set-env name=DOCKER_BUILDKIT_CACHE::${{ runner.temp }}/.buildx-cache
+        echo "DOCKER_REGISTRY=$DOCKER_REGISTRY" >> $GITHUB_ENV
+        echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
       # actions/cache@v2.0.0
       uses: actions/cache@b820478
@@ -124,10 +124,10 @@ jobs:
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
-        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+        echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
 
         . bin/_docker.sh
-        echo ::set-env name=DOCKER_REGISTRY::$DOCKER_REGISTRY
+        echo "DOCKER_REGISTRY=$DOCKER_REGISTRY" >> $GITHUB_ENV
     - name: Download image archives
       # actions/download-artifact@v1
       uses: actions/download-artifact@18f0f59

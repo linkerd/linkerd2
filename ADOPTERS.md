@@ -13,6 +13,7 @@
 - [Facelift](https://www.facelift-bbt.com/en)
 - [finleap connect](https://connect.finleap.com/)
 - [HomeChoice](https://www.homechoice.co.za/)
+- [HP Inc](https://www8.hp.com/us/en/home.html)
 - [In Loco](https://inloco.com.br/en/)
 - [Just Football](https://justfootball.io)
 - [Kairos](https://kairos.com)
