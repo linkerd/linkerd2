@@ -249,17 +249,6 @@ func makeAllStageFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet)
 					if err != nil {
 						return err
 					}
-					if addOnOverwrite {
-						if _, ok := addonConfigs["prometheus"]; ok {
-							values.Prometheus = make(l5dcharts.Prometheus)
-						}
-						if _, ok := addonConfigs["grafana"]; ok {
-							values.Grafana = make(l5dcharts.Grafana)
-						}
-						if _, ok := addonConfigs["tracing"]; ok {
-							values.Tracing = make(l5dcharts.Tracing)
-						}
-					}
 					err = yaml.Unmarshal(data, &values)
 					if err != nil {
 						return err
