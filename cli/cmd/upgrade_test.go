@@ -598,7 +598,7 @@ func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
 	install := renderInstall(t, installOpts)
 
 	flagSet.Set("config", filepath.Join("testdata", "grafana_enabled.yaml"))
-	flagSet.Set("addon-override", "true")
+	flagSet.Set("addon-overwrite", "true")
 
 	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
 	if err != nil {
@@ -613,16 +613,22 @@ func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
 	} else {
 		t.Error("Expected ConfigMap/linkerd-config-addons in upgrade output diff but was absent")
 	}
+
+	resourceDiffFound := false
 	for id, diffs := range diffMap {
 		for _, diff := range diffs {
 			if ignorableDiff(id, diff) {
 				continue
 			}
 			if id == "Deployment/linkerd-grafana" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "resources"}) {
+				resourceDiffFound = true
 				continue
 			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
+	}
+	if !resourceDiffFound {
+		t.Error("Expected grafana resources requirements to be removed, but were not")
 	}
 }
 
@@ -635,17 +641,19 @@ func testUpgradeOptions() ([]flag.Flag, *pflag.FlagSet, error) {
 	}
 
 	allStageFlags, allStageFlagSet := makeAllStageFlags(defaults)
-	upgradeFlags, upgradeFlagSet, err := makeInstallUpgradeFlags(defaults)
+	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(defaults)
 	if err != nil {
 		return nil, nil, err
 	}
 	proxyFlags, proxyFlagSet := makeProxyFlags(defaults)
+	upgradeFlagSet := makeUpgradeFlags()
 
-	flags := flattenFlags(allStageFlags, upgradeFlags, proxyFlags)
+	flags := flattenFlags(allStageFlags, installUpgradeFlags, proxyFlags)
 	flagSet := pflag.NewFlagSet("upgrade", pflag.ExitOnError)
 	flagSet.AddFlagSet(allStageFlagSet)
-	flagSet.AddFlagSet(upgradeFlagSet)
+	flagSet.AddFlagSet(installUpgradeFlagSet)
 	flagSet.AddFlagSet(proxyFlagSet)
+	flagSet.AddFlagSet(upgradeFlagSet)
 
 	flagSet.Set("control-plane-version", upgradeControlPlaneVersion)
 	flagSet.Set("proxy-version", upgradeProxyVersion)
