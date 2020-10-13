@@ -124,33 +124,11 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
     }
   },
   "proxyInjector":{
-	"namespaceSelector":{
-      "matchExpressions":[
-        {
-          "key": "config.linkerd.io/admission-webhooks",
-          "operator": "NotIn",
-          "values": [
-            "disabled"
-          ]
-        }
-      ]
-    },
     "keyPEM":"test-proxy-injector-key-pem",
 	"crtPEM":"test-proxy-injector-crt-pem",
 	"caBundle":"test-proxy-injector-ca-bundle"
   },
   "profileValidator":{
-    "namespaceSelector":{
-      "matchExpressions":[
-        {
-          "key": "config.linkerd.io/admission-webhooks",
-          "operator": "NotIn",
-          "values": [
-            "disabled"
-          ]
-        }
-      ]
-    },
     "keyPEM":"test-profile-validator-key-pem",
     "crtPEM":"test-profile-validator-crt-pem",
 	"caBundle":"test-profile-validator-ca-bundle"

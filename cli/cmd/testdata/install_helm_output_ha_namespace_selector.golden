@@ -478,9 +478,9 @@ webhooks:
   namespaceSelector:
     matchExpressions:
     - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
+      operator: In
       values:
-      - disabled
+      - enabled
   clientConfig:
     service:
       name: linkerd-proxy-injector
@@ -566,9 +566,9 @@ webhooks:
   namespaceSelector:
     matchExpressions:
     - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
+      operator: In
       values:
-      - disabled
+      - enabled
   clientConfig:
     service:
       name: linkerd-sp-validator
@@ -1148,9 +1148,9 @@ data:
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks
-          operator: NotIn
+          operator: In
           values:
-          - disabled
+          - enabled
     prometheus:
       args:
         config.file: /etc/prometheus/prometheus.yml
@@ -1346,9 +1346,9 @@ data:
       namespaceSelector:
         matchExpressions:
         - key: config.linkerd.io/admission-webhooks
-          operator: NotIn
+          operator: In
           values:
-          - disabled
+          - enabled
     proxyInjectorProxyResources: null
     proxyInjectorResources:
       cpu:
@@ -2572,7 +2572,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: be311764933a64c49159bffee252ca951b64a3f91771e5de5713fe7e7594c430
+        checksum/config: 17f16362a31b48351c3f9d0e8f411e44bf9d2f13c3500e8963e3b8bda7791ad3
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
@@ -2859,7 +2859,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 9e6be0b3fa12e4f73b7150529b7c2b36f6d4b89e2fcb6f020dd5454607c7ccab
+        checksum/config: 62cee90f53f5bf97cd62ab0bafefb8b4a419ee9ddc899990b11a51adb1164756
         linkerd.io/created-by: linkerd/helm linkerd-version
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: test-proxy-version
