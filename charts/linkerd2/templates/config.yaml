@@ -10,30 +10,6 @@ metadata:
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
 data:
-  global: |
-  {{- if .Values.configs -}}
-  {{- if .Values.configs.global -}}
-  {{.Values.configs.global | nindent 4}}
-  {{- end }}
-  {{- else -}}
-  {{- include "linkerd.configs.global" . | nindent 4}}
-  {{- end }}
-  proxy: |
-  {{- if .Values.configs -}}
-  {{- if .Values.configs.proxy -}}
-  {{.Values.configs.proxy | nindent 4}}
-  {{- end }}
-  {{- else -}}
-  {{- include "linkerd.configs.proxy" . | nindent 4}}
-  {{- end }}
-  install: |
-  {{- if .Values.configs -}}
-  {{- if .Values.configs.install -}}
-  {{.Values.configs.install | nindent 4}}
-  {{- end }}
-  {{- else -}}
-  {{- include "linkerd.configs.install" . | nindent 4}}
-  {{- end }}
   values: |
   {{- $values := deepCopy .Values }}
   {{- /*
