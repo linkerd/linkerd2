@@ -282,7 +282,7 @@ func TestUpgradeTracingAddon(t *testing.T) {
 
 	install := renderInstall(t, installOpts)
 
-	flagSet.Set("addon-config", filepath.Join("testdata", "addon_config.yaml"))
+	flagSet.Set("config", filepath.Join("testdata", "addon_config.yaml"))
 
 	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
 	if err != nil {
@@ -331,7 +331,7 @@ func TestUpgradeOverwriteTracingAddon(t *testing.T) {
 
 	install := renderInstall(t, installOpts)
 
-	flagSet.Set("addon-config", filepath.Join("testdata", "addon_config_overwrite.yaml"))
+	flagSet.Set("config", filepath.Join("testdata", "addon_config_overwrite.yaml"))
 	flagSet.Set("trace-collector", "overwrite-collector")
 	flagSet.Set("trace-collector-svc-account", "overwrite-collector.default")
 
@@ -511,7 +511,7 @@ func TestUpgradeEnableAddon(t *testing.T) {
 
 	install := renderInstall(t, installOpts)
 
-	flagSet.Set("addon-config", filepath.Join("testdata", "grafana_enabled.yaml"))
+	flagSet.Set("config", filepath.Join("testdata", "grafana_enabled.yaml"))
 
 	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
 	if err != nil {
@@ -563,7 +563,7 @@ func TestUpgradeRemoveAddonKeys(t *testing.T) {
 
 	install := renderInstall(t, installOpts)
 
-	flagSet.Set("addon-config", filepath.Join("testdata", "grafana_enabled.yaml"))
+	flagSet.Set("config", filepath.Join("testdata", "grafana_enabled.yaml"))
 
 	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
 	if err != nil {
@@ -597,7 +597,7 @@ func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
 
 	install := renderInstall(t, installOpts)
 
-	flagSet.Set("addon-config", filepath.Join("testdata", "grafana_enabled.yaml"))
+	flagSet.Set("config", filepath.Join("testdata", "grafana_enabled.yaml"))
 	flagSet.Set("addon-override", "true")
 
 	upgrade, err := renderUpgrade(install.String(), upgradeOpts)

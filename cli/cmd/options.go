@@ -236,16 +236,11 @@ func makeAllStageFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet)
 				return nil
 			}),
 
-		flag.NewStringFlag(allStageFlags, "addon-config", "",
-			"A path to a configuration file of add-ons. If add-on config already exists, this new config gets merged with the existing one (unless --addon-overwrite is used)",
+		flag.NewStringFlag(allStageFlags, "config", "",
+			"A path to a yaml configuration file. The fields in this file will override the values used to install or upgrade Linkerd.",
 			func(values *l5dcharts.Values, value string) error {
 				if value != "" {
 					data, err := ioutil.ReadFile(value)
-					if err != nil {
-						return err
-					}
-					addonConfigs := make(map[string]interface{})
-					err = yaml.Unmarshal(data, &addonConfigs)
 					if err != nil {
 						return err
 					}
