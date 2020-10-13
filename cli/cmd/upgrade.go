@@ -206,7 +206,7 @@ func makeUpgradeFlags() *pflag.FlagSet {
 	)
 	upgradeFlags.BoolVar(
 		&addOnOverwrite, "addon-overwrite", false,
-		"Overwrite (instead of merge) existing add-ons config with file in --addon-config (or reset to defaults if no new config is passed)",
+		"Overwrite add-on configuration instead of loading the existing config (or reset to defaults if no new config is specified)",
 	)
 	return upgradeFlags
 }
