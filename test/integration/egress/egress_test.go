@@ -31,7 +31,7 @@ func TestEgressHttp(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\n%s", err, stderr)
 	}
 
-	TestHelper.WithDataPlaneNamespace(ctx, "egress-test", map[string]string{}, t, TestHelper, func(t *testing.T, ns string) {
+	TestHelper.WithDataPlaneNamespace(ctx, "egress-test", map[string]string{}, t, func(t *testing.T, ns string) {
 
 		out, err = TestHelper.KubectlApply(out, ns)
 		if err != nil {

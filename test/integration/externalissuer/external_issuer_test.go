@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 
 func TestExternalIssuer(t *testing.T) {
 	ctx := context.Background()
-	TestHelper.WithDataPlaneNamespace(ctx, TestAppNamespaceSuffix, map[string]string{}, t, TestHelper, func(t *testing.T, testNamespace string) {
+	TestHelper.WithDataPlaneNamespace(ctx, TestAppNamespaceSuffix, map[string]string{}, t, func(t *testing.T, testNamespace string) {
 		verifyInstallApp(ctx, t)
 		verifyAppWorksBeforeCertRotation(t)
 		verifyRotateExternalCerts(ctx, t)

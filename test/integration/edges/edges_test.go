@@ -63,7 +63,7 @@ func TestDirectEdges(t *testing.T) {
 
 	ctx := context.Background()
 	// setup
-	TestHelper.WithDataPlaneNamespace(ctx, "direct-edges-test", map[string]string{}, t, TestHelper, func(t *testing.T, testNamespace string) {
+	TestHelper.WithDataPlaneNamespace(ctx, "direct-edges-test", map[string]string{}, t, func(t *testing.T, testNamespace string) {
 
 		// inject terminus
 

@@ -9,15 +9,14 @@ import (
 	"testing"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-
 	"github.com/linkerd/linkerd2/controller/gen/client/clientset/versioned/scheme"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"github.com/linkerd/linkerd2/testutil"
+	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 )
 
 //////////////////////
@@ -144,7 +143,7 @@ func TestInjectAutoParams(t *testing.T) {
 
 	ctx := context.Background()
 
-	TestHelper.WithDataPlaneNamespace(ctx, injectNS, map[string]string{}, t, TestHelper, func(t *testing.T, ns string) {
+	TestHelper.WithDataPlaneNamespace(ctx, injectNS, map[string]string{}, t, func(t *testing.T, ns string) {
 		injectionValidator := testutil.InjectValidator{
 			NoInitContainer:          TestHelper.CNI() || TestHelper.Calico(),
 			AutoInject:               true,
@@ -242,7 +241,7 @@ func TestInjectAutoNamespaceOverrideAnnotations(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	TestHelper.WithDataPlaneNamespace(ctx, injectNS, nsAnnotations, t, TestHelper, func(t *testing.T, ns string) {
+	TestHelper.WithDataPlaneNamespace(ctx, injectNS, nsAnnotations, t, func(t *testing.T, ns string) {
 		// patch injectYAML with unique name and pod annotations
 		// Pod Level proxy configuration override
 		podProxyCPUReq := "600m"
@@ -310,7 +309,7 @@ func TestInjectAutoAnnotationPermutations(t *testing.T) {
 			nsPrefix = fmt.Sprintf("%s-%s", nsPrefix, nsAnnotation)
 		}
 
-		TestHelper.WithDataPlaneNamespace(ctx, nsPrefix, nsAnnotations, t, TestHelper, func(t *testing.T, ns string) {
+		TestHelper.WithDataPlaneNamespace(ctx, nsPrefix, nsAnnotations, t, func(t *testing.T, ns string) {
 			for _, podAnnotation := range injectAnnotations {
 				// patch injectYAML with unique name and pod annotations
 				name := deployName
@@ -463,7 +462,7 @@ func TestInjectAutoPod(t *testing.T) {
 
 	ctx := context.Background()
 
-	TestHelper.WithDataPlaneNamespace(ctx, injectNS, nsAnnotations, t, TestHelper, func(t *testing.T, ns string) {
+	TestHelper.WithDataPlaneNamespace(ctx, injectNS, nsAnnotations, t, func(t *testing.T, ns string) {
 		o, err := TestHelper.Kubectl(podYAML, "--namespace", ns, "create", "-f", "-")
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "failed to create pod",

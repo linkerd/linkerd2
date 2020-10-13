@@ -57,7 +57,7 @@ func TestCliGet(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	TestHelper.WithDataPlaneNamespace(ctx, "get-test", map[string]string{}, t, TestHelper, func(t *testing.T, prefixedNs string) {
+	TestHelper.WithDataPlaneNamespace(ctx, "get-test", map[string]string{}, t, func(t *testing.T, prefixedNs string) {
 
 		out, err = TestHelper.KubectlApply(out, prefixedNs)
 		if err != nil {

@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 
 func TestServiceProfiles(t *testing.T) {
 	ctx := context.Background()
-	TestHelper.WithDataPlaneNamespace(ctx, "serviceprofile-test", map[string]string{}, t, TestHelper, func(t *testing.T, ns string) {
+	TestHelper.WithDataPlaneNamespace(ctx, "serviceprofile-test", map[string]string{}, t, func(t *testing.T, ns string) {
 		t.Run("service profiles", testProfiles)
 		t.Run("service profiles metrics", testMetrics)
 	})
