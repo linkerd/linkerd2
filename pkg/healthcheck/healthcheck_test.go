@@ -3567,7 +3567,7 @@ func TestGetString(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc //pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			ans, err := getString(tc.i, tc.k)
+			ans, err := GetString(tc.i, tc.k)
 
 			if ans != tc.expected {
 				t.Logf("Expected value: %s\n", tc.expected)
