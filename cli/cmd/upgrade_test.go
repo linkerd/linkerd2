@@ -295,7 +295,7 @@ func TestUpgradeTracingAddon(t *testing.T) {
 	tracingManifests := []string{
 		"Service/linkerd-jaeger", "Deployment/linkerd-jaeger", "ConfigMap/linkerd-config-addons",
 		"ServiceAccount/linkerd-jaeger", "Service/linkerd-collector", "ConfigMap/linkerd-collector-config",
-		"ServiceAccount/linkerd-collector", "Deployment/linkerd-collector",
+		"ServiceAccount/linkerd-collector", "Deployment/linkerd-collector", "RoleBinding/linkerd-psp",
 	}
 	for _, id := range tracingManifests {
 		if _, ok := diffMap[id]; ok {
