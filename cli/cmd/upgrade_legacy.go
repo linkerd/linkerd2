@@ -13,6 +13,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -80,6 +81,8 @@ func loadStoredValuesLegacy(ctx context.Context, k *k8s.KubernetesAPI) (*charts.
 			if err == nil {
 				// Update only if there is no error
 				cmData = string(repairedCm)
+			} else {
+				log.Warnf("add-on config repair failed: %s", err)
 			}
 
 			if err = yaml.Unmarshal([]byte(cmData), &values); err != nil {
