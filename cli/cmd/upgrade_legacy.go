@@ -75,6 +75,13 @@ func loadStoredValuesLegacy(ctx context.Context, k *k8s.KubernetesAPI) (*charts.
 				return nil, fmt.Errorf("values subpath not found in %s configmap", k8s.AddOnsConfigMapName)
 			}
 
+			// repair Add-On configs
+			repairedCm, err := repairAddOnConfig([]byte(cmData))
+			if err == nil {
+				// Update only if there is no error
+				cmData = string(repairedCm)
+			}
+
 			if err = yaml.Unmarshal([]byte(cmData), &values); err != nil {
 				return nil, err
 			}
@@ -82,6 +89,47 @@ func loadStoredValuesLegacy(ctx context.Context, k *k8s.KubernetesAPI) (*charts.
 	}
 
 	return values, nil
+}
+
+func repairAddOnConfig(rawValues []byte) ([]byte, error) {
+
+	var values map[string]interface{}
+	err := yaml.Unmarshal(rawValues, &values)
+	if err != nil {
+		return nil, err
+	}
+
+	// Grafana Depreciation Fix
+	// Convert into Map instead of Values, as the latter returns with empty values
+	if grafana, err := healthcheck.GetMap(values, "grafana"); err == nil {
+		image, err := healthcheck.GetMap(grafana, "image")
+		if err == nil {
+			// Remove image.name tag if only name is present and set to the older image tag
+			if val, err := healthcheck.GetString(image, "name"); err == nil && val == "gcr.io/linkerd-io/grafana" {
+				delete(image, "name")
+			}
+
+			// Remove image tag if its a empty map
+			if len(image) == 0 {
+				delete(grafana, "image")
+			}
+		}
+
+		// Handle removal of grafana.name field
+		name, err := healthcheck.GetString(grafana, "name")
+		if err == nil {
+			// If default, remove it as its no longer needed
+			if name == "linkerd-grafana" {
+				delete(grafana, "name")
+			}
+		}
+
+	}
+	rawValues, err = yaml.Marshal(values)
+	if err != nil {
+		return nil, err
+	}
+	return rawValues, nil
 }
 
 func setFlagsFromInstall(flags *pflag.FlagSet, installFlags []*pb.Install_Flag) {

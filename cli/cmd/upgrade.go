@@ -15,7 +15,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
-	"github.com/prometheus/common/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
@@ -255,12 +254,6 @@ func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage
 		}
 	}
 
-	// Add-On Config repair
-	err = repairAddOnConfig(values)
-	if err != nil {
-		log.Warnf("Repairing Add-On Config Failied: %v", err)
-	}
-
 	err = flag.ApplySetFlags(values, flags)
 	if err != nil {
 		return bytes.Buffer{}, err
@@ -324,57 +317,6 @@ func loadStoredValues(ctx context.Context, k *k8s.KubernetesAPI) (*charts.Values
 	}
 
 	return values, nil
-}
-
-func repairAddOnConfig(values *l5dcharts.Values) error {
-
-	// Convert into a Map
-	rawGrafana, err := yaml.Marshal(values.Grafana)
-	if err != nil {
-		return err
-	}
-
-	var valuesMap map[string]interface{}
-	err = yaml.Unmarshal(rawGrafana, &valuesMap)
-	if err != nil {
-		return err
-	}
-
-	// Grafana Depreciation Fix
-	// Convert into Map instead of Values, as the latter returns with empty values
-	image, err := healthcheck.GetMap(valuesMap, "image")
-	if err == nil {
-		// Remove image.name tag if only name is present and set to the older image tag
-		if val, err := healthcheck.GetString(image, "name"); err == nil && val == "gcr.io/linkerd-io/grafana" {
-			delete(image, "name")
-		}
-
-		// Remove image tag if its a empty map
-		if len(image) == 0 {
-			delete(valuesMap, "image")
-		}
-	}
-
-	// Handle removal of grafana.name field
-	name, err := healthcheck.GetString(valuesMap, "name")
-	if err == nil {
-		// If default, remove it as its no longer needed
-		if name == "linkerd-grafana" {
-			delete(valuesMap, "name")
-		}
-	}
-
-	var grafana l5dcharts.Grafana
-	rawGrafana, err = yaml.Marshal(valuesMap)
-	if err != nil {
-		return err
-	}
-	err = yaml.Unmarshal(rawGrafana, &grafana)
-	if err != nil {
-		return err
-	}
-	values.Grafana = grafana
-	return nil
 }
 
 // upgradeErrorf prints the error message and quits the upgrade process
