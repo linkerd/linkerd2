@@ -7,6 +7,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
@@ -19,7 +20,6 @@ const (
 type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
-		Stage                       string            `json:"stage"`
 		ControllerImage             string            `json:"controllerImage"`
 		ControllerImageVersion      string            `json:"controllerImageVersion"`
 		WebImage                    string            `json:"webImage"`
@@ -93,6 +93,9 @@ type (
 		GrafanaURL               string              `json:"grafanaUrl"`
 		ImagePullSecrets         []map[string]string `json:"imagePullSecrets"`
 		LinkerdVersion           string              `json:"linkerdVersion"`
+
+		PodAnnotations map[string]string `json:"podAnnotations"`
+		PodLabels      map[string]string `json:"podLabels"`
 
 		Proxy     *Proxy     `json:"proxy"`
 		ProxyInit *ProxyInit `json:"proxyInit"`
@@ -254,6 +257,10 @@ func NewValues(ha bool) (*Values, error) {
 		return nil, err
 	}
 
+	v.Global.ControllerImageVersion = version.Version
+	v.ControllerImageVersion = version.Version
+	v.Global.Proxy.Image.Version = version.Version
+	v.DebugContainer.Image.Version = version.Version
 	v.Global.CliVersion = k8s.CreatedByAnnotationValue()
 	v.ProfileValidator = &ProfileValidator{TLS: &TLS{}}
 	v.ProxyInjector = &ProxyInjector{TLS: &TLS{}}
@@ -310,4 +317,24 @@ func (v Values) merge(src Values) (Values, error) {
 	}
 
 	return src, nil
+}
+
+// DeepCopy creates a deep copy of the Values struct by marshalling to yaml and
+// then unmarshalling a new struct.
+func (v *Values) DeepCopy() (*Values, error) {
+	dst := Values{}
+	bytes, err := yaml.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	err = yaml.Unmarshal(bytes, &dst)
+	if err != nil {
+		return nil, err
+	}
+	return &dst, nil
+}
+
+func (v *Values) String() string {
+	bytes, _ := yaml.Marshal(v)
+	return string(bytes)
 }

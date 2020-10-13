@@ -16,8 +16,8 @@ func TestNewValues(t *testing.T) {
 	testVersion := "linkerd-dev"
 
 	expected := &Values{
-		Stage:                       "",
 		ControllerImage:             "ghcr.io/linkerd/controller",
+		ControllerImageVersion:      testVersion,
 		WebImage:                    "ghcr.io/linkerd/web",
 		ControllerReplicas:          1,
 		ControllerUID:               2103,
@@ -52,6 +52,8 @@ func TestNewValues(t *testing.T) {
 			ControlPlaneTracing:      false,
 			HighAvailability:         false,
 			IdentityTrustDomain:      "cluster.local",
+			PodAnnotations:           map[string]string{},
+			PodLabels:                map[string]string{},
 			Proxy: &Proxy{
 				EnableExternalProfiles: false,
 				Image: &Image{
@@ -143,6 +145,7 @@ func TestNewValues(t *testing.T) {
 	// pin the versions to ensure consistent test result.
 	// in non-test environment, the default versions are read from the
 	// values.yaml.
+	actual.ControllerImageVersion = testVersion
 	actual.Global.ControllerImageVersion = testVersion
 	actual.Global.Proxy.Image.Version = testVersion
 	actual.Global.ProxyInit.Image.Version = testVersion
@@ -238,6 +241,7 @@ func TestNewValues(t *testing.T) {
 		// pin the versions to ensure consistent test result.
 		// in non-test environment, the default versions are read from the
 		// values.yaml.
+		actual.ControllerImageVersion = testVersion
 		actual.Global.ControllerImageVersion = testVersion
 		actual.Global.Proxy.Image.Version = testVersion
 		actual.Global.ProxyInit.Image.Version = testVersion
