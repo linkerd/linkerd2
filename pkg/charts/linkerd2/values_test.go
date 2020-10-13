@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/linkerd/linkerd2/pkg/version"
 )
 
@@ -14,6 +16,16 @@ func TestNewValues(t *testing.T) {
 	}
 
 	testVersion := "linkerd-dev"
+
+	namespaceSelector := &metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      "config.linkerd.io/admission-webhooks",
+				Operator: "NotIn",
+				Values:   []string{"disabled"},
+			},
+		},
+	}
 
 	expected := &Values{
 		ControllerImage:             "ghcr.io/linkerd/controller",
@@ -134,8 +146,8 @@ func TestNewValues(t *testing.T) {
 			},
 		},
 
-		ProxyInjector:    &ProxyInjector{TLS: &TLS{}},
-		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
+		ProxyInjector:    &ProxyInjector{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
+		ProfileValidator: &ProfileValidator{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
 		Tap:              &Tap{TLS: &TLS{}},
 		Grafana: Grafana{
 			"enabled": true,
