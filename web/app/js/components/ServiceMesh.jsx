@@ -13,7 +13,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Spinner from './util/Spinner.jsx';
 import StatusTable from './StatusTable.jsx';
-import { Trans } from '@lingui/macro';
+import { Plural, Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _compact from 'lodash/compact';
 import _countBy from 'lodash/countBy';
@@ -107,7 +107,7 @@ class ServiceMesh extends React.Component {
     const { productName, releaseVersion, controllerNamespace } = this.props;
 
     return [
-      { key: 1, name: `${productName} version`, value: releaseVersion },
+      { key: 1, name: <Trans>{productName} version</Trans>, value: releaseVersion },
       { key: 2, name: <Trans>{productName} namespace</Trans>, value: controllerNamespace },
       { key: 3, name: <Trans>Control plane components</Trans>, value: components.length },
       { key: 4, name: <Trans>Data plane proxies</Trans>, value: this.proxyCount() },
@@ -223,7 +223,7 @@ class ServiceMesh extends React.Component {
       <React.Fragment>
         <Grid container justify="space-between">
           <Grid item xs={3}>
-            <Typography variant="h6">Control plane</Typography>
+            <Typography variant="h6"><Trans>Control plane</Trans></Typography>
           </Grid>
           <Grid item xs={3}>
             <Typography align="right"><Trans>componentsMsg</Trans></Typography>
@@ -243,7 +243,7 @@ class ServiceMesh extends React.Component {
   renderServiceMeshDetails() {
     return (
       <React.Fragment>
-        <Typography variant="h6">Service mesh details</Typography>
+        <Typography variant="h6"><Trans>Service mesh details</Trans></Typography>
 
         <BaseTable
           tableClassName="metric-table"
@@ -263,14 +263,18 @@ class ServiceMesh extends React.Component {
     let numUnadded = 0;
 
     if (_isEmpty(nsStatuses)) {
-      message = 'No resources detected.';
+      message = <Trans>noResourcesDetectedMsg</Trans>;
     } else {
       const meshedCount = _countBy(nsStatuses, pod => {
         return pod.meshedPercent.get() > 0;
       });
       numUnadded = meshedCount.false || 0;
-      message = numUnadded === 0 ? `All namespaces have a ${productName} install.` :
-        `${numUnadded} ${numUnadded === 1 ? 'namespace has' : 'namespaces have'} no meshed resources.`;
+      message = numUnadded === 0 ? <Trans>All namespaces have a {productName} install.</Trans> : (
+        <Plural
+          value={numUnadded}
+          one="# namespace has no meshed resources"
+          other="# namespaces have no meshed resources" />
+      );
     }
 
     return (

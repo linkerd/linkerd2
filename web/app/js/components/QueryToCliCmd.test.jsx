@@ -1,6 +1,7 @@
 import QueryToCliCmd from './QueryToCliCmd.jsx';
 import React from 'react';
 import { mount } from 'enzyme';
+import { i18nWrap } from '../../test/testHelpers.jsx';
 
 describe('QueryToCliCmd', () => {
   it('renders a query as a linkerd CLI command', () => {
@@ -10,12 +11,12 @@ describe('QueryToCliCmd', () => {
       "scheme": ""
     }
 
-    let component = mount(
+    let component = mount(i18nWrap(
       <QueryToCliCmd
         cmdName="routes"
         query={query}
         resource={query.resource}
-        controllerNamespace="linkerd" />
+        controllerNamespace="linkerd" />)
     );
 
     expect(component).toIncludeText("Current Routes query");
@@ -28,12 +29,12 @@ describe('QueryToCliCmd', () => {
       "namespace": "linkerd"
     }
 
-    let component = mount(
+    let component = mount(i18nWrap(
       <QueryToCliCmd
         cmdName="routes"
         query={query}
         resource={query.resource}
-        controllerNamespace="my-linkerd-ns" />
+        controllerNamespace="my-linkerd-ns" />)
     );
 
     expect(component).toIncludeText("Current Routes query");
@@ -49,12 +50,12 @@ describe('QueryToCliCmd', () => {
       "authority": "foo.bar:8080"
     }
 
-    let component = mount(
+    let component = mount(i18nWrap(
       <QueryToCliCmd
         cmdName="tap"
         query={query}
         resource={query.resource}
-        controllerNamespace="linkerd" />
+        controllerNamespace="linkerd" />)
     );
 
     expect(component).toIncludeText("Current Tap query");
@@ -71,12 +72,12 @@ describe('QueryToCliCmd', () => {
       "authority": "foo.bar:8080"
     }
 
-    let component = mount(
+    let component = mount(i18nWrap(
       <QueryToCliCmd
         cmdName="tap"
         query={query}
         resource={query.resource}
-        controllerNamespace="linkerd" />
+        controllerNamespace="linkerd" />)
     );
 
     expect(component).toIncludeText("Current Tap query");
@@ -89,12 +90,12 @@ describe('QueryToCliCmd', () => {
       "namespace": "linkerd"
     }
 
-    let component = mount(
+    let component = mount(i18nWrap(
       <QueryToCliCmd
         cmdName="top"
         query={query}
         resource={query.resource}
-        controllerNamespace="linkerd" />
+        controllerNamespace="linkerd" />)
     );
 
     expect(component).toIncludeText("Current Top query");
@@ -109,12 +110,12 @@ describe('QueryToCliCmd', () => {
         "theLimitDoesNotExist": 999
       }
 
-      let component = mount(
+      let component = mount(i18nWrap(
         <QueryToCliCmd
           cmdName="tap"
           query={query}
           resource={query.resource}
-          controllerNamespace="linkerd" />
+          controllerNamespace="linkerd" />)
       );
 
       expect(component).toIncludeText("Current Tap query");

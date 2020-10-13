@@ -1,6 +1,7 @@
 import Button from '@material-ui/core/Button';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import { apiErrorPropType } from './util/ApiHelpers.jsx';
 import { withContext } from './util/AppContext.jsx';
@@ -39,25 +40,31 @@ class Version extends React.Component {
     if (!latestVersion) {
       return (
         <Typography className={classes.versionMsg}>
-          Version check failed{error ? `: ${error.statusText}` : ''}.
+          <Trans>Version check failed{error ? `: ${error.statusText}` : ''}.</Trans>
         </Typography>
       );
     }
 
     if (isLatest) {
-      return <Typography className={classes.versionMsg}>Linkerd is up to date.</Typography>;
+      return <Typography className={classes.versionMsg}><Trans>LinkerdIsUpToDateMsg</Trans></Typography>;
     }
+
+    const versionText = this.numericVersion(latestVersion);
 
     return (
       <div>
-        <Typography className={classes.versionMsg}>A new version ({this.numericVersion(latestVersion)}) is available.</Typography>
+        <Typography className={classes.versionMsg}>
+          <Trans>
+            A new version ({versionText}) is available.
+          </Trans>
+        </Typography>
         <Button
           className={classes.updateBtn}
           variant="contained"
           color="primary"
           target="_blank"
           href="https://versioncheck.linkerd.io/update">
-          Update Now
+          <Trans>Update Now</Trans>
         </Button>
       </div>
     );

@@ -8,6 +8,7 @@ import sinon from 'sinon';
 import sinonStubPromise from 'sinon-stub-promise';
 import Spinner from './util/Spinner.jsx';
 import { mount } from 'enzyme';
+import { i18nWrap } from '../../test/testHelpers.jsx';
 
 sinonStubPromise(sinon);
 
@@ -91,7 +92,7 @@ describe('ServiceMesh', () => {
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
-    component = mount(routerWrap(ServiceMesh));
+    component = mount(i18nWrap(routerWrap(ServiceMesh)));
 
     return withPromise(() => {
       component.update();
@@ -107,7 +108,7 @@ describe('ServiceMesh', () => {
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
-    component = mount(routerWrap(ServiceMesh));
+    component = mount(i18nWrap(routerWrap(ServiceMesh)));
 
     return withPromise(() => {
       component.update();
@@ -122,7 +123,7 @@ describe('ServiceMesh', () => {
       ok: true,
       json: () => Promise.resolve({ metrics: [] })
     });
-    component = mount(routerWrap(ServiceMesh));
+    component = mount(i18nWrap(routerWrap(ServiceMesh)));
 
     return withPromise(() => {
       component.update();
@@ -138,7 +139,7 @@ describe('ServiceMesh', () => {
         ok: true,
         json: () => Promise.resolve({})
       });
-      component = mount(routerWrap(ServiceMesh));
+      component = mount(i18nWrap(routerWrap(ServiceMesh)));
 
       return withPromise(() => {
         expect(component).toIncludeText("No namespaces detected");
@@ -163,7 +164,7 @@ describe('ServiceMesh', () => {
         ok: true,
         json: () => Promise.resolve(nsAllResourcesAdded)
       });
-      component = mount(routerWrap(ServiceMesh));
+      component = mount(i18nWrap(routerWrap(ServiceMesh)));
 
       return withPromise(() => {
         expect(component).toIncludeText("4 namespaces have no meshed resources.");
@@ -183,7 +184,7 @@ describe('ServiceMesh', () => {
         ok: true,
         json: () => Promise.resolve(nsOneResourceNotAdded)
       });
-      component = mount(routerWrap(ServiceMesh));
+      component = mount(i18nWrap(routerWrap(ServiceMesh)));
 
       return withPromise(() => {
         expect(component).toIncludeText("1 namespace has no meshed resources.");
@@ -200,7 +201,7 @@ describe('ServiceMesh', () => {
         ok: true,
         json: () => Promise.resolve(nsAllResourcesAdded)
       });
-      component = mount(routerWrap(ServiceMesh));
+      component = mount(i18nWrap(routerWrap(ServiceMesh)));
 
       return withPromise(() => {
         expect(component).toIncludeText("All namespaces have a ShinyProductName install.");
