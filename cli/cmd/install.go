@@ -82,7 +82,6 @@ var (
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
 		"templates/tap.yaml",
-		"templates/linkerd-config-addons.yaml",
 	}
 
 	ignoreCluster bool

@@ -3041,45 +3041,6 @@ spec:
 
 ---
 ###
-### linkerd add-ons configuration
-###
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config-addons
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/cli dev-undefined
-data:
-  values: |-
-    global:
-      prometheusUrl: ""
-      grafanaUrl: ""
-    grafana:
-      enabled: true
-      resources:
-        cpu:
-          limit: "1"
-          request: 100m
-        memory:
-          limit: 1024Mi
-          request: 50Mi
-    prometheus:
-      enabled: true
-      resources:
-        cpu:
-          limit: "4"
-          request: 300m
-        memory:
-          limit: 8192Mi
-          request: 300Mi
-    tracing:
-      enabled: false
----
-###
 ### Grafana RBAC
 ###
 ---
