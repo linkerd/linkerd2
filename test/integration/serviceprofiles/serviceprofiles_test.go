@@ -32,13 +32,16 @@ func TestMain(m *testing.M) {
 }
 
 func TestServiceProfiles(t *testing.T) {
+	ctx := context.Background()
+	TestHelper.WithDataPlaneNamespace(ctx, "serviceprofile-test", map[string]string{}, t, func(t *testing.T, ns string) {
+		t.Run("service profiles", testProfiles)
+		t.Run("service profiles metrics", testMetrics)
+	})
+}
 
+func testProfiles(t *testing.T) {
 	ctx := context.Background()
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
-	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, testNamespace, nil)
-	if err != nil {
-		testutil.Fatalf(t, "failed to create %s namespace: %s", testNamespace, err)
-	}
 	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
@@ -138,7 +141,7 @@ func TestServiceProfiles(t *testing.T) {
 	}
 }
 
-func TestServiceProfileMetrics(t *testing.T) {
+func testMetrics(t *testing.T) {
 	var (
 		testNamespace        = TestHelper.GetTestNamespace("serviceprofile-test")
 		testSP               = "world-svc"
