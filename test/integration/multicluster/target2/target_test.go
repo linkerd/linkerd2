@@ -35,7 +35,7 @@ func TestTargetTraffic(t *testing.T) {
 		}
 		// Check for expected error messages
 		for _, row := range strings.Split(out, "\n") {
-			if strings.Contains(row, "api/vote?choice=:doughnut:") {
+			if strings.Contains(row, " /api/vote?choice=:doughnut: ") {
 				return nil
 			}
 		}
