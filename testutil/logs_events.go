@@ -49,8 +49,7 @@ var (
 		`(Liveness|Readiness) probe failed: Get http://.*: read tcp .*: read: connection reset by peer`,
 		`(Liveness|Readiness) probe failed: Get http://.*: net/http: request canceled .*\(Client\.Timeout exceeded while awaiting headers\)`,
 		`Failed to update endpoint .*/linkerd-.*: Operation cannot be fulfilled on endpoints "linkerd-.*": the object has been modified; please apply your changes to the latest version and try again`,
-		`Error updating Endpoint Slices for Service .*/linkerd-.*: Error deleting linkerd-.* EndpointSlice for Service .*/linkerd-.*: endpointslices.discovery.k8s.io "linkerd-.*" not found`,
-		`Error updating Endpoint Slices for Service .*/linkerd-.*: Error updating linkerd-.* EndpointSlice for Service .*/linkerd-.*: Operation cannot be fulfilled on endpointslices.discovery.k8s.io "linkerd-.*": the object has been modified; please apply your changes to the latest version and try again`,
+		`Error updating Endpoint Slices for Service .*`,
 		`error killing pod: failed to "KillPodSandbox" for ".*" with KillPodSandboxError: "rpc error: code = Unknown desc`,
 		`failed to create containerd task: failed to start io pipe copy: unable to copy pipes: containerd-shim: opening w/o fifo "/run/containerd/io.containerd.grpc.v1.cri/containers/linkerd-proxy/io/\d+/linkerd-proxy-stdout"`,
 	}, "|"))
