@@ -46,41 +46,6 @@ func parseDeployment(yamlString string) (*appsv1.Deployment, error) {
 	return &deploy, nil
 }
 
-func TestInjectManual(t *testing.T) {
-
-	injectionValidator := testutil.InjectValidator{
-		DisableIdentity: true,
-		Version:         "proxy-version",
-		Image:           "proxy-image",
-		InitImage:       "init-image",
-	}
-
-	flags, _ := injectionValidator.GetFlagsAndAnnotations()
-
-	cmd := append([]string{"inject",
-		"--manual",
-		"--linkerd-namespace=fake-ns",
-		"--ignore-cluster",
-	}, flags...)
-
-	cmd = append(cmd, "testdata/inject_test.yaml")
-
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v: %s", stderr, err)
-	}
-
-	deploy, err := parseDeployment(out)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed parsing deployment", "failed parsing deployment\n%s", err.Error())
-	}
-
-	err = injectionValidator.ValidatePod(&deploy.Spec.Template.Spec)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "received unexpected output", "received unexpected output\n%s", err.Error())
-	}
-}
-
 func TestInjectManualParams(t *testing.T) {
 
 	injectionValidator := testutil.InjectValidator{
