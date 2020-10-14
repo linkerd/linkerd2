@@ -1,7 +1,6 @@
 package target2
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -34,12 +33,13 @@ func TestTargetTraffic(t *testing.T) {
 		if err != nil {
 			return fmt.Errorf("%s\n%s", err, out)
 		}
+		// Check for expected error messages
 		for _, row := range strings.Split(out, "\n") {
-			if strings.Contains(row, "http://web-svc.emojivoto.svc.cluster.local:80/api/vote") {
+			if strings.Contains(row, "api/vote?choice=:doughnut:") {
 				return nil
 			}
 		}
-		return errors.New("web-svc logs in target cluster were empty")
+		return fmt.Errorf("web-svc logs in target cluster do not include voting errors\n%s", out)
 	})
 	if err != nil {
 		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd multicluster gateways' command timed-out (%s)", timeout), err)
