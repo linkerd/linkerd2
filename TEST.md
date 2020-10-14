@@ -102,7 +102,7 @@ are no prerequisites for this test path.
 ### Prerequisites for existing cluster
 
 If integration tests should run on an existing Kubernetes cluster, then the
-`--skip-kind-create` flag should be passed. This will disable the tests from
+`--skip-cluster-create` flag should be passed. This will disable the tests from
 creating their own clusters and instead use the current Kubernetes context.
 
 In this case, ensure the following:
@@ -125,7 +125,7 @@ Optional flags can be passed that change the testing behavior:
 - `--name`: Pass an argument with this flag to specify a specific test that
   should be run; all tests are run in the absence of this flag. Valid test names
   are included in the `bin/tests --help` output
-- `--skip-kind-create`: Skip KinD cluster creation for each test and use an
+- `--skip-cluster-create`: Skip KinD cluster creation for each test and use an
   existing Kubernetes cluster
 - `--images`: (Primarily for CI) Loads images from the `image-archive/`
   directory into the KinD clusters created for each test
@@ -179,7 +179,7 @@ bin/tests $PWD/bin/linkerd
 ```
 
 **Note**: As stated above, if running tests in an existing KinD cluster by
-passing `--skip-kind-create`, `bin/kind-load` must be run so that the images are
+passing `--skip-cluster-create`, `bin/kind-load` must be run so that the images are
 available to the cluster
 
 #### Testing the dashboard
