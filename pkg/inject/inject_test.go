@@ -54,7 +54,7 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyCPULimitAnnotation:                      "1.5",
 							k8s.ProxyMemoryLimitAnnotation:                   "256",
 							k8s.ProxyUIDAnnotation:                           "8500",
-							k8s.ProxyLogLevelAnnotation:                      "debug,linkerd2_proxy=debug",
+							k8s.ProxyLogLevelAnnotation:                      "debug,linkerd=debug",
 							k8s.ProxyLogFormatAnnotation:                     "json",
 							k8s.ProxyEnableExternalProfilesAnnotation:        "false",
 							k8s.ProxyVersionOverrideAnnotation:               proxyVersionOverride,
@@ -84,7 +84,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Global.Proxy.Ports.Admin = 5001
 				values.Global.Proxy.Ports.Outbound = 5002
 				values.Global.Proxy.WaitBeforeExitSeconds = 123
-				values.Global.Proxy.LogLevel = "debug,linkerd2_proxy=debug"
+				values.Global.Proxy.LogLevel = "debug,linkerd=debug"
 				values.Global.Proxy.LogFormat = "json"
 				values.Global.Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
@@ -143,7 +143,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyCPULimitAnnotation:                 "1.5",
 				k8s.ProxyMemoryLimitAnnotation:              "256",
 				k8s.ProxyUIDAnnotation:                      "8500",
-				k8s.ProxyLogLevelAnnotation:                 "debug,linkerd2_proxy=debug",
+				k8s.ProxyLogLevelAnnotation:                 "debug,linkerd=debug",
 				k8s.ProxyLogFormatAnnotation:                "json",
 				k8s.ProxyEnableExternalProfilesAnnotation:   "false",
 				k8s.ProxyVersionOverrideAnnotation:          proxyVersionOverride,
@@ -171,7 +171,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Global.Proxy.Ports.Admin = 5001
 				values.Global.Proxy.Ports.Outbound = 5002
 				values.Global.Proxy.WaitBeforeExitSeconds = 123
-				values.Global.Proxy.LogLevel = "debug,linkerd2_proxy=debug"
+				values.Global.Proxy.LogLevel = "debug,linkerd=debug"
 				values.Global.Proxy.LogFormat = "json"
 				values.Global.Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{

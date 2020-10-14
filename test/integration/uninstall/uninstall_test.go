@@ -24,7 +24,7 @@ func TestInstall(t *testing.T) {
 	args := []string{
 		"install",
 		"--controller-log-level", "debug",
-		"--proxy-log-level", "warn,linkerd2_proxy=debug",
+		"--proxy-log-level", "warn,linkerd=debug",
 		"--proxy-version", TestHelper.GetVersion(),
 	}
 
