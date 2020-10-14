@@ -29,6 +29,11 @@ func TestMain(m *testing.M) {
 func TestSMIMetrics(t *testing.T) {
 
 	ctx := context.Background()
+
+	if os.Getenv("RUN_ARM_TEST") != "" {
+		t.Skip("Skipped. SMI-metrics image does not support ARM yet")
+	}
+
 	// Install smi-metrics using Helm chart
 	testNamespace := TestHelper.GetTestNamespace("smi-metrics-test")
 	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, testNamespace, nil)
