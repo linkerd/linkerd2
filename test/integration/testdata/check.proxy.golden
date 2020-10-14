@@ -71,10 +71,6 @@ linkerd-data-plane
 √ data plane is up-to-date
 √ data plane and cli versions match
 
-linkerd-addons
---------------
-√ 'linkerd-config-addons' config map exists
-
 linkerd-prometheus
 ------------------
 √ prometheus add-on service account exists
