@@ -13,7 +13,6 @@ RUN ./bin/install-deps $TARGETARCH
 FROM --platform=$BUILDPLATFORM $RUNTIME_IMAGE as fetch
 RUN apt-get update && apt-get install -y ca-certificates curl jq
 WORKDIR /build
-RUN echo bust the cache
 COPY bin/fetch-proxy bin/fetch-proxy
 COPY .proxy-version proxy-version
 ARG TARGETARCH
