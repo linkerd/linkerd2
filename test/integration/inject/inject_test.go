@@ -80,7 +80,7 @@ func TestInjectManualParams(t *testing.T) {
 
 	cmd = append(cmd, "testdata/inject_test.yaml")
 
-	out, err := TestHelper.LinkerdRunOk(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}

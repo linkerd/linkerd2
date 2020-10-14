@@ -115,7 +115,7 @@ func TestCheckPreInstall(t *testing.T) {
 
 	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.pre.golden"
-	out, err := TestHelper.LinkerdRunOk(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd check' command failed", err)
 	}
@@ -219,7 +219,7 @@ func TestInstallCNIPlugin(t *testing.T) {
 	)
 
 	exec := append([]string{cmd}, args...)
-	out, err := TestHelper.LinkerdRunOk(exec...)
+	out, err := TestHelper.LinkerdRun(exec...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install-cni' command failed", err)
 	}
@@ -233,7 +233,7 @@ func TestInstallCNIPlugin(t *testing.T) {
 	// perform a linkerd check with --linkerd-cni-enabled
 	timeout := time.Minute
 	err = TestHelper.RetryFor(timeout, func() error {
-		out, err = TestHelper.LinkerdRunOk("check", "--pre", "--linkerd-cni-enabled", "--wait=0")
+		out, err = TestHelper.LinkerdRun("check", "--pre", "--linkerd-cni-enabled", "--wait=0")
 		if err != nil {
 			return err
 		}
@@ -325,7 +325,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 		cmd = "upgrade"
 		// test 2-stage install during upgrade
-		out, err := TestHelper.LinkerdRunOk(cmd, "config")
+		out, err := TestHelper.LinkerdRun(cmd, "config")
 		if err != nil {
 			testutil.AnnotatedFatal(t, "'linkerd upgrade config' command failed", err)
 		}
@@ -342,7 +342,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 	}
 
 	exec := append([]string{cmd}, args...)
-	out, err := TestHelper.LinkerdRunOk(exec...)
+	out, err := TestHelper.LinkerdRun(exec...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
@@ -375,7 +375,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		if out != upgradeFromManifests {
 			// retry in case it's just a discrepancy in the heartbeat cron schedule
 			exec := append([]string{cmd}, args...)
-			out, err := TestHelper.LinkerdRunOk(exec...)
+			out, err := TestHelper.LinkerdRun(exec...)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, fmt.Sprintf("command failed: %v", exec),
 					"command failed: %v\n%s\n%s", exec, out, stderr)
@@ -481,7 +481,7 @@ func TestInstallMulticluster(t *testing.T) {
 			"install",
 			"--namespace", TestHelper.GetMulticlusterNamespace(),
 		}...)
-		out, err := TestHelper.LinkerdRunOk(exec...)
+		out, err := TestHelper.LinkerdRun(exec...)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "'linkerd multicluster install' command failed", err)
 		}
@@ -715,7 +715,7 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 			cliVOverride := []string{"--cli-version-override", cliVersionOverride}
 			cmd = append(cmd, cliVOverride...)
 		}
-		out, err := TestHelper.LinkerdRunOk(cmd...)
+		out, err := TestHelper.LinkerdRun(cmd...)
 
 		if err != nil {
 			return fmt.Errorf("'linkerd check' command failed\n%s", err)
@@ -761,7 +761,7 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 func TestInstallSP(t *testing.T) {
 	cmd := []string{"install-sp"}
 
-	out, err := TestHelper.LinkerdRunOk(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install-sp' command failed", err)
 	}
@@ -837,7 +837,7 @@ func TestInject(t *testing.T) {
 				cmd = append(cmd, "testdata/smoke_test.yaml")
 
 				var injectReport string
-				out, injectReport, err = TestHelper.LinkerdRun(cmd...)
+				out, injectReport, err = TestHelper.PipeToLinkerdRun("", cmd...)
 				if err != nil {
 					testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
 						"'linkerd inject' command failed: %s\n%s", err, out)

@@ -49,7 +49,7 @@ func TestTracing(t *testing.T) {
 	}
 
 	// Tracing Components
-	out, err := TestHelper.LinkerdRunOk("inject", "testdata/tracing.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "testdata/tracing.yaml")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 	}

@@ -34,7 +34,7 @@ func TestGoodEndpoints(t *testing.T) {
 		fmt.Sprintf("linkerd-web.%s.svc.cluster.local:8084", ns),
 		"-ojson",
 	}
-	out, err := TestHelper.LinkerdRunOk(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
@@ -54,7 +54,7 @@ func TestGoodEndpoints(t *testing.T) {
 
 // TODO: when #3004 gets fixed, add a negative test for mismatched ports
 func TestBadEndpoints(t *testing.T) {
-	_, stderr, err := TestHelper.LinkerdRun("endpoints", "foo")
+	_, stderr, err := TestHelper.PipeToLinkerdRun("", "endpoints", "foo")
 	if err == nil {
 		testutil.AnnotatedFatalf(t, "was expecting an error", "was expecting an error: %v", err)
 	}

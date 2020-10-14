@@ -129,7 +129,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				// Use a short time window so that transient errors at startup
 				// fall out of the window.
 				tt.args = append(tt.args, "-t", "30s")
-				out, err := TestHelper.LinkerdRunOk(tt.args...)
+				out, err := TestHelper.LinkerdRun(tt.args...)
 				if err != nil {
 					testutil.AnnotatedFatalf(t, "unexpected stat error",
 						"unexpected stat error: %s\n%s", err, out)

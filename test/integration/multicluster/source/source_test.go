@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 func TestGateways(t *testing.T) {
 	timeout := time.Minute
 	err := TestHelper.RetryFor(timeout, func() error {
-		out, err := TestHelper.LinkerdRunOk("multicluster", "gateways")
+		out, err := TestHelper.LinkerdRun("multicluster", "gateways")
 		if err != nil {
 			return err
 		}

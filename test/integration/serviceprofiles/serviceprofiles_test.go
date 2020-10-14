@@ -42,7 +42,7 @@ func TestServiceProfiles(t *testing.T) {
 func testProfiles(t *testing.T) {
 	ctx := context.Background()
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
-	out, err := TestHelper.LinkerdRunOk("inject", "--manual", "testdata/tap_application.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 	}
@@ -117,7 +117,7 @@ func testProfiles(t *testing.T) {
 			}
 
 			cmd = append(cmd, tc.args...)
-			out, err := TestHelper.LinkerdRunOk(cmd...)
+			out, err := TestHelper.LinkerdRun(cmd...)
 			if err != nil {
 				testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd %s' command failed", cmd), err)
 			}
@@ -148,7 +148,7 @@ func testMetrics(t *testing.T) {
 		testYAML             = "testdata/hello_world.yaml"
 	)
 
-	out, err := TestHelper.LinkerdRunOk("inject", "--manual", testYAML)
+	out, err := TestHelper.LinkerdRun("inject", "--manual", testYAML)
 	if err != nil {
 		testutil.AnnotatedError(t, "'linkerd inject' command failed", err)
 	}
@@ -168,7 +168,7 @@ func testMetrics(t *testing.T) {
 		testSP,
 	}
 
-	out, err = TestHelper.LinkerdRunOk(cmd...)
+	out, err = TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedError(t, fmt.Sprintf("'linkerd %s' command failed", cmd), err)
 	}
@@ -287,7 +287,7 @@ func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.J
 	cmd = append(cmd, "--output", "json")
 	var out, stderr string
 	err := TestHelper.RetryFor(2*time.Minute, func() error {
-		_, err := TestHelper.LinkerdRunOk(cmd...)
+		_, err := TestHelper.LinkerdRun(cmd...)
 		return err
 	})
 	if err != nil {

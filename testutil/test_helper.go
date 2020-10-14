@@ -199,7 +199,7 @@ func NewTestHelper() *TestHelper {
 		certsPath:      *certsPath,
 	}
 
-	version, err := testHelper.LinkerdRunOk("version", "--client", "--short")
+	version, err := testHelper.LinkerdRun("version", "--client", "--short")
 	if err != nil {
 		exit(1, fmt.Sprintf("error getting linkerd version: %s", err.Error()))
 	}
@@ -331,18 +331,11 @@ type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base6
 	return err
 }
 
-// LinkerdRun executes a linkerd command appended with the --linkerd-namespace
-// flag.
-func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
-	return h.PipeToLinkerdRun("", arg...)
-}
-
-// LinkerdRunOk executes a linkerd command appended with the --linkerd-namespace
-// flag.
-func (h *TestHelper) LinkerdRunOk(arg ...string) (string, error) {
+// LinkerdRun executes a linkerd command returning its stdout.
+func (h *TestHelper) LinkerdRun(arg ...string) (string, error) {
 	out, stderr, err := h.PipeToLinkerdRun("", arg...)
 	if err != nil {
-		return out, fmt.Errorf("command failed: %s\n%s\n%s", strings.Join(arg, " "), err, stderr)
+		return out, fmt.Errorf("command failed: linkerd %s\n%s\n%s", strings.Join(arg, " "), err, stderr)
 	}
 	return out, nil
 }
@@ -457,9 +450,9 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 
 // CheckVersion validates the output of the "linkerd version" command.
 func (h *TestHelper) CheckVersion(serverVersion string) error {
-	out, _, err := h.LinkerdRun("version")
+	out, err := h.LinkerdRun("version")
 	if err != nil {
-		return fmt.Errorf("Unexpected error: %s\n%s", err.Error(), out)
+		return err
 	}
 	if !strings.Contains(out, fmt.Sprintf("Client version: %s", h.version)) {
 		return fmt.Errorf("Expected client version [%s], got:\n%s", h.version, out)

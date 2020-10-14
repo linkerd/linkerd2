@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 func TestRoutes(t *testing.T) {
 	// control-plane routes
 	cmd := []string{"routes", "--namespace", TestHelper.GetLinkerdNamespace(), "deploy"}
-	out, err := TestHelper.LinkerdRunOk(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd routes' command failed", err)
 	}
@@ -71,7 +71,7 @@ func TestRoutes(t *testing.T) {
 	cmd = []string{"routes", "--namespace", prefixedNs, "deploy"}
 	golden := "routes.smoke.golden"
 
-	out, err = TestHelper.LinkerdRunOk(cmd...)
+	out, err = TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd routes' command failed", err)
 	}

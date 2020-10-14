@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 
 func TestEgressHttp(t *testing.T) {
 	ctx := context.Background()
-	out, err := TestHelper.LinkerdRunOk("inject", "testdata/proxy.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "testdata/proxy.yaml")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}

@@ -51,7 +51,7 @@ var (
 //////////////////////
 
 func TestCliGet(t *testing.T) {
-	out, err := TestHelper.LinkerdRunOk("inject", "testdata/to_be_injected_application.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "testdata/to_be_injected_application.yaml")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
@@ -86,7 +86,7 @@ func TestCliGet(t *testing.T) {
 		}
 
 		t.Run("get pods from --all-namespaces", func(t *testing.T) {
-			out, err = TestHelper.LinkerdRunOk("get", "pods", "--all-namespaces")
+			out, err = TestHelper.LinkerdRun("get", "pods", "--all-namespaces")
 			if err != nil {
 				testutil.AnnotatedFatal(t, "unexpected error", err)
 			}
@@ -98,7 +98,7 @@ func TestCliGet(t *testing.T) {
 		})
 
 		t.Run("get pods from the linkerd namespace", func(t *testing.T) {
-			out, err = TestHelper.LinkerdRunOk("get", "pods", "-n", TestHelper.GetLinkerdNamespace())
+			out, err = TestHelper.LinkerdRun("get", "pods", "-n", TestHelper.GetLinkerdNamespace())
 			if err != nil {
 				testutil.AnnotatedFatal(t, "unexpected error", err)
 			}
@@ -115,7 +115,7 @@ func TestCliGet(t *testing.T) {
 				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
 			}
 
-			out, err = TestHelper.LinkerdRunOk("get", "pods")
+			out, err = TestHelper.LinkerdRun("get", "pods")
 			if err != nil {
 				testutil.AnnotatedFatal(t, "unexpected error", err)
 			}

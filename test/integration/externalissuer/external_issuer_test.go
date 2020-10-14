@@ -41,7 +41,7 @@ func TestExternalIssuer(t *testing.T) {
 }
 
 func verifyInstallApp(ctx context.Context, t *testing.T) {
-	out, err := TestHelper.LinkerdRunOk("inject", "--manual", "testdata/external_issuer_application.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/external_issuer_application.yaml")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 	}
@@ -72,7 +72,7 @@ func verifyInstallApp(ctx context.Context, t *testing.T) {
 func checkAppWoks(t *testing.T, timeout time.Duration) error {
 	return TestHelper.RetryFor(timeout, func() error {
 		args := []string{"stat", "deploy", "-n", TestHelper.GetTestNamespace(TestAppNamespaceSuffix), "--from", "deploy/slow-cooker", "-t", "1m"}
-		out, err := TestHelper.LinkerdRunOk(args...)
+		out, err := TestHelper.LinkerdRun(args...)
 		if err != nil {
 			return err
 		}

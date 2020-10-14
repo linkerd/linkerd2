@@ -28,7 +28,7 @@ func TestInstall(t *testing.T) {
 		"--proxy-version", TestHelper.GetVersion(),
 	}
 
-	out, err := TestHelper.LinkerdRunOk(args...)
+	out, err := TestHelper.LinkerdRun(args...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
@@ -66,7 +66,7 @@ func TestResourcesPostInstall(t *testing.T) {
 
 func TestUninstall(t *testing.T) {
 	args := []string{"uninstall"}
-	out, err := TestHelper.LinkerdRunOk(args...)
+	out, err := TestHelper.LinkerdRun(args...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
@@ -82,7 +82,7 @@ func TestUninstall(t *testing.T) {
 func TestCheckPostUninstall(t *testing.T) {
 	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.pre.golden"
-	out, err := TestHelper.LinkerdRunOk(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
 		testutil.AnnotatedFatal(t, "check command failed", err)
 	}

@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCliInstall(t *testing.T) {
-	_, err := TestHelper.LinkerdRunOk("install", "--ignore-cluster")
+	_, err := TestHelper.LinkerdRun("install", "--ignore-cluster")
 	if err != nil {
 		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
