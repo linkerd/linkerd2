@@ -256,9 +256,12 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 // EdgesRequestParams.
 func BuildEdgesRequest(p EdgesRequestParams) (*pb.EdgesRequest, error) {
 	namespace := p.Namespace
-	if namespace == "" && !p.AllNamespaces {
-		namespace = corev1.NamespaceDefault
+
+	// If all namespaces was specified, ignore namespace value.
+	if p.AllNamespaces {
+		namespace = ""
 	}
+
 	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
 	if err != nil {
 		return nil, err
