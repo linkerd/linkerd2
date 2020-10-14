@@ -133,6 +133,9 @@ spec:
   selector:
     app: {{.Values.gatewayName}}
   type: LoadBalancer
+{{- if .Values.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.loadBalancerIP }}
+{{- end }}
 ---
 kind: ServiceAccount
 apiVersion: v1

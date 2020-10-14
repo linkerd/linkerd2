@@ -71,11 +71,7 @@ metadata:
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
+    {{- toYaml .Values.profileValidator.namespaceSelector | trim | nindent 4 }}
   clientConfig:
     service:
       name: linkerd-sp-validator

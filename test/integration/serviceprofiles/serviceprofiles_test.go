@@ -32,16 +32,19 @@ func TestMain(m *testing.M) {
 }
 
 func TestServiceProfiles(t *testing.T) {
+	ctx := context.Background()
+	TestHelper.WithDataPlaneNamespace(ctx, "serviceprofile-test", map[string]string{}, t, func(t *testing.T, ns string) {
+		t.Run("service profiles", testProfiles)
+		t.Run("service profiles metrics", testMetrics)
+	})
+}
 
+func testProfiles(t *testing.T) {
 	ctx := context.Background()
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
-	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, testNamespace, nil)
-	if err != nil {
-		testutil.Fatalf(t, "failed to create %s namespace: %s", testNamespace, err)
-	}
 	out, err := TestHelper.LinkerdRunOk("inject", "--manual", "testdata/tap_application.yaml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "%s", err)
+		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 	}
 
 	out, err = TestHelper.KubectlApply(out, testNamespace)
@@ -116,7 +119,7 @@ func TestServiceProfiles(t *testing.T) {
 			cmd = append(cmd, tc.args...)
 			out, err := TestHelper.LinkerdRunOk(cmd...)
 			if err != nil {
-				testutil.AnnotatedFatalf(t, fmt.Sprintf("'linkerd %s' command failed", cmd), "%s", err)
+				testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd %s' command failed", cmd), err)
 			}
 
 			_, err = TestHelper.KubectlApply(out, tc.namespace)
@@ -136,7 +139,7 @@ func TestServiceProfiles(t *testing.T) {
 	}
 }
 
-func TestServiceProfileMetrics(t *testing.T) {
+func testMetrics(t *testing.T) {
 	var (
 		testNamespace        = TestHelper.GetTestNamespace("serviceprofile-test")
 		testSP               = "world-svc"
@@ -147,7 +150,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 
 	out, err := TestHelper.LinkerdRunOk("inject", "--manual", testYAML)
 	if err != nil {
-		testutil.AnnotatedErrorf(t, "'linkerd inject' command failed", "%s", err)
+		testutil.AnnotatedError(t, "'linkerd inject' command failed", err)
 	}
 
 	out, err = TestHelper.KubectlApply(out, testNamespace)
@@ -167,7 +170,7 @@ func TestServiceProfileMetrics(t *testing.T) {
 
 	out, err = TestHelper.LinkerdRunOk(cmd...)
 	if err != nil {
-		testutil.AnnotatedErrorf(t, fmt.Sprintf("'linkerd %s' command failed", cmd), "%s", err)
+		testutil.AnnotatedError(t, fmt.Sprintf("'linkerd %s' command failed", cmd), err)
 	}
 
 	_, err = TestHelper.KubectlApply(out, testNamespace)
@@ -284,8 +287,7 @@ func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.J
 	cmd = append(cmd, "--output", "json")
 	var out, stderr string
 	err := TestHelper.RetryFor(2*time.Minute, func() error {
-		var err error
-		out, err = TestHelper.LinkerdRunOk(cmd...)
+		_, err := TestHelper.LinkerdRunOk(cmd...)
 		return err
 	})
 	if err != nil {

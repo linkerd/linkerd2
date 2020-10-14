@@ -2,10 +2,9 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
@@ -13,39 +12,53 @@ import (
 )
 
 func TestAddOnRender(t *testing.T) {
-	withTracingAddon, err := testInstallOptions()
+	withTracingAddonValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-
-	ctx := context.Background()
-
-	withTracingAddonValues, _ := withTracingAddon.validateAndBuild(ctx, "", nil)
 	withTracingAddonValues.Tracing["enabled"] = true
 	addFakeTLSSecrets(withTracingAddonValues)
 
-	withTracingOverwrite, err := testInstallOptions()
+	withTracingOverwriteValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withTracingOverwrite.addOnConfig = filepath.Join("testdata", "addon_config_overwrite.yaml")
-	withTracingOverwriteValues, _ := withTracingOverwrite.validateAndBuild(ctx, "", nil)
+	data, err := ioutil.ReadFile(filepath.Join("testdata", "addon_config_overwrite.yaml"))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	err = yaml.Unmarshal(data, withTracingOverwriteValues)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
 	addFakeTLSSecrets(withTracingOverwriteValues)
 
-	withExistingGrafana, err := testInstallOptions()
+	withExistingGrafanaValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withExistingGrafana.addOnConfig = filepath.Join("testdata", "existing-grafana-config.yaml")
-	withExistingGrafanaValues, _ := withExistingGrafana.validateAndBuild(ctx, "", nil)
+	data, err = ioutil.ReadFile(filepath.Join("testdata", "existing-grafana-config.yaml"))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	err = yaml.Unmarshal(data, withExistingGrafanaValues)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
 	addFakeTLSSecrets(withExistingGrafanaValues)
 
-	withPrometheusAddOnOverwrite, err := testInstallOptions()
+	withPrometheusAddOnOverwriteValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withPrometheusAddOnOverwrite.addOnConfig = filepath.Join("testdata", "prom-config.yaml")
-	withPrometheusAddOnOverwriteValues, _ := withPrometheusAddOnOverwrite.validateAndBuild(ctx, "", nil)
+	data, err = ioutil.ReadFile(filepath.Join("testdata", "prom-config.yaml"))
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	err = yaml.Unmarshal(data, withPrometheusAddOnOverwriteValues)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
 	addFakeTLSSecrets(withPrometheusAddOnOverwriteValues)
 
 	testCases := []struct {
@@ -62,67 +75,10 @@ func TestAddOnRender(t *testing.T) {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
 			var buf bytes.Buffer
-			if err := render(&buf, tc.values); err != nil {
+			if err := render(&buf, tc.values, ""); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
 			diffTestdata(t, tc.goldenFileName, buf.String())
 		})
 	}
-}
-
-func TestMergeRaw(t *testing.T) {
-	t.Run("Test Overwriting of Values struct", func(*testing.T) {
-
-		initialValues := charts.Values{
-			WebImage:               "initial-web",
-			EnableH2Upgrade:        true,
-			ControllerReplicas:     1,
-			OmitWebhookSideEffects: false,
-			InstallNamespace:       true,
-		}
-
-		// Overwrite values should not be unmarshal from values struct as the zero values are added
-		// causing overwriting of fields not present in the initial struct to zero values. This can be mitigated
-		// partially by using omitempty, but then we don't have relevant checks in helm templates as they would
-		// be nil when omitempty is present.
-		rawOverwriteValues := `
-webImage: override-web
-enableH2Upgrade: false
-controllerReplicas: 2
-omitWebhookSideEffects: true
-enablePodAntiAffinity: true`
-
-		expectedValues := charts.Values{
-			WebImage:               "override-web",
-			EnableH2Upgrade:        false,
-			ControllerReplicas:     2,
-			OmitWebhookSideEffects: true,
-			EnablePodAntiAffinity:  true,
-			InstallNamespace:       true,
-		}
-
-		rawInitialValues, err := yaml.Marshal(initialValues)
-		if err != nil {
-			t.Fatalf("Error while Marshaling: %s", err)
-
-		}
-
-		actualRawValues, err := mergeRaw(rawInitialValues, []byte(rawOverwriteValues))
-		if err != nil {
-			t.Fatalf("Error while Merging: %s", err)
-
-		}
-
-		var actualValues charts.Values
-		err = yaml.Unmarshal(actualRawValues, &actualValues)
-		if err != nil {
-			t.Fatalf("Error while unmarshalling: %s", err)
-
-		}
-		if !reflect.DeepEqual(expectedValues, actualValues) {
-			t.Fatal("Expected and Actual not equal.")
-
-		}
-	})
-
 }

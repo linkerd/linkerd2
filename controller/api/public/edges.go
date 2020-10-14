@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	inboundIdentityQuery  = "count(response_total%s) by (%s, client_id, namespace, no_tls_reason)"
-	outboundIdentityQuery = "count(response_total%s) by (%s, dst_%s, server_id, namespace, dst_namespace, no_tls_reason)"
+	inboundIdentityQuery  = "count(%s%s) by (%s, client_id, namespace, no_tls_reason)"
+	outboundIdentityQuery = "count(%s%s) by (%s, dst_%s, server_id, namespace, dst_namespace, no_tls_reason)"
 )
 
 var formatMsg = map[string]string{
@@ -32,10 +32,43 @@ func (s *grpcServer) Edges(ctx context.Context, req *pb.EdgesRequest) (*pb.Edges
 		return edgesError(req, "Edges request missing Selector Resource"), nil
 	}
 
-	edges, err := s.getEdges(ctx, req)
+	edgesHTTP, err := s.getEdges(ctx, req, "response_total")
 	if err != nil {
 		return edgesError(req, err.Error()), nil
 	}
+	edgesTCP, err := s.getEdges(ctx, req, "tcp_open_total")
+	if err != nil {
+		return edgesError(req, err.Error()), nil
+	}
+
+	edges := []*pb.Edge{}
+	// iterate over tcp_open_total metrics
+	for _, edgeTCP := range edgesTCP {
+		edgeHTTPIndex := -1
+		// find the corresponding response_total entry
+		for i, edgeHTTP := range edgesHTTP {
+			if equalEdges(edgeTCP, edgeHTTP) {
+				edgeHTTPIndex = i
+				break
+			}
+		}
+
+		edge := edgeTCP
+		if edgeHTTPIndex > -1 {
+			// if tcp_open_total doesn't have client_id info,
+			// use the response_total metric instead
+			if edge.ClientId == "" {
+				edge = edgesHTTP[edgeHTTPIndex]
+			}
+			// trick to remove element quickly
+			edgesHTTP[edgeHTTPIndex] = edgesHTTP[len(edgesHTTP)-1]
+			edgesHTTP = edgesHTTP[:len(edgesHTTP)-1]
+		}
+		edges = append(edges, edge)
+	}
+
+	edges = append(edges, edgesHTTP...)
+	edges = sortEdgeRows(edges)
 
 	return &pb.EdgesResponse{
 		Response: &pb.EdgesResponse_Ok_{
@@ -57,7 +90,7 @@ func edgesError(req *pb.EdgesRequest, message string) *pb.EdgesResponse {
 	}
 }
 
-func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest) ([]*pb.Edge, error) {
+func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest, metric string) ([]*pb.Edge, error) {
 	labelNames := promGroupByLabelNames(req.Selector.Resource)
 	if len(labelNames) != 2 {
 		return nil, errors.New("unexpected resource selector")
@@ -71,8 +104,8 @@ func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest) ([]*pb.
 	labelsOutboundStr := generateLabelStringWithExclusion(labelsOutbound, resourceType)
 	labelsInboundStr := generateLabelStringWithExclusion(labelsInbound, resourceType)
 
-	outboundQuery := fmt.Sprintf(outboundIdentityQuery, labelsOutboundStr, resourceType, resourceType)
-	inboundQuery := fmt.Sprintf(inboundIdentityQuery, labelsInboundStr, resourceType)
+	outboundQuery := fmt.Sprintf(outboundIdentityQuery, metric, labelsOutboundStr, resourceType, resourceType)
+	inboundQuery := fmt.Sprintf(inboundIdentityQuery, metric, labelsInboundStr, resourceType)
 
 	inboundResult, err := s.queryProm(ctx, inboundQuery)
 	if err != nil {
@@ -84,8 +117,8 @@ func (s *grpcServer) getEdges(ctx context.Context, req *pb.EdgesRequest) ([]*pb.
 		return nil, err
 	}
 
-	edge := processEdgeMetrics(inboundResult, outboundResult, resourceType, selectedNamespace)
-	return edge, nil
+	edges := processEdgeMetrics(inboundResult, outboundResult, resourceType, selectedNamespace)
+	return edges, nil
 }
 
 func processEdgeMetrics(inbound, outbound model.Vector, resourceType, selectedNamespace string) []*pb.Edge {
@@ -110,6 +143,10 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType, selectedNa
 	}
 
 	for _, sample := range outbound {
+		// e.g. tcp_open_total from older proxies don't have enough labels
+		if _, ok := sample.Metric[model.LabelName("dst_namespace")]; !ok {
+			continue
+		}
 		dstResource := sample.Metric[model.LabelName(resourceReplacementOutbound)]
 		srcNs := sample.Metric[model.LabelName("namespace")]
 
@@ -190,9 +227,6 @@ func processEdgeMetrics(inbound, outbound model.Vector, resourceType, selectedNa
 		}
 	}
 
-	// sort rows before returning in order to have a consistent order for tests
-	edges = sortEdgeRows(edges)
-
 	return edges
 }
 
@@ -203,4 +237,9 @@ func sortEdgeRows(rows []*pb.Edge) []*pb.Edge {
 		return keyI < keyJ
 	})
 	return rows
+}
+
+func equalEdges(a, b *pb.Edge) bool {
+	return a.Src.Namespace == b.Src.Namespace && a.Src.Name == b.Src.Name && a.Src.Type == b.Src.Type &&
+		a.Dst.Namespace == b.Dst.Namespace && a.Dst.Name == b.Dst.Name && a.Dst.Type == b.Dst.Type
 }

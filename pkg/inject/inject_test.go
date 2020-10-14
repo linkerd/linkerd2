@@ -34,6 +34,7 @@ func TestGetOverriddenValues(t *testing.T) {
 		expected      func() *l5dcharts.Values
 	}{
 		{id: "use overrides",
+			nsAnnotations: make(map[string]string),
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
@@ -53,7 +54,7 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyCPULimitAnnotation:                      "1.5",
 							k8s.ProxyMemoryLimitAnnotation:                   "256",
 							k8s.ProxyUIDAnnotation:                           "8500",
-							k8s.ProxyLogLevelAnnotation:                      "debug,linkerd2_proxy=debug",
+							k8s.ProxyLogLevelAnnotation:                      "debug,linkerd=debug",
 							k8s.ProxyLogFormatAnnotation:                     "json",
 							k8s.ProxyEnableExternalProfilesAnnotation:        "false",
 							k8s.ProxyVersionOverrideAnnotation:               proxyVersionOverride,
@@ -83,12 +84,12 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Global.Proxy.Ports.Admin = 5001
 				values.Global.Proxy.Ports.Outbound = 5002
 				values.Global.Proxy.WaitBeforeExitSeconds = 123
-				values.Global.Proxy.LogLevel = "debug,linkerd2_proxy=debug"
+				values.Global.Proxy.LogLevel = "debug,linkerd=debug"
 				values.Global.Proxy.LogFormat = "json"
 				values.Global.Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
-						Limit:   "1500m",
-						Request: "150m",
+						Limit:   "1.5",
+						Request: "0.15",
 					},
 					Memory: l5dcharts.Constraints{
 						Limit:   "256",
@@ -113,6 +114,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			},
 		},
 		{id: "use defaults",
+			nsAnnotations: make(map[string]string),
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{},
@@ -141,7 +143,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				k8s.ProxyCPULimitAnnotation:                 "1.5",
 				k8s.ProxyMemoryLimitAnnotation:              "256",
 				k8s.ProxyUIDAnnotation:                      "8500",
-				k8s.ProxyLogLevelAnnotation:                 "debug,linkerd2_proxy=debug",
+				k8s.ProxyLogLevelAnnotation:                 "debug,linkerd=debug",
 				k8s.ProxyLogFormatAnnotation:                "json",
 				k8s.ProxyEnableExternalProfilesAnnotation:   "false",
 				k8s.ProxyVersionOverrideAnnotation:          proxyVersionOverride,
@@ -169,12 +171,12 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Global.Proxy.Ports.Admin = 5001
 				values.Global.Proxy.Ports.Outbound = 5002
 				values.Global.Proxy.WaitBeforeExitSeconds = 123
-				values.Global.Proxy.LogLevel = "debug,linkerd2_proxy=debug"
+				values.Global.Proxy.LogLevel = "debug,linkerd=debug"
 				values.Global.Proxy.LogFormat = "json"
 				values.Global.Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
-						Limit:   "1500m",
-						Request: "150m",
+						Limit:   "1.5",
+						Request: "0.15",
 					},
 					Memory: l5dcharts.Constraints{
 						Limit:   "256",
@@ -249,6 +251,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			},
 		},
 		{id: "use named port for opaque ports",
+			nsAnnotations: make(map[string]string),
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
@@ -297,7 +300,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			}
 			expected := testCase.expected()
 			if !reflect.DeepEqual(actual, expected) {
-				t.Fatalf("Expected values to be \n%v\n but was \n%v", actual, expected)
+				t.Fatalf("Expected values to be \n%v\n but was \n%v", expected.String(), actual.String())
 			}
 
 		})

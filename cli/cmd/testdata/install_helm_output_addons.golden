@@ -824,77 +824,9 @@ metadata:
   annotations:
     linkerd.io/created-by: linkerd/helm linkerd-version
 data:
-  global: |
-    {
-      "linkerdNamespace": "linkerd",
-      "cniEnabled": false,
-      "version": "linkerd-version",
-      "identityContext":{
-        "trustDomain": "test.trust.domain",
-        "trustAnchorsPem": "test-trust-anchor",
-        "issuanceLifetime": "24h0m0s",
-        "clockSkewAllowance": "20s",
-        "scheme": "linkerd.io/tls"
-      },
-      "autoInjectContext": null,
-      "omitWebhookSideEffects": false,
-      "clusterDomain": "cluster.local"
-    }
-  proxy: |
-    {
-      "proxyImage":{
-        "imageName":"ghcr.io/linkerd/proxy",
-        "pullPolicy":"IfNotPresent"
-      },
-      "proxyInitImage":{
-        "imageName":"ghcr.io/linkerd/proxy-init",
-        "pullPolicy":"IfNotPresent"
-      },
-      "controlPort":{
-        "port": 4190
-      },
-      "ignoreInboundPorts":[{"portRange":"222"}],
-      "ignoreOutboundPorts":[{"portRange":"111"}],
-      "inboundPort":{
-        "port": 4143
-      },
-      "adminPort":{
-        "port": 4191
-      },
-      "outboundPort":{
-        "port": 4140
-      },
-      "resource":{
-        "requestCpu": "",
-        "limitCpu": "",
-        "requestMemory": "",
-        "limitMemory": ""
-      },
-      "proxyUid": 2102,
-      "logLevel":{
-        "level": "warn,linkerd=info"
-      },
-      "logFormat": "plain",
-      "disableExternalProfiles": true,
-      "proxyVersion": "test-proxy-version",
-      "proxyInitImageVersion": "test-proxy-init-version",
-      "debugImage":{
-        "imageName":"ghcr.io/linkerd/debug",
-        "pullPolicy":"IfNotPresent"
-      },
-      "debugImageVersion": "test-debug-version",
-      "destinationGetNetworks": "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-      "outboundConnectTimeout": "1000ms",
-      "inboundConnectTimeout": "100ms"
-    }
-  install: |
-    {
-      "cliVersion":"linkerd-version",
-      "flags":[]
-    }
   values: |
     controllerImage: ghcr.io/linkerd/controller
-    controllerImageVersion: ""
+    controllerImageVersion: dev-undefined
     controllerReplicas: 1
     controllerUID: 2103
     dashboard:
@@ -915,7 +847,7 @@ data:
       cniEnabled: false
       controlPlaneTracing: false
       controllerComponentLabel: linkerd.io/control-plane-component
-      controllerImageVersion: ""
+      controllerImageVersion: linkerd-version
       controllerLogLevel: info
       controllerNamespaceLabel: linkerd.io/control-plane-ns
       createdByAnnotation: linkerd.io/created-by
@@ -929,6 +861,8 @@ data:
       linkerdNamespaceLabel: linkerd.io/is-control-plane
       linkerdVersion: linkerd-version
       namespace: linkerd
+      podAnnotations: {}
+      podLabels: {}
       prometheusUrl: ""
       proxy:
         capabilities: null
@@ -1000,7 +934,7 @@ data:
         cniEnabled: false
         controlPlaneTracing: false
         controllerComponentLabel: linkerd.io/control-plane-component
-        controllerImageVersion: ""
+        controllerImageVersion: linkerd-version
         controllerLogLevel: info
         controllerNamespaceLabel: linkerd.io/control-plane-ns
         createdByAnnotation: linkerd.io/created-by
@@ -1014,6 +948,8 @@ data:
         linkerdNamespaceLabel: linkerd.io/is-control-plane
         linkerdVersion: linkerd-version
         namespace: linkerd
+        podAnnotations: {}
+        podLabels: {}
         prometheusUrl: ""
         proxy:
           capabilities: null
@@ -1086,7 +1022,7 @@ data:
           cniEnabled: false
           controlPlaneTracing: false
           controllerComponentLabel: linkerd.io/control-plane-component
-          controllerImageVersion: ""
+          controllerImageVersion: linkerd-version
           controllerLogLevel: info
           controllerNamespaceLabel: linkerd.io/control-plane-ns
           createdByAnnotation: linkerd.io/created-by
@@ -1100,6 +1036,8 @@ data:
           linkerdNamespaceLabel: linkerd.io/is-control-plane
           linkerdVersion: linkerd-version
           namespace: linkerd
+          podAnnotations: {}
+          podLabels: {}
           prometheusUrl: ""
           proxy:
             capabilities: null
@@ -1184,6 +1122,12 @@ data:
       caBundle: test-profile-validator-ca-bundle
       crtPEM: test-profile-validator-crt-pem
       externalSecret: false
+      namespaceSelector:
+        matchExpressions:
+        - key: config.linkerd.io/admission-webhooks
+          operator: NotIn
+          values:
+          - disabled
     prometheus:
       args:
         config.file: /etc/prometheus/prometheus.yml
@@ -1197,7 +1141,7 @@ data:
         cniEnabled: false
         controlPlaneTracing: false
         controllerComponentLabel: linkerd.io/control-plane-component
-        controllerImageVersion: ""
+        controllerImageVersion: linkerd-version
         controllerLogLevel: info
         controllerNamespaceLabel: linkerd.io/control-plane-ns
         createdByAnnotation: linkerd.io/created-by
@@ -1211,6 +1155,8 @@ data:
         linkerdNamespaceLabel: linkerd.io/is-control-plane
         linkerdVersion: linkerd-version
         namespace: linkerd
+        podAnnotations: {}
+        podLabels: {}
         prometheusUrl: ""
         proxy:
           capabilities: null
@@ -1286,7 +1232,7 @@ data:
           cniEnabled: false
           controlPlaneTracing: false
           controllerComponentLabel: linkerd.io/control-plane-component
-          controllerImageVersion: ""
+          controllerImageVersion: linkerd-version
           controllerLogLevel: info
           controllerNamespaceLabel: linkerd.io/control-plane-ns
           createdByAnnotation: linkerd.io/created-by
@@ -1300,6 +1246,8 @@ data:
           linkerdNamespaceLabel: linkerd.io/is-control-plane
           linkerdVersion: linkerd-version
           namespace: linkerd
+          podAnnotations: {}
+          podLabels: {}
           prometheusUrl: ""
           proxy:
             capabilities: null
@@ -1367,6 +1315,12 @@ data:
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: test-proxy-injector-crt-pem
       externalSecret: false
+      namespaceSelector:
+        matchExpressions:
+        - key: config.linkerd.io/admission-webhooks
+          operator: NotIn
+          values:
+          - disabled
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     publicAPIProxyResources: null
@@ -1374,7 +1328,6 @@ data:
     restrictDashboardPrivileges: false
     spValidatorProxyResources: null
     spValidatorResources: null
-    stage: ""
     tap:
       caBundle: test-tap-ca-bundle
       crtPEM: test-tap-crt-pem
@@ -1392,7 +1345,7 @@ data:
         cniEnabled: false
         controlPlaneTracing: false
         controllerComponentLabel: linkerd.io/control-plane-component
-        controllerImageVersion: ""
+        controllerImageVersion: linkerd-version
         controllerLogLevel: info
         controllerNamespaceLabel: linkerd.io/control-plane-ns
         createdByAnnotation: linkerd.io/created-by
@@ -1406,6 +1359,8 @@ data:
         linkerdNamespaceLabel: linkerd.io/is-control-plane
         linkerdVersion: linkerd-version
         namespace: linkerd
+        podAnnotations: {}
+        podLabels: {}
         prometheusUrl: ""
         proxy:
           capabilities: null
@@ -1478,7 +1433,7 @@ data:
           cniEnabled: false
           controlPlaneTracing: false
           controllerComponentLabel: linkerd.io/control-plane-component
-          controllerImageVersion: ""
+          controllerImageVersion: linkerd-version
           controllerLogLevel: info
           controllerNamespaceLabel: linkerd.io/control-plane-ns
           createdByAnnotation: linkerd.io/created-by
@@ -1492,6 +1447,8 @@ data:
           linkerdNamespaceLabel: linkerd.io/is-control-plane
           linkerdVersion: linkerd-version
           namespace: linkerd
+          podAnnotations: {}
+          podLabels: {}
           prometheusUrl: ""
           proxy:
             capabilities: null

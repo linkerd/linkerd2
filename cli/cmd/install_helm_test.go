@@ -36,12 +36,49 @@ func TestRenderHelm(t *testing.T) {
 
 	t.Run("Non-HA with add-ons mode", func(t *testing.T) {
 		ha := false
-		addOnConfig := `
+		additionalConfig := `
 tracing:
   enabled: true
 `
-		chartControlPlane := chartControlPlane(t, ha, addOnConfig, "111", "222")
+		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "111", "222")
 		testRenderHelm(t, chartControlPlane, "install_helm_output_addons.golden")
+	})
+
+	t.Run("HA mode with podLabels and podAnnotations", func(t *testing.T) {
+		ha := true
+		additionalConfig := `
+global:
+  podLabels:
+    foo: bar
+    fiz: buz
+  podAnnotations:
+    bingo: bongo
+    asda: fasda
+`
+		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "333", "444")
+		testRenderHelm(t, chartControlPlane, "install_helm_output_ha_labels.golden")
+	})
+
+	t.Run("HA mode with custom namespaceSelector", func(t *testing.T) {
+		ha := true
+		additionalConfig := `
+proxyInjector:
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: In
+      values:
+      - enabled
+profileValidator:
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: In
+      values:
+      - enabled
+`
+		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "111", "222")
+		testRenderHelm(t, chartControlPlane, "install_helm_output_ha_namespace_selector.golden")
 	})
 }
 
@@ -56,6 +93,7 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
   "global":{
    "cliVersion":"",
    "linkerdVersion":"linkerd-version",
+   "controllerImageVersion":"linkerd-version",
    "identityTrustAnchorsPEM":"test-trust-anchor",
    "identityTrustDomain":"test.trust.domain",
    "proxy":{
@@ -148,18 +186,17 @@ func testRenderHelm(t *testing.T, chart *pb.Chart, goldenFileName string) {
 	diffTestdata(t, goldenFileName, buf.String())
 }
 
-func chartControlPlane(t *testing.T, ha bool, addOnConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
-	rawValues, err := readTestValues(t, ha, ignoreOutboundPorts, ignoreInboundPorts)
+func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
+	values, err := readTestValues(ha, ignoreOutboundPorts, ignoreInboundPorts)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
 
-	if addOnConfig != "" {
-		mergedConfig, err := mergeRaw(rawValues, []byte(addOnConfig))
+	if additionalConfig != "" {
+		err := yaml.Unmarshal([]byte(additionalConfig), values)
 		if err != nil {
 			t.Fatal("Unexpected error", err)
 		}
-		rawValues = mergedConfig
 	}
 
 	partialPaths := []string{
@@ -182,6 +219,11 @@ func chartControlPlane(t *testing.T, ha bool, addOnConfig string, ignoreOutbound
 
 	chartPartials := chartPartials(t, partialPaths)
 
+	rawValues, err := yaml.Marshal(values)
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
 	chart := &pb.Chart{
 		Metadata: &pb.Metadata{
 			Name: helmDefaultChartName,
@@ -197,13 +239,7 @@ func chartControlPlane(t *testing.T, ha bool, addOnConfig string, ignoreOutbound
 		},
 	}
 
-	var values l5dcharts.Values
-	err = yaml.Unmarshal(rawValues, &values)
-	if err != nil {
-		t.Fatal("Unexpected error", err)
-	}
-
-	addons, err := l5dcharts.ParseAddOnValues(&values)
+	addons, err := l5dcharts.ParseAddOnValues(values)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
@@ -282,15 +318,15 @@ func chartPartials(t *testing.T, paths []string) *pb.Chart {
 	return chart
 }
 
-func readTestValues(t *testing.T, ha bool, ignoreOutboundPorts string, ignoreInboundPorts string) ([]byte, error) {
+func readTestValues(ha bool, ignoreOutboundPorts string, ignoreInboundPorts string) (*l5dcharts.Values, error) {
 	values, err := l5dcharts.NewValues(ha)
 	if err != nil {
-		t.Fatal("Unexpected error", err)
+		return nil, err
 	}
 	values.Global.ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
 	values.Global.ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
 
-	return yaml.Marshal(values)
+	return values, nil
 }
 
 // readValues reads values.yaml file from the given path

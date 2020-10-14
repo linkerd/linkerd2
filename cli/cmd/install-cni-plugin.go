@@ -66,7 +66,10 @@ func (options *cniPluginOptions) validate() error {
 }
 
 func (options *cniPluginOptions) pluginImage() string {
-	return registryOverride(options.cniPluginImage, options.dockerRegistry)
+	if options.dockerRegistry != defaultDockerRegistry {
+		return registryOverride(options.cniPluginImage, options.dockerRegistry)
+	}
+	return options.cniPluginImage
 }
 
 func newCmdInstallCNIPlugin() *cobra.Command {

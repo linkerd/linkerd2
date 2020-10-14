@@ -29,26 +29,24 @@ func TestMain(m *testing.M) {
 }
 
 func TestExternalIssuer(t *testing.T) {
-	verifyInstallApp(t)
-	verifyAppWorksBeforeCertRotation(t)
-	verifyRotateExternalCerts(context.Background(), t)
-	verifyIdentityServiceReloadsIssuerCert(t)
-	ensureNewCSRSAreServed()
-	verifyAppWorksAfterCertRotation(t)
+	ctx := context.Background()
+	TestHelper.WithDataPlaneNamespace(ctx, TestAppNamespaceSuffix, map[string]string{}, t, func(t *testing.T, testNamespace string) {
+		verifyInstallApp(ctx, t)
+		verifyAppWorksBeforeCertRotation(t)
+		verifyRotateExternalCerts(ctx, t)
+		verifyIdentityServiceReloadsIssuerCert(t)
+		ensureNewCSRSAreServed()
+		verifyAppWorksAfterCertRotation(t)
+	})
 }
 
-func verifyInstallApp(t *testing.T) {
-	ctx := context.Background()
+func verifyInstallApp(ctx context.Context, t *testing.T) {
 	out, err := TestHelper.LinkerdRunOk("inject", "--manual", "testdata/external_issuer_application.yaml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "%s", err)
+		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace(TestAppNamespaceSuffix)
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, nil)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", prefixedNs, err)
-	}
 	out, err = TestHelper.KubectlApply(out, prefixedNs)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed", "'kubectl apply' command failed\n%s", out)

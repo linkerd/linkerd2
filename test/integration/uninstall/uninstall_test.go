@@ -24,13 +24,13 @@ func TestInstall(t *testing.T) {
 	args := []string{
 		"install",
 		"--controller-log-level", "debug",
-		"--proxy-log-level", "warn,linkerd2_proxy=debug",
+		"--proxy-log-level", "warn,linkerd=debug",
 		"--proxy-version", TestHelper.GetVersion(),
 	}
 
 	out, err := TestHelper.LinkerdRunOk(args...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd install' command failed", "%s", err)
+		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
 
 	out, err = TestHelper.KubectlApply(out, "")
@@ -68,7 +68,7 @@ func TestUninstall(t *testing.T) {
 	args := []string{"uninstall"}
 	out, err := TestHelper.LinkerdRunOk(args...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd install' command failed", "%s", err)
+		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
 
 	args = []string{"delete", "-f", "-"}
@@ -84,7 +84,7 @@ func TestCheckPostUninstall(t *testing.T) {
 	golden := "check.pre.golden"
 	out, err := TestHelper.LinkerdRunOk(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "check command failed", "%s", err)
+		testutil.AnnotatedFatal(t, "check command failed", err)
 	}
 
 	err = TestHelper.ValidateOutput(out, golden)

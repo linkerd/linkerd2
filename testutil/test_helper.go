@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -521,6 +522,20 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	})
 
 	return body, err
+}
+
+// WithDataPlaneNamespace is used to create a test namespace that is deleted before the function returns
+func (h *TestHelper) WithDataPlaneNamespace(ctx context.Context, testName string, annotations map[string]string, t *testing.T, test func(t *testing.T, ns string)) {
+	prefixedNs := h.GetTestNamespace(testName)
+	if err := h.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, annotations); err != nil {
+		AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", prefixedNs),
+			"failed to create %s namespace: %s", prefixedNs, err)
+	}
+	test(t, prefixedNs)
+	if err := h.deleteNamespaceIfExists(ctx, prefixedNs); err != nil {
+		AnnotatedFatalf(t, fmt.Sprintf("failed to delete %s namespace", prefixedNs),
+			"failed to delete %s namespace: %s", prefixedNs, err)
+	}
 }
 
 // ReadFile reads a file from disk and returns the contents as a string.

@@ -36,7 +36,7 @@ func TestGoodEndpoints(t *testing.T) {
 	}
 	out, err := TestHelper.LinkerdRunOk(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error", "%s", err)
+		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
 
 	tpl := template.Must(template.ParseFiles("testdata/linkerd_endpoints.golden"))

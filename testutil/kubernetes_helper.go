@@ -11,6 +11,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -92,6 +93,15 @@ func (h *KubernetesHelper) createNamespaceIfNotExists(ctx context.Context, names
 		}
 	}
 
+	return nil
+}
+
+func (h *KubernetesHelper) deleteNamespaceIfExists(ctx context.Context, namespace string) error {
+	err := h.clientset.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+
+	if err != nil && !kerrors.IsNotFound(err) {
+		return err
+	}
 	return nil
 }
 

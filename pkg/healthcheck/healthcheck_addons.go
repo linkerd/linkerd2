@@ -103,7 +103,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(ctx context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-							name, err := getString(grafana, "name")
+							name, err := GetString(grafana, "name")
 							if err != nil && !errors.Is(err, errorKeyNotFound) {
 								return err
 							}
@@ -123,7 +123,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(ctx context.Context) error {
 						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
-							name, err := getString(grafana, "name")
+							name, err := GetString(grafana, "name")
 							if err != nil && !errors.Is(err, errorKeyNotFound) {
 								return err
 							}
@@ -172,9 +172,9 @@ func (hc *HealthChecker) addOnCategories() []category {
 					check: func(ctx context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
 
-							collector, mapError := getMap(tracing, "collector")
+							collector, mapError := GetMap(tracing, "collector")
 
-							collectorName, keyError := getString(collector, "name")
+							collectorName, keyError := GetString(collector, "name")
 
 							if errors.Is(mapError, errorKeyNotFound) || errors.Is(keyError, errorKeyNotFound) {
 								// default name of collector instance
@@ -198,9 +198,9 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(ctx context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
-							jaeger, mapError := getMap(tracing, "jaeger")
+							jaeger, mapError := GetMap(tracing, "jaeger")
 
-							jaegerName, keyError := getString(jaeger, "name")
+							jaegerName, keyError := GetString(jaeger, "name")
 
 							if errors.Is(mapError, errorKeyNotFound) || errors.Is(keyError, errorKeyNotFound) {
 								// default name of jaeger instance
@@ -224,9 +224,9 @@ func (hc *HealthChecker) addOnCategories() []category {
 					warning:     true,
 					check: func(ctx context.Context) error {
 						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
-							collector, mapError := getMap(tracing, "collector")
+							collector, mapError := GetMap(tracing, "collector")
 
-							collectorName, keyError := getString(collector, "name")
+							collectorName, keyError := GetString(collector, "name")
 
 							if errors.Is(mapError, errorKeyNotFound) || errors.Is(keyError, errorKeyNotFound) {
 								// default name of collector instance
@@ -342,7 +342,8 @@ func (hc *HealthChecker) checkForAddOnCM(ctx context.Context) (string, error) {
 	return values, nil
 }
 
-func getString(i interface{}, k string) (string, error) {
+// GetString returns a String with the given key if present
+func GetString(i interface{}, k string) (string, error) {
 	m, ok := i.(map[string]interface{})
 	if !ok {
 		return "", errors.New("config value is not a map")
@@ -361,7 +362,8 @@ func getString(i interface{}, k string) (string, error) {
 	return res, nil
 }
 
-func getMap(i interface{}, k string) (map[string]interface{}, error) {
+// GetMap returns a Map with the given Key if Present
+func GetMap(i interface{}, k string) (map[string]interface{}, error) {
 	m, ok := i.(map[string]interface{})
 	if !ok {
 		return nil, errors.New("config value is not a map")

@@ -20,11 +20,11 @@ jobs:
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
-        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+        echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
 
         . bin/_docker.sh
-        echo ::set-env name=DOCKER_REGISTRY::$DOCKER_REGISTRY
-        echo ::set-env name=DOCKER_BUILDKIT_CACHE::${{ runner.temp }}/.buildx-cache
+        echo "DOCKER_REGISTRY=$DOCKER_REGISTRY" >> $GITHUB_ENV
+        echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
       # actions/cache@v2.0.0
       uses: actions/cache@b820478
@@ -123,8 +123,8 @@ jobs:
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
-        echo "::set-env name=CMD::$CMD"
-        echo "::set-env name=TAG::$TAG"
+        echo "CMD=$CMD" >> $GITHUB_ENV
+        echo "TAG=$TAG" >> $GITHUB_ENV
     - name: Run integration tests
       run: |
         bin/docker-pull-binaries $TAG
@@ -137,11 +137,11 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
-      if: startsWith(github.ref, 'refs/tags/stable')
+      #if: startsWith(github.ref, 'refs/tags/stable')
       # actions/checkout@v2
       uses: actions/checkout@722adc6
     - name: Try to load cached Go modules
-      if: startsWith(github.ref, 'refs/tags/stable')
+      #if: startsWith(github.ref, 'refs/tags/stable')
       # actions/cache@v1.1.2
       uses: actions/cache@70655ec
       with:
@@ -150,7 +150,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Install linkerd CLI
-      if: startsWith(github.ref, 'refs/tags/stable')
+      #if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
@@ -159,21 +159,21 @@ jobs:
         # validate CLI version matches the repo
         [[ "$TAG" == "$($CMD version --short --client)" ]]
         echo "Installed Linkerd CLI version: $TAG"
-        echo "::set-env name=CMD::$CMD"
+        echo "CMD=$CMD" >> $GITHUB_ENV
     - name: Set KUBECONFIG environment variables
-      if: startsWith(github.ref, 'refs/tags/stable')
+      #if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         mkdir -p $HOME/.kube
         echo "${{ secrets.ARM64_KUBECONFIG }}" > $HOME/.kube/config
-        echo ::set-env name=KUBECONFIG::$HOME/.kube/config
+        echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
         kubectl cluster-info
     - name: Run integration tests
-      if: startsWith(github.ref, 'refs/tags/stable')
+      #if: startsWith(github.ref, 'refs/tags/stable')
       env:
         RUN_ARM_TEST: 1
-      run: bin/tests --images skip --skip-kind-create "$CMD"
+      run: bin/tests --images skip --skip-cluster-create "$CMD"
     - name: CNI tests
-      if: startsWith(github.ref, 'refs/tags/stable')
+      #if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         export TAG="$($CMD version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
@@ -223,7 +223,7 @@ jobs:
       run: |
         . bin/_tag.sh
         . bin/_release.sh
-        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+        echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
         extract_release_notes NOTES.md
     - name: Download choco package
       if: startsWith(github.ref, 'refs/tags/stable')
@@ -281,13 +281,13 @@ jobs:
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
-        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+        echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
     - name: Set install target for stable
       if: startsWith(github.ref, 'refs/tags/stable')
-      run: echo ::set-env name=INSTALL::install
+      run: echo "INSTALL=install" >> $GITHUB_ENV
     - name: Set install target for edge
       if: startsWith(github.ref, 'refs/tags/edge')
-      run: echo ::set-env name=INSTALL::install-edge
+      run: echo "INSTALL=install-edge" >> $GITHUB_ENV
     - name: Check published version
       run: |
         until RES=$(curl -sL https://run.linkerd.io/$INSTALL | grep "LINKERD2_VERSION=\${LINKERD2_VERSION:-$TAG}") \
