@@ -1,12 +1,12 @@
 import CardContent from '@material-ui/core/CardContent';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _isEmpty from 'lodash/isEmpty';
 import _startCase from 'lodash/startCase';
 import { displayOrder } from './util/CliQueryUtils.js';
 import { withContext } from './util/AppContext.jsx';
-import { Trans } from '@lingui/macro';
 
 const toCliParam = {
   namespace: '--namespace',
