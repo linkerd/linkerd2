@@ -137,11 +137,11 @@ jobs:
     needs: [docker_build]
     steps:
     - name: Checkout code
-      #if: startsWith(github.ref, 'refs/tags/stable')
+      if: startsWith(github.ref, 'refs/tags/stable')
       # actions/checkout@v2
       uses: actions/checkout@722adc6
     - name: Try to load cached Go modules
-      #if: startsWith(github.ref, 'refs/tags/stable')
+      if: startsWith(github.ref, 'refs/tags/stable')
       # actions/cache@v1.1.2
       uses: actions/cache@70655ec
       with:
@@ -150,7 +150,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Install linkerd CLI
-      #if: startsWith(github.ref, 'refs/tags/stable')
+      if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         TAG="$(CI_FORCE_CLEAN=1 bin/root-tag)"
         CMD="$PWD/target/release/linkerd2-cli-$TAG-linux-amd64"
@@ -161,19 +161,19 @@ jobs:
         echo "Installed Linkerd CLI version: $TAG"
         echo "CMD=$CMD" >> $GITHUB_ENV
     - name: Set KUBECONFIG environment variables
-      #if: startsWith(github.ref, 'refs/tags/stable')
+      if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         mkdir -p $HOME/.kube
         echo "${{ secrets.ARM64_KUBECONFIG }}" > $HOME/.kube/config
         echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
         kubectl cluster-info
     - name: Run integration tests
-      #if: startsWith(github.ref, 'refs/tags/stable')
+      if: startsWith(github.ref, 'refs/tags/stable')
       env:
         RUN_ARM_TEST: 1
       run: bin/tests --images skip --skip-cluster-create "$CMD"
     - name: CNI tests
-      #if: startsWith(github.ref, 'refs/tags/stable')
+      if: startsWith(github.ref, 'refs/tags/stable')
       run: |
         export TAG="$($CMD version --client --short)"
         go test -cover -race -v -mod=readonly ./cni-plugin/test -integration-tests
