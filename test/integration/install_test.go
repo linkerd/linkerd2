@@ -254,7 +254,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		cmd  = "install"
 		args = []string{
 			"--controller-log-level", "debug",
-			"--proxy-log-level", "warn,linkerd2_proxy=debug",
+			"--proxy-log-level", "warn,linkerd=debug",
 			"--proxy-version", TestHelper.GetVersion(),
 			"--skip-inbound-ports", skippedInboundPorts,
 		}
