@@ -78,8 +78,9 @@ global:
 
   # proxy-init configuration
   proxyInit:
-    ignoreInboundPorts: ""
-    ignoreOutboundPorts: ""
+    # Skip proxying of server-first protocols and HTTPS
+    ignoreInboundPorts: "25,443,587,3306"
+    ignoreOutboundPorts: "25,443,587,3306"
     image:
       name: ghcr.io/linkerd/proxy-init
       pullPolicy: *image_pull_policy
