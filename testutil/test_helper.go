@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -198,15 +199,15 @@ func NewTestHelper() *TestHelper {
 		certsPath:      *certsPath,
 	}
 
-	version, stderr, err := testHelper.LinkerdRun("version", "--client", "--short")
+	version, err := testHelper.LinkerdRun("version", "--client", "--short")
 	if err != nil {
-		exit(1, fmt.Sprintf("error getting linkerd version: %s\n%s", err.Error(), stderr))
+		exit(1, fmt.Sprintf("error getting linkerd version: %s", err.Error()))
 	}
 	testHelper.version = strings.TrimSpace(version)
 
 	kubernetesHelper, err := NewKubernetesHelper(*k8sContext, testHelper.RetryFor)
 	if err != nil {
-		exit(1, fmt.Sprintf("error creating kubernetes helper: %s\n%s", err.Error(), stderr))
+		exit(1, fmt.Sprintf("error creating kubernetes helper: %s", err.Error()))
 	}
 	testHelper.KubernetesHelper = *kubernetesHelper
 
@@ -330,10 +331,13 @@ type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base6
 	return err
 }
 
-// LinkerdRun executes a linkerd command appended with the --linkerd-namespace
-// flag.
-func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
-	return h.PipeToLinkerdRun("", arg...)
+// LinkerdRun executes a linkerd command returning its stdout.
+func (h *TestHelper) LinkerdRun(arg ...string) (string, error) {
+	out, stderr, err := h.PipeToLinkerdRun("", arg...)
+	if err != nil {
+		return out, fmt.Errorf("command failed: linkerd %s\n%s\n%s", strings.Join(arg, " "), err, stderr)
+	}
+	return out, nil
 }
 
 // PipeToLinkerdRun executes a linkerd command appended with the
@@ -446,9 +450,9 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 
 // CheckVersion validates the output of the "linkerd version" command.
 func (h *TestHelper) CheckVersion(serverVersion string) error {
-	out, _, err := h.LinkerdRun("version")
+	out, err := h.LinkerdRun("version")
 	if err != nil {
-		return fmt.Errorf("Unexpected error: %s\n%s", err.Error(), out)
+		return err
 	}
 	if !strings.Contains(out, fmt.Sprintf("Client version: %s", h.version)) {
 		return fmt.Errorf("Expected client version [%s], got:\n%s", h.version, out)
@@ -511,6 +515,20 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	})
 
 	return body, err
+}
+
+// WithDataPlaneNamespace is used to create a test namespace that is deleted before the function returns
+func (h *TestHelper) WithDataPlaneNamespace(ctx context.Context, testName string, annotations map[string]string, t *testing.T, test func(t *testing.T, ns string)) {
+	prefixedNs := h.GetTestNamespace(testName)
+	if err := h.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, annotations); err != nil {
+		AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", prefixedNs),
+			"failed to create %s namespace: %s", prefixedNs, err)
+	}
+	test(t, prefixedNs)
+	if err := h.deleteNamespaceIfExists(ctx, prefixedNs); err != nil {
+		AnnotatedFatalf(t, fmt.Sprintf("failed to delete %s namespace", prefixedNs),
+			"failed to delete %s namespace: %s", prefixedNs, err)
+	}
 }
 
 // ReadFile reads a file from disk and returns the contents as a string.

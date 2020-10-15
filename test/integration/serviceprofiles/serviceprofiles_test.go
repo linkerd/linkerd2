@@ -32,17 +32,19 @@ func TestMain(m *testing.M) {
 }
 
 func TestServiceProfiles(t *testing.T) {
+	ctx := context.Background()
+	TestHelper.WithDataPlaneNamespace(ctx, "serviceprofile-test", map[string]string{}, t, func(t *testing.T, ns string) {
+		t.Run("service profiles", testProfiles)
+		t.Run("service profiles metrics", testMetrics)
+	})
+}
 
+func testProfiles(t *testing.T) {
 	ctx := context.Background()
 	testNamespace := TestHelper.GetTestNamespace("serviceprofile-test")
-	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, testNamespace, nil)
+	out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
 	if err != nil {
-		testutil.Fatalf(t, "failed to create %s namespace: %s", testNamespace, err)
-	}
-	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
-			"'linkerd inject' command failed with %s: %s\n", err, stderr)
+		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 	}
 
 	out, err = TestHelper.KubectlApply(out, testNamespace)
@@ -115,10 +117,9 @@ func TestServiceProfiles(t *testing.T) {
 			}
 
 			cmd = append(cmd, tc.args...)
-			out, stderr, err := TestHelper.LinkerdRun(cmd...)
+			out, err := TestHelper.LinkerdRun(cmd...)
 			if err != nil {
-				testutil.AnnotatedFatalf(t, fmt.Sprintf("'linkerd %s' command failed", cmd),
-					"'linkerd %s' command failed with %s: %s\n", cmd, err, stderr)
+				testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd %s' command failed", cmd), err)
 			}
 
 			_, err = TestHelper.KubectlApply(out, tc.namespace)
@@ -138,7 +139,7 @@ func TestServiceProfiles(t *testing.T) {
 	}
 }
 
-func TestServiceProfileMetrics(t *testing.T) {
+func testMetrics(t *testing.T) {
 	var (
 		testNamespace        = TestHelper.GetTestNamespace("serviceprofile-test")
 		testSP               = "world-svc"
@@ -147,10 +148,9 @@ func TestServiceProfileMetrics(t *testing.T) {
 		testYAML             = "testdata/hello_world.yaml"
 	)
 
-	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", testYAML)
+	out, err := TestHelper.LinkerdRun("inject", "--manual", testYAML)
 	if err != nil {
-		testutil.AnnotatedErrorf(t, "'linkerd inject' command failed",
-			"'linkerd inject' command failed with %s: %s\n", err, stderr)
+		testutil.AnnotatedError(t, "'linkerd inject' command failed", err)
 	}
 
 	out, err = TestHelper.KubectlApply(out, testNamespace)
@@ -168,10 +168,9 @@ func TestServiceProfileMetrics(t *testing.T) {
 		testSP,
 	}
 
-	out, stderr, err = TestHelper.LinkerdRun(cmd...)
+	out, err = TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		testutil.AnnotatedErrorf(t, fmt.Sprintf("'linkerd %s' command failed", cmd),
-			"'linkerd %s' command failed with %s: %s\n", cmd, err, stderr)
+		testutil.AnnotatedError(t, fmt.Sprintf("'linkerd %s' command failed", cmd), err)
 	}
 
 	_, err = TestHelper.KubectlApply(out, testNamespace)
@@ -286,24 +285,30 @@ func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.J
 	}
 
 	cmd = append(cmd, "--output", "json")
-	var out, stderr string
+	var results map[string][]*cmd2.JSONRouteStats
 	err := TestHelper.RetryFor(2*time.Minute, func() error {
-		var err error
-		out, stderr, err = TestHelper.LinkerdRun(cmd...)
-		return err
+		out, err := TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			return err
+		}
+
+		if err := yaml.Unmarshal([]byte(out), &results); err != nil {
+			return err
+		}
+
+		if _, ok := results[deployName]; ok {
+			return nil
+		}
+
+		keys := []string{}
+		for k := range results {
+			keys = append(keys, k)
+		}
+		return fmt.Errorf("could not retrieve route info for %s; found [%s]", deployName, strings.Join(keys, ", "))
 	})
 	if err != nil {
 		return nil, err
 	}
+	return results[deployName], nil
 
-	var list map[string][]*cmd2.JSONRouteStats
-	err = yaml.Unmarshal([]byte(out), &list)
-	if err != nil {
-		return nil, fmt.Errorf(fmt.Sprintf("Error: %s stderr: %s", err, stderr))
-	}
-
-	if deployment, ok := list[deployName]; ok {
-		return deployment, nil
-	}
-	return nil, fmt.Errorf("could not retrieve route info for %s", deployName)
 }

@@ -83,11 +83,7 @@ metadata:
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
+    {{- toYaml .Values.proxyInjector.namespaceSelector | trim | nindent 4 }}
   clientConfig:
     service:
       name: linkerd-proxy-injector

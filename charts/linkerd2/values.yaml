@@ -178,6 +178,15 @@ heartbeatSchedule: "0 0 * * *"
 # proxy injector configuration
 proxyInjector:
   externalSecret: false
+
+  # Namespace selector used by admission webhook
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
@@ -194,6 +203,15 @@ proxyInjector:
 # service profile validator configuration
 profileValidator:
   externalSecret: false
+
+    # Namespace selector used by admission webhook
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 

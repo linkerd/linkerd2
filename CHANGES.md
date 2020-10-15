@@ -1,5 +1,31 @@
 # Changes
 
+## edge-20.10.3
+
+This edge release is a release candidate for stable-2.9.0.  It overhauls the
+discovery and routing logic implemented by the proxy, simplifies the way that
+Linkerd stores configuration, and adds new Helm values to configure additional
+labels, annotations, and namespace selectors for webhooks.
+
+* Added podLabels and podAnnotations Helm values to allow adding additional
+  labels or annotations to Linkerd control plane pods (thanks @tustvold!)
+* Added namespaceSelector Helm value for configuring the namespace selector
+  used by admission webhooks (thanks @tustvold!)
+* Expanded the 'linkerd edges' command to show TCP connections
+* Overhauled the discovery and routing logic implemented by the proxy:
+  * The `l5d-dst-override` header is no longer honored
+  * When the application attempts to connect to a pod IP, the proxy no
+    longer load balances these requests among all pods in the service.
+    The proxy will now honor session-stickiness as selected by an
+    application-level load balancer
+  * `TrafficSplits` are only applied when a client targets a service's IP
+  * The proxy no longer performs DNS "canonicalization" to translate
+    relative host header names to a fully-qualified form
+* Simplified the way that Linkerd stores its configuration.  Configuration is
+  now stored as Helm values in the linkerd-config ConfigMap
+* Renamed the --addon-config flag to --config to clarify this flag can be used
+  to set any Helm value
+
 ## edge-20.10.2
 
 This edge release adds more improvements for mTLS for all TCP traffic.

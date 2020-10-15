@@ -165,12 +165,24 @@ data:
       caBundle: ""
       crtPEM: ""
       externalSecret: false
+      namespaceSelector:
+        matchExpressions:
+        - key: config.linkerd.io/admission-webhooks
+          operator: NotIn
+          values:
+          - disabled
     prometheus:
       enabled: true
     proxyInjector:
       caBundle: ""
       crtPEM: ""
       externalSecret: false
+      namespaceSelector:
+        matchExpressions:
+        - key: config.linkerd.io/admission-webhooks
+          operator: NotIn
+          values:
+          - disabled
     proxyInjectorProxyResources: null
     proxyInjectorResources: null
     publicAPIProxyResources: null

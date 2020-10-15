@@ -1157,6 +1157,12 @@ data:
       caBundle: test-profile-validator-ca-bundle
       crtPEM: test-profile-validator-crt-pem
       externalSecret: false
+      namespaceSelector:
+        matchExpressions:
+        - key: config.linkerd.io/admission-webhooks
+          operator: NotIn
+          values:
+          - disabled
     prometheus:
       args:
         config.file: /etc/prometheus/prometheus.yml
@@ -1357,6 +1363,12 @@ data:
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: test-proxy-injector-crt-pem
       externalSecret: false
+      namespaceSelector:
+        matchExpressions:
+        - key: config.linkerd.io/admission-webhooks
+          operator: NotIn
+          values:
+          - disabled
     proxyInjectorProxyResources: null
     proxyInjectorResources:
       cpu:
