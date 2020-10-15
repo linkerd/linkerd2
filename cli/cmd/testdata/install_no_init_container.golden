@@ -888,8 +888,8 @@ data:
       proxyInit:
         capabilities: null
         closeWaitTimeoutSecs: 0
-        ignoreInboundPorts: ""
-        ignoreOutboundPorts: ""
+        ignoreInboundPorts: 25,443,587,3306,11211
+        ignoreOutboundPorts: 25,443,587,3306,11211
         image:
           name: ghcr.io/linkerd/proxy-init
           pullPolicy: IfNotPresent
