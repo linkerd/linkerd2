@@ -285,28 +285,30 @@ func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.J
 	}
 
 	cmd = append(cmd, "--output", "json")
-	var out, stderr string
+	var results map[string][]*cmd2.JSONRouteStats
 	err := TestHelper.RetryFor(2*time.Minute, func() error {
-		_, err := TestHelper.LinkerdRun(cmd...)
-		return err
+		out, err := TestHelper.LinkerdRun(cmd...)
+		if err != nil {
+			return err
+		}
+
+		if err := yaml.Unmarshal([]byte(out), &results); err != nil {
+			return err
+		}
+
+		if _, ok := results[deployName]; ok {
+			return nil
+		}
+
+		keys := []string{}
+		for k := range results {
+			keys = append(keys, k)
+		}
+		return fmt.Errorf("could not retrieve route info for %s; found [%s]", deployName, strings.Join(keys, ", "))
 	})
 	if err != nil {
 		return nil, err
 	}
+	return results[deployName], nil
 
-	var results map[string][]*cmd2.JSONRouteStats
-	err = yaml.Unmarshal([]byte(out), &results)
-	if err != nil {
-		return nil, fmt.Errorf(fmt.Sprintf("Error: %s stderr: %s", err, stderr))
-	}
-
-	if deployment, ok := results[deployName]; ok {
-		return deployment, nil
-	}
-
-	keys := []string{}
-	for k := range results {
-		keys = append(keys, k)
-	}
-	return nil, fmt.Errorf("could not retrieve route info for %s; found [%s]", deployName, strings.Join(keys, ", "))
 }
