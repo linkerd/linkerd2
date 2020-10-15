@@ -294,14 +294,19 @@ func getRoutes(deployName, namespace string, additionalArgs []string) ([]*cmd2.J
 		return nil, err
 	}
 
-	var list map[string][]*cmd2.JSONRouteStats
-	err = yaml.Unmarshal([]byte(out), &list)
+	var results map[string][]*cmd2.JSONRouteStats
+	err = yaml.Unmarshal([]byte(out), &results)
 	if err != nil {
 		return nil, fmt.Errorf(fmt.Sprintf("Error: %s stderr: %s", err, stderr))
 	}
 
-	if deployment, ok := list[deployName]; ok {
+	if deployment, ok := results[deployName]; ok {
 		return deployment, nil
 	}
-	return nil, fmt.Errorf("could not retrieve route info for %s", deployName)
+
+	keys := []string{}
+	for k := range results {
+		keys = append(keys, k)
+	}
+	return nil, fmt.Errorf("could not retrieve route info for %s; found [%s]", deployName, strings.Join(keys, ", "))
 }
