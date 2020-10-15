@@ -51,9 +51,9 @@ var (
 //////////////////////
 
 func TestCliGet(t *testing.T) {
-	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/to_be_injected_application.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "testdata/to_be_injected_application.yaml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\n%s", err, stderr)
+		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
 
 	ctx := context.Background()
@@ -86,9 +86,9 @@ func TestCliGet(t *testing.T) {
 		}
 
 		t.Run("get pods from --all-namespaces", func(t *testing.T) {
-			out, stderr, err = TestHelper.LinkerdRun("get", "pods", "--all-namespaces")
+			out, err = TestHelper.LinkerdRun("get", "pods", "--all-namespaces")
 			if err != nil {
-				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s\n%s", err, out, stderr)
+				testutil.AnnotatedFatal(t, "unexpected error", err)
 			}
 
 			err := checkPodOutput(out, deployReplicas, "", prefixedNs)
@@ -98,9 +98,9 @@ func TestCliGet(t *testing.T) {
 		})
 
 		t.Run("get pods from the linkerd namespace", func(t *testing.T) {
-			out, stderr, err = TestHelper.LinkerdRun("get", "pods", "-n", TestHelper.GetLinkerdNamespace())
+			out, err = TestHelper.LinkerdRun("get", "pods", "-n", TestHelper.GetLinkerdNamespace())
 			if err != nil {
-				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s\n%s", err, out, stderr)
+				testutil.AnnotatedFatal(t, "unexpected error", err)
 			}
 
 			err := checkPodOutput(out, linkerdPods, "linkerd-heartbeat", TestHelper.GetLinkerdNamespace())
@@ -115,9 +115,9 @@ func TestCliGet(t *testing.T) {
 				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s", err, out)
 			}
 
-			out, stderr, err = TestHelper.LinkerdRun("get", "pods")
+			out, err = TestHelper.LinkerdRun("get", "pods")
 			if err != nil {
-				testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v output:\n%s\n%s", err, out, stderr)
+				testutil.AnnotatedFatal(t, "unexpected error", err)
 			}
 
 			err = checkPodOutput(out, linkerdPods, "linkerd-heartbeat", TestHelper.GetLinkerdNamespace())

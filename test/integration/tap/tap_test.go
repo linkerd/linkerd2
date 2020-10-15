@@ -67,10 +67,9 @@ var (
 //////////////////////
 
 func TestCliTap(t *testing.T) {
-	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/tap_application.yaml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
-			"'linkerd inject' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 	}
 
 	ctx := context.Background()
@@ -134,7 +133,7 @@ func TestCliTap(t *testing.T) {
 		})
 
 		t.Run("tap a disabled deployment", func(t *testing.T) {
-			out, stderr, err := TestHelper.LinkerdRun("tap", "deploy/t4", "--namespace", prefixedNs)
+			out, stderr, err := TestHelper.PipeToLinkerdRun("", "tap", "deploy/t4", "--namespace", prefixedNs)
 			if out != "" {
 				testutil.AnnotatedFatalf(t, "unexpected output",
 					"unexpected output: %s", out)

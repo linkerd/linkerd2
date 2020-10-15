@@ -41,9 +41,9 @@ func TestExternalIssuer(t *testing.T) {
 }
 
 func verifyInstallApp(ctx context.Context, t *testing.T) {
-	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/external_issuer_application.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/external_issuer_application.yaml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "'linkerd inject' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 	}
 
 	prefixedNs := TestHelper.GetTestNamespace(TestAppNamespaceSuffix)
@@ -72,13 +72,13 @@ func verifyInstallApp(ctx context.Context, t *testing.T) {
 func checkAppWoks(t *testing.T, timeout time.Duration) error {
 	return TestHelper.RetryFor(timeout, func() error {
 		args := []string{"stat", "deploy", "-n", TestHelper.GetTestNamespace(TestAppNamespaceSuffix), "--from", "deploy/slow-cooker", "-t", "1m"}
-		out, stderr, err := TestHelper.LinkerdRun(args...)
+		out, err := TestHelper.LinkerdRun(args...)
 		if err != nil {
-			return fmt.Errorf("Unexpected stat error: %s\n%s\n%s", err, out, stderr)
+			return err
 		}
 		rowStats, err := testutil.ParseRows(out, 1, 8)
 		if err != nil {
-			return fmt.Errorf("%s\n%s", err, stderr)
+			return err
 		}
 
 		stat := rowStats[TestAppBackendDeploymentName]

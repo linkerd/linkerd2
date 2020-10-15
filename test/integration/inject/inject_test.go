@@ -80,10 +80,9 @@ func TestInjectManualParams(t *testing.T) {
 
 	cmd = append(cmd, "testdata/inject_test.yaml")
 
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
-
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v: %s", stderr, err)
+		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
 
 	deploy, err := parseDeployment(out)

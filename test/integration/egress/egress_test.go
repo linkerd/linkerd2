@@ -26,9 +26,9 @@ func TestMain(m *testing.M) {
 
 func TestEgressHttp(t *testing.T) {
 	ctx := context.Background()
-	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/proxy.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "testdata/proxy.yaml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "unexpected error", "unexpected error: %v\n%s", err, stderr)
+		testutil.AnnotatedFatal(t, "unexpected error", err)
 	}
 
 	TestHelper.WithDataPlaneNamespace(ctx, "egress-test", map[string]string{}, t, func(t *testing.T, ns string) {
