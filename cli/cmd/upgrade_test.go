@@ -293,7 +293,7 @@ func TestUpgradeTracingAddon(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
 	tracingManifests := []string{
-		"Service/linkerd-jaeger", "Deployment/linkerd-jaeger", "ConfigMap/linkerd-config-addons",
+		"Service/linkerd-jaeger", "Deployment/linkerd-jaeger",
 		"ServiceAccount/linkerd-jaeger", "Service/linkerd-collector", "ConfigMap/linkerd-collector-config",
 		"ServiceAccount/linkerd-collector", "Deployment/linkerd-collector",
 	}
@@ -343,9 +343,7 @@ func TestUpgradeOverwriteTracingAddon(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
-	tracingManifests := []string{
-		"ConfigMap/linkerd-config-addons", "Deployment/linkerd-collector",
-	}
+	tracingManifests := []string{"Deployment/linkerd-collector"}
 	for _, id := range tracingManifests {
 		if _, ok := diffMap[id]; ok {
 			delete(diffMap, id)
@@ -523,7 +521,7 @@ func TestUpgradeEnableAddon(t *testing.T) {
 	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
 	addonManifests := []string{
 		"ServiceAccount/linkerd-grafana", "Deployment/linkerd-grafana", "Service/linkerd-grafana",
-		"ConfigMap/linkerd-grafana-config", "ConfigMap/linkerd-config-addons",
+		"ConfigMap/linkerd-grafana-config",
 	}
 	for _, id := range addonManifests {
 		if _, ok := diffMap[id]; ok {
@@ -608,11 +606,6 @@ func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
-	if _, ok := diffMap["ConfigMap/linkerd-config-addons"]; ok {
-		delete(diffMap, "ConfigMap/linkerd-config-addons")
-	} else {
-		t.Error("Expected ConfigMap/linkerd-config-addons in upgrade output diff but was absent")
-	}
 
 	resourceDiffFound := false
 	for id, diffs := range diffMap {

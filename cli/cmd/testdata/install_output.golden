@@ -2770,32 +2770,6 @@ spec:
 
 ---
 ###
-### linkerd add-ons configuration
-###
----
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config-addons
-  namespace: Namespace
-  labels:
-    ControllerNamespaceLabel: Namespace
-  annotations:
-    CreatedByAnnotation: CliVersion
-data:
-  values: |-
-    global:
-      prometheusUrl: ""
-      grafanaUrl: ""
-    grafana:
-      enabled: true
-    prometheus:
-      enabled: true
-      image: PrometheusImage
-    tracing:
-      enabled: false
----
-###
 ### Grafana RBAC
 ###
 ---

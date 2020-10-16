@@ -5,16 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
 const (
-	// LinkerdAddOnChecks adds checks to validate the add-on components
-	LinkerdAddOnChecks CategoryID = "linkerd-addons"
-
 	// LinkerdGrafanaAddOnChecks adds checks related to grafana add-on components
 	LinkerdGrafanaAddOnChecks CategoryID = "linkerd-grafana"
 
@@ -30,7 +25,7 @@ var (
 	errorKeyNotFound error = errors.New("key not found")
 
 	// AddOnCategories is the list of add-on category checks
-	AddOnCategories = []CategoryID{LinkerdAddOnChecks, LinkerdPrometheusAddOnChecks, LinkerdGrafanaAddOnChecks, LinkerdTracingAddOnChecks}
+	AddOnCategories = []CategoryID{LinkerdPrometheusAddOnChecks, LinkerdGrafanaAddOnChecks, LinkerdTracingAddOnChecks}
 )
 
 // addOnCategories contain all the checks w.r.t add-ons. It is strongly advised to
@@ -39,25 +34,18 @@ var (
 func (hc *HealthChecker) addOnCategories() []category {
 	return []category{
 		{
-			id: LinkerdAddOnChecks,
-			checkers: []checker{
-				{
-					description: fmt.Sprintf("'%s' config map exists", k8s.AddOnsConfigMapName),
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkIfAddOnsConfigMapExists(ctx)
-					},
-				},
-			},
-		},
-		{
 			id: LinkerdPrometheusAddOnChecks,
 			checkers: []checker{
 				{
 					description: "prometheus add-on service account exists",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						if _, ok := hc.addOns[l5dcharts.PrometheusAddOn]; ok {
+						prometheusValues := make(map[string]interface{})
+						err := yaml.Unmarshal(hc.linkerdConfig.Prometheus.Values(), &prometheusValues)
+						if err != nil {
+							return err
+						}
+						if GetBool(prometheusValues, "enabled") {
 							return hc.checkServiceAccounts(ctx, []string{"linkerd-prometheus"}, hc.ControlPlaneNamespace, "")
 						}
 						return &SkipError{Reason: "prometheus add-on not enabled"}
@@ -67,7 +55,12 @@ func (hc *HealthChecker) addOnCategories() []category {
 					description: "prometheus add-on config map exists",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						if _, ok := hc.addOns[l5dcharts.PrometheusAddOn]; ok {
+						prometheusValues := make(map[string]interface{})
+						err := yaml.Unmarshal(hc.linkerdConfig.Prometheus.Values(), &prometheusValues)
+						if err != nil {
+							return err
+						}
+						if GetBool(prometheusValues, "enabled") {
 							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(ctx, "linkerd-prometheus-config", metav1.GetOptions{})
 							return err
 						}
@@ -80,7 +73,12 @@ func (hc *HealthChecker) addOnCategories() []category {
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
 					check: func(ctx context.Context) error {
-						if _, ok := hc.addOns[l5dcharts.PrometheusAddOn]; ok {
+						prometheusValues := make(map[string]interface{})
+						err := yaml.Unmarshal(hc.linkerdConfig.Prometheus.Values(), &prometheusValues)
+						if err != nil {
+							return err
+						}
+						if GetBool(prometheusValues, "enabled") {
 							// populate controlPlanePods to get the latest status, during retries
 							var err error
 							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
@@ -102,7 +100,12 @@ func (hc *HealthChecker) addOnCategories() []category {
 					description: "grafana add-on service account exists",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
+						grafana := make(map[string]interface{})
+						err := yaml.Unmarshal(hc.linkerdConfig.Grafana.Values(), &grafana)
+						if err != nil {
+							return err
+						}
+						if GetBool(grafana, "enabled") {
 							name, err := GetString(grafana, "name")
 							if err != nil && !errors.Is(err, errorKeyNotFound) {
 								return err
@@ -122,7 +125,12 @@ func (hc *HealthChecker) addOnCategories() []category {
 					description: "grafana add-on config map exists",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						if grafana, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
+						grafana := make(map[string]interface{})
+						err := yaml.Unmarshal(hc.linkerdConfig.Grafana.Values(), &grafana)
+						if err != nil {
+							return err
+						}
+						if GetBool(grafana, "enabled") {
 							name, err := GetString(grafana, "name")
 							if err != nil && !errors.Is(err, errorKeyNotFound) {
 								return err
@@ -148,7 +156,12 @@ func (hc *HealthChecker) addOnCategories() []category {
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
 					check: func(ctx context.Context) error {
-						if _, ok := hc.addOns[l5dcharts.GrafanaAddOn]; ok {
+						grafana := make(map[string]interface{})
+						err := yaml.Unmarshal(hc.linkerdConfig.Grafana.Values(), &grafana)
+						if err != nil {
+							return err
+						}
+						if GetBool(grafana, "enabled") {
 							// populate controlPlanePods to get the latest status, during retries
 							var err error
 							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
@@ -170,7 +183,12 @@ func (hc *HealthChecker) addOnCategories() []category {
 					description: "collector service account exists",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
+						tracing := make(map[string]interface{})
+						err := yaml.Unmarshal(hc.linkerdConfig.Tracing.Values(), &tracing)
+						if err != nil {
+							return err
+						}
+						if GetBool(tracing, "enabled") {
 
 							collector, mapError := GetMap(tracing, "collector")
 
@@ -197,7 +215,12 @@ func (hc *HealthChecker) addOnCategories() []category {
 					description: "jaeger service account exists",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
+						tracing := make(map[string]interface{})
+						err := yaml.Unmarshal(hc.linkerdConfig.Tracing.Values(), &tracing)
+						if err != nil {
+							return err
+						}
+						if GetBool(tracing, "enabled") {
 							jaeger, mapError := GetMap(tracing, "jaeger")
 
 							jaegerName, keyError := GetString(jaeger, "name")
@@ -223,7 +246,12 @@ func (hc *HealthChecker) addOnCategories() []category {
 					description: "collector config map exists",
 					warning:     true,
 					check: func(ctx context.Context) error {
-						if tracing, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
+						tracing := make(map[string]interface{})
+						err := yaml.Unmarshal(hc.linkerdConfig.Tracing.Values(), &tracing)
+						if err != nil {
+							return err
+						}
+						if GetBool(tracing, "enabled") {
 							collector, mapError := GetMap(tracing, "collector")
 
 							collectorName, keyError := GetString(collector, "name")
@@ -255,7 +283,12 @@ func (hc *HealthChecker) addOnCategories() []category {
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
 					check: func(ctx context.Context) error {
-						if _, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
+						tracing := make(map[string]interface{})
+						err := yaml.Unmarshal(hc.linkerdConfig.Tracing.Values(), &tracing)
+						if err != nil {
+							return err
+						}
+						if GetBool(tracing, "enabled") {
 							// populate controlPlanePods to get the latest status, during retries
 							var err error
 							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
@@ -274,7 +307,12 @@ func (hc *HealthChecker) addOnCategories() []category {
 					retryDeadline:       hc.RetryDeadline,
 					surfaceErrorOnRetry: true,
 					check: func(ctx context.Context) error {
-						if _, ok := hc.addOns[l5dcharts.TracingAddOn]; ok {
+						tracing := make(map[string]interface{})
+						err := yaml.Unmarshal(hc.linkerdConfig.Tracing.Values(), &tracing)
+						if err != nil {
+							return err
+						}
+						if GetBool(tracing, "enabled") {
 							// populate controlPlanePods to get the latest status, during retries
 							var err error
 							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
@@ -290,56 +328,6 @@ func (hc *HealthChecker) addOnCategories() []category {
 			},
 		},
 	}
-}
-
-func (hc *HealthChecker) checkIfAddOnsConfigMapExists(ctx context.Context) error {
-
-	// Check if linkerd-config-addons ConfigMap present, If not skip the next checks
-	cm, err := hc.checkForAddOnCM(ctx)
-	if err != nil {
-		return err
-	}
-
-	// linkerd-config-addons cm is present,now update hc to include those add-ons
-	// so that further add-on specific checks can be ran
-	var values l5dcharts.Values
-	err = yaml.Unmarshal([]byte(cm), &values)
-	if err != nil {
-		return fmt.Errorf("could not unmarshal %s config-map: %s", k8s.AddOnsConfigMapName, err)
-	}
-
-	addOns, err := l5dcharts.ParseAddOnValues(&values)
-	if err != nil {
-		return fmt.Errorf("could not read %s config-map: %s", k8s.AddOnsConfigMapName, err)
-	}
-
-	hc.addOns = make(map[string]interface{})
-
-	for _, addOn := range addOns {
-		values := map[string]interface{}{}
-		err = yaml.Unmarshal(addOn.Values(), &values)
-		if err != nil {
-			return err
-		}
-
-		hc.addOns[addOn.Name()] = values
-	}
-
-	return nil
-}
-
-func (hc *HealthChecker) checkForAddOnCM(ctx context.Context) (string, error) {
-	cm, err := k8s.GetAddOnsConfigMap(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
-	if err != nil {
-		return "", err
-	}
-
-	values, ok := cm["values"]
-	if !ok {
-		return "", fmt.Errorf("values subpath not found in %s configmap", k8s.AddOnsConfigMapName)
-	}
-
-	return values, nil
 }
 
 // GetString returns a String with the given key if present
@@ -360,6 +348,27 @@ func GetString(i interface{}, k string) (string, error) {
 	}
 
 	return res, nil
+}
+
+// GetBool returns a bool with the given key if present.  Defaults to false if
+// the key is not present or is a different type.
+func GetBool(i interface{}, k string) bool {
+	m, ok := i.(map[string]interface{})
+	if !ok {
+		return false
+	}
+
+	v, ok := m[k]
+	if !ok {
+		return false
+	}
+
+	res, ok := v.(bool)
+	if !ok {
+		return false
+	}
+
+	return res
 }
 
 // GetMap returns a Map with the given Key if Present

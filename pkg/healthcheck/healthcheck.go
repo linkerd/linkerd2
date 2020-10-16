@@ -378,7 +378,6 @@ type HealthChecker struct {
 	trustAnchors     []*x509.Certificate
 	cniDaemonSet     *appsv1.DaemonSet
 	links            []multicluster.Link
-	addOns           map[string]interface{}
 }
 
 // NewHealthChecker returns an initialized HealthChecker
