@@ -102,6 +102,8 @@ func TestNewValues(t *testing.T) {
 				InboundConnectTimeout:  "100ms",
 			},
 			ProxyInit: &ProxyInit{
+				IgnoreInboundPorts:  "25,443,587,3306,11211",
+				IgnoreOutboundPorts: "25,443,587,3306,11211",
 				Image: &Image{
 					Name:       "ghcr.io/linkerd/proxy-init",
 					PullPolicy: "IfNotPresent",

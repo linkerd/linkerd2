@@ -897,8 +897,8 @@ data:
       proxyInit:
         capabilities: null
         closeWaitTimeoutSecs: 0
-        ignoreInboundPorts: ""
-        ignoreOutboundPorts: ""
+        ignoreInboundPorts: 25,443,587,3306,11211
+        ignoreOutboundPorts: 25,443,587,3306,11211
         image:
           name: ghcr.io/linkerd/proxy-init
           pullPolicy: IfNotPresent
@@ -1322,9 +1322,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,25,443,587,3306,11211
         image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1595,9 +1595,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,25,443,587,3306,11211
         image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1886,9 +1886,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,25,443,587,3306,11211
         image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2189,9 +2189,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,25,443,587,3306,11211
         image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2440,9 +2440,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,25,443,587,3306,11211
         image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2733,9 +2733,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,25,443,587,3306,11211
         image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -3013,9 +3013,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,25,443,587,3306,11211
         image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -3340,9 +3340,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,25,443,587,3306,11211
         image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -3794,9 +3794,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - "443"
+        - 443,25,443,587,3306,11211
         image: ghcr.io/linkerd/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
