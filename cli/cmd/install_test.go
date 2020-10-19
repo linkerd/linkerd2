@@ -222,7 +222,7 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withCustomDestinationGetNetsValues.Global.Proxy.DestinationGetNetworks = "10.0.0.0/8,172.0.0.0/8"
+	withCustomDestinationGetNetsValues.Global.Proxy.DestinationGetNetworks = "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
 	addFakeTLSSecrets(withCustomDestinationGetNetsValues)
 
 	testCases := []struct {
