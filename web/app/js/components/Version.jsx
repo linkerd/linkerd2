@@ -73,7 +73,7 @@ class Version extends React.Component {
   render() {
     const { classes, releaseVersion, productName } = this.props;
     const channel = this.versionChannel(releaseVersion);
-    let message = `Running ${productName || 'controller'}`;
+    let message = ` ${productName || 'controller'}`;
     message += ` ${this.numericVersion(releaseVersion)}`;
     if (channel) {
       message += ` (${channel})`;
@@ -82,7 +82,7 @@ class Version extends React.Component {
 
     return (
       <div className={classes.version}>
-        <Typography className={classes.versionMsg}>{message}</Typography>
+        <Typography className={classes.versionMsg}><Trans>Running</Trans>{message}</Typography>
         {this.renderVersionCheck()}
       </div>
     );

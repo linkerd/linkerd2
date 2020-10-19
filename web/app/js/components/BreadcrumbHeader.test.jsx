@@ -2,6 +2,7 @@ import { BrowserRouter } from 'react-router-dom';
 import BreadcrumbHeader from './BreadcrumbHeader.jsx';
 import React from 'react';
 import { mount } from 'enzyme';
+import { i18nWrap } from '../../test/testHelpers.jsx';
 
 const loc = {
   pathname: '',
@@ -48,13 +49,13 @@ describe('Tests for <BreadcrumbHeader>', () => {
   it("renders correct breadcrumb text for top-level pages [Control Plane]",
     () => {
     loc.pathname = "/controlplane";
-    const component = mount(
+    const component = mount(i18nWrap(
       <BrowserRouter>
         <BreadcrumbHeader
           location={loc}
           pathPrefix="" />
       </BrowserRouter>
-    );
+    ));
     const crumbs = component.find("span");
     expect(crumbs).toHaveLength(1);
     const crumbText = crumbs.reduce((acc, crumb) => {

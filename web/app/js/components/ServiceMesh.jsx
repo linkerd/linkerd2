@@ -263,7 +263,7 @@ class ServiceMesh extends React.Component {
     let numUnadded = 0;
 
     if (_isEmpty(nsStatuses)) {
-      message = <Trans>noResourcesDetectedMsg</Trans>;
+      message = <Trans>noNamespacesDetectedMsg</Trans>;
     } else {
       const meshedCount = _countBy(nsStatuses, pod => {
         return pod.meshedPercent.get() > 0;

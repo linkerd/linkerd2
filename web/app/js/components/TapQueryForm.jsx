@@ -36,7 +36,6 @@ import _noop from 'lodash/noop';
 import _omit from 'lodash/omit';
 import _pick from 'lodash/pick';
 import _some from 'lodash/some';
-import _startCase from 'lodash/startCase';
 import _uniq from 'lodash/uniq';
 import _values from 'lodash/values';
 import { withStyles } from '@material-ui/core/styles';
@@ -245,7 +244,7 @@ class TapQueryForm extends React.Component {
 
     return (
       <React.Fragment>
-        <InputLabel htmlFor={resourceKey}>{_startCase(resourceKey)}</InputLabel>
+        <InputLabel htmlFor={resourceKey}>{resourceKey === 'resource' ? <Trans>formResource</Trans> : <Trans>formToResource</Trans>}</InputLabel>
         <Select
           value={!nsEmpty && resourceOptions.includes(query[resourceKey]) ? query[resourceKey] : ''}
           onChange={this.handleFormChange(resourceKey)}
