@@ -416,8 +416,8 @@ setup_helm() {
 helm_cleanup() {
   (
     set -e
-    "$helm_path" --kube-context="$context" delete "$helm_release_name"
-    "$helm_path" --kube-context="$context" delete "$helm_multicluster_release_name"
+    "$helm_path" --kube-context="$context" delete "$helm_release_name" || true
+    "$helm_path" --kube-context="$context" delete "$helm_multicluster_release_name" || true
     # `helm delete` doesn't wait for resources to be deleted, so we wait explicitly.
     # We wait for the namespace to be gone so the following call to `cleanup` doesn't fail when it attempts to delete
     # the same namespace that is already being deleted here (error thrown by the NamespaceLifecycle controller).
