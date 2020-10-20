@@ -2,27 +2,27 @@
 env:
 {{ if .Values.global.proxy.requireIdentityOnInboundPorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_IDENTITY
-  value: "{{.Values.global.proxy.requireIdentityOnInboundPorts}}"
+  value: {{.Values.global.proxy.requireIdentityOnInboundPorts | quote}}
 {{ end -}}
 - name: LINKERD2_PROXY_LOG
-  value: "{{.Values.global.proxy.logLevel | default "linkerd=info,warn" }}"
+  value: {{.Values.global.proxy.logLevel | default "linkerd=info,warn" | quote}}
 - name: LINKERD2_PROXY_LOG_FORMAT
-  value: {{.Values.global.proxy.logFormat | default "plain"}}
+  value: {{.Values.global.proxy.logFormat | default "plain" | quote}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
   value: {{ternary "localhost.:8086" (printf "linkerd-dst-headless.%s.svc.%s:8086" .Values.global.namespace .Values.global.clusterDomain) (eq .Values.global.proxy.component "linkerd-destination")}}
 {{ if .Values.global.proxy.destinationGetNetworks -}}
 - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-  value: "{{.Values.global.proxy.destinationGetNetworks}}"
+  value: {{.Values.global.proxy.destinationGetNetworks | quote}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
-  value: "{{.Values.global.proxy.destinationGetNetworks}}"
+  value: {{.Values.global.proxy.destinationGetNetworks | quote}}
 {{ end -}}
 {{ if .Values.global.proxy.inboundConnectTimeout -}}
 - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
-  value: "{{.Values.global.proxy.inboundConnectTimeout }}"
+  value: {{.Values.global.proxy.inboundConnectTimeout | quote}}
 {{ end -}}
 {{ if .Values.global.proxy.outboundConnectTimeout -}}
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
-  value: "{{.Values.global.proxy.outboundConnectTimeout }}"
+  value: {{.Values.global.proxy.outboundConnectTimeout | quote}}
 {{ end -}}
 - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
   value: 0.0.0.0:{{.Values.global.proxy.ports.control}}
@@ -51,7 +51,7 @@ env:
 {{ end -}}
 {{ if .Values.global.proxy.opaquePorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
-  value: "{{.Values.global.proxy.opaquePorts}}"
+  value: {{.Values.global.proxy.opaquePorts | quote}}
 {{ end -}}
 - name: _pod_ns
   valueFrom:
