@@ -265,7 +265,7 @@ start_kind_test() {
 start_k3d_test() {
   if [ -n "$RUN_ARM_TEST" ]; then
     echo "Skipped because ARM tests run on a dedicated cluster."
-    exit 0
+    return
   fi
 
   test_setup
@@ -395,7 +395,7 @@ run_upgrade-edge_test() {
 run_upgrade-stable_test() {
   if [ -n "$RUN_ARM_TEST" ]; then
     echo "Skipped. Linkerd stable version does not support ARM yet"
-    exit 0
+    return
   fi
 
   stable_install_url="https://run.linkerd.io/install"
@@ -431,7 +431,7 @@ helm_cleanup() {
 run_helm-upgrade_test() {
   if [ -n "$RUN_ARM_TEST" ]; then
     echo "Skipped. Linkerd stable version does not support ARM yet"
-    exit 0
+    return
   fi
 
   local stable_version
