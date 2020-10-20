@@ -418,6 +418,7 @@ func TestValidate(t *testing.T) {
 			valid bool
 		}{
 			{"", false},
+			{"off", true},
 			{"info", true},
 			{"somemodule", true},
 			{"bad%name", false},
