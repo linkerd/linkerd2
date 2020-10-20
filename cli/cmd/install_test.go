@@ -45,6 +45,7 @@ func TestRender(t *testing.T) {
 		Global: &charts.Global{
 			Namespace:                "Namespace",
 			ClusterDomain:            "cluster.local",
+			ClusterNetworks:          "ClusterNetworks",
 			ImagePullPolicy:          "ImagePullPolicy",
 			CliVersion:               "CliVersion",
 			ControllerComponentLabel: "ControllerComponentLabel",
@@ -63,7 +64,6 @@ func TestRender(t *testing.T) {
 			PodAnnotations:           map[string]string{},
 			PodLabels:                map[string]string{},
 			Proxy: &charts.Proxy{
-				DestinationGetNetworks: "DestinationGetNetworks",
 				Image: &charts.Image{
 					Name:       "ProxyImageName",
 					PullPolicy: "ImagePullPolicy",
@@ -222,7 +222,7 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withCustomDestinationGetNetsValues.Global.Proxy.DestinationGetNetworks = "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
+	withCustomDestinationGetNetsValues.Global.ClusterNetworks = "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
 	addFakeTLSSecrets(withCustomDestinationGetNetsValues)
 
 	testCases := []struct {
@@ -382,7 +382,7 @@ func TestValidate(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
-		values.Global.Proxy.DestinationGetNetworks = "wrong"
+		values.Global.ClusterNetworks = "wrong"
 		expected := "cannot parse destination get networks: invalid CIDR address: wrong"
 
 		err = validateValues(context.Background(), nil, values)
