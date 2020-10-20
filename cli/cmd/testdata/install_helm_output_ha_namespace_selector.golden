@@ -850,6 +850,7 @@ data:
     global:
       cliVersion: ""
       clusterDomain: cluster.local
+      clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
       cniEnabled: false
       controlPlaneTracing: false
       controllerComponentLabel: linkerd.io/control-plane-component
@@ -873,7 +874,6 @@ data:
       proxy:
         capabilities: null
         component: linkerd-controller
-        destinationGetNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         disableIdentity: false
         disableTap: false
         enableExternalProfiles: false
@@ -937,6 +937,7 @@ data:
       global:
         cliVersion: ""
         clusterDomain: cluster.local
+        clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         cniEnabled: false
         controlPlaneTracing: false
         controllerComponentLabel: linkerd.io/control-plane-component
@@ -959,7 +960,6 @@ data:
         proxy:
           capabilities: null
           component: linkerd-controller
-          destinationGetNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
           disableIdentity: false
           disableTap: false
           enableExternalProfiles: false
@@ -1024,6 +1024,7 @@ data:
         global:
           cliVersion: ""
           clusterDomain: cluster.local
+          clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
           cniEnabled: false
           controlPlaneTracing: false
           controllerComponentLabel: linkerd.io/control-plane-component
@@ -1046,7 +1047,6 @@ data:
           proxy:
             capabilities: null
             component: linkerd-controller
-            destinationGetNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
             disableIdentity: false
             disableTap: false
             enableExternalProfiles: false
@@ -1161,6 +1161,7 @@ data:
       global:
         cliVersion: ""
         clusterDomain: cluster.local
+        clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         cniEnabled: false
         controlPlaneTracing: false
         controllerComponentLabel: linkerd.io/control-plane-component
@@ -1183,7 +1184,6 @@ data:
         proxy:
           capabilities: null
           component: linkerd-controller
-          destinationGetNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
           disableIdentity: false
           disableTap: false
           enableExternalProfiles: false
@@ -1251,6 +1251,7 @@ data:
         global:
           cliVersion: ""
           clusterDomain: cluster.local
+          clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
           cniEnabled: false
           controlPlaneTracing: false
           controllerComponentLabel: linkerd.io/control-plane-component
@@ -1273,7 +1274,6 @@ data:
           proxy:
             capabilities: null
             component: linkerd-controller
-            destinationGetNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
             disableIdentity: false
             disableTap: false
             enableExternalProfiles: false
@@ -3969,8 +3969,6 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
-        - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
-          value: "10000"
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
