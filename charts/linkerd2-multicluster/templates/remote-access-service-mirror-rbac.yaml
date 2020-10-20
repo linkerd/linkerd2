@@ -1,12 +1,17 @@
 {{if .Values.remoteMirrorServiceAccount -}}
+{{- $names := .Values.remoteMirrorServiceAccountName -}}
+{{- if not (kindIs "slice" .Values.remoteMirrorServiceAccountName) -}}
+  {{- $names = splitList "," .Values.remoteMirrorServiceAccountName -}}
+{{- end -}}
+{{- range $names -}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{.Values.remoteMirrorServiceAccountName}}
-  namespace: {{.Values.namespace}}
+  name: {{.}}
+  namespace: {{$.Values.namespace}}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{$.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" $.Values.linkerdVersion) $.Values.cliVersion}}
 rules:
 - apiGroups: [""]
   resources: ["services"]
@@ -19,25 +24,25 @@ rules:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{.Values.remoteMirrorServiceAccountName}}
-  namespace: {{.Values.namespace}}
+  name: {{.}}
+  namespace: {{$.Values.namespace}}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{$.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" $.Values.linkerdVersion) $.Values.cliVersion}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{.Values.remoteMirrorServiceAccountName}}
-  namespace: {{.Values.namespace}}
+  name: {{.}}
+  namespace: {{$.Values.namespace}}
   annotations:
-    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{$.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" $.Values.linkerdVersion) $.Values.cliVersion}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{.Values.remoteMirrorServiceAccountName}}
+  name: {{.}}
 subjects:
 - kind: ServiceAccount
-  name: {{.Values.remoteMirrorServiceAccountName}}
-  namespace: {{.Values.namespace}}
+  name: {{.}}
+  namespace: {{$.Values.namespace}}
 {{end -}}
-
+{{end -}}
