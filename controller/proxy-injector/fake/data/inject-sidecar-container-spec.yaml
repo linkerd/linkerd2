@@ -13,8 +13,6 @@ env:
       value: tcp://127.0.0.1:4140
     - name: LINKERD2_PROXY_INBOUND_LISTENER
       value: tcp://0.0.0.0:4143
-    - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-      value: svc.cluster.local.
     - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
       value: .
     - name: LINKERD2_PROXY_POD_NAMESPACE
