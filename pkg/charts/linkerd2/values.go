@@ -73,7 +73,6 @@ type (
 	Global struct {
 		Namespace                string              `json:"namespace"`
 		ClusterDomain            string              `json:"clusterDomain"`
-		ClusterNetworks          string              `json:"clusterNetworks"`
 		ImagePullPolicy          string              `json:"imagePullPolicy"`
 		CliVersion               string              `json:"cliVersion"`
 		ControllerComponentLabel string              `json:"controllerComponentLabel"`
@@ -118,6 +117,7 @@ type (
 		DisableIdentity               bool             `json:"disableIdentity"`
 		DisableTap                    bool             `json:"disableTap"`
 		EnableExternalProfiles        bool             `json:"enableExternalProfiles"`
+		DestinationGetNetworks        string           `json:"destinationGetNetworks"`
 		Image                         *Image           `json:"image"`
 		LogLevel                      string           `json:"logLevel"`
 		LogFormat                     string           `json:"logFormat"`
