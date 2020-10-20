@@ -576,7 +576,7 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 }
 
 func validateProxyValues(values *l5dcharts.Values) error {
-	networks := strings.Split(values.Global.Proxy.DestinationGetNetworks, ",")
+	networks := strings.Split(values.Global.ClusterNetworks, ",")
 	for _, network := range networks {
 		if _, _, err := net.ParseCIDR(network); err != nil {
 			return fmt.Errorf("cannot parse destination get networks: %s", err)

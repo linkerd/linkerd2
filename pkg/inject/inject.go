@@ -243,8 +243,8 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 		return nil, fmt.Errorf("%s cannot be set when identity is disabled", k8s.ProxyRequireIdentityOnInboundPortsAnnotation)
 	}
 
-	if values.Global.Proxy.DestinationGetNetworks != "" {
-		for _, network := range strings.Split(strings.Trim(values.Global.Proxy.DestinationGetNetworks, ","), ",") {
+	if values.Global.ClusterNetworks != "" {
+		for _, network := range strings.Split(strings.Trim(values.Global.ClusterNetworks, ","), ",") {
 			if _, _, err := net.ParseCIDR(network); err != nil {
 				return nil, fmt.Errorf("cannot parse destination get networks: %s", err)
 			}
@@ -748,7 +748,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 	}
 
 	if override, ok := annotations[k8s.ProxyDestinationGetNetworks]; ok {
-		values.Global.Proxy.DestinationGetNetworks = override
+		values.Global.ClusterNetworks = override
 	}
 
 	if override, ok := annotations[k8s.ProxyOutboundConnectTimeout]; ok {
