@@ -5,7 +5,7 @@ env:
   value: "{{.Values.global.proxy.requireIdentityOnInboundPorts}}"
 {{ end -}}
 - name: LINKERD2_PROXY_LOG
-  value: {{.Values.global.proxy.logLevel}}
+  value: "{{.Values.global.proxy.logLevel | default "linkerd=info,warn" }}"
 - name: LINKERD2_PROXY_LOG_FORMAT
   value: {{.Values.global.proxy.logFormat | default "plain"}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR

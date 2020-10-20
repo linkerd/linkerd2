@@ -1558,7 +1558,7 @@ spec:
           name: identity-issuer
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -1822,7 +1822,7 @@ spec:
           runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -2104,7 +2104,7 @@ spec:
           runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -2400,7 +2400,7 @@ spec:
           runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -2643,7 +2643,7 @@ spec:
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -2928,7 +2928,7 @@ spec:
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -3200,7 +3200,7 @@ spec:
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -3520,7 +3520,7 @@ spec:
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
@@ -3965,7 +3965,7 @@ spec:
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
           value: plain
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
