@@ -10,9 +10,9 @@ env:
   value: {{.Values.global.proxy.logFormat | quote}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
   value: {{ternary "localhost.:8086" (printf "linkerd-dst-headless.%s.svc.%s:8086" .Values.global.namespace .Values.global.clusterDomain) (eq .Values.global.proxy.component "linkerd-destination")}}
-{{ if .Values.global.clusterNetworks -}}
+{{ if .Values.global.proxy.destinationGetNetworks -}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
-  value: {{.Values.global.clusterNetworks | quote}}
+  value: {{.Values.global.proxy.destinationGetNetworks | quote}}
 {{ end -}}
 {{ if .Values.global.proxy.inboundConnectTimeout -}}
 - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
