@@ -74,7 +74,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				values, _ := l5dcharts.NewValues(false)
 
 				values.Global.Proxy.DisableIdentity = true
-				values.Global.ClusterNetworks = "10.0.0.0/8"
 				values.Global.Proxy.Image.Name = "ghcr.io/linkerd/proxy"
 				values.Global.Proxy.Image.PullPolicy = pullPolicy
 				values.Global.Proxy.Image.Version = proxyVersionOverride
