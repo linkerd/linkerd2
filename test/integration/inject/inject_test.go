@@ -113,7 +113,6 @@ func TestInjectAutoParams(t *testing.T) {
 			AutoInject:               true,
 			AdminPort:                8888,
 			ControlPort:              8881,
-			DestinationGetNetworks:   "192.168.0.0/16",
 			DisableTap:               true,
 			EnableExternalProfiles:   true,
 			EnableDebug:              true,

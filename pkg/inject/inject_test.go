@@ -62,7 +62,6 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyTraceCollectorSvcAccountAnnotation:      "default",
 							k8s.ProxyWaitBeforeExitSecondsAnnotation:         "123",
 							k8s.ProxyRequireIdentityOnInboundPortsAnnotation: "8888,9999",
-							k8s.ProxyDestinationGetNetworks:                  "10.0.0.0/8",
 							k8s.ProxyOutboundConnectTimeout:                  "6000ms",
 							k8s.ProxyInboundConnectTimeout:                   "600ms",
 							k8s.ProxyOpaquePortsAnnotation:                   "4320-4325,3306",
@@ -196,22 +195,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.Global.Proxy.OutboundConnectTimeout = "6000ms"
 				values.Global.Proxy.InboundConnectTimeout = "600ms"
 				values.Global.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
-				return values
-			},
-		},
-		{id: "use empty string for dst networks",
-			nsAnnotations: map[string]string{
-				k8s.ProxyDestinationGetNetworks: "",
-			},
-			spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{},
-					Spec:       corev1.PodSpec{},
-				},
-			},
-			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
-				values.Global.ClusterNetworks = ""
 				return values
 			},
 		},
