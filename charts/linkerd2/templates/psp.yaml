@@ -84,6 +84,11 @@ roleRef:
   name: linkerd-psp
   apiGroup: rbac.authorization.k8s.io
 subjects:
+{{ if .Values.tracing.enabled -}}
+- kind: ServiceAccount
+  name: linkerd-collector
+  namespace: {{.Values.global.namespace}}
+{{ end -}}
 - kind: ServiceAccount
   name: linkerd-controller
   namespace: {{.Values.global.namespace}}
@@ -103,6 +108,11 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-identity
   namespace: {{.Values.global.namespace}}
+{{ if .Values.tracing.enabled -}}
+- kind: ServiceAccount
+  name: linkerd-jaeger
+  namespace: {{.Values.global.namespace}}
+{{ end -}}
 {{ if .Values.prometheus.enabled -}}
 - kind: ServiceAccount
   name: linkerd-prometheus
