@@ -132,7 +132,7 @@ func (iv *InjectValidator) validateProxyContainer(pod *v1.PodSpec) error {
 	}
 
 	if iv.DestinationGetNetworks != "" {
-		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_DESTINATION_GET_NETWORKS", iv.DestinationGetNetworks); err != nil {
+		if err := iv.validateEnvVar(proxyContainer, "LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS", iv.DestinationGetNetworks); err != nil {
 			return err
 		}
 	}

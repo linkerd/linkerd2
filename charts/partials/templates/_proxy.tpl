@@ -11,8 +11,6 @@ env:
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
   value: {{ternary "localhost.:8086" (printf "linkerd-dst-headless.%s.svc.%s:8086" .Values.global.namespace .Values.global.clusterDomain) (eq .Values.global.proxy.component "linkerd-destination")}}
 {{ if .Values.global.proxy.destinationGetNetworks -}}
-- name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-  value: {{.Values.global.proxy.destinationGetNetworks | quote}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
   value: {{.Values.global.proxy.destinationGetNetworks | quote}}
 {{ end -}}
@@ -36,8 +34,6 @@ env:
 - name: LINKERD2_PROXY_INBOUND_GATEWAY_SUFFIXES
   value: {{printf "svc.%s." .Values.global.clusterDomain}}
 {{ end -}}
-- name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-  value: {{printf "svc.%s." .Values.global.clusterDomain}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
   {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
   value: {{ternary "." $internalDomain .Values.global.proxy.enableExternalProfiles}}
@@ -64,10 +60,6 @@ env:
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
   value: |
     {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
-{{ if eq .Values.global.proxy.component "linkerd-prometheus" -}}
-- name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
-  value: "10000"
-{{ end -}}
 {{ if .Values.global.proxy.disableIdentity -}}
 - name: LINKERD2_PROXY_IDENTITY_DISABLED
   value: disabled
