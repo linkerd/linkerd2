@@ -4,16 +4,7 @@
 
 # Values that are passed along to sub-charts
 global:
-  # The kubernetes cluster domain.
   clusterDomain: &cluster_domain cluster.local
-
-  # The cluster networks for which service discovery is performed. This should
-  # include the pod network but need not include the node network.
-  #
-  # By default, all private networks are specified so that resolution works in
-  # typical Kubernetes environments.
-  clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
-
   imagePullPolicy: &image_pull_policy IfNotPresent
   controllerLogLevel: &controller_log_level info
 
@@ -83,6 +74,7 @@ global:
     # for more info on container lifecycle hooks.
     waitBeforeExitSeconds: 0
     requireIdentityOnInboundPorts: ""
+    destinationGetNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
 
   # proxy-init configuration
   proxyInit:
