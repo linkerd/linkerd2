@@ -1206,7 +1206,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1479,7 +1479,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -1770,7 +1770,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: localhost.:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2073,7 +2073,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2324,7 +2324,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2617,7 +2617,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -2897,7 +2897,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -3224,7 +3224,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
@@ -3676,7 +3676,7 @@ spec:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
         - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
