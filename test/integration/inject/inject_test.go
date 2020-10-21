@@ -66,7 +66,7 @@ func TestInjectManualParams(t *testing.T) {
 		CPULimit:               "20m",
 		MemoryLimit:            "20Mi",
 		UID:                    1337,
-		LogLevel:               "warn",
+		LogLevel:               "off",
 		EnableExternalProfiles: true,
 	}
 	flags, _ := injectionValidator.GetFlagsAndAnnotations()

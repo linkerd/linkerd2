@@ -2564,6 +2564,7 @@ data:
     global:
       cliVersion: CliVersion
       clusterDomain: cluster.local
+      clusterNetworks: ClusterNetworks
       cniEnabled: false
       controlPlaneTracing: false
       controllerComponentLabel: ControllerComponentLabel
@@ -2584,7 +2585,6 @@ data:
       proxy:
         capabilities: null
         component: linkerd-controller
-        destinationGetNetworks: DestinationGetNetworks
         disableIdentity: false
         disableTap: false
         enableExternalProfiles: false
@@ -2683,6 +2683,7 @@ data:
 				Global: &linkerd2.Global{
 					Namespace:                "Namespace",
 					ClusterDomain:            "cluster.local",
+					ClusterNetworks:          "ClusterNetworks",
 					ImagePullPolicy:          "ImagePullPolicy",
 					CliVersion:               "CliVersion",
 					ControllerComponentLabel: "ControllerComponentLabel",
@@ -2698,8 +2699,7 @@ data:
 					CNIEnabled:               false,
 					IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
 					Proxy: &linkerd2.Proxy{
-						Component:              "linkerd-controller",
-						DestinationGetNetworks: "DestinationGetNetworks",
+						Component: "linkerd-controller",
 						Image: &linkerd2.Image{
 							Name:       "ProxyImageName",
 							PullPolicy: "ImagePullPolicy",

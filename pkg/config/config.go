@@ -126,6 +126,7 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 			IdentityTrustAnchorsPEM: configs.GetGlobal().GetIdentityContext().GetTrustAnchorsPem(),
 			IdentityTrustDomain:     configs.GetGlobal().GetIdentityContext().GetTrustDomain(),
 			ClusterDomain:           configs.GetGlobal().GetClusterDomain(),
+			ClusterNetworks:         configs.GetProxy().GetDestinationGetNetworks(),
 			LinkerdVersion:          configs.GetGlobal().GetVersion(),
 			Proxy: &l5dcharts.Proxy{
 				Image: &l5dcharts.Image{
@@ -150,7 +151,6 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 					},
 				},
 				EnableExternalProfiles: !configs.Proxy.GetDisableExternalProfiles(),
-				DestinationGetNetworks: configs.GetProxy().GetDestinationGetNetworks(),
 				LogFormat:              configs.GetProxy().GetLogFormat(),
 				OutboundConnectTimeout: configs.GetProxy().GetOutboundConnectTimeout(),
 				InboundConnectTimeout:  configs.GetProxy().GetInboundConnectTimeout(),

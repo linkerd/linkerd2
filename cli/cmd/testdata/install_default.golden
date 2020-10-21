@@ -818,6 +818,7 @@ data:
     global:
       cliVersion: linkerd/cli dev-undefined
       clusterDomain: cluster.local
+      clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
       cniEnabled: false
       controlPlaneTracing: false
       controllerComponentLabel: linkerd.io/control-plane-component
@@ -853,7 +854,6 @@ data:
       proxy:
         capabilities: null
         component: linkerd-controller
-        destinationGetNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         disableIdentity: false
         disableTap: false
         enableExternalProfiles: false
@@ -1112,13 +1112,11 @@ spec:
           name: identity-issuer
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -1133,8 +1131,6 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1349,13 +1345,11 @@ spec:
           runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -1370,8 +1364,6 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1604,13 +1596,11 @@ spec:
           runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: localhost.:8086
-        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -1625,8 +1615,6 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -1887,13 +1875,11 @@ spec:
           runAsUser: 2103
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -1908,8 +1894,6 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -2102,13 +2086,11 @@ spec:
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -2123,8 +2105,6 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -2359,13 +2339,11 @@ spec:
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -2380,8 +2358,6 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -2603,13 +2579,11 @@ spec:
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -2624,8 +2598,6 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -2917,13 +2889,11 @@ spec:
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -2938,8 +2908,6 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -3356,13 +3324,11 @@ spec:
           readOnly: true
       - env:
         - name: LINKERD2_PROXY_LOG
-          value: warn,linkerd=info
+          value: "warn,linkerd=info"
         - name: LINKERD2_PROXY_LOG_FORMAT
-          value: plain
+          value: "plain"
         - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
           value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_DESTINATION_GET_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
           value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
         - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
@@ -3377,8 +3343,6 @@ spec:
           value: 127.0.0.1:4140
         - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
           value: 0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_GET_SUFFIXES
-          value: svc.cluster.local.
         - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
           value: svc.cluster.local.
         - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
@@ -3396,8 +3360,6 @@ spec:
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
             {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
-        - name: LINKERD2_PROXY_OUTBOUND_ROUTER_CAPACITY
-          value: "10000"
         - name: LINKERD2_PROXY_IDENTITY_DIR
           value: /var/run/linkerd/identity/end-entity
         - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
