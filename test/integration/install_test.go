@@ -470,7 +470,7 @@ func TestInstallMulticluster(t *testing.T) {
 	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
 		flags := []string{
 			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-			"--set", "controllerImageVersion=" + TestHelper.GetVersion(),
+			"--set", "global.controllerImageVersion=" + TestHelper.GetVersion(),
 		}
 		if stdout, stderr, err := TestHelper.HelmInstallMulticluster(TestHelper.GetMulticlusterHelmChart(), flags...); err != nil {
 			testutil.AnnotatedFatalf(t, "'helm install' command failed",

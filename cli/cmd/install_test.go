@@ -31,7 +31,6 @@ func TestRender(t *testing.T) {
 	// by `render()`.
 	metaValues := &charts.Values{
 		ControllerImage:             "ControllerImage",
-		ControllerImageVersion:      "ControllerImageVersion",
 		WebImage:                    "WebImage",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
@@ -326,7 +325,6 @@ func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
 
 	values.Global.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
-	values.ControllerImageVersion = installControlPlaneVersion
 	values.Global.ControllerImageVersion = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
