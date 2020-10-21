@@ -39,7 +39,7 @@ env:
   value: 10000ms
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
   value: 10000ms
-{{ if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing) -}}
+{{ if or (.Values.global.proxy.trace.collectorSvcAddr) (and (hasPrefix "linkerd-" .Values.global.proxy.component) .Values.global.controlPlaneTracing) -}}
 - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
   value: /var/run/linkerd/podinfo/labels
 {{ end -}}
@@ -143,9 +143,9 @@ lifecycle:
         - -c
         - sleep {{.Values.global.proxy.waitBeforeExitSeconds}}
 {{- end }}
-{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing)  (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) }}
+{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (and (hasPrefix "linkerd-" .Values.global.proxy.component) .Values.global.controlPlaneTracing)  (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) }}
 volumeMounts:
-{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing) }}
+{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (and (hasPrefix "linkerd-" .Values.global.proxy.component) .Values.global.controlPlaneTracing) }}
 - mountPath: var/run/linkerd/podinfo
   name: podinfo
 {{- end -}}
