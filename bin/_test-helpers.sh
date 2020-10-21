@@ -263,6 +263,11 @@ start_kind_test() {
 }
 
 start_k3d_test() {
+  if [ -n "$RUN_ARM_TEST" ]; then
+    echo "Skipped because ARM tests run on a dedicated cluster."
+    return
+  fi
+
   test_setup
   if [ -z "$skip_cluster_create" ]; then
     create_k3d_cluster source multicluster-test
@@ -390,7 +395,7 @@ run_upgrade-edge_test() {
 run_upgrade-stable_test() {
   if [ -n "$RUN_ARM_TEST" ]; then
     echo "Skipped. Linkerd stable version does not support ARM yet"
-    exit 0
+    return
   fi
 
   stable_install_url="https://run.linkerd.io/install"
@@ -411,12 +416,14 @@ setup_helm() {
 helm_cleanup() {
   (
     set -e
-    "$helm_path" --kube-context="$context" delete "$helm_release_name"
+    "$helm_path" --kube-context="$context" delete "$helm_release_name" || true
+    "$helm_path" --kube-context="$context" delete "$helm_multicluster_release_name" || true
     # `helm delete` doesn't wait for resources to be deleted, so we wait explicitly.
     # We wait for the namespace to be gone so the following call to `cleanup` doesn't fail when it attempts to delete
     # the same namespace that is already being deleted here (error thrown by the NamespaceLifecycle controller).
     # We don't have that problem with global resources, so no need to wait for them to be gone.
-    kubectl wait --for=delete ns/linkerd --timeout=120s
+    kubectl wait --for=delete ns/linkerd --timeout=120s || true
+    kubectl wait --for=delete ns/linkerd-multicluster --timeout=120s || true
   )
   exit_on_err 'error cleaning up Helm'
 }
@@ -424,7 +431,7 @@ helm_cleanup() {
 run_helm-upgrade_test() {
   if [ -n "$RUN_ARM_TEST" ]; then
     echo "Skipped. Linkerd stable version does not support ARM yet"
-    exit 0
+    return
   fi
 
   local stable_version
