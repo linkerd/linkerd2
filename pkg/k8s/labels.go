@@ -202,10 +202,6 @@ const (
 	// to always require identity on inbound ports
 	ProxyRequireIdentityOnInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-require-identity-inbound-ports"
 
-	// ProxyDestinationGetNetworks can be used to configure the proxy to do
-	// destination lookups on IP addresses from the specified network ranges
-	ProxyDestinationGetNetworks = ProxyConfigAnnotationsPrefix + "/proxy-destination-get-networks"
-
 	// ProxyOutboundConnectTimeout can be used to configure the outbound TCP connection
 	// timeout in the proxy
 	ProxyOutboundConnectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-connect-timeout"
