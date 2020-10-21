@@ -23,7 +23,6 @@ type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
 		ControllerImage             string            `json:"controllerImage"`
-		ControllerImageVersion      string            `json:"controllerImageVersion"`
 		WebImage                    string            `json:"webImage"`
 		ControllerReplicas          uint              `json:"controllerReplicas"`
 		ControllerUID               int64             `json:"controllerUID"`
@@ -262,7 +261,6 @@ func NewValues(ha bool) (*Values, error) {
 	}
 
 	v.Global.ControllerImageVersion = version.Version
-	v.ControllerImageVersion = version.Version
 	v.Global.Proxy.Image.Version = version.Version
 	v.DebugContainer.Image.Version = version.Version
 	v.Global.CliVersion = k8s.CreatedByAnnotationValue()

@@ -2550,7 +2550,6 @@ data:
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
     controllerImage: ControllerImage
-    controllerImageVersion: ""
     controllerReplicas: 1
     controllerUID: 2103
     dashboard:

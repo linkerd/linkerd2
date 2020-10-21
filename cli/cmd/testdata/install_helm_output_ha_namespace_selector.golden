@@ -826,7 +826,6 @@ metadata:
 data:
   values: |
     controllerImage: ghcr.io/linkerd/controller
-    controllerImageVersion: dev-undefined
     controllerReplicas: 3
     controllerUID: 2103
     dashboard:
