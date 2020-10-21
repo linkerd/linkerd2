@@ -32,7 +32,7 @@ linkerd2-multicluster chart and their default values.
 |`linkerdVersion`                 | Control plane version                                                                       | latest version                               |
 |`namespace`                      | Service Mirror component namespace                                                          |`linkerd-multicluster`                        |
 |`proxyOutboundPort`              | The port on which the proxy accepts outbound traffic                                        |`4140`                                        |
-|`remoteMirrorServiceAccountName` | The name of the service account used to allow remote clusters to mirror local services      |`linkerd-service-mirror-remote-access-default`|
+|`remoteMirrorServiceAccountName` | The name (or list of names) of the service account(s) used to allow remote clusters to mirror local services      |`linkerd-service-mirror-remote-access-default`|
 |`remoteMirrorServiceAccount`     | If the remote mirror service account should be installed                                    |`true`                                        |
 |`serviceMirror`                  | If the service mirror component should be installed                                         |`true`                                        |
 |`logLevel`                       | Log level for the Multicluster components                                                   |`info`                                        |
