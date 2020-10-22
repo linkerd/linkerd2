@@ -81,7 +81,7 @@ func routeSpecFromTap(tapByteStream *bufio.Reader, routeLimit int) []*sp.RouteSp
 		if err != nil {
 			// expected errors when hitting the tapDuration deadline
 			if err != io.EOF &&
-				!strings.HasSuffix(err.Error(), "(Client.Timeout exceeded while reading body)") &&
+				!strings.HasSuffix(err.Error(), "(Client.Timeout or context cancellation while reading body)") &&
 				!strings.HasSuffix(err.Error(), "http2: response body closed") {
 				fmt.Fprintln(os.Stderr, err)
 			}
