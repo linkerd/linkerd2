@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -131,7 +132,7 @@ func busyTest(t *testing.T, output string) {
 	options.output = output
 
 	writer := bytes.NewBufferString("")
-	err = requestTapByResourceFromAPI(writer, kubeAPI, req, options)
+	err = requestTapByResourceFromAPI(context.Background(), writer, kubeAPI, req, options)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -158,6 +159,8 @@ func busyTest(t *testing.T, output string) {
 }
 
 func TestRequestTapByResourceFromAPI(t *testing.T) {
+
+	ctx := context.Background()
 	t.Run("Should render busy response if everything went well", func(t *testing.T) {
 		busyTest(t, "")
 	})
@@ -197,7 +200,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 
 		options := newTapOptions()
 		writer := bytes.NewBufferString("")
-		err = requestTapByResourceFromAPI(writer, kubeAPI, req, options)
+		err = requestTapByResourceFromAPI(ctx, writer, kubeAPI, req, options)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		}
@@ -236,7 +239,7 @@ func TestRequestTapByResourceFromAPI(t *testing.T) {
 
 		options := newTapOptions()
 		writer := bytes.NewBufferString("")
-		err = requestTapByResourceFromAPI(writer, kubeAPI, req, options)
+		err = requestTapByResourceFromAPI(ctx, writer, kubeAPI, req, options)
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing but output [%s]", writer.String())
 		}

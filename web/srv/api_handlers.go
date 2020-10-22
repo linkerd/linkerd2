@@ -269,7 +269,7 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 	}
 
 	go func() {
-		reader, body, err := tap.Reader(h.k8sAPI, tapReq, 0)
+		reader, body, err := tap.Reader(req.Context(), h.k8sAPI, tapReq)
 		if err != nil {
 			// If there was a [403] error when initiating a tap, close the
 			// socket with `ClosePolicyViolation` status code so that the error
