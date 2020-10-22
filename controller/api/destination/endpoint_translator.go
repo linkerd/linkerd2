@@ -184,6 +184,9 @@ func (et *endpointTranslator) diffEndpoints(filtered watcher.AddressSet) (watche
 func (et *endpointTranslator) NoEndpoints(exists bool) {
 	et.log.Debugf("NoEndpoints(%+v)", exists)
 
+	et.availableEndpoints.Addresses = map[watcher.ID]watcher.Address{}
+	et.filteredSnapshot.Addresses = map[watcher.ID]watcher.Address{}
+
 	u := &pb.Update{
 		Update: &pb.Update_NoEndpoints{
 			NoEndpoints: &pb.NoEndpoints{
