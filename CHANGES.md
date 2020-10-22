@@ -1,5 +1,29 @@
 # Changes
 
+## edge-20.10.4
+
+This edge release is a release candidate for stable-2.9.0. For the proxy, there
+have been changes to improve performance, remove unused code, and configure
+ports that can be ignored by default. Also, this edge release adds enhancements
+to the multicluster configuration and observability, adds more translations to
+the dashboardand addresses a bug in the CLI.
+
+* Added more translations to the dashboard and validation tests
+* Added support for a list of service accounts in multicluster install with
+  helm
+* Removed per-pod overrides for cluster network configuration, unused proxy
+  variables, and renamed `global.proxy.destinationGetNetworks` to
+  `global.clusterNetworks`
+* Fixed an empty multicluster Grafana graph which used a deprecated label
+* Added the tracing helm subchart ServiceAccounts to the `linkerd-psp`
+  RoleBinding for use in environments where PodSecurityPolicy is enabled
+* Enhanced EKS support by adding `100.64.0.0/10` to the set of discoverable
+  networks
+* Fixed a bug in the way that the `--all-namespaces` flag is handled by the
+  `linkerd edges` command
+* Added a default set of ports to bypass the proxy for server-first, https,
+  and memcached traffic
+
 ## edge-20.10.3
 
 This edge release is a release candidate for stable-2.9.0.  It overhauls the
