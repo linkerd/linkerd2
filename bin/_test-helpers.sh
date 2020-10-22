@@ -482,6 +482,11 @@ run_deep_test() {
 }
 
 run_cni-calico-deep_test() {
+  if [ -n "$RUN_ARM_TEST" ]; then
+    echo "Skipped because the cni-calico-deep test is not supported in k3s yet."
+    return
+  fi
+
   local tests=()
   run_test "$test_directory/install_test.go" --cni --calico
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
