@@ -1,5 +1,30 @@
 # Changes
 
+## edge-20.10.4
+
+This edge release is a release candidate for stable-2.9.0. For the proxy, there
+have been changes to improve performance, remove unused code, and configure
+ports that can be ignored by default. Also, this edge release adds enhancements
+to the multicluster configuration and observability, adds more translations to
+the dashboard, and addresses a bug in the CLI.
+
+* Added more Spanish translations to the dashboard and more labels that can be
+  translated
+* Added support for creating multiple service accounts when installing
+  multicluster with Helm to allow more granular revocation
+* Renamed `global.proxy.destinationGetNetworks` to `global.clusterNetworks`.
+  This is a cluster-wide setting and can no longer be overridden per-pod
+* Fixed an empty multicluster Grafana graph which used a deprecated label
+* Added the control plane tracing ServiceAccounts to the linkerd-psp
+  RoleBinding so that it can be used in environments where PodSecurityPolicy
+  is enabled
+* Enhanced EKS support by adding `100.64.0.0/10` to the set of discoverable
+  networks
+* Fixed a bug in the way that the `--all-namespaces` flag is handled by the
+  `linkerd edges` command
+* Added a default set of ports to bypass the proxy for server-first, https,
+  and memcached traffic
+
 ## edge-20.10.3
 
 This edge release is a release candidate for stable-2.9.0.  It overhauls the
@@ -147,7 +172,7 @@ topology preferences. Additionally, this release includes bug fixes for the
     for service profiles when no traffic split is present
 * Web UI
   * Fixed Tap `Authority` dropdown not being populated (thanks to @tharun208!)
-  
+
 [topology]: https://kubernetes.io/docs/concepts/services-networking/service-topology/
 
 ## edge-20.8.2
