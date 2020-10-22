@@ -99,7 +99,7 @@ class Gateways extends React.Component {
           <Spinner />
         ) : (
           <div>
-            {noMetrics ? <div>No resources detected.</div> : null}
+            {noMetrics ? <div><Trans>noResourcesDetectedMsg</Trans></div> : null}
             {noMetrics ? null : (
               <div className="page-section">
                 <MetricsTable

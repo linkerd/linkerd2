@@ -356,7 +356,7 @@ class Octopus extends React.Component {
 
 Octopus.propTypes = {
   api: PropTypes.shape({
-    ResourceLink: PropTypes.element,
+    ResourceLink: PropTypes.oneOfType([PropTypes.element, PropTypes.func]),
   }),
   neighbors: PropTypes.shape({}),
   resource: PropTypes.shape({}),

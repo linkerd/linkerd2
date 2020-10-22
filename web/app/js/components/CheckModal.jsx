@@ -285,7 +285,7 @@ class CheckModal extends React.Component {
               {success !== undefined &&
                 <Grid item>
                   <SimpleChip
-                    label={success ? 'Success' : 'Error'}
+                    label={success ? <Trans>labelSuccess</Trans> : <Trans>labelError</Trans>}
                     type={success ? 'good' : 'bad'} />
                 </Grid>
               }
@@ -316,11 +316,11 @@ class CheckModal extends React.Component {
 
           <DialogActions>
             <Button onClick={this.runCheck} color="primary">
-              Re-Run Check
+              <Trans>buttonReRunCheck</Trans>
             </Button>
 
             <Button onClick={this.handleOpenChange} color="primary">
-              Close
+              <Trans>buttonClose</Trans>
             </Button>
           </DialogActions>
         </Dialog>

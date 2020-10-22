@@ -36,7 +36,6 @@ import _noop from 'lodash/noop';
 import _omit from 'lodash/omit';
 import _pick from 'lodash/pick';
 import _some from 'lodash/some';
-import _startCase from 'lodash/startCase';
 import _uniq from 'lodash/uniq';
 import _values from 'lodash/values';
 import { withStyles } from '@material-ui/core/styles';
@@ -245,7 +244,7 @@ class TapQueryForm extends React.Component {
 
     return (
       <React.Fragment>
-        <InputLabel htmlFor={resourceKey}>{_startCase(resourceKey)}</InputLabel>
+        <InputLabel htmlFor={resourceKey}>{resourceKey === 'resource' ? <Trans>formResource</Trans> : <Trans>formToResource</Trans>}</InputLabel>
         <Select
           value={!nsEmpty && resourceOptions.includes(query[resourceKey]) ? query[resourceKey] : ''}
           onChange={this.handleFormChange(resourceKey)}
@@ -364,20 +363,20 @@ class TapQueryForm extends React.Component {
                 ))
               }
               </Select>
-              <FormHelperText>Display requests with this :authority</FormHelperText>
+              <FormHelperText><Trans>formAuthorityHelpText</Trans></FormHelperText>
             </FormControl>
           </Grid>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
-            { this.renderTextInput(<Trans>formPath</Trans>, 'path', 'Display requests with paths that start with this prefix') }
+            { this.renderTextInput(<Trans>formPath</Trans>, 'path', <Trans>formPathHelpText</Trans>) }
           </Grid>
         </Grid>
 
         <Grid container spacing={3}>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
-            { this.renderTextInput(<Trans>formScheme</Trans>, 'scheme', 'Display requests with this scheme') }
+            { this.renderTextInput(<Trans>formScheme</Trans>, 'scheme', <Trans>formSchemeHelpText</Trans>) }
           </Grid>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
-            { this.renderTextInput(<Trans>formMaxRPS</Trans>, 'maxRps', `Maximum requests per second to tap. Default ${defaultMaxRps}`) }
+            { this.renderTextInput(<Trans>formMaxRPS</Trans>, 'maxRps', <Trans>formMaxRPSHelpText {defaultMaxRps}</Trans>) }
           </Grid>
           <Grid item xs={6} md={3} className={classes.formControlWrapper}>
             <FormControl className={classes.formControl}>
@@ -393,7 +392,7 @@ class TapQueryForm extends React.Component {
                 ))
               }
               </Select>
-              <FormHelperText>Display requests with this HTTP method</FormHelperText>
+              <FormHelperText><Trans>formHTTPMethodHelpText</Trans></FormHelperText>
             </FormControl>
           </Grid>
         </Grid>

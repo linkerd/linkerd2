@@ -3,17 +3,18 @@ import { friendlyTitle, isResource, singularResource } from './util/Utils.js';
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
+import { Trans } from '@lingui/macro';
 import _chunk from 'lodash/chunk';
 import _takeWhile from 'lodash/takeWhile';
 import { withContext } from './util/AppContext.jsx';
 
 const routeToCrumbTitle = {
-  controlplane: 'Control Plane',
-  overview: 'Overview',
-  tap: 'Tap',
-  top: 'Top',
-  routes: 'Top Routes',
-  community: 'Community',
+  controlplane: <Trans>menuItemControlPlane</Trans>,
+  tap: <Trans>menuItemTap</Trans>,
+  top: <Trans>menuItemTop</Trans>,
+  routes: <Trans>menuItemRoutes</Trans>,
+  community: <Trans>menuItemCommunity</Trans>,
+  gateways: <Trans>menuItemGateway</Trans>,
 };
 
 class BreadcrumbHeader extends React.Component {
