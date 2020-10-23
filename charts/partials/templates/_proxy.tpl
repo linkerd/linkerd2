@@ -32,6 +32,10 @@ env:
 - name: LINKERD2_PROXY_INBOUND_GATEWAY_SUFFIXES
   value: {{printf "svc.%s." .Values.global.clusterDomain}}
 {{ end -}}
+{{ if .Values.global.proxy.isIngress -}}
+- name: LINKERD2_PROXY_INGRESS_MODE
+  value: "true"
+{{ end -}}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
   {{- $internalDomain := printf "svc.%s." .Values.global.clusterDomain }}
   value: {{ternary "." $internalDomain .Values.global.proxy.enableExternalProfiles}}

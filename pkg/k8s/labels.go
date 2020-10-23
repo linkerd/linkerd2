@@ -103,6 +103,10 @@ const (
 	// enable injection for a pod or namespace.
 	ProxyInjectEnabled = "enabled"
 
+	// ProxyInjectIngress is assigned to the ProxyInjectAnnotation annotation to
+	// enable injection in ingress mode for a pod.
+	ProxyInjectIngress = "ingress"
+
 	// ProxyInjectDisabled is assigned to the ProxyInjectAnnotation annotation to
 	// disable injection for a pod or namespace.
 	ProxyInjectDisabled = "disabled"

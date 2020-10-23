@@ -676,6 +676,12 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		annotations[k] = v
 	}
 
+	if override, ok := annotations[k8s.ProxyInjectAnnotation]; ok {
+		if override == k8s.ProxyInjectIngress {
+			values.Global.Proxy.IsIngress = true
+		}
+	}
+
 	if override, ok := annotations[k8s.ProxyImageAnnotation]; ok {
 		values.Global.Proxy.Image.Name = override
 	}
