@@ -1,5 +1,14 @@
 # Changes
 
+## edge-20.10.5
+
+This edge supersedes edge-20.10.4 as a release candidate for stable-2.9.0. It
+adds a fix for updating the destination service when ther are no endpoints
+
+* Added a fix to clear the EndpointTranslator state when it gets a
+  `NoEndpoints` message. This ensures that the clients get the correct set of
+  endpoints during an update.
+
 ## edge-20.10.4
 
 This edge release is a release candidate for stable-2.9.0. For the proxy, there
