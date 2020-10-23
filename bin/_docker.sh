@@ -65,15 +65,6 @@ docker_build() {
 
       output_params="--load"
       if [ -n "$DOCKER_MULTIARCH" ]; then
-
-        # Pushing multi-arch images to gcr.io with the same tag that already exists is not possible
-        # The issue is on gcr as pushing the same tag in docker hub works fine
-        # Related issues: https://github.com/eclipse/che/issues/16983, https://github.com/open-policy-agent/gatekeeper/issues/665
-        if (docker buildx imagetools inspect "$repo:$tag"); then
-          echo "Build skipped. Image already exists"
-          exit 0
-        fi
-
         output_params="--platform $SUPPORTED_ARCHS"
         if [ -n "$DOCKER_PUSH" ]; then
           output_params+=" --push"
