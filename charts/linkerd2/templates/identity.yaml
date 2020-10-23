@@ -152,6 +152,11 @@ spec:
       {{- $r := merge .Values.identityProxyResources .Values.global.proxy.resources }}
       {{- $_ := set $tree.Values.global.proxy "resources" $r }}
       {{- end }}
+      {{- if .Values.global.controlPlaneTracing -}}
+      {{- $addr := printf "linkerd-collector.%s.svc.%s:55678" .Values.global.namespace .Values.global.clusterDomain}}
+      {{- $account := printf "linkerd-collector.%s" .Values.global.namespace}}
+      {{- $_ := set $tree.Values.global.proxy "trace" (dict "collectorSvcAddr" $addr "collectorSvcAccount" $account)}}
+      {{ end -}}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
