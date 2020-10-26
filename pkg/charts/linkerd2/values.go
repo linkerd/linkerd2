@@ -127,6 +127,7 @@ type (
 		UID                           int64            `json:"uid"`
 		WaitBeforeExitSeconds         uint64           `json:"waitBeforeExitSeconds"`
 		IsGateway                     bool             `json:"isGateway"`
+		IsIngress                     bool             `json:"isIngress"`
 		RequireIdentityOnInboundPorts string           `json:"requireIdentityOnInboundPorts"`
 		OutboundConnectTimeout        string           `json:"outboundConnectTimeout"`
 		InboundConnectTimeout         string           `json:"inboundConnectTimeout"`

@@ -886,6 +886,7 @@ data:
           version: test-proxy-version
         inboundConnectTimeout: 100ms
         isGateway: false
+        isIngress: false
         logFormat: plain
         logLevel: warn,linkerd=info
         opaquePorts: ""
@@ -976,6 +977,7 @@ data:
             version: test-proxy-version
           inboundConnectTimeout: 100ms
           isGateway: false
+          isIngress: false
           logFormat: plain
           logLevel: warn,linkerd=info
           opaquePorts: ""
@@ -1067,6 +1069,7 @@ data:
               version: test-proxy-version
             inboundConnectTimeout: 100ms
             isGateway: false
+            isIngress: false
             logFormat: plain
             logLevel: warn,linkerd=info
             opaquePorts: ""
@@ -1208,6 +1211,7 @@ data:
             version: test-proxy-version
           inboundConnectTimeout: 100ms
           isGateway: false
+          isIngress: false
           logFormat: plain
           logLevel: warn,linkerd=info
           opaquePorts: ""
@@ -1302,6 +1306,7 @@ data:
               version: test-proxy-version
             inboundConnectTimeout: 100ms
             isGateway: false
+            isIngress: false
             logFormat: plain
             logLevel: warn,linkerd=info
             opaquePorts: ""
