@@ -2,8 +2,11 @@ package profiles
 
 import (
 	"bufio"
+	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"sort"
 	"strings"
@@ -80,9 +83,11 @@ func routeSpecFromTap(tapByteStream *bufio.Reader, routeLimit int) []*sp.RouteSp
 		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, &event)
 		if err != nil {
 			// expected errors when hitting the tapDuration deadline
+			var e net.Error
 			if err != io.EOF &&
-				!strings.HasSuffix(err.Error(), "(Client.Timeout exceeded while reading body)") &&
-				!strings.HasSuffix(err.Error(), "http2: response body closed") {
+				!strings.HasSuffix(err.Error(), "(Client.Timeout or context cancellation while reading body)") &&
+				!errors.Is(err, context.DeadlineExceeded) &&
+				(errors.As(err, &e) && e.Timeout()) {
 				fmt.Fprintln(os.Stderr, err)
 			}
 			break
