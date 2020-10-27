@@ -3,7 +3,6 @@ package tap
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,9 +16,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
+const (
 	// ErrClosedResponseBody is returned when response body is closed in http2
-	ErrClosedResponseBody = errors.New("http2: response body closed")
+	ErrClosedResponseBody = "http2: response body closed"
 )
 
 // TapRbacURL is the link users should visit to remedy issues when attempting
