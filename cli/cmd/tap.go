@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -199,7 +200,7 @@ func newCmdTap() *cobra.Command {
 				return err
 			}
 
-			return requestTapByResourceFromAPI(os.Stdout, k8sAPI, req, options)
+			return requestTapByResourceFromAPI(cmd.Context(), os.Stdout, k8sAPI, req, options)
 		},
 	}
 
@@ -227,8 +228,8 @@ func newCmdTap() *cobra.Command {
 	return cmd
 }
 
-func requestTapByResourceFromAPI(w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, options *tapOptions) error {
-	reader, body, err := tap.Reader(k8sAPI, req, 0)
+func requestTapByResourceFromAPI(ctx context.Context, w io.Writer, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, options *tapOptions) error {
+	reader, body, err := tap.Reader(ctx, k8sAPI, req)
 	if err != nil {
 		return err
 	}

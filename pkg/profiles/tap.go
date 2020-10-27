@@ -2,6 +2,7 @@ package profiles
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -23,7 +24,7 @@ import (
 // RenderTapOutputProfile performs a tap on the desired resource and generates
 // a service profile with routes pre-populated from the tap data
 // Only inbound tap traffic is considered.
-func RenderTapOutputProfile(k8sAPI *k8s.KubernetesAPI, tapResource, namespace, name, clusterDomain string, tapDuration time.Duration, routeLimit int, w io.Writer) error {
+func RenderTapOutputProfile(ctx context.Context, k8sAPI *k8s.KubernetesAPI, tapResource, namespace, name, clusterDomain string, tapDuration time.Duration, routeLimit int, w io.Writer) error {
 	requestParams := util.TapRequestParams{
 		Resource:  tapResource,
 		Namespace: namespace,
@@ -35,7 +36,7 @@ func RenderTapOutputProfile(k8sAPI *k8s.KubernetesAPI, tapResource, namespace, n
 		return err
 	}
 
-	profile, err := tapToServiceProfile(k8sAPI, req, namespace, name, clusterDomain, tapDuration, routeLimit)
+	profile, err := tapToServiceProfile(ctx, k8sAPI, req, namespace, name, clusterDomain, tapDuration, routeLimit)
 	if err != nil {
 		return err
 	}
@@ -48,7 +49,7 @@ func RenderTapOutputProfile(k8sAPI *k8s.KubernetesAPI, tapResource, namespace, n
 	return nil
 }
 
-func tapToServiceProfile(k8sAPI *k8s.KubernetesAPI, tapReq *pb.TapByResourceRequest, namespace, name, clusterDomain string, tapDuration time.Duration, routeLimit int) (sp.ServiceProfile, error) {
+func tapToServiceProfile(ctx context.Context, k8sAPI *k8s.KubernetesAPI, tapReq *pb.TapByResourceRequest, namespace, name, clusterDomain string, tapDuration time.Duration, routeLimit int) (sp.ServiceProfile, error) {
 	profile := sp.ServiceProfile{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s.%s.svc.%s", name, namespace, clusterDomain),
@@ -57,7 +58,9 @@ func tapToServiceProfile(k8sAPI *k8s.KubernetesAPI, tapReq *pb.TapByResourceRequ
 		TypeMeta: serviceProfileMeta,
 	}
 
-	reader, body, err := tap.Reader(k8sAPI, tapReq, tapDuration)
+	ctxWithTime, cancel := context.WithTimeout(ctx, tapDuration)
+	defer cancel()
+	reader, body, err := tap.Reader(ctxWithTime, k8sAPI, tapReq)
 	if err != nil {
 		return profile, err
 	}
@@ -81,7 +84,8 @@ func routeSpecFromTap(tapByteStream *bufio.Reader, routeLimit int) []*sp.RouteSp
 		if err != nil {
 			// expected errors when hitting the tapDuration deadline
 			if err != io.EOF &&
-				!strings.HasSuffix(err.Error(), "(Client.Timeout exceeded while reading body)") &&
+				!strings.HasSuffix(err.Error(), "(Client.Timeout or context cancellation while reading body)") &&
+				!strings.HasSuffix(err.Error(), "context deadline exceeded") &&
 				!strings.HasSuffix(err.Error(), "http2: response body closed") {
 				fmt.Fprintln(os.Stderr, err)
 			}
