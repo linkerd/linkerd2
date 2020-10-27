@@ -9,7 +9,6 @@ import (
 	"net"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/ghodss/yaml"
@@ -85,9 +84,9 @@ func routeSpecFromTap(tapByteStream *bufio.Reader, routeLimit int) []*sp.RouteSp
 			// expected errors when hitting the tapDuration deadline
 			var e net.Error
 			if err != io.EOF &&
-				!strings.HasSuffix(err.Error(), "(Client.Timeout or context cancellation while reading body)") &&
+				!errors.Is(err, tap.ErrClosedResponseBody) &&
 				!errors.Is(err, context.DeadlineExceeded) &&
-				(errors.As(err, &e) && e.Timeout()) {
+				!(errors.As(err, &e) && e.Timeout()) {
 				fmt.Fprintln(os.Stderr, err)
 			}
 			break

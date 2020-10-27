@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -434,7 +435,7 @@ func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- *pb.TapEvent, closin
 		if err != nil {
 			if err == io.EOF {
 				fmt.Println("Tap stream terminated")
-			} else if !strings.HasSuffix(err.Error(), "http2: response body closed") {
+			} else if !errors.Is(err, tap.ErrClosedResponseBody) {
 				fmt.Println(err.Error())
 			}
 
