@@ -243,9 +243,9 @@ func TestGetOverriddenValues(t *testing.T) {
 					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
-							corev1.Container{
+							{
 								Ports: []corev1.ContainerPort{
-									corev1.ContainerPort{
+									{
 										Name:          "mysql",
 										ContainerPort: 3306,
 									},
