@@ -1,9 +1,22 @@
 # Changes
 
+## edge-20.10.6
+
+This edge supersedes edge-20.10.5 as a release candidate for stable-2.9.0. It
+adds a new `linkerd.io/inject: ingress` annotation to support service profiles
+and enable per-route metrics and traffic splits for HTTP ingress controllers
+
+* Added a new `linkerd.io/inject: ingress` annotation to configure the
+  proxy to support service profiles and enable per-route metrics and traffic
+  splits for HTTP ingress controllers
+* Reduced performance impact of logging in the proxy, especially when the
+  `debug` or `trace` log levels are disabled
+* Fixed spurious warnings logged by the `linkerd profile` CLI command
+
 ## edge-20.10.5
 
 This edge supersedes edge-20.10.4 as a release candidate for stable-2.9.0. It
-adds a fix for updating the destination service when ther are no endpoints
+adds a fix for updating the destination service when there are no endpoints
 
 * Added a fix to clear the EndpointTranslator state when it gets a
   `NoEndpoints` message. This ensures that the clients get the correct set of
