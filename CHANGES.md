@@ -3,13 +3,12 @@
 ## edge-20.10.6
 
 This edge supersedes edge-20.10.5 as a release candidate for stable-2.9.0. It
-adds a new `linkerd.io/inject: ingress` annotation to support per-request
-routing when injecting ingress controllers.
+adds a new `linkerd.io/inject: ingress` annotation to support service profiles
+and enable per-route metrics and traffic splits for HTTP ingress controllers
 
-* Added a new 'ingress mode' configuration to the proxy to support per-request
-  routing for HTTP ingress controllers
-* Added support for the `linkerd.io/inject: ingress` annotation to configure the
-  proxy in ingress mode
+* Added a new `linkerd.io/inject: ingress` annotation to configure the
+  proxy to support service profiles and enable per-route metrics and traffic
+  splits for HTTP ingress controllers
 * Reduced performance impact of logging in the proxy, especially when the
   `debug` or `trace` log levels are disabled
 * Fixed spurious warnings logged by the `linkerd profile` CLI command
