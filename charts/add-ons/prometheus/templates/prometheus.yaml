@@ -285,6 +285,7 @@ spec:
       {{- $_ := set $tree.Values.global.proxy "resources" $r }}
       {{- end }}
       {{- end }}
+      {{- include "partials.setControlPlaneTracing.proxy" $tree }}
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:

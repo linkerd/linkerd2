@@ -43,7 +43,7 @@ env:
   value: 10000ms
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
   value: 10000ms
-{{ if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing) -}}
+{{ if .Values.global.proxy.trace.collectorSvcAddr -}}
 - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
   value: /var/run/linkerd/podinfo/labels
 {{ end -}}
@@ -98,12 +98,7 @@ env:
 - name: LINKERD2_PROXY_TAP_SVC_NAME
   value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
 {{ end -}}
-{{ if .Values.global.controlPlaneTracing -}}
-- name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
-  value: linkerd-collector.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:55678
-- name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-  value: linkerd-collector.{{.Values.global.namespace}}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-{{ else if .Values.global.proxy.trace.collectorSvcAddr -}}
+{{ if .Values.global.proxy.trace.collectorSvcAddr -}}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
   value: {{ .Values.global.proxy.trace.collectorSvcAddr }}
 - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
@@ -147,9 +142,9 @@ lifecycle:
         - -c
         - sleep {{.Values.global.proxy.waitBeforeExitSeconds}}
 {{- end }}
-{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing)  (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) }}
+{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) }}
 volumeMounts:
-{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (.Values.global.controlPlaneTracing) }}
+{{- if .Values.global.proxy.trace.collectorSvcAddr }}
 - mountPath: var/run/linkerd/podinfo
   name: podinfo
 {{- end -}}
