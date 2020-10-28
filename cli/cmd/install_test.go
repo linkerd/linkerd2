@@ -95,6 +95,7 @@ func TestRender(t *testing.T) {
 					PullPolicy: "ImagePullPolicy",
 					Version:    "ProxyInitVersion",
 				},
+				IgnoreOutboundPorts: "443",
 				Resources: &charts.Resources{
 					CPU: charts.Constraints{
 						Limit:   "100m",
