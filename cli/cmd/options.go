@@ -418,6 +418,12 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				return nil
 			}),
 
+		flag.NewBoolFlag(proxyFlags, "ingress", defaults.Global.Proxy.IsIngress, "Enable ingress mode in the linkerd proxy",
+			func(values *l5dcharts.Values, value bool) error {
+				values.Global.Proxy.IsIngress = value
+				return nil
+			}),
+
 		// Deprecated flags
 
 		flag.NewStringFlag(proxyFlags, "proxy-memory", defaults.Global.Proxy.Resources.Memory.Request, "Amount of Memory that the proxy sidecar requests",

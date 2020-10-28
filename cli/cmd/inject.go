@@ -423,6 +423,10 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = strconv.FormatBool(proxy.EnableExternalProfiles)
 	}
 
+	if proxy.IsIngress != baseProxy.IsIngress {
+		overrideAnnotations[k8s.ProxyInjectAnnotation] = k8s.ProxyInjectIngress
+	}
+
 	if proxy.Resources.CPU.Request != baseProxy.Resources.CPU.Request {
 		overrideAnnotations[k8s.ProxyCPURequestAnnotation] = proxy.Resources.CPU.Request
 	}
