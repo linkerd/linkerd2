@@ -2112,6 +2112,10 @@ func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error
 
 	resp, err := hc.apiClient.ListPods(ctx, req)
 	if err != nil {
+		// return a SkipError if there is no prometheus present
+		if strings.HasSuffix(err.Error(), "No prometheus instance to connect") {
+			return nil, &SkipError{Reason: err.Error()}
+		}
 		return nil, err
 	}
 
