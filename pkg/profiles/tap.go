@@ -3,10 +3,7 @@ package profiles
 import (
 	"bufio"
 	"context"
-<<<<<<< HEAD
 	"errors"
-=======
->>>>>>> main
 	"fmt"
 	"io"
 	"net"
