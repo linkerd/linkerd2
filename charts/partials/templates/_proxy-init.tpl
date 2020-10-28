@@ -8,7 +8,7 @@ args:
 - {{.Values.global.proxy.uid | quote}}
 - --inbound-ports-to-ignore
 - {{.Values.global.proxy.ports.control}},{{.Values.global.proxy.ports.admin}}{{ternary (printf ",%s" .Values.global.proxyInit.ignoreInboundPorts) "" (not (empty .Values.global.proxyInit.ignoreInboundPorts)) }}
-{{- if (and (kindIs "string" .Values.global.proxy.component)  (hasPrefix "linkerd-" .Values.global.proxy.component)) }}
+{{- if hasPrefix "linkerd-" .Values.global.proxy.component }}
 - --outbound-ports-to-ignore
 - {{ternary (printf "443,%s" .Values.global.proxyInit.ignoreOutboundPorts) (quote "443") (not (empty .Values.global.proxyInit.ignoreOutboundPorts)) }}
 {{- else if .Values.global.proxyInit.ignoreOutboundPorts }}
