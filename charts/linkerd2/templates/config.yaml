@@ -30,8 +30,4 @@ data:
   {{- end -}}
   {{- $_ := unset $values "partials"}}
   {{- $_ := unset $values "configs"}}
-  {{- /* 
-    Don't propogate install specific values into `linkerd-config`
-    */ -}}
-  {{- $_ := unset $values.global.proxy "component"}}
   {{- toYaml $values | trim | nindent 4 }}

@@ -872,6 +872,7 @@ data:
       prometheusUrl: ""
       proxy:
         capabilities: null
+        component: ""
         disableIdentity: false
         disableTap: false
         enableExternalProfiles: false
@@ -905,7 +906,6 @@ data:
           collectorSvcAddr: ""
         uid: 2102
         waitBeforeExitSeconds: 0
-        workloadKind: deployment
       proxyContainerName: linkerd-proxy
       proxyInit:
         capabilities: null
@@ -959,7 +959,7 @@ data:
         prometheusUrl: ""
         proxy:
           capabilities: null
-          component: linkerd-controller
+          component: ""
           disableIdentity: false
           disableTap: false
           enableExternalProfiles: false
@@ -993,7 +993,6 @@ data:
             collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
-          workloadKind: deployment
         proxyContainerName: linkerd-proxy
         proxyInit:
           capabilities: null
@@ -1048,7 +1047,7 @@ data:
           prometheusUrl: ""
           proxy:
             capabilities: null
-            component: linkerd-controller
+            component: ""
             disableIdentity: false
             disableTap: false
             enableExternalProfiles: false
@@ -1082,7 +1081,6 @@ data:
               collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
-            workloadKind: deployment
           proxyContainerName: linkerd-proxy
           proxyInit:
             capabilities: null
@@ -1168,7 +1166,7 @@ data:
         prometheusUrl: ""
         proxy:
           capabilities: null
-          component: linkerd-controller
+          component: ""
           disableIdentity: false
           disableTap: false
           enableExternalProfiles: false
@@ -1202,7 +1200,6 @@ data:
             collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
-          workloadKind: deployment
         proxyContainerName: linkerd-proxy
         proxyInit:
           capabilities: null
@@ -1260,7 +1257,7 @@ data:
           prometheusUrl: ""
           proxy:
             capabilities: null
-            component: linkerd-controller
+            component: ""
             disableIdentity: false
             disableTap: false
             enableExternalProfiles: false
@@ -1294,7 +1291,6 @@ data:
               collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
-            workloadKind: deployment
           proxyContainerName: linkerd-proxy
           proxyInit:
             capabilities: null
@@ -1374,7 +1370,7 @@ data:
         prometheusUrl: ""
         proxy:
           capabilities: null
-          component: linkerd-controller
+          component: ""
           disableIdentity: false
           disableTap: false
           enableExternalProfiles: false
@@ -1408,7 +1404,6 @@ data:
             collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
-          workloadKind: deployment
         proxyContainerName: linkerd-proxy
         proxyInit:
           capabilities: null
@@ -1463,7 +1458,7 @@ data:
           prometheusUrl: ""
           proxy:
             capabilities: null
-            component: linkerd-controller
+            component: ""
             disableIdentity: false
             disableTap: false
             enableExternalProfiles: false
@@ -1497,7 +1492,6 @@ data:
               collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
-            workloadKind: deployment
           proxyContainerName: linkerd-proxy
           proxyInit:
             capabilities: null

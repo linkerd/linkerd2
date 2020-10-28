@@ -25,8 +25,9 @@ spec:
     port: 443
     targetPort: apiserver
 ---
-{{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set .Values.global.proxy "component" "linkerd-tap" -}}
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values.global.proxy "workloadKind" "deployment" -}}
+{{ $_ := set $tree.Values.global.proxy "component" "linkerd-tap" -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 kind: Deployment
 apiVersion: apps/v1
@@ -47,7 +48,7 @@ spec:
     matchLabels:
       {{.Values.global.controllerComponentLabel}}: tap
       {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-      {{- include "partials.proxy.labels" .Values.global.proxy | nindent 6}}
+      {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 6}}
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
     rollingUpdate:
@@ -66,7 +67,7 @@ spec:
         {{.Values.global.controllerComponentLabel}}: tap
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
         {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
-        {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
+        {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 8}}
         {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
@@ -113,7 +114,6 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
-      {{- $tree := deepCopy . }}
       {{- if not (empty .Values.tapProxyResources) }}
       {{- $r := merge .Values.tapProxyResources .Values.global.proxy.resources }}
       {{- $_ := set $tree.Values.global.proxy "resources" $r }}
@@ -121,7 +121,7 @@ spec:
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
-      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       serviceAccountName: linkerd-tap
       volumes:
