@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
@@ -117,9 +118,10 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 
 	// Query Prometheus for all pods present
 	vec, err := s.queryProm(ctx, processStartTimeQuery)
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), ErrNoPrometheusInstance) {
 		return nil, err
 	}
+
 	for _, sample := range vec {
 		pod := string(sample.Metric["pod"])
 		timestamp := sample.Timestamp
