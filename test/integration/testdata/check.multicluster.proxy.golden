@@ -43,8 +43,11 @@ linkerd-identity
 linkerd-webhooks-and-apisvc-tls
 -------------------------------
 √ tap API server has valid cert
+√ tap API server cert is valid for at least 60 days
 √ proxy-injector webhook has valid cert
+√ proxy-injector cert is valid for at least 60 days
 √ sp-validator webhook has valid cert
+√ sp-validator cert is valid for at least 60 days
 
 linkerd-identity-data-plane
 ---------------------------
