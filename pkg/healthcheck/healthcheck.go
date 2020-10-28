@@ -1054,7 +1054,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "tap API server cert is valid for at least 60 days",
 					warning:     true,
-					hintAnchor:  "l5d-tap-cert-not-expiring-soon",
+					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
 					check: func(ctx context.Context) error {
 						cert, err := hc.fetchCredsFromSecret(ctx, tapTLSSecretName)
 						if kerrors.IsNotFound(err) {
@@ -1091,7 +1091,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "proxy-injector cert is valid for at least 60 days",
 					warning:     true,
-					hintAnchor:  "l5d-proxy-injector-cert-not-expiring-soon",
+					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
 					check: func(ctx context.Context) error {
 						cert, err := hc.fetchCredsFromSecret(ctx, proxyInjectorTLSSecretName)
 						if kerrors.IsNotFound(err) {
@@ -1127,7 +1127,7 @@ func (hc *HealthChecker) allCategories() []category {
 				{
 					description: "sp-validator cert is valid for at least 60 days",
 					warning:     true,
-					hintAnchor:  "l5d-sp-validator-cert-not-expiring-soon",
+					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
 					check: func(ctx context.Context) error {
 						cert, err := hc.fetchCredsFromSecret(ctx, spValidatorTLSSecretName)
 						if kerrors.IsNotFound(err) {
