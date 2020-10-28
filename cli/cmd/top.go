@@ -435,7 +435,7 @@ func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- *pb.TapEvent, closin
 		if err != nil {
 			if err == io.EOF {
 				fmt.Println("Tap stream terminated")
-			} else if !strings.HasSuffix(err.Error(), "http2: response body closed") {
+			} else if !strings.HasSuffix(err.Error(), tap.ErrClosedResponseBody) {
 				fmt.Println(err.Error())
 			}
 
