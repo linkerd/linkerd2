@@ -41,7 +41,7 @@ global:
 
   # url of existing prometheus
   prometheusUrl: ""
-  # url of external grafana instance.
+  # url of external grafana instance with reverse proxy configured
   grafanaUrl: ""
 
   # Additional annotations to add to all pods
