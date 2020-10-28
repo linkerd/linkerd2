@@ -1221,7 +1221,7 @@ spec:
         - --inbound-ports-to-ignore
         - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - 443,25,443,587,3306,11211
+        - "25,443,587,3306,11211"
         image: my.custom.registry/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1454,7 +1454,7 @@ spec:
         - --inbound-ports-to-ignore
         - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - 443,25,443,587,3306,11211
+        - "25,443,587,3306,11211"
         image: my.custom.registry/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1705,7 +1705,7 @@ spec:
         - --inbound-ports-to-ignore
         - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - 443,25,443,587,3306,11211
+        - "25,443,587,3306,11211"
         image: my.custom.registry/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1984,7 +1984,7 @@ spec:
         - --inbound-ports-to-ignore
         - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - 443,25,443,587,3306,11211
+        - "25,443,587,3306,11211"
         image: my.custom.registry/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2195,7 +2195,7 @@ spec:
         - --inbound-ports-to-ignore
         - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - 443,25,443,587,3306,11211
+        - "25,443,587,3306,11211"
         image: my.custom.registry/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2448,7 +2448,7 @@ spec:
         - --inbound-ports-to-ignore
         - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - 443,25,443,587,3306,11211
+        - "25,443,587,3306,11211"
         image: my.custom.registry/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2688,7 +2688,7 @@ spec:
         - --inbound-ports-to-ignore
         - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - 443,25,443,587,3306,11211
+        - "25,443,587,3306,11211"
         image: my.custom.registry/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2998,7 +2998,7 @@ spec:
         - --inbound-ports-to-ignore
         - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - 443,25,443,587,3306,11211
+        - "25,443,587,3306,11211"
         image: my.custom.registry/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -3433,7 +3433,7 @@ spec:
         - --inbound-ports-to-ignore
         - 4190,4191,25,443,587,3306,11211
         - --outbound-ports-to-ignore
-        - 443,25,443,587,3306,11211
+        - "25,443,587,3306,11211"
         image: my.custom.registry/linkerd-io/proxy-init:v1.3.6
         imagePullPolicy: IfNotPresent
         name: linkerd-init
