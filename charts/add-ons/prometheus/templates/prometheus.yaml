@@ -288,7 +288,7 @@ spec:
       - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ if not .Values.global.cniEnabled -}}
       initContainers:
-      - {{- include "partials.proxy-init" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
+      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       serviceAccountName: linkerd-prometheus
       volumes:
