@@ -65,6 +65,10 @@ apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: linkerd-sp-validator-webhook-config
+  {{- if (not (empty .Values.profileValidator.configAnnotations)) }}
+  annotations:
+    {{- with .Values.profileValidator.configAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  {{- end }}
   labels:
     {{.Values.global.controllerComponentLabel}}: sp-validator
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}

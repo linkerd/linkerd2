@@ -115,6 +115,10 @@ apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
   name: v1alpha1.tap.linkerd.io
+  {{- if (not (empty .Values.tap.configAnnotations)) }}
+  annotations:
+    {{- with .Values.tap.configAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
+  {{- end }}
   labels:
     {{.Values.global.controllerComponentLabel}}: tap
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
