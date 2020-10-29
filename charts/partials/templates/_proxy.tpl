@@ -1,4 +1,13 @@
 {{ define "partials.proxy" -}}
+{{- $isDestination := false -}}
+{{- $isIdentity := false -}}
+{{- if kindIs "string" .Values.global.proxy.component -}}
+{{- if eq .Values.global.proxy.component "linkerd-destination" -}}
+{{- $isDestination = true -}}
+{{- else if eq .Values.global.proxy.component "linkerd-identity" -}}
+{{- $isIdentity = true -}}
+{{- end -}}
+{{- end -}}
 env:
 {{ if .Values.global.proxy.requireIdentityOnInboundPorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_IDENTITY
@@ -9,7 +18,7 @@ env:
 - name: LINKERD2_PROXY_LOG_FORMAT
   value: {{.Values.global.proxy.logFormat | quote}}
 - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-  value: {{ternary "localhost.:8086" (printf "linkerd-dst-headless.%s.svc.%s:8086" .Values.global.namespace .Values.global.clusterDomain) (eq .Values.global.proxy.component "linkerd-destination")}}
+  value: {{ternary "localhost.:8086" (printf "linkerd-dst-headless.%s.svc.%s:8086" .Values.global.namespace .Values.global.clusterDomain) $isDestination }}
 - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
   value: {{.Values.global.clusterNetworks | quote}}
 {{ if .Values.global.proxy.inboundConnectTimeout -}}
@@ -75,7 +84,7 @@ env:
   value: /var/run/secrets/kubernetes.io/serviceaccount/token
 - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
   {{- $identitySvcAddr := printf "linkerd-identity-headless.%s.svc.%s:8080" .Values.global.namespace .Values.global.clusterDomain }}
-  value: {{ternary "localhost.:8080" $identitySvcAddr (eq .Values.global.proxy.component "linkerd-identity")}}
+  value: {{ternary "localhost.:8080" $identitySvcAddr $isIdentity }}
 - name: _pod_sa
   valueFrom:
     fieldRef:

@@ -113,7 +113,6 @@ type (
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
 		Capabilities                  *Capabilities    `json:"capabilities"`
-		Component                     string           `json:"component"`
 		DisableIdentity               bool             `json:"disableIdentity"`
 		DisableTap                    bool             `json:"disableTap"`
 		EnableExternalProfiles        bool             `json:"enableExternalProfiles"`

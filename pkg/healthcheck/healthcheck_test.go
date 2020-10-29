@@ -2698,7 +2698,6 @@ data:
 					CNIEnabled:               false,
 					IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
 					Proxy: &linkerd2.Proxy{
-						Component: "linkerd-controller",
 						Image: &linkerd2.Image{
 							Name:       "ProxyImageName",
 							PullPolicy: "ImagePullPolicy",

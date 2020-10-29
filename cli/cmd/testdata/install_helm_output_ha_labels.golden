@@ -876,7 +876,6 @@ data:
       prometheusUrl: ""
       proxy:
         capabilities: null
-        component: ""
         disableIdentity: false
         disableTap: false
         enableExternalProfiles: false
@@ -966,7 +965,6 @@ data:
         prometheusUrl: ""
         proxy:
           capabilities: null
-          component: ""
           disableIdentity: false
           disableTap: false
           enableExternalProfiles: false
@@ -1057,7 +1055,6 @@ data:
           prometheusUrl: ""
           proxy:
             capabilities: null
-            component: ""
             disableIdentity: false
             disableTap: false
             enableExternalProfiles: false
@@ -1198,7 +1195,6 @@ data:
         prometheusUrl: ""
         proxy:
           capabilities: null
-          component: ""
           disableIdentity: false
           disableTap: false
           enableExternalProfiles: false
@@ -1292,7 +1288,6 @@ data:
           prometheusUrl: ""
           proxy:
             capabilities: null
-            component: ""
             disableIdentity: false
             disableTap: false
             enableExternalProfiles: false
