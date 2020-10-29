@@ -1241,6 +1241,16 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
+						// Check if prometheus configured
+						prometheusValues := make(map[string]interface{})
+						err = yaml.Unmarshal(hc.linkerdConfig.Prometheus.Values(), &prometheusValues)
+						if err != nil {
+							return err
+						}
+						if !GetBool(prometheusValues, "enabled") && hc.linkerdConfig.Global.PrometheusURL == "" {
+							return &SkipError{Reason: "no prometheus instance to connect"}
+						}
+
 						return validateDataPlanePodReporting(pods)
 					},
 				},
