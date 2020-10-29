@@ -617,7 +617,14 @@ func newLinkCommand() *cobra.Command {
 
 			gatewayAddresses := []string{}
 			for _, ingress := range gateway.Status.LoadBalancer.Ingress {
-				gatewayAddresses = append(gatewayAddresses, ingress.IP)
+				addr := ingress.IP
+				if addr == "" {
+					addr = ingress.Hostname
+				}
+				if addr == "" {
+					continue
+				}
+				gatewayAddresses = append(gatewayAddresses, addr)
 			}
 			if len(gatewayAddresses) == 0 {
 				return fmt.Errorf("Gateway %s.%s has no ingress addresses", gateway.Name, gateway.Namespace)
