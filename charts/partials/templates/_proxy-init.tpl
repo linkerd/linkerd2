@@ -8,8 +8,10 @@ args:
 - {{.Values.global.proxy.uid | quote}}
 - --inbound-ports-to-ignore
 - {{.Values.global.proxy.ports.control}},{{.Values.global.proxy.ports.admin}}{{ternary (printf ",%s" .Values.global.proxyInit.ignoreInboundPorts) "" (not (empty .Values.global.proxyInit.ignoreInboundPorts)) }}
+{{- if .Values.global.proxyInit.ignoreOutboundPorts }}
 - --outbound-ports-to-ignore
 - {{.Values.global.proxyInit.ignoreOutboundPorts | quote}}
+{{- end }}
 {{- if .Values.global.proxyInit.closeWaitTimeoutSecs }}
 - --timeout-close-wait-secs
 - {{ .Values.global.proxyInit.closeWaitTimeoutSecs | quote}}
