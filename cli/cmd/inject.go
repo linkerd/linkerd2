@@ -181,6 +181,9 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	if rt.injectProxy {
+		// delete the inject annotation if present as its not needed in the manual case
+		// prevents injector from taking a different code path in the ignress mode
+		delete(rt.overrideAnnotations, k8s.ProxyInjectAnnotation)
 		conf.AppendPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
 	} else {
 		// flag the auto-injector to inject the proxy, regardless of the namespace annotation
@@ -188,10 +191,6 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	if len(rt.overrideAnnotations) > 0 {
-		// Do not set ingress annotation if its manual
-		if val, ok := rt.overrideAnnotations[k8s.ProxyInjectAnnotation]; ok && val == k8s.ProxyInjectIngress && rt.injectProxy {
-			delete(rt.overrideAnnotations, k8s.ProxyInjectAnnotation)
-		}
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
