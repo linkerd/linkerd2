@@ -188,6 +188,10 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	if len(rt.overrideAnnotations) > 0 {
+		// Do not set ingress annotation if its manual
+		if val, ok := rt.overrideAnnotations[k8s.ProxyInjectAnnotation]; ok && val == k8s.ProxyInjectIngress && rt.injectProxy {
+			delete(rt.overrideAnnotations, k8s.ProxyInjectAnnotation)
+		}
 		conf.AppendPodAnnotations(rt.overrideAnnotations)
 	}
 
