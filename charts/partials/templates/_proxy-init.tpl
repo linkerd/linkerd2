@@ -7,7 +7,7 @@ args:
 - --proxy-uid
 - {{.Values.global.proxy.uid | quote}}
 - --inbound-ports-to-ignore
-- {{.Values.global.proxy.ports.control}},{{.Values.global.proxy.ports.admin}}{{ternary (printf ",%s" .Values.global.proxyInit.ignoreInboundPorts) "" (not (empty .Values.global.proxyInit.ignoreInboundPorts)) }}
+- "{{.Values.global.proxy.ports.control}},{{.Values.global.proxy.ports.admin}}{{ternary (printf ",%s" .Values.global.proxyInit.ignoreInboundPorts) "" (not (empty .Values.global.proxyInit.ignoreInboundPorts)) }}"
 {{- if .Values.global.proxyInit.ignoreOutboundPorts }}
 - --outbound-ports-to-ignore
 - {{.Values.global.proxyInit.ignoreOutboundPorts | quote}}

@@ -1221,7 +1221,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
         image: ProxyInitImageName:ProxyInitVersion
@@ -1456,7 +1456,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
         image: ProxyInitImageName:ProxyInitVersion
@@ -1709,7 +1709,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
         image: ProxyInitImageName:ProxyInitVersion
@@ -1990,7 +1990,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
         image: ProxyInitImageName:ProxyInitVersion
@@ -2203,7 +2203,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
         image: ProxyInitImageName:ProxyInitVersion
@@ -2458,7 +2458,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
         image: ProxyInitImageName:ProxyInitVersion
@@ -2700,7 +2700,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
         image: ProxyInitImageName:ProxyInitVersion
@@ -3012,7 +3012,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
         image: ProxyInitImageName:ProxyInitVersion
@@ -3449,7 +3449,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191
+        - "4190,4191"
         - --outbound-ports-to-ignore
         - "443"
         image: ProxyInitImageName:ProxyInitVersion

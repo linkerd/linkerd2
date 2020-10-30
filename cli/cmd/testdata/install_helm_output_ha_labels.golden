@@ -1679,7 +1679,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,444
+        - "4190,4191,444"
         - --outbound-ports-to-ignore
         - "333"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
@@ -1943,7 +1943,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,444
+        - "4190,4191,444"
         - --outbound-ports-to-ignore
         - "333"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
@@ -2225,7 +2225,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,444
+        - "4190,4191,444"
         - --outbound-ports-to-ignore
         - "333"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
@@ -2525,7 +2525,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,444
+        - "4190,4191,444"
         - --outbound-ports-to-ignore
         - "333"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
@@ -2768,7 +2768,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,444
+        - "4190,4191,444"
         - --outbound-ports-to-ignore
         - "333"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
@@ -3053,7 +3053,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,444
+        - "4190,4191,444"
         - --outbound-ports-to-ignore
         - "333"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
@@ -3325,7 +3325,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,444
+        - "4190,4191,444"
         - --outbound-ports-to-ignore
         - "333"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
@@ -3645,7 +3645,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,444
+        - "4190,4191,444"
         - --outbound-ports-to-ignore
         - "333"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
@@ -4090,7 +4090,7 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,444
+        - "4190,4191,444"
         - --outbound-ports-to-ignore
         - "333"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
