@@ -14,6 +14,7 @@ This edge supersedes edge-20.10.6 as a release candidate for stable-2.9.0.
 * Fixed issue with upgrades where external certs would be fetched and stored
   even though this does not happen on fresh installs with externally created
   certs
+* Fixed issue with upgrades where the issuer cert expiration was being reset
 * Removed the `--registry` flag from the `multicluster install` command
 
 ## edge-20.10.6
