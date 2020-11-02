@@ -2,7 +2,7 @@
 
 ## edge-20.11.1
 
-This edge supersedes edge-20.10.5 as a release candidate for stable-2.9.0.
+This edge supersedes edge-20.10.6 as a release candidate for stable-2.9.0.
 
 * Fixed issue where the `check` command would error when there is no Prometheus
   configured
