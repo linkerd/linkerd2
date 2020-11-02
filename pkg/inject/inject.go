@@ -516,7 +516,6 @@ func (conf *ResourceConfig) complete(template *corev1.PodTemplateSpec) {
 
 // injectPodSpec adds linkerd sidecars to the provided PodSpec.
 func (conf *ResourceConfig) injectPodSpec(values *patch) {
-	values.Global.Proxy.Component = conf.pod.labels[k8s.ProxyDeploymentLabel]
 	saVolumeMount := conf.serviceAccountVolumeMount()
 
 	// use the primary container's capabilities to ensure psp compliance, if

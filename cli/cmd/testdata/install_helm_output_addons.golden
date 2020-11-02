@@ -872,7 +872,6 @@ data:
       prometheusUrl: ""
       proxy:
         capabilities: null
-        component: linkerd-controller
         disableIdentity: false
         disableTap: false
         enableExternalProfiles: false
@@ -906,7 +905,6 @@ data:
           collectorSvcAddr: ""
         uid: 2102
         waitBeforeExitSeconds: 0
-        workloadKind: deployment
       proxyContainerName: linkerd-proxy
       proxyInit:
         capabilities: null
@@ -960,7 +958,6 @@ data:
         prometheusUrl: ""
         proxy:
           capabilities: null
-          component: linkerd-controller
           disableIdentity: false
           disableTap: false
           enableExternalProfiles: false
@@ -994,7 +991,6 @@ data:
             collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
-          workloadKind: deployment
         proxyContainerName: linkerd-proxy
         proxyInit:
           capabilities: null
@@ -1049,7 +1045,6 @@ data:
           prometheusUrl: ""
           proxy:
             capabilities: null
-            component: linkerd-controller
             disableIdentity: false
             disableTap: false
             enableExternalProfiles: false
@@ -1083,7 +1078,6 @@ data:
               collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
-            workloadKind: deployment
           proxyContainerName: linkerd-proxy
           proxyInit:
             capabilities: null
@@ -1169,7 +1163,6 @@ data:
         prometheusUrl: ""
         proxy:
           capabilities: null
-          component: linkerd-controller
           disableIdentity: false
           disableTap: false
           enableExternalProfiles: false
@@ -1203,7 +1196,6 @@ data:
             collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
-          workloadKind: deployment
         proxyContainerName: linkerd-proxy
         proxyInit:
           capabilities: null
@@ -1261,7 +1253,6 @@ data:
           prometheusUrl: ""
           proxy:
             capabilities: null
-            component: linkerd-controller
             disableIdentity: false
             disableTap: false
             enableExternalProfiles: false
@@ -1295,7 +1286,6 @@ data:
               collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
-            workloadKind: deployment
           proxyContainerName: linkerd-proxy
           proxyInit:
             capabilities: null
@@ -1375,7 +1365,6 @@ data:
         prometheusUrl: ""
         proxy:
           capabilities: null
-          component: linkerd-controller
           disableIdentity: false
           disableTap: false
           enableExternalProfiles: false
@@ -1409,7 +1398,6 @@ data:
             collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
-          workloadKind: deployment
         proxyContainerName: linkerd-proxy
         proxyInit:
           capabilities: null
@@ -1464,7 +1452,6 @@ data:
           prometheusUrl: ""
           proxy:
             capabilities: null
-            component: linkerd-controller
             disableIdentity: false
             disableTap: false
             enableExternalProfiles: false
@@ -1498,7 +1485,6 @@ data:
               collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
-            workloadKind: deployment
           proxyContainerName: linkerd-proxy
           proxyInit:
             capabilities: null
@@ -1754,9 +1740,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,222
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - 443,111
+        - "111"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -1978,9 +1964,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,222
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - 443,111
+        - "111"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2220,9 +2206,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,222
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - 443,111
+        - "111"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2493,9 +2479,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,222
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - 443,111
+        - "111"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2696,9 +2682,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,222
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - 443,111
+        - "111"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -2941,9 +2927,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,222
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - 443,111
+        - "111"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -3173,9 +3159,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,222
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - 443,111
+        - "111"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -3476,9 +3462,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,222
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - 443,111
+        - "111"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -3904,9 +3890,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,222
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - 443,111
+        - "111"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -4196,9 +4182,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,222
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - 443,111
+        - "111"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init
@@ -4406,9 +4392,9 @@ spec:
         - --proxy-uid
         - "2102"
         - --inbound-ports-to-ignore
-        - 4190,4191,222
+        - "4190,4191,222"
         - --outbound-ports-to-ignore
-        - 443,111
+        - "111"
         image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
         imagePullPolicy: IfNotPresent
         name: linkerd-init

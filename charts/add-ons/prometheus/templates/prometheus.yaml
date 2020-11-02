@@ -186,8 +186,9 @@ spec:
     port: 9090
     targetPort: 9090
 ---
-{{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set .Values.global.proxy "component" "linkerd-prometheus" -}}
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values.global.proxy "workloadKind" "deployment" -}}
+{{ $_ := set $tree.Values.global.proxy "component" "linkerd-prometheus" -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -212,7 +213,7 @@ spec:
     matchLabels:
       {{.Values.global.controllerComponentLabel}}: prometheus
       {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-      {{- include "partials.proxy.labels" .Values.global.proxy | nindent 6}}
+      {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 6}}
   template:
     metadata:
       annotations:
@@ -223,7 +224,7 @@ spec:
         {{.Values.global.controllerComponentLabel}}: prometheus
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
         {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
-        {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
+        {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 8}}
         {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
@@ -278,7 +279,6 @@ spec:
           name: prometheus-config
           subPath: prometheus.yml
           readOnly: true
-      {{- $tree := deepCopy . }}
       {{- if not (empty .Values.proxy) }}
       {{- if not (empty .Values.proxy.resources) }}
       {{- $r := merge .Values.proxy.resources .Values.global.proxy.resources }}
