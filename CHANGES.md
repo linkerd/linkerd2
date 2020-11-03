@@ -1,5 +1,119 @@
 # Changes
 
+## stable-2.9.0
+
+This release extends Linkerd's zero-config mutual TLS (mTLS) support to all TCP
+connections, allowing Linkerd to transparently encrypt and authenticate all TCP
+connections in the cluster the moment it's installed. It also adds ARM support,
+introduces a new multi-core proxy runtime for higher throughput, adds support
+for Kubernetes service topologies, and lots, lots more, as described below:
+
+* Proxy
+  * Performed internal improvements for lower latencies under high concurrency
+  * Reduced performance impact of logging , especially when the `debug` or
+    `trace` log levels are disabled
+  * Improved error handling for DNS errors encountered when discovering control
+    plane addresses, which can be common during installation, before all
+    components have been started, allowing linkerd to continue to operate
+    normally in HA during node outages
+
+* Control Plane
+  * Added support for [topology-aware service
+    routing](https://kubernetes.io/docs/concepts/services-networking/service-topology/)
+    to the Destination controller; when providing service discovery updates to
+    proxies the Destination controller will now filter endpoints based on the
+    service's topology preferences
+  * Added support for the new Kubernetes
+    [EndpointSlice](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/)
+    resource to the Destination controller; Linkerd can be installed with
+    `--enable-endpoint-slices` flag to use this resource rather than the
+    Endpoints API in clusters where this new API is supported
+
+* Dashboard
+  * Added new Spanish translations (please help us translate into your
+    language!)
+  * Added new section for exposing multicluster gateway metrics
+
+* CLI
+  * Renamed the `--addon-config` flag to `--config` to clarify this flag can be
+    used
+  * Added fish shell completions to the `linkerd` command to set any Helm value
+
+* Multicluster
+  * Replaced the single `service-mirror` controller, with separate controllers
+    that will be installed per target cluster through `linkerd multicluster
+    link`
+  * Changed the mechanism for mirroring services: instead of relying on
+    annotations on the target services, now the source cluster should specify
+    which services from the target cluster should be exported by using a label
+    selector
+  * Added support for creating multiple service accounts when installing
+    multicluster with Helm to allow more granular revocation
+  * Added a multicluster `unlink` command for removing multicluster links
+
+* Prometheus
+  * Moved Linkerd's bundled Prometheus into an add-on (enabled by default); this
+    makes the Linkerd Prometheus more configurable, gives it a separate upgrade
+    lifecycle from the rest of the control plane, and will allow users to
+    disable the bundled Prometheus instance
+  * The long-awaited Bring-Your-Own-Prometheus case has been finally addressed:
+    added `global.prometheusUrl` to the Helm config to have linkerd use an
+    external Prometheus instance instead of the one provided by default
+  * Added an option to persist data to a volume instead of memory, so that
+    historical metrics are available when prometheus is restarted
+  * The helm chart can now configure persistent storage and limits
+
+* Other
+  * Added a new `linkerd.io/inject: ingress` annotation and accompanying
+    `--ingress` flag to the `inject command, to configure the proxy to support
+    service profiles and enable per-route metrics and traffic splits for HTTP
+    ingress controllers
+  * Changed the type of the injector and tap API secrets to `kubernetes.io/tls`
+    so they can be provisioned by cert-manager
+  * Changed default docker image repository to `ghcr.io` from `gcr.io`; **Users
+    who pull the images into private repositories should take note of this
+    change**
+  * Introduced support for authenticated docker registries
+  * Simplified the way that Linkerd stores its configuration; configuration is
+    now stored as Helm values in the `linkerd-config` ConfigMap
+  * Added support for Helm configuration of per-component proxy resources
+    requests
+
+This release includes changes from a massive list of contributors. A special
+thank-you to everyone who helped make this release possible: [Abereham G
+Wodajie](https://github.com/Abrishges), [Alexander
+Berger](https://github.com/alex-berger), [Ali
+Ariff](https://github.com/aliariff), [Arthur Silva
+Sens](https://github.com/ArthurSens), [Chris
+Campbell](https://github.com/campbel), [Daniel
+Lang](https://github.com/mavrick), [David Tyler](https://github.com/DaveTCode),
+[Desmond Ho](https://github.com/DesmondH0), [Dominik
+Münch](https://github.com/muenchdo), [George
+Garces](https://github.com/jgarces21), [Herrmann
+Hinz](https://github.com/HerrmannHinz), [Hu Shuai](https://github.com/hs0210),
+[Jeffrey N. Davis](https://github.com/penland365), [Joakim
+Roubert](https://github.com/joakimr-axis), [Josh
+Soref](https://github.com/jsoref), [Lutz Behnke](https://github.com/cypherfox),
+[MaT1g3R](https://github.com/MaT1g3R), [Marcus Vaal](https://github.com/mvaal),
+[Markus](https://github.com/mbettsteller), [Matei
+David](https://github.com/mateiidavid), [Matt
+Miller](https://github.com/mmiller1), [Mayank
+Shah](https://github.com/mayankshah1607),
+[Naseem](https://github.com/naseemkullah), [Nil](https://github.com/c-n-c),
+[OlivierB](https://github.com/olivierboudet), [Olukayode
+Bankole](https://github.com/rbankole), [Paul
+Balogh](https://github.com/javaducky), [Rajat
+Jindal](https://github.com/rajatjindal), [Raphael
+Taylor-Davies](https://github.com/tustvold), [Simon
+Weald](https://github.com/glitchcrab), [Steve
+Gray](https://github.com/steve-gray), [Suraj
+Deshmukh](https://github.com/surajssd), [Tharun
+Rajendran](https://github.com/tharun208), [Wei Lun](https://github.com/WLun001),
+[Zhou Hao](https://github.com/zhouhao3), [ZouYu](https://github.com/Hellcatlk),
+[aimbot31](https://github.com/aimbot31),
+[iohenkies](https://github.com/iohenkies), [memory](https://github.com/memory),
+and [tbsoares](https://github.com/tbsoares)
+
 ## edge-20.11.1
 
 This edge supersedes edge-20.10.6 as a release candidate for stable-2.9.0.
