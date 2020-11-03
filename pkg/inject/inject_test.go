@@ -9,6 +9,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8sResource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -73,6 +74,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			expected: func() *l5dcharts.Values {
 				values, _ := l5dcharts.NewValues(false)
 
+				values.Global.Proxy.Cores = 2
 				values.Global.Proxy.DisableIdentity = true
 				values.Global.Proxy.Image.Name = "ghcr.io/linkerd/proxy"
 				values.Global.Proxy.Image.PullPolicy = pullPolicy
@@ -160,6 +162,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			expected: func() *l5dcharts.Values {
 				values, _ := l5dcharts.NewValues(false)
 
+				values.Global.Proxy.Cores = 2
 				values.Global.Proxy.DisableIdentity = true
 				values.Global.Proxy.Image.Name = "ghcr.io/linkerd/proxy"
 				values.Global.Proxy.Image.PullPolicy = pullPolicy
@@ -286,5 +289,29 @@ func TestGetOverriddenValues(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func TestWholeCPUCores(t *testing.T) {
+	for _, c := range []struct {
+		v string
+		n int
+	}{
+		{v: "1", n: 1},
+		{v: "1m", n: 1},
+		{v: "1000m", n: 1},
+		{v: "1001m", n: 2},
+	} {
+		q, err := k8sResource.ParseQuantity(c.v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		n, err := ToWholeCPUCores(q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n != int64(c.n) {
+			t.Fatalf("Unexpected value: %v != %v", n, c.n)
+		}
 	}
 }

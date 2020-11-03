@@ -12,6 +12,7 @@ import (
 
 	"github.com/linkerd/linkerd2/cli/flag"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
@@ -67,7 +68,9 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 					values.ControllerReplicas = haValues.ControllerReplicas
 					values.Global.Proxy.Resources.CPU.Request = haValues.Global.Proxy.Resources.CPU.Request
 					values.Global.Proxy.Resources.Memory.Request = haValues.Global.Proxy.Resources.Memory.Request
-					values.Global.Proxy.Resources.CPU.Limit = haValues.Global.Proxy.Resources.CPU.Limit
+					// NOTE: CPU Limits are not currently set by default HA charts.
+					//values.Global.Proxy.Cores = haValues.Global.Proxy.Cores
+					//values.Global.Proxy.Resources.CPU.Limit = haValues.Global.Proxy.Resources.CPU.Limit
 					values.Global.Proxy.Resources.Memory.Limit = haValues.Global.Proxy.Resources.Memory.Limit
 				}
 				return nil
@@ -402,6 +405,15 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 		flag.NewStringFlag(proxyFlags, "proxy-cpu-limit", defaults.Global.Proxy.Resources.CPU.Limit, "Maximum amount of CPU units that the proxy sidecar can use",
 			func(values *l5dcharts.Values, value string) error {
+				q, err := k8sResource.ParseQuantity(value)
+				if err != nil {
+					return err
+				}
+				c, err := inject.ToWholeCPUCores(q)
+				if err != nil {
+					return err
+				}
+				values.Global.Proxy.Cores = c
 				values.Global.Proxy.Resources.CPU.Limit = value
 				return nil
 			}),

@@ -112,7 +112,9 @@ type (
 
 	// Proxy contains the fields to set the proxy sidecar container
 	Proxy struct {
-		Capabilities                  *Capabilities    `json:"capabilities"`
+		Capabilities *Capabilities `json:"capabilities"`
+		// This should match .Resources.CPU.Limit, but must be a whole number
+		Cores                         int64            `json:"cores,omitempty"`
 		DisableIdentity               bool             `json:"disableIdentity"`
 		DisableTap                    bool             `json:"disableTap"`
 		EnableExternalProfiles        bool             `json:"enableExternalProfiles"`
