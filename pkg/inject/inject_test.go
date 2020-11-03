@@ -306,7 +306,7 @@ func TestWholeCpuCores(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		n, err := toWholeCPUCores(q)
+		n, err := ToWholeCPUCores(q)
 		if err != nil {
 			t.Fatal(err)
 		}
