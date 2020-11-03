@@ -16,6 +16,8 @@ This edge supersedes edge-20.10.6 as a release candidate for stable-2.9.0.
   certs
 * Fixed issue with upgrades where the issuer cert expiration was being reset
 * Removed the `--registry` flag from the `multicluster install` command
+* Removed default CPU limits for the proxy and control plane components in HA
+  mode
 
 ## edge-20.10.6
 
