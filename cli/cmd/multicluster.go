@@ -56,7 +56,6 @@ type (
 		namespace               string
 		gatewayNginxImage       string
 		gatewayNginxVersion     string
-		dockerRegistry          string
 		remoteMirrorCredentials bool
 	}
 
@@ -95,7 +94,6 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 		namespace:               defaults.Namespace,
 		gatewayNginxImage:       defaults.GatewayNginxImage,
 		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
-		dockerRegistry:          defaultDockerRegistry,
 		remoteMirrorCredentials: true,
 	}, nil
 }
@@ -392,7 +390,6 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().Uint32Var(&options.gatewayProbePort, "gateway-probe-port", options.gatewayProbePort, "The liveness check port of the gateway")
 	cmd.Flags().StringVar(&options.gatewayNginxImage, "gateway-nginx-image", options.gatewayNginxImage, "The nginx image to be used")
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
-	cmd.Flags().StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
 	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
 
 	// Hide developer focused flags in release builds.
@@ -617,7 +614,14 @@ func newLinkCommand() *cobra.Command {
 
 			gatewayAddresses := []string{}
 			for _, ingress := range gateway.Status.LoadBalancer.Ingress {
-				gatewayAddresses = append(gatewayAddresses, ingress.IP)
+				addr := ingress.IP
+				if addr == "" {
+					addr = ingress.Hostname
+				}
+				if addr == "" {
+					continue
+				}
+				gatewayAddresses = append(gatewayAddresses, addr)
 			}
 			if len(gatewayAddresses) == 0 {
 				return fmt.Errorf("Gateway %s.%s has no ingress addresses", gateway.Name, gateway.Namespace)

@@ -44,7 +44,12 @@ func FetchIssuerData(ctx context.Context, api kubernetes.Interface, trustAnchors
 		return nil, fmt.Errorf(keyMissingError, k8s.IdentityIssuerKeyName, "issuer key", k8s.IdentityIssuerSecretName, true)
 	}
 
-	return &IssuerCertData{trustAnchors, string(crt), string(key), nil}, nil
+	cert, err := tls.DecodePEMCrt(string(crt))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse issuer certificate: %w", err)
+	}
+
+	return &IssuerCertData{trustAnchors, string(crt), string(key), &cert.Certificate.NotAfter}, nil
 }
 
 // FetchExternalIssuerData fetches the issuer data from the linkerd-identity-issuer secrets (used for kubernetes.io/tls schemed secrets)

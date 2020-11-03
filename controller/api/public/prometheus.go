@@ -42,6 +42,11 @@ const (
 	remoteClusterNameLabel = model.LabelName("target_cluster_name")
 )
 
+var (
+	// ErrNoPrometheusInstance is returned when there is no prometheus instance configured
+	ErrNoPrometheusInstance = errors.New("No prometheus instance to connect")
+)
+
 func extractSampleValue(sample *model.Sample) uint64 {
 	value := uint64(0)
 	if !math.IsNaN(float64(sample.Value)) {
@@ -58,7 +63,7 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 	span.AddAttributes(trace.StringAttribute("queryString", query))
 
 	if s.prometheusAPI == nil {
-		return nil, errors.New("No prometheus instance to connect")
+		return nil, ErrNoPrometheusInstance
 	}
 
 	// single data point (aka summary) query

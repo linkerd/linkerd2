@@ -22,8 +22,9 @@ spec:
     port: 8085
     targetPort: 8085
 ---
-{{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set .Values.global.proxy "component" "linkerd-controller" -}}
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values.global.proxy "workloadKind" "deployment" -}}
+{{ $_ := set $tree.Values.global.proxy "component" "linkerd-controller" -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -44,7 +45,7 @@ spec:
     matchLabels:
       {{.Values.global.controllerComponentLabel}}: controller
       {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-      {{- include "partials.proxy.labels" .Values.global.proxy | nindent 6}}
+      {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 6}}
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
     rollingUpdate:
@@ -60,7 +61,7 @@ spec:
         {{.Values.global.controllerComponentLabel}}: controller
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
         {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
-        {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
+        {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 8}}
         {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
@@ -107,7 +108,6 @@ spec:
         {{- end }}
         securityContext:
           runAsUser: {{.Values.controllerUID}}
-      {{- $tree := deepCopy . }}
       {{- if not (empty .Values.publicAPIProxyResources) }}
       {{- $r := merge .Values.publicAPIProxyResources .Values.global.proxy.resources }}
       {{- $_ := set $tree.Values.global.proxy "resources" $r }}

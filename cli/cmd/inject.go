@@ -181,6 +181,9 @@ func (rt resourceTransformerInject) transform(bytes []byte) ([]byte, []inject.Re
 	}
 
 	if rt.injectProxy {
+		// delete the inject annotation if present as its not needed in the manual case
+		// prevents injector from taking a different code path in the ignress mode
+		delete(rt.overrideAnnotations, k8s.ProxyInjectAnnotation)
 		conf.AppendPodAnnotation(k8s.CreatedByAnnotation, k8s.CreatedByAnnotationValue())
 	} else {
 		// flag the auto-injector to inject the proxy, regardless of the namespace annotation
@@ -421,6 +424,10 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 
 	if proxy.EnableExternalProfiles != baseProxy.EnableExternalProfiles {
 		overrideAnnotations[k8s.ProxyEnableExternalProfilesAnnotation] = strconv.FormatBool(proxy.EnableExternalProfiles)
+	}
+
+	if proxy.IsIngress != baseProxy.IsIngress {
+		overrideAnnotations[k8s.ProxyInjectAnnotation] = k8s.ProxyInjectIngress
 	}
 
 	if proxy.Resources.CPU.Request != baseProxy.Resources.CPU.Request {

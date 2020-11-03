@@ -234,7 +234,9 @@ func fetchIssuer(ctx context.Context, k kubernetes.Interface, trustPEM string, s
 	)
 	switch scheme {
 	case string(corev1.SecretTypeTLS):
-		issuerData, err = issuercerts.FetchExternalIssuerData(ctx, k, controlPlaneNamespace)
+		// Do not return external issuer certs as no need of storing them in config and upgrade secrets
+		// Also contradicts condition in https://github.com/linkerd/linkerd2/blob/main/cli/cmd/options.go#L550
+		return &issuercerts.IssuerCertData{}, nil
 	default:
 		issuerData, err = issuercerts.FetchIssuerData(ctx, k, trustPEM, controlPlaneNamespace)
 		if issuerData != nil && issuerData.TrustAnchors != trustPEM {

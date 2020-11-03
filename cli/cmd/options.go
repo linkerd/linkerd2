@@ -498,6 +498,12 @@ func makeInjectFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				values.Global.Proxy.RequireIdentityOnInboundPorts = strings.Join(value, ",")
 				return nil
 			}),
+
+		flag.NewBoolFlag(injectFlags, "ingress", defaults.Global.Proxy.IsIngress, "Enable ingress mode in the linkerd proxy",
+			func(values *l5dcharts.Values, value bool) error {
+				values.Global.Proxy.IsIngress = value
+				return nil
+			}),
 	}
 
 	return flags, injectFlags

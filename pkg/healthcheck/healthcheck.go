@@ -1052,6 +1052,22 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
+					description: "tap API server cert is valid for at least 60 days",
+					warning:     true,
+					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
+					check: func(ctx context.Context) error {
+						cert, err := hc.fetchCredsFromSecret(ctx, tapTLSSecretName)
+						if kerrors.IsNotFound(err) {
+							cert, err = hc.fetchCredsFromOldSecret(ctx, tapOldTLSSecretName)
+						}
+						if err != nil {
+							return err
+						}
+						return hc.checkCertAndAnchorsExpiringSoon(cert)
+
+					},
+				},
+				{
 					description: "proxy-injector webhook has valid cert",
 					hintAnchor:  "l5d-proxy-injector-webhook-cert-valid",
 					fatal:       true,
@@ -1073,6 +1089,22 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
+					description: "proxy-injector cert is valid for at least 60 days",
+					warning:     true,
+					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
+					check: func(ctx context.Context) error {
+						cert, err := hc.fetchCredsFromSecret(ctx, proxyInjectorTLSSecretName)
+						if kerrors.IsNotFound(err) {
+							cert, err = hc.fetchCredsFromOldSecret(ctx, proxyInjectorOldTLSSecretName)
+						}
+						if err != nil {
+							return err
+						}
+						return hc.checkCertAndAnchorsExpiringSoon(cert)
+
+					},
+				},
+				{
 					description: "sp-validator webhook has valid cert",
 					hintAnchor:  "l5d-sp-validator-webhook-cert-valid",
 					fatal:       true,
@@ -1090,6 +1122,22 @@ func (hc *HealthChecker) allCategories() []category {
 						}
 						identityName := fmt.Sprintf("linkerd-sp-validator.%s.svc", hc.ControlPlaneNamespace)
 						return hc.checkCertAndAnchors(cert, anchors, identityName)
+					},
+				},
+				{
+					description: "sp-validator cert is valid for at least 60 days",
+					warning:     true,
+					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
+					check: func(ctx context.Context) error {
+						cert, err := hc.fetchCredsFromSecret(ctx, spValidatorTLSSecretName)
+						if kerrors.IsNotFound(err) {
+							cert, err = hc.fetchCredsFromOldSecret(ctx, spValidatorOldTLSSecretName)
+						}
+						if err != nil {
+							return err
+						}
+						return hc.checkCertAndAnchorsExpiringSoon(cert)
+
 					},
 				},
 			},
@@ -1241,6 +1289,16 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
+						// Check if prometheus configured
+						prometheusValues := make(map[string]interface{})
+						err = yaml.Unmarshal(hc.linkerdConfig.Prometheus.Values(), &prometheusValues)
+						if err != nil {
+							return err
+						}
+						if !GetBool(prometheusValues, "enabled") && hc.linkerdConfig.Global.PrometheusURL == "" {
+							return &SkipError{Reason: "no prometheus instance to connect"}
+						}
+
 						return validateDataPlanePodReporting(pods)
 					},
 				},
@@ -1336,9 +1394,22 @@ func (hc *HealthChecker) checkCertAndAnchors(cert *tls.Cred, trustAnchors []*x50
 		return fmt.Errorf("Anchors not within their validity period:\n\t%s", strings.Join(expiredAnchors, "\n\t"))
 	}
 
+	// check cert validity
+	if err := issuercerts.CheckCertValidityPeriod(cert.Certificate); err != nil {
+		return fmt.Errorf("certificate is %s", err)
+	}
+
+	if err := cert.Verify(tls.CertificatesToPool(trustAnchors), identityName, time.Time{}); err != nil {
+		return fmt.Errorf("cert is not issued by the trust anchor: %s", err)
+	}
+
+	return nil
+}
+
+func (hc *HealthChecker) checkCertAndAnchorsExpiringSoon(cert *tls.Cred) error {
 	// check anchors not expiring soon
 	var expiringAnchors []string
-	for _, anchor := range trustAnchors {
+	for _, anchor := range cert.TrustChain {
 		anchor := anchor
 		if err := issuercerts.CheckExpiringSoon(anchor); err != nil {
 			expiringAnchors = append(expiringAnchors, fmt.Sprintf("* %v %s %s", anchor.SerialNumber, anchor.Subject.CommonName, err))
@@ -1348,20 +1419,10 @@ func (hc *HealthChecker) checkCertAndAnchors(cert *tls.Cred, trustAnchors []*x50
 		return fmt.Errorf("Anchors expiring soon:\n\t%s", strings.Join(expiringAnchors, "\n\t"))
 	}
 
-	// check cert validity
-	if err := issuercerts.CheckCertValidityPeriod(cert.Certificate); err != nil {
-		return fmt.Errorf("certificate is %s", err)
-	}
-
 	// check cert not expiring soon
 	if err := issuercerts.CheckExpiringSoon(cert.Certificate); err != nil {
 		return fmt.Errorf("certificate %s", err)
 	}
-
-	if err := cert.Verify(tls.CertificatesToPool(trustAnchors), identityName, time.Time{}); err != nil {
-		return fmt.Errorf("cert is not issued by the trust anchor: %s", err)
-	}
-
 	return nil
 }
 
