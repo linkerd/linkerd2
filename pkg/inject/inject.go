@@ -805,11 +805,17 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 	}
 
 	if override, ok := annotations[k8s.ProxyCPULimitAnnotation]; ok {
-		_, err := k8sResource.ParseQuantity(override)
+		q, err := k8sResource.ParseQuantity(override)
 		if err != nil {
 			log.Warnf("%s (%s)", err, k8s.ProxyCPULimitAnnotation)
 		} else {
 			values.Global.Proxy.Resources.CPU.Limit = override
+
+			n, err := toWholeCPUCores(q)
+			if err != nil {
+				log.Warnf("%s (%s)", err, k8s.ProxyCPULimitAnnotation)
+			}
+			values.Global.Proxy.Cores = n
 		}
 	}
 
@@ -984,4 +990,12 @@ func ToPortRanges(portRanges []string) []*config.PortRange {
 		ports[i] = &config.PortRange{PortRange: p}
 	}
 	return ports
+}
+
+func toWholeCPUCores(q k8sResource.Quantity) (int64, error) {
+	q.RoundUp(0)
+	if n, ok := q.AsInt64(); ok {
+		return n, nil
+	}
+	return 0, fmt.Errorf("Could not parse cores: %s", q.String())
 }

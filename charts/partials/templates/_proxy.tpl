@@ -1,5 +1,9 @@
 {{ define "partials.proxy" -}}
 env:
+{{- if .Values.global.proxy.cores }}
+- name: LINKERD2_PROXY_CORES
+  value: {{.Values.global.proxy.cores | quote}}
+{{- end }}
 {{ if .Values.global.proxy.requireIdentityOnInboundPorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_IDENTITY
   value: {{.Values.global.proxy.requireIdentityOnInboundPorts | quote}}
