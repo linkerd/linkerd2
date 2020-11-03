@@ -66,10 +66,11 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 					// individual flags can override the HA defaults.  This means that the HA flag must appear
 					// before the individual flags in the slice passed to flags.ApplyIfSet.
 					values.ControllerReplicas = haValues.ControllerReplicas
-					values.Global.Proxy.Cores = haValues.Global.Proxy.Cores
 					values.Global.Proxy.Resources.CPU.Request = haValues.Global.Proxy.Resources.CPU.Request
 					values.Global.Proxy.Resources.Memory.Request = haValues.Global.Proxy.Resources.Memory.Request
-					values.Global.Proxy.Resources.CPU.Limit = haValues.Global.Proxy.Resources.CPU.Limit
+					// NOTE: CPU Limits are not currently set by default HA charts.
+					//values.Global.Proxy.Cores = haValues.Global.Proxy.Cores
+					//values.Global.Proxy.Resources.CPU.Limit = haValues.Global.Proxy.Resources.CPU.Limit
 					values.Global.Proxy.Resources.Memory.Limit = haValues.Global.Proxy.Resources.Memory.Limit
 				}
 				return nil
