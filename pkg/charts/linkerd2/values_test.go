@@ -240,7 +240,7 @@ func TestNewValues(t *testing.T) {
 
 		expected.Global.Proxy.Resources = &Resources{
 			CPU: Constraints{
-				Limit:   "1",
+				Limit:   "",
 				Request: controllerResources.CPU.Request,
 			},
 			Memory: Constraints{

@@ -9,7 +9,6 @@ global:
   proxy:
     resources:
       cpu:
-        limit: "1"
         request: 100m
       memory:
         limit: 250Mi
