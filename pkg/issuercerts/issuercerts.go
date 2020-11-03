@@ -74,7 +74,12 @@ func FetchExternalIssuerData(ctx context.Context, api kubernetes.Interface, cont
 		return nil, fmt.Errorf(keyMissingError, corev1.TLSPrivateKeyKey, "issuer key", k8s.IdentityIssuerSecretName, true)
 	}
 
-	return &IssuerCertData{string(anchors), string(crt), string(key), nil}, nil
+	cert, err := tls.DecodePEMCrt(string(crt))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse issuer certificate: %w", err)
+	}
+
+	return &IssuerCertData{string(anchors), string(crt), string(key), &cert.Certificate.NotAfter}, nil
 }
 
 // LoadIssuerCrtAndKeyFromFiles loads the issuer certificate and key from files
