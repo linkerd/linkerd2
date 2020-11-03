@@ -992,6 +992,7 @@ func ToPortRanges(portRanges []string) []*config.PortRange {
 	return ports
 }
 
+// ToWholeCPUCores coerces a k8s resource value to a whole integer value, rounding up.
 func ToWholeCPUCores(q k8sResource.Quantity) (int64, error) {
 	q.RoundUp(0)
 	if n, ok := q.AsInt64(); ok {

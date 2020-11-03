@@ -292,7 +292,7 @@ func TestGetOverriddenValues(t *testing.T) {
 	}
 }
 
-func TestWholeCpuCores(t *testing.T) {
+func TestWholeCPUCores(t *testing.T) {
 	for _, c := range []struct {
 		v string
 		n int
