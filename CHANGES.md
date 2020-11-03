@@ -1,5 +1,24 @@
 # Changes
 
+## edge-20.11.1
+
+This edge supersedes edge-20.10.6 as a release candidate for stable-2.9.0.
+
+* Fixed issue where the `check` command would error when there is no Prometheus
+  configured
+* Fixed recent regression that caused multicluster on EKS to not work properly
+* Changed the `check` command to warn instead of error when webhook certificates
+  are near expiry
+* Added the `--ingress` flag to the `inject` command which adds the recently
+  introduced `linkerd.io/inject: ingress` annotation
+* Fixed issue with upgrades where external certs would be fetched and stored
+  even though this does not happen on fresh installs with externally created
+  certs
+* Fixed issue with upgrades where the issuer cert expiration was being reset
+* Removed the `--registry` flag from the `multicluster install` command
+* Removed default CPU limits for the proxy and control plane components in HA
+  mode
+
 ## edge-20.10.6
 
 This edge supersedes edge-20.10.5 as a release candidate for stable-2.9.0. It
