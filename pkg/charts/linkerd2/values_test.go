@@ -184,7 +184,6 @@ func TestNewValues(t *testing.T) {
 
 		controllerResources := &Resources{
 			CPU: Constraints{
-				Limit:   "1",
 				Request: "100m",
 			},
 			Memory: Constraints{
@@ -229,7 +228,7 @@ func TestNewValues(t *testing.T) {
 			"enabled": true,
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
-					"limit":   "4",
+					"limit":   "",
 					"request": "300m",
 				},
 				"memory": map[string]interface{}{

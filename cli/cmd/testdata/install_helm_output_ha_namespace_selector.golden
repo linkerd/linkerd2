@@ -838,7 +838,7 @@ data:
     destinationProxyResources: null
     destinationResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1103,14 +1103,14 @@ data:
           workloadNamespaceLabel: linkerd.io/workload-ns
       resources:
         cpu:
-          limit: "1"
+          limit: ""
           request: 100m
         memory:
           limit: 1024Mi
           request: 50Mi
     heartbeatResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1128,7 +1128,7 @@ data:
     identityProxyResources: null
     identityResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1328,7 +1328,7 @@ data:
           workloadNamespaceLabel: linkerd.io/workload-ns
       resources:
         cpu:
-          limit: "4"
+          limit: ""
           request: 300m
         memory:
           limit: 8192Mi
@@ -1346,7 +1346,7 @@ data:
     proxyInjectorProxyResources: null
     proxyInjectorResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1354,7 +1354,7 @@ data:
     publicAPIProxyResources: null
     publicAPIResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1363,7 +1363,7 @@ data:
     spValidatorProxyResources: null
     spValidatorResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1375,7 +1375,7 @@ data:
     tapProxyResources: null
     tapResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1387,7 +1387,7 @@ data:
     webProxyResources: null
     webResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1540,7 +1540,6 @@ spec:
             port: 9990
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -1802,7 +1801,6 @@ spec:
             port: 9995
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2079,7 +2077,6 @@ spec:
             port: 9996
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2272,7 +2269,6 @@ spec:
             - "-prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090"
             resources:
               limits:
-                cpu: "1"
                 memory: "250Mi"
               requests:
                 cpu: "100m"
@@ -2370,7 +2366,6 @@ spec:
             port: 9994
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2602,7 +2597,6 @@ spec:
             port: 9995
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2884,7 +2878,6 @@ spec:
             port: 9997
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -3151,7 +3144,6 @@ spec:
             port: 9998
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -3464,7 +3456,6 @@ spec:
             port: 3000
         resources:
           limits:
-            cpu: "1"
             memory: "1024Mi"
           requests:
             cpu: "100m"
@@ -3901,7 +3892,6 @@ spec:
           timeoutSeconds: 30
         resources:
           limits:
-            cpu: "4"
             memory: "8192Mi"
           requests:
             cpu: "300m"

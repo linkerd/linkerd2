@@ -812,7 +812,7 @@ data:
     destinationProxyResources: null
     destinationResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -920,14 +920,14 @@ data:
       enabled: true
       resources:
         cpu:
-          limit: "1"
+          limit: ""
           request: 100m
         memory:
           limit: 1024Mi
           request: 50Mi
     heartbeatResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -957,7 +957,7 @@ data:
     identityProxyResources: null
     identityResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -980,7 +980,7 @@ data:
       enabled: true
       resources:
         cpu:
-          limit: "4"
+          limit: ""
           request: 300m
         memory:
           limit: 8192Mi
@@ -998,7 +998,7 @@ data:
     proxyInjectorProxyResources: null
     proxyInjectorResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1006,7 +1006,7 @@ data:
     publicAPIProxyResources: null
     publicAPIResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1015,7 +1015,7 @@ data:
     spValidatorProxyResources: null
     spValidatorResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1027,7 +1027,7 @@ data:
     tapProxyResources: null
     tapResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1039,7 +1039,7 @@ data:
     webProxyResources: null
     webResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1190,7 +1190,6 @@ spec:
             port: 9990
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -1461,7 +1460,6 @@ spec:
             port: 9995
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -1747,7 +1745,6 @@ spec:
             port: 9996
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -1949,7 +1946,6 @@ spec:
             - "-prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090"
             resources:
               limits:
-                cpu: "1"
                 memory: "250Mi"
               requests:
                 cpu: "100m"
@@ -2045,7 +2041,6 @@ spec:
             port: 9994
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2285,7 +2280,6 @@ spec:
             port: 9995
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2575,7 +2569,6 @@ spec:
             port: 9997
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2850,7 +2843,6 @@ spec:
             port: 9998
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -3170,7 +3162,6 @@ spec:
             port: 3000
         resources:
           limits:
-            cpu: "1"
             memory: "1024Mi"
           requests:
             cpu: "100m"
@@ -3614,7 +3605,6 @@ spec:
           timeoutSeconds: 30
         resources:
           limits:
-            cpu: "4"
             memory: "8192Mi"
           requests:
             cpu: "300m"
@@ -3787,7 +3777,7 @@ spec:
 ---
 apiVersion: v1
 data:
-  linkerd-config-overrides: Y29udHJvbGxlclJlcGxpY2FzOiAzCmRlYnVnQ29udGFpbmVyOgogIGltYWdlOgogICAgdmVyc2lvbjogaW5zdGFsbC1kZWJ1Zy12ZXJzaW9uCmRlc3RpbmF0aW9uUmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiMSIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDUwTWkKZW5hYmxlUG9kQW50aUFmZmluaXR5OiB0cnVlCmdsb2JhbDoKICBjb250cm9sbGVySW1hZ2VWZXJzaW9uOiBpbnN0YWxsLWNvbnRyb2wtcGxhbmUtdmVyc2lvbgogIGlkZW50aXR5VHJ1c3RBbmNob3JzUEVNOiB8CiAgICAtLS0tLUJFR0lOIENFUlRJRklDQVRFLS0tLS0KICAgIE1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKICAgIEpRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXJaWEprTG1Oc2RYTjBaWEl1Ykc5allXd3dIaGNOTWpBd09ESTQKICAgIE1EY3hNalEzV2hjTk16QXdPREkyTURjeE1qUTNXakFwTVNjd0pRWURWUVFERXg1cFpHVnVkR2wwZVM1c2FXNXIKICAgIFpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKICAgIGwxdmd3NzlyakI1dVNJVElDVUE2R3lmdlNGZmN1SWlzN0IvWEZTa2t3QUhVNVMvczFBQVArUjBUWDdIQldVQzQKICAgIHVhRzRXV3Npd0pLTm43bWdvM0F3YmpBT0JnTlZIUThCQWY4RUJBTUNBUVl3RWdZRFZSMFRBUUgvQkFnd0JnRUIKICAgIC93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKICAgIGFXUmxiblJwZEhrdWJHbHVhMlZ5WkM1amJIVnpkR1Z5TG14dlkyRnNNQW9HQ0NxR1NNNDlCQU1DQTBrQU1FWUMKICAgIElRQ043bEJGTEREdmp4NlYwK1hranBLRVJSc0pZZjVhZE12bmxvRmw0OGlsSmdJaEFOdHhobmRjcitRSlB1QzgKICAgIHZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKICAgIC0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KICBpbWFnZVB1bGxTZWNyZXRzOiBudWxsCiAgcHJveHk6CiAgICBpbWFnZToKICAgICAgdmVyc2lvbjogaW5zdGFsbC1wcm94eS12ZXJzaW9uCiAgICByZXNvdXJjZXM6CiAgICAgIGNwdToKICAgICAgICByZXF1ZXN0OiAxMDBtCiAgICAgIG1lbW9yeToKICAgICAgICBsaW1pdDogMjUwTWkKICAgICAgICByZXF1ZXN0OiAyME1pCmdyYWZhbmE6CiAgcmVzb3VyY2VzOgogICAgY3B1OgogICAgICBsaW1pdDogIjEiCiAgICAgIHJlcXVlc3Q6IDEwMG0KICAgIG1lbW9yeToKICAgICAgbGltaXQ6IDEwMjRNaQogICAgICByZXF1ZXN0OiA1ME1pCmhlYXJ0YmVhdFJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIjEiCiAgICByZXF1ZXN0OiAxMDBtCiAgbWVtb3J5OgogICAgbGltaXQ6IDI1ME1pCiAgICByZXF1ZXN0OiA1ME1pCmhlYXJ0YmVhdFNjaGVkdWxlOiAxIDIgMyA0IDUKaWRlbnRpdHk6CiAgaXNzdWVyOgogICAgY3J0RXhwaXJ5OiAiMjAzMC0wOC0yNlQwNzoxMzo0N1oiCiAgICB0bHM6CiAgICAgIGNydFBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogICAgICAgIE1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUpSSWdaOFJ0TzhFd2cxWGVwZjhUNDR3Q2dZSUtvWkl6ajBFQXdJd0tURW4KICAgICAgICBNQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUI0WERUSXdNRGd5CiAgICAgICAgT0RBM01UTTBOMW9YRFRNd01EZ3lOakEzTVRNME4xb3dLVEVuTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdQogICAgICAgIGEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTEvRnAKICAgICAgICBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzJkUXZSYVlhbnV4RDM2RHQxCiAgICAgICAgMi9KeHlpU2d4S1dSZG9heSthTndNRzR3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQgogICAgICAgIEFmOENBUUF3SFFZRFZSME9CQllFRkkxV25ycU1ZS2FISE9vK3pweWlpRHEycE8wS01Da0dBMVVkRVFRaU1DQ0MKICAgICAgICBIbWxrWlc1MGFYUjVMbXhwYm10bGNtUXVZMngxYzNSbGNpNXNiMk5oYkRBS0JnZ3Foa2pPUFFRREFnTkhBREJFCiAgICAgICAgQWlBdHVvSTVYdUN0ckdWUnpTbVJUbDJyYTI4YVY5TXlUVTdkNXFuVEFGSEtTZ0lnUktDdmx1T1NnQTVPMjFwNQogICAgICAgIDUxdGRybWtIRVpScjBxbExTSmRIWWdFZk16az0KICAgICAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgICAgIGtleVBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gRUMgUFJJVkFURSBLRVktLS0tLQogICAgICAgIE1IY0NBUUVFSUFBZThuZmJ6WnU5Yy9PQjIrOHhKTTBGejdOVXdUUWF6dWxrRk5zNFRJNStvQW9HQ0NxR1NNNDkKICAgICAgICBBd0VIb1VRRFFnQUUxL0ZwZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyCiAgICAgICAgZFF2UmFZYW51eEQzNkR0MTIvSnh5aVNneEtXUmRvYXkrUT09CiAgICAgICAgLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQppZGVudGl0eVJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIjEiCiAgICByZXF1ZXN0OiAxMDBtCiAgbWVtb3J5OgogICAgbGltaXQ6IDI1ME1pCiAgICByZXF1ZXN0OiAxME1pCnByb2ZpbGVWYWxpZGF0b3I6CiAgY2FCdW5kbGU6IHByb2ZpbGUgdmFsaWRhdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJvZmlsZSB2YWxpZGF0b3IgY3J0CiAga2V5UEVNOiBwcm9maWxlIHZhbGlkYXRvciBrZXkKcHJvbWV0aGV1czoKICByZXNvdXJjZXM6CiAgICBjcHU6CiAgICAgIGxpbWl0OiAiNCIKICAgICAgcmVxdWVzdDogMzAwbQogICAgbWVtb3J5OgogICAgICBsaW1pdDogODE5Mk1pCiAgICAgIHJlcXVlc3Q6IDMwME1pCnByb3h5SW5qZWN0b3I6CiAgY2FCdW5kbGU6IHByb3h5IGluamVjdG9yIENBIGJ1bmRsZQogIGNydFBFTTogcHJveHkgaW5qZWN0b3IgY3J0CiAga2V5UEVNOiBwcm94eSBpbmplY3RvciBrZXkKcHJveHlJbmplY3RvclJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIjEiCiAgICByZXF1ZXN0OiAxMDBtCiAgbWVtb3J5OgogICAgbGltaXQ6IDI1ME1pCiAgICByZXF1ZXN0OiA1ME1pCnB1YmxpY0FQSVJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIjEiCiAgICByZXF1ZXN0OiAxMDBtCiAgbWVtb3J5OgogICAgbGltaXQ6IDI1ME1pCiAgICByZXF1ZXN0OiA1ME1pCnNwVmFsaWRhdG9yUmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiMSIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDUwTWkKdGFwOgogIGNhQnVuZGxlOiB0YXAgQ0EgYnVuZGxlCiAgY3J0UEVNOiB0YXAgY3J0CiAga2V5UEVNOiB0YXAga2V5CnRhcFJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIjEiCiAgICByZXF1ZXN0OiAxMDBtCiAgbWVtb3J5OgogICAgbGltaXQ6IDI1ME1pCiAgICByZXF1ZXN0OiA1ME1pCndlYlJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIjEiCiAgICByZXF1ZXN0OiAxMDBtCiAgbWVtb3J5OgogICAgbGltaXQ6IDI1ME1pCiAgICByZXF1ZXN0OiA1ME1pCndlYmhvb2tGYWlsdXJlUG9saWN5OiBGYWlsCg==
+  linkerd-config-overrides: Y29udHJvbGxlclJlcGxpY2FzOiAzCmRlYnVnQ29udGFpbmVyOgogIGltYWdlOgogICAgdmVyc2lvbjogaW5zdGFsbC1kZWJ1Zy12ZXJzaW9uCmRlc3RpbmF0aW9uUmVzb3VyY2VzOgogIGNwdToKICAgIGxpbWl0OiAiIgogICAgcmVxdWVzdDogMTAwbQogIG1lbW9yeToKICAgIGxpbWl0OiAyNTBNaQogICAgcmVxdWVzdDogNTBNaQplbmFibGVQb2RBbnRpQWZmaW5pdHk6IHRydWUKZ2xvYmFsOgogIGNvbnRyb2xsZXJJbWFnZVZlcnNpb246IGluc3RhbGwtY29udHJvbC1wbGFuZS12ZXJzaW9uCiAgaWRlbnRpdHlUcnVzdEFuY2hvcnNQRU06IHwKICAgIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogICAgTUlJQndUQ0NBV2FnQXdJQkFnSVFlRFpwNWxEYUl5Z1E1VWZNS1pyRkFUQUtCZ2dxaGtqT1BRUURBakFwTVNjdwogICAgSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNAogICAgTURjeE1qUTNXaGNOTXpBd09ESTJNRGN4TWpRM1dqQXBNU2N3SlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1cgogICAgWlhKa0xtTnNkWE4wWlhJdWJHOWpZV3d3V1RBVEJnY3Foa2pPUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVJxYzcwWgogICAgbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAogICAgdWFHNFdXc2l3SktObjdtZ28zQXdiakFPQmdOVkhROEJBZjhFQkFNQ0FRWXdFZ1lEVlIwVEFRSC9CQWd3QmdFQgogICAgL3dJQkFUQWRCZ05WSFE0RUZnUVU1WXRqVlZQZmQ3STdOTEhzbjJDMjZFQnlHVjB3S1FZRFZSMFJCQ0l3SUlJZQogICAgYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwogICAgSVFDTjdsQkZMRER2ang2VjArWGtqcEtFUlJzSllmNWFkTXZubG9GbDQ4aWxKZ0loQU50eGhuZGNyK1FKUHVDOAogICAgdmdVQzBkMi85Rk11ZUlWTWIrNDZXVENPanNxcgogICAgLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQogIGltYWdlUHVsbFNlY3JldHM6IG51bGwKICBwcm94eToKICAgIGltYWdlOgogICAgICB2ZXJzaW9uOiBpbnN0YWxsLXByb3h5LXZlcnNpb24KICAgIHJlc291cmNlczoKICAgICAgY3B1OgogICAgICAgIHJlcXVlc3Q6IDEwMG0KICAgICAgbWVtb3J5OgogICAgICAgIGxpbWl0OiAyNTBNaQogICAgICAgIHJlcXVlc3Q6IDIwTWkKZ3JhZmFuYToKICByZXNvdXJjZXM6CiAgICBjcHU6CiAgICAgIGxpbWl0OiAiIgogICAgICByZXF1ZXN0OiAxMDBtCiAgICBtZW1vcnk6CiAgICAgIGxpbWl0OiAxMDI0TWkKICAgICAgcmVxdWVzdDogNTBNaQpoZWFydGJlYXRSZXNvdXJjZXM6CiAgY3B1OgogICAgbGltaXQ6ICIiCiAgICByZXF1ZXN0OiAxMDBtCiAgbWVtb3J5OgogICAgbGltaXQ6IDI1ME1pCiAgICByZXF1ZXN0OiA1ME1pCmhlYXJ0YmVhdFNjaGVkdWxlOiAxIDIgMyA0IDUKaWRlbnRpdHk6CiAgaXNzdWVyOgogICAgY3J0RXhwaXJ5OiAiMjAzMC0wOC0yNlQwNzoxMzo0N1oiCiAgICB0bHM6CiAgICAgIGNydFBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gQ0VSVElGSUNBVEUtLS0tLQogICAgICAgIE1JSUJ3RENDQVdlZ0F3SUJBZ0lSQUpSSWdaOFJ0TzhFd2cxWGVwZjhUNDR3Q2dZSUtvWkl6ajBFQXdJd0tURW4KICAgICAgICBNQ1VHQTFVRUF4TWVhV1JsYm5ScGRIa3ViR2x1YTJWeVpDNWpiSFZ6ZEdWeUxteHZZMkZzTUI0WERUSXdNRGd5CiAgICAgICAgT0RBM01UTTBOMW9YRFRNd01EZ3lOakEzTVRNME4xb3dLVEVuTUNVR0ExVUVBeE1lYVdSbGJuUnBkSGt1YkdsdQogICAgICAgIGEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTEvRnAKICAgICAgICBmY1JuRGNlZEw2QWpVYVhZUHY0RElNQmFKdWZPSTVOV3R5K1hTWDdKalhnWnRNNzJkUXZSYVlhbnV4RDM2RHQxCiAgICAgICAgMi9KeHlpU2d4S1dSZG9heSthTndNRzR3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQgogICAgICAgIEFmOENBUUF3SFFZRFZSME9CQllFRkkxV25ycU1ZS2FISE9vK3pweWlpRHEycE8wS01Da0dBMVVkRVFRaU1DQ0MKICAgICAgICBIbWxrWlc1MGFYUjVMbXhwYm10bGNtUXVZMngxYzNSbGNpNXNiMk5oYkRBS0JnZ3Foa2pPUFFRREFnTkhBREJFCiAgICAgICAgQWlBdHVvSTVYdUN0ckdWUnpTbVJUbDJyYTI4YVY5TXlUVTdkNXFuVEFGSEtTZ0lnUktDdmx1T1NnQTVPMjFwNQogICAgICAgIDUxdGRybWtIRVpScjBxbExTSmRIWWdFZk16az0KICAgICAgICAtLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCiAgICAgIGtleVBFTTogfAogICAgICAgIC0tLS0tQkVHSU4gRUMgUFJJVkFURSBLRVktLS0tLQogICAgICAgIE1IY0NBUUVFSUFBZThuZmJ6WnU5Yy9PQjIrOHhKTTBGejdOVXdUUWF6dWxrRk5zNFRJNStvQW9HQ0NxR1NNNDkKICAgICAgICBBd0VIb1VRRFFnQUUxL0ZwZmNSbkRjZWRMNkFqVWFYWVB2NERJTUJhSnVmT0k1Tld0eStYU1g3SmpYZ1p0TTcyCiAgICAgICAgZFF2UmFZYW51eEQzNkR0MTIvSnh5aVNneEtXUmRvYXkrUT09CiAgICAgICAgLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQppZGVudGl0eVJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIiIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDEwTWkKcHJvZmlsZVZhbGlkYXRvcjoKICBjYUJ1bmRsZTogcHJvZmlsZSB2YWxpZGF0b3IgQ0EgYnVuZGxlCiAgY3J0UEVNOiBwcm9maWxlIHZhbGlkYXRvciBjcnQKICBrZXlQRU06IHByb2ZpbGUgdmFsaWRhdG9yIGtleQpwcm9tZXRoZXVzOgogIHJlc291cmNlczoKICAgIGNwdToKICAgICAgbGltaXQ6ICIiCiAgICAgIHJlcXVlc3Q6IDMwMG0KICAgIG1lbW9yeToKICAgICAgbGltaXQ6IDgxOTJNaQogICAgICByZXF1ZXN0OiAzMDBNaQpwcm94eUluamVjdG9yOgogIGNhQnVuZGxlOiBwcm94eSBpbmplY3RvciBDQSBidW5kbGUKICBjcnRQRU06IHByb3h5IGluamVjdG9yIGNydAogIGtleVBFTTogcHJveHkgaW5qZWN0b3Iga2V5CnByb3h5SW5qZWN0b3JSZXNvdXJjZXM6CiAgY3B1OgogICAgbGltaXQ6ICIiCiAgICByZXF1ZXN0OiAxMDBtCiAgbWVtb3J5OgogICAgbGltaXQ6IDI1ME1pCiAgICByZXF1ZXN0OiA1ME1pCnB1YmxpY0FQSVJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIiIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDUwTWkKc3BWYWxpZGF0b3JSZXNvdXJjZXM6CiAgY3B1OgogICAgbGltaXQ6ICIiCiAgICByZXF1ZXN0OiAxMDBtCiAgbWVtb3J5OgogICAgbGltaXQ6IDI1ME1pCiAgICByZXF1ZXN0OiA1ME1pCnRhcDoKICBjYUJ1bmRsZTogdGFwIENBIGJ1bmRsZQogIGNydFBFTTogdGFwIGNydAogIGtleVBFTTogdGFwIGtleQp0YXBSZXNvdXJjZXM6CiAgY3B1OgogICAgbGltaXQ6ICIiCiAgICByZXF1ZXN0OiAxMDBtCiAgbWVtb3J5OgogICAgbGltaXQ6IDI1ME1pCiAgICByZXF1ZXN0OiA1ME1pCndlYlJlc291cmNlczoKICBjcHU6CiAgICBsaW1pdDogIiIKICAgIHJlcXVlc3Q6IDEwMG0KICBtZW1vcnk6CiAgICBsaW1pdDogMjUwTWkKICAgIHJlcXVlc3Q6IDUwTWkKd2ViaG9va0ZhaWx1cmVQb2xpY3k6IEZhaWwK
 kind: Secret
 metadata:
   creationTimestamp: null
