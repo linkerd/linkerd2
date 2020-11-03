@@ -66,6 +66,10 @@ global:
       control: 4190
       inbound: 4143
       outbound: 4140
+    # The `cpu.limit` and `cores` should be kept in sync. The value of `cores`
+    # must be an integer and should typically be set by rounding up from the
+    # limit. E.g. if cpu.limit is '1500m', cores should be 2.
+    cores: 0
     resources:
       cpu:
         limit: ""
