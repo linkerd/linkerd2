@@ -811,7 +811,7 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 		} else {
 			values.Global.Proxy.Resources.CPU.Limit = override
 
-			n, err := toWholeCPUCores(q)
+			n, err := ToWholeCPUCores(q)
 			if err != nil {
 				log.Warnf("%s (%s)", err, k8s.ProxyCPULimitAnnotation)
 			}
@@ -992,7 +992,7 @@ func ToPortRanges(portRanges []string) []*config.PortRange {
 	return ports
 }
 
-func toWholeCPUCores(q k8sResource.Quantity) (int64, error) {
+func ToWholeCPUCores(q k8sResource.Quantity) (int64, error) {
 	q.RoundUp(0)
 	if n, ok := q.AsInt64(); ok {
 		return n, nil
