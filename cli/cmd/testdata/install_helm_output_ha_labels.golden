@@ -898,7 +898,7 @@ data:
         requireIdentityOnInboundPorts: ""
         resources:
           cpu:
-            limit: "1"
+            limit: ""
             request: 100m
           memory:
             limit: 250Mi
@@ -987,7 +987,7 @@ data:
           requireIdentityOnInboundPorts: ""
           resources:
             cpu:
-              limit: "1"
+              limit: ""
               request: 100m
             memory:
               limit: 250Mi
@@ -1077,7 +1077,7 @@ data:
             requireIdentityOnInboundPorts: ""
             resources:
               cpu:
-                limit: "1"
+                limit: ""
                 request: 100m
               memory:
                 limit: 250Mi
@@ -1217,7 +1217,7 @@ data:
           requireIdentityOnInboundPorts: ""
           resources:
             cpu:
-              limit: "1"
+              limit: ""
               request: 100m
             memory:
               limit: 250Mi
@@ -1310,7 +1310,7 @@ data:
             requireIdentityOnInboundPorts: ""
             resources:
               cpu:
-                limit: "1"
+                limit: ""
                 request: 100m
               memory:
                 limit: 250Mi
@@ -1657,7 +1657,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -1921,7 +1920,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2203,7 +2201,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2503,7 +2500,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2746,7 +2742,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -3031,7 +3026,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -3303,7 +3297,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -3623,7 +3616,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -4068,7 +4060,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
