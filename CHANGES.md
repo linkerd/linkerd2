@@ -36,8 +36,8 @@ for Kubernetes service topologies, and lots, lots more, as described below:
 
 * CLI
   * Renamed the `--addon-config` flag to `--config` to clarify this flag can be
-    used
-  * Added fish shell completions to the `linkerd` command to set any Helm value
+    used to set any Helm value
+  * Added fish shell completions to the `linkerd` command
 
 * Multicluster
   * Replaced the single `service-mirror` controller, with separate controllers
