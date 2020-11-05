@@ -10,10 +10,10 @@ for Kubernetes service topologies, and lots, lots more, as described below:
 
 * Proxy
   * Performed internal improvements for lower latencies under high concurrency
-  * Reduced performance impact of logging , especially when the `debug` or
+  * Reduced performance impact of logging, especially when the `debug` or
     `trace` log levels are disabled
   * Improved error handling for DNS errors encountered when discovering control
-    plane addresses, which can be common during installation, before all
+    plane addresses; this can be common during installation before all
     components have been started, allowing linkerd to continue to operate
     normally in HA during node outages
 
@@ -40,7 +40,7 @@ for Kubernetes service topologies, and lots, lots more, as described below:
   * Added fish shell completions to the `linkerd` command
 
 * Multicluster
-  * Replaced the single `service-mirror` controller, with separate controllers
+  * Replaced the single `service-mirror` controller with separate controllers
     that will be installed per target cluster through `linkerd multicluster
     link`
   * Changed the mechanism for mirroring services: instead of relying on
@@ -54,18 +54,18 @@ for Kubernetes service topologies, and lots, lots more, as described below:
 * Prometheus
   * Moved Linkerd's bundled Prometheus into an add-on (enabled by default); this
     makes the Linkerd Prometheus more configurable, gives it a separate upgrade
-    lifecycle from the rest of the control plane, and will allow users to
+    lifecycle from the rest of the control plane, and allows users to
     disable the bundled Prometheus instance
   * The long-awaited Bring-Your-Own-Prometheus case has been finally addressed:
     added `global.prometheusUrl` to the Helm config to have linkerd use an
     external Prometheus instance instead of the one provided by default
   * Added an option to persist data to a volume instead of memory, so that
-    historical metrics are available when prometheus is restarted
+    historical metrics are available when Prometheus is restarted
   * The helm chart can now configure persistent storage and limits
 
 * Other
   * Added a new `linkerd.io/inject: ingress` annotation and accompanying
-    `--ingress` flag to the `inject command, to configure the proxy to support
+    `--ingress` flag to the `inject` command, to configure the proxy to support
     service profiles and enable per-route metrics and traffic splits for HTTP
     ingress controllers
   * Changed the type of the injector and tap API secrets to `kubernetes.io/tls`
