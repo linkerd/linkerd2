@@ -13,7 +13,7 @@ linkerd2-multicluster chart and their default values.
 | Parameter                       | Description                                                                                 | Default                                      |
 |---------------------------------|---------------------------------------------------------------------------------------------|----------------------------------------------|
 |`controllerComponentLabel`       | Control plane label. Do not edit                                                            |`linkerd.io/control-plane-component`          |
-|`controllerImage`                | Docker image for the Service mirror component (uses the Linkerd controller image)           |`ghcr.io/linkerd/controller`                |
+|`controllerImage`                | Docker image for the Service mirror component (uses the Linkerd controller image)           |`ghcr.io/linkerd/controller`                  |
 |`controllerImageVersion`         | Tag for the Service Mirror container Docker image                                           |`latest version`                              |
 |`createdByAnnotation`            | Annotation label for the proxy create. Do not edit.                                         |`linkerd.io/created-by`                       |
 |`gateway`                        | If the gateway component should be installed                                                |`true`                                        |
@@ -26,6 +26,7 @@ linkerd2-multicluster chart and their default values.
 |`gatewayProbePath`               | The path that will be used by remote clusters for determining whether the gateway is alive  |`/health`                                     |
 |`gatewayProbePort`               | The port used for liveliness probing                                                        |`4181`                                        |
 |`gatewayProbeSeconds`            | The interval (in seconds) between liveness probes                                           |`3`                                           |
+|`gatewayServiceAnnotations`      | Additional annotations to add to the gateway service                                        |`{}`                                          |
 |`identityTrustDomain`            | Trust domain used for identity of the existing linkerd installation                         |`cluster.local`                               |
 |`installNamespace`               | If the namespace should be installed                                                        |`true`                                        |
 |`linkerdNamespace`               | The namespace of the existing Linkerd installation                                          |`linkerd`                                     |
