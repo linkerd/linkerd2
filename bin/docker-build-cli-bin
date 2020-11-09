@@ -24,6 +24,7 @@ get_multiarch_argument() {
 dockerfile=$rootdir/cli/Dockerfile-bin
 tag=$(head_root_tag)
 
+# shellcheck disable=SC2046
 docker_build cli-bin "$tag" "$dockerfile" \
     --build-arg LINKERD_VERSION="$tag" \
     $(get_multiarch_argument)

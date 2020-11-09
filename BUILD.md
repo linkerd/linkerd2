@@ -406,7 +406,7 @@ environment variable `DOCKER_MULTIARCH=1`. Do to some limitations on buildx, if
 you'd like to do that you're also forced to signal buildx to push the images to
 the registry by setting `DOCKER_PUSH=1`. Naturally, you can't push to the
 official registry and will have to override `DOCKER_REGISTRY` with a registry
-that you control. 
+that you control.
 
 To summarize, in order to build all the images for multiple architectures and
 push them to your registry located for example at `ghcr.io/user` you can issue:
