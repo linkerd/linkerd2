@@ -55,7 +55,7 @@ func TestGoodEndpoints(t *testing.T) {
 
 // TODO: when #3004 gets fixed, add a negative test for mismatched ports
 func TestBadEndpoints(t *testing.T) {
-	_, stderr, err := TestHelper.PipeToLinkerdRun("", "endpoints", "foo")
+	_, stderr, err := TestHelper.PipeToLinkerdRun("", "diagnostics", "endpoints", "foo")
 	if err == nil {
 		testutil.AnnotatedFatalf(t, "was expecting an error", "was expecting an error: %v", err)
 	}
