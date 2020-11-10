@@ -14,28 +14,57 @@ const (
 	adminHTTPPortName string = "admin-http"
 )
 
-// diagnosticsOptions holds values for command line flags that apply to the diagnostics
+// ControlPlaneMetricsOptions holds values for command line flags that apply to the controlplane-metrics
 // command.
-type diagnosticsOptions struct {
+type ControlPlaneMetricsOptions struct {
 	wait time.Duration
 }
 
-// newDiagnosticsOptions initializes diagnostics options setting
-// the max wait time duration as 30 seconds to fetch diagnostics
+// newControlPlaneMetricsOptions initializes controlplane-metrics options setting
+// the max wait time duration as 30 seconds to fetch controlplane-metrics
 //
 // This option may be overridden on the CLI at run-time
-func newDiagnosticsOptions() *diagnosticsOptions {
-	return &diagnosticsOptions{
+func newControlPlaneMetricsOptions() *ControlPlaneMetricsOptions {
+	return &ControlPlaneMetricsOptions{
 		wait: 30 * time.Second,
 	}
 }
 
-// newCmdDashboard creates a new cobra command `diagnostics` which contains commands to fetch control plane container's metrics
+// newCmdDiagnostics creates a new cobra command `diagnostics` which contains commands to diagnose Linkerd
 func newCmdDiagnostics() *cobra.Command {
-	options := newDiagnosticsOptions()
+
+	diagnosticsCmd := &cobra.Command{
+		Use:     "diagnostics [flags]",
+		Aliases: []string{"dg"},
+		Args:    cobra.NoArgs,
+		Short:   "Commands used to diagnose Linkerd components",
+		Long: `Commands used to diagnose Linkerd components.
+
+This command provides subcommands to diagnose the functionality of Linkerd.`,
+		Example: `  # Get control-plane component metrics
+  linkerd diagnostics cp-metrics
+
+  # Get metrics from the web deployment in the emojivoto namespace.
+  linkerd diagnostics proxy-metrics -n emojivoto deploy/web
+ 
+  # get the endpoints for authorities in Linkerd's control-plane itself
+  linkerd diagnostics endpoints linkerd-controller-api.linkerd.svc.cluster.local:8085
+  `,
+	}
+
+	diagnosticsCmd.AddCommand(newCmdControlPlaneMetrics())
+	diagnosticsCmd.AddCommand(newCmdEndpoints())
+	diagnosticsCmd.AddCommand(newCmdMetrics())
+	return diagnosticsCmd
+}
+
+// newCmdControlPlaneMetrics creates a new cobra command `controlplane-metrics` which contains commands to fetch control plane container's metrics
+func newCmdControlPlaneMetrics() *cobra.Command {
+	options := newControlPlaneMetricsOptions()
 
 	cmd := &cobra.Command{
-		Use:   "diagnostics",
+		Use:   "controlplane-metrics",
+		Aliases: []string{"cp-metrics"},
 		Short: "Fetch metrics directly from the Linkerd control plane containers",
 		Long: `Fetch metrics directly from Linkerd control plane containers.
 

@@ -22,6 +22,7 @@ func TestMain(m *testing.M) {
 func TestGoodEndpoints(t *testing.T) {
 	ns := TestHelper.GetLinkerdNamespace()
 	cmd := []string{
+		"diagnostics",
 		"endpoints",
 		fmt.Sprintf("linkerd-controller-api.%s.svc.cluster.local:8085", ns),
 		fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", ns),
