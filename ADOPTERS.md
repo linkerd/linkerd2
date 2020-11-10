@@ -10,6 +10,7 @@
 - [Celonis](https://celonis.com)
 - [CloverHealth](https://www.cloverhealth.com/)
 - [Commonbond](https://www.commonbond.co/)
+- [Doji](https://www.doji.cn/)
 - [Expedia](https://www.expedia.com)
 - [Facelift](https://www.facelift-bbt.com/en)
 - [finleap connect](https://connect.finleap.com/)
