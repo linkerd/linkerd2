@@ -61,8 +61,6 @@ require (
 	sigs.k8s.io/yaml v1.2.0
 )
 
-replace (
-	// to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
-	// (see https://github.com/golang/protobuf/issues/1104)
-	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.14.8
-)
+// to avoid the `github.com/golang/protobuf/protoc-gen-go/generator` deprecation warning
+// (see https://github.com/golang/protobuf/issues/1104)
+replace github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.14.8
