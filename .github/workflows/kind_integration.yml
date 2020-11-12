@@ -17,6 +17,7 @@ jobs:
       matrix:
         target: [proxy, controller, web, cni-plugin, debug, cli-bin, grafana]
     name: Docker build (${{ matrix.target }})
+    timeout-minutes: 30
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -72,6 +73,7 @@ jobs:
     name: Static CLI tests (windows)
     runs-on: windows-latest
     needs: [docker_build]
+    timeout-minutes: 30
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -109,6 +111,7 @@ jobs:
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     steps:
     - name: Checkout code
       # actions/checkout@v2
