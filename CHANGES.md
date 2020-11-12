@@ -1,5 +1,14 @@
 # Changes
 
+## edge-20.11.2
+
+* Reduced the default idle connection timeout to 5s for outbound clients and
+  20s for inbound clients to reduce the proxy's memory footprint, especially on
+  Prometheus instances
+* Added support for setting annotations on the multicluster gateway in Helm
+  which allows setting the load balancer as internal
+* Removed the `get` and `logs` command from the CLI
+
 ## stable-2.9.0
 
 This release extends Linkerd's zero-config mutual TLS (mTLS) support to all TCP
