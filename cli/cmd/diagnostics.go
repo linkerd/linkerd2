@@ -30,7 +30,7 @@ func newControlPlaneMetricsOptions() *ControlPlaneMetricsOptions {
 	}
 }
 
-// newCmdDiagnostics creates a new cobra command `diagnostics` which contains commands to diagnose Linkerd
+// newCmdDiagnostics creates a new cobra command `diagnostics` which contains commands to fetch Linkerd diagnostics
 func newCmdDiagnostics() *cobra.Command {
 
 	diagnosticsCmd := &cobra.Command{
