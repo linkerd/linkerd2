@@ -136,7 +136,7 @@ jobs:
         bin/tests --images skip --name ${{ matrix.integration_test }} "$CMD"
   arm64_integration_tests:
     name: ARM64 integration tests
-    timeout-minutes: 30
+    timeout-minutes: 60
     runs-on: ubuntu-18.04
     needs: [docker_build]
     steps:
