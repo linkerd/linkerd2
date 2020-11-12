@@ -10,6 +10,7 @@ on:
 jobs:
   go_lint:
     name: Go lint
+    timeout-minutes: 10
     runs-on: ubuntu-18.04
     container:
       image: golang:1.13.4
@@ -21,6 +22,7 @@ jobs:
       run: bin/lint --verbose
   go_format:
     name: Go format
+    timeout-minutes: 10
     runs-on: ubuntu-18.04
     container:
       image: golang:1.13.4
@@ -32,6 +34,7 @@ jobs:
       run: bin/fmt
   proto_diff:
     name: Proto diff
+    timeout-minutes: 10
     runs-on: ubuntu-18.04
     container:
       image: golang:1.13.4
@@ -43,6 +46,7 @@ jobs:
         run: bin/protoc-diff
   shellcheck:
     name: shellcheck
+    timeout-minutes: 10
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
@@ -54,6 +58,7 @@ jobs:
         bin/shellcheck-all
   psscript-analyzer:
     name: PSScriptAnalyzer
+    timeout-minutes: 10
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
@@ -70,6 +75,7 @@ jobs:
         failOnInfos: true
   markdown_lint:
     name: Markdown lint
+    timeout-minutes: 10
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout code
