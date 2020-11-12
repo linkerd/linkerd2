@@ -122,6 +122,7 @@ metadata:
     mirror.linkerd.io/multicluster-gateway: "true"
     {{.Values.controllerComponentLabel}}: gateway
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{- with .Values.gatewayServiceAnnotations }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 spec:
   ports:
   - name: mc-gateway
