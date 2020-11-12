@@ -14,18 +14,18 @@ const (
 	adminHTTPPortName string = "admin-http"
 )
 
-// ControlPlaneMetricsOptions holds values for command line flags that apply to the controlplane-metrics
+// ControllerMetricsOptions holds values for command line flags that apply to the controller-metrics
 // command.
-type ControlPlaneMetricsOptions struct {
+type ControllerMetricsOptions struct {
 	wait time.Duration
 }
 
-// newControlPlaneMetricsOptions initializes controlplane-metrics options setting
-// the max wait time duration as 30 seconds to fetch controlplane-metrics
+// newControllerMetricsOptions initializes controller-metrics options setting
+// the max wait time duration as 30 seconds to fetch controller-metrics
 //
 // This option may be overridden on the CLI at run-time
-func newControlPlaneMetricsOptions() *ControlPlaneMetricsOptions {
-	return &ControlPlaneMetricsOptions{
+func newControllerMetricsOptions() *ControllerMetricsOptions {
+	return &ControllerMetricsOptions{
 		wait: 30 * time.Second,
 	}
 }
@@ -52,20 +52,19 @@ This command provides subcommands to diagnose the functionality of Linkerd.`,
   `,
 	}
 
-	diagnosticsCmd.AddCommand(newCmdControlPlaneMetrics())
+	diagnosticsCmd.AddCommand(newCmdControllerMetrics())
 	diagnosticsCmd.AddCommand(newCmdEndpoints())
 	diagnosticsCmd.AddCommand(newCmdMetrics())
 	return diagnosticsCmd
 }
 
-// newCmdControlPlaneMetrics creates a new cobra command `controlplane-metrics` which contains commands to fetch control plane container's metrics
-func newCmdControlPlaneMetrics() *cobra.Command {
-	options := newControlPlaneMetricsOptions()
+// newCmdControllerMetrics creates a new cobra command `controller-metrics` which contains commands to fetch control plane container's metrics
+func newCmdControllerMetrics() *cobra.Command {
+	options := newControllerMetricsOptions()
 
 	cmd := &cobra.Command{
-		Use:     "controlplane-metrics",
-		Aliases: []string{"cp-metrics"},
-		Short:   "Fetch metrics directly from the Linkerd control plane containers",
+		Use:   "controller-metrics",
+		Short: "Fetch metrics directly from the Linkerd control plane containers",
 		Long: `Fetch metrics directly from Linkerd control plane containers.
 
   This command initiates port-forward to each control plane process, and
