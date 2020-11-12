@@ -14,9 +14,11 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
 - [Components](#components)
 - [Development configurations](#development-configurations)
   - [Comprehensive](#comprehensive)
+  - [Publishing Images](#publishing-images)
   - [Go](#go)
   - [Web](#web)
   - [Rust](#rust)
+  - [Multi-architecture builds](#multi-architecture-builds)
 - [Dependencies](#dependencies)
   - [Updating protobuf dependencies](#updating-protobuf-dependencies)
   - [Updating ServiceProfile generated
@@ -118,7 +120,7 @@ These commands assume a working
 [Minikube](https://github.com/kubernetes/minikube) environment.
 
 ```bash
-# build all docker images, using minikube as our docker repo
+# build all docker images, using minikube as our docker registry
 DOCKER_TRACE=1 bin/mkube bin/docker-build
 
 # install linkerd
@@ -168,6 +170,19 @@ linkerd inject https://gist.githubusercontent.com/Pothulapati/245842ce7f319e8bcd
 
 *Note:* Collector instance has to be injected, for the proxy spans to show up.
 
+### Publishing images
+
+The example above builds and publishes the docker images into Minikube's docker
+registry. For testing your built images outside your local environment, you need
+to publish your images so they become accessible in those external environments.
+
+To signal `bin/docker-build` or any of the more specific scripts
+`bin/docker-build-*` what registry to use, just set the environment variable
+`DOCKER_REGISTRY` (which defaults to the official registry `ghcr.io/linkerd`).
+After having pushed those images through the usual means (`docker push`) you'll
+have to pass the `--registry` flag to `linkerd install` with a value  matching
+your registry.
+
 ### Go
 
 #### Go modules and dependencies
@@ -214,26 +229,30 @@ the `bin/fmt` script.
 
 #### Building the CLI for development
 
-When Linkerd2's CLI is built using `bin/docker-build` it always creates binaries
-for all three platforms. For local development and a faster edit-build-test
-cycle you might want to avoid that. For those situations you can set
-`LINKERD_LOCAL_BUILD_CLI=1`, which builds the CLI using the local Go toolchain
-outside of Docker.
+The script for building the CLI binaries using docker is
+`bin/docker-build-cli-bin`. This will also be called indirectly when calling
+`bin/docker-build`. By default it creates binaries for Linux, Darwin and
+Windows. For Linux it creates binaries for the three architectures supported:
+amd64, arm64 and arm/v7. If you're using docker buildx, the build will be more
+efficient as the three OSes will still be targeted but the Linux build will only
+target your current architecture (more about buildx under [Multi-architecture
+Builds](#multi-architecture-builds) below).
+
+For local development and a faster edit-build-test cycle you might want to just
+target your local OS and architecture. For those situations you can just call
+`bin/build-cli-bin`.
+
+If you want to build all the controller images, plus only the CLI for your OS
+and architecture, just call:
 
 ```bash
 LINKERD_LOCAL_BUILD_CLI=1 bin/docker-build
 ```
 
-To build only the cli (locally):
-
-```bash
-bin/build-cli-bin
-```
-
 #### Running the control plane for development
 
 Linkerd2's control plane is composed of several Go microservices. You can run
-these components in a Kubernetes (or Minikube) cluster, or even locally.
+these components in a Kubernetes cluster, or even locally.
 
 To run an individual component locally, you can use the `go-run` command, and
 pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
@@ -370,6 +389,30 @@ proxy binary:
 
 ```bash
 DOCKER_TRACE=1 bin/docker-build-proxy
+```
+
+### Multi-architecture builds
+
+Besides the default Linux/amd64 architecture, you can build controller images
+targeting Linux/arm64 and Linux/arm/v7. For that you need to have first
+installed docker buildx, as explained [here](https://github.com/docker/buildx).
+
+If you run `bin/docker-build` or any of the more focused `bin/docker-build-*`
+scripts, docker buildx will be used, as long as you have set the environment
+variable `DOCKER_BUILDKIT=1`.
+
+For signaling that you want to build multi-architecture images, set the
+environment variable `DOCKER_MULTIARCH=1`. Do to some limitations on buildx, if
+you'd like to do that you're also forced to signal buildx to push the images to
+the registry by setting `DOCKER_PUSH=1`. Naturally, you can't push to the
+official registry and will have to override `DOCKER_REGISTRY` with a registry
+that you control.
+
+To summarize, in order to build all the images for multiple architectures and
+push them to your registry located for example at `ghcr.io/user` you can issue:
+
+```bash
+DOCKER_BUILDKIT=1 DOCKER_MULTIARCH=1 DOCKER_PUSH=1 DOCKER_REGISTRY=ghcr.io/user bin/docker-build
 ```
 
 ## Dependencies
