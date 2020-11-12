@@ -84,10 +84,10 @@ func FetchAndCheckLogs(helper *TestHelper) ([]string, []error) {
 				knownErrorsRegex = knownProxyErrorsRegex
 			}
 
-			outputStream, err := helper.LinkerdRunStream(
-				"logs", "--no-color",
-				"--control-plane-component", deploy,
-				"--container", container,
+			outputStream, err := helper.KubectlStream(
+				"logs",
+				fmt.Sprintf("deployment/%s", deploy),
+				container,
 			)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("error running command:\n%s", err))

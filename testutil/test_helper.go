@@ -385,6 +385,33 @@ func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
 	return &Stream{cmd: cmd, out: cmdReader}, nil
 }
 
+// KubectlStream initiates a kubectl command appended with the
+// --namespace flag, and returns a Stream that can be used to read the
+// command's output while it is still executing.
+func (h *TestHelper) KubectlStream(arg ...string) (*Stream, error) {
+
+	withContext := append([]string{"--namespace", h.namespace, "--context=" + h.k8sContext}, arg...)
+	cmd := exec.Command("kubectl", withContext...)
+
+	cmdReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	time.Sleep(500 * time.Millisecond)
+
+	if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+		return nil, fmt.Errorf("Process exited: %s", cmd.ProcessState)
+	}
+
+	return &Stream{cmd: cmd, out: cmdReader}, nil
+}
+
 // HelmUpgrade runs the helm upgrade subcommand, with the provided arguments
 func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, error) {
 	withParams := append([]string{
