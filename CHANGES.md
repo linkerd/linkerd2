@@ -2,11 +2,16 @@
 
 ## edge-20.11.2
 
+This edge release reduces memory consumption of Linkerd proxies which maintain
+many idle connections (such as Prometheus).  It also removes some obsolete
+commands from the CLI and allows setting custom annotations on multicluster
+gateways.
+
 * Reduced the default idle connection timeout to 5s for outbound clients and
   20s for inbound clients to reduce the proxy's memory footprint, especially on
   Prometheus instances
 * Added support for setting annotations on the multicluster gateway in Helm
-  which allows setting the load balancer as internal
+  which allows setting the load balancer as internal (thanks @shaikatz!)
 * Removed the `get` and `logs` command from the CLI
 
 ## stable-2.9.0
