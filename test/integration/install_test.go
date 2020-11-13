@@ -24,7 +24,7 @@ var (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 var (
@@ -925,22 +925,6 @@ func TestCheckProxy(t *testing.T) {
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
 			testCheckCommand(t, "proxy", TestHelper.GetVersion(), prefixedNs, "", true)
 		})
-	}
-}
-
-func TestLogs(t *testing.T) {
-	okMessages, errs := testutil.FetchAndCheckLogs(TestHelper)
-	for msg := range okMessages {
-		t.Log(msg)
-	}
-	for err := range errs {
-		testutil.AnnotatedError(t, "Error checking logs", err)
-	}
-}
-
-func TestEvents(t *testing.T) {
-	for _, err := range testutil.FetchAndCheckEvents(TestHelper) {
-		testutil.AnnotatedError(t, "Error checking events", err)
 	}
 }
 
