@@ -298,6 +298,7 @@ func (iw *IPWatcher) getServiceSubscriptions(clusterIP string) (ss *serviceSubsc
 	return
 }
 
+// PodToAddressSet converts a Pod spec into a set of Addresses.
 func (iw *IPWatcher) PodToAddressSet(pod *corev1.Pod) AddressSet {
 	ownerKind, ownerName := iw.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
 	return AddressSet{
