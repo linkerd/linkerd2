@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/gogo/status"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -107,25 +107,50 @@ func (iw *IPWatcher) Unsubscribe(clusterIP string, port Port, listener EndpointU
 	ss.unsubscribe(port, listener)
 }
 
-// GetSvc returns the service that corresponds to an IP address if one exists.
-func (iw *IPWatcher) GetSvc(clusterIP string) (*ServiceID, error) {
-	objs, err := iw.k8sAPI.Svc().Informer().GetIndexer().ByIndex(podIPIndex, clusterIP)
+// GetSvcID returns the service that corresponds to a Cluster IP address if one
+// exists.
+func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
+	resource, err := getResource(clusterIP, iw.k8sAPI.Svc().Informer())
+	if err != nil {
+		return nil, err
+	}
+	if svc, ok := resource.(*corev1.Service); ok {
+		service := &ServiceID{
+			Namespace: svc.Namespace,
+			Name:      svc.Name,
+		}
+		return service, nil
+	}
+	// Either `clusterIP` does not map to a service that the indexer is aware
+	// of, or it maps to a resource that is ignored
+	return nil, nil
+}
+
+// GetPod returns the pod that corresponds to an IP address if one exists.
+func (iw *IPWatcher) GetPod(podIP string) (*corev1.Pod, error) {
+	resource, err := getResource(podIP, iw.k8sAPI.Pod().Informer())
+	if err != nil {
+		return nil, err
+	}
+	if pod, ok := resource.(*corev1.Pod); ok {
+		return pod, nil
+	}
+	// Either `podIP` does not map to a pod that the indexer is aware of, or
+	// it maps to a resource that is ignored
+	return nil, nil
+}
+
+func getResource(ip string, informer cache.SharedIndexInformer) (interface{}, error) {
+	objs, err := informer.GetIndexer().ByIndex(podIPIndex, ip)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 	if len(objs) > 1 {
-		return nil, status.Errorf(codes.FailedPrecondition, "Service cluster IP conflict: %v, %v", objs[0], objs[1])
+		return nil, status.Errorf(codes.FailedPrecondition, "IP address conflict: %v, %v", objs[0], objs[1])
 	}
 	if len(objs) == 1 {
-		if svc, ok := objs[0].(*corev1.Service); ok {
-			service := &ServiceID{
-				Namespace: svc.Namespace,
-				Name:      svc.Name,
-			}
-			return service, nil
-		}
+		return objs[0], nil
 	}
-	// `clusterIP` does not map to a service that the indexer is aware of.
 	return nil, nil
 }
 
@@ -179,7 +204,7 @@ func (iw *IPWatcher) addPod(obj interface{}) {
 		return
 	}
 	ss := iw.getOrNewServiceSubscriptions(pod.Status.PodIP)
-	ss.updatePod(iw.podToAddressSet(pod))
+	ss.updatePod(iw.PodToAddressSet(pod))
 }
 
 func (iw *IPWatcher) deletePod(obj interface{}) {
@@ -257,7 +282,7 @@ func (iw *IPWatcher) getOrNewServiceSubscriptions(clusterIP string) *serviceSubs
 				iw.log.Errorf("Pod IP conflict: %v, %v", objs[0], objs[1])
 			}
 			if len(pods) == 1 {
-				ss.pod = iw.podToAddressSet(pods[0])
+				ss.pod = iw.PodToAddressSet(pods[0])
 			}
 		}
 
@@ -273,7 +298,7 @@ func (iw *IPWatcher) getServiceSubscriptions(clusterIP string) (ss *serviceSubsc
 	return
 }
 
-func (iw *IPWatcher) podToAddressSet(pod *corev1.Pod) AddressSet {
+func (iw *IPWatcher) PodToAddressSet(pod *corev1.Pod) AddressSet {
 	ownerKind, ownerName := iw.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
 	return AddressSet{
 		Addresses: map[PodID]Address{

@@ -174,24 +174,44 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	// The stream will subscribe to profile updates for `service`.
 	var service watcher.ServiceID
-	// If `host` is an IP address, path must be constructed from the namespace
-	// and name of the service that the address maps to.
+	// If `host` is an IP, path must be constructed from the namespace and
+	// name of the service that the IP maps to.
 	var path string
 
 	if ip := net.ParseIP(host); ip != nil {
-		// Get the service that the IP address currently maps to.
-		svc, err := s.ips.GetSvc(ip.String())
+		// Get the service that the IP currently maps to.
+		svcID, err := s.ips.GetSvcID(ip.String())
 		if err != nil {
 			return err
 		}
-		if svc != nil {
-			service = *svc
+		if svcID != nil {
+			service = *svcID
 			path = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
 		} else {
-			// If no service or error are returned, the IP address does not map
-			// to a service. Send the default profile and return the stream
-			// without subscribing for future updates.
-			translator := newProfileTranslator(stream, log, nil, "")
+			// If the IP does not map to a service, check if it maps to a pod
+			pod, err := s.ips.GetPod(ip.String())
+			if err != nil {
+				return err
+			}
+			var endpoint *pb.WeightedAddr
+			if pod != nil {
+				// If the IP maps to a pod, we create a single endpoint and
+				// return it in the DestinationProfile response
+				set := s.ips.PodToAddressSet(pod)
+				podID := watcher.PodID{
+					Namespace: pod.Namespace,
+					Name:      pod.Name,
+				}
+				endpoint, err = toWeightedAddr(set.Addresses[podID], s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS)
+				if err != nil {
+					return err
+				}
+			}
+
+			// When the IP does not map to a service, the default profile is
+			// sent without subscribing for future updates. If the IP mapped
+			// to a pod, then the endpoint will be set in the response.
+			translator := newProfileTranslator(stream, log, nil, "", endpoint)
 			translator.Update(nil)
 
 			select {
@@ -214,7 +234,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log, &service, s.clusterDomain)
+	translator := newProfileTranslator(stream, log, &service, s.clusterDomain, nil)
 
 	// The adaptor merges profile updates with traffic split updates and
 	// publishes the result to the translator.
