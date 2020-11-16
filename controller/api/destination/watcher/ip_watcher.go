@@ -369,7 +369,7 @@ func (ss *serviceSubscriptions) updatePod(podSet AddressSet) {
 		// NoEndpoints update to clear our the previous address; sending an
 		// Add with the same address will replace the previous one.
 		if len(podSet.Addresses) != 0 {
-			podSetWithPort := withPort(podSet, port)
+			podSetWithPort := WithPort(podSet, port)
 			listener.Add(podSetWithPort)
 		}
 	}
@@ -396,7 +396,7 @@ func (ss *serviceSubscriptions) subscribe(port Port, listener EndpointUpdateList
 			return err
 		}
 	} else if len(ss.pod.Addresses) != 0 {
-		podSetWithPort := withPort(ss.pod, port)
+		podSetWithPort := WithPort(ss.pod, port)
 		listener.Add(podSetWithPort)
 	} else {
 		listener.Add(singletonAddress(ss.clusterIP, port))
@@ -415,7 +415,7 @@ func (ss *serviceSubscriptions) unsubscribe(port Port, listener EndpointUpdateLi
 	delete(ss.listeners, listener)
 }
 
-func withPort(pods AddressSet, port Port) AddressSet {
+func WithPort(pods AddressSet, port Port) AddressSet {
 	wp := AddressSet{
 		Addresses: map[PodID]Address{},
 		Labels:    pods.Labels,
