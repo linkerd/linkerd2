@@ -1446,10 +1446,6 @@ func (hc *HealthChecker) checkMinReplicasAvailable(ctx context.Context) error {
 	return nil
 }
 
-func (hc *HealthChecker) issuerIdentity() string {
-	return fmt.Sprintf("identity.%s.%s", hc.ControlPlaneNamespace, hc.linkerdConfig.Global.IdentityTrustDomain)
-}
-
 // Add adds an arbitrary checker. This should only be used for testing. For
 // production code, pass in the desired set of checks when calling
 // NewHealthChecker.
