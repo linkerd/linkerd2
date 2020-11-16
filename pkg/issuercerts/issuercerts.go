@@ -155,7 +155,7 @@ func CheckCertAlgoRequirements(cert *x509.Certificate) error {
 }
 
 // VerifyAndBuildCreds builds and validates the creds out of the data in IssuerCertData
-func (ic *IssuerCertData) VerifyAndBuildCreds(dnsName string) (*tls.Cred, error) {
+func (ic *IssuerCertData) VerifyAndBuildCreds() (*tls.Cred, error) {
 	creds, err := tls.ValidateAndCreateCreds(ic.IssuerCrt, ic.IssuerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA: %s", err)
@@ -180,7 +180,7 @@ func (ic *IssuerCertData) VerifyAndBuildCreds(dnsName string) (*tls.Cred, error)
 		return nil, err
 	}
 
-	if err := creds.Verify(anchors, dnsName, time.Time{}); err != nil {
+	if err := creds.Verify(anchors, "", time.Time{}); err != nil {
 		return nil, err
 	}
 
