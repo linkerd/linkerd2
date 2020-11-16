@@ -21,6 +21,7 @@
 - [Kairos](https://kairos.com)
 - [Kurio](https://kurio.id)
 - [LeadIQ](https://leadiq.com)
+- [M1 Finance](https://www.m1finance.com/)
 - [MattePaint](https://www.mattepaint.com/)
 - [MercedesBenz.io](https://www.mercedes-benz.io/)
 - [Mulligan Funding](https://www.mulliganfunding.com/)
