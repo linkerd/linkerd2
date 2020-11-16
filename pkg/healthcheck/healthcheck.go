@@ -1022,7 +1022,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "issuer cert is issued by the trust anchor",
 					hintAnchor:  "l5d-identity-issuer-cert-issued-by-trust-anchor",
 					check: func(ctx context.Context) error {
-						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.trustAnchors), hc.issuerIdentity(), time.Time{})
+						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.trustAnchors), "", time.Time{})
 					},
 				},
 			},

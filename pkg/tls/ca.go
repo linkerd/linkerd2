@@ -191,7 +191,6 @@ func (ca *CA) GenerateEndEntityCred(dnsName string) (*Cred, error) {
 
 	csr := x509.CertificateRequest{
 		Subject:   pkix.Name{CommonName: dnsName},
-		DNSNames:  []string{dnsName},
 		PublicKey: &key.PublicKey,
 	}
 	crt, err := ca.IssueEndEntityCrt(&csr)
@@ -216,7 +215,6 @@ func (ca *CA) IssueEndEntityCrt(csr *x509.CertificateRequest) (Crt, error) {
 	t.Subject = csr.Subject
 	t.Extensions = csr.Extensions
 	t.ExtraExtensions = csr.ExtraExtensions
-	t.DNSNames = csr.DNSNames
 	t.EmailAddresses = csr.EmailAddresses
 	t.IPAddresses = csr.IPAddresses
 	t.URIs = csr.URIs
