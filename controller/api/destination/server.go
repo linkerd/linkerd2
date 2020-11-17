@@ -197,13 +197,12 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			if pod != nil {
 				// If the IP maps to a pod, we create a single endpoint and
 				// return it in the DestinationProfile response
-				podSet := s.ips.PodToAddressSet(pod)
-				podSetWithPort := watcher.WithPort(podSet, port)
+				podSet := s.ips.PodToAddressSet(pod).WithPort(port)
 				podID := watcher.PodID{
 					Namespace: pod.Namespace,
 					Name:      pod.Name,
 				}
-				endpoint, err = toWeightedAddr(podSetWithPort.Addresses[podID], s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS)
+				endpoint, err = toWeightedAddr(podSet.Addresses[podID], s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS)
 				if err != nil {
 					return err
 				}

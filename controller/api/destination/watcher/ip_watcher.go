@@ -44,6 +44,19 @@ type (
 	}
 )
 
+// WithPort sets the port field in all addresses of an address set.
+func (as AddressSet) WithPort(port Port) AddressSet {
+	wp := AddressSet{
+		Addresses: map[PodID]Address{},
+		Labels:    as.Labels,
+	}
+	for id, addr := range as.Addresses {
+		addr.Port = port
+		wp.Addresses[id] = addr
+	}
+	return wp
+}
+
 // NewIPWatcher creates an IPWatcher and begins watching the k8sAPI for service
 // changes.
 func NewIPWatcher(k8sAPI *k8s.API, endpoints *EndpointsWatcher, log *logging.Entry) *IPWatcher {
@@ -369,7 +382,7 @@ func (ss *serviceSubscriptions) updatePod(podSet AddressSet) {
 		// NoEndpoints update to clear our the previous address; sending an
 		// Add with the same address will replace the previous one.
 		if len(podSet.Addresses) != 0 {
-			podSetWithPort := WithPort(podSet, port)
+			podSetWithPort := podSet.WithPort(port)
 			listener.Add(podSetWithPort)
 		}
 	}
@@ -396,7 +409,7 @@ func (ss *serviceSubscriptions) subscribe(port Port, listener EndpointUpdateList
 			return err
 		}
 	} else if len(ss.pod.Addresses) != 0 {
-		podSetWithPort := WithPort(ss.pod, port)
+		podSetWithPort := ss.pod.WithPort(port)
 		listener.Add(podSetWithPort)
 	} else {
 		listener.Add(singletonAddress(ss.clusterIP, port))
@@ -413,18 +426,6 @@ func (ss *serviceSubscriptions) unsubscribe(port Port, listener EndpointUpdateLi
 		ss.endpoints.Unsubscribe(ss.service, port, "", listener)
 	}
 	delete(ss.listeners, listener)
-}
-
-func WithPort(pods AddressSet, port Port) AddressSet {
-	wp := AddressSet{
-		Addresses: map[PodID]Address{},
-		Labels:    pods.Labels,
-	}
-	for id, addr := range pods.Addresses {
-		addr.Port = port
-		wp.Addresses[id] = addr
-	}
-	return wp
 }
 
 func singletonAddress(ip string, port Port) AddressSet {
