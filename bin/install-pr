@@ -95,7 +95,7 @@ then
     name=$(echo "$context" | sed -n -E "s/(kind)-(.*)/\2/p")
   fi
 
-  "$bindir"/kind-load --images ${name:+'--name' "$name"}
+  "$bindir"/image-load --archive "$name"
 else
   for image in cni-plugin controller debug grafana proxy web
   do
