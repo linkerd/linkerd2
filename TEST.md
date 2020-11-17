@@ -182,7 +182,6 @@ bin/tests $PWD/bin/linkerd
 passing `--skip-cluster-create`, `bin/kind-load` must be run so that the images are
 available to the cluster
 
-
 #### Special tests: cluster-domain, cni-calico-deep and multicluster
 
 When running `bin/tests` without specifying `--name` all tests except for
