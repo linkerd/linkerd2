@@ -20,7 +20,6 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.19.3
 	github.com/gobwas/glob v0.2.3 // indirect
-	github.com/gogo/status v1.1.0
 	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/websocket v1.4.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
