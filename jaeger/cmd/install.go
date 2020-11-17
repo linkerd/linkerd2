@@ -45,8 +45,10 @@ func newCmdInstall() *cobra.Command {
   # Install Linkerd into a non-default namespace.
   linkerd jaeger install --namespace linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: Add Checks for checking if linkerd exists
-			// Also check for jaeger
+			if !skipChecks {
+				// TODO: Add Checks for checking if linkerd exists
+				// Also check for jaeger
+			}
 
 			return install(cmd.Context(), os.Stdout, values, flags)
 		},
@@ -114,7 +116,12 @@ func makeInstallFlags(defaults *jaeger.Values) ([]flag.Flag, *pflag.FlagSet) {
 	installOnlyFlags := pflag.NewFlagSet("install-only", pflag.ExitOnError)
 
 	flags := []flag.Flag{
-		// TODO: Set flags
+		flag.NewStringFlag(installOnlyFlags, "namespace", defaults.Namespace,
+			"Install Jaeger extension into a custom namespace.",
+			func(values *jaeger.Values, value string) error {
+				values.Namespace = value
+				return nil
+			}),
 	}
 
 	return flags, installOnlyFlags
