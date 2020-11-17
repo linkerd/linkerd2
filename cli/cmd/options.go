@@ -231,6 +231,13 @@ func makeAllStageFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet)
 				return nil
 			}),
 
+		flag.NewStringFlag(allStageFlags, "linkerd-namespace", defaults.Global.Namespace,
+			"Install Linkerd into a non-default namespace. (default \"linkerd\")",
+			func(values *l5dcharts.Values, value string) error {
+				values.Global.Namespace = value
+				return nil
+			}),
+
 		flag.NewBoolFlag(allStageFlags, "restrict-dashboard-privileges", defaults.RestrictDashboardPrivileges,
 			"Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check",
 			func(values *l5dcharts.Values, value bool) error {
