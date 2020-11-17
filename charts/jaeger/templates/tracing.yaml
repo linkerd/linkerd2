@@ -1,0 +1,187 @@
+---
+###
+### Tracing Collector Service
+###
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: linkerd-collector-config
+  namespace: {{.Values.namespace}}
+  labels:
+    component: linkerd-collector
+    namespace: {{.Values.namespace}}
+data:
+  linkerd-collector-config: |
+    receivers:
+      opencensus:
+        port: 55678
+      zipkin:
+        port: 9411
+      jaeger:
+        jaeger-thrift-http-port: 14268
+    queued-exporters:
+      jaeger-all-in-one:
+        num-workers: 4
+        queue-size: 100
+        retry-on-failure: true
+        sender-type: jaeger-thrift-http
+        jaeger-thrift-http:
+          collector-endpoint: {{printf "http://%s.%s:14268/api/traces" "linkerd-jaeger" .Values.namespace }}
+          timeout: 5s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: linkerd-collector
+  namespace: {{.Values.namespace}}
+  labels:
+    component: linkerd-collector
+    namespace: {{.Values.namespace}}
+spec:
+  type: ClusterIP
+  ports:
+  - name: opencensus
+    port: 55678
+    protocol: TCP
+    targetPort: 55678
+  - name: zipkin
+    port: 9411
+    protocol: TCP
+    targetPort: 9411
+  - name: jaeger
+    port: 14268
+    protocol: TCP
+    targetPort: 14268
+  selector:
+    component: linkerd-collector
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: linkerd-collector
+    app.kubernetes.io/part-of: Linkerd
+    component: linkerd-collector
+    namespace: {{.Values.namespace}}
+  name: linkerd-collector
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: linkerd-collector
+      namespace: {{.Values.namespace}}
+  minReadySeconds: 5
+  progressDeadlineSeconds: 120
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8888"
+        prometheus.io/scrape: "true"
+      labels:
+        component: linkerd-collector
+        namespace: {{.Values.namespace}}
+    spec:
+      containers:
+      - command:
+        - /occollector_linux
+        - --config=/conf/linkerd-collector-config.yaml
+        env:
+        - name: GOGC
+          value: "80"
+        image: {{.Values.collector.image.name}}
+        imagePullPolicy: {{.Values.collector.image.imagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 13133
+        name: oc-collector
+        ports:
+        - containerPort: 55678
+        - containerPort: 9411
+        - containerPort: 14268
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 13133
+        {{- if .Values.collector.resources -}}
+        {{- include "partials.resources" .Values.collector.resources | nindent 8 }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /conf
+          name: linkerd-collector-config-val
+      serviceAccountName: linkerd-collector
+      volumes:
+      - configMap:
+          items:
+          - key: linkerd-collector-config
+            path: linkerd-collector-config.yaml
+          name: linkerd-collector-config
+        name: linkerd-collector-config-val
+---
+###
+### Tracing Jaeger Service
+###
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: linkerd-jaeger
+  namespace: {{.Values.namespace}}
+  labels:
+    component: linkerd-jaeger
+    namespace: {{.Values.namespace}}
+spec:
+  type: ClusterIP
+  selector:
+    component: linkerd-jaeger
+  ports:
+    - name: collection
+      port: 14268
+    - name: ui
+      port: 16686
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: linkerd-jaeger
+    app.kubernetes.io/part-of: Linkerd
+    component: linkerd-jaeger
+    namespace: {{.Values.namespace}}
+  name: linkerd-jaeger
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: linkerd-jaeger
+      namespace: {{.Values.namespace}}
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8888"
+        prometheus.io/scrape: "true"
+      labels:
+        component: linkerd-jaeger
+        namespace: {{.Values.namespace}}
+    spec:
+      containers:
+      - args:
+        - --query.base-path=/jaeger
+        image: {{.Values.jaeger.image.name}}
+        imagePullPolicy: {{.Values.jaeger.image.pullPolicy}}
+        name: jaeger
+        ports:
+        - containerPort: 14268
+          name: collection
+        - containerPort: 16686
+          name: ui
+        {{- if .Values.jaeger.resources -}}
+        {{- include "partials.resources" .Values.jaeger.resources | nindent 8 }}
+        {{- end }}
+      dnsPolicy: ClusterFirst
+      serviceAccountName: linkerd-jaeger

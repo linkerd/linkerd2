@@ -1,0 +1,7 @@
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: {{.Values.namespace}}
+  annotations:
+    linkerd.io/inject: enabled

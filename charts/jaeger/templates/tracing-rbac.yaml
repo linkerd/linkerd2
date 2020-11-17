@@ -1,0 +1,26 @@
+---
+###
+### linkerd-collector RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-collector
+  namespace: {{.Values.namespace}}
+  labels:
+    component: linkerd-collector
+    namespace: {{.Values.namespace}}
+---
+###
+### linkerd-jaeger RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: linkerd-jaeger
+  namespace: {{.Values.namespace}}
+  labels:
+    component: linkerd-jaeger
+    namespace: {{.Values.namespace}}
