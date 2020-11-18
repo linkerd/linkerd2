@@ -114,7 +114,8 @@ func (svc *Service) loadCredentials() (tls.Issuer, error) {
 		return nil, fmt.Errorf("failed to read CA from disk: %s", err)
 	}
 
-	if err := creds.Crt.Verify(svc.trustAnchors, svc.expectedName, time.Time{}); err != nil {
+	// Don't verify with dns name as this is not a leaf certificate
+	if err := creds.Crt.Verify(svc.trustAnchors, "", time.Time{}); err != nil {
 		return nil, fmt.Errorf("failed to verify issuer credentials for '%s' with trust anchors: %s", svc.expectedName, err)
 	}
 
@@ -149,7 +150,8 @@ func (svc *Service) ensureIssuerStillValid() error {
 	issuer := *svc.issuer
 	switch is := issuer.(type) {
 	case *tls.CA:
-		return is.Cred.Verify(svc.trustAnchors, svc.expectedName, time.Time{})
+		// Don't verify with dns name as this is not a leaf certificate
+		return is.Cred.Verify(svc.trustAnchors, "", time.Time{})
 	default:
 		return fmt.Errorf("unsupported issuer type. Expected *tls.CA, got %v", is)
 	}

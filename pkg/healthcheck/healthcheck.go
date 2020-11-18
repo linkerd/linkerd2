@@ -1022,7 +1022,7 @@ func (hc *HealthChecker) allCategories() []category {
 					description: "issuer cert is issued by the trust anchor",
 					hintAnchor:  "l5d-identity-issuer-cert-issued-by-trust-anchor",
 					check: func(ctx context.Context) error {
-						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.trustAnchors), hc.issuerIdentity(), time.Time{})
+						return hc.issuerCert.Verify(tls.CertificatesToPool(hc.trustAnchors), "", time.Time{})
 					},
 				},
 			},
@@ -1444,10 +1444,6 @@ func (hc *HealthChecker) checkMinReplicasAvailable(ctx context.Context) error {
 		return fmt.Errorf("not enough replicas available for %v", faulty)
 	}
 	return nil
-}
-
-func (hc *HealthChecker) issuerIdentity() string {
-	return fmt.Sprintf("identity.%s.%s", hc.ControlPlaneNamespace, hc.linkerdConfig.Global.IdentityTrustDomain)
 }
 
 // Add adds an arbitrary checker. This should only be used for testing. For

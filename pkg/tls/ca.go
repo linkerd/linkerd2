@@ -118,7 +118,6 @@ func CreateRootCA(
 	// Configure the root certificate.
 	t := createTemplate(1, &key.PublicKey, validity)
 	t.Subject = pkix.Name{CommonName: name}
-	t.DNSNames = []string{name}
 	t.IsCA = true
 	t.MaxPathLen = -1
 	t.BasicConstraintsValid = true
@@ -167,7 +166,6 @@ func (ca *CA) GenerateCA(name string, maxPathLen int) (*CA, error) {
 
 	t := ca.createTemplate(&key.PublicKey)
 	t.Subject = pkix.Name{CommonName: name}
-	t.DNSNames = []string{name}
 	t.IsCA = true
 	t.MaxPathLen = maxPathLen
 	t.MaxPathLenZero = true // 0-values are actually 0
