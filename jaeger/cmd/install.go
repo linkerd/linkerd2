@@ -18,7 +18,7 @@ import (
 var (
 	templatesJaeger = []string{
 		"templates/namespace.yaml",
-		"templates/tracing-rbac.yaml",
+		"templates/rbac.yaml",
 		"templates/tracing.yaml",
 	}
 )
@@ -42,8 +42,8 @@ func newCmdInstall() *cobra.Command {
 		Example: `  # Default install.
   linkerd jaeger install | kubectl apply -f -
 
-  # Install Linkerd into a non-default namespace.
-  linkerd jaeger install --namespace linkerdtest | kubectl apply -f -`,
+  # Install Jaeger extension into a non-default namespace.
+  linkerd jaeger install --namespace custom | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
 				// TODO: Add Checks for checking if linkerd exists

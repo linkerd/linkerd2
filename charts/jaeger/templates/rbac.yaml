@@ -1,26 +1,26 @@
 ---
 ###
-### linkerd-collector RBAC
+### collector RBAC
 ###
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-collector
+  name: collector
   namespace: {{.Values.namespace}}
   labels:
-    component: linkerd-collector
+    component: collector
     namespace: {{.Values.namespace}}
 ---
 ###
-### linkerd-jaeger RBAC
+### jaeger RBAC
 ###
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-jaeger
+  name: jaeger
   namespace: {{.Values.namespace}}
   labels:
-    component: linkerd-jaeger
+    component: jaeger
     namespace: {{.Values.namespace}}

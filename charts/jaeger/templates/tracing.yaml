@@ -6,13 +6,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: linkerd-collector-config
+  name: collector-config
   namespace: {{.Values.namespace}}
   labels:
-    component: linkerd-collector
+    component: collector
     namespace: {{.Values.namespace}}
 data:
-  linkerd-collector-config: |
+  collector-config: |
     receivers:
       opencensus:
         port: 55678
@@ -27,16 +27,16 @@ data:
         retry-on-failure: true
         sender-type: jaeger-thrift-http
         jaeger-thrift-http:
-          collector-endpoint: {{printf "http://%s.%s:14268/api/traces" "linkerd-jaeger" .Values.namespace }}
+          collector-endpoint: {{printf "http://%s.%s:14268/api/traces" "jaeger" .Values.namespace }}
           timeout: 5s
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: linkerd-collector
+  name: collector
   namespace: {{.Values.namespace}}
   labels:
-    component: linkerd-collector
+    component: collector
     namespace: {{.Values.namespace}}
 spec:
   type: ClusterIP
@@ -54,23 +54,23 @@ spec:
     protocol: TCP
     targetPort: 14268
   selector:
-    component: linkerd-collector
+    component: collector
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/name: linkerd-collector
+    app.kubernetes.io/name: collector
     app.kubernetes.io/part-of: Linkerd
-    component: linkerd-collector
+    component: collector
     namespace: {{.Values.namespace}}
-  name: linkerd-collector
+  name: collector
   namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      component: linkerd-collector
+      component: collector
       namespace: {{.Values.namespace}}
   minReadySeconds: 5
   progressDeadlineSeconds: 120
@@ -81,13 +81,13 @@ spec:
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
       labels:
-        component: linkerd-collector
+        component: collector
         namespace: {{.Values.namespace}}
     spec:
       containers:
       - command:
         - /occollector_linux
-        - --config=/conf/linkerd-collector-config.yaml
+        - --config=/conf/collector-config.yaml
         env:
         - name: GOGC
           value: "80"
@@ -111,15 +111,15 @@ spec:
         {{- end }}
         volumeMounts:
         - mountPath: /conf
-          name: linkerd-collector-config-val
-      serviceAccountName: linkerd-collector
+          name: collector-config-val
+      serviceAccountName: collector
       volumes:
       - configMap:
           items:
-          - key: linkerd-collector-config
-            path: linkerd-collector-config.yaml
-          name: linkerd-collector-config
-        name: linkerd-collector-config-val
+          - key: collector-config
+            path: collector-config.yaml
+          name: collector-config
+        name: collector-config-val
 ---
 ###
 ### Tracing Jaeger Service
@@ -128,15 +128,15 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: linkerd-jaeger
+  name: jaeger
   namespace: {{.Values.namespace}}
   labels:
-    component: linkerd-jaeger
+    component: jaeger
     namespace: {{.Values.namespace}}
 spec:
   type: ClusterIP
   selector:
-    component: linkerd-jaeger
+    component: jaeger
   ports:
     - name: collection
       port: 14268
@@ -147,17 +147,17 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/name: linkerd-jaeger
+    app.kubernetes.io/name: jaeger
     app.kubernetes.io/part-of: Linkerd
-    component: linkerd-jaeger
+    component: jaeger
     namespace: {{.Values.namespace}}
-  name: linkerd-jaeger
+  name: jaeger
   namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      component: linkerd-jaeger
+      component: jaeger
       namespace: {{.Values.namespace}}
   template:
     metadata:
@@ -166,7 +166,7 @@ spec:
         prometheus.io/port: "8888"
         prometheus.io/scrape: "true"
       labels:
-        component: linkerd-jaeger
+        component: jaeger
         namespace: {{.Values.namespace}}
     spec:
       containers:
@@ -184,4 +184,4 @@ spec:
         {{- include "partials.resources" .Values.jaeger.resources | nindent 8 }}
         {{- end }}
       dnsPolicy: ClusterFirst
-      serviceAccountName: linkerd-jaeger
+      serviceAccountName: jaeger
