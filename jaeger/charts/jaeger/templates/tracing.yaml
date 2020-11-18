@@ -92,7 +92,7 @@ spec:
         - name: GOGC
           value: "80"
         image: {{.Values.collector.image.name}}:{{.Values.collector.image.version}}
-        imagePullPolicy: {{.Values.collector.image.imagePullPolicy}}
+        imagePullPolicy: {{.Values.collector.image.pullPolicy}}
         livenessProbe:
           httpGet:
             path: /
