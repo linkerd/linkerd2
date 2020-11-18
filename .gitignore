@@ -15,4 +15,5 @@ vendor
 **/*.gogen*
 **/*.swp
 charts/**/charts
+**/charts/**/charts
 package-lock.json
