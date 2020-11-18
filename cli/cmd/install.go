@@ -294,6 +294,10 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 }
 
 func render(w io.Writer, values *l5dcharts.Values, stage string) error {
+
+	// Set any global flags if present, common with install and upgrade
+	values.Global.Namespace = controlPlaneNamespace
+
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
 	if err != nil {
