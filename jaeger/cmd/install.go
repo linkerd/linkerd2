@@ -8,12 +8,10 @@ import (
 	"os"
 	"path"
 
-	"github.com/linkerd/linkerd2/jaeger/flag"
 	jaeger "github.com/linkerd/linkerd2/jaeger/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
@@ -35,8 +33,6 @@ func newCmdInstall() *cobra.Command {
 		os.Exit(1)
 	}
 
-	flags, installOnlyFlagSet := makeInstallFlags(values)
-
 	cmd := &cobra.Command{
 		Use:   "install [flags]",
 		Args:  cobra.NoArgs,
@@ -53,25 +49,21 @@ func newCmdInstall() *cobra.Command {
 				// Also check for jaeger
 			}
 
-			return install(cmd.Context(), os.Stdout, values, flags)
+			return install(cmd.Context(), os.Stdout, values)
 		},
 	}
-
-	cmd.Flags().AddFlagSet(installOnlyFlagSet)
 
 	cmd.Flags().BoolVar(
 		&skipChecks, "skip-checks", false,
 		`Skip checks for namespace existence`,
 	)
 
+	// TODO: Add --set flag set and also config
+
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, values *jaeger.Values, flags []flag.Flag) error {
-	err := flag.ApplySetFlags(values, flags)
-	if err != nil {
-		return err
-	}
+func install(ctx context.Context, w io.Writer, values *jaeger.Values) error {
 
 	// TODO: Add any validation logic here
 
@@ -110,23 +102,4 @@ func render(w io.Writer, values *jaeger.Values) error {
 
 	_, err = w.Write(buf.Bytes())
 	return err
-}
-
-// makeInstallFlags builds the set of flags which are used during the
-// "control-plane" stage of install.  These flags should not be changed during
-// an upgrade and are not available to the upgrade command.
-func makeInstallFlags(defaults *jaeger.Values) ([]flag.Flag, *pflag.FlagSet) {
-
-	installOnlyFlags := pflag.NewFlagSet("install-only", pflag.ExitOnError)
-
-	flags := []flag.Flag{
-		flag.NewStringFlag(installOnlyFlags, "namespace", defaults.Namespace,
-			"Install Jaeger extension into a custom namespace.",
-			func(values *jaeger.Values, value string) error {
-				values.Namespace = value
-				return nil
-			}),
-	}
-
-	return flags, installOnlyFlags
 }
