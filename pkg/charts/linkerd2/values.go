@@ -8,6 +8,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"k8s.io/helm/pkg/chartutil"
@@ -287,7 +288,7 @@ func readDefaults(chartDir string, ha bool) (*Values, error) {
 		})
 	}
 
-	if err := charts.FilesReader(chartDir, valuesFiles); err != nil {
+	if err := charts.FilesReader(static.Templates, chartDir, valuesFiles); err != nil {
 		return nil, err
 	}
 

@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
+	"path"
 
 	"github.com/linkerd/linkerd2/jaeger/flag"
 	jaeger "github.com/linkerd/linkerd2/jaeger/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/helm/pkg/chartutil"
@@ -98,6 +101,7 @@ func render(w io.Writer, values *jaeger.Values) error {
 		Namespace: values.Namespace,
 		RawValues: rawValues,
 		Files:     files,
+		Fs:        http.Dir(path.Join(static.GetRepoRoot(), "jaeger/charts")),
 	}
 	buf, err := chart.Render()
 	if err != nil {

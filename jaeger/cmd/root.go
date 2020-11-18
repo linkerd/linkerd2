@@ -40,7 +40,7 @@ var (
 var RootCmd = &cobra.Command{
 	Use:   "jaeger",
 	Short: "jaeger manages the jaeger extension of Linkerd service mesh",
-	Long:  `linkerd manages the  jaeger extension of Linkerd service mesh.`,
+	Long:  `jaeger manages the jaeger extension of Linkerd service mesh.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// enable / disable logging
 		if verbose {

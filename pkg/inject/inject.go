@@ -18,6 +18,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -291,6 +292,7 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 		Namespace: conf.values.Global.Namespace,
 		RawValues: rawValues,
 		Files:     files,
+		Fs:        static.Templates,
 	}
 	buf, err := chart.Render()
 	if err != nil {

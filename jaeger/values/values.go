@@ -2,10 +2,13 @@ package values
 
 import (
 	"fmt"
+	"net/http"
+	"path"
 
 	"github.com/imdario/mergo"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
@@ -46,7 +49,7 @@ func readDefaults(chartDir string) (*Values, error) {
 		{Name: chartutil.ValuesfileName},
 	}
 
-	if err := charts.FilesReader(chartDir, valuesFiles); err != nil {
+	if err := charts.FilesReader(http.Dir(path.Join(static.GetRepoRoot(), "jaeger/charts")), chartDir, valuesFiles); err != nil {
 		return nil, err
 	}
 
