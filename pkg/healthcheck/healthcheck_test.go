@@ -3077,15 +3077,6 @@ func TestLinkerdIdentityCheckCertValidity(t *testing.T) {
 	}
 }
 
-func TestLinkerdIdentityCheckWrongDns(t *testing.T) {
-	expectedOutput := []string{"linkerd-identity-test-cat issuer cert is issued by the trust anchor: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"}
-	issuerData := createIssuerData("wrong.linkerd.cluster.local", time.Now().AddDate(-1, 0, 0), time.Now().AddDate(1, 0, 0))
-	fakeConfigMap := getFakeConfigMap(k8s.IdentityIssuerSchemeLinkerd, issuerData)
-	fakeSecret := getFakeSecret(k8s.IdentityIssuerSchemeLinkerd, issuerData)
-	runIdentityCheckTestCase(context.Background(), t, 0, "fails when cert dns is wrong", "issuer cert is issued by the trust anchor", fakeConfigMap, fakeSecret, expectedOutput)
-
-}
-
 type fakeCniResourcesOpts struct {
 	hasConfigMap          bool
 	hasPodSecurityPolicy  bool
