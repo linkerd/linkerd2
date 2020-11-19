@@ -203,6 +203,9 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 					Name:      pod.Name,
 				}
 				endpoint, err = toWeightedAddr(podSet.Addresses[podID], s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS)
+				// `Get` doesn't include the namespace in the per-endpoint
+				// metadata, so it needs to be special-cased.
+				endpoint.MetricLabels["namespace"] = pod.Namespace
 				if err != nil {
 					return err
 				}
