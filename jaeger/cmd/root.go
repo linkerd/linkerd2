@@ -1,17 +1,30 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+	"regexp"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
+const (
+	defaultLinkerdNamespace = "linkerd"
+)
+
 var (
-	apiAddr          string // An empty value means "use the Kubernetes configuration"
-	kubeconfigPath   string
-	kubeContext      string
-	impersonate      string
-	impersonateGroup []string
-	verbose          bool
+	apiAddr               string // An empty value means "use the Kubernetes configuration"
+	controlPlaneNamespace string
+	kubeconfigPath        string
+	kubeContext           string
+	impersonate           string
+	impersonateGroup      []string
+	verbose               bool
+
+	// These regexs are not as strict as they could be, but are a quick and dirty
+	// sanity check against illegal characters.
+	alphaNumDash = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 )
 
 // RootCmd represents the root Cobra command
@@ -27,11 +40,21 @@ var RootCmd = &cobra.Command{
 			log.SetLevel(log.PanicLevel)
 		}
 
+		controlPlaneNamespaceFromEnv := os.Getenv("LINKERD_NAMESPACE")
+		if controlPlaneNamespace == defaultLinkerdNamespace && controlPlaneNamespaceFromEnv != "" {
+			controlPlaneNamespace = controlPlaneNamespaceFromEnv
+		}
+
+		if !alphaNumDash.MatchString(controlPlaneNamespace) {
+			return fmt.Errorf("%s is not a valid namespace", controlPlaneNamespace)
+		}
+
 		return nil
 	},
 }
 
 func init() {
+	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
 	RootCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")

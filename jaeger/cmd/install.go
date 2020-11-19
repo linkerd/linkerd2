@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,7 +11,11 @@ import (
 	jaeger "github.com/linkerd/linkerd2/jaeger/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
@@ -44,7 +49,15 @@ func newCmdInstall() *cobra.Command {
   linkerd jaeger install --namespace custom | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
-				// TODO: Add Checks for checking if linkerd exists
+				// Ensure there is a Linkerd installation.
+				exists, err := checkIfLinkerdExists(cmd.Context())
+				if err != nil {
+					return fmt.Errorf("could not check for Linkerd existence: %s", err)
+				}
+
+				if !exists {
+					return fmt.Errorf("could not find a Linkerd installation")
+				}
 			}
 
 			return install(os.Stdout, values)
@@ -100,4 +113,29 @@ func render(w io.Writer, values *jaeger.Values) error {
 
 	_, err = w.Write(buf.Bytes())
 	return err
+}
+
+func checkIfLinkerdExists(ctx context.Context) (bool, error) {
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = kubeAPI.CoreV1().Namespaces().Get(ctx, controlPlaneNamespace, metav1.GetOptions{})
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	_, _, err = healthcheck.FetchCurrentConfiguration(ctx, kubeAPI, controlPlaneNamespace)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }
