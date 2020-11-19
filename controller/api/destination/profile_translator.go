@@ -21,9 +21,10 @@ type profileTranslator struct {
 	stream             pb.Destination_GetProfileServer
 	log                *logging.Entry
 	fullyQualifiedName string
+	endpoint           *pb.WeightedAddr
 }
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, id *watcher.ServiceID, clusterDomain string) *profileTranslator {
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, id *watcher.ServiceID, clusterDomain string, endpoint *pb.WeightedAddr) *profileTranslator {
 	var fullyQualifiedName string
 	if id != nil {
 		fullyQualifiedName = fmt.Sprintf("%s.%s.svc.%s", id.Name, id.Namespace, clusterDomain)
@@ -32,6 +33,7 @@ func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.E
 		stream:             stream,
 		log:                log.WithField("component", "profile-translator"),
 		fullyQualifiedName: fullyQualifiedName,
+		endpoint:           endpoint,
 	}
 }
 
@@ -54,6 +56,7 @@ func (pt *profileTranslator) defaultServiceProfile() *pb.DestinationProfile {
 		Routes:             []*pb.Route{},
 		RetryBudget:        defaultRetryBudget(),
 		FullyQualifiedName: pt.fullyQualifiedName,
+		Endpoint:           pt.endpoint,
 	}
 }
 
