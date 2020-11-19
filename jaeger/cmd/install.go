@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -48,7 +47,7 @@ func newCmdInstall() *cobra.Command {
 				// TODO: Add Checks for checking if linkerd exists
 			}
 
-			return install(cmd.Context(), os.Stdout, values)
+			return install(os.Stdout, values)
 		},
 	}
 
@@ -62,7 +61,7 @@ func newCmdInstall() *cobra.Command {
 	return cmd
 }
 
-func install(ctx context.Context, w io.Writer, values *jaeger.Values) error {
+func install(w io.Writer, values *jaeger.Values) error {
 
 	// TODO: Add any validation logic here
 
