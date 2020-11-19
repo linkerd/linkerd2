@@ -91,13 +91,13 @@ bin/shellcheck -x bin/*
 
 ## Integration tests
 
-The `test/` directory contains a test suite that can be run to validate Linkerd
-functionality via a series of end-to-end tests.
+The `test/integration` directory contains a test suite that can be run to
+validate Linkerd functionality via a series of end-to-end tests.
 
 ### Prerequisites for default behavior
 
-The integration tests will configure their own KinD clusters by default. There
-are no prerequisites for this test path.
+The integration tests will configure their own k3s clusters by default (using
+the k3d helper). There are no prerequisites for this test path.
 
 ### Prerequisites for existing cluster
 
@@ -108,9 +108,10 @@ creating their own clusters and instead use the current Kubernetes context.
 In this case, ensure the following:
 
 - The Linkerd docker images you're trying to test have been built and are
-  accessible to the Kubernetes cluster to which you are deploying (**note**: If
-  the existing cluster is a KinD cluster, this includes running `bin/kind-load`
-  so that the images are available within the cluster)
+  accessible to the Kubernetes cluster to which you are deploying.
+  If you're testing locally through a KinD or k3d cluster and don't want to push
+  the images to a public registry, you can call `bin/image-load --kind|k3d` to
+  load all the Linkerd images into those clusters.
 - The `kubectl` CLI has been configured to talk to that Kubernetes cluster
 
 ### Running tests
@@ -123,14 +124,13 @@ The `bin/tests` script requires an absolute path to a `linkerd` binary to test.
 Optional flags can be passed that change the testing behavior:
 
 - `--name`: Pass an argument with this flag to specify a specific test that
-  should be run; all tests are run in the absence of this flag. Valid test names
-  are included in the `bin/tests --help` output
+  should be run; all tests (except some special ones, see below) are run in the
+  absence of this flag. Valid test names are included in the `bin/tests --help`
+  output
 - `--skip-cluster-create`: Skip KinD cluster creation for each test and use an
   existing Kubernetes cluster
 - `--images`: (Primarily for CI) Loads images from the `image-archive/`
   directory into the KinD clusters created for each test
-- `--images-host`: (Primarily for CI) Pass an argument with this flag to be used
-  as the remote docker instance from which images are first retrieved
 
 View full help text:
 
@@ -181,6 +181,26 @@ bin/tests $PWD/bin/linkerd
 **Note**: As stated above, if running tests in an existing KinD cluster by
 passing `--skip-cluster-create`, `bin/kind-load` must be run so that the images are
 available to the cluster
+
+#### Special tests: cluster-domain, cni-calico-deep and multicluster
+
+When running `bin/tests` without specifying `--name` all tests except for
+`cluster-domain`, `cni-calico-deep` and `multicluster` are run, because these require
+creating the clusters with special configurations. To run any of these tests,
+invoke them explicitly with `--name` for the script to create the cluster (using
+k3d) and trigger the test:
+
+- `bin/tests --name cluster-domain`: This simply creates the cluster with a
+  cluster domain setting different than the default `cluster.local`, then
+  installs Linkerd and triggers some smoke tests.
+- `bin/tests --name cni-calico-deep`: This installs a cluster replacing the
+  default CNI plugin (which for k3s is Flannel) with the Calico CNI plugin, then
+  installs the Linkerd CNI plugin and the Linkerd control plane, and finally
+  triggers the full suite of deep tests.
+- `bin/tests --name multicluster`: Two k3d clusters are installed each one with
+  separate instances of Linkerd sharing the same trust root. Then the
+  multicluster component is installed, both clusters are linked together and a
+  test ensures exported services can be reached between the two clusters.
 
 #### Testing the dashboard
 

@@ -28,7 +28,7 @@ func TestCrtRoundtrip(t *testing.T) {
 		t.Fatalf("Failed to decode PEM Crt: %s", err)
 	}
 
-	if err := crt.Verify(rootTrust, "endentity.test", time.Time{}); err != nil {
+	if err := crt.Verify(rootTrust, "", time.Time{}); err != nil {
 		t.Fatal("Failed to verify round-tripped certificate")
 	}
 }
@@ -103,7 +103,7 @@ func TestCrtExpiry(t *testing.T) {
 			crt.Certificate.NotBefore = tc.notBefore
 			crt.Certificate.NotAfter = tc.notAfter
 
-			err := crt.Verify(rootTrust, "expired.test", tc.currentTime)
+			err := crt.Verify(rootTrust, "", tc.currentTime)
 			if tc.valid && err != nil {
 				t.Fatalf("expected certificate to be valid but was invalid: %s", err.Error())
 			}
