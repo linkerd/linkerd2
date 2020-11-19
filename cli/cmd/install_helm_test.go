@@ -154,7 +154,6 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 		IsInstall: true,
 	}
 
-	fmt.Println(linkerd2Chart.Values)
 	valuesToRender, err := chartutil.ToRenderValues(linkerd2Chart, overrideConfig, releaseOptions, nil)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
@@ -193,7 +192,7 @@ func testRenderHelm(t *testing.T, linkerd2Chart *chart.Chart, goldenFileName str
 	diffTestdata(t, goldenFileName, buf.String())
 }
 
-func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *pb.Chart {
+func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOutboundPorts string, ignoreInboundPorts string) *chart.Chart {
 	values, err := readTestValues(ha, ignoreOutboundPorts, ignoreInboundPorts)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
@@ -226,6 +225,11 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 
 	chartPartials := chartPartials(t, partialPaths)
 
+	rawValues, err := yaml.Marshal(values)
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
 	var mapValues chartutil.Values
 	err = yaml.Unmarshal(rawValues, &mapValues)
 	if err != nil {
@@ -243,13 +247,7 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 
 	linkerd2Chart.AddDependency(chartPartials)
 
-	var values l5dcharts.Values
-	err = yaml.Unmarshal(rawValues, &values)
-	if err != nil {
-		t.Fatal("Unexpected error", err)
-	}
-
-	addons, err := l5dcharts.ParseAddOnValues(&values)
+	addons, err := l5dcharts.ParseAddOnValues(values)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}

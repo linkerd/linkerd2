@@ -953,6 +953,7 @@ data:
         identityTrustAnchorsPEM: test-trust-anchor
         identityTrustDomain: test.trust.domain
         imagePullPolicy: IfNotPresent
+        imagePullSecrets: null
         linkerdNamespaceLabel: linkerd.io/is-control-plane
         linkerdVersion: linkerd-version
         namespace: linkerd
@@ -1043,6 +1044,7 @@ data:
           identityTrustAnchorsPEM: test-trust-anchor
           identityTrustDomain: test.trust.domain
           imagePullPolicy: IfNotPresent
+          imagePullSecrets: null
           linkerdNamespaceLabel: linkerd.io/is-control-plane
           linkerdVersion: linkerd-version
           namespace: linkerd
@@ -1183,6 +1185,7 @@ data:
         identityTrustAnchorsPEM: test-trust-anchor
         identityTrustDomain: test.trust.domain
         imagePullPolicy: IfNotPresent
+        imagePullSecrets: null
         linkerdNamespaceLabel: linkerd.io/is-control-plane
         linkerdVersion: linkerd-version
         namespace: linkerd
@@ -1276,6 +1279,7 @@ data:
           identityTrustAnchorsPEM: test-trust-anchor
           identityTrustDomain: test.trust.domain
           imagePullPolicy: IfNotPresent
+          imagePullSecrets: null
           linkerdNamespaceLabel: linkerd.io/is-control-plane
           linkerdVersion: linkerd-version
           namespace: linkerd
