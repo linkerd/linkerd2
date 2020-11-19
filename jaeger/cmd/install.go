@@ -14,9 +14,11 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli/values"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
 
@@ -30,12 +32,10 @@ var (
 
 func newCmdInstall() *cobra.Command {
 	var skipChecks bool
+	var options values.Options
 
-	values, err := jaeger.NewValues()
-	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+	// Inser Values file into options
+	options.ValueFiles = []string{path.Join(static.GetRepoRoot(), "jaeger/charts", "jaeger", "values.yaml")}
 
 	cmd := &cobra.Command{
 		Use:   "install [flags]",
@@ -60,7 +60,7 @@ func newCmdInstall() *cobra.Command {
 				}
 			}
 
-			return install(os.Stdout, values)
+			return install(os.Stdout, options)
 		},
 	}
 
@@ -69,16 +69,37 @@ func newCmdInstall() *cobra.Command {
 		`Skip checks for namespace existence`,
 	)
 
-	// TODO: Add --set flag set and also config
-
+	cmd.Flags().StringArrayVar(
+		&options.Values, "set", []string{},
+		"set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)",
+	)
 	return cmd
 }
 
-func install(w io.Writer, values *jaeger.Values) error {
+// TODO: Remove even this values and use Values.options for everything
+func install(w io.Writer, options values.Options) error {
+
+	var values jaeger.Values
+	// Merge and create final set of values
+	vals, err := options.MergeValues(nil)
+	if err != nil {
+		return err
+	}
+
+	// Convert vals map into Values struct
+	rawMap, err := yaml.Marshal(vals)
+	if err != nil {
+		return err
+	}
+
+	err = yaml.Unmarshal(rawMap, &values)
+	if err != nil {
+		return err
+	}
 
 	// TODO: Add any validation logic here
 
-	return render(w, values)
+	return render(w, &values)
 }
 
 func render(w io.Writer, values *jaeger.Values) error {
@@ -88,13 +109,13 @@ func render(w io.Writer, values *jaeger.Values) error {
 		return err
 	}
 
-	files := []*chartutil.BufferedFile{
+	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
 
 	for _, template := range templatesJaeger {
 		files = append(files,
-			&chartutil.BufferedFile{Name: template},
+			&loader.BufferedFile{Name: template},
 		)
 	}
 
