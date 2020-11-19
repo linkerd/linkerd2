@@ -4,6 +4,7 @@
 - [Allotrac](https://allotrac.com.au)
 - [AlphaSights](https://www.alphasights.com)
 - [Apester](https://apester.com)
+- [AppddictionStudio](https://appddicitonstudio.com)
 - [Attest](https://www.askattest.com)
 - [Buoyant](https://buoyant.io)
 - [Candide](https://candidegardening.com)
