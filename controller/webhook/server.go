@@ -19,18 +19,23 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-type handlerFunc func(context.Context, *k8s.API, *admissionv1beta1.AdmissionRequest, record.EventRecorder) (*admissionv1beta1.AdmissionResponse, error)
+type Handler func(
+	context.Context,
+	*k8s.API,
+	*admissionv1beta1.AdmissionRequest,
+	record.EventRecorder,
+) (*admissionv1beta1.AdmissionResponse, error)
 
 // Server describes the https server implementing the webhook
 type Server struct {
 	*http.Server
 	api      *k8s.API
-	handler  handlerFunc
+	handler  Handler
 	recorder record.EventRecorder
 }
 
 // NewServer returns a new instance of Server
-func NewServer(api *k8s.API, addr string, cred *pkgTls.Cred, handler handlerFunc, component string) (*Server, error) {
+func NewServer(api *k8s.API, addr string, cred *pkgTls.Cred, handler Handler, component string) (*Server, error) {
 	var (
 		certPEM = cred.EncodePEM()
 		keyPEM  = cred.EncodePrivateKeyPEM()
@@ -121,7 +126,7 @@ func (s *Server) processReq(ctx context.Context, data []byte) *admissionv1beta1.
 
 	admissionResponse, err := s.handler(ctx, s.api, admissionReview.Request, s.recorder)
 	if err != nil {
-		log.Error("failed to inject sidecar. Reason: ", err)
+		log.Error("failed to run webhook handler. Reason: ", err)
 		admissionReview.Response = &admissionv1beta1.AdmissionResponse{
 			UID:     admissionReview.Request.UID,
 			Allowed: false,
