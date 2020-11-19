@@ -46,7 +46,6 @@ func newCmdInstall() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
 				// TODO: Add Checks for checking if linkerd exists
-				// Also check for jaeger
 			}
 
 			return install(cmd.Context(), os.Stdout, values)

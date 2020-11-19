@@ -8,9 +8,6 @@ apiVersion: v1
 metadata:
   name: collector
   namespace: {{.Values.namespace}}
-  labels:
-    component: collector
-    namespace: {{.Values.namespace}}
 ---
 ###
 ### jaeger RBAC
@@ -21,6 +18,3 @@ apiVersion: v1
 metadata:
   name: jaeger
   namespace: {{.Values.namespace}}
-  labels:
-    component: jaeger
-    namespace: {{.Values.namespace}}
