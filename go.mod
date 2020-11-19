@@ -19,12 +19,12 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/gorilla/websocket v1.4.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/imdario/mergo v0.3.7
+	github.com/imdario/mergo v0.3.8
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/linkerd/linkerd2-proxy-api v0.1.14
 	github.com/linkerd/linkerd2-proxy-init v1.3.7
 	github.com/mattn/go-isatty v0.0.12
-	github.com/mattn/go-runewidth v0.0.2
+	github.com/mattn/go-runewidth v0.0.4
 	github.com/nsf/termbox-go v0.0.0-20180613055208-5c94acc5e6eb
 	github.com/onsi/gomega v1.8.1 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -35,21 +35,20 @@ require (
 	github.com/servicemeshinterface/smi-sdk-go v0.4.1
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.5.1 // indirect
 	go.opencensus.io v0.22.2
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/tools v0.0.0-20200616133436-c1934b75d054
 	google.golang.org/grpc v1.31.1
 	google.golang.org/protobuf v1.24.0
-	helm.sh/helm/v3 v3.1.3
-	k8s.io/api v0.19.2
-	k8s.io/apiextensions-apiserver v0.19.2
-	k8s.io/apimachinery v0.19.2
-	k8s.io/client-go v0.19.2
-	k8s.io/code-generator v0.19.2
+	helm.sh/helm/v3 v3.4.1
+	k8s.io/api v0.19.3
+	k8s.io/apiextensions-apiserver v0.19.3
+	k8s.io/apimachinery v0.19.3
+	k8s.io/client-go v0.19.3
+	k8s.io/code-generator v0.19.3
 	k8s.io/klog/v2 v2.2.0
 	k8s.io/kube-aggregator v0.18.8
 	sigs.k8s.io/yaml v1.2.0
