@@ -19,6 +19,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+// Handler is the signature for the functions that ultimately deal with
+// the admission request
 type Handler func(
 	context.Context,
 	*k8s.API,
