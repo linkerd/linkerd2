@@ -2,25 +2,32 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/linkerd/linkerd2/cli/flag"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 )
 
 const (
 	upgradeProxyVersion        = "UPGRADE-PROXY-VERSION"
 	upgradeControlPlaneVersion = "UPGRADE-CONTROL-PLANE-VERSION"
 	upgradeDebugVersion        = "UPGRADE-DEBUG-VERSION"
+	overridesSecret            = "Secret/linkerd-config-overrides"
+	linkerdConfigMap           = "ConfigMap/linkerd-config"
 )
 
 type (
@@ -43,8 +50,8 @@ type (
    others there are certain expected differences */
 
 func TestUpgradeDefault(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	installOpts, upgradeOpts, _ := testOptions(t)
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,15 +61,18 @@ func TestUpgradeDefault(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
 }
 
 func TestUpgradeHA(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
-	installFlags.Set("ha", "true")
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	installOpts, upgradeOpts, _ := testOptions(t)
+	installOpts.Global.HighAvailability = true
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,37 +82,35 @@ func TestUpgradeHA(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
 }
 
 func TestUpgradeExternalIssuer(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installOpts, err := testInstallOptionsNoCerts(false)
+	if err != nil {
+		t.Fatalf("failed to create install options: %s", err)
+	}
+	upgradeOpts, _, err := testUpgradeOptions()
+	if err != nil {
+		t.Fatalf("failed to create upgrade options: %s", err)
+	}
 
 	issuer := generateIssuerCerts(t, true)
 	defer issuer.cleanup()
 
-	identity := identityWithAnchorsAndTrustDomain{
-		TrustDomain:     "cluster.local",
-		TrustAnchorsPEM: issuer.ca,
-		Identity: &linkerd2.Identity{
-			Issuer: &linkerd2.Issuer{
-				Scheme: string(corev1.SecretTypeTLS),
-				TLS: &linkerd2.IssuerTLS{
-					CrtPEM: issuer.crt,
-					KeyPEM: issuer.key,
-				},
-			},
-		},
-	}
-	installOpts.recordFlags(installFlags)
-	values, _, err := installOpts.validateAndBuildWithIdentity("", &identity)
-	install := renderInstall(t, values)
+	installOpts.Identity.Issuer.Scheme = string(corev1.SecretTypeTLS)
+	ca, err := base64.StdEncoding.DecodeString(issuer.ca)
 	if err != nil {
-		t.Fatalf("Failed to build install values: %s", err)
+		t.Fatal(err)
 	}
-	upgrade, err := renderUpgrade(t, install.String()+externalIssuerSecret(issuer), upgradeOpts, upgradeFlags)
+	installOpts.Global.IdentityTrustAnchorsPEM = string(ca)
+	install := renderInstall(t, installOpts)
+	upgrade, err := renderUpgrade(install.String()+externalIssuerSecret(issuer), upgradeOpts)
 
 	if err != nil {
 		t.Fatal(err)
@@ -113,44 +121,35 @@ func TestUpgradeExternalIssuer(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
 }
 
 func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installOpts, upgradeOpts, flagSet := testOptions(t)
 
 	issuer := generateIssuerCerts(t, true)
 	defer issuer.cleanup()
 
-	identity := identityWithAnchorsAndTrustDomain{
-		TrustDomain:     "cluster.local",
-		TrustAnchorsPEM: issuer.ca,
-		Identity: &linkerd2.Identity{
-			Issuer: &linkerd2.Issuer{
-				Scheme: string(corev1.SecretTypeTLS),
-				TLS: &linkerd2.IssuerTLS{
-					CrtPEM: issuer.crt,
-					KeyPEM: issuer.key,
-				},
-			},
-		},
-	}
-	installOpts.recordFlags(installFlags)
-	values, _, err := installOpts.validateAndBuildWithIdentity("", &identity)
-	install := renderInstall(t, values)
-	if err != nil {
-		t.Fatalf("Failed to build install values: %s", err)
-	}
+	installOpts.Global.IdentityTrustDomain = "cluster.local"
+	installOpts.Global.IdentityTrustDomain = issuer.ca
+	installOpts.Identity.Issuer.Scheme = string(corev1.SecretTypeTLS)
+	installOpts.Identity.Issuer.TLS.CrtPEM = issuer.crt
+	installOpts.Identity.Issuer.TLS.KeyPEM = issuer.key
+	install := renderInstall(t, installOpts)
 
 	upgradedIssuer := generateIssuerCerts(t, true)
 	defer upgradedIssuer.cleanup()
-	upgradeFlags.Set("identity-trust-anchors-file", upgradedIssuer.caFile)
-	upgradeFlags.Set("identity-issuer-certificate-file", upgradedIssuer.crtFile)
-	upgradeFlags.Set("identity-issuer-key-file", upgradedIssuer.keyFile)
 
-	_, err = renderUpgrade(t, install.String()+externalIssuerSecret(issuer), upgradeOpts, upgradeFlags)
+	flagSet.Set("identity-trust-anchors-file", upgradedIssuer.caFile)
+	flagSet.Set("identity-issuer-certificate-file", upgradedIssuer.crtFile)
+	flagSet.Set("identity-issuer-key-file", upgradedIssuer.keyFile)
+
+	_, err := renderUpgrade(install.String()+externalIssuerSecret(issuer), upgradeOpts)
 
 	expectedErr := "cannot update issuer certificates if you are using external cert management solution"
 
@@ -160,15 +159,16 @@ func TestUpgradeIssuerWithExternalIssuerFails(t *testing.T) {
 }
 
 func TestUpgradeOverwriteIssuer(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installOpts, upgradeOpts, flagSet := testOptions(t)
 
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
 
-	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	upgradeFlags.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
-	upgradeFlags.Set("identity-issuer-key-file", issuerCerts.keyFile)
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)
+
+	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,12 +180,21 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			if isProxyEnvDiff(diff.path) {
+				// Trust root has changed.
 				continue
 			}
-			if id == "ConfigMap/linkerd-config" {
-				continue
+
+			if id == "Deployment/linkerd-identity" || id == "Deployment/linkerd-proxy-injector" {
+				if pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args", "*"}) && diff.b.(string) == "-identity-trust-anchors-pem="+issuerCerts.ca {
+					continue
+				}
+				t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 			}
+
 			if id == "Secret/linkerd-identity-issuer" {
 				if pathMatch(diff.path, []string{"data", "crt.pem"}) {
 					if diff.b.(string) != issuerCerts.crt {
@@ -210,16 +219,17 @@ func TestUpgradeOverwriteIssuer(t *testing.T) {
 }
 
 func TestUpgradeFailsWithOnlyIssuerCert(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installOpts, upgradeOpts, flagSet := testOptions(t)
 
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
-	upgradeOpts.identityOptions.identityExternalIssuer = true
-	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	upgradeFlags.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
-	_, _, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
 
-	expectedErr := "a private key file must be specified if a certificate is provided"
+	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+
+	_, _, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts)
+
+	expectedErr := "failed to validate issuer credentials: failed to read CA: tls: Public and private key do not match"
 
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("Expected error: %s but got %s", expectedErr, err)
@@ -227,16 +237,17 @@ func TestUpgradeFailsWithOnlyIssuerCert(t *testing.T) {
 }
 
 func TestUpgradeFailsWithOnlyIssuerKey(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installOpts, upgradeOpts, flagSet := testOptions(t)
 
-	issuerCerts := generateIssuerCerts(t, true)
+	issuerCerts := generateIssuerCerts(t, false)
 	defer issuerCerts.cleanup()
-	upgradeOpts.identityOptions.identityExternalIssuer = true
-	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	upgradeFlags.Set("identity-issuer-key-file", issuerCerts.keyFile)
-	_, _, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
 
-	expectedErr := "a certificate file must be specified if a private key is provided"
+	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+
+	_, _, err := renderInstallAndUpgrade(t, installOpts, upgradeOpts)
+
+	expectedErr := "failed to validate issuer credentials: failed to read CA: tls: Public and private key do not match"
 
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("Expected error: %s but got %s", expectedErr, err)
@@ -244,19 +255,21 @@ func TestUpgradeFailsWithOnlyIssuerKey(t *testing.T) {
 }
 
 func TestUpgradeRootFailsWithOldPods(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installOpts, upgradeOpts, flagSet := testOptions(t)
 
 	oldIssuer := generateIssuerCerts(t, false)
 	defer oldIssuer.cleanup()
 
-	install := renderInstall(t, installValues(t, installOpts, installFlags))
+	install := renderInstall(t, installOpts)
 
 	issuerCerts := generateIssuerCerts(t, true)
 	defer issuerCerts.cleanup()
-	upgradeFlags.Set("identity-trust-anchors-file", issuerCerts.caFile)
-	upgradeFlags.Set("identity-issuer-key-file", issuerCerts.keyFile)
-	upgradeFlags.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
-	_, err := renderUpgrade(t, install.String()+podWithSidecar(oldIssuer), upgradeOpts, upgradeFlags)
+
+	flagSet.Set("identity-trust-anchors-file", issuerCerts.caFile)
+	flagSet.Set("identity-issuer-certificate-file", issuerCerts.crtFile)
+	flagSet.Set("identity-issuer-key-file", issuerCerts.keyFile)
+
+	_, err := renderUpgrade(install.String()+podWithSidecar(oldIssuer), upgradeOpts)
 
 	expectedErr := "You are attempting to use an issuer certificate which does not validate against the trust anchors of the following pods"
 	if err == nil || !strings.HasPrefix(err.Error(), expectedErr) {
@@ -265,10 +278,13 @@ func TestUpgradeRootFailsWithOldPods(t *testing.T) {
 }
 
 func TestUpgradeTracingAddon(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installOpts, upgradeOpts, flagSet := testOptions(t)
 
-	upgradeOpts.addOnConfig = filepath.Join("testdata", "addon_config.yaml")
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	install := renderInstall(t, installOpts)
+
+	flagSet.Set("config", filepath.Join("testdata", "addon_config.yaml"))
+
+	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,9 +293,9 @@ func TestUpgradeTracingAddon(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
 	tracingManifests := []string{
-		"Service/linkerd-jaeger", "Deployment/linkerd-jaeger", "ConfigMap/linkerd-config-addons",
+		"Service/linkerd-jaeger", "Deployment/linkerd-jaeger",
 		"ServiceAccount/linkerd-jaeger", "Service/linkerd-collector", "ConfigMap/linkerd-collector-config",
-		"ServiceAccount/linkerd-collector", "Deployment/linkerd-collector",
+		"ServiceAccount/linkerd-collector", "Deployment/linkerd-collector", "RoleBinding/linkerd-psp",
 	}
 	for _, id := range tracingManifests {
 		if _, ok := diffMap[id]; ok {
@@ -290,6 +306,9 @@ func TestUpgradeTracingAddon(t *testing.T) {
 	}
 	for id, diffs := range diffMap {
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			if id == "Deployment/linkerd-web" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args"}) {
 				continue
 			}
@@ -299,13 +318,24 @@ func TestUpgradeTracingAddon(t *testing.T) {
 }
 
 func TestUpgradeOverwriteTracingAddon(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installOpts, upgradeOpts, flagSet := testOptions(t)
 
-	installOpts.addOnConfig = filepath.Join("testdata", "addon_config.yaml")
-	upgradeOpts.addOnConfig = filepath.Join("testdata", "addon_config_overwrite.yaml")
-	upgradeOpts.traceCollector = "overwrite-collector"
-	upgradeOpts.traceCollectorSvcAccount = "overwrite-collector.default"
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	installAddons, err := ioutil.ReadFile(filepath.Join("testdata", "addon_config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = yaml.Unmarshal(installAddons, installOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	install := renderInstall(t, installOpts)
+
+	flagSet.Set("config", filepath.Join("testdata", "addon_config_overwrite.yaml"))
+	flagSet.Set("trace-collector", "overwrite-collector")
+	flagSet.Set("trace-collector-svc-account", "overwrite-collector.default")
+
+	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,13 +343,7 @@ func TestUpgradeOverwriteTracingAddon(t *testing.T) {
 	expectedManifests := parseManifestList(expected)
 	upgradeManifests := parseManifestList(upgrade.String())
 	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
-	tracingManifests := []string{
-		"ConfigMap/linkerd-config-addons",
-		"Service/overwrite-collector", "ConfigMap/overwrite-collector-config",
-		"ServiceAccount/overwrite-collector", "Deployment/overwrite-collector",
-		"Service/linkerd-collector", "ConfigMap/linkerd-collector-config",
-		"ServiceAccount/linkerd-collector", "Deployment/linkerd-collector",
-	}
+	tracingManifests := []string{"Deployment/linkerd-collector"}
 	for _, id := range tracingManifests {
 		if _, ok := diffMap[id]; ok {
 			delete(diffMap, id)
@@ -329,40 +353,100 @@ func TestUpgradeOverwriteTracingAddon(t *testing.T) {
 	}
 	for id, diffs := range diffMap {
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
 }
 
-func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+// this test constructs a set of secrets resources
+func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
+	installOpts, upgradeOpts, _ := testOptions(t)
 
-	// This tests the case where the webhook certs are not self-signed.
-	values := installValues(t, installOpts, installFlags)
 	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
 	defer injectorCerts.cleanup()
-	values.ProxyInjector.TLS = &linkerd2.TLS{
+	installOpts.ProxyInjector.TLS = &linkerd2.TLS{
 		CaBundle: injectorCerts.ca,
 		CrtPEM:   injectorCerts.crt,
 		KeyPEM:   injectorCerts.key,
 	}
 	tapCerts := generateCerts(t, "linkerd-tap.linkerd.svc", false)
 	defer tapCerts.cleanup()
-	values.Tap.TLS = &linkerd2.TLS{
+	installOpts.Tap.TLS = &linkerd2.TLS{
 		CaBundle: tapCerts.ca,
 		CrtPEM:   tapCerts.crt,
 		KeyPEM:   tapCerts.key,
 	}
 	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
 	defer validatorCerts.cleanup()
-	values.ProfileValidator.TLS = &linkerd2.TLS{
+	installOpts.ProfileValidator.TLS = &linkerd2.TLS{
 		CaBundle: validatorCerts.ca,
 		CrtPEM:   validatorCerts.crt,
 		KeyPEM:   validatorCerts.key,
 	}
 
-	install := renderInstall(t, values)
-	upgrade, err := renderUpgrade(t, install.String(), upgradeOpts, upgradeFlags)
+	rendered := renderInstall(t, installOpts)
+	expected := replaceVersions(rendered.String())
+
+	// switch back to old tls secret names.
+	install := replaceK8sSecrets(expected)
+
+	upgrade, err := renderUpgrade(install, upgradeOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
+		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+}
+
+func replaceK8sSecrets(input string) string {
+	manifest := strings.ReplaceAll(input, "kubernetes.io/tls", "Opaque")
+	manifest = strings.ReplaceAll(manifest, "tls.key", "key.pem")
+	manifest = strings.ReplaceAll(manifest, "tls.crt", "crt.pem")
+	manifest = strings.ReplaceAll(manifest, "linkerd-proxy-injector-k8s-tls", "linkerd-proxy-injector-tls")
+	manifest = strings.ReplaceAll(manifest, "linkerd-tap-k8s-tls", "linkerd-tap-tls")
+	manifest = strings.ReplaceAll(manifest, "linkerd-sp-validator-k8s-tls", "linkerd-sp-validator-tls")
+	return manifest
+}
+
+func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
+	installOpts, upgradeOpts, _ := testOptions(t)
+
+	// This tests the case where the webhook certs are not self-signed.
+	injectorCerts := generateCerts(t, "linkerd-proxy-injector.linkerd.svc", false)
+	defer injectorCerts.cleanup()
+	installOpts.ProxyInjector.TLS = &linkerd2.TLS{
+		CaBundle: injectorCerts.ca,
+		CrtPEM:   injectorCerts.crt,
+		KeyPEM:   injectorCerts.key,
+	}
+	tapCerts := generateCerts(t, "linkerd-tap.linkerd.svc", false)
+	defer tapCerts.cleanup()
+	installOpts.Tap.TLS = &linkerd2.TLS{
+		CaBundle: tapCerts.ca,
+		CrtPEM:   tapCerts.crt,
+		KeyPEM:   tapCerts.key,
+	}
+	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
+	defer validatorCerts.cleanup()
+	installOpts.ProfileValidator.TLS = &linkerd2.TLS{
+		CaBundle: validatorCerts.ca,
+		CrtPEM:   validatorCerts.crt,
+		KeyPEM:   validatorCerts.key,
+	}
+
+	install := renderInstall(t, installOpts)
+	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,16 +455,29 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
 }
 
 func TestUpgradeWithAddonDisabled(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installOpts, upgradeOpts, _ := testOptions(t)
 
-	installOpts.addOnConfig = filepath.Join("testdata", "grafana_disabled.yaml")
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	installAddons, err := ioutil.ReadFile(filepath.Join("testdata", "grafana_disabled.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = yaml.Unmarshal(installAddons, installOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	install := renderInstall(t, installOpts)
+	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -389,17 +486,32 @@ func TestUpgradeWithAddonDisabled(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
 	}
 }
 
 func TestUpgradeEnableAddon(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installOpts, upgradeOpts, flagSet := testOptions(t)
 
-	installOpts.addOnConfig = filepath.Join("testdata", "grafana_disabled.yaml")
-	upgradeOpts.addOnConfig = filepath.Join("testdata", "grafana_enabled.yaml")
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	installAddons, err := ioutil.ReadFile(filepath.Join("testdata", "grafana_disabled.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = yaml.Unmarshal(installAddons, installOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	install := renderInstall(t, installOpts)
+
+	flagSet.Set("config", filepath.Join("testdata", "grafana_enabled.yaml"))
+
+	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -409,7 +521,7 @@ func TestUpgradeEnableAddon(t *testing.T) {
 	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
 	addonManifests := []string{
 		"ServiceAccount/linkerd-grafana", "Deployment/linkerd-grafana", "Service/linkerd-grafana",
-		"ConfigMap/linkerd-grafana-config", "ConfigMap/linkerd-config-addons",
+		"ConfigMap/linkerd-grafana-config",
 	}
 	for _, id := range addonManifests {
 		if _, ok := diffMap[id]; ok {
@@ -420,6 +532,9 @@ func TestUpgradeEnableAddon(t *testing.T) {
 	}
 	for id, diffs := range diffMap {
 		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
 			if id == "RoleBinding/linkerd-psp" && pathMatch(diff.path, []string{"subjects"}) {
 				continue
 			}
@@ -432,11 +547,23 @@ func TestUpgradeEnableAddon(t *testing.T) {
 }
 
 func TestUpgradeRemoveAddonKeys(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
+	installOpts, upgradeOpts, flagSet := testOptions(t)
 
-	installOpts.addOnConfig = filepath.Join("testdata", "grafana_enabled_resources.yaml")
-	upgradeOpts.addOnConfig = filepath.Join("testdata", "grafana_enabled.yaml")
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
+	installAddons, err := ioutil.ReadFile(filepath.Join("testdata", "grafana_enabled_resources.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = yaml.Unmarshal(installAddons, installOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	install := renderInstall(t, installOpts)
+
+	flagSet.Set("config", filepath.Join("testdata", "grafana_enabled.yaml"))
+
+	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -445,33 +572,7 @@ func TestUpgradeRemoveAddonKeys(t *testing.T) {
 	upgradeManifests := parseManifestList(upgrade.String())
 	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
 		for _, diff := range diffs {
-			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
-		}
-	}
-}
-
-func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
-	installOpts, installFlags, upgradeOpts, upgradeFlags := testOptionsAndFlags(t)
-
-	installOpts.addOnConfig = filepath.Join("testdata", "grafana_enabled_resources.yaml")
-	upgradeOpts.addOnConfig = filepath.Join("testdata", "grafana_enabled.yaml")
-	upgradeOpts.addOnOverwrite = true
-	install, upgrade, err := renderInstallAndUpgrade(t, installOpts, installFlags, upgradeOpts, upgradeFlags)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := replaceVersions(install.String())
-	expectedManifests := parseManifestList(expected)
-	upgradeManifests := parseManifestList(upgrade.String())
-	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
-	if _, ok := diffMap["ConfigMap/linkerd-config-addons"]; ok {
-		delete(diffMap, "ConfigMap/linkerd-config-addons")
-	} else {
-		t.Error("Expected ConfigMap/linkerd-config-addons in upgrade output diff but was absent")
-	}
-	for id, diffs := range diffMap {
-		for _, diff := range diffs {
-			if id == "Deployment/linkerd-grafana" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "resources"}) {
+			if ignorableDiff(id, diff) {
 				continue
 			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
@@ -479,31 +580,90 @@ func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
 	}
 }
 
-/* Helpers */
+func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
+	installOpts, upgradeOpts, flagSet := testOptions(t)
 
-func testUpgradeOptions() (*upgradeOptions, error) {
-	o, err := newUpgradeOptionsWithDefaults()
+	installAddons, err := ioutil.ReadFile(filepath.Join("testdata", "grafana_enabled_resources.yaml"))
 	if err != nil {
-		return nil, err
+		t.Fatal(err)
 	}
 
-	o.controlPlaneVersion = upgradeControlPlaneVersion
-	o.proxyVersion = upgradeProxyVersion
-	o.debugImageVersion = upgradeDebugVersion
-	o.heartbeatSchedule = fakeHeartbeatSchedule
-	return o, nil
+	err = yaml.Unmarshal(installAddons, installOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	install := renderInstall(t, installOpts)
+
+	flagSet.Set("config", filepath.Join("testdata", "grafana_enabled.yaml"))
+	flagSet.Set("addon-overwrite", "true")
+
+	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := replaceVersions(install.String())
+	expectedManifests := parseManifestList(expected)
+	upgradeManifests := parseManifestList(upgrade.String())
+	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
+
+	resourceDiffFound := false
+	for id, diffs := range diffMap {
+		for _, diff := range diffs {
+			if ignorableDiff(id, diff) {
+				continue
+			}
+			if id == "Deployment/linkerd-grafana" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "resources"}) {
+				resourceDiffFound = true
+				continue
+			}
+			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
+		}
+	}
+	if !resourceDiffFound {
+		t.Error("Expected grafana resources requirements to be removed, but were not")
+	}
 }
 
-func testOptionsAndFlags(t *testing.T) (*installOptions, *pflag.FlagSet, *upgradeOptions, *pflag.FlagSet) {
-	installOpts, err := testInstallOptions()
+/* Helpers */
+
+func testUpgradeOptions() ([]flag.Flag, *pflag.FlagSet, error) {
+	defaults, err := charts.NewValues(false)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	allStageFlags, allStageFlagSet := makeAllStageFlags(defaults)
+	installUpgradeFlags, installUpgradeFlagSet, err := makeInstallUpgradeFlags(defaults)
+	if err != nil {
+		return nil, nil, err
+	}
+	proxyFlags, proxyFlagSet := makeProxyFlags(defaults)
+	upgradeFlagSet := makeUpgradeFlags()
+
+	flags := flattenFlags(allStageFlags, installUpgradeFlags, proxyFlags)
+	flagSet := pflag.NewFlagSet("upgrade", pflag.ExitOnError)
+	flagSet.AddFlagSet(allStageFlagSet)
+	flagSet.AddFlagSet(installUpgradeFlagSet)
+	flagSet.AddFlagSet(proxyFlagSet)
+	flagSet.AddFlagSet(upgradeFlagSet)
+
+	flagSet.Set("control-plane-version", upgradeControlPlaneVersion)
+	flagSet.Set("proxy-version", upgradeProxyVersion)
+
+	return flags, flagSet, nil
+}
+
+func testOptions(t *testing.T) (*charts.Values, []flag.Flag, *pflag.FlagSet) {
+	installValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("failed to create install options: %s", err)
 	}
-	upgradeOpts, err := testUpgradeOptions()
+	upgradeFlags, upgradeFlagSet, err := testUpgradeOptions()
 	if err != nil {
 		t.Fatalf("failed to create upgrade options: %s", err)
 	}
-	return installOpts, installOpts.recordableFlagSet(), upgradeOpts, upgradeOpts.recordableFlagSet()
+	return installValues, upgradeFlags, upgradeFlagSet
 }
 
 func replaceVersions(manifest string) string {
@@ -514,7 +674,7 @@ func replaceVersions(manifest string) string {
 }
 
 func generateIssuerCerts(t *testing.T, b64encode bool) issuerCerts {
-	return generateCerts(t, "issuer", b64encode)
+	return generateCerts(t, "identity.linkerd.cluster.local", b64encode)
 }
 
 func generateCerts(t *testing.T, name string, b64encode bool) issuerCerts {
@@ -620,7 +780,7 @@ spec:
     - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
       value: |
 %s
-    image: gcr.io/linkerd-io/proxy:some-version
+    image: ghcr.io/linkerd/proxy:some-version
     name: linkerd-proxy
 `, indentLines(certs.ca, "        "))
 }
@@ -642,46 +802,63 @@ func pathMatch(path []string, template []string) bool {
 	return true
 }
 
-func installValues(t *testing.T, installOpts *installOptions, installFlags *pflag.FlagSet) *linkerd2.Values {
-	installValues, _, err := installOpts.validateAndBuild("", installFlags)
-	if err != nil {
-		t.Fatalf("Unexpected error validating install options: %v", err)
-	}
-	return installValues
-}
-
 func renderInstall(t *testing.T, values *linkerd2.Values) bytes.Buffer {
 	var installBuf bytes.Buffer
-	if err := render(&installBuf, values); err != nil {
+	if err := render(&installBuf, values, ""); err != nil {
 		t.Fatalf("could not render install manifests: %s", err)
 	}
 	return installBuf
 }
 
-func renderUpgrade(t *testing.T, installManifest string, upgradeOpts *upgradeOptions, upgradeFlags *pflag.FlagSet) (bytes.Buffer, error) {
-	manifests := splitManifests(installManifest)
-	clientset, err := k8s.NewFakeAPI(manifests...)
-	if err != nil {
-		t.Fatalf("could not initialize fake k8s API: %s", err)
-	}
-
-	upgradeValues, err := upgradeOpts.validateAndBuild("", clientset, upgradeFlags)
-
+func renderUpgrade(installManifest string, upgradeOpts []flag.Flag) (bytes.Buffer, error) {
+	k, err := k8s.NewFakeAPIFromManifests([]io.Reader{strings.NewReader(installManifest)})
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
 
-	var upgradeBuf bytes.Buffer
-	err = render(&upgradeBuf, upgradeValues)
-	if err != nil {
-		t.Fatalf("could not render upgrade configuration: %s", err)
-	}
-
-	return upgradeBuf, nil
+	return upgrade(context.Background(), k, upgradeOpts, "")
 }
 
-func renderInstallAndUpgrade(t *testing.T, installOpts *installOptions, installFlags *pflag.FlagSet, upgradeOpts *upgradeOptions, upgradeFlags *pflag.FlagSet) (bytes.Buffer, bytes.Buffer, error) {
-	installBuf := renderInstall(t, installValues(t, installOpts, installFlags))
-	upgradeBuf, err := renderUpgrade(t, installBuf.String(), upgradeOpts, upgradeFlags)
+func renderInstallAndUpgrade(t *testing.T, installOpts *charts.Values, upgradeOpts []flag.Flag) (bytes.Buffer, bytes.Buffer, error) {
+	err := validateValues(context.Background(), nil, installOpts)
+	if err != nil {
+		return bytes.Buffer{}, bytes.Buffer{}, err
+	}
+	installBuf := renderInstall(t, installOpts)
+	upgradeBuf, err := renderUpgrade(installBuf.String(), upgradeOpts)
 	return installBuf, upgradeBuf, err
+}
+
+// Certain resources are expected to change during an upgrade. We can safely
+// ignore these diffs in every test.
+func ignorableDiff(id string, diff diff) bool {
+	if id == overridesSecret {
+		// The config overrides will always change because at least the control
+		// plane and proxy versions will change.
+		return true
+	}
+	if id == linkerdConfigMap {
+		// The linkerd-config values will always change because at least the control
+		// plane and proxy versions will change.
+		return true
+	}
+	if (strings.HasPrefix(id, "MutatingWebhookConfiguration") || strings.HasPrefix(id, "ValidatingWebhookConfiguration")) &&
+		pathMatch(diff.path, []string{"webhooks", "*", "clientConfig", "caBundle"}) {
+		// Webhook TLS chains are regenerated upon upgrade so we expect the
+		// caBundle to change.
+		return true
+	}
+	if strings.HasPrefix(id, "APIService") &&
+		pathMatch(diff.path, []string{"spec", "caBundle"}) {
+		// APIService TLS chains are regenerated upon upgrade so we expect the
+		// caBundle to change.
+		return true
+	}
+	if id == "Secret/linkerd-proxy-injector-tls" || id == "Secret/linkerd-sp-validator-tls" ||
+		id == "Secret/linkerd-tap-tls" || id == "Secret/linkerd-sp-validator-k8s-tls" ||
+		id == "Secret/linkerd-proxy-injector-k8s-tls" || id == "Secret/linkerd-tap-k8s-tls" {
+		// Webhook and APIService TLS chains are regenerated upon upgrade.
+		return true
+	}
+	return false
 }

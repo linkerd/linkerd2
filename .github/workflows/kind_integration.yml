@@ -17,6 +17,7 @@ jobs:
       matrix:
         target: [proxy, controller, web, cni-plugin, debug, cli-bin, grafana]
     name: Docker build (${{ matrix.target }})
+    timeout-minutes: 30
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -24,11 +25,11 @@ jobs:
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
-        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+        echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
 
         . bin/_docker.sh
-        echo ::set-env name=DOCKER_REGISTRY::$DOCKER_REGISTRY
-        echo ::set-env name=DOCKER_BUILDKIT_CACHE::${{ runner.temp }}/.buildx-cache
+        echo "DOCKER_REGISTRY=$DOCKER_REGISTRY" >> $GITHUB_ENV
+        echo "DOCKER_BUILDKIT_CACHE=${{ runner.temp }}/.buildx-cache" >> $GITHUB_ENV
     - name: Cache docker layers
       # actions/cache@v2.0.0
       uses: actions/cache@b820478
@@ -72,6 +73,7 @@ jobs:
     name: Static CLI tests (windows)
     runs-on: windows-latest
     needs: [docker_build]
+    timeout-minutes: 30
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -101,12 +103,15 @@ jobs:
         - external-issuer
         - helm-deep
         - helm-upgrade
+        - multicluster
         - uninstall
         - upgrade-edge
         - upgrade-stable
+        - cni-calico-deep
     needs: [docker_build]
     name: Integration tests (${{ matrix.integration_test }})
     runs-on: ubuntu-18.04
+    timeout-minutes: 30
     steps:
     - name: Checkout code
       # actions/checkout@v2
@@ -122,10 +127,10 @@ jobs:
     - name: Set environment variables from scripts
       run: |
         . bin/_tag.sh
-        echo ::set-env name=TAG::$(CI_FORCE_CLEAN=1 bin/root-tag)
+        echo "TAG=$(CI_FORCE_CLEAN=1 bin/root-tag)" >> $GITHUB_ENV
 
         . bin/_docker.sh
-        echo ::set-env name=DOCKER_REGISTRY::$DOCKER_REGISTRY
+        echo "DOCKER_REGISTRY=$DOCKER_REGISTRY" >> $GITHUB_ENV
     - name: Download image archives
       # actions/download-artifact@v1
       uses: actions/download-artifact@18f0f59
@@ -143,4 +148,4 @@ jobs:
         [[ "$TAG" == "$($HOME/.linkerd version --short --client)" ]]
     - name: Run integration tests
       run: |
-        bin/tests --images --name ${{ matrix.integration_test }} "$HOME/.linkerd"
+        bin/tests --images archive --name ${{ matrix.integration_test }} "$HOME/.linkerd"

@@ -1,6 +1,7 @@
 package issuercerts
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"fmt"
@@ -27,8 +28,8 @@ type IssuerCertData struct {
 }
 
 // FetchIssuerData fetches the issuer data from the linkerd-identity-issuer secrets (used for linkerd.io/tls schemed secrets)
-func FetchIssuerData(api kubernetes.Interface, trustAnchors, controlPlaneNamespace string) (*IssuerCertData, error) {
-	secret, err := api.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
+func FetchIssuerData(ctx context.Context, api kubernetes.Interface, trustAnchors, controlPlaneNamespace string) (*IssuerCertData, error) {
+	secret, err := api.CoreV1().Secrets(controlPlaneNamespace).Get(ctx, k8s.IdentityIssuerSecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -43,12 +44,17 @@ func FetchIssuerData(api kubernetes.Interface, trustAnchors, controlPlaneNamespa
 		return nil, fmt.Errorf(keyMissingError, k8s.IdentityIssuerKeyName, "issuer key", k8s.IdentityIssuerSecretName, true)
 	}
 
-	return &IssuerCertData{trustAnchors, string(crt), string(key), nil}, nil
+	cert, err := tls.DecodePEMCrt(string(crt))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse issuer certificate: %w", err)
+	}
+
+	return &IssuerCertData{trustAnchors, string(crt), string(key), &cert.Certificate.NotAfter}, nil
 }
 
 // FetchExternalIssuerData fetches the issuer data from the linkerd-identity-issuer secrets (used for kubernetes.io/tls schemed secrets)
-func FetchExternalIssuerData(api kubernetes.Interface, controlPlaneNamespace string) (*IssuerCertData, error) {
-	secret, err := api.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
+func FetchExternalIssuerData(ctx context.Context, api kubernetes.Interface, controlPlaneNamespace string) (*IssuerCertData, error) {
+	secret, err := api.CoreV1().Secrets(controlPlaneNamespace).Get(ctx, k8s.IdentityIssuerSecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +74,12 @@ func FetchExternalIssuerData(api kubernetes.Interface, controlPlaneNamespace str
 		return nil, fmt.Errorf(keyMissingError, corev1.TLSPrivateKeyKey, "issuer key", k8s.IdentityIssuerSecretName, true)
 	}
 
-	return &IssuerCertData{string(anchors), string(crt), string(key), nil}, nil
+	cert, err := tls.DecodePEMCrt(string(crt))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse issuer certificate: %w", err)
+	}
+
+	return &IssuerCertData{string(anchors), string(crt), string(key), &cert.Certificate.NotAfter}, nil
 }
 
 // LoadIssuerCrtAndKeyFromFiles loads the issuer certificate and key from files

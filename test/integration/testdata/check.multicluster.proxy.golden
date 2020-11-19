@@ -40,6 +40,15 @@ linkerd-identity
 √ issuer cert is valid for at least 60 days
 √ issuer cert is issued by the trust anchor
 
+linkerd-webhooks-and-apisvc-tls
+-------------------------------
+√ tap API server has valid cert
+√ tap API server cert is valid for at least 60 days
+√ proxy-injector webhook has valid cert
+√ proxy-injector cert is valid for at least 60 days
+√ sp-validator webhook has valid cert
+√ sp-validator cert is valid for at least 60 days
+
 linkerd-identity-data-plane
 ---------------------------
 √ data plane proxies certificate match CA
@@ -64,10 +73,6 @@ linkerd-data-plane
 √ data plane proxy metrics are present in Prometheus
 √ data plane is up-to-date
 √ data plane and cli versions match
-
-linkerd-addons
---------------
-√ 'linkerd-config-addons' config map exists
 
 linkerd-prometheus
 ------------------

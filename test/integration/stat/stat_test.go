@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -19,7 +20,7 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 //////////////////////
@@ -33,8 +34,9 @@ func TestMain(m *testing.M) {
 // failed attempts will eventually be recorded in the stats that we're
 // requesting, and the test will pass.
 func TestCliStatForLinkerdNamespace(t *testing.T) {
+	ctx := context.Background()
 
-	pods, err := TestHelper.GetPodNamesForDeployment(TestHelper.GetLinkerdNamespace(), "linkerd-prometheus")
+	pods, err := TestHelper.GetPodNamesForDeployment(ctx, TestHelper.GetLinkerdNamespace(), "linkerd-prometheus")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to get pods for prometheus",
 			"failed to get pods for prometheus: %s", err)
@@ -44,7 +46,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 	}
 	prometheusPod := pods[0]
 
-	pods, err = TestHelper.GetPodNamesForDeployment(TestHelper.GetLinkerdNamespace(), "linkerd-controller")
+	pods, err = TestHelper.GetPodNamesForDeployment(ctx, TestHelper.GetLinkerdNamespace(), "linkerd-controller")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "failed to get pods for controller",
 			"failed to get pods for controller: %s", err)
@@ -127,12 +129,11 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 				// Use a short time window so that transient errors at startup
 				// fall out of the window.
 				tt.args = append(tt.args, "-t", "30s")
-				out, stderr, err := TestHelper.LinkerdRun(tt.args...)
+				out, err := TestHelper.LinkerdRun(tt.args...)
 				if err != nil {
 					testutil.AnnotatedFatalf(t, "unexpected stat error",
 						"unexpected stat error: %s\n%s", err, out)
 				}
-				fmt.Println(stderr)
 
 				expectedColumnCount := 8
 				if tt.status != "" {

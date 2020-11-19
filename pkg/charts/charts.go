@@ -13,7 +13,7 @@ import (
 	"helm.sh/helm/v3/pkg/engine"
 )
 
-const versionPlaceholder = "{version}"
+const versionPlaceholder = "linkerdVersionValue"
 
 // Chart holds the necessary info to render a Helm chart
 type Chart struct {
@@ -94,6 +94,7 @@ func (c *Chart) Render() (bytes.Buffer, error) {
 		{Name: "charts/partials/templates/_affinity.tpl"},
 		{Name: "charts/partials/templates/_addons.tpl"},
 		{Name: "charts/partials/templates/_validate.tpl"},
+		{Name: "charts/partials/templates/_pull-secrets.tpl"},
 	}
 	return c.render(l5dPartials)
 }
@@ -103,6 +104,7 @@ func (c *Chart) RenderCNI() (bytes.Buffer, error) {
 	cniPartials := []*loader.BufferedFile{
 		{Name: "charts/partials/" + chartutil.ChartfileName},
 		{Name: "charts/partials/templates/_helpers.tpl"},
+		{Name: "charts/partials/templates/_pull-secrets.tpl"},
 	}
 	return c.render(cniPartials)
 }

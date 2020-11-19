@@ -3,19 +3,38 @@ installNamespace: true
 cniResourceLabel: linkerd.io/cni-resource
 inboundProxyPort: 4143
 outboundProxyPort: 4140
-ignoreInboundPorts: ""
-ignoreOutboundPorts: ""
+
+# Default set of ports to skip via itpables:
+# - SMTP (25,587) server-first
+# - HTTPS (443) opaque TLS
+# - MYSQL (3306) server-first
+# - Memcached (11211) clients do not issue any preamble, which breaks detection
+ignoreInboundPorts: "25,443,587,3306,11211"
+ignoreOutboundPorts: "25,443,587,3306,11211"
+
 createdByAnnotation: linkerd.io/created-by
-cniPluginImage:   "gcr.io/linkerd-io/cni-plugin"
+cniPluginImage: "ghcr.io/linkerd/cni-plugin"
 cniPluginVersion: linkerdVersionValue
-logLevel:         info
-portsToRedirect:  ""
-proxyUID:         2102
-destCNINetDir:    "/etc/cni/net.d"
-destCNIBinDir:    "/opt/cni/bin"
-useWaitFlag:      false
+logLevel: info
+portsToRedirect: ""
+proxyUID: 2102
+destCNINetDir: "/etc/cni/net.d"
+destCNIBinDir: "/opt/cni/bin"
+useWaitFlag: false
 priorityClassName: ""
 
 # namespace annotation and labels - do not edit
 proxyInjectAnnotation: linkerd.io/inject
 proxyInjectDisabled: disabled
+
+#
+## For Private docker registries, authentication is needed.
+# If the control plane service images are pulled from a
+# protected docker registry, define pull secrets as follows:
+#
+#imagePullSecrets:
+#    - name: my-private-docker-registry-login-secret
+#
+# The pull secrets are applied to the respective service accounts
+# which will further orchestrate the deployments.
+imagePullSecrets:

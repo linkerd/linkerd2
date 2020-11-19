@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -47,12 +48,14 @@ type (
 		OwnerKind         string
 		Identity          string
 		AuthorityOverride string
+		TopologyLabels    map[string]string
 	}
 
 	// AddressSet is a set of Address, indexed by ID.
 	AddressSet struct {
-		Addresses map[ID]Address
-		Labels    map[string]string
+		Addresses       map[ID]Address
+		Labels          map[string]string
+		TopologicalPref []string
 	}
 
 	portAndHostname struct {
@@ -88,7 +91,8 @@ type (
 		k8sAPI               *k8s.API
 		enableEndpointSlices bool
 
-		ports map[portAndHostname]*portPublisher
+		TopologyPref []string
+		ports        map[portAndHostname]*portPublisher
 		// All access to the servicePublisher and its portPublishers is explicitly synchronized by
 		// this mutex.
 		sync.Mutex
@@ -107,6 +111,7 @@ type (
 		log                  *logging.Entry
 		k8sAPI               *k8s.API
 		enableEndpointSlices bool
+		TopologyPref         []string
 
 		exists    bool
 		addresses AddressSet
@@ -393,6 +398,7 @@ func (ew *EndpointsWatcher) getOrNewServicePublisher(id ServiceID) *servicePubli
 				"svc":       id.Name,
 			}),
 			k8sAPI:               ew.k8sAPI,
+			TopologyPref:         make([]string, 0),
 			ports:                make(map[portAndHostname]*portPublisher),
 			enableEndpointSlices: ew.enableEndpointSlices,
 		}
@@ -462,12 +468,23 @@ func (sp *servicePublisher) updateService(newService *corev1.Service) {
 	defer sp.Unlock()
 	sp.log.Debugf("Updating service for %s", sp.id)
 
+	if sp.enableEndpointSlices {
+		sp.TopologyPref = make([]string, len(newService.Spec.TopologyKeys))
+		copy(sp.TopologyPref, newService.Spec.TopologyKeys)
+	}
+
 	for key, port := range sp.ports {
+		if sp.enableEndpointSlices {
+			port.TopologyPref = sp.TopologyPref
+			port.updateTopologyPreference()
+		}
+
 		newTargetPort := getTargetPort(newService, key.port)
 		if newTargetPort != port.targetPort {
 			port.updatePort(newTargetPort)
 		}
 	}
+
 }
 
 func (sp *servicePublisher) subscribe(srcPort Port, hostname string, listener EndpointUpdateListener) {
@@ -528,6 +545,7 @@ func (sp *servicePublisher) newPortPublisher(srcPort Port, hostname string) *por
 		log:                  log,
 		metrics:              endpointsVecs.newEndpointsMetrics(sp.metricsLabels(srcPort, hostname)),
 		enableEndpointSlices: sp.enableEndpointSlices,
+		TopologyPref:         sp.TopologyPref,
 	}
 
 	if port.enableEndpointSlices {
@@ -614,8 +632,9 @@ func (pp *portPublisher) addEndpointSlice(slice *discovery.EndpointSlice) {
 
 func (pp *portPublisher) updateEndpointSlice(oldSlice *discovery.EndpointSlice, newSlice *discovery.EndpointSlice) {
 	updatedAddressSet := AddressSet{
-		Addresses: make(map[ID]Address),
-		Labels:    pp.addresses.Labels,
+		Addresses:       make(map[ID]Address),
+		Labels:          pp.addresses.Labels,
+		TopologicalPref: pp.TopologyPref,
 	}
 
 	for id, address := range pp.addresses.Addresses {
@@ -715,6 +734,11 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 				identity := es.Annotations[consts.RemoteGatewayIdentity]
 				address, id := pp.newServiceRefAddress(resolvedPort, IPAddr, serviceID.Name, es.Namespace)
 				address.Identity, address.AuthorityOverride = authorityOverride, identity
+
+				for k, v := range endpoint.Topology {
+					address.TopologyLabels[k] = v
+				}
+
 				addresses[id] = address
 			}
 
@@ -728,14 +752,21 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
+
+				for k, v := range endpoint.Topology {
+					address.TopologyLabels[k] = v
+				}
+
 				addresses[id] = address
 			}
 		}
 
 	}
+
 	return AddressSet{
-		Addresses: addresses,
-		Labels:    metricLabels(es),
+		Addresses:       addresses,
+		Labels:          metricLabels(es),
+		TopologicalPref: pp.TopologyPref,
 	}
 }
 
@@ -773,8 +804,9 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 		}
 	}
 	return AddressSet{
-		Addresses: addresses,
-		Labels:    metricLabels(endpoints),
+		Addresses:       addresses,
+		Labels:          metricLabels(endpoints),
+		TopologicalPref: []string{},
 	}
 }
 
@@ -788,7 +820,7 @@ func (pp *portPublisher) newServiceRefAddress(endpointPort Port, endpointIP, ser
 		Namespace: serviceNamespace,
 	}
 
-	return Address{IP: endpointIP, Port: endpointPort}, id
+	return Address{IP: endpointIP, Port: endpointPort, TopologyLabels: make(map[string]string)}, id
 }
 
 func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName, podNamespace string) (Address, PodID, error) {
@@ -800,13 +832,14 @@ func (pp *portPublisher) newPodRefAddress(endpointPort Port, endpointIP, podName
 	if err != nil {
 		return Address{}, PodID{}, fmt.Errorf("unable to fetch pod %v:%v", id, err)
 	}
-	ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(pod, false)
+	ownerKind, ownerName := pp.k8sAPI.GetOwnerKindAndName(context.Background(), pod, false)
 	addr := Address{
-		IP:        endpointIP,
-		Port:      endpointPort,
-		Pod:       pod,
-		OwnerName: ownerName,
-		OwnerKind: ownerKind,
+		IP:             endpointIP,
+		Port:           endpointPort,
+		Pod:            pod,
+		TopologyLabels: make(map[string]string),
+		OwnerName:      ownerName,
+		OwnerKind:      ownerKind,
 	}
 
 	return addr, id, nil
@@ -867,6 +900,22 @@ func (pp *portPublisher) updatePort(targetPort namedPort) {
 		} else {
 			pp.log.Errorf("Unable to get endpoints during port update: %s", err)
 		}
+	}
+}
+
+// updateTopologyPreference is used when a service's topology preference changes. This method
+// propagates the changes to the portPublisher, the portPublisher's AddressSet and triggers
+// an (empty) update for all of its listeners to reflect the new preference changes.
+func (pp *portPublisher) updateTopologyPreference() {
+	pp.addresses.TopologicalPref = pp.TopologyPref
+
+	updatedAddrSet := AddressSet{
+		Addresses:       make(map[ID]Address),
+		Labels:          make(map[string]string),
+		TopologicalPref: pp.TopologyPref,
+	}
+	for _, listener := range pp.listeners {
+		listener.Add(updatedAddrSet)
 	}
 }
 
@@ -993,13 +1042,15 @@ func diffAddresses(oldAddresses, newAddresses AddressSet) (add, remove AddressSe
 		}
 	}
 	add = AddressSet{
-		Addresses: addAddresses,
-		Labels:    newAddresses.Labels,
+		Addresses:       addAddresses,
+		Labels:          newAddresses.Labels,
+		TopologicalPref: newAddresses.TopologicalPref,
 	}
 	remove = AddressSet{
-		Addresses: removeAddresses,
+		Addresses:       removeAddresses,
+		TopologicalPref: newAddresses.TopologicalPref,
 	}
-	return
+	return add, remove
 }
 
 func getEndpointSliceServiceID(es *discovery.EndpointSlice) (ServiceID, error) {

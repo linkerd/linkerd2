@@ -8,6 +8,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import TapLink from '../TapLink.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
+import { Trans } from '@lingui/macro';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
 import _has from 'lodash/has';
@@ -228,9 +229,9 @@ export const processTapEvent = jsonString => {
 
 const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
 const popoverSrcDstColumns = [
-  { title: 'Source', dataIndex: 'source' },
+  { title: <Trans>columnTitleSource</Trans>, dataIndex: 'source' },
   { title: '', key: 'arrow', render: () => <FontAwesomeIcon icon={faLongArrowAltRight} /> },
-  { title: 'Destination', dataIndex: 'destination' },
+  { title: <Trans>columnTitleDestination</Trans>, dataIndex: 'destination' },
 ];
 
 const getPodOwner = (labels, ResourceLink) => {
@@ -310,8 +311,8 @@ const popoverResourceTable = (d, ResourceLink) => { // eslint-disable-line no-un
 };
 
 export const directionColumn = d => (
-  <Tooltip title={d} placement="right">
-    <span>{d === 'INBOUND' ? 'FROM' : 'TO'}</span>
+  <Tooltip title={d === 'INBOUND' ? <Trans>tooltipInbound</Trans> : <Trans>tooltipOutbound</Trans>} placement="right">
+    <span>{d === 'INBOUND' ? <Trans>columnTitleFrom</Trans> : <Trans>columnTitleTo</Trans>}</span>
   </Tooltip>
 );
 

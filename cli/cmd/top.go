@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"sort"
@@ -355,7 +356,7 @@ func newCmdTop() *cobra.Command {
 				return err
 			}
 
-			return getTrafficByResourceFromAPI(k8sAPI, req, table)
+			return getTrafficByResourceFromAPI(cmd.Context(), k8sAPI, req, table)
 		},
 	}
 
@@ -382,8 +383,8 @@ func newCmdTop() *cobra.Command {
 	return cmd
 }
 
-func getTrafficByResourceFromAPI(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, table *topTable) error {
-	reader, body, err := tap.Reader(k8sAPI, req, 0)
+func getTrafficByResourceFromAPI(ctx context.Context, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, table *topTable) error {
+	reader, body, err := tap.Reader(ctx, k8sAPI, req)
 	if err != nil {
 		return err
 	}
@@ -434,7 +435,7 @@ func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- *pb.TapEvent, closin
 		if err != nil {
 			if err == io.EOF {
 				fmt.Println("Tap stream terminated")
-			} else if !strings.HasSuffix(err.Error(), "http2: response body closed") {
+			} else if !strings.HasSuffix(err.Error(), tap.ErrClosedResponseBody) {
 				fmt.Println(err.Error())
 			}
 

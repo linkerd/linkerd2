@@ -13,10 +13,8 @@ import (
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"google.golang.org/grpc"
@@ -33,7 +31,6 @@ type MockAPIClient struct {
 	TopRoutesResponseToReturn      *pb.TopRoutesResponse
 	EdgesResponseToReturn          *pb.EdgesResponse
 	SelfCheckResponseToReturn      *healthcheckPb.SelfCheckResponse
-	ConfigResponseToReturn         *configPb.All
 	APITapClientToReturn           pb.Api_TapClient
 	APITapByResourceClientToReturn pb.Api_TapByResourceClient
 	DestinationGetClientToReturn   destinationPb.Destination_GetClient
@@ -98,11 +95,6 @@ func (c *MockAPIClient) GetProfile(ctx context.Context, _ *destinationPb.GetDest
 // SelfCheck provides a mock of a Public API method.
 func (c *MockAPIClient) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
 	return c.SelfCheckResponseToReturn, c.ErrorToReturn
-}
-
-// Config provides a mock of a Public API method.
-func (c *MockAPIClient) Config(ctx context.Context, in *pb.Empty, _ ...grpc.CallOption) (*configPb.All, error) {
-	return c.ConfigResponseToReturn, c.ErrorToReturn
 }
 
 // MockDestinationGetClient satisfies the Destination_GetClient gRPC interface.
@@ -185,7 +177,7 @@ type PodCounts struct {
 }
 
 // Query performs a query for the given time.
-func (m *MockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, api.Warnings, error) {
+func (m *MockProm) Query(ctx context.Context, query string, ts time.Time) (model.Value, promv1.Warnings, error) {
 	m.rwLock.Lock()
 	defer m.rwLock.Unlock()
 	m.QueriesExecuted = append(m.QueriesExecuted, query)
@@ -193,7 +185,7 @@ func (m *MockProm) Query(ctx context.Context, query string, ts time.Time) (model
 }
 
 // QueryRange performs a query for the given range.
-func (m *MockProm) QueryRange(ctx context.Context, query string, r promv1.Range) (model.Value, api.Warnings, error) {
+func (m *MockProm) QueryRange(ctx context.Context, query string, r promv1.Range) (model.Value, promv1.Warnings, error) {
 	m.rwLock.Lock()
 	defer m.rwLock.Unlock()
 	m.QueriesExecuted = append(m.QueriesExecuted, query)
@@ -233,12 +225,12 @@ func (m *MockProm) Flags(ctx context.Context) (promv1.FlagsResult, error) {
 }
 
 // LabelValues performs a query for the values of the given label.
-func (m *MockProm) LabelValues(ctx context.Context, label string) (model.LabelValues, api.Warnings, error) {
+func (m *MockProm) LabelValues(ctx context.Context, label string, startTime time.Time, endTime time.Time) (model.LabelValues, promv1.Warnings, error) {
 	return nil, nil, nil
 }
 
 // Series finds series by label matchers.
-func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, api.Warnings, error) {
+func (m *MockProm) Series(ctx context.Context, matches []string, startTime time.Time, endTime time.Time) ([]model.LabelSet, promv1.Warnings, error) {
 	return nil, nil, nil
 }
 
@@ -256,8 +248,18 @@ func (m *MockProm) Targets(ctx context.Context) (promv1.TargetsResult, error) {
 }
 
 // LabelNames returns all the unique label names present in the block in sorted order.
-func (m *MockProm) LabelNames(ctx context.Context) ([]string, api.Warnings, error) {
+func (m *MockProm) LabelNames(ctx context.Context, startTime time.Time, endTime time.Time) ([]string, promv1.Warnings, error) {
 	return []string{}, nil, nil
+}
+
+// Runtimeinfo returns the runtime info about Prometheus
+func (m *MockProm) Runtimeinfo(ctx context.Context) (promv1.RuntimeinfoResult, error) {
+	return promv1.RuntimeinfoResult{}, nil
+}
+
+// Metadata returns the metadata of the specified metric
+func (m *MockProm) Metadata(ctx context.Context, metric string, limit string) (map[string][]promv1.Metadata, error) {
+	return nil, nil
 }
 
 // Rules returns a list of alerting and recording rules that are currently loaded.

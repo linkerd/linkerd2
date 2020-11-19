@@ -2,6 +2,7 @@ package edges
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -18,7 +19,7 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 // TestEdges requires that there has been traffic recently between linkerd-web
@@ -37,9 +38,9 @@ func TestEdges(t *testing.T) {
 		"deploy",
 		"-ojson",
 	}
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		t.Fatalf("Unexpected error: %v\nError output: %s", err, stderr)
+		t.Fatal(err)
 	}
 
 	tpl := template.Must(template.ParseFiles("testdata/linkerd_edges.golden"))
@@ -60,111 +61,109 @@ func TestEdges(t *testing.T) {
 // sends traffic directly to the pod ip of the terminus pod.
 func TestDirectEdges(t *testing.T) {
 
+	ctx := context.Background()
 	// setup
+	TestHelper.WithDataPlaneNamespace(ctx, "direct-edges-test", map[string]string{}, t, func(t *testing.T, testNamespace string) {
 
-	testNamespace := TestHelper.GetTestNamespace("direct-edges-test")
-	err := TestHelper.CreateDataPlaneNamespaceIfNotExists(testNamespace, nil)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "failed to create namespace", "failed to create %s namespace: %s", testNamespace, err)
-	}
+		// inject terminus
 
-	// inject terminus
-
-	out, stderr, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/terminus.yaml")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "'linkerd inject' command failed with %s: %s\n", err, stderr)
-	}
-
-	// deploy terminus
-
-	out, err = TestHelper.KubectlApply(out, testNamespace)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "kubectl apply command failed", "kubectl apply command failed\n%s", out)
-	}
-
-	if err := TestHelper.CheckPods(testNamespace, "terminus", 1); err != nil {
-		if rce, ok := err.(*testutil.RestartCountError); ok {
-			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-		} else {
-			testutil.AnnotatedError(t, "CheckPods timed-out", err)
-		}
-	}
-
-	if err := TestHelper.CheckDeployment(testNamespace, "terminus", 1); err != nil {
-		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", "terminus", err)
-	}
-
-	// get terminus pod ip
-
-	ip, err := TestHelper.Kubectl("", "-n", testNamespace, "get", "pod", "-ojsonpath=\"{.items[*].status.podIP}\"")
-	if err != nil {
-		testutil.AnnotatedError(t, "'kubectl get pod' command failed", err)
-	}
-	ip = strings.Trim(ip, "\"") // strip quotes
-
-	b, err := ioutil.ReadFile("testdata/slow-cooker.yaml")
-	if err != nil {
-		testutil.AnnotatedError(t, "error reading file slow-cooker.yaml", err)
-	}
-
-	slowcooker := string(b)
-	slowcooker = strings.ReplaceAll(slowcooker, "___TERMINUS_POD_IP___", ip)
-
-	// inject slow cooker
-
-	out, stderr, err = TestHelper.PipeToLinkerdRun(slowcooker, "inject", "--manual", "-")
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd 'inject' command failed", "'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
-	}
-
-	// deploy slow cooker
-
-	out, err = TestHelper.KubectlApply(out, testNamespace)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, "kubectl apply command failed", "kubectl apply command failed\n%s", out)
-	}
-
-	if err := TestHelper.CheckPods(testNamespace, "slow-cooker", 1); err != nil {
-		if rce, ok := err.(*testutil.RestartCountError); ok {
-			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
-		} else {
-			testutil.AnnotatedError(t, "CheckPods timed-out", err)
-		}
-	}
-
-	if err := TestHelper.CheckDeployment(testNamespace, "slow-cooker", 1); err != nil {
-		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "error validating deployment [%s]:\n%s", "terminus", err)
-	}
-
-	// check edges
-	timeout := 50 * time.Second
-	err = TestHelper.RetryFor(timeout, func() error {
-		out, stderr, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "edges", "deploy")
+		out, err := TestHelper.LinkerdRun("inject", "--manual", "testdata/terminus.yaml")
 		if err != nil {
-			return fmt.Errorf("linkerd %s command failed with %s: %s", "edges", err, stderr)
+			testutil.AnnotatedFatalf(t, "'linkerd inject' command failed", "'linkerd inject' command failed: %s", err)
 		}
 
-		tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
-		vars := struct {
-			Ns        string
-			ControlNs string
-		}{
-			testNamespace,
-			TestHelper.GetLinkerdNamespace(),
-		}
-		var buf bytes.Buffer
-		if err := tpl.Execute(&buf, vars); err != nil {
-			return fmt.Errorf("failed to parse direct_edges.golden template: %s", err)
+		// deploy terminus
+
+		out, err = TestHelper.KubectlApply(out, testNamespace)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "kubectl apply command failed", "kubectl apply command failed\n%s", out)
 		}
 
-		r := regexp.MustCompile(buf.String())
-		if !r.MatchString(out) {
-			return fmt.Errorf("Expected output:\n%s\nactual:\n%s", buf.String(), out)
+		if err := TestHelper.CheckPods(ctx, testNamespace, "terminus", 1); err != nil {
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			}
 		}
-		return nil
+
+		if err := TestHelper.CheckDeployment(ctx, testNamespace, "terminus", 1); err != nil {
+			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", "terminus", err)
+		}
+
+		// get terminus pod ip
+
+		ip, err := TestHelper.Kubectl("", "-n", testNamespace, "get", "pod", "-ojsonpath=\"{.items[*].status.podIP}\"")
+		if err != nil {
+			testutil.AnnotatedError(t, "'kubectl get pod' command failed", err)
+		}
+		ip = strings.Trim(ip, "\"") // strip quotes
+
+		b, err := ioutil.ReadFile("testdata/slow-cooker.yaml")
+		if err != nil {
+			testutil.AnnotatedError(t, "error reading file slow-cooker.yaml", err)
+		}
+
+		slowcooker := string(b)
+		slowcooker = strings.ReplaceAll(slowcooker, "___TERMINUS_POD_IP___", ip)
+
+		// inject slow cooker
+
+		out, stderr, err := TestHelper.PipeToLinkerdRun(slowcooker, "inject", "--manual", "-")
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'linkerd 'inject' command failed", "'linkerd %s' command failed with %s: %s\n", "inject", err.Error(), stderr)
+		}
+
+		// deploy slow cooker
+
+		out, err = TestHelper.KubectlApply(out, testNamespace)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "kubectl apply command failed", "kubectl apply command failed\n%s", out)
+		}
+
+		if err := TestHelper.CheckPods(ctx, testNamespace, "slow-cooker", 1); err != nil {
+			if rce, ok := err.(*testutil.RestartCountError); ok {
+				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+			} else {
+				testutil.AnnotatedError(t, "CheckPods timed-out", err)
+			}
+		}
+
+		if err := TestHelper.CheckDeployment(ctx, testNamespace, "slow-cooker", 1); err != nil {
+			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "error validating deployment [%s]:\n%s", "terminus", err)
+		}
+
+		// check edges
+		timeout := 50 * time.Second
+		err = TestHelper.RetryFor(timeout, func() error {
+			out, err = TestHelper.LinkerdRun("-n", testNamespace, "-o", "json", "edges", "deploy")
+			if err != nil {
+				return err
+			}
+
+			tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
+			vars := struct {
+				Ns        string
+				ControlNs string
+			}{
+				testNamespace,
+				TestHelper.GetLinkerdNamespace(),
+			}
+			var buf bytes.Buffer
+			if err := tpl.Execute(&buf, vars); err != nil {
+				return fmt.Errorf("failed to parse direct_edges.golden template: %s", err)
+			}
+
+			r := regexp.MustCompile(buf.String())
+			if !r.MatchString(out) {
+				return fmt.Errorf("Expected output:\n%s\nactual:\n%s", buf.String(), out)
+			}
+			return nil
+		})
+
+		if err != nil {
+			testutil.AnnotatedError(t, fmt.Sprintf("timed-out checking edges (%s)", timeout), err)
+		}
 	})
 
-	if err != nil {
-		testutil.AnnotatedError(t, fmt.Sprintf("timed-out checking edges (%s)", timeout), err)
-	}
 }

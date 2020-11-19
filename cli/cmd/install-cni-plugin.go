@@ -65,7 +65,10 @@ func (options *cniPluginOptions) validate() error {
 }
 
 func (options *cniPluginOptions) pluginImage() string {
-	return registryOverride(options.cniPluginImage, options.dockerRegistry)
+	if options.dockerRegistry != defaultDockerRegistry {
+		return registryOverride(options.cniPluginImage, options.dockerRegistry)
+	}
+	return options.cniPluginImage
 }
 
 func newCmdInstallCNIPlugin() *cobra.Command {
@@ -103,6 +106,7 @@ assumes that the 'linkerd install' command will be executed with the
 	cmd.PersistentFlags().StringVar(&options.cniPluginImage, "cni-image", options.cniPluginImage, "Image for the cni-plugin")
 	cmd.PersistentFlags().StringVar(&options.logLevel, "cni-log-level", options.logLevel, "Log level for the cni-plugin")
 	cmd.PersistentFlags().StringVar(&options.destCNINetDir, "dest-cni-net-dir", options.destCNINetDir, "Directory on the host where the CNI configuration will be placed")
+	cmd.PersistentFlags().StringVar(&options.destCNIBinDir, "dest-cni-bin-dir", options.destCNIBinDir, "Directory on the host where the CNI binary will be placed")
 	cmd.PersistentFlags().StringVar(&options.priorityClassName, "priority-class-name", options.priorityClassName, "Pod priorityClassName for CNI daemonset's pods")
 	cmd.PersistentFlags().BoolVar(&options.installNamespace, "install-namespace", options.installNamespace, "Whether to create the CNI namespace or not")
 	cmd.PersistentFlags().BoolVar(
@@ -119,7 +123,7 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &cniPluginOptions{
+	cniOptions := cniPluginOptions{
 		linkerdVersion:      version.Version,
 		dockerRegistry:      defaultDockerRegistry,
 		proxyControlPort:    4190,
@@ -136,7 +140,17 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 		useWaitFlag:         defaults.UseWaitFlag,
 		priorityClassName:   defaults.PriorityClassName,
 		installNamespace:    defaults.InstallNamespace,
-	}, nil
+	}
+
+	if defaults.IgnoreInboundPorts != "" {
+		cniOptions.ignoreInboundPorts = strings.Split(defaults.IgnoreInboundPorts, ",")
+
+	}
+	if defaults.IgnoreOutboundPorts != "" {
+		cniOptions.ignoreOutboundPorts = strings.Split(defaults.IgnoreOutboundPorts, ",")
+	}
+
+	return &cniOptions, nil
 }
 
 func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {

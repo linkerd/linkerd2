@@ -12,9 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
-	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
 	promApi "github.com/prometheus/client_golang/api"
 	log "github.com/sirupsen/logrus"
@@ -31,10 +29,12 @@ func Main(args []string) {
 	destinationAPIAddr := cmd.String("destination-addr", "127.0.0.1:8086", "address of destination service")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	ignoredNamespaces := cmd.String("ignore-namespaces", "kube-system", "comma separated list of namespaces to not list pods from")
+	clusterDomain := cmd.String("cluster-domain", "cluster.local", "kubernetes cluster domain")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
+	ctx := context.Background()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -46,7 +46,9 @@ func Main(args []string) {
 	defer destinationConn.Close()
 
 	k8sAPI, err := k8s.InitializeAPI(
-		*kubeConfigPath, true,
+		ctx,
+		*kubeConfigPath,
+		true,
 		k8s.CJ, k8s.DS, k8s.Deploy, k8s.Job, k8s.NS, k8s.Pod, k8s.RC, k8s.RS, k8s.Svc, k8s.SS, k8s.SP, k8s.TS,
 	)
 	if err != nil {
@@ -61,15 +63,7 @@ func Main(args []string) {
 		}
 	}
 
-	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
-	clusterDomain := globalConfig.GetClusterDomain()
-	if clusterDomain == "" {
-		clusterDomain = "cluster.local"
-	}
-	log.Info("Using cluster domain: ", clusterDomain)
+	log.Info("Using cluster domain: ", *clusterDomain)
 
 	if *traceCollector != "" {
 		if err := trace.InitializeTracing("linkerd-public-api", *traceCollector); err != nil {
@@ -83,7 +77,7 @@ func Main(args []string) {
 		destinationClient,
 		k8sAPI,
 		*controllerNamespace,
-		clusterDomain,
+		*clusterDomain,
 		strings.Split(*ignoredNamespaces, ","),
 	)
 
@@ -99,5 +93,5 @@ func Main(args []string) {
 	<-stop
 
 	log.Infof("shutting down HTTP server on %+v", *addr)
-	server.Shutdown(context.Background())
+	server.Shutdown(ctx)
 }

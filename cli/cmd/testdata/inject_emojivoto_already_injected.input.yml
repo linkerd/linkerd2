@@ -27,13 +27,13 @@ spec:
           value: voting-svc.emojivoto:8080
         - name: INDEX_BUNDLE
           value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v3
+        image: buoyantio/emojivoto-web:v10
         name: web-svc
         ports:
         - containerPort: 80
           name: http
         resources: {}
-      - image: gcr.io/linkerd-io/proxy:foo
+      - image: ghcr.io/linkerd/proxy:foo
         name: linkerd-proxy
 status: {}
 ---
@@ -65,7 +65,7 @@ spec:
           value: voting-svc.emojivoto:8080
         - name: INDEX_BUNDLE
           value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v3
+        image: buoyantio/emojivoto-web:v10
         name: web-svc
         ports:
         - containerPort: 80
@@ -102,14 +102,14 @@ spec:
           value: voting-svc.emojivoto:8080
         - name: INDEX_BUNDLE
           value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v3
+        image: buoyantio/emojivoto-web:v10
         name: web-svc
         ports:
         - containerPort: 80
           name: http
         resources: {}
       initContainers:
-      - image: gcr.io/linkerd-io/proxy-init:foo
+      - image: ghcr.io/linkerd/proxy-init:foo
         name: linkerd-init
 status: {}
 ---
@@ -141,7 +141,7 @@ spec:
           value: voting-svc.emojivoto:8080
         - name: INDEX_BUNDLE
           value: dist/index_bundle.js
-        image: buoyantio/emojivoto-web:v3
+        image: buoyantio/emojivoto-web:v10
         name: web-svc
         ports:
         - containerPort: 80

@@ -308,7 +308,7 @@ spec:
   template:
     spec:
       containers:
-      - image: buoyantio/emojivoto-emoji-svc:v3
+      - image: buoyantio/emojivoto-emoji-svc:v10
 `, `
 apiVersion: apps/v1
 kind: ReplicaSet
@@ -416,7 +416,7 @@ spec:
   template:
     spec:
       containers:
-      - image: buoyantio/emojivoto-emoji-svc:v3
+      - image: buoyantio/emojivoto-emoji-svc:v10
 `, `
 apiVersion: v1
 kind: Pod
@@ -492,7 +492,7 @@ spec:
   template:
     spec:
       containers:
-      - image: buoyantio/emojivoto-emoji-svc:v3
+      - image: buoyantio/emojivoto-emoji-svc:v10
 `, `
 apiVersion: v1
 kind: Pod
@@ -1137,7 +1137,7 @@ spec:
   template:
     spec:
       containers:
-      - image: buoyantio/emojivoto-emoji-svc:v3
+      - image: buoyantio/emojivoto-emoji-svc:v10
 `, `
 apiVersion: apps/v1
 kind: ReplicaSet
@@ -1609,7 +1609,7 @@ spec:
   template:
     spec:
       containers:
-      - image: buoyantio/emojivoto-emoji-svc:v3
+      - image: buoyantio/emojivoto-emoji-svc:v10
 `, `
 apiVersion: apps/v1
 kind: ReplicaSet

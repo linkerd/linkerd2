@@ -4,7 +4,16 @@
 
 # Values that are passed along to sub-charts
 global:
+  # The kubernetes cluster domain.
   clusterDomain: &cluster_domain cluster.local
+
+  # The cluster networks for which service discovery is performed. This should
+  # include the pod network but need not include the node network.
+  #
+  # By default, all private networks are specified so that resolution works in
+  # typical Kubernetes environments.
+  clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
+
   imagePullPolicy: &image_pull_policy IfNotPresent
   controllerLogLevel: &controller_log_level info
 
@@ -21,14 +30,25 @@ global:
   # the feature is still experimental.
   enableEndpointSlices: false
 
+  # enabling this omits the NET_ADMIN capability in the PSP
+  # and the proxy-init container when injecting the proxy;
+  # requires the linkerd-cni plugin to already be installed
+  cniEnabled: false
+
   identityTrustAnchorsPEM: |
 
   identityTrustDomain: *cluster_domain
 
   # url of existing prometheus
   prometheusUrl: ""
-  # url of external grafana instance.
+  # url of external grafana instance with reverse proxy configured
   grafanaUrl: ""
+
+  # Additional annotations to add to all pods
+  podAnnotations: {}
+
+  # Additional labels to add to all pods
+  podLabels: {}
 
   # proxy configuration
   proxy:
@@ -36,7 +56,7 @@ global:
     outboundConnectTimeout: 1000ms
     inboundConnectTimeout: 100ms
     image:
-      name: gcr.io/linkerd-io/proxy
+      name: ghcr.io/linkerd/proxy
       pullPolicy: *image_pull_policy
       version: *linkerd_version
     logLevel: warn,linkerd=info
@@ -46,6 +66,10 @@ global:
       control: 4190
       inbound: 4143
       outbound: 4140
+    # The `cpu.limit` and `cores` should be kept in sync. The value of `cores`
+    # must be an integer and should typically be set by rounding up from the
+    # limit. E.g. if cpu.limit is '1500m', cores should be 2.
+    cores: 0
     resources:
       cpu:
         limit: ""
@@ -63,16 +87,20 @@ global:
     # for more info on container lifecycle hooks.
     waitBeforeExitSeconds: 0
     requireIdentityOnInboundPorts: ""
-    destinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 
   # proxy-init configuration
   proxyInit:
-    ignoreInboundPorts: ""
-    ignoreOutboundPorts: ""
+    # Default set of ports to skip via itpables:
+    # - SMTP (25,587) server-first
+    # - HTTPS (443) opaque TLS
+    # - MYSQL (3306) server-first
+    # - Memcached (11211) clients do not issue any preamble, which breaks detection
+    ignoreInboundPorts: "25,443,587,3306,11211"
+    ignoreOutboundPorts: "25,443,587,3306,11211"
     image:
-      name: gcr.io/linkerd-io/proxy-init
+      name: ghcr.io/linkerd/proxy-init
       pullPolicy: *image_pull_policy
-      version: v1.3.6
+      version: v1.3.7
     resources:
       cpu:
         limit: 100m
@@ -96,6 +124,11 @@ global:
   linkerdNamespaceLabel: linkerd.io/is-control-plane
   workloadNamespaceLabel: linkerd.io/workload-ns
 
+  # For Private docker registries, authentication is needed.
+  #  Registry secrets are applied to the respective service accounts
+  imagePullSecrets: []
+  # - name: my-private-docker-registry-login-secret
+
 # enforced host validation regular expression
 enforcedHostRegexp: ""
 
@@ -105,7 +138,7 @@ omitWebhookSideEffects: false
 webhookFailurePolicy: Ignore
 
 # controller configuration
-controllerImage: gcr.io/linkerd-io/controller
+controllerImage: ghcr.io/linkerd/controller
 controllerReplicas: 1
 controllerUID: 2103
 
@@ -124,7 +157,7 @@ dashboard:
 # debug configuration
 debugContainer:
   image:
-    name: gcr.io/linkerd-io/debug
+    name: ghcr.io/linkerd/debug
     pullPolicy: *image_pull_policy
     version: *linkerd_version
 
@@ -141,7 +174,7 @@ identity:
     # control plane annotation - do not edit
     crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
 
-    issuanceLifetime: 86400s
+    issuanceLifetime: 24h0m0s
 
     tls:
       # PEM-encoded certificate
@@ -162,6 +195,15 @@ heartbeatSchedule: "0 0 * * *"
 # proxy injector configuration
 proxyInjector:
   externalSecret: false
+
+  # Namespace selector used by admission webhook
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
@@ -178,6 +220,15 @@ proxyInjector:
 # service profile validator configuration
 profileValidator:
   externalSecret: false
+
+    # Namespace selector used by admission webhook
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+
   # if empty, Helm will auto-generate these fields
   crtPEM: |
 
@@ -213,7 +264,7 @@ tap:
 #tapProxyResources:
 
 # web configuration
-webImage: gcr.io/linkerd-io/web
+webImage: ghcr.io/linkerd/web
 # set resources for web UI and its linkerd proxy respectively
 # see global.proxy.resources for details.
 #webResources:
@@ -236,30 +287,13 @@ nodeSelector:
 # https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 #tolerations:
 
-smiMetrics:
-  enabled: false
-  externalSecret: false
-  image: deislabs/smi-metrics:v0.2.1
-  # if empty, Helm will auto-generate these fields
-  crtPEM: |
-
-  keyPEM: |
-
-  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
-  caBundle: |
-
-# set resources for smi-metrics and its linkerd proxy respectively
-# see global.proxy.resources for details.
-#smiMetricsResources:
-#smiMetricsProxyResources:
-
 # Configuration for Add-ons
 # Full configuration fields https://github.com/linkerd/linkerd2/tree/master/charts/linkerd2#add-ons-configuration
 
 grafana:
   enabled: true
   # image:
-  #   name: gcr.io/linkerd-io/grafana
+  #   name: ghcr.io/linkerd/grafana
   #   tag: latest
   # set resource requests and limits for grafana and its linkerd proxy respectively
   # see global.proxy.resources in the linkerd2 chart for details.
@@ -340,11 +374,9 @@ prometheus:
 
 tracing:
   enabled: false
-  collector:
-    name: linkerd-collector
-    image: omnition/opencensus-collector:0.1.11
-    # resources:
-  jaeger:
-    name: linkerd-jaeger
-    image: jaegertracing/all-in-one:1.17.1
-    # resources:
+  # collector:
+  #  image: omnition/opencensus-collector:0.1.11
+  #  resources:
+  # jaeger:
+  #  image: jaegertracing/all-in-one:1.19.2
+  #  resources:

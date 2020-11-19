@@ -48,7 +48,7 @@ func newCmdDiagnostics() *cobra.Command {
 				return err
 			}
 
-			pods, err := k8sAPI.CoreV1().Pods(controlPlaneNamespace).List(metav1.ListOptions{})
+			pods, err := k8sAPI.CoreV1().Pods(controlPlaneNamespace).List(cmd.Context(), metav1.ListOptions{})
 			if err != nil {
 				return err
 			}

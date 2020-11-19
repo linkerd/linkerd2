@@ -11,6 +11,7 @@ import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _get from 'lodash/get';
 import _isEmpty from 'lodash/isEmpty';
@@ -53,7 +54,7 @@ const formatTapLatency = str => {
 };
 
 const httpStatusCol = {
-  title: 'HTTP status',
+  title: <Trans>columnTitleHTTPStatus</Trans>,
   key: 'http-status',
   render: datum => {
     const d = _get(datum, 'responseInit.http.responseInit');
@@ -62,7 +63,7 @@ const httpStatusCol = {
 };
 
 const responseInitLatencyCol = {
-  title: 'Latency',
+  title: <Trans>columnTitleLatency</Trans>,
   key: 'rsp-latency',
   isNumeric: true,
   render: datum => {
@@ -72,7 +73,7 @@ const responseInitLatencyCol = {
 };
 
 const grpcStatusCol = {
-  title: 'GRPC status',
+  title: <Trans>columnTitleGRPCStatus</Trans>,
   key: 'grpc-status',
   render: datum => {
     const d = _get(datum, 'responseEnd.http.responseEnd');
@@ -82,7 +83,7 @@ const grpcStatusCol = {
 };
 
 const pathCol = {
-  title: 'Path',
+  title: <Trans>columnTitlePath</Trans>,
   key: 'path',
   render: datum => {
     const d = _get(datum, 'requestInit.http.requestInit');
@@ -91,7 +92,7 @@ const pathCol = {
 };
 
 const methodCol = {
-  title: 'Method',
+  title: <Trans>columnTitleMethod</Trans>,
   key: 'method',
   render: datum => {
     const d = _get(datum, 'requestInit.http.requestInit');
@@ -101,12 +102,12 @@ const methodCol = {
 
 const topLevelColumns = (resourceType, ResourceLink) => [
   {
-    title: 'Direction',
+    title: <Trans>columnTitleDirection</Trans>,
     key: 'direction',
     render: d => directionColumn(d.base.proxyDirection),
   },
   {
-    title: 'Name',
+    title: <Trans>columnTitleName</Trans>,
     key: 'src-dst',
     render: d => {
       const datum = {
@@ -137,39 +138,39 @@ const itemDisplay = (title, value) => {
 
 const requestInitSection = d => (
   <React.Fragment>
-    <Typography variant="subtitle2">Request Init</Typography>
+    <Typography variant="subtitle2"><Trans>tableTitleRequestInit</Trans></Typography>
     <br />
     <List dense>
-      {itemDisplay('Authority', _get(d, 'requestInit.http.requestInit.authority'))}
-      {itemDisplay('Path', _get(d, 'requestInit.http.requestInit.path'))}
-      {itemDisplay('Scheme', _get(d, 'requestInit.http.requestInit.scheme.registered'))}
-      {itemDisplay('Method', _get(d, 'requestInit.http.requestInit.method.registered'))}
-      {headersDisplay('Headers', _get(d, 'requestInit.http.requestInit.headers'))}
+      {itemDisplay(<Trans>formAuthority</Trans>, _get(d, 'requestInit.http.requestInit.authority'))}
+      {itemDisplay(<Trans>formPath</Trans>, _get(d, 'requestInit.http.requestInit.path'))}
+      {itemDisplay(<Trans>formScheme</Trans>, _get(d, 'requestInit.http.requestInit.scheme.registered'))}
+      {itemDisplay(<Trans>formMethod</Trans>, _get(d, 'requestInit.http.requestInit.method.registered'))}
+      {headersDisplay(<Trans>formHeaders</Trans>, _get(d, 'requestInit.http.requestInit.headers'))}
     </List>
   </React.Fragment>
 );
 
 const responseInitSection = d => _isEmpty(d.responseInit) ? null : (
   <React.Fragment>
-    <Typography variant="subtitle2">Response Init</Typography>
+    <Typography variant="subtitle2"><Trans>tableTitleResponseInit</Trans></Typography>
     <br />
     <List dense>
-      {itemDisplay('HTTP Status', _get(d, 'responseInit.http.responseInit.httpStatus'))}
-      {itemDisplay('Latency', formatTapLatency(_get(d, 'responseInit.http.responseInit.sinceRequestInit')))}
-      {headersDisplay('Headers', _get(d, 'responseInit.http.responseInit.headers'))}
+      {itemDisplay(<Trans>formHTTPStatus</Trans>, _get(d, 'responseInit.http.responseInit.httpStatus'))}
+      {itemDisplay(<Trans>formLatency</Trans>, formatTapLatency(_get(d, 'responseInit.http.responseInit.sinceRequestInit')))}
+      {headersDisplay(<Trans>formHeaders</Trans>, _get(d, 'responseInit.http.responseInit.headers'))}
     </List>
   </React.Fragment>
 );
 
 const responseEndSection = d => _isEmpty(d.responseEnd) ? null : (
   <React.Fragment>
-    <Typography variant="subtitle2">Response End</Typography>
+    <Typography variant="subtitle2"><Trans>tableTitleResponseEnd</Trans></Typography>
     <br />
 
     <List dense>
-      {itemDisplay('GRPC Status', _isNull(_get(d, 'responseEnd.http.responseEnd.eos')) ? 'N/A' : grpcStatusCodes[_get(d, 'responseEnd.http.responseEnd.eos.grpcStatusCode')])}
-      {itemDisplay('Latency', formatTapLatency(_get(d, 'responseEnd.http.responseEnd.sinceResponseInit')))}
-      {itemDisplay('Response Length (B)', formatWithComma(_get(d, 'responseEnd.http.responseEnd.responseBytes')))}
+      {itemDisplay(<Trans>formGRPCStatus</Trans>, _isNull(_get(d, 'responseEnd.http.responseEnd.eos')) ? 'N/A' : grpcStatusCodes[_get(d, 'responseEnd.http.responseEnd.eos.grpcStatusCode')])}
+      {itemDisplay(<Trans>formLatency</Trans>, formatTapLatency(_get(d, 'responseEnd.http.responseEnd.sinceResponseInit')))}
+      {itemDisplay(<Trans>formResponseLengthB</Trans>, formatWithComma(_get(d, 'responseEnd.http.responseEnd.responseBytes')))}
     </List>
   </React.Fragment>
 );

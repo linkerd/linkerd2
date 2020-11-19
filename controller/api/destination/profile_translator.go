@@ -2,10 +2,12 @@ package destination
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/duration"
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/pkg/profiles"
 	"github.com/linkerd/linkerd2/pkg/util"
@@ -14,29 +16,31 @@ import (
 
 const millisPerDecimilli = 10
 
-var (
-	defaultRouteTimeout = 10 * time.Second
-)
-
 // implements the ProfileUpdateListener interface
 type profileTranslator struct {
-	stream pb.Destination_GetProfileServer
-	log    *logging.Entry
+	stream             pb.Destination_GetProfileServer
+	log                *logging.Entry
+	fullyQualifiedName string
 }
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry) *profileTranslator {
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, id *watcher.ServiceID, clusterDomain string) *profileTranslator {
+	var fullyQualifiedName string
+	if id != nil {
+		fullyQualifiedName = fmt.Sprintf("%s.%s.svc.%s", id.Name, id.Namespace, clusterDomain)
+	}
 	return &profileTranslator{
-		stream: stream,
-		log:    log.WithField("component", "profile-translator"),
+		stream:             stream,
+		log:                log.WithField("component", "profile-translator"),
+		fullyQualifiedName: fullyQualifiedName,
 	}
 }
 
 func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	if profile == nil {
-		pt.stream.Send(defaultServiceProfile())
+		pt.stream.Send(pt.defaultServiceProfile())
 		return
 	}
-	destinationProfile, err := toServiceProfile(profile)
+	destinationProfile, err := pt.toServiceProfile(profile)
 	if err != nil {
 		pt.log.Error(err)
 		return
@@ -45,10 +49,11 @@ func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 	pt.stream.Send(destinationProfile)
 }
 
-func defaultServiceProfile() *pb.DestinationProfile {
+func (pt *profileTranslator) defaultServiceProfile() *pb.DestinationProfile {
 	return &pb.DestinationProfile{
-		Routes:      []*pb.Route{},
-		RetryBudget: defaultRetryBudget(),
+		Routes:             []*pb.Route{},
+		RetryBudget:        defaultRetryBudget(),
+		FullyQualifiedName: pt.fullyQualifiedName,
 	}
 }
 
@@ -63,6 +68,9 @@ func defaultRetryBudget() *pb.RetryBudget {
 }
 
 func toDuration(d time.Duration) *duration.Duration {
+	if d == 0 {
+		return nil
+	}
 	return &duration.Duration{
 		Seconds: int64(d / time.Second),
 		Nanos:   int32(d % time.Second),
@@ -71,7 +79,7 @@ func toDuration(d time.Duration) *duration.Duration {
 
 // toServiceProfile returns a Proxy API DestinationProfile, given a
 // ServiceProfile.
-func toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error) {
+func (pt *profileTranslator) toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error) {
 	routes := make([]*pb.Route, 0)
 	for _, route := range profile.Spec.Routes {
 		pbRoute, err := toRoute(profile, route)
@@ -91,9 +99,10 @@ func toServiceProfile(profile *sp.ServiceProfile) (*pb.DestinationProfile, error
 		budget.Ttl = toDuration(ttl)
 	}
 	return &pb.DestinationProfile{
-		Routes:       routes,
-		RetryBudget:  budget,
-		DstOverrides: toDstOverrides(profile.Spec.DstOverrides),
+		Routes:             routes,
+		RetryBudget:        budget,
+		DstOverrides:       toDstOverrides(profile.Spec.DstOverrides),
+		FullyQualifiedName: pt.fullyQualifiedName,
 	}, nil
 }
 
@@ -124,7 +133,7 @@ func toRoute(profile *sp.ServiceProfile, route *sp.RouteSpec) (*pb.Route, error)
 		}
 		rcs = append(rcs, pbRc)
 	}
-	timeout := defaultRouteTimeout
+	var timeout time.Duration // No default timeout
 	if route.Timeout != "" {
 		timeout, err = time.ParseDuration(route.Timeout)
 		if err != nil {
@@ -135,7 +144,6 @@ func toRoute(profile *sp.ServiceProfile, route *sp.RouteSpec) (*pb.Route, error)
 				profile.Namespace,
 				err,
 			)
-			timeout = defaultRouteTimeout
 		}
 	}
 	return &pb.Route{

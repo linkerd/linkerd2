@@ -3,6 +3,10 @@ package linkerd2
 import (
 	"reflect"
 	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/linkerd/linkerd2/pkg/version"
 )
 
 func TestNewValues(t *testing.T) {
@@ -13,10 +17,19 @@ func TestNewValues(t *testing.T) {
 
 	testVersion := "linkerd-dev"
 
+	namespaceSelector := &metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			{
+				Key:      "config.linkerd.io/admission-webhooks",
+				Operator: "NotIn",
+				Values:   []string{"disabled"},
+			},
+		},
+	}
+
 	expected := &Values{
-		Stage:                       "",
-		ControllerImage:             "gcr.io/linkerd-io/controller",
-		WebImage:                    "gcr.io/linkerd-io/web",
+		ControllerImage:             "ghcr.io/linkerd/controller",
+		WebImage:                    "ghcr.io/linkerd/web",
 		ControllerReplicas:          1,
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
@@ -33,11 +46,13 @@ func TestNewValues(t *testing.T) {
 		Global: &Global{
 			Namespace:                "linkerd",
 			ClusterDomain:            "cluster.local",
+			ClusterNetworks:          "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
 			ImagePullPolicy:          "IfNotPresent",
 			CliVersion:               "linkerd/cli dev-undefined",
 			ControllerComponentLabel: "linkerd.io/control-plane-component",
 			ControllerLogLevel:       "info",
 			ControllerImageVersion:   testVersion,
+			LinkerdVersion:           version.Version,
 			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
 			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
 			CreatedByAnnotation:      "linkerd.io/created-by",
@@ -49,10 +64,12 @@ func TestNewValues(t *testing.T) {
 			ControlPlaneTracing:      false,
 			HighAvailability:         false,
 			IdentityTrustDomain:      "cluster.local",
+			PodAnnotations:           map[string]string{},
+			PodLabels:                map[string]string{},
 			Proxy: &Proxy{
 				EnableExternalProfiles: false,
 				Image: &Image{
-					Name:       "gcr.io/linkerd-io/proxy",
+					Name:       "ghcr.io/linkerd/proxy",
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
@@ -80,13 +97,14 @@ func TestNewValues(t *testing.T) {
 				},
 				UID:                    2102,
 				WaitBeforeExitSeconds:  0,
-				DestinationGetNetworks: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
 				OutboundConnectTimeout: "1000ms",
 				InboundConnectTimeout:  "100ms",
 			},
 			ProxyInit: &ProxyInit{
+				IgnoreInboundPorts:  "25,443,587,3306,11211",
+				IgnoreOutboundPorts: "25,443,587,3306,11211",
 				Image: &Image{
-					Name:       "gcr.io/linkerd-io/proxy-init",
+					Name:       "ghcr.io/linkerd/proxy-init",
 					PullPolicy: "IfNotPresent",
 					Version:    testVersion,
 				},
@@ -109,7 +127,7 @@ func TestNewValues(t *testing.T) {
 		Identity: &Identity{
 			Issuer: &Issuer{
 				ClockSkewAllowance:  "20s",
-				IssuanceLifetime:    "86400s",
+				IssuanceLifetime:    "24h0m0s",
 				CrtExpiryAnnotation: "linkerd.io/identity-issuer-expiry",
 				TLS:                 &IssuerTLS{},
 				Scheme:              "linkerd.io/tls",
@@ -123,19 +141,15 @@ func TestNewValues(t *testing.T) {
 		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{
-				Name:       "gcr.io/linkerd-io/debug",
+				Name:       "ghcr.io/linkerd/debug",
 				PullPolicy: "IfNotPresent",
 				Version:    testVersion,
 			},
 		},
 
-		ProxyInjector:    &ProxyInjector{TLS: &TLS{}},
-		ProfileValidator: &ProfileValidator{TLS: &TLS{}},
+		ProxyInjector:    &ProxyInjector{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
+		ProfileValidator: &ProfileValidator{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
 		Tap:              &Tap{TLS: &TLS{}},
-		SMIMetrics: &SMIMetrics{
-			Image: "deislabs/smi-metrics:v0.2.1",
-			TLS:   &TLS{},
-		},
 		Grafana: Grafana{
 			"enabled": true,
 		},
@@ -151,6 +165,7 @@ func TestNewValues(t *testing.T) {
 
 	// Make Add-On Values nil to not have to check for their defaults
 	actual.Tracing = nil
+	actual.Global.ImagePullSecrets = nil
 
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected, actual)
@@ -169,7 +184,6 @@ func TestNewValues(t *testing.T) {
 
 		controllerResources := &Resources{
 			CPU: Constraints{
-				Limit:   "1",
 				Request: "100m",
 			},
 			Memory: Constraints{
@@ -214,7 +228,7 @@ func TestNewValues(t *testing.T) {
 			"enabled": true,
 			"resources": map[string]interface{}{
 				"cpu": map[string]interface{}{
-					"limit":   "4",
+					"limit":   "",
 					"request": "300m",
 				},
 				"memory": map[string]interface{}{
@@ -226,7 +240,7 @@ func TestNewValues(t *testing.T) {
 
 		expected.Global.Proxy.Resources = &Resources{
 			CPU: Constraints{
-				Limit:   controllerResources.CPU.Limit,
+				Limit:   "",
 				Request: controllerResources.CPU.Request,
 			},
 			Memory: Constraints{

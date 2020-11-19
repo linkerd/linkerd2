@@ -17,7 +17,7 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 //////////////////////
@@ -30,9 +30,9 @@ func TestMain(m *testing.M) {
 func TestRoutes(t *testing.T) {
 	// control-plane routes
 	cmd := []string{"routes", "--namespace", TestHelper.GetLinkerdNamespace(), "deploy"}
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd routes' command failed", "'linkerd routes' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, "'linkerd routes' command failed", err)
 	}
 
 	routeStrings := []struct {
@@ -41,15 +41,17 @@ func TestRoutes(t *testing.T) {
 	}{
 		{"linkerd-controller-api", 7},
 		{"linkerd-destination", 1},
-		{"linkerd-dst", 3},
+		{"linkerd-dst", 6},
+		{"linkerd-dst-headless", 3},
 		{"linkerd-grafana", 13},
-		{"linkerd-identity", 2},
+		{"linkerd-identity", 3},
+		{"linkerd-identity-headless", 1},
 		{"linkerd-prometheus", 5},
 		{"linkerd-web", 2},
 
 		{"POST /api/v1/ListPods", 1},
 		{"POST /api/v1/", 7},
-		{"POST /io.linkerd.proxy.destination.Destination/Get", 2},
+		{"POST /io.linkerd.proxy.destination.Destination/Get", 4},
 		{"GET /api/annotations", 1},
 		{"GET /api/", 9},
 		{"GET /public/", 3},
@@ -69,9 +71,9 @@ func TestRoutes(t *testing.T) {
 	cmd = []string{"routes", "--namespace", prefixedNs, "deploy"}
 	golden := "routes.smoke.golden"
 
-	out, stderr, err = TestHelper.LinkerdRun(cmd...)
+	out, err = TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd routes' command failed", "'linkerd routes' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, "'linkerd routes' command failed", err)
 	}
 
 	err = TestHelper.ValidateOutput(out, golden)

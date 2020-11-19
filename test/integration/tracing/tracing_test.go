@@ -1,6 +1,7 @@
 package tracing
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -33,7 +34,7 @@ var TestHelper *testutil.TestHelper
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 //////////////////////
@@ -42,15 +43,19 @@ func TestMain(m *testing.M) {
 
 func TestTracing(t *testing.T) {
 
+	ctx := context.Background()
+	if os.Getenv("RUN_ARM_TEST") != "" {
+		t.Skip("Skipped. Jaeger & Open Census images does not support ARM yet")
+	}
+
 	// Tracing Components
-	out, stderr, err := TestHelper.LinkerdRun("inject", "testdata/tracing.yaml")
+	out, err := TestHelper.LinkerdRun("inject", "testdata/tracing.yaml")
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
-			"'linkerd inject' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
 	}
 
 	tracingNs := TestHelper.GetTestNamespace("tracing")
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(tracingNs, nil)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, tracingNs, nil)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", tracingNs),
 			"failed to create %s namespace: %s", tracingNs, err)
@@ -63,7 +68,7 @@ func TestTracing(t *testing.T) {
 
 	// Emojivoto components
 	emojivotoNs := TestHelper.GetTestNamespace("emojivoto")
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(emojivotoNs, nil)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, emojivotoNs, nil)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", emojivotoNs),
 			"failed to create %s namespace: %s", emojivotoNs, err)
@@ -75,7 +80,7 @@ func TestTracing(t *testing.T) {
 			"failed to read emojivoto yaml\n%s\n", err)
 	}
 	emojivotoYaml = strings.ReplaceAll(emojivotoYaml, "___TRACING_NS___", tracingNs)
-	out, stderr, err = TestHelper.PipeToLinkerdRun(emojivotoYaml, "inject", "-")
+	out, stderr, err := TestHelper.PipeToLinkerdRun(emojivotoYaml, "inject", "-")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
 			"'linkerd inject' command failed\n%s\n%s", out, stderr)
@@ -90,7 +95,7 @@ func TestTracing(t *testing.T) {
 	// Ingress components
 	// Ingress must run in the same namespace as the service it routes to (web)
 	ingressNs := emojivotoNs
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ingressNs, nil)
+	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, ingressNs, nil)
 	if err != nil {
 		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", ingressNs),
 			"failed to create %s namespace: %s", ingressNs, err)
@@ -125,7 +130,7 @@ func TestTracing(t *testing.T) {
 		tracingNs:   "oc-collector",
 		tracingNs:   "jaeger",
 	} {
-		if err := TestHelper.CheckPods(ns, deploy, 1); err != nil {
+		if err := TestHelper.CheckPods(ctx, ns, deploy, 1); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
@@ -133,14 +138,14 @@ func TestTracing(t *testing.T) {
 			}
 		}
 
-		if err := TestHelper.CheckDeployment(ns, deploy, 1); err != nil {
+		if err := TestHelper.CheckDeployment(ctx, ns, deploy, 1); err != nil {
 			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}
 
 	t.Run("expect full trace", func(t *testing.T) {
 
-		url, err := TestHelper.URLFor(tracingNs, "jaeger", 16686)
+		url, err := TestHelper.URLFor(ctx, tracingNs, "jaeger", 16686)
 		if err != nil {
 			testutil.AnnotatedFatal(t, "error building URL", err)
 		}

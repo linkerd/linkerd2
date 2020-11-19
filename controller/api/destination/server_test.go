@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"fmt"
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
@@ -10,6 +11,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/addr"
 	logging "github.com/sirupsen/logrus"
 )
+
+const fullyQualifiedName = "name1.ns.svc.mycluster.local"
 
 type mockDestinationGetServer struct {
 	util.MockServerStream
@@ -115,6 +118,7 @@ spec:
 		"linkerd",
 		"trust.domain",
 		"mycluster.local",
+		k8sAPI,
 		log,
 		make(<-chan struct{}),
 	}
@@ -170,7 +174,7 @@ func TestGet(t *testing.T) {
 		// test.
 		stream.Cancel()
 
-		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: "name1.ns.svc.mycluster.local:8989"}, stream)
+		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:8989", fullyQualifiedName)}, stream)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
@@ -212,7 +216,7 @@ func TestGetProfiles(t *testing.T) {
 		stream.Cancel() // See note above on pre-emptive cancellation.
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         "name1.ns.svc.mycluster.local:8989",
+			Path:         fmt.Sprintf("%s:8989", fullyQualifiedName),
 			ContextToken: "ns:other",
 		}, stream)
 		if err != nil {
@@ -233,6 +237,12 @@ func TestGetProfiles(t *testing.T) {
 		if len(stream.updates) == 0 || len(stream.updates) > 3 {
 			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
 		}
+
+		firstUpdate := stream.updates[0]
+		if firstUpdate.FullyQualifiedName != fullyQualifiedName {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, firstUpdate.FullyQualifiedName)
+		}
+
 		lastUpdate := stream.updates[len(stream.updates)-1]
 		routes := lastUpdate.GetRoutes()
 		if len(routes) != 1 {
@@ -254,7 +264,7 @@ func TestGetProfiles(t *testing.T) {
 		stream.Cancel() // see note above on pre-emptive cancelling
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         "name1.ns.svc.mycluster.local:8989",
+			Path:         fmt.Sprintf("%s:8989", fullyQualifiedName),
 			ContextToken: "{\"ns\":\"other\"}",
 		}, stream)
 		if err != nil {
@@ -275,6 +285,12 @@ func TestGetProfiles(t *testing.T) {
 		if len(stream.updates) == 0 || len(stream.updates) > 3 {
 			t.Fatalf("Expected 1 to 3 updates but got: %d: %v", len(stream.updates), stream.updates)
 		}
+
+		firstUpdate := stream.updates[0]
+		if firstUpdate.FullyQualifiedName != fullyQualifiedName {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, firstUpdate.FullyQualifiedName)
+		}
+
 		lastUpdate := stream.updates[len(stream.updates)-1]
 		routes := lastUpdate.GetRoutes()
 		if len(routes) != 1 {
@@ -297,7 +313,7 @@ func TestGetProfiles(t *testing.T) {
 		stream.Cancel()
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         "name1.ns.svc.mycluster.local:8989",
+			Path:         fmt.Sprintf("%s:8989", fullyQualifiedName),
 			ContextToken: "{\"ns\":\"client-ns\"}",
 		}, stream)
 		if err != nil {
@@ -333,7 +349,7 @@ func TestGetProfiles(t *testing.T) {
 		stream.Cancel()
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         "name1.ns.svc.mycluster.local:8989",
+			Path:         fmt.Sprintf("%s:8989", fullyQualifiedName),
 			ContextToken: "ns:client-ns",
 		}, stream)
 		if err != nil {

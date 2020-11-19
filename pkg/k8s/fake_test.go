@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"reflect"
@@ -60,7 +61,8 @@ spec:
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	deploy, err := api.AppsV1().Deployments("dep-ns").Get("dep-name", metav1.GetOptions{})
+	ctx := context.Background()
+	deploy, err := api.AppsV1().Deployments("dep-ns").Get(ctx, "dep-name", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -73,7 +75,7 @@ spec:
 		t.Fatalf("Expected: %s Got: %s", gvk, deploy.GroupVersionKind())
 	}
 
-	crd, err := api.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().Get("fakecrd.linkerd.io", metav1.GetOptions{})
+	crd, err := api.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, "fakecrd.linkerd.io", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -139,7 +141,8 @@ spec:
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
-	deploy, err := api.AppsV1().Deployments("dep-ns").Get("dep-name", metav1.GetOptions{})
+	ctx := context.Background()
+	deploy, err := api.AppsV1().Deployments("dep-ns").Get(ctx, "dep-name", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
@@ -152,7 +155,7 @@ spec:
 		t.Fatalf("Expected: %s Got: %s", gvk, deploy.GroupVersionKind())
 	}
 
-	crd, err := api.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().Get("fakecrd.linkerd.io", metav1.GetOptions{})
+	crd, err := api.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, "fakecrd.linkerd.io", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}

@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"context"
 	"flag"
 	"net"
 	"os"
@@ -10,7 +11,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
@@ -27,7 +27,9 @@ func Main(args []string) {
 	enableH2Upgrade := cmd.Bool("enable-h2-upgrade", true, "Enable transparently upgraded HTTP2 connections among pods in the service mesh")
 	disableIdentity := cmd.Bool("disable-identity", false, "Disable identity configuration")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
-
+	enableEndpointSlices := cmd.Bool("enable-endpoint-slices", false, "Enable the usage of EndpointSlice informers and resources")
+	trustDomain := cmd.String("identity-trust-domain", "", "configures the name suffix used for identities")
+	clusterDomain := cmd.String("cluster-domain", "", "kubernetes cluster domain")
 	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
@@ -42,23 +44,18 @@ func Main(args []string) {
 		log.Fatalf("Failed to listen on %s: %s", *addr, err)
 	}
 
-	global, err := config.Global(pkgK8s.MountPathGlobalConfig)
-
-	trustDomain := ""
 	if *disableIdentity {
 		log.Info("Identity is disabled")
 	} else {
-		trustDomain = global.GetIdentityContext().GetTrustDomain()
-		if err != nil || trustDomain == "" {
-			trustDomain = "cluster.local"
-			log.Warnf("failed to load trust domain from global config: [%s] (falling back to %s)", err, trustDomain)
+		if *trustDomain == "" {
+			*trustDomain = "cluster.local"
+			log.Warnf(" expected trust domain through args (falling back to %s)", *trustDomain)
 		}
 	}
 
-	clusterDomain := global.GetClusterDomain()
-	if err != nil || clusterDomain == "" {
-		clusterDomain = "cluster.local"
-		log.Warnf("failed to load cluster domain from global config: [%s] (falling back to %s)", err, clusterDomain)
+	if *clusterDomain == "" {
+		*clusterDomain = "cluster.local"
+		log.Warnf("expected cluster domain through args (falling back to %s)", *clusterDomain)
 	}
 
 	if *traceCollector != "" {
@@ -73,21 +70,27 @@ func Main(args []string) {
 	if err != nil {
 		log.Fatalf("Failed to initialize K8s API Client: %s", err)
 	}
-	enableEndpointSlices := global.GetEndpointSliceEnabled()
-	err = pkgK8s.EndpointSliceAccess(k8Client)
-	if enableEndpointSlices && err != nil {
+
+	ctx := context.Background()
+
+	err = pkgK8s.EndpointSliceAccess(ctx, k8Client)
+	if *enableEndpointSlices && err != nil {
 		log.Fatalf("Failed to start with EndpointSlices enabled: %s", err)
 	}
 
 	var k8sAPI *k8s.API
-	if enableEndpointSlices {
+	if *enableEndpointSlices {
 		k8sAPI, err = k8s.InitializeAPI(
-			*kubeConfigPath, true,
+			ctx,
+			*kubeConfigPath,
+			true,
 			k8s.Endpoint, k8s.ES, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
 		)
 	} else {
 		k8sAPI, err = k8s.InitializeAPI(
-			*kubeConfigPath, true,
+			ctx,
+			*kubeConfigPath,
+			true,
 			k8s.Endpoint, k8s.Pod, k8s.RS, k8s.Svc, k8s.SP, k8s.TS, k8s.Job,
 		)
 	}
@@ -98,11 +101,11 @@ func Main(args []string) {
 	server := destination.NewServer(
 		*addr,
 		*controllerNamespace,
-		trustDomain,
+		*trustDomain,
 		*enableH2Upgrade,
-		enableEndpointSlices,
+		*enableEndpointSlices,
 		k8sAPI,
-		clusterDomain,
+		*clusterDomain,
 		done,
 	)
 

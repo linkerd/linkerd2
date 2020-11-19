@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"testing"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -31,7 +32,7 @@ metadata:
 	}
 
 	// When we fetch the resources using our fake client
-	resources, err := fetchClusterRoleBindings(fakeK8sAPI, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
+	resources, err := fetchClusterRoleBindings(context.Background(), fakeK8sAPI, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
 	if err != nil {
 		t.Fatalf("Unexpected error fetching resources from mock client:%v", err)
 	}

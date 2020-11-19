@@ -9,7 +9,7 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
 # TODO this should be set to the canonical public docker registry; we can override this
 # docker registry in, for instance, CI.
-export DOCKER_REGISTRY=${DOCKER_REGISTRY:-gcr.io/linkerd-io}
+export DOCKER_REGISTRY=${DOCKER_REGISTRY:-ghcr.io/linkerd}
 
 # When set, causes docker's build output to be emitted to stderr.
 export DOCKER_TRACE=${DOCKER_TRACE:-}
@@ -65,15 +65,6 @@ docker_build() {
 
       output_params="--load"
       if [ -n "$DOCKER_MULTIARCH" ]; then
-
-        # Pushing multi-arch images to gcr.io with the same tag that already exists is not possible
-        # The issue is on gcr as pushing the same tag in docker hub works fine
-        # Related issues: https://github.com/eclipse/che/issues/16983, https://github.com/open-policy-agent/gatekeeper/issues/665
-        if (docker buildx imagetools inspect "$repo:$tag"); then
-          echo "Build skipped. Image already exists"
-          exit 0
-        fi
-
         output_params="--platform $SUPPORTED_ARCHS"
         if [ -n "$DOCKER_PUSH" ]; then
           output_params+=" --push"

@@ -4,39 +4,10 @@ set -eu
 
 bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
 
-system=$(uname -s)
-
-if [ "$system" = Darwin ]; then
-  bin=$rootdir/target/cli/darwin/linkerd
-elif [ "$system" = Linux ]; then
-  arch=$(uname -m)
-  case $arch in
-    x86_64)
-      arch=amd64
-      ;;
-    armv8*)
-      arch=arm64
-      ;;
-    aarch64*)
-      arch=arm64
-      ;;
-    armv*)
-      arch=arm
-      ;;
-    amd64|arm64)
-      arch=$arch
-      ;;
-    *)
-      echo "unsupported architecture: $arch" >&2
-      exit 1
-      ;;
-  esac
-  bin=$rootdir/target/cli/linux-$arch/linkerd
-else
-  echo "unknown system: $system" >&2
-  exit 1
-fi
+bin=$rootdir/target/cli/$(os)/linkerd
 
 # build linkerd executable if it does not exist
 if [ ! -f "$bin" ]; then

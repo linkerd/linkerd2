@@ -131,14 +131,14 @@ func deserializePayloadFromReader(reader *bufio.Reader) ([]byte, error) {
 	messageLengthAsBytes := make([]byte, numBytesForMessageLength)
 	_, err := io.ReadFull(reader, messageLengthAsBytes)
 	if err != nil {
-		return nil, fmt.Errorf("error while reading message length: %v", err)
+		return nil, fmt.Errorf("error while reading message length: %w", err)
 	}
 	messageLength := int(binary.LittleEndian.Uint32(messageLengthAsBytes))
 
 	messageContentsAsBytes := make([]byte, messageLength)
 	_, err = io.ReadFull(reader, messageContentsAsBytes)
 	if err != nil {
-		return nil, fmt.Errorf("error while reading bytes from message: %v", err)
+		return nil, fmt.Errorf("error while reading bytes from message: %w", err)
 	}
 
 	return messageContentsAsBytes, nil
@@ -190,12 +190,12 @@ func CheckIfResponseHasError(rsp *http.Response) error {
 func FromByteStreamToProtocolBuffers(byteStreamContainingMessage *bufio.Reader, out proto.Message) error {
 	messageAsBytes, err := deserializePayloadFromReader(byteStreamContainingMessage)
 	if err != nil {
-		return fmt.Errorf("error reading byte stream header: %v", err)
+		return fmt.Errorf("error reading byte stream header: %w", err)
 	}
 
 	err = proto.Unmarshal(messageAsBytes, out)
 	if err != nil {
-		return fmt.Errorf("error unmarshalling array of [%d] bytes error: %v", len(messageAsBytes), err)
+		return fmt.Errorf("error unmarshalling array of [%d] bytes error: %w", len(messageAsBytes), err)
 	}
 
 	return nil

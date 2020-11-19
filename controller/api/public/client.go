@@ -12,7 +12,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/protohttp"
@@ -76,12 +75,6 @@ func (c *grpcOverHTTPClient) Version(ctx context.Context, req *pb.Empty, _ ...gr
 func (c *grpcOverHTTPClient) SelfCheck(ctx context.Context, req *healthcheckPb.SelfCheckRequest, _ ...grpc.CallOption) (*healthcheckPb.SelfCheckResponse, error) {
 	var msg healthcheckPb.SelfCheckResponse
 	err := c.apiRequest(ctx, "SelfCheck", req, &msg)
-	return &msg, err
-}
-
-func (c *grpcOverHTTPClient) Config(ctx context.Context, req *pb.Empty, _ ...grpc.CallOption) (*configPb.All, error) {
-	var msg configPb.All
-	err := c.apiRequest(ctx, "Config", req, &msg)
 	return &msg, err
 }
 
@@ -212,8 +205,9 @@ func NewInternalClient(controlPlaneNamespace string, kubeAPIHost string) (APICli
 
 // NewExternalClient creates a new Public API client intended to run from
 // outside a Kubernetes cluster.
-func NewExternalClient(controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (APIClient, error) {
+func NewExternalClient(ctx context.Context, controlPlaneNamespace string, kubeAPI *k8s.KubernetesAPI) (APIClient, error) {
 	portforward, err := k8s.NewPortForward(
+		ctx,
 		kubeAPI,
 		controlPlaneNamespace,
 		apiDeployment,

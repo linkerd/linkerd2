@@ -1,5 +1,364 @@
 # Changes
 
+## edge-20.11.2
+
+This edge release reduces memory consumption of Linkerd proxies which maintain
+many idle connections (such as Prometheus).  It also removes some obsolete
+commands from the CLI and allows setting custom annotations on multicluster
+gateways.
+
+* Reduced the default idle connection timeout to 5s for outbound clients and
+  20s for inbound clients to reduce the proxy's memory footprint, especially on
+  Prometheus instances
+* Added support for setting annotations on the multicluster gateway in Helm
+  which allows setting the load balancer as internal (thanks @shaikatz!)
+* Removed the `get` and `logs` command from the CLI
+
+## stable-2.9.0
+
+This release extends Linkerd's zero-config mutual TLS (mTLS) support to all TCP
+connections, allowing Linkerd to transparently encrypt and authenticate all TCP
+connections in the cluster the moment it's installed. It also adds ARM support,
+introduces a new multi-core proxy runtime for higher throughput, adds support
+for Kubernetes service topologies, and lots, lots more, as described below:
+
+* Proxy
+  * Performed internal improvements for lower latencies under high concurrency
+  * Reduced performance impact of logging, especially when the `debug` or
+    `trace` log levels are disabled
+  * Improved error handling for DNS errors encountered when discovering control
+    plane addresses; this can be common during installation before all
+    components have been started, allowing linkerd to continue to operate
+    normally in HA during node outages
+
+* Control Plane
+  * Added support for [topology-aware service
+    routing](https://kubernetes.io/docs/concepts/services-networking/service-topology/)
+    to the Destination controller; when providing service discovery updates to
+    proxies the Destination controller will now filter endpoints based on the
+    service's topology preferences
+  * Added support for the new Kubernetes
+    [EndpointSlice](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/)
+    resource to the Destination controller; Linkerd can be installed with
+    `--enable-endpoint-slices` flag to use this resource rather than the
+    Endpoints API in clusters where this new API is supported
+
+* Dashboard
+  * Added new Spanish translations (please help us translate into your
+    language!)
+  * Added new section for exposing multicluster gateway metrics
+
+* CLI
+  * Renamed the `--addon-config` flag to `--config` to clarify this flag can be
+    used to set any Helm value
+  * Added fish shell completions to the `linkerd` command
+
+* Multicluster
+  * Replaced the single `service-mirror` controller with separate controllers
+    that will be installed per target cluster through `linkerd multicluster
+    link`
+  * Changed the mechanism for mirroring services: instead of relying on
+    annotations on the target services, now the source cluster should specify
+    which services from the target cluster should be exported by using a label
+    selector
+  * Added support for creating multiple service accounts when installing
+    multicluster with Helm to allow more granular revocation
+  * Added a multicluster `unlink` command for removing multicluster links
+
+* Prometheus
+  * Moved Linkerd's bundled Prometheus into an add-on (enabled by default); this
+    makes the Linkerd Prometheus more configurable, gives it a separate upgrade
+    lifecycle from the rest of the control plane, and allows users to
+    disable the bundled Prometheus instance
+  * The long-awaited Bring-Your-Own-Prometheus case has been finally addressed:
+    added `global.prometheusUrl` to the Helm config to have linkerd use an
+    external Prometheus instance instead of the one provided by default
+  * Added an option to persist data to a volume instead of memory, so that
+    historical metrics are available when Prometheus is restarted
+  * The helm chart can now configure persistent storage and limits
+
+* Other
+  * Added a new `linkerd.io/inject: ingress` annotation and accompanying
+    `--ingress` flag to the `inject` command, to configure the proxy to support
+    service profiles and enable per-route metrics and traffic splits for HTTP
+    ingress controllers
+  * Changed the type of the injector and tap API secrets to `kubernetes.io/tls`
+    so they can be provisioned by cert-manager
+  * Changed default docker image repository to `ghcr.io` from `gcr.io`; **Users
+    who pull the images into private repositories should take note of this
+    change**
+  * Introduced support for authenticated docker registries
+  * Simplified the way that Linkerd stores its configuration; configuration is
+    now stored as Helm values in the `linkerd-config` ConfigMap
+  * Added support for Helm configuration of per-component proxy resources
+    requests
+
+This release includes changes from a massive list of contributors. A special
+thank-you to everyone who helped make this release possible: [Abereham G
+Wodajie](https://github.com/Abrishges), [Alexander
+Berger](https://github.com/alex-berger), [Ali
+Ariff](https://github.com/aliariff), [Arthur Silva
+Sens](https://github.com/ArthurSens), [Chris
+Campbell](https://github.com/campbel), [Daniel
+Lang](https://github.com/mavrick), [David Tyler](https://github.com/DaveTCode),
+[Desmond Ho](https://github.com/DesmondH0), [Dominik
+Münch](https://github.com/muenchdo), [George
+Garces](https://github.com/jgarces21), [Herrmann
+Hinz](https://github.com/HerrmannHinz), [Hu Shuai](https://github.com/hs0210),
+[Jeffrey N. Davis](https://github.com/penland365), [Joakim
+Roubert](https://github.com/joakimr-axis), [Josh
+Soref](https://github.com/jsoref), [Lutz Behnke](https://github.com/cypherfox),
+[MaT1g3R](https://github.com/MaT1g3R), [Marcus Vaal](https://github.com/mvaal),
+[Markus](https://github.com/mbettsteller), [Matei
+David](https://github.com/mateiidavid), [Matt
+Miller](https://github.com/mmiller1), [Mayank
+Shah](https://github.com/mayankshah1607),
+[Naseem](https://github.com/naseemkullah), [Nil](https://github.com/c-n-c),
+[OlivierB](https://github.com/olivierboudet), [Olukayode
+Bankole](https://github.com/rbankole), [Paul
+Balogh](https://github.com/javaducky), [Rajat
+Jindal](https://github.com/rajatjindal), [Raphael
+Taylor-Davies](https://github.com/tustvold), [Simon
+Weald](https://github.com/glitchcrab), [Steve
+Gray](https://github.com/steve-gray), [Suraj
+Deshmukh](https://github.com/surajssd), [Tharun
+Rajendran](https://github.com/tharun208), [Wei Lun](https://github.com/WLun001),
+[Zhou Hao](https://github.com/zhouhao3), [ZouYu](https://github.com/Hellcatlk),
+[aimbot31](https://github.com/aimbot31),
+[iohenkies](https://github.com/iohenkies), [memory](https://github.com/memory),
+and [tbsoares](https://github.com/tbsoares)
+
+## edge-20.11.1
+
+This edge supersedes edge-20.10.6 as a release candidate for stable-2.9.0.
+
+* Fixed issue where the `check` command would error when there is no Prometheus
+  configured
+* Fixed recent regression that caused multicluster on EKS to not work properly
+* Changed the `check` command to warn instead of error when webhook certificates
+  are near expiry
+* Added the `--ingress` flag to the `inject` command which adds the recently
+  introduced `linkerd.io/inject: ingress` annotation
+* Fixed issue with upgrades where external certs would be fetched and stored
+  even though this does not happen on fresh installs with externally created
+  certs
+* Fixed issue with upgrades where the issuer cert expiration was being reset
+* Removed the `--registry` flag from the `multicluster install` command
+* Removed default CPU limits for the proxy and control plane components in HA
+  mode
+
+## edge-20.10.6
+
+This edge supersedes edge-20.10.5 as a release candidate for stable-2.9.0. It
+adds a new `linkerd.io/inject: ingress` annotation to support service profiles
+and enable per-route metrics and traffic splits for HTTP ingress controllers
+
+* Added a new `linkerd.io/inject: ingress` annotation to configure the
+  proxy to support service profiles and enable per-route metrics and traffic
+  splits for HTTP ingress controllers
+* Reduced performance impact of logging in the proxy, especially when the
+  `debug` or `trace` log levels are disabled
+* Fixed spurious warnings logged by the `linkerd profile` CLI command
+
+## edge-20.10.5
+
+This edge supersedes edge-20.10.4 as a release candidate for stable-2.9.0. It
+adds a fix for updating the destination service when there are no endpoints
+
+* Added a fix to clear the EndpointTranslator state when it gets a
+  `NoEndpoints` message. This ensures that the clients get the correct set of
+  endpoints during an update.
+
+## edge-20.10.4
+
+This edge release is a release candidate for stable-2.9.0. For the proxy, there
+have been changes to improve performance, remove unused code, and configure
+ports that can be ignored by default. Also, this edge release adds enhancements
+to the multicluster configuration and observability, adds more translations to
+the dashboard, and addresses a bug in the CLI.
+
+* Added more Spanish translations to the dashboard and more labels that can be
+  translated
+* Added support for creating multiple service accounts when installing
+  multicluster with Helm to allow more granular revocation
+* Renamed `global.proxy.destinationGetNetworks` to `global.clusterNetworks`.
+  This is a cluster-wide setting and can no longer be overridden per-pod
+* Fixed an empty multicluster Grafana graph which used a deprecated label
+* Added the control plane tracing ServiceAccounts to the linkerd-psp
+  RoleBinding so that it can be used in environments where PodSecurityPolicy
+  is enabled
+* Enhanced EKS support by adding `100.64.0.0/10` to the set of discoverable
+  networks
+* Fixed a bug in the way that the `--all-namespaces` flag is handled by the
+  `linkerd edges` command
+* Added a default set of ports to bypass the proxy for server-first, https,
+  and memcached traffic
+
+## edge-20.10.3
+
+This edge release is a release candidate for stable-2.9.0.  It overhauls the
+discovery and routing logic implemented by the proxy, simplifies the way that
+Linkerd stores configuration, and adds new Helm values to configure additional
+labels, annotations, and namespace selectors for webhooks.
+
+* Added podLabels and podAnnotations Helm values to allow adding additional
+  labels or annotations to Linkerd control plane pods (thanks @tustvold!)
+* Added namespaceSelector Helm value for configuring the namespace selector
+  used by admission webhooks (thanks @tustvold!)
+* Expanded the 'linkerd edges' command to show TCP connections
+* Overhauled the discovery and routing logic implemented by the proxy:
+  * The `l5d-dst-override` header is no longer honored
+  * When the application attempts to connect to a pod IP, the proxy no
+    longer load balances these requests among all pods in the service.
+    The proxy will now honor session-stickiness as selected by an
+    application-level load balancer
+  * `TrafficSplits` are only applied when a client targets a service's IP
+  * The proxy no longer performs DNS "canonicalization" to translate
+    relative host header names to a fully-qualified form
+* Simplified the way that Linkerd stores its configuration.  Configuration is
+  now stored as Helm values in the linkerd-config ConfigMap
+* Renamed the --addon-config flag to --config to clarify this flag can be used
+  to set any Helm value
+
+## edge-20.10.2
+
+This edge release adds more improvements for mTLS for all TCP traffic.
+It also includes significant internal improvements to the way Linkerd
+configuration is stored within the cluster.
+
+* Changed TCP metrics exported by the proxy to ensure that peer
+  identities are encoded via the `client_id` and `server_id` labels.
+* Removed the dependency of control plane components on `linkerd-config`
+* Updated the data structure `proxy-injector` uses to derive the configuration
+  used when injecting workloads
+
+## edge-20.10.1
+
+This edge release includes a couple of external contributions towards
+improved cert-manager support and Grafana charts fixes, among other
+enhancements.
+
+* Changed the type of the injector and tap API secrets to `kubernetes.io/tls`,
+  so they can be provisioned by cert-manager (thanks @cypherfox!)
+* Fixed the "Kubernetes cluster monitoring" Grafana dashboard that had a few
+  charts with incomplete data (thanks @aimbot31!)
+* Fixed the `service-mirror` multicluster component so that it retries
+  connections to the target cluster's Kubernetes API when it's not reachable,
+  instead of blocking
+* Increased the proxy's default timeout for DNS resolution to 500ms, as there
+  were reports that 100ms was too restrictive
+
+## edge-20.9.4
+
+This edge release introduces support for authenticated docker registries and
+fixes a recent multicluster regression.
+
+* Fixed a regression in multicluster gateway configurations that would forbid
+  inbound gateway traffic
+* Upgraded bundled Grafana to v7.1.5
+* Enabled Jaeger receiver in collector configuration in Helm chart (thanks
+  @olivierboudet!)
+* Fixed skip port configuration being skipped in CNI plugin
+* Introduced support for authenticated docker registries (thanks @c-n-c!)
+
+## edge-20.9.3
+
+This edge release includes fixes and updates for the control plane and CLI.
+
+* Added `--dest-cni-bin-dir` flag to the `linkerd install-cni` command, to
+  configure the directory on the host where the CNI binary will be placed
+* Removed `collector.name` and `jaeger.name` config fields from the tracing
+  addon
+* Updated Jaeger to 1.19.2
+* Fixed a warning about deprecated Go packages in controller container logs
+
+## edge-20.9.2
+
+This edge release continues the work of adding support for mTLS for all TCP
+traffic and changes the default container registry to `ghcr.io` from `gcr.io`.
+
+If you are upgrading from `stable-2.8.x` with the Linkerd CLI using the
+`linkerd upgrade` command, you must add the `--addon-overwrite` flag to ensure
+that the grafana image is properly set.
+
+* Removed the default timeout for ServiceProfiles so that ServiceProfile routes
+  behave the same as when there is no ServiceProfile definition
+* Changed default docker image repository to ghcr.io from gcr.io. **Users who
+  pull the images into private repositories should take note of this change**
+* Added endpoint labels to outbound TCP metrics to provide more context and
+  detail for the metrics, add load balancing to TCP connections
+  (bypassing kube-proxy), and secure the connection with mTLS when both
+  endpoints are meshed
+* Made unnamed ServiceProfile discovery configurable using the
+  `proxy.destinationGetNetworks` variable to set the
+  `LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS` variable in the proxy chart
+  template
+* Added TLS certificate validation for the Injector, SP Validator, and Tap
+  webhooks to the `linkerd check` command
+
+## edge-20.9.1
+
+This edge release contains an important proxy update that allows linkerd to
+continue to operate normally in HA during node outages. We're also adding full
+Kubernetes 1.19 support!
+
+* Improved the proxy's error handling for DNS errors encountered when
+  discovering control plane addresses, which can be common during installation,
+  before all components have been started
+* The destination and identity services had to be made headless in order to
+  support that new controller discovery (which now can leverage SRV records)
+* Use SAN fields when generating the linkerd webhook configs; this completes the
+  Kubernetes 1.19 support which enforces them
+* Fixed `linkerd check` for multicluster that was spuriously claiming the
+  absence of some resources
+* Improved the injection test cleanup (thanks @zhouhao3!)
+* Added ability to run the integration test suite using a cluster in an ARM
+  architecture (thanks @aliariff!)
+
+## edge-20.8.4
+
+* Fixed a problem causing the `enable-endpoint-slices` flag to not be persisted
+  when set via `linkerd upgrade` (thanks @Matei207!)
+* Removed SMI-Metrics templates and experimental sub-commands
+* Use `--frozen-lockfile` to avoid accidental update of dashboard JS
+  dependencies in CI (thanks @tharun208!)
+
+## edge-20.8.3
+
+This edge release adds support for [topology-aware service routing][topology] to
+the Destination controller. When providing service discovery updates to proxies,
+the Destination controller will now filter endpoints based on the service's
+topology preferences. Additionally, this release includes bug fixes for the
+`linkerd check` CLI command and web dashboard.
+
+* CLI
+  * `linkerd check` will no longer warn about a looser webhook failure policy in
+    HA mode
+* Controller
+  * Added support for [topology-aware service routing][topology] to the Destination
+    controller (thanks @Matei207)
+  * Changed the Destination controller to always return destination overrides
+    for service profiles when no traffic split is present
+* Web UI
+  * Fixed Tap `Authority` dropdown not being populated (thanks to @tharun208!)
+
+[topology]: https://kubernetes.io/docs/concepts/services-networking/service-topology/
+
+## edge-20.8.2
+
+This edge release adds an internationalization framework to the dashboard,
+Spanish translations to the dashboard UI, and a `linkerd multicluster uninstall`
+command for graceful removal of the multicluster components.
+
+* Web UI
+  * Added Spanish translations to the dashboard
+  * Added a framework and documentation to simplify creation of new
+    translations
+* Multicluster
+  * Added a multicluster uninstall command
+  * Added a warning from `linkerd check --multicluster` if the multicluster
+    support is not installed
+
 ## edge-20.8.1
 
 This edge adds multi-arch support to Linkerd! Our docker images and CLI now

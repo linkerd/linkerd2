@@ -14,6 +14,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import SimpleChip from './util/Chip.jsx';
 import Slide from '@material-ui/core/Slide';
+import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import withMobileDialog from '@material-ui/core/withMobileDialog';
 import { withStyles } from '@material-ui/core/styles';
@@ -254,7 +255,7 @@ class CheckModal extends React.Component {
               color="primary"
               disabled={running}
               onClick={this.runCheck}>
-              Run Linkerd Check
+              <Trans>buttonRunLinkerdCheck</Trans>
             </Button>
           </Grid>
         </Grid>
@@ -284,7 +285,7 @@ class CheckModal extends React.Component {
               {success !== undefined &&
                 <Grid item>
                   <SimpleChip
-                    label={success ? 'Success' : 'Error'}
+                    label={success ? <Trans>labelSuccess</Trans> : <Trans>labelError</Trans>}
                     type={success ? 'good' : 'bad'} />
                 </Grid>
               }
@@ -315,11 +316,11 @@ class CheckModal extends React.Component {
 
           <DialogActions>
             <Button onClick={this.runCheck} color="primary">
-              Re-Run Check
+              <Trans>buttonReRunCheck</Trans>
             </Button>
 
             <Button onClick={this.handleOpenChange} color="primary">
-              Close
+              <Trans>buttonClose</Trans>
             </Button>
           </DialogActions>
         </Dialog>

@@ -5,25 +5,25 @@ import (
 	"io"
 	"os"
 
-	"github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/spf13/cobra"
 )
 
 type resourceTransformerUninject struct {
-	configs *config.All
+	values *linkerd2.Values
 }
 
 type resourceTransformerUninjectSilent struct {
-	configs *config.All
+	values *linkerd2.Values
 }
 
-func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf *config.All) int {
-	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninject{conf})
+func runUninjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, values *linkerd2.Values) int {
+	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninject{values})
 }
 
-func runUninjectSilentCmd(inputs []io.Reader, errWriter, outWriter io.Writer, conf *config.All) int {
-	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninjectSilent{conf})
+func runUninjectSilentCmd(inputs []io.Reader, errWriter, outWriter io.Writer, values *linkerd2.Values) int {
+	return transformInput(inputs, errWriter, outWriter, resourceTransformerUninjectSilent{values})
 }
 
 func newCmdUninject() *cobra.Command {
@@ -63,7 +63,7 @@ sub-folders, or coming from stdin.`,
 }
 
 func (rt resourceTransformerUninject) transform(bytes []byte) ([]byte, []inject.Report, error) {
-	conf := inject.NewResourceConfig(rt.configs, inject.OriginWebhook)
+	conf := inject.NewResourceConfig(rt.values, inject.OriginWebhook)
 
 	report, err := conf.ParseMetaAndYAML(bytes)
 	if err != nil {

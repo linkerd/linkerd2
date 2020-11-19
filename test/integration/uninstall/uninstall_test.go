@@ -1,6 +1,7 @@
 package uninstall
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -16,21 +17,20 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, "Uninstall test disabled")
 		os.Exit(0)
 	}
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 func TestInstall(t *testing.T) {
 	args := []string{
 		"install",
 		"--controller-log-level", "debug",
-		"--proxy-log-level", "warn,linkerd2_proxy=debug",
+		"--proxy-log-level", "warn,linkerd=debug",
 		"--proxy-version", TestHelper.GetVersion(),
 	}
 
-	out, stderr, err := TestHelper.LinkerdRun(args...)
+	out, err := TestHelper.LinkerdRun(args...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd install' command failed",
-			"'linkerd install' command failed: \n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
 
 	out, err = TestHelper.KubectlApply(out, "")
@@ -41,8 +41,9 @@ func TestInstall(t *testing.T) {
 }
 
 func TestResourcesPostInstall(t *testing.T) {
+	ctx := context.Background()
 	// Tests Namespace
-	err := TestHelper.CheckIfNamespaceExists(TestHelper.GetLinkerdNamespace())
+	err := TestHelper.CheckIfNamespaceExists(ctx, TestHelper.GetLinkerdNamespace())
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "received unexpected output",
 			"received unexpected output\n%s", err.Error())
@@ -50,14 +51,14 @@ func TestResourcesPostInstall(t *testing.T) {
 
 	// Tests Pods and Deployments
 	for deploy, spec := range testutil.LinkerdDeployReplicas {
-		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+		if err := TestHelper.CheckPods(ctx, TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
 				testutil.AnnotatedError(t, "CheckPods timed-out", err)
 			}
 		}
-		if err := TestHelper.CheckDeployment(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+		if err := TestHelper.CheckDeployment(ctx, TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
 			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}
@@ -65,10 +66,9 @@ func TestResourcesPostInstall(t *testing.T) {
 
 func TestUninstall(t *testing.T) {
 	args := []string{"uninstall"}
-	out, stderr, err := TestHelper.LinkerdRun(args...)
+	out, err := TestHelper.LinkerdRun(args...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd install' command failed",
-			"'linkerd install' command failed: \n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
 
 	args = []string{"delete", "-f", "-"}
@@ -82,10 +82,9 @@ func TestUninstall(t *testing.T) {
 func TestCheckPostUninstall(t *testing.T) {
 	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.pre.golden"
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "check command failed",
-			"check command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, "check command failed", err)
 	}
 
 	err = TestHelper.ValidateOutput(out, golden)

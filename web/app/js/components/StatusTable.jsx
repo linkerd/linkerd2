@@ -2,6 +2,7 @@ import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Tooltip from '@material-ui/core/Tooltip';
+import { Trans } from '@lingui/macro';
 import _get from 'lodash/get';
 import _merge from 'lodash/merge';
 import classNames from 'classnames';
@@ -24,18 +25,18 @@ const columnConfig = {
     width: 200,
     wrapDotsAt: 7, // dots take up more than one line in the table; space them out
     dotExplanation: status => {
-      return status.value === 'good' ? 'is up and running' : 'has not been started';
+      return status.value === 'good' ? <Trans>statusExplanationGood</Trans> : <Trans>statusExplanationNotStarted</Trans>;
     },
   },
   'Proxy Status': {
     width: 250,
     wrapDotsAt: 9,
     dotExplanation: pod => {
-      const addedStatus = !pod.added ? 'Not in mesh' : 'Added to mesh';
+      const addedStatus = !pod.added ? <Trans>statusExplanationNotInMesh</Trans> : <Trans>statusExplanationInMesh</Trans>;
 
       return (
         <React.Fragment>
-          <div>Pod status: {pod.status}</div>
+          <div><Trans>Pod status: {pod.status}</Trans></div>
           <div>{addedStatus}</div>
         </React.Fragment>
       );
@@ -75,18 +76,18 @@ StatusDot.propTypes = {
 
 const columns = {
   resourceName: {
-    title: 'Deployment',
+    title: <Trans>columnTitleDeployment</Trans>,
     dataIndex: 'name',
   },
   pods: {
-    title: 'Pods',
+    title: <Trans>columnTitlePods</Trans>,
     key: 'numEntities',
     isNumeric: true,
     render: d => d.pods.length,
   },
   status: (name, classes) => {
     return {
-      title: name,
+      title: <Trans>columnTitlePodStatus</Trans>,
       key: 'status',
       render: d => {
         return d.pods.map(status => (

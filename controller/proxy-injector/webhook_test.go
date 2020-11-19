@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/controller/proxy-injector/fake"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -21,44 +21,24 @@ import (
 type unmarshalledPatch []map[string]interface{}
 
 var (
-	configs = &config.All{
-		Global: &config.Global{
-			LinkerdNamespace: "linkerd",
-			CniEnabled:       false,
-			IdentityContext:  nil,
-			ClusterDomain:    "cluster.local",
-		},
-		Proxy: &config.Proxy{
-			ProxyImage:              &config.Image{ImageName: "gcr.io/linkerd-io/proxy", PullPolicy: "IfNotPresent"},
-			ProxyInitImage:          &config.Image{ImageName: "gcr.io/linkerd-io/proxy-init", PullPolicy: "IfNotPresent"},
-			ControlPort:             &config.Port{Port: 4190},
-			IgnoreInboundPorts:      nil,
-			IgnoreOutboundPorts:     nil,
-			InboundPort:             &config.Port{Port: 4143},
-			AdminPort:               &config.Port{Port: 4191},
-			OutboundPort:            &config.Port{Port: 4140},
-			Resource:                &config.ResourceRequirements{RequestCpu: "", RequestMemory: "", LimitCpu: "", LimitMemory: ""},
-			ProxyUid:                2102,
-			LogLevel:                &config.LogLevel{Level: "warn,linkerd=info"},
-			DisableExternalProfiles: false,
-			DebugImage:              &config.Image{ImageName: "gcr.io/linkerd-io/debug", PullPolicy: "IfNotPresent"},
-			DebugImageVersion:       "debug-image-version",
-			DestinationGetNetworks:  "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
-		},
-	}
+	values, _ = linkerd2.NewValues(false)
 )
 
 func confNsEnabled() *inject.ResourceConfig {
 	return inject.
-		NewResourceConfig(configs, inject.OriginWebhook).
+		NewResourceConfig(values, inject.OriginWebhook).
 		WithNsAnnotations(map[string]string{pkgK8s.ProxyInjectAnnotation: pkgK8s.ProxyInjectEnabled})
 }
 
 func confNsDisabled() *inject.ResourceConfig {
-	return inject.NewResourceConfig(configs, inject.OriginWebhook).WithNsAnnotations(map[string]string{})
+	return inject.NewResourceConfig(values, inject.OriginWebhook).WithNsAnnotations(map[string]string{})
 }
 
 func TestGetPatch(t *testing.T) {
+
+	values.Global.Proxy.DisableIdentity = true
+	values.Global.Proxy.DisableTap = true
+
 	factory := fake.NewFactory(filepath.Join("fake", "data"))
 	nsEnabled, err := factory.Namespace("namespace-inject-enabled.yaml")
 	if err != nil {

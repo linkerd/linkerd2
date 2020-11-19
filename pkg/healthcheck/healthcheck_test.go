@@ -11,18 +11,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/linkerd/linkerd2/pkg/issuercerts"
-	"github.com/linkerd/linkerd2/pkg/tls"
-	"github.com/linkerd/linkerd2/testutil"
-
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
 	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/identity"
+	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/linkerd/linkerd2/testutil"
+	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -388,7 +388,7 @@ func TestCheckCanCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)
 	}
-	err = hc.checkCanCreate("", "apps", "v1", "deployments")
+	err = hc.checkCanCreate(context.Background(), "", "apps", "v1", "deployments")
 	if err == nil ||
 		err.Error() != exp.Error() {
 		t.Fatalf("Unexpected error (Expected: %s, Got: %s)", exp, err)
@@ -440,7 +440,7 @@ data:
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = hc.checkExtensionAPIServerAuthentication()
+			err = hc.checkExtensionAPIServerAuthentication(context.Background())
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
@@ -490,7 +490,7 @@ status:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			err = hc.checkClockSkew()
+			err = hc.checkClockSkew(context.Background())
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
@@ -539,7 +539,7 @@ spec:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			err = hc.checkCapability("TEST_CAP")
+			err = hc.checkCapability(context.Background(), "TEST_CAP")
 			if err != nil || test.err != nil {
 				if (err == nil && test.err != nil) ||
 					(err != nil && test.err == nil) ||
@@ -787,15 +787,6 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-smi-metrics
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
   name: linkerd-sp-validator
   namespace: test-ns
   labels:
@@ -990,15 +981,6 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-smi-metrics
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1210,15 +1192,6 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-smi-metrics
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1439,15 +1412,6 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-smi-metrics
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1677,15 +1641,6 @@ kind: ServiceAccount
 apiVersion: v1
 metadata:
   name: linkerd-proxy-injector
-  namespace: test-ns
-  labels:
-    linkerd.io/control-plane-ns: test-ns
-`,
-				`
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-smi-metrics
   namespace: test-ns
   labels:
     linkerd.io/control-plane-ns: test-ns
@@ -1966,7 +1921,7 @@ data:
 				t.Fatalf("Unexpected error: %q", err)
 			}
 
-			err = hc.checkDataPlaneProxiesCertificate()
+			err = hc.checkDataPlaneProxiesCertificate(context.Background())
 			if !reflect.DeepEqual(err, testCase.expectedErr) {
 				t.Fatalf("Error %q does not match expected error: %q", err, testCase.expectedErr)
 			}
@@ -2335,17 +2290,8 @@ metadata:
 	})
 }
 
-func getConfigAndKubeSystemNamespace(ha bool, nsLabel string) []string {
+func getWebhookAndKubeSystemNamespace(nsLabel string, failurePolicy string) []string {
 	return []string{fmt.Sprintf(`
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: linkerd-config
-  namespace: linkerd
-data:
-  install: |
-    {"cliVersion":"dev-undefined","flags":[{"name":"ha","value":"%v"}]}`, ha),
-		fmt.Sprintf(`
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -2353,6 +2299,35 @@ metadata:
   labels:
     %s
   name: kube-system`, nsLabel),
+		fmt.Sprintf(`
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-proxy-injector-webhook-config
+  labels:
+    linkerd.io/control-plane-component: proxy-injector
+    linkerd.io/control-plane-ns: linkerd
+webhooks:
+- name: linkerd-proxy-injector.linkerd.io
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+  clientConfig:
+    service:
+      name: linkerd-proxy-injector
+      namespace: linkerd
+      path: "/"
+    caBundle: cHJveHkgaW5qZWN0b3IgQ0EgYnVuZGxl
+  failurePolicy: %s
+  rules:
+  - operations: [ "CREATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  sideEffects: None`, failurePolicy),
 	}
 }
 
@@ -2363,24 +2338,24 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 		expectedOutput  string
 	}{
 		{
-			"passes when HA is not enabled",
-			getConfigAndKubeSystemNamespace(false, ""),
+			"passes when webhook policy is Ignore is not enabled",
+			getWebhookAndKubeSystemNamespace("", "Ignore"),
 			"",
 		},
 		{
-			"passes when HA is enabled and namespace has required metadata",
-			getConfigAndKubeSystemNamespace(true, "config.linkerd.io/admission-webhooks: disabled"),
+			"passes when webhook policy is Fail and namespace has required metadata",
+			getWebhookAndKubeSystemNamespace("config.linkerd.io/admission-webhooks: disabled", "Fail"),
 			"l5d-injection-disabled pod injection disabled on kube-system",
 		},
 		{
-			"fails when HA and admission hooks are enabled",
-			getConfigAndKubeSystemNamespace(true, "config.linkerd.io/admission-webhooks: enabled"),
-			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have the label config.linkerd.io/admission-webhooks: disabled if HA mode is enabled",
+			"fails when webhook policy is Fail and admission hooks are enabled",
+			getWebhookAndKubeSystemNamespace("config.linkerd.io/admission-webhooks: enabled", "Fail"),
+			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have the label config.linkerd.io/admission-webhooks: disabled if injector webhook failure policy is Fail",
 		},
 		{
-			"fails when HA is enabled and metadata is missing",
-			getConfigAndKubeSystemNamespace(true, ""),
-			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have the label config.linkerd.io/admission-webhooks: disabled if HA mode is enabled",
+			"fails when webhook policy is Fail and metadata is missing",
+			getWebhookAndKubeSystemNamespace("", "Fail"),
+			"l5d-injection-disabled pod injection disabled on kube-system: kube-system namespace needs to have the label config.linkerd.io/admission-webhooks: disabled if injector webhook failure policy is Fail",
 		},
 	}
 
@@ -2391,13 +2366,7 @@ func TestKubeSystemNamespaceInHA(t *testing.T) {
 			hc := NewHealthChecker([]CategoryID{}, &Options{})
 			hc.ControlPlaneNamespace = "linkerd"
 
-			var err error
 			hc.kubeAPI, _ = k8s.NewFakeAPI(tc.k8sConfigs...)
-			_, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap()
-			if err != nil {
-				t.Fatalf("Unexpected error: %q", err)
-			}
-
 			hc.addCheckAsCategory("l5d-injection-disabled", LinkerdHAChecks, "pod injection disabled on kube-system")
 
 			obs := newObserver()
@@ -2438,7 +2407,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"gcr.io/linkerd-io/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"gcr.io/linkerd-io/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.6","debugImage":{"imageName":"gcr.io/linkerd-io/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"ghcr.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"ghcr.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.7","debugImage":{"imageName":"ghcr.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}`,
 			},
@@ -2458,11 +2427,11 @@ data:
 					},
 				}, Proxy: &configPb.Proxy{
 					ProxyImage: &configPb.Image{
-						ImageName:  "gcr.io/linkerd-io/proxy",
+						ImageName:  "ghcr.io/linkerd/proxy",
 						PullPolicy: "IfNotPresent",
 					},
 					ProxyInitImage: &configPb.Image{
-						ImageName:  "gcr.io/linkerd-io/proxy-init",
+						ImageName:  "ghcr.io/linkerd/proxy-init",
 						PullPolicy: "IfNotPresent",
 					},
 					ControlPort: &configPb.Port{
@@ -2484,9 +2453,9 @@ data:
 					},
 					DisableExternalProfiles: true,
 					ProxyVersion:            "install-proxy-version",
-					ProxyInitImageVersion:   "v1.3.6",
+					ProxyInitImageVersion:   "v1.3.7",
 					DebugImage: &configPb.Image{
-						ImageName:  "gcr.io/linkerd-io/debug",
+						ImageName:  "ghcr.io/linkerd/debug",
 						PullPolicy: "IfNotPresent",
 					},
 					DebugImageVersion: "install-debug-version",
@@ -2541,13 +2510,310 @@ data:
 				t.Fatalf("Unexpected error: %s", err)
 			}
 
-			_, configs, err := FetchLinkerdConfigMap(clientset, "linkerd")
+			_, configs, err := FetchLinkerdConfigMap(context.Background(), clientset, "linkerd")
 			if !reflect.DeepEqual(err, tc.err) {
 				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
 			}
 
 			if !proto.Equal(configs, tc.expected) {
 				t.Fatalf("Unexpected config:\nExpected:\n%+v\nGot:\n%+v", tc.expected, configs)
+			}
+		})
+	}
+}
+
+func TestFetchCurrentConfiguration(t *testing.T) {
+	defaultValues, err := linkerd2.NewValues(false)
+
+	if err != nil {
+		t.Fatalf("Unexpected error validating options: %v", err)
+	}
+
+	testCases := []struct {
+		k8sConfigs []string
+		expected   *linkerd2.Values
+		err        error
+	}{
+		{
+			[]string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+data:
+  global: |
+    {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
+  proxy: |
+    {"proxyImage":{"imageName":"ghcr.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"ghcr.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.7","debugImage":{"imageName":"ghcr.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+  install: |
+    {"cliVersion":"dev-undefined","flags":[]}
+  values: |
+    controllerImage: ControllerImage
+    controllerReplicas: 1
+    controllerUID: 2103
+    dashboard:
+      replicas: 1
+    debugContainer: null
+    destinationProxyResources: null
+    destinationResources: null
+    disableHeartBeat: false
+    enableH2Upgrade: true
+    enablePodAntiAffinity: false
+    global:
+      cliVersion: CliVersion
+      clusterDomain: cluster.local
+      clusterNetworks: ClusterNetworks
+      cniEnabled: false
+      controlPlaneTracing: false
+      controllerComponentLabel: ControllerComponentLabel
+      controllerImageVersion: ControllerImageVersion
+      controllerLogLevel: ControllerLogLevel
+      controllerNamespaceLabel: ControllerNamespaceLabel
+      createdByAnnotation: CreatedByAnnotation
+      enableEndpointSlices: false
+      grafanaUrl: ""
+      highAvailability: false
+      identityTrustDomain: cluster.local
+      imagePullPolicy: ImagePullPolicy
+      imagePullSecrets: null
+      linkerdNamespaceLabel: LinkerdNamespaceLabel
+      linkerdVersion: ""
+      namespace: Namespace
+      prometheusUrl: ""
+      proxy:
+        capabilities: null
+        component: linkerd-controller
+        disableIdentity: false
+        disableTap: false
+        enableExternalProfiles: false
+        image:
+          name: ProxyImageName
+          pullPolicy: ImagePullPolicy
+          version: ProxyVersion
+        inboundConnectTimeout: ""
+        isGateway: false
+        logFormat: plain
+        logLevel: warn,linkerd=info
+        opaquePorts: ""
+        outboundConnectTimeout: ""
+        ports:
+          admin: 4191
+          control: 4190
+          inbound: 4143
+          outbound: 4140
+        requireIdentityOnInboundPorts: ""
+        resources: null
+        saMountPath: null
+        trace:
+          collectorSvcAccount: ""
+          collectorSvcAddr: ""
+        uid: 2102
+        waitBeforeExitSeconds: 0
+        workloadKind: deployment
+      proxyContainerName: ProxyContainerName
+      proxyInit:
+        capabilities: null
+        closeWaitTimeoutSecs: 0
+        ignoreInboundPorts: ""
+        ignoreOutboundPorts: ""
+        image:
+          name: ProxyInitImageName
+          pullPolicy: ImagePullPolicy
+          version: ProxyInitVersion
+        resources:
+          cpu:
+            limit: 100m
+            request: 10m
+          memory:
+            limit: 50Mi
+            request: 10Mi
+        saMountPath: null
+        xtMountPath:
+          mountPath: /run
+          name: linkerd-proxy-init-xtables-lock
+          readOnly: false
+      proxyInjectAnnotation: ProxyInjectAnnotation
+      proxyInjectDisabled: ProxyInjectDisabled
+      workloadNamespaceLabel: WorkloadNamespaceLabel
+    grafana:
+      enabled: true
+    heartbeatResources: null
+    heartbeatSchedule: ""
+    identityProxyResources: null
+    identityResources: null
+    installNamespace: true
+    nodeSelector:
+      beta.kubernetes.io/os: linux
+    omitWebhookSideEffects: false
+    prometheus:
+      enabled: true
+      image: PrometheusImage
+    proxyInjectorProxyResources: null
+    proxyInjectorResources: null
+    publicAPIProxyResources: null
+    publicAPIResources: null
+    restrictDashboardPrivileges: false
+    spValidatorProxyResources: null
+    spValidatorResources: null
+    stage: ""
+    tapProxyResources: null
+    tapResources: null
+    tolerations: null
+    tracing:
+      enabled: false
+    webImage: WebImage
+    webProxyResources: null
+    webResources: null
+    webhookFailurePolicy: WebhookFailurePolicy
+`,
+			},
+			&linkerd2.Values{
+				ControllerImage:             "ControllerImage",
+				WebImage:                    "WebImage",
+				ControllerUID:               2103,
+				EnableH2Upgrade:             true,
+				WebhookFailurePolicy:        "WebhookFailurePolicy",
+				OmitWebhookSideEffects:      false,
+				RestrictDashboardPrivileges: false,
+				InstallNamespace:            true,
+				NodeSelector:                defaultValues.NodeSelector,
+				Tolerations:                 defaultValues.Tolerations,
+				Global: &linkerd2.Global{
+					Namespace:                "Namespace",
+					ClusterDomain:            "cluster.local",
+					ClusterNetworks:          "ClusterNetworks",
+					ImagePullPolicy:          "ImagePullPolicy",
+					CliVersion:               "CliVersion",
+					ControllerComponentLabel: "ControllerComponentLabel",
+					ControllerLogLevel:       "ControllerLogLevel",
+					ControllerImageVersion:   "ControllerImageVersion",
+					ControllerNamespaceLabel: "ControllerNamespaceLabel",
+					WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
+					CreatedByAnnotation:      "CreatedByAnnotation",
+					ProxyInjectAnnotation:    "ProxyInjectAnnotation",
+					ProxyInjectDisabled:      "ProxyInjectDisabled",
+					LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
+					ProxyContainerName:       "ProxyContainerName",
+					CNIEnabled:               false,
+					IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
+					Proxy: &linkerd2.Proxy{
+						Image: &linkerd2.Image{
+							Name:       "ProxyImageName",
+							PullPolicy: "ImagePullPolicy",
+							Version:    "ProxyVersion",
+						},
+						LogLevel:  "warn,linkerd=info",
+						LogFormat: "plain",
+						Ports: &linkerd2.Ports{
+							Admin:    4191,
+							Control:  4190,
+							Inbound:  4143,
+							Outbound: 4140,
+						},
+						UID:   2102,
+						Trace: &linkerd2.Trace{},
+					},
+					ProxyInit: &linkerd2.ProxyInit{
+						Image: &linkerd2.Image{
+							Name:       "ProxyInitImageName",
+							PullPolicy: "ImagePullPolicy",
+							Version:    "ProxyInitVersion",
+						},
+						Resources: &linkerd2.Resources{
+							CPU: linkerd2.Constraints{
+								Limit:   "100m",
+								Request: "10m",
+							},
+							Memory: linkerd2.Constraints{
+								Limit:   "50Mi",
+								Request: "10Mi",
+							},
+						},
+						XTMountPath: &linkerd2.VolumeMountPath{
+							MountPath: "/run",
+							Name:      "linkerd-proxy-init-xtables-lock",
+						},
+					},
+				},
+				ControllerReplicas: 1,
+				Dashboard: &linkerd2.Dashboard{
+					Replicas: 1,
+				},
+				Prometheus: linkerd2.Prometheus{
+					"enabled": true,
+					"image":   "PrometheusImage",
+				},
+				Tracing: map[string]interface{}{
+					"enabled": false,
+				},
+				Grafana: defaultValues.Grafana,
+			},
+			nil,
+		},
+		{
+			[]string{`
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: linkerd-config
+  namespace: linkerd
+data:
+  global: |
+    {"linkerdNamespace":"ns","identityContext":null, "cniEnabled": true}
+  proxy: |
+    {"proxyImage":{"imageName":"registry", "pullPolicy":"Always"}}
+  install: |
+    {"flags":[{"name":"ha","value":"true"}]}`,
+			},
+			&linkerd2.Values{
+				Global: &linkerd2.Global{
+					Namespace:        "ns",
+					CNIEnabled:       true,
+					HighAvailability: true,
+					Proxy: &linkerd2.Proxy{
+						EnableExternalProfiles: true,
+						Image: &linkerd2.Image{
+							Name:       "registry",
+							PullPolicy: "Always",
+						},
+						LogLevel: "",
+						Ports:    &linkerd2.Ports{},
+						Resources: &linkerd2.Resources{
+							CPU:    linkerd2.Constraints{},
+							Memory: linkerd2.Constraints{},
+						},
+					},
+					ProxyInit: &linkerd2.ProxyInit{
+						Image: &linkerd2.Image{},
+					},
+				},
+				Identity: &linkerd2.Identity{
+					Issuer: &linkerd2.Issuer{},
+				},
+				DebugContainer: &linkerd2.DebugContainer{
+					Image: &linkerd2.Image{},
+				},
+			},
+			nil,
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc // pin
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			clientset, err := k8s.NewFakeAPI(tc.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			_, values, err := FetchCurrentConfiguration(context.Background(), clientset, "linkerd")
+			if !reflect.DeepEqual(err, tc.err) {
+				t.Fatalf("Expected \"%+v\", got \"%+v\"", tc.err, err)
+			}
+
+			if !reflect.DeepEqual(values, tc.expected) {
+				t.Fatalf("Unexpected values:\nExpected:\n%+v\nGot:\n%+v", tc.expected, values)
 			}
 		})
 	}
@@ -2618,7 +2884,7 @@ type lifeSpan struct {
 	ends   time.Time
 }
 
-func runIdentityCheckTestCase(t *testing.T, testID int, testDescription string, checkerToTest string, fakeConfigMap string, fakeSecret string, expectedOutput []string) {
+func runIdentityCheckTestCase(ctx context.Context, t *testing.T, testID int, testDescription string, checkerToTest string, fakeConfigMap string, fakeSecret string, expectedOutput []string) {
 	t.Run(fmt.Sprintf("%d/%s", testID, testDescription), func(t *testing.T) {
 		hc := NewHealthChecker(
 			[]CategoryID{},
@@ -2630,10 +2896,10 @@ func runIdentityCheckTestCase(t *testing.T, testID int, testDescription string, 
 		var err error
 		hc.ControlPlaneNamespace = "linkerd"
 		hc.kubeAPI, err = k8s.NewFakeAPI(fakeConfigMap, fakeSecret)
-		_, hc.linkerdConfig, _ = hc.checkLinkerdConfigConfigMap()
+		_, hc.linkerdConfig, _ = hc.checkLinkerdConfigConfigMap(ctx)
 
 		if testDescription != "certificate config is valid" {
-			hc.issuerCert, hc.trustAnchors, _ = hc.checkCertificatesConfig()
+			hc.issuerCert, hc.trustAnchors, _ = hc.checkCertificatesConfig(ctx)
 		}
 
 		if err != nil {
@@ -2753,7 +3019,7 @@ func TestLinkerdIdentityCheckCertConfig(t *testing.T) {
 		} else {
 			fakeSecret = getFakeSecret(testCase.tlsSecretScheme, issuerData)
 		}
-		runIdentityCheckTestCase(t, id, testCase.checkDescription, "certificate config is valid", fakeConfigMap, fakeSecret, testCase.expectedOutput)
+		runIdentityCheckTestCase(context.Background(), t, id, testCase.checkDescription, "certificate config is valid", fakeConfigMap, fakeSecret, testCase.expectedOutput)
 	}
 }
 
@@ -2807,7 +3073,7 @@ func TestLinkerdIdentityCheckCertValidity(t *testing.T) {
 		issuerData := createIssuerData("identity.linkerd.cluster.local", testCase.lifespan.starts, testCase.lifespan.ends)
 		fakeConfigMap := getFakeConfigMap(k8s.IdentityIssuerSchemeLinkerd, issuerData)
 		fakeSecret := getFakeSecret(k8s.IdentityIssuerSchemeLinkerd, issuerData)
-		runIdentityCheckTestCase(t, id, testCase.checkDescription, testCase.checkerToTest, fakeConfigMap, fakeSecret, testCase.expectedOutput)
+		runIdentityCheckTestCase(context.Background(), t, id, testCase.checkDescription, testCase.checkerToTest, fakeConfigMap, fakeSecret, testCase.expectedOutput)
 	}
 }
 
@@ -2816,7 +3082,7 @@ func TestLinkerdIdentityCheckWrongDns(t *testing.T) {
 	issuerData := createIssuerData("wrong.linkerd.cluster.local", time.Now().AddDate(-1, 0, 0), time.Now().AddDate(1, 0, 0))
 	fakeConfigMap := getFakeConfigMap(k8s.IdentityIssuerSchemeLinkerd, issuerData)
 	fakeSecret := getFakeSecret(k8s.IdentityIssuerSchemeLinkerd, issuerData)
-	runIdentityCheckTestCase(t, 0, "fails when cert dns is wrong", "issuer cert is issued by the trust anchor", fakeConfigMap, fakeSecret, expectedOutput)
+	runIdentityCheckTestCase(context.Background(), t, 0, "fails when cert dns is wrong", "issuer cert is issued by the trust anchor", fakeConfigMap, fakeSecret, expectedOutput)
 
 }
 
@@ -2999,7 +3265,7 @@ spec:
       serviceAccountName: linkerd-cni
       containers:
       - name: install-cni
-        image: gcr.io/linkerd-io/cni-plugin:git-b4266c93
+        image: ghcr.io/linkerd/cni-plugin:git-b4266c93
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:
@@ -3244,7 +3510,7 @@ func TestMinReplicaCheck(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = hc.checkMinReplicasAvailable()
+			err = hc.checkMinReplicasAvailable(context.Background())
 			if err == nil && tc.expected != nil {
 				t.Log("Expected error: nil")
 				t.Logf("Received error: %s\n", err)
@@ -3299,7 +3565,7 @@ func TestGetString(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc //pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			ans, err := getString(tc.i, tc.k)
+			ans, err := GetString(tc.i, tc.k)
 
 			if ans != tc.expected {
 				t.Logf("Expected value: %s\n", tc.expected)

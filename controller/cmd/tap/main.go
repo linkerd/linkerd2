@@ -11,7 +11,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
-	"github.com/linkerd/linkerd2/pkg/config"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
@@ -32,15 +31,18 @@ func Main(args []string) {
 	tlsCertPath := cmd.String("tls-cert", pkgK8s.MountPathTLSCrtPEM, "path to TLS Cert PEM")
 	tlsKeyPath := cmd.String("tls-key", pkgK8s.MountPathTLSKeyPEM, "path to TLS Key PEM")
 	disableCommonNames := cmd.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
+	trustDomain := cmd.String("identity-trust-domain", defaultDomain, "configures the name suffix used for identities")
 
 	traceCollector := flags.AddTraceFlags(cmd)
 
 	flags.ConfigureAndParse(cmd, args)
+	ctx := context.Background()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	k8sAPI, err := k8s.InitializeAPI(
+		ctx,
 		*kubeConfigPath,
 		true,
 		k8s.CJ,
@@ -59,22 +61,14 @@ func Main(args []string) {
 		log.Fatalf("Failed to initialize K8s API: %s", err)
 	}
 
-	globalConfig, err := config.Global(pkgK8s.MountPathGlobalConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
-	trustDomain := globalConfig.GetIdentityContext().GetTrustDomain()
-	if trustDomain == "" {
-		trustDomain = defaultDomain
-	}
-	log.Infof("Using trust domain: %s", trustDomain)
+	log.Infof("Using trust domain: %s", *trustDomain)
 
 	if *traceCollector != "" {
 		if err := trace.InitializeTracing("linkerd-tap", *traceCollector); err != nil {
 			log.Warnf("failed to initialize tracing: %s", err)
 		}
 	}
-	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, trustDomain, k8sAPI)
+	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, *trustDomain, k8sAPI)
 
 	// TODO: make this configurable for local development
 	cert, err := tls.LoadX509KeyPair(*tlsCertPath, *tlsKeyPath)
@@ -82,7 +76,7 @@ func Main(args []string) {
 		log.Fatal(err.Error())
 	}
 
-	apiServer, apiLis, err := tap.NewAPIServer(*apiServerAddr, cert, k8sAPI, grpcTapServer, *disableCommonNames)
+	apiServer, apiLis, err := tap.NewAPIServer(ctx, *apiServerAddr, cert, k8sAPI, grpcTapServer, *disableCommonNames)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -99,5 +93,5 @@ func Main(args []string) {
 	<-stop
 
 	log.Infof("shutting down APIServer on %s", *apiServerAddr)
-	apiServer.Shutdown(context.Background())
+	apiServer.Shutdown(ctx)
 }

@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: bb-terminus
-        image: buoyantio/bb:v0.0.5
+        image: buoyantio/bb:v0.0.6
         args: ["terminus", "--grpc-server-port", "9090", "--response-text", "BANANA"]
         ports:
         - containerPort: 9090

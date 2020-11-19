@@ -262,11 +262,12 @@ class Tap extends React.Component {
     });
 
     const url = this.api.urlsForResourceNoStats('all');
-    this.api.setCurrentRequests([this.api.fetchMetrics(url)]);
+    const authorityUrl = this.api.urlsForResource('authority');
+    this.api.setCurrentRequests([this.api.fetchMetrics(url), this.api.fetchMetrics(authorityUrl)]);
     this.serverPromise = Promise.all(this.api.getCurrentPromises())
-      .then(([rsp]) => {
-        const { resourcesByNs, authoritiesByNs } = groupResourcesByNs(rsp);
-
+      .then(rsp => {
+        const { resourcesByNs } = groupResourcesByNs(rsp[0]);
+        const { authoritiesByNs } = groupResourcesByNs(rsp[1]);
         this.setState({
           resourcesByNs,
           authoritiesByNs,

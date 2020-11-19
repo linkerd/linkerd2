@@ -103,6 +103,10 @@ const (
 	// enable injection for a pod or namespace.
 	ProxyInjectEnabled = "enabled"
 
+	// ProxyInjectIngress is assigned to the ProxyInjectAnnotation annotation to
+	// enable injection in ingress mode for a pod.
+	ProxyInjectIngress = "ingress"
+
 	// ProxyInjectDisabled is assigned to the ProxyInjectAnnotation annotation to
 	// disable injection for a pod or namespace.
 	ProxyInjectDisabled = "disabled"
@@ -151,6 +155,10 @@ const (
 	// ignoreInboundPorts config.
 	ProxyIgnoreInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-inbound-ports"
 
+	// ProxyOpaquePortsAnnotation can be used to override the opaquePorts
+	// config.
+	ProxyOpaquePortsAnnotation = ProxyConfigAnnotationsPrefix + "/opaque-ports"
+
 	// ProxyIgnoreOutboundPortsAnnotation can be used to override the
 	// ignoreOutboundPorts config.
 	ProxyIgnoreOutboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-outbound-ports"
@@ -197,10 +205,6 @@ const (
 	// ProxyRequireIdentityOnInboundPortsAnnotation can be used to configure the proxy
 	// to always require identity on inbound ports
 	ProxyRequireIdentityOnInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-require-identity-inbound-ports"
-
-	// ProxyDestinationGetNetworks can be used to configure the proxy to do
-	// destination lookups on IP addresses from the specified network ranges
-	ProxyDestinationGetNetworks = ProxyConfigAnnotationsPrefix + "/proxy-destination-get-networks"
 
 	// ProxyOutboundConnectTimeout can be used to configure the outbound TCP connection
 	// timeout in the proxy
@@ -264,7 +268,7 @@ const (
 	DebugSidecarName = "linkerd-debug"
 
 	// DebugSidecarImage is the image name of the default linkerd debug container
-	DebugSidecarImage = "gcr.io/linkerd-io/debug"
+	DebugSidecarImage = "ghcr.io/linkerd/debug"
 
 	// InitContainerName is the name assigned to the injected init container.
 	InitContainerName = "linkerd-init"
@@ -323,12 +327,6 @@ const (
 	// TapAPIRegistrationServiceName is the name of the tap APIService registration resource
 	TapAPIRegistrationServiceName = "v1alpha1.tap.linkerd.io"
 
-	// SmiMetricsServiceName is the name of the SMI metrics APIService
-	SmiMetricsServiceName = "linkerd-smi-metrics"
-
-	// SmiMetricsAPIRegistrationServiceName is the name of the SMI metrics APIService registration resource
-	SmiMetricsAPIRegistrationServiceName = "v1alpha1.metrics.smi-spec.io"
-
 	// AdmissionWebhookLabel indicates whether admission webhooks are enabled for a namespace
 	AdmissionWebhookLabel = ProxyConfigAnnotationsPrefix + "/admission-webhooks"
 
@@ -352,15 +350,18 @@ const (
 	// MountPathInstallConfig is the path at which the install config file is mounted.
 	MountPathInstallConfig = MountPathBase + "/config/install"
 
+	// MountPathValuesConfig is the path at which the values config file is mounted.
+	MountPathValuesConfig = MountPathBase + "/config/values"
+
 	// MountPathEndEntity is the path at which a tmpfs directory is mounted to
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
 
 	// MountPathTLSKeyPEM is the path at which the TLS key PEM file is mounted.
-	MountPathTLSKeyPEM = MountPathBase + "/tls/key.pem"
+	MountPathTLSKeyPEM = MountPathBase + "/tls/tls.key"
 
 	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
-	MountPathTLSCrtPEM = MountPathBase + "/tls/crt.pem"
+	MountPathTLSCrtPEM = MountPathBase + "/tls/tls.crt"
 
 	// MountPathXtablesLock is the path at which the proxy init container mounts xtables
 	// This is necessary for xtables-legacy support

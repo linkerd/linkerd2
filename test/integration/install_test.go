@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -23,7 +24,7 @@ var (
 
 func TestMain(m *testing.M) {
 	TestHelper = testutil.NewTestHelper()
-	os.Exit(testutil.Run(m, TestHelper))
+	os.Exit(m.Run())
 }
 
 var (
@@ -31,11 +32,23 @@ var (
 
 	helmTLSCerts *tls.CA
 
-	linkerdSvcs = []string{
+	linkerdSvcStable = []string{
 		"linkerd-controller-api",
 		"linkerd-dst",
 		"linkerd-grafana",
 		"linkerd-identity",
+		"linkerd-prometheus",
+		"linkerd-web",
+		"linkerd-tap",
+	}
+
+	linkerdSvcEdge = []string{
+		"linkerd-controller-api",
+		"linkerd-dst",
+		"linkerd-dst-headless",
+		"linkerd-grafana",
+		"linkerd-identity",
+		"linkerd-identity-headless",
 		"linkerd-prometheus",
 		"linkerd-web",
 		"linkerd-tap",
@@ -102,9 +115,9 @@ func TestCheckPreInstall(t *testing.T) {
 
 	cmd := []string{"check", "--pre", "--expected-version", TestHelper.GetVersion()}
 	golden := "check.pre.golden"
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd check' command failed", "'linkerd check' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, "'linkerd check' command failed", err)
 	}
 
 	err = TestHelper.ValidateOutput(out, golden)
@@ -115,10 +128,11 @@ func TestCheckPreInstall(t *testing.T) {
 
 func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
+		ctx := context.Background()
 		// make sure app is running
 		testAppNamespace := "upgrade-test"
 		for _, deploy := range []string{"emoji", "voting", "web"} {
-			if err := TestHelper.CheckPods(testAppNamespace, deploy, 1); err != nil {
+			if err := TestHelper.CheckPods(ctx, testAppNamespace, deploy, 1); err != nil {
 				if rce, ok := err.(*testutil.RestartCountError); ok {
 					testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 				} else {
@@ -126,7 +140,7 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 				}
 			}
 
-			if err := TestHelper.CheckDeployment(testAppNamespace, deploy, 1); err != nil {
+			if err := TestHelper.CheckDeployment(ctx, testAppNamespace, deploy, 1); err != nil {
 				testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 			}
 		}
@@ -143,11 +157,90 @@ func TestUpgradeTestAppWorksBeforeUpgrade(t *testing.T) {
 func TestRetrieveUidPreUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
 		var err error
-		configMapUID, err = TestHelper.KubernetesHelper.GetConfigUID(TestHelper.GetLinkerdNamespace())
+		configMapUID, err = TestHelper.KubernetesHelper.GetConfigUID(context.Background(), TestHelper.GetLinkerdNamespace())
 		if err != nil || configMapUID == "" {
 			testutil.AnnotatedFatalf(t, "error retrieving linkerd-config's uid",
 				"error retrieving linkerd-config's uid: %s", err)
 		}
+	}
+}
+
+func TestInstallCalico(t *testing.T) {
+	if !TestHelper.Calico() {
+		return
+	}
+
+	// Install calico CNI plug-in from the official manifests
+	// Calico operator and custom resource definitions.
+	out, err := TestHelper.Kubectl("", []string{"apply", "-f", "https://docs.projectcalico.org/manifests/tigera-operator.yaml"}...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"kubectl apply command failed\n%s", out)
+	}
+
+	// wait for the tigera-operator deployment
+	name := "tigera-operator"
+	ns := "tigera-operator"
+	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
+			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
+	}
+
+	// creating the necessary custom resource
+	out, err = TestHelper.Kubectl("", []string{"apply", "-f", "https://docs.projectcalico.org/manifests/custom-resources.yaml"}...)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"kubectl apply command failed\n%s", out)
+	}
+
+	// Wait for Calico CNI Installation, which is created by the operator based on the custom resource applied above
+	time.Sleep(10 * time.Second)
+	ns = "calico-system"
+	o, err = TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/calico-kube-controllers", "deploy/calico-typha")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for resources in namespace %s", ns),
+			"failed to wait for condition=available for resources in namespace %s: %s: %s", ns, err, o)
+	}
+}
+
+func TestInstallCNIPlugin(t *testing.T) {
+	if !TestHelper.CNI() {
+		return
+	}
+
+	// install the CNI plugin in the cluster
+	var (
+		cmd  = "install-cni"
+		args = []string{
+			"--use-wait-flag",
+			"--cni-log-level=debug",
+		}
+	)
+
+	exec := append([]string{cmd}, args...)
+	out, err := TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd install-cni' command failed", err)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+
+	// perform a linkerd check with --linkerd-cni-enabled
+	timeout := time.Minute
+	err = TestHelper.RetryFor(timeout, func() error {
+		out, err = TestHelper.LinkerdRun("check", "--pre", "--linkerd-cni-enabled", "--wait=0")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd check' command timed-out (%s)", timeout), err)
 	}
 }
 
@@ -160,14 +253,26 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		cmd  = "install"
 		args = []string{
 			"--controller-log-level", "debug",
-			"--proxy-log-level", "warn,linkerd2_proxy=debug",
+			"--proxy-log-level", "off",
 			"--proxy-version", TestHelper.GetVersion(),
 			"--skip-inbound-ports", skippedInboundPorts,
 		}
 	)
 
+	if certsPath := TestHelper.CertsPath(); certsPath != "" {
+		args = append(args,
+			"--identity-trust-anchors-file", certsPath+"/ca.crt",
+			"--identity-issuer-certificate-file", certsPath+"/issuer.crt",
+			"--identity-issuer-key-file", certsPath+"/issuer.key",
+		)
+	}
+
 	if TestHelper.GetClusterDomain() != "cluster.local" {
 		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())
+	}
+
+	if TestHelper.CNI() {
+		args = append(args, "--linkerd-cni-enabled")
 	}
 
 	if TestHelper.ExternalIssuer() {
@@ -175,7 +280,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		// short cert lifetime to put some pressure on the CSR request, response code path
 		args = append(args, "--identity-issuance-lifetime=15s", "--identity-external-issuer=true")
 
-		err := TestHelper.CreateControlPlaneNamespaceIfNotExists(TestHelper.GetLinkerdNamespace())
+		err := TestHelper.CreateControlPlaneNamespaceIfNotExists(context.Background(), TestHelper.GetLinkerdNamespace())
 		if err != nil {
 			testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", TestHelper.GetLinkerdNamespace()),
 				"failed to create %s namespace: %s", TestHelper.GetLinkerdNamespace(), err)
@@ -220,10 +325,9 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 		cmd = "upgrade"
 		// test 2-stage install during upgrade
-		out, stderr, err := TestHelper.LinkerdRun(cmd, "config")
+		out, err := TestHelper.LinkerdRun(cmd, "config")
 		if err != nil {
-			testutil.AnnotatedFatalf(t, "'linkerd upgrade config' command failed",
-				"'linkerd upgrade config' command failed\n%s\n%s", out, stderr)
+			testutil.AnnotatedFatal(t, "'linkerd upgrade config' command failed", err)
 		}
 
 		// apply stage 1
@@ -234,27 +338,32 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 
 		// prepare for stage 2
-		args = append([]string{"control-plane"}, args...)
+		args = append([]string{"control-plane", "--addon-overwrite"}, args...)
 	}
 
 	exec := append([]string{cmd}, args...)
-	out, stderr, err := TestHelper.LinkerdRun(exec...)
+	out, err := TestHelper.LinkerdRun(exec...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd install' command failed",
-			"'linkerd install' command failed: \n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, "'linkerd install' command failed", err)
 	}
 
 	// test `linkerd upgrade --from-manifests`
 	if TestHelper.UpgradeFromVersion() != "" {
-		resources := []string{"configmaps/" + k8s.ConfigConfigMapName, "configmaps/" + k8s.AddOnsConfigMapName, "secrets/" + k8s.IdentityIssuerSecretName}
-		kubeArgs := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, resources...)
-		kubeArgs = append(kubeArgs, "-oyaml")
-
-		manifests, err := TestHelper.Kubectl("", kubeArgs...)
+		kubeArgs := append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, "configmaps", "-oyaml")
+		configManifests, err := TestHelper.Kubectl("", kubeArgs...)
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
-				"'kubectl get' command failed with %s\n%s\n%s", err, manifests, kubeArgs)
+				"'kubectl get' command failed with %s\n%s\n%s", err, configManifests, kubeArgs)
 		}
+
+		kubeArgs = append([]string{"--namespace", TestHelper.GetLinkerdNamespace(), "get"}, "secrets", "-oyaml")
+		secretManifests, err := TestHelper.Kubectl("", kubeArgs...)
+		if err != nil {
+			testutil.AnnotatedFatalf(t, "'kubectl get' command failed",
+				"'kubectl get' command failed with %s\n%s\n%s", err, secretManifests, kubeArgs)
+		}
+
+		manifests := configManifests + "---\n" + secretManifests
 
 		exec = append(exec, "--from-manifests", "-")
 		upgradeFromManifests, stderr, err := TestHelper.PipeToLinkerdRun(manifests, exec...)
@@ -266,7 +375,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		if out != upgradeFromManifests {
 			// retry in case it's just a discrepancy in the heartbeat cron schedule
 			exec := append([]string{cmd}, args...)
-			out, stderr, err := TestHelper.LinkerdRun(exec...)
+			out, err := TestHelper.LinkerdRun(exec...)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, fmt.Sprintf("command failed: %v", exec),
 					"command failed: %v\n%s\n%s", exec, out, stderr)
@@ -350,31 +459,31 @@ func TestInstallHelm(t *testing.T) {
 }
 
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
-	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), linkerdSvcs, testutil.LinkerdDeployReplicas, TestHelper, t)
+	expectedServices := linkerdSvcEdge
+	if TestHelper.UpgradeHelmFromVersion() != "" {
+		expectedServices = linkerdSvcStable
+	}
+	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), expectedServices, testutil.LinkerdDeployReplicas, TestHelper, t)
 }
 
 func TestInstallMulticluster(t *testing.T) {
-	if !TestHelper.Multicluster() {
-		return
-	}
 	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
 		flags := []string{
 			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-			"--set", "controllerImageVersion=" + TestHelper.GetVersion(),
+			"--set", "global.controllerImageVersion=" + TestHelper.GetVersion(),
 		}
 		if stdout, stderr, err := TestHelper.HelmInstallMulticluster(TestHelper.GetMulticlusterHelmChart(), flags...); err != nil {
 			testutil.AnnotatedFatalf(t, "'helm install' command failed",
 				"'helm install' command failed\n%s\n%s", stdout, stderr)
 		}
-	} else {
+	} else if TestHelper.Multicluster() {
 		exec := append([]string{"multicluster"}, []string{
 			"install",
 			"--namespace", TestHelper.GetMulticlusterNamespace(),
 		}...)
-		out, stderr, err := TestHelper.LinkerdRun(exec...)
+		out, err := TestHelper.LinkerdRun(exec...)
 		if err != nil {
-			testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
-				"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
+			testutil.AnnotatedFatal(t, "'linkerd multicluster install' command failed", err)
 		}
 
 		out, err = TestHelper.KubectlApply(out, "")
@@ -430,8 +539,6 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "prometheus.proxy.resources.memory.request=105Mi",
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
-		"--set", "smiMetricsProxyResources.cpu.limit=1070m",
-		"--set", "smiMetricsProxyResources.memory.request=107Mi",
 		"--set", "spValidatorProxyResources.cpu.limit=1080m",
 		"--set", "spValidatorProxyResources.memory.request=108Mi",
 		"--set", "tapProxyResources.cpu.limit=1090m",
@@ -450,7 +557,7 @@ func TestUpgradeHelm(t *testing.T) {
 
 func TestRetrieveUidPostUpgrade(t *testing.T) {
 	if TestHelper.UpgradeFromVersion() != "" {
-		newConfigMapUID, err := TestHelper.KubernetesHelper.GetConfigUID(TestHelper.GetLinkerdNamespace())
+		newConfigMapUID, err := TestHelper.KubernetesHelper.GetConfigUID(context.Background(), TestHelper.GetLinkerdNamespace())
 		if err != nil || newConfigMapUID == "" {
 			testutil.AnnotatedFatalf(t, "error retrieving linkerd-config's uid",
 				"error retrieving linkerd-config's uid: %s", err)
@@ -515,15 +622,6 @@ var expectedResources = []expectedData{
 		memLimit:   "200Mi",
 		memRequest: "106Mi",
 	},
-	/*	 not used in default case
-	{
-		pod:        "linkerd-smi-metrics",
-		cpuLimit:   "1070m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "1007i",
-	},
-	*/
 	{
 		pod:        "linkerd-sp-validator",
 		cpuLimit:   "1080m",
@@ -553,7 +651,7 @@ func TestComponentProxyResources(t *testing.T) {
 	}
 
 	for _, expected := range expectedResources {
-		resourceReqs, err := TestHelper.GetResources("linkerd-proxy", expected.pod, TestHelper.GetLinkerdNamespace())
+		resourceReqs, err := TestHelper.GetResources(context.Background(), "linkerd-proxy", expected.pod, TestHelper.GetLinkerdNamespace())
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "setting proxy resources failed", "Error retrieving resource requirements for %s: %s", expected.pod, err)
 		}
@@ -590,8 +688,10 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 	var golden string
 	if stage == "proxy" {
 		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=0"}
-		if TestHelper.Multicluster() {
+		if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
 			golden = "check.multicluster.proxy.golden"
+		} else if TestHelper.CNI() {
+			golden = "check.cni.proxy.golden"
 		} else {
 			golden = "check.proxy.golden"
 		}
@@ -600,8 +700,10 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		golden = "check.config.golden"
 	} else {
 		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=0"}
-		if TestHelper.Multicluster() {
+		if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
 			golden = "check.multicluster.golden"
+		} else if TestHelper.CNI() {
+			golden = "check.cni.golden"
 		} else {
 			golden = "check.golden"
 		}
@@ -613,10 +715,10 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 			cliVOverride := []string{"--cli-version-override", cliVersionOverride}
 			cmd = append(cmd, cliVOverride...)
 		}
-		out, stderr, err := TestHelper.LinkerdRun(cmd...)
+		out, err := TestHelper.LinkerdRun(cmd...)
 
 		if err != nil {
-			return fmt.Errorf("'linkerd check' command failed\n%s\n%s", stderr, out)
+			return fmt.Errorf("'linkerd check' command failed\n%s", err)
 		}
 
 		if !compareOutput {
@@ -659,10 +761,9 @@ func TestUpgradeTestAppWorksAfterUpgrade(t *testing.T) {
 func TestInstallSP(t *testing.T) {
 	cmd := []string{"install-sp"}
 
-	out, stderr, err := TestHelper.LinkerdRun(cmd...)
+	out, err := TestHelper.LinkerdRun(cmd...)
 	if err != nil {
-		testutil.AnnotatedFatalf(t, "'linkerd install-sp' command failed",
-			"'linkerd install-sp' command failed\n%s\n%s", out, stderr)
+		testutil.AnnotatedFatal(t, "'linkerd install-sp' command failed", err)
 	}
 
 	out, err = TestHelper.KubectlApply(out, TestHelper.GetLinkerdNamespace())
@@ -716,6 +817,7 @@ func TestInject(t *testing.T) {
 			"failed to read smoke test file: %s", err)
 	}
 
+	ctx := context.Background()
 	for _, tc := range injectionCases {
 		tc := tc // pin
 		t.Run(tc.ns, func(t *testing.T) {
@@ -723,7 +825,7 @@ func TestInject(t *testing.T) {
 
 			prefixedNs := TestHelper.GetTestNamespace(tc.ns)
 
-			err := TestHelper.CreateDataPlaneNamespaceIfNotExists(prefixedNs, tc.annotations)
+			err := TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, tc.annotations)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", prefixedNs),
 					"failed to create %s namespace: %s", prefixedNs, err)
@@ -735,7 +837,7 @@ func TestInject(t *testing.T) {
 				cmd = append(cmd, "testdata/smoke_test.yaml")
 
 				var injectReport string
-				out, injectReport, err = TestHelper.LinkerdRun(cmd...)
+				out, injectReport, err = TestHelper.PipeToLinkerdRun("", cmd...)
 				if err != nil {
 					testutil.AnnotatedFatalf(t, "'linkerd inject' command failed",
 						"'linkerd inject' command failed: %s\n%s", err, out)
@@ -757,7 +859,7 @@ func TestInject(t *testing.T) {
 			}
 
 			for _, deploy := range []string{"smoke-test-terminus", "smoke-test-gateway"} {
-				if err := TestHelper.CheckPods(prefixedNs, deploy, 1); err != nil {
+				if err := TestHelper.CheckPods(ctx, prefixedNs, deploy, 1); err != nil {
 					if rce, ok := err.(*testutil.RestartCountError); ok {
 						testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 					} else {
@@ -766,7 +868,7 @@ func TestInject(t *testing.T) {
 				}
 			}
 
-			url, err := TestHelper.URLFor(prefixedNs, "smoke-test-gateway", 8080)
+			url, err := TestHelper.URLFor(ctx, prefixedNs, "smoke-test-gateway", 8080)
 			if err != nil {
 				testutil.AnnotatedFatalf(t, "failed to get URL",
 					"failed to get URL: %s", err)
@@ -826,60 +928,14 @@ func TestCheckProxy(t *testing.T) {
 	}
 }
 
-func TestLogs(t *testing.T) {
-	okMessages, errs := testutil.FetchAndCheckLogs(TestHelper)
-	for msg := range okMessages {
-		t.Log(msg)
-	}
-	for err := range errs {
-		testutil.AnnotatedError(t, "Error checking logs", err)
-	}
-}
-
-func TestEvents(t *testing.T) {
-	for _, err := range testutil.FetchAndCheckEvents(TestHelper) {
-		testutil.AnnotatedError(t, "Error checking events", err)
-	}
-}
-
 func TestRestarts(t *testing.T) {
 	for deploy, spec := range testutil.LinkerdDeployReplicas {
-		if err := TestHelper.CheckPods(TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+		if err := TestHelper.CheckPods(context.Background(), TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
 				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
 			}
-		}
-	}
-}
-
-//TODO Put that in test_cleanup when we have adequate resource labels
-func TestUninstallMulticluster(t *testing.T) {
-	if !TestHelper.Multicluster() {
-		return
-	}
-
-	if TestHelper.GetMulticlusterHelmReleaseName() != "" {
-		if stdout, stderr, err := TestHelper.HelmUninstallMulticluster(TestHelper.GetMulticlusterHelmChart()); err != nil {
-			testutil.AnnotatedFatalf(t, "'helm delete' command failed",
-				"'helm delete' command failed\n%s\n%s", stdout, stderr)
-		}
-	} else {
-		exec := append([]string{"multicluster"}, []string{
-			"install",
-			"--namespace", TestHelper.GetMulticlusterNamespace(),
-		}...)
-		out, stderr, err := TestHelper.LinkerdRun(exec...)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'linkerd multicluster install' command failed",
-				"'linkerd multicluster' command failed: \n%s\n%s", out, stderr)
-		}
-
-		out, err = TestHelper.Kubectl(out, []string{"delete", "-f", "-"}...)
-		if err != nil {
-			testutil.AnnotatedFatalf(t, "'kubectl delete' command failed",
-				"'kubectl apply' command failed\n%s", out)
 		}
 	}
 }

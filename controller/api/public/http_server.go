@@ -28,7 +28,6 @@ var (
 	selfCheckPath    = fullURLPathFor("SelfCheck")
 	edgesPath        = fullURLPathFor("Edges")
 	destGetPath      = fullURLPathFor("DestinationGet")
-	configPath       = fullURLPathFor("Config")
 )
 
 type handler struct {
@@ -65,8 +64,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleEdges(w, req)
 	case destGetPath:
 		h.handleDestGet(w, req)
-	case configPath:
-		h.handleConfig(w, req)
 	default:
 		http.NotFound(w, req)
 	}
@@ -258,27 +255,6 @@ func (h *handler) handleDestGet(w http.ResponseWriter, req *http.Request) {
 
 	server := destinationServer{streamServer{w: flushableWriter, req: req}}
 	err = h.grpcServer.Get(&protoRequest, server)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-}
-
-func (h *handler) handleConfig(w http.ResponseWriter, req *http.Request) {
-	var protoRequest pb.Empty
-	err := protohttp.HTTPRequestToProto(req, &protoRequest)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-
-	rsp, err := h.grpcServer.Config(req.Context(), &protoRequest)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-
-	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
 	if err != nil {
 		protohttp.WriteErrorToHTTPResponse(w, err)
 		return

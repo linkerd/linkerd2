@@ -44,7 +44,7 @@
   },
   {{- end }}
   {{- end}}
-  {{- if .Values.global.proxyInit }}
+  {{- if and .Values.global.proxyInit (not .Values.global.cniEnabled) }}
   {{- if .Values.addRootInitContainers }}
   {
     "op": "add",

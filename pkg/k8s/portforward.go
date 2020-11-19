@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -65,13 +66,14 @@ func NewContainerMetricsForward(
 // function is typically called by the CLI. Care should be taken if called from
 // control plane code.
 func NewPortForward(
+	ctx context.Context,
 	k8sAPI *KubernetesAPI,
 	namespace, deployName string,
 	host string, localPort, remotePort int,
 	emitLogs bool,
 ) (*PortForward, error) {
 	timeoutSeconds := int64(30)
-	podList, err := k8sAPI.CoreV1().Pods(namespace).List(metav1.ListOptions{TimeoutSeconds: &timeoutSeconds})
+	podList, err := k8sAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{TimeoutSeconds: &timeoutSeconds})
 	if err != nil {
 		return nil, err
 	}
