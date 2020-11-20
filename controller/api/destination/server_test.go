@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
+	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/controller/k8s"
@@ -13,6 +14,9 @@ import (
 )
 
 const fullyQualifiedName = "name1.ns.svc.mycluster.local"
+const clusterIP = "172.17.12.0"
+const podIP = "172.17.0.12"
+const port uint32 = 8989
 
 type mockDestinationGetServer struct {
 	util.MockServerStream
@@ -43,6 +47,7 @@ metadata:
   namespace: ns
 spec:
   type: LoadBalancer
+  clusterIP: 172.17.12.0
   ports:
   - port: 8989`,
 		`
@@ -66,12 +71,9 @@ kind: Pod
 metadata:
   name: name1-1
   namespace: ns
-  ownerReferences:
-  - kind: ReplicaSet
-    name: rs-1
-  status:
-    phase: Running
-    podIP: 172.17.0.12`,
+status:
+  phase: Running
+  podIP: 172.17.0.12`,
 		`
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
@@ -102,12 +104,14 @@ spec:
 	}
 	log := logging.WithField("test", t.Name())
 
-	k8sAPI.Sync(nil)
-
 	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, false)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
 	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 	ips := watcher.NewIPWatcher(k8sAPI, endpoints, log)
+
+	// Sync after creating watchers so that the the indexers added get updated
+	// properly
+	k8sAPI.Sync(nil)
 
 	return &server{
 		endpoints,
@@ -174,7 +178,7 @@ func TestGet(t *testing.T) {
 		// test.
 		stream.Cancel()
 
-		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:8989", fullyQualifiedName)}, stream)
+		err := server.Get(&pb.GetDestination{Scheme: "k8s", Path: fmt.Sprintf("%s:%d", fullyQualifiedName, port)}, stream)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
@@ -183,8 +187,8 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Expected 1 update but got %d: %v", len(stream.updates), stream.updates)
 		}
 
-		if updateAddAddress(t, stream.updates[0])[0] != "172.17.0.12:8989" {
-			t.Fatalf("Expected 172.17.0.12:8989 but got %s", updateAddAddress(t, stream.updates[0])[0])
+		if updateAddAddress(t, stream.updates[0])[0] != fmt.Sprintf("%s:%d", podIP, port) {
+			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP, port), updateAddAddress(t, stream.updates[0])[0])
 		}
 
 	})
@@ -216,7 +220,7 @@ func TestGetProfiles(t *testing.T) {
 		stream.Cancel() // See note above on pre-emptive cancellation.
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         fmt.Sprintf("%s:8989", fullyQualifiedName),
+			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
 			ContextToken: "ns:other",
 		}, stream)
 		if err != nil {
@@ -264,7 +268,7 @@ func TestGetProfiles(t *testing.T) {
 		stream.Cancel() // see note above on pre-emptive cancelling
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         fmt.Sprintf("%s:8989", fullyQualifiedName),
+			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
 			ContextToken: "{\"ns\":\"other\"}",
 		}, stream)
 		if err != nil {
@@ -313,7 +317,7 @@ func TestGetProfiles(t *testing.T) {
 		stream.Cancel()
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         fmt.Sprintf("%s:8989", fullyQualifiedName),
+			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
 			ContextToken: "{\"ns\":\"client-ns\"}",
 		}, stream)
 		if err != nil {
@@ -349,7 +353,7 @@ func TestGetProfiles(t *testing.T) {
 		stream.Cancel()
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme:       "k8s",
-			Path:         fmt.Sprintf("%s:8989", fullyQualifiedName),
+			Path:         fmt.Sprintf("%s:%d", fullyQualifiedName, port),
 			ContextToken: "ns:client-ns",
 		}, stream)
 		if err != nil {
@@ -374,6 +378,99 @@ func TestGetProfiles(t *testing.T) {
 		}
 	})
 
+	t.Run("Return profile when using cluster IP", func(t *testing.T) {
+		server := makeServer(t)
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		stream.Cancel()
+		err := server.GetProfile(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   fmt.Sprintf("%s:%d", clusterIP, port),
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// An explanation for why we expect 1 to 3 updates is in test cases
+		// above
+		if len(stream.updates) == 0 || len(stream.updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
+		}
+
+		first := stream.updates[0]
+		if first.FullyQualifiedName != fullyQualifiedName {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, first.FullyQualifiedName)
+		}
+		routes := first.GetRoutes()
+		if len(routes) != 1 {
+			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
+		}
+	})
+
+	t.Run("Return profile with endpoint when using pod IP", func(t *testing.T) {
+		server := makeServer(t)
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		stream.Cancel()
+
+		epAddr, err := toAddress(podIP, port)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		err = server.GetProfile(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   fmt.Sprintf("%s:%d", podIP, port),
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// An explanation for why we expect 1 to 3 updates is in test cases
+		// above
+		if len(stream.updates) == 0 || len(stream.updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
+		}
+
+		first := stream.updates[0]
+		if first.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if first.Endpoint.Addr.String() != epAddr.String() {
+			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
+		}
+	})
+
+	t.Run("Return default profile when IP does not map to service or pod", func(t *testing.T) {
+		server := makeServer(t)
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		stream.Cancel()
+		err := server.GetProfile(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   "172.0.0.0:1234",
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// An explanation for why we expect 1 to 3 updates is in test cases
+		// above
+		if len(stream.updates) == 0 || len(stream.updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
+		}
+
+		first := stream.updates[0]
+		if first.RetryBudget == nil {
+			t.Fatalf("Expected default profile to have a retry budget")
+		}
+	})
 }
 
 func TestTokenStructure(t *testing.T) {
@@ -420,4 +517,15 @@ func updateAddAddress(t *testing.T, update *pb.Update) []string {
 		ips = append(ips, addr.ProxyAddressToString(ip.GetAddr()))
 	}
 	return ips
+}
+
+func toAddress(path string, port uint32) (*net.TcpAddress, error) {
+	ip, err := addr.ParseProxyIPV4(path)
+	if err != nil {
+		return nil, err
+	}
+	return &net.TcpAddress{
+		Ip:   ip,
+		Port: port,
+	}, nil
 }
