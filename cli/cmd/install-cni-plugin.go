@@ -215,11 +215,10 @@ func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
 
 	chart := &charts.Chart{
 		Name:      helmCNIDefaultChartName,
-		Dir:       helmCNIDefaultChartDir,
 		Namespace: controlPlaneNamespace,
 		RawValues: rawValues,
 		Files:     files,
-		Fs:        static.Templates,
+		Fs:        static.WithDefaultChart(helmCNIDefaultChartDir),
 	}
 	buf, err := chart.RenderCNI()
 	if err != nil {

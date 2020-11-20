@@ -1,10 +1,6 @@
 package values
 
 import (
-	"fmt"
-	"net/http"
-	"path"
-
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
@@ -32,8 +28,7 @@ type jaeger struct {
 // NewValues returns a new instance of the Values type.
 // TODO: Add HA logic
 func NewValues() (*Values, error) {
-	chartDir := fmt.Sprintf("%s/", "jaeger")
-	v, err := readDefaults(chartDir)
+	v, err := readDefaults()
 	if err != nil {
 		return nil, err
 	}
@@ -43,12 +38,12 @@ func NewValues() (*Values, error) {
 
 // readDefaults read all the default variables from the values.yaml file.
 // chartDir is the root directory of the Helm chart where values.yaml is.
-func readDefaults(chartDir string) (*Values, error) {
+func readDefaults() (*Values, error) {
 	valuesFile := &chartutil.BufferedFile{
 		Name: chartutil.ValuesfileName,
 	}
 
-	if err := charts.ReadFile(http.Dir(path.Join(static.GetRepoRoot(), "jaeger/charts")), chartDir, valuesFile); err != nil {
+	if err := charts.ReadFile(static.WithPath("jaeger/charts/jaeger"), "", valuesFile); err != nil {
 		return nil, err
 	}
 

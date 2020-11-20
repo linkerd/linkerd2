@@ -282,17 +282,15 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 
 	files := []*chartutil.BufferedFile{
 		{Name: chartutil.ChartfileName},
-		{Name: "requirements.yaml"},
 		{Name: "templates/patch.json"},
 	}
 
 	chart := &charts.Chart{
 		Name:      "patch",
-		Dir:       "patch",
 		Namespace: conf.values.Global.Namespace,
 		RawValues: rawValues,
 		Files:     files,
-		Fs:        static.Templates,
+		Fs:        static.WithDefaultChart("patch"),
 	}
 	buf, err := chart.Render()
 	if err != nil {

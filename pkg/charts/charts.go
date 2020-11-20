@@ -19,7 +19,6 @@ const versionPlaceholder = "linkerdVersionValue"
 // Chart holds the necessary info to render a Helm chart
 type Chart struct {
 	Name      string
-	Dir       string
 	Namespace string
 	RawValues []byte
 	Files     []*chartutil.BufferedFile
@@ -27,12 +26,12 @@ type Chart struct {
 }
 
 func (c *Chart) render(partialsFiles []*chartutil.BufferedFile) (bytes.Buffer, error) {
-	if err := FilesReader(c.Fs, c.Dir+"/", c.Files); err != nil {
+	if err := FilesReader(c.Fs, "", c.Files); err != nil {
 		return bytes.Buffer{}, err
 	}
 
 	// partials are present only in the static.Templates FileSystem
-	if err := FilesReader(static.Templates, "", partialsFiles); err != nil {
+	if err := FilesReader(static.WithDefaultChart("partials"), "", partialsFiles); err != nil {
 		return bytes.Buffer{}, err
 	}
 
@@ -62,7 +61,7 @@ func (c *Chart) render(partialsFiles []*chartutil.BufferedFile) (bytes.Buffer, e
 	// Merge templates and inject
 	var buf bytes.Buffer
 	for _, tmpl := range c.Files {
-		t := path.Join(renderOpts.ReleaseOptions.Name, tmpl.Name)
+		t := path.Join(c.Name, tmpl.Name)
 		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
 			return bytes.Buffer{}, err
 		}
@@ -76,22 +75,21 @@ func (c *Chart) Render() (bytes.Buffer, error) {
 
 	// Keep this slice synced with the contents of /charts/partials
 	l5dPartials := []*chartutil.BufferedFile{
-		{Name: "charts/partials/" + chartutil.ChartfileName},
-		{Name: "charts/partials/templates/_proxy.tpl"},
-		{Name: "charts/partials/templates/_proxy-init.tpl"},
-		{Name: "charts/partials/templates/_volumes.tpl"},
-		{Name: "charts/partials/templates/_resources.tpl"},
-		{Name: "charts/partials/templates/_metadata.tpl"},
-		{Name: "charts/partials/templates/_helpers.tpl"},
-		{Name: "charts/partials/templates/_debug.tpl"},
-		{Name: "charts/partials/templates/_capabilities.tpl"},
-		{Name: "charts/partials/templates/_trace.tpl"},
-		{Name: "charts/partials/templates/_nodeselector.tpl"},
-		{Name: "charts/partials/templates/_tolerations.tpl"},
-		{Name: "charts/partials/templates/_affinity.tpl"},
-		{Name: "charts/partials/templates/_addons.tpl"},
-		{Name: "charts/partials/templates/_validate.tpl"},
-		{Name: "charts/partials/templates/_pull-secrets.tpl"},
+		{Name: "templates/_proxy.tpl"},
+		{Name: "templates/_proxy-init.tpl"},
+		{Name: "templates/_volumes.tpl"},
+		{Name: "templates/_resources.tpl"},
+		{Name: "templates/_metadata.tpl"},
+		{Name: "templates/_helpers.tpl"},
+		{Name: "templates/_debug.tpl"},
+		{Name: "templates/_capabilities.tpl"},
+		{Name: "templates/_trace.tpl"},
+		{Name: "templates/_nodeselector.tpl"},
+		{Name: "templates/_tolerations.tpl"},
+		{Name: "templates/_affinity.tpl"},
+		{Name: "templates/_addons.tpl"},
+		{Name: "templates/_validate.tpl"},
+		{Name: "templates/_pull-secrets.tpl"},
 	}
 	return c.render(l5dPartials)
 }
@@ -99,9 +97,8 @@ func (c *Chart) Render() (bytes.Buffer, error) {
 // RenderCNI returns a bytes buffer with the result of rendering a Helm chart
 func (c *Chart) RenderCNI() (bytes.Buffer, error) {
 	cniPartials := []*chartutil.BufferedFile{
-		{Name: "charts/partials/" + chartutil.ChartfileName},
-		{Name: "charts/partials/templates/_helpers.tpl"},
-		{Name: "charts/partials/templates/_pull-secrets.tpl"},
+		{Name: "templates/_helpers.tpl"},
+		{Name: "templates/_pull-secrets.tpl"},
 	}
 	return c.render(cniPartials)
 }
@@ -114,9 +111,6 @@ func (c *Chart) RenderNoPartials() (bytes.Buffer, error) {
 // ReadFile updates the buffered file with the data read from disk
 func ReadFile(fs http.FileSystem, dir string, f *chartutil.BufferedFile) error {
 	filename := dir + f.Name
-	if dir == "" {
-		filename = filename[7:]
-	}
 	file, err := fs.Open(filename)
 	if err != nil {
 		return err

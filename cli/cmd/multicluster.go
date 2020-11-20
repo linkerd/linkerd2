@@ -277,11 +277,10 @@ func newAllowCommand() *cobra.Command {
 
 			chart := &charts.Chart{
 				Name:      helmMulticlusterDefaultChartName,
-				Dir:       helmMulticlusterDefaultChartName,
 				Namespace: controlPlaneNamespace,
 				RawValues: rawValues,
 				Files:     files,
-				Fs:        static.Templates,
+				Fs:        static.WithDefaultChart(helmMulticlusterDefaultChartName),
 			}
 			buf, err := chart.RenderNoPartials()
 			if err != nil {
@@ -369,11 +368,10 @@ func newMulticlusterInstallCommand() *cobra.Command {
 
 			chart := &charts.Chart{
 				Name:      helmMulticlusterDefaultChartName,
-				Dir:       helmMulticlusterDefaultChartName,
 				Namespace: controlPlaneNamespace,
 				RawValues: rawValues,
 				Files:     files,
-				Fs:        static.Templates,
+				Fs:        static.WithDefaultChart(helmMulticlusterDefaultChartName),
 			}
 			buf, err := chart.RenderNoPartials()
 			if err != nil {
@@ -474,11 +472,10 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 
 			chart := &charts.Chart{
 				Name:      helmMulticlusterDefaultChartName,
-				Dir:       helmMulticlusterDefaultChartName,
 				Namespace: controlPlaneNamespace,
 				RawValues: rawValues,
 				Files:     files,
-				Fs:        static.Templates,
+				Fs:        static.WithDefaultChart(helmMulticlusterDefaultChartName),
 			}
 			buf, err := chart.RenderNoPartials()
 			if err != nil {
@@ -694,11 +691,10 @@ func newLinkCommand() *cobra.Command {
 
 			chart := &charts.Chart{
 				Name:      helmMulticlusterLinkDefaultChartName,
-				Dir:       helmMulticlusterLinkDefaultChartName,
 				Namespace: controlPlaneNamespace,
 				RawValues: rawValues,
 				Files:     files,
-				Fs:        static.Templates,
+				Fs:        static.WithDefaultChart(helmMulticlusterLinkDefaultChartName),
 			}
 			serviceMirrorOut, err := chart.RenderNoPartials()
 			if err != nil {
