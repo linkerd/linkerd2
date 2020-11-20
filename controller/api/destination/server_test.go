@@ -15,7 +15,8 @@ import (
 
 const fullyQualifiedName = "name1.ns.svc.mycluster.local"
 const clusterIP = "172.17.12.0"
-const podIP = "172.17.0.12"
+const podIP1 = "172.17.0.12"
+const podIP2 = "172.17.0.13"
 const port uint32 = 8989
 
 type mockDestinationGetServer struct {
@@ -69,11 +70,22 @@ subsets:
 apiVersion: v1
 kind: Pod
 metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
   name: name1-1
   namespace: ns
 status:
   phase: Running
   podIP: 172.17.0.12`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name2-1
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.13`,
 		`
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
@@ -118,7 +130,7 @@ spec:
 		profiles,
 		trafficSplits,
 		ips,
-		false,
+		true,
 		"linkerd",
 		"trust.domain",
 		"mycluster.local",
@@ -187,8 +199,8 @@ func TestGet(t *testing.T) {
 			t.Fatalf("Expected 1 update but got %d: %v", len(stream.updates), stream.updates)
 		}
 
-		if updateAddAddress(t, stream.updates[0])[0] != fmt.Sprintf("%s:%d", podIP, port) {
-			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP, port), updateAddAddress(t, stream.updates[0])[0])
+		if updateAddAddress(t, stream.updates[0])[0] != fmt.Sprintf("%s:%d", podIP1, port) {
+			t.Fatalf("Expected %s but got %s", fmt.Sprintf("%s:%d", podIP1, port), updateAddAddress(t, stream.updates[0])[0])
 		}
 
 	})
@@ -417,14 +429,14 @@ func TestGetProfiles(t *testing.T) {
 		}
 		stream.Cancel()
 
-		epAddr, err := toAddress(podIP, port)
+		epAddr, err := toAddress(podIP1, port)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
 
 		err = server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", podIP, port),
+			Path:   fmt.Sprintf("%s:%d", podIP1, port),
 		}, stream)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
@@ -439,6 +451,13 @@ func TestGetProfiles(t *testing.T) {
 		first := stream.updates[0]
 		if first.Endpoint == nil {
 			t.Fatalf("Expected response to have endpoint field")
+		}
+		_, exists := first.Endpoint.MetricLabels["namespace"]
+		if !exists {
+			t.Fatalf("Expected 'namespace' metric label to exist but it did not")
+		}
+		if first.Endpoint.ProtocolHint == nil {
+			t.Fatalf("Expected protocol hint but found none")
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
@@ -469,6 +488,36 @@ func TestGetProfiles(t *testing.T) {
 		first := stream.updates[0]
 		if first.RetryBudget == nil {
 			t.Fatalf("Expected default profile to have a retry budget")
+		}
+	})
+
+	t.Run("Return profile with no protocol hint when pod does not have label", func(t *testing.T) {
+		server := makeServer(t)
+		stream := &bufferingGetProfileStream{
+			updates:          []*pb.DestinationProfile{},
+			MockServerStream: util.NewMockServerStream(),
+		}
+		stream.Cancel()
+		err := server.GetProfile(&pb.GetDestination{
+			Scheme: "k8s",
+			Path:   podIP2,
+		}, stream)
+		if err != nil {
+			t.Fatalf("Got error: %s", err)
+		}
+
+		// An explanation for why we expect 1 to 3 updates is in test cases
+		// above
+		if len(stream.updates) == 0 || len(stream.updates) > 3 {
+			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
+		}
+
+		first := stream.updates[0]
+		if first.Endpoint == nil {
+			t.Fatalf("Expected response to have endpoint field")
+		}
+		if first.Endpoint.ProtocolHint != nil {
+			t.Fatalf("Expected no protocol hint but found one")
 		}
 	})
 }
