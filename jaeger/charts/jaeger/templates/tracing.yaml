@@ -10,7 +10,6 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
     component: collector
-    namespace: {{.Values.namespace}}
 data:
   collector-config: |
     receivers:
@@ -37,7 +36,6 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
     component: collector
-    namespace: {{.Values.namespace}}
 spec:
   type: ClusterIP
   ports:
@@ -63,7 +61,6 @@ metadata:
     app.kubernetes.io/name: collector
     app.kubernetes.io/part-of: Linkerd
     component: collector
-    namespace: {{.Values.namespace}}
   name: collector
   namespace: {{.Values.namespace}}
 spec:
@@ -71,7 +68,6 @@ spec:
   selector:
     matchLabels:
       component: collector
-      namespace: {{.Values.namespace}}
   minReadySeconds: 5
   progressDeadlineSeconds: 120
   template:
@@ -82,7 +78,6 @@ spec:
         prometheus.io/scrape: "true"
       labels:
         component: collector
-        namespace: {{.Values.namespace}}
     spec:
       containers:
       - command:
@@ -132,7 +127,6 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
     component: jaeger
-    namespace: {{.Values.namespace}}
 spec:
   type: ClusterIP
   selector:
@@ -150,7 +144,6 @@ metadata:
     app.kubernetes.io/name: jaeger
     app.kubernetes.io/part-of: Linkerd
     component: jaeger
-    namespace: {{.Values.namespace}}
   name: jaeger
   namespace: {{.Values.namespace}}
 spec:
@@ -158,7 +151,6 @@ spec:
   selector:
     matchLabels:
       component: jaeger
-      namespace: {{.Values.namespace}}
   template:
     metadata:
       annotations:
@@ -167,7 +159,6 @@ spec:
         prometheus.io/scrape: "true"
       labels:
         component: jaeger
-        namespace: {{.Values.namespace}}
     spec:
       containers:
       - args:

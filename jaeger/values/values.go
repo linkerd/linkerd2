@@ -44,20 +44,17 @@ func NewValues() (*Values, error) {
 // readDefaults read all the default variables from the values.yaml file.
 // chartDir is the root directory of the Helm chart where values.yaml is.
 func readDefaults(chartDir string) (*Values, error) {
-	valuesFiles := []*chartutil.BufferedFile{
-		{Name: chartutil.ValuesfileName},
+	valuesFile := &chartutil.BufferedFile{
+		Name: chartutil.ValuesfileName,
 	}
 
-	if err := charts.FilesReader(http.Dir(path.Join(static.GetRepoRoot(), "jaeger/charts")), chartDir, valuesFiles); err != nil {
+	if err := charts.ReadFile(http.Dir(path.Join(static.GetRepoRoot(), "jaeger/charts")), chartDir, valuesFile); err != nil {
 		return nil, err
 	}
 
-	values := Values{}
-	for _, valuesFile := range valuesFiles {
-		var v Values
-		if err := yaml.Unmarshal(valuesFile.Data, &v); err != nil {
-			return nil, err
-		}
+	var values Values
+	if err := yaml.Unmarshal(valuesFile.Data, &values); err != nil {
+		return nil, err
 	}
 
 	return &values, nil
