@@ -1,6 +1,11 @@
 
 # Changes
 
+## edge-20.11.4
+
+* Fixed an issue in the destination service where endpoints always included a
+  protocol hint, regardless of the controller label being present or not
+
 ## edge-20.11.3
 
 This edge release improves support for CNI by properly handling parameters
