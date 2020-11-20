@@ -61,7 +61,7 @@ env:
       fieldPath: metadata.namespace
 - name: _pod_nodeName
   valueFrom:
-     fieldRef:
+    fieldRef:
       fieldPath: spec.nodeName
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
   value: |
