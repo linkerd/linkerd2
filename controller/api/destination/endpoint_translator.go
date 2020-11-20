@@ -307,7 +307,7 @@ func toWeightedAddr(address watcher.Address, enableH2Upgrade bool, identityTrust
 	// If the pod is controlled by any Linkerd control plane, then it can be hinted
 	// that this destination knows H2 (and handles our orig-proto translation).
 	var hint *pb.ProtocolHint
-	if enableH2Upgrade && controllerNS != "" {
+	if enableH2Upgrade && controllerNSLabel != "" {
 		hint = &pb.ProtocolHint{
 			Protocol: &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
