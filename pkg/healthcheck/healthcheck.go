@@ -619,7 +619,7 @@ func (hc *HealthChecker) allCategories() []category {
 						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap(ctx)
 
 						if hc.linkerdConfig != nil {
-							hc.CNIEnabled = hc.linkerdConfig.Global.CNIEnabled
+							hc.CNIEnabled = hc.linkerdConfig.GetGlobal().CNIEnabled
 						}
 						return
 					},
@@ -1295,7 +1295,7 @@ func (hc *HealthChecker) allCategories() []category {
 						if err != nil {
 							return err
 						}
-						if !GetBool(prometheusValues, "enabled") && hc.linkerdConfig.Global.PrometheusURL == "" {
+						if !GetBool(prometheusValues, "enabled") && hc.linkerdConfig.GetGlobal().PrometheusURL == "" {
 							return &SkipError{Reason: "no prometheus instance to connect"}
 						}
 
@@ -1653,11 +1653,11 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 	var data *issuercerts.IssuerCertData
 
 	if values.Identity.Issuer.Scheme == "" || values.Identity.Issuer.Scheme == k8s.IdentityIssuerSchemeLinkerd {
-		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.Global.IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
+		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.GetGlobal().IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 		// ensure trust anchors in config matches what's in the secret
-		if data != nil && strings.TrimSpace(values.Global.IdentityTrustAnchorsPEM) != strings.TrimSpace(data.TrustAnchors) {
+		if data != nil && strings.TrimSpace(values.GetGlobal().IdentityTrustAnchorsPEM) != strings.TrimSpace(data.TrustAnchors) {
 			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
 			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
 		}
@@ -1926,7 +1926,7 @@ func (hc *HealthChecker) checkClusterRoleBindings(ctx context.Context, shouldExi
 }
 
 func (hc *HealthChecker) isHA() bool {
-	return hc.linkerdConfig.Global.HighAvailability
+	return hc.linkerdConfig.GetGlobal().HighAvailability
 }
 
 func (hc *HealthChecker) isHeartbeatDisabled() bool {
@@ -2088,7 +2088,7 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) e
 		return err
 	}
 
-	trustAnchorsPem := values.Global.IdentityTrustAnchorsPEM
+	trustAnchorsPem := values.GetGlobal().IdentityTrustAnchorsPEM
 	offendingPods := []string{}
 	for _, pod := range meshedPods {
 		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {
