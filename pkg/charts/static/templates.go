@@ -14,6 +14,10 @@ import (
 // dev builds.
 var Templates http.FileSystem = http.Dir(path.Join(GetRepoRoot(), "charts"))
 
+// JaegerTemplates that will be rendered by `jaeger install`. This is only used on
+// dev builds.
+var JaegerTemplates http.FileSystem = http.Dir(path.Join(GetRepoRoot(), "jaeger/charts/"))
+
 // GetRepoRoot returns the full path to the root of the repo. We assume this
 // function is only called from the `Templates` var above, and that this source
 // file lives at `pkg/charts/static`, relative to the root of the repo.

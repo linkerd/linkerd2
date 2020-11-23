@@ -2,8 +2,6 @@ package values
 
 import (
 	"fmt"
-	"net/http"
-	"path"
 
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
@@ -48,7 +46,7 @@ func readDefaults(chartDir string) (*Values, error) {
 		Name: chartutil.ValuesfileName,
 	}
 
-	if err := charts.ReadFile(http.Dir(path.Join(static.GetRepoRoot(), "jaeger/charts")), chartDir, valuesFile); err != nil {
+	if err := charts.ReadFile(static.Templates, chartDir, valuesFile); err != nil {
 		return nil, err
 	}
 
