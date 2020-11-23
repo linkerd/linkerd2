@@ -1798,6 +1798,29 @@ metadata:
 				"cat1 'linkerd-config' config map exists",
 			},
 		},
+		{
+			checkDescription: "'linkerd-config' config map exists",
+			resources: []string{`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: linkerd-config
+  namespace: test-ns
+data:
+  values: |-
+    tracing:
+      collector:
+        name: linkerd-collector
+      enabled: false
+      jaeger:
+        name: linkerd-jaeger
+      enabled: true
+`,
+			},
+			expected: []string{
+				"cat1 'linkerd-config' config map exists",
+			},
+		},
 	}
 
 	for id, testCase := range testCases {
@@ -2696,7 +2719,7 @@ data:
 					LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
 					ProxyContainerName:       "ProxyContainerName",
 					CNIEnabled:               false,
-					IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
+					IdentityTrustDomain:      defaultValues.GetGlobal().IdentityTrustDomain,
 					Proxy: &linkerd2.Proxy{
 						Image: &linkerd2.Image{
 							Name:       "ProxyImageName",

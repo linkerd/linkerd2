@@ -74,19 +74,19 @@ func TestGetOverriddenValues(t *testing.T) {
 			expected: func() *l5dcharts.Values {
 				values, _ := l5dcharts.NewValues(false)
 
-				values.Global.Proxy.Cores = 2
-				values.Global.Proxy.DisableIdentity = true
-				values.Global.Proxy.Image.Name = "ghcr.io/linkerd/proxy"
-				values.Global.Proxy.Image.PullPolicy = pullPolicy
-				values.Global.Proxy.Image.Version = proxyVersionOverride
-				values.Global.Proxy.Ports.Control = 4000
-				values.Global.Proxy.Ports.Inbound = 5000
-				values.Global.Proxy.Ports.Admin = 5001
-				values.Global.Proxy.Ports.Outbound = 5002
-				values.Global.Proxy.WaitBeforeExitSeconds = 123
-				values.Global.Proxy.LogLevel = "debug,linkerd=debug"
-				values.Global.Proxy.LogFormat = "json"
-				values.Global.Proxy.Resources = &l5dcharts.Resources{
+				values.GetGlobal().Proxy.Cores = 2
+				values.GetGlobal().Proxy.DisableIdentity = true
+				values.GetGlobal().Proxy.Image.Name = "ghcr.io/linkerd/proxy"
+				values.GetGlobal().Proxy.Image.PullPolicy = pullPolicy
+				values.GetGlobal().Proxy.Image.Version = proxyVersionOverride
+				values.GetGlobal().Proxy.Ports.Control = 4000
+				values.GetGlobal().Proxy.Ports.Inbound = 5000
+				values.GetGlobal().Proxy.Ports.Admin = 5001
+				values.GetGlobal().Proxy.Ports.Outbound = 5002
+				values.GetGlobal().Proxy.WaitBeforeExitSeconds = 123
+				values.GetGlobal().Proxy.LogLevel = "debug,linkerd=debug"
+				values.GetGlobal().Proxy.LogFormat = "json"
+				values.GetGlobal().Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1.5",
 						Request: "0.15",
@@ -96,20 +96,20 @@ func TestGetOverriddenValues(t *testing.T) {
 						Request: "120",
 					},
 				}
-				values.Global.Proxy.UID = 8500
-				values.Global.ProxyInit.Image.Name = "ghcr.io/linkerd/proxy-init"
-				values.Global.ProxyInit.Image.PullPolicy = pullPolicy
-				values.Global.ProxyInit.Image.Version = version.ProxyInitVersion
-				values.Global.ProxyInit.IgnoreInboundPorts = "4222,6222"
-				values.Global.ProxyInit.IgnoreOutboundPorts = "8079,8080"
-				values.Global.Proxy.Trace = &l5dcharts.Trace{
+				values.GetGlobal().Proxy.UID = 8500
+				values.GetGlobal().ProxyInit.Image.Name = "ghcr.io/linkerd/proxy-init"
+				values.GetGlobal().ProxyInit.Image.PullPolicy = pullPolicy
+				values.GetGlobal().ProxyInit.Image.Version = version.ProxyInitVersion
+				values.GetGlobal().ProxyInit.IgnoreInboundPorts = "4222,6222"
+				values.GetGlobal().ProxyInit.IgnoreOutboundPorts = "8079,8080"
+				values.GetGlobal().Proxy.Trace = &l5dcharts.Trace{
 					CollectorSvcAddr:    "oc-collector.tracing:55678",
 					CollectorSvcAccount: "default.tracing",
 				}
-				values.Global.Proxy.RequireIdentityOnInboundPorts = "8888,9999"
-				values.Global.Proxy.OutboundConnectTimeout = "6000ms"
-				values.Global.Proxy.InboundConnectTimeout = "600ms"
-				values.Global.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
+				values.GetGlobal().Proxy.RequireIdentityOnInboundPorts = "8888,9999"
+				values.GetGlobal().Proxy.OutboundConnectTimeout = "6000ms"
+				values.GetGlobal().Proxy.InboundConnectTimeout = "600ms"
+				values.GetGlobal().Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
 				return values
 			},
 		},
@@ -162,19 +162,19 @@ func TestGetOverriddenValues(t *testing.T) {
 			expected: func() *l5dcharts.Values {
 				values, _ := l5dcharts.NewValues(false)
 
-				values.Global.Proxy.Cores = 2
-				values.Global.Proxy.DisableIdentity = true
-				values.Global.Proxy.Image.Name = "ghcr.io/linkerd/proxy"
-				values.Global.Proxy.Image.PullPolicy = pullPolicy
-				values.Global.Proxy.Image.Version = proxyVersionOverride
-				values.Global.Proxy.Ports.Control = 4000
-				values.Global.Proxy.Ports.Inbound = 5000
-				values.Global.Proxy.Ports.Admin = 5001
-				values.Global.Proxy.Ports.Outbound = 5002
-				values.Global.Proxy.WaitBeforeExitSeconds = 123
-				values.Global.Proxy.LogLevel = "debug,linkerd=debug"
-				values.Global.Proxy.LogFormat = "json"
-				values.Global.Proxy.Resources = &l5dcharts.Resources{
+				values.GetGlobal().Proxy.Cores = 2
+				values.GetGlobal().Proxy.DisableIdentity = true
+				values.GetGlobal().Proxy.Image.Name = "ghcr.io/linkerd/proxy"
+				values.GetGlobal().Proxy.Image.PullPolicy = pullPolicy
+				values.GetGlobal().Proxy.Image.Version = proxyVersionOverride
+				values.GetGlobal().Proxy.Ports.Control = 4000
+				values.GetGlobal().Proxy.Ports.Inbound = 5000
+				values.GetGlobal().Proxy.Ports.Admin = 5001
+				values.GetGlobal().Proxy.Ports.Outbound = 5002
+				values.GetGlobal().Proxy.WaitBeforeExitSeconds = 123
+				values.GetGlobal().Proxy.LogLevel = "debug,linkerd=debug"
+				values.GetGlobal().Proxy.LogFormat = "json"
+				values.GetGlobal().Proxy.Resources = &l5dcharts.Resources{
 					CPU: l5dcharts.Constraints{
 						Limit:   "1.5",
 						Request: "0.15",
@@ -184,19 +184,19 @@ func TestGetOverriddenValues(t *testing.T) {
 						Request: "120",
 					},
 				}
-				values.Global.Proxy.UID = 8500
-				values.Global.ProxyInit.Image.Name = "ghcr.io/linkerd/proxy-init"
-				values.Global.ProxyInit.Image.PullPolicy = pullPolicy
-				values.Global.ProxyInit.Image.Version = version.ProxyInitVersion
-				values.Global.ProxyInit.IgnoreInboundPorts = "4222,6222"
-				values.Global.ProxyInit.IgnoreOutboundPorts = "8079,8080"
-				values.Global.Proxy.Trace = &l5dcharts.Trace{
+				values.GetGlobal().Proxy.UID = 8500
+				values.GetGlobal().ProxyInit.Image.Name = "ghcr.io/linkerd/proxy-init"
+				values.GetGlobal().ProxyInit.Image.PullPolicy = pullPolicy
+				values.GetGlobal().ProxyInit.Image.Version = version.ProxyInitVersion
+				values.GetGlobal().ProxyInit.IgnoreInboundPorts = "4222,6222"
+				values.GetGlobal().ProxyInit.IgnoreOutboundPorts = "8079,8080"
+				values.GetGlobal().Proxy.Trace = &l5dcharts.Trace{
 					CollectorSvcAddr:    "oc-collector.tracing:55678",
 					CollectorSvcAccount: "default.tracing",
 				}
-				values.Global.Proxy.OutboundConnectTimeout = "6000ms"
-				values.Global.Proxy.InboundConnectTimeout = "600ms"
-				values.Global.Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
+				values.GetGlobal().Proxy.OutboundConnectTimeout = "6000ms"
+				values.GetGlobal().Proxy.InboundConnectTimeout = "600ms"
+				values.GetGlobal().Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"
 				return values
 			},
 		},
@@ -230,8 +230,8 @@ func TestGetOverriddenValues(t *testing.T) {
 			},
 			expected: func() *l5dcharts.Values {
 				values, _ := l5dcharts.NewValues(false)
-				values.Global.Proxy.OutboundConnectTimeout = "6005ms"
-				values.Global.Proxy.InboundConnectTimeout = "2005ms"
+				values.GetGlobal().Proxy.OutboundConnectTimeout = "6005ms"
+				values.GetGlobal().Proxy.InboundConnectTimeout = "2005ms"
 				return values
 			},
 		},
@@ -260,7 +260,7 @@ func TestGetOverriddenValues(t *testing.T) {
 			},
 			expected: func() *l5dcharts.Values {
 				values, _ := l5dcharts.NewValues(false)
-				values.Global.Proxy.OpaquePorts = "3306"
+				values.GetGlobal().Proxy.OpaquePorts = "3306"
 				return values
 			},
 		},

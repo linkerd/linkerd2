@@ -342,3 +342,12 @@ func (v *Values) String() string {
 	bytes, _ := yaml.Marshal(v)
 	return string(bytes)
 }
+
+// GetGlobal is a safe accessor for Global. It initializes Global on the first
+// access.
+func (v *Values) GetGlobal() *Global {
+	if v.Global == nil {
+		v.Global = &Global{}
+	}
+	return v.Global
+}

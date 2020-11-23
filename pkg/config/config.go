@@ -189,14 +189,14 @@ func ToValues(configs *pb.All) *l5dcharts.Values {
 	}
 
 	if configs.GetProxy().GetLogLevel() != nil {
-		values.Global.Proxy.LogLevel = configs.GetProxy().GetLogLevel().String()
+		values.GetGlobal().Proxy.LogLevel = configs.GetProxy().GetLogLevel().String()
 
 	}
 
 	// set HA, and Heartbeat flags as health-check needs them for old config installs
 	for _, flag := range configs.GetInstall().GetFlags() {
 		if flag.GetName() == "ha" && flag.GetValue() == "true" {
-			values.Global.HighAvailability = true
+			values.GetGlobal().HighAvailability = true
 		}
 
 		if flag.GetName() == "disable-heartbeat" && flag.GetValue() == "true" {
