@@ -315,6 +315,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 	for _, addOn := range addOns {
 		addOnCharts[addOn.Name()] = &charts.Chart{
 			Name:      addOn.Name(),
+			Dir:       addOnChartsPath + "/" + addOn.Name(),
 			Namespace: controlPlaneNamespace,
 			RawValues: append(addOn.Values(), rawValues...),
 			Files: []*chartutil.BufferedFile{
@@ -325,7 +326,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 					Name: chartutil.ValuesfileName,
 				},
 			},
-			Fs: static.WithDefaultChart(addOnChartsPath + "/" + addOn.Name()),
+			Fs: static.Templates,
 		}
 	}
 
@@ -359,10 +360,11 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 	// TODO refactor to use l5dcharts.LoadChart()
 	chart := &charts.Chart{
 		Name:      helmDefaultChartName,
+		Dir:       helmDefaultChartDir,
 		Namespace: controlPlaneNamespace,
 		RawValues: rawValues,
 		Files:     files,
-		Fs:        static.WithDefaultChart(helmDefaultChartDir),
+		Fs:        static.Templates,
 	}
 	buf, err := chart.Render()
 	if err != nil {

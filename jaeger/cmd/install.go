@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
+	"path"
 
 	jaeger "github.com/linkerd/linkerd2/jaeger/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
@@ -98,10 +100,11 @@ func render(w io.Writer, values *jaeger.Values) error {
 
 	chart := &charts.Chart{
 		Name:      "jaeger",
+		Dir:       "jaeger",
 		Namespace: values.Namespace,
 		RawValues: rawValues,
 		Files:     files,
-		Fs:        static.WithPath("jaeger/charts/jaeger"),
+		Fs:        http.Dir(path.Join(static.GetRepoRoot(), "jaeger/charts")),
 	}
 	buf, err := chart.Render()
 	if err != nil {
