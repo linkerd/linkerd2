@@ -323,8 +323,8 @@ func readTestValues(ha bool, ignoreOutboundPorts string, ignoreInboundPorts stri
 	if err != nil {
 		return nil, err
 	}
-	values.Global.ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
-	values.Global.ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
+	values.GetGlobal().ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
+	values.GetGlobal().ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
 
 	return values, nil
 }
