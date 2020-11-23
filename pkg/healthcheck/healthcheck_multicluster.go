@@ -341,7 +341,7 @@ func (hc *HealthChecker) checkRemoteClusterConnectivity(ctx context.Context) err
 }
 
 func (hc *HealthChecker) checkRemoteClusterAnchors(ctx context.Context) error {
-	localAnchors, err := tls.DecodePEMCertificates(hc.linkerdConfig.Global.IdentityTrustAnchorsPEM)
+	localAnchors, err := tls.DecodePEMCertificates(hc.linkerdConfig.GetGlobal().IdentityTrustAnchorsPEM)
 	if err != nil {
 		return fmt.Errorf("Cannot parse source trust anchors: %s", err)
 	}
@@ -379,7 +379,7 @@ func (hc *HealthChecker) checkRemoteClusterAnchors(ctx context.Context) error {
 			continue
 		}
 
-		remoteAnchors, err := tls.DecodePEMCertificates(values.Global.IdentityTrustAnchorsPEM)
+		remoteAnchors, err := tls.DecodePEMCertificates(values.GetGlobal().IdentityTrustAnchorsPEM)
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("* %s: cannot parse trust anchors", link.TargetClusterName))
 			continue

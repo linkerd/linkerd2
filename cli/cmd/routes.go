@@ -330,7 +330,7 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 		LabelSelector: options.labelSelector,
 	}
 
-	options.dstIsService = !(target.GetType() == k8s.Authority)
+	options.dstIsService = target.GetType() != k8s.Authority
 
 	if options.toResource != "" {
 		if options.toNamespace == "" {
@@ -341,7 +341,7 @@ func buildTopRoutesRequest(resource string, options *routesOptions) (*pb.TopRout
 			return nil, err
 		}
 
-		options.dstIsService = !(toRes.GetType() == k8s.Authority)
+		options.dstIsService = toRes.GetType() != k8s.Authority
 
 		requestParams.ToName = toRes.Name
 		requestParams.ToNamespace = toRes.Namespace

@@ -209,7 +209,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			wa, err = et.toWeightedAddr(address)
+			wa, err = toWeightedAddr(address, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -220,7 +220,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 
 			// handling address with no associated pod
 			var addr *net.TcpAddress
-			addr, err = et.toAddr(address)
+			addr, err = toAddr(address)
 			wa = &pb.WeightedAddr{
 				Addr:              addr,
 				Weight:            defaultWeight,
@@ -268,7 +268,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 	addrs := []*net.TcpAddress{}
 	for _, address := range set.Addresses {
-		tcpAddr, err := et.toAddr(address)
+		tcpAddr, err := toAddr(address)
 		if err != nil {
 			et.log.Errorf("Failed to translate endpoints to addr: %s", err)
 			continue
@@ -288,7 +288,7 @@ func (et *endpointTranslator) sendClientRemove(set watcher.AddressSet) {
 	}
 }
 
-func (et *endpointTranslator) toAddr(address watcher.Address) (*net.TcpAddress, error) {
+func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	ip, err := addr.ParseProxyIPV4(address.IP)
 	if err != nil {
 		return nil, err
@@ -299,15 +299,15 @@ func (et *endpointTranslator) toAddr(address watcher.Address) (*net.TcpAddress, 
 	}, nil
 }
 
-func (et *endpointTranslator) toWeightedAddr(address watcher.Address) (*pb.WeightedAddr, error) {
-	controllerNS := address.Pod.Labels[k8s.ControllerNSLabel]
+func toWeightedAddr(address watcher.Address, enableH2Upgrade bool, identityTrustDomain string, controllerNS string) (*pb.WeightedAddr, error) {
+	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
 	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
 	labels := k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 
 	// If the pod is controlled by any Linkerd control plane, then it can be hinted
 	// that this destination knows H2 (and handles our orig-proto translation).
 	var hint *pb.ProtocolHint
-	if et.enableH2Upgrade && controllerNS != "" {
+	if enableH2Upgrade && controllerNSLabel != "" {
 		hint = &pb.ProtocolHint{
 			Protocol: &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
@@ -321,11 +321,11 @@ func (et *endpointTranslator) toWeightedAddr(address watcher.Address) (*pb.Weigh
 	// TODO this should be relaxed to match a trust domain annotation so that
 	// multiple meshes can participate in identity if they share trust roots.
 	var identity *pb.TlsIdentity
-	if et.identityTrustDomain != "" &&
-		controllerNS == et.controllerNS &&
+	if identityTrustDomain != "" &&
+		controllerNSLabel == controllerNS &&
 		address.Pod.Annotations[k8s.IdentityModeAnnotation] == k8s.IdentityModeDefault {
 
-		id := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", sa, ns, controllerNS, et.identityTrustDomain)
+		id := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", sa, ns, controllerNSLabel, identityTrustDomain)
 		identity = &pb.TlsIdentity{
 			Strategy: &pb.TlsIdentity_DnsLikeIdentity_{
 				DnsLikeIdentity: &pb.TlsIdentity_DnsLikeIdentity{
@@ -335,7 +335,7 @@ func (et *endpointTranslator) toWeightedAddr(address watcher.Address) (*pb.Weigh
 		}
 	}
 
-	tcpAddr, err := et.toAddr(address)
+	tcpAddr, err := toAddr(address)
 	if err != nil {
 		return nil, err
 	}

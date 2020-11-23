@@ -63,8 +63,8 @@ func defaultConfig() *linkerd2.Values {
 	if err != nil {
 		log.Fatalf("Unexpected error: %v", err)
 	}
-	defaultConfig.Global.LinkerdVersion = "test-inject-control-plane-version"
-	defaultConfig.Global.Proxy.Image.Version = "test-inject-proxy-version"
+	defaultConfig.GetGlobal().LinkerdVersion = "test-inject-control-plane-version"
+	defaultConfig.GetGlobal().Proxy.Image.Version = "test-inject-proxy-version"
 	defaultConfig.DebugContainer.Image.Version = "test-inject-debug-version"
 
 	return defaultConfig
@@ -74,10 +74,10 @@ func TestUninjectAndInject(t *testing.T) {
 	defaultValues := defaultConfig()
 
 	overrideConfig := defaultConfig()
-	overrideConfig.Global.Proxy.Image.Version = "override"
+	overrideConfig.GetGlobal().Proxy.Image.Version = "override"
 
 	proxyResourceConfig := defaultConfig()
-	proxyResourceConfig.Global.Proxy.Resources = &linkerd2.Resources{
+	proxyResourceConfig.GetGlobal().Proxy.Resources = &linkerd2.Resources{
 		CPU: linkerd2.Constraints{
 			Request: "110m",
 			Limit:   "160m",
@@ -89,11 +89,11 @@ func TestUninjectAndInject(t *testing.T) {
 	}
 
 	cniEnabledConfig := defaultConfig()
-	cniEnabledConfig.Global.CNIEnabled = true
+	cniEnabledConfig.GetGlobal().CNIEnabled = true
 
 	proxyIgnorePortsConfig := defaultConfig()
-	proxyIgnorePortsConfig.Global.ProxyInit.IgnoreInboundPorts = "22,8100-8102"
-	proxyIgnorePortsConfig.Global.ProxyInit.IgnoreOutboundPorts = "5432"
+	proxyIgnorePortsConfig.GetGlobal().ProxyInit.IgnoreInboundPorts = "22,8100-8102"
+	proxyIgnorePortsConfig.GetGlobal().ProxyInit.IgnoreOutboundPorts = "5432"
 
 	testCases := []testCase{
 		{
@@ -110,7 +110,7 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:    false,
 			testInjectConfig: func() *linkerd2.Values {
 				values := defaultConfig()
-				values.Global.Proxy.Ports.Admin = 1234
+				values.GetGlobal().Proxy.Ports.Admin = 1234
 				return values
 			}(),
 		},
@@ -121,7 +121,7 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:    true,
 			testInjectConfig: func() *linkerd2.Values {
 				values := defaultConfig()
-				values.Global.Proxy.Ports.Admin = 1234
+				values.GetGlobal().Proxy.Ports.Admin = 1234
 				return values
 			}(),
 		},
@@ -295,8 +295,8 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:    true,
 			testInjectConfig: func() *linkerd2.Values {
 				values := defaultConfig()
-				values.Global.Proxy.Trace.CollectorSvcAddr = "linkerd-collector"
-				values.Global.Proxy.Trace.CollectorSvcAccount = "linkerd-collector.linkerd"
+				values.GetGlobal().Proxy.Trace.CollectorSvcAddr = "linkerd-collector"
+				values.GetGlobal().Proxy.Trace.CollectorSvcAccount = "linkerd-collector.linkerd"
 				return values
 			}(),
 		},
@@ -328,7 +328,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
-	testConfig.Global.Proxy.Image.Version = "testinjectversion"
+	testConfig.GetGlobal().Proxy.Image.Version = "testinjectversion"
 
 	errBuffer := &bytes.Buffer{}
 	outBuffer := &bytes.Buffer{}
@@ -595,25 +595,25 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values.Global.ProxyInit.IgnoreInboundPorts = "8500-8505"
-	values.Global.ProxyInit.IgnoreOutboundPorts = "3306"
-	values.Global.Proxy.Ports.Admin = 1234
-	values.Global.Proxy.Ports.Control = 4191
-	values.Global.Proxy.Ports.Inbound = 4144
-	values.Global.Proxy.Ports.Outbound = 4141
-	values.Global.Proxy.UID = 999
-	values.Global.Proxy.LogLevel = "debug"
-	values.Global.Proxy.LogFormat = "cool"
-	values.Global.Proxy.DisableIdentity = true
-	values.Global.Proxy.DisableTap = true
-	values.Global.Proxy.EnableExternalProfiles = true
-	values.Global.Proxy.Resources.CPU.Request = "10m"
-	values.Global.Proxy.Resources.CPU.Limit = "100m"
-	values.Global.Proxy.Resources.Memory.Request = "10Mi"
-	values.Global.Proxy.Resources.Memory.Limit = "50Mi"
-	values.Global.Proxy.Trace.CollectorSvcAddr = "oc-collector.tracing:55678"
-	values.Global.Proxy.Trace.CollectorSvcAccount = "svcAccount"
-	values.Global.Proxy.WaitBeforeExitSeconds = 10
+	values.GetGlobal().ProxyInit.IgnoreInboundPorts = "8500-8505"
+	values.GetGlobal().ProxyInit.IgnoreOutboundPorts = "3306"
+	values.GetGlobal().Proxy.Ports.Admin = 1234
+	values.GetGlobal().Proxy.Ports.Control = 4191
+	values.GetGlobal().Proxy.Ports.Inbound = 4144
+	values.GetGlobal().Proxy.Ports.Outbound = 4141
+	values.GetGlobal().Proxy.UID = 999
+	values.GetGlobal().Proxy.LogLevel = "debug"
+	values.GetGlobal().Proxy.LogFormat = "cool"
+	values.GetGlobal().Proxy.DisableIdentity = true
+	values.GetGlobal().Proxy.DisableTap = true
+	values.GetGlobal().Proxy.EnableExternalProfiles = true
+	values.GetGlobal().Proxy.Resources.CPU.Request = "10m"
+	values.GetGlobal().Proxy.Resources.CPU.Limit = "100m"
+	values.GetGlobal().Proxy.Resources.Memory.Request = "10Mi"
+	values.GetGlobal().Proxy.Resources.Memory.Limit = "50Mi"
+	values.GetGlobal().Proxy.Trace.CollectorSvcAddr = "oc-collector.tracing:55678"
+	values.GetGlobal().Proxy.Trace.CollectorSvcAccount = "svcAccount"
+	values.GetGlobal().Proxy.WaitBeforeExitSeconds = 10
 
 	expectedOverrides := map[string]string{
 		k8s.ProxyIgnoreInboundPortsAnnotation:       "8500-8505",
@@ -651,7 +651,7 @@ func TestProxyImageAnnotations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values.Global.Proxy.Image = &linkerd2.Image{
+	values.GetGlobal().Proxy.Image = &linkerd2.Image{
 		Name:       "my.registry/linkerd/proxy",
 		Version:    "test-proxy-version",
 		PullPolicy: "Always",
@@ -677,7 +677,7 @@ func TestProxyInitImageAnnotations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	values.Global.ProxyInit.Image = &linkerd2.Image{
+	values.GetGlobal().ProxyInit.Image = &linkerd2.Image{
 		Name:    "my.registry/linkerd/proxy-init",
 		Version: "test-proxy-init-version",
 	}

@@ -16,10 +16,11 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tree"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
 
@@ -123,7 +124,7 @@ resources for the Linkerd control plane. This command should be followed by
 			}
 			if !ignoreCluster {
 				// Ensure k8s is reachable and that Linkerd is not already installed.
-				if err := errAfterRunningChecks(values.Global.CNIEnabled); err != nil {
+				if err := errAfterRunningChecks(values.GetGlobal().CNIEnabled); err != nil {
 					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
 						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
 					} else {
@@ -173,7 +174,7 @@ control plane. It should be run after "linkerd install config".`,
 			if !skipChecks {
 				// check if global resources exist to determine if the `install config`
 				// stage succeeded
-				if err := errAfterRunningChecks(values.Global.CNIEnabled); err == nil {
+				if err := errAfterRunningChecks(values.GetGlobal().CNIEnabled); err == nil {
 					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
 						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
 					} else {
@@ -278,6 +279,7 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 			fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "Secret/linkerd-config-overrides already exists")
 			os.Exit(1)
 		}
+
 	}
 
 	err = initializeIssuerCredentials(ctx, k8sAPI, values)
@@ -294,13 +296,17 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 }
 
 func render(w io.Writer, values *l5dcharts.Values, stage string) error {
+
+	// Set any global flags if present, common with install and upgrade
+	values.GetGlobal().Namespace = controlPlaneNamespace
+
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
 	if err != nil {
 		return err
 	}
 
-	files := []*chartutil.BufferedFile{
+	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
 
@@ -317,7 +323,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 			Dir:       addOnChartsPath + "/" + addOn.Name(),
 			Namespace: controlPlaneNamespace,
 			RawValues: append(addOn.Values(), rawValues...),
-			Files: []*chartutil.BufferedFile{
+			Files: []*loader.BufferedFile{
 				{
 					Name: chartutil.ChartfileName,
 				},
@@ -331,7 +337,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 	if stage == "" || stage == configStage {
 		for _, template := range templatesConfigStage {
 			files = append(files,
-				&chartutil.BufferedFile{Name: template},
+				&loader.BufferedFile{Name: template},
 			)
 		}
 
@@ -344,7 +350,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 	if stage == "" || stage == controlPlaneStage {
 		for _, template := range templatesControlPlaneStage {
 			files = append(files,
-				&chartutil.BufferedFile{Name: template},
+				&loader.BufferedFile{Name: template},
 			)
 		}
 
@@ -380,7 +386,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 	}
 
 	if stage == "" || stage == controlPlaneStage {
-		overrides, err := renderOverrides(values, values.Global.Namespace)
+		overrides, err := renderOverrides(values, values.GetGlobal().Namespace)
 		if err != nil {
 			return err
 		}
