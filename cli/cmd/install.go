@@ -16,10 +16,11 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tree"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
 
@@ -278,6 +279,7 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 			fmt.Fprintf(os.Stderr, errMsgLinkerdConfigResourceConflict, controlPlaneNamespace, "Secret/linkerd-config-overrides already exists")
 			os.Exit(1)
 		}
+
 	}
 
 	err = initializeIssuerCredentials(ctx, k8sAPI, values)
@@ -304,7 +306,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 		return err
 	}
 
-	files := []*chartutil.BufferedFile{
+	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 	}
 
@@ -321,7 +323,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 			Dir:       addOnChartsPath + "/" + addOn.Name(),
 			Namespace: controlPlaneNamespace,
 			RawValues: append(addOn.Values(), rawValues...),
-			Files: []*chartutil.BufferedFile{
+			Files: []*loader.BufferedFile{
 				{
 					Name: chartutil.ChartfileName,
 				},
@@ -335,7 +337,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 	if stage == "" || stage == configStage {
 		for _, template := range templatesConfigStage {
 			files = append(files,
-				&chartutil.BufferedFile{Name: template},
+				&loader.BufferedFile{Name: template},
 			)
 		}
 
@@ -348,7 +350,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 	if stage == "" || stage == controlPlaneStage {
 		for _, template := range templatesControlPlaneStage {
 			files = append(files,
-				&chartutil.BufferedFile{Name: template},
+				&loader.BufferedFile{Name: template},
 			)
 		}
 

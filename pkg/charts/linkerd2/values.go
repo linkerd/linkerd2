@@ -10,7 +10,8 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
-	"k8s.io/helm/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
 
@@ -277,12 +278,12 @@ func NewValues(ha bool) (*Values, error) {
 // readDefaults read all the default variables from the values.yaml file.
 // chartDir is the root directory of the Helm chart where values.yaml is.
 func readDefaults(chartDir string, ha bool) (*Values, error) {
-	valuesFiles := []*chartutil.BufferedFile{
+	valuesFiles := []*loader.BufferedFile{
 		{Name: chartutil.ValuesfileName},
 	}
 
 	if ha {
-		valuesFiles = append(valuesFiles, &chartutil.BufferedFile{
+		valuesFiles = append(valuesFiles, &loader.BufferedFile{
 			Name: helmDefaultHAValuesFile,
 		})
 	}
