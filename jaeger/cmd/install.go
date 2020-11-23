@@ -8,7 +8,6 @@ import (
 
 	jaeger "github.com/linkerd/linkerd2/jaeger/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
@@ -102,7 +101,6 @@ func render(w io.Writer, values *jaeger.Values) error {
 		Namespace: values.Namespace,
 		RawValues: rawValues,
 		Files:     files,
-		Fs:        static.Templates,
 	}
 	buf, err := chart.Render()
 	if err != nil {

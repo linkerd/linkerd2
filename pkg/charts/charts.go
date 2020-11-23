@@ -2,7 +2,6 @@ package charts
 
 import (
 	"bytes"
-	"net/http"
 	"path"
 	"strings"
 
@@ -23,16 +22,14 @@ type Chart struct {
 	Namespace string
 	RawValues []byte
 	Files     []*chartutil.BufferedFile
-	Fs        http.FileSystem
 }
 
 func (c *Chart) render(partialsFiles []*chartutil.BufferedFile) (bytes.Buffer, error) {
-	if err := FilesReader(c.Fs, c.Dir+"/", c.Files); err != nil {
+	if err := FilesReader(c.Dir+"/", c.Files); err != nil {
 		return bytes.Buffer{}, err
 	}
 
-	// partials are present only in the static.Templates FileSystem
-	if err := FilesReader(static.Templates, "", partialsFiles); err != nil {
+	if err := FilesReader("", partialsFiles); err != nil {
 		return bytes.Buffer{}, err
 	}
 
@@ -112,12 +109,12 @@ func (c *Chart) RenderNoPartials() (bytes.Buffer, error) {
 }
 
 // ReadFile updates the buffered file with the data read from disk
-func ReadFile(fs http.FileSystem, dir string, f *chartutil.BufferedFile) error {
+func ReadFile(dir string, f *chartutil.BufferedFile) error {
 	filename := dir + f.Name
 	if dir == "" {
 		filename = filename[7:]
 	}
-	file, err := fs.Open(filename)
+	file, err := static.Templates.Open(filename)
 	if err != nil {
 		return err
 	}
@@ -133,9 +130,9 @@ func ReadFile(fs http.FileSystem, dir string, f *chartutil.BufferedFile) error {
 }
 
 // FilesReader reads all the files from a directory
-func FilesReader(fs http.FileSystem, dir string, files []*chartutil.BufferedFile) error {
+func FilesReader(dir string, files []*chartutil.BufferedFile) error {
 	for _, f := range files {
-		if err := ReadFile(fs, dir, f); err != nil {
+		if err := ReadFile(dir, f); err != nil {
 			return err
 		}
 	}

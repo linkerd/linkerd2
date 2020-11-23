@@ -5,7 +5,6 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"k8s.io/helm/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
@@ -46,7 +45,7 @@ func readDefaults(chartDir string) (*Values, error) {
 		Name: chartutil.ValuesfileName,
 	}
 
-	if err := charts.ReadFile(static.Templates, chartDir, valuesFile); err != nil {
+	if err := charts.ReadFile(chartDir, valuesFile); err != nil {
 		return nil, err
 	}
 

@@ -12,7 +12,6 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tree"
@@ -326,7 +325,6 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 					Name: chartutil.ValuesfileName,
 				},
 			},
-			Fs: static.Templates,
 		}
 	}
 
@@ -364,7 +362,6 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 		Namespace: controlPlaneNamespace,
 		RawValues: rawValues,
 		Files:     files,
-		Fs:        static.Templates,
 	}
 	buf, err := chart.Render()
 	if err != nil {

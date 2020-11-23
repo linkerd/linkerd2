@@ -8,7 +8,6 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"k8s.io/helm/pkg/chartutil"
 	pb "k8s.io/helm/pkg/proto/hapi/chart"
@@ -337,7 +336,7 @@ func readValuesFile(t *testing.T, path string) []byte {
 		{Name: chartutil.ValuesfileName},
 	}
 
-	if err := charts.FilesReader(static.Templates, path+"/", valuesFiles); err != nil {
+	if err := charts.FilesReader(path+"/", valuesFiles); err != nil {
 		t.Fatal("Unexpected error", err)
 	}
 

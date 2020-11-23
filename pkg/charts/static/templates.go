@@ -12,16 +12,12 @@ import (
 
 // Templates that will be rendered by `linkerd install`. This is only used on
 // dev builds.
-var Templates http.FileSystem = http.Dir(path.Join(GetRepoRoot(), "charts"))
+var Templates http.FileSystem = http.Dir(path.Join(getRepoRoot(), "charts"))
 
-// JaegerTemplates that will be rendered by `jaeger install`. This is only used on
-// dev builds.
-var JaegerTemplates http.FileSystem = http.Dir(path.Join(GetRepoRoot(), "jaeger/charts/"))
-
-// GetRepoRoot returns the full path to the root of the repo. We assume this
+// getRepoRoot returns the full path to the root of the repo. We assume this
 // function is only called from the `Templates` var above, and that this source
 // file lives at `pkg/charts/static`, relative to the root of the repo.
-func GetRepoRoot() string {
+func getRepoRoot() string {
 	// /foo/bar/linkerd2/pkg/charts/static/templates.go
 	_, filename, _, _ := runtime.Caller(0)
 

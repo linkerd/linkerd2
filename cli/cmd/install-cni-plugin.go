@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
 
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"k8s.io/helm/pkg/chartutil"
@@ -219,7 +218,6 @@ func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
 		Namespace: controlPlaneNamespace,
 		RawValues: rawValues,
 		Files:     files,
-		Fs:        static.Templates,
 	}
 	buf, err := chart.RenderCNI()
 	if err != nil {

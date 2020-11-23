@@ -14,7 +14,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/charts/multicluster"
 	mccharts "github.com/linkerd/linkerd2/pkg/charts/multicluster"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
@@ -281,7 +280,6 @@ func newAllowCommand() *cobra.Command {
 				Namespace: controlPlaneNamespace,
 				RawValues: rawValues,
 				Files:     files,
-				Fs:        static.Templates,
 			}
 			buf, err := chart.RenderNoPartials()
 			if err != nil {
@@ -373,7 +371,6 @@ func newMulticlusterInstallCommand() *cobra.Command {
 				Namespace: controlPlaneNamespace,
 				RawValues: rawValues,
 				Files:     files,
-				Fs:        static.Templates,
 			}
 			buf, err := chart.RenderNoPartials()
 			if err != nil {
@@ -478,7 +475,6 @@ func newMulticlusterUninstallCommand() *cobra.Command {
 				Namespace: controlPlaneNamespace,
 				RawValues: rawValues,
 				Files:     files,
-				Fs:        static.Templates,
 			}
 			buf, err := chart.RenderNoPartials()
 			if err != nil {
@@ -698,7 +694,6 @@ func newLinkCommand() *cobra.Command {
 				Namespace: controlPlaneNamespace,
 				RawValues: rawValues,
 				Files:     files,
-				Fs:        static.Templates,
 			}
 			serviceMirrorOut, err := chart.RenderNoPartials()
 			if err != nil {
