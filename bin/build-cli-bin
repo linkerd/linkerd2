@@ -20,9 +20,5 @@ rootdir=$( cd "$bindir"/.. && pwd )
     GO111MODULE=on go generate -mod=readonly ./pkg/charts/static # TODO: `go generate` does not honor -mod=readonly
     root_tag=$("$bindir"/root-tag)
     GO111MODULE=on CGO_ENABLED=0 go build -o $target -tags prod -mod=readonly -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$root_tag" ./cli
-
-    target=target/cli/$(os)/linkerd-jaeger
-    GO111MODULE=on CGO_ENABLED=0 go build -o $target -tags prod -mod=readonly ./jaeger
-
     echo "$target"
 )
