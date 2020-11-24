@@ -1,0 +1,20 @@
+---
+###
+### collector RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: collector
+  namespace: {{.Values.namespace}}
+---
+###
+### jaeger RBAC
+###
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: jaeger
+  namespace: {{.Values.namespace}}

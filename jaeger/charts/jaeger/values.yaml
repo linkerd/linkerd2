@@ -1,0 +1,15 @@
+# Default values for tracing.
+
+namespace: linkerd-jaeger
+
+collector:
+  image: 
+    name: omnition/opencensus-collector
+    version: 0.1.11
+    pullPolicy: Always
+  # resources:
+jaeger:
+  image: 
+    name: jaegertracing/all-in-one
+    version: 1.19.2
+    pullPolicy: Always
