@@ -64,12 +64,12 @@ then
 fi
 
 linkerd2_pulls_url="https://api.github.com/repos/linkerd/linkerd2/pulls"
-linkerd2_kind_integration_url="https://api.github.com/repos/linkerd/linkerd2/actions/workflows/kind_integration.yml"
+linkerd2_integration_url="https://api.github.com/repos/linkerd/linkerd2/actions/workflows/integration_tests.yml"
 
 # Get the URL for downloading the artifacts archive
 auth="Authorization: token $GITHUB_TOKEN"
 branch=$(curl -sL -H "$auth" "$linkerd2_pulls_url/$pr" | jq -r '.head.ref')
-artifacts=$(curl -sL -H "$auth" "$linkerd2_kind_integration_url/runs?branch=$branch" | jq -r '.workflow_runs[0].artifacts_url')
+artifacts=$(curl -sL -H "$auth" "$linkerd2_integration_url/runs?branch=$branch" | jq -r '.workflow_runs[0].artifacts_url')
 archive=$(curl -sL -H "$auth" "$artifacts" | jq -r '.artifacts[0].archive_download_url')
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
@@ -95,7 +95,7 @@ then
     name=$(echo "$context" | sed -n -E "s/(kind)-(.*)/\2/p")
   fi
 
-  "$bindir"/kind-load --images ${name:+'--name' "$name"}
+  "$bindir"/image-load --archive "$name"
 else
   for image in cni-plugin controller debug grafana proxy web
   do

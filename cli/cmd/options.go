@@ -571,7 +571,7 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 		if err != nil {
 			return err
 		}
-		_, err = externalIssuerData.VerifyAndBuildCreds(issuerName(values.Global.IdentityTrustDomain))
+		_, err = externalIssuerData.VerifyAndBuildCreds()
 		if err != nil {
 			return fmt.Errorf("failed to validate issuer credentials: %s", err)
 		}
@@ -583,7 +583,7 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 			IssuerKey:    values.Identity.Issuer.TLS.KeyPEM,
 			TrustAnchors: values.Global.IdentityTrustAnchorsPEM,
 		}
-		_, err := issuerData.VerifyAndBuildCreds(issuerName(values.Global.IdentityTrustDomain))
+		_, err := issuerData.VerifyAndBuildCreds()
 		if err != nil {
 			return fmt.Errorf("failed to validate issuer credentials: %s", err)
 		}

@@ -19,13 +19,15 @@ type profileTranslator struct {
 	stream             pb.Destination_GetProfileServer
 	log                *logging.Entry
 	fullyQualifiedName string
+	endpoint           *pb.WeightedAddr
 }
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string) *profileTranslator {
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, endpoint *pb.WeightedAddr) *profileTranslator {
 	return &profileTranslator{
 		stream:             stream,
 		log:                log.WithField("component", "profile-translator"),
 		fullyQualifiedName: fqn,
+		endpoint:           endpoint,
 	}
 }
 
@@ -48,6 +50,7 @@ func (pt *profileTranslator) defaultServiceProfile() *pb.DestinationProfile {
 		Routes:             []*pb.Route{},
 		RetryBudget:        defaultRetryBudget(),
 		FullyQualifiedName: pt.fullyQualifiedName,
+		Endpoint:           pt.endpoint,
 	}
 }
 

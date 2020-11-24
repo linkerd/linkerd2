@@ -1,4 +1,37 @@
+
 # Changes
+
+## edge-20.11.4
+
+* Fixed an issue in the destination service where endpoints always included a
+  protocol hint, regardless of the controller label being present or not
+
+## edge-20.11.3
+
+This edge release improves support for CNI by properly handling parameters
+passed to the `nsenter` command, relaxes checks on root and intermediate
+certificates (following X509 best practices), and fixes two issues: one that
+prevented installation of the control plane into a custom namespace and one
+which failed to update endpoint information when a headless service is modified.
+This release also improves linkerd proxy performance by eliminating unnecessary
+endpoint resolutions for TCP traffic and properly tearing down serverside
+connections when an errors occur.
+
+* Added HTTP/2 keepalive PING frames
+* Removed logic to avoid redundant TCP endpoint resolution
+* Fixed an issue where serverside connections where not torn down when an error
+  occurs
+* Updated `linkerd check` so that it doesn't attempt to validate the subject
+  alternative name (SAN) on root and intermediate certificates. SANs for leaf
+  certificates will continue to be validated
+* Fixed a CLI issue where the `linkerd-namespace` flag is not honored when
+  passed to the `install` and `upgrade` commands
+* Fixed an issue where the proxy does not receive updated endpoint information
+  when a headless service is modified
+* Updated the control plane Docker images to use `buster-20201117-slim` to
+  reduce potential security vulnerabilities
+* Updated the proxy-init container to `v1.3.7` which fixes CNI issues in certain
+  environments by properly parsing `nsenter` args
 
 ## edge-20.11.2
 
