@@ -117,6 +117,9 @@ func alreadyMutated(pod *corev1.Pod, proxyIndex int) bool {
 
 func applyOverrides(ns *corev1.Namespace, pod *corev1.Pod, params *Params) {
 	ann := ns.GetAnnotations()
+	if ann == nil {
+		ann = map[string]string{}
+	}
 	for k, v := range pod.Annotations {
 		ann[k] = v
 	}
