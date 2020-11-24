@@ -14,5 +14,5 @@ web/app/yarn-error.log
 vendor
 **/*.gogen*
 **/*.swp
-charts/**/charts
+**/charts/**/charts
 package-lock.json
