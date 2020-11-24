@@ -24,6 +24,7 @@ RUN mkdir -p /out
 # Generate static templates
 # TODO: `go generate` does not honor -mod=readonly
 RUN go generate -mod=readonly ./pkg/charts/static
+RUN go generate -mod=readonly ./jaeger/static
 
 # Cache builds without version info
 RUN CGO_ENABLED=0 GOOS=darwin go build -o /out/linkerd-darwin -tags prod -mod=readonly -ldflags "-s -w" ./cli

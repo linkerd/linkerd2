@@ -21,6 +21,7 @@ COPY charts/partials charts/partials
 # Generate static templates
 # TODO: `go generate` does not honor -mod=readonly
 RUN go generate -mod=readonly ./pkg/charts/static
+RUN go generate -mod=readonly ./jaeger/static
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/controller -tags prod -mod=readonly -ldflags "-s -w" ./controller/cmd
 
