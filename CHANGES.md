@@ -15,11 +15,11 @@ prevented installation of the control plane into a custom namespace and one
 which failed to update endpoint information when a headless service is modified.
 This release also improves linkerd proxy performance by eliminating unnecessary
 endpoint resolutions for TCP traffic and properly tearing down serverside
-connections when an errors occur.
+connections when errors occur.
 
 * Added HTTP/2 keepalive PING frames
 * Removed logic to avoid redundant TCP endpoint resolution
-* Fixed an issue where serverside connections where not torn down when an error
+* Fixed an issue where serverside connections were not torn down when an error
   occurs
 * Updated `linkerd check` so that it doesn't attempt to validate the subject
   alternative name (SAN) on root and intermediate certificates. SANs for leaf

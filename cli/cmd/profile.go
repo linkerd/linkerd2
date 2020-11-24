@@ -110,7 +110,7 @@ func newCmdProfile() *cobra.Command {
 				return err
 			}
 
-			clusterDomain := values.Global.ClusterDomain
+			clusterDomain := values.GetGlobal().ClusterDomain
 			if clusterDomain == "" {
 				clusterDomain = defaultClusterDomain
 			}

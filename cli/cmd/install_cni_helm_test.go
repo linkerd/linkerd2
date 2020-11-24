@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
-	"k8s.io/helm/pkg/chartutil"
-	pb "k8s.io/helm/pkg/proto/hapi/chart"
-	"k8s.io/helm/pkg/renderutil"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/engine"
 	"sigs.k8s.io/yaml"
 )
 
@@ -21,7 +21,7 @@ func TestRenderCniHelm(t *testing.T) {
 
 	t.Run("Cni Install with defaults", func(t *testing.T) {
 		chartCni := chartCniPlugin(t)
-		testRenderCniHelm(t, chartCni, &pb.Config{}, "install_cni_helm_default_output.golden")
+		testRenderCniHelm(t, chartCni, &chartutil.Values{}, "install_cni_helm_default_output.golden")
 	})
 
 	t.Run("Cni Install with overridden values", func(t *testing.T) {
@@ -44,28 +44,35 @@ func TestRenderCniHelm(t *testing.T) {
 			"priorityClassName": "system-node-critical"
 		}`
 
-		overrideConfig := &pb.Config{Raw: overrideJSON}
-		testRenderCniHelm(t, chartCni, overrideConfig, "install_cni_helm_override_output.golden")
+		var overrideConfig chartutil.Values
+		err := yaml.Unmarshal([]byte(overrideJSON), &overrideConfig)
+		if err != nil {
+			t.Fatal("Unexpected error", err)
+		}
+		testRenderCniHelm(t, chartCni, &overrideConfig, "install_cni_helm_override_output.golden")
 	})
 
 }
 
-func testRenderCniHelm(t *testing.T, chart *pb.Chart, overrideConfig *pb.Config, goldenFileName string) {
+func testRenderCniHelm(t *testing.T, chart *chart.Chart, overrideConfig *chartutil.Values, goldenFileName string) {
 	var (
 		chartName = "linkerd2-cni"
 		namespace = "linkerd-test"
 	)
 
-	releaseOptions := renderutil.Options{
-		ReleaseOptions: chartutil.ReleaseOptions{
-			Name:      chartName,
-			Namespace: namespace,
-			IsUpgrade: false,
-			IsInstall: true,
-		},
+	releaseOptions := chartutil.ReleaseOptions{
+		Name:      chartName,
+		Namespace: namespace,
+		IsUpgrade: false,
+		IsInstall: true,
 	}
 
-	rendered, err := renderutil.Render(chart, overrideConfig, releaseOptions)
+	valuesToRender, err := chartutil.ToRenderValues(chart, *overrideConfig, releaseOptions, nil)
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+
+	rendered, err := engine.Render(chart, valuesToRender)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
@@ -85,39 +92,41 @@ func testRenderCniHelm(t *testing.T, chart *pb.Chart, overrideConfig *pb.Config,
 	diffTestdata(t, goldenFileName, buf.String())
 }
 
-func chartCniPlugin(t *testing.T) *pb.Chart {
-	values, err := readCniTestValues(t)
+func chartCniPlugin(t *testing.T) *chart.Chart {
+	rawValues, err := readCniTestValues(t)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
 
+	var values chartutil.Values
+	err = yaml.Unmarshal(rawValues, &values)
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
 	chartPartials := chartPartials(t, []string{"templates/_helpers.tpl"})
 
-	chart := &pb.Chart{
-		Metadata: &pb.Metadata{
+	cniChart := &chart.Chart{
+		Metadata: &chart.Metadata{
 			Name: helmCNIDefaultChartName,
 			Sources: []string{
 				filepath.Join("..", "..", "..", "charts", "linkerd2-cni"),
 			},
 		},
-		Dependencies: []*pb.Chart{
-			chartPartials,
-		},
-		Values: &pb.Config{
-			Raw: string(values),
-		},
+		Values: values,
 	}
 
-	chart.Templates = append(chart.Templates, &pb.Template{
+	cniChart.AddDependency(chartPartials)
+
+	cniChart.Templates = append(cniChart.Templates, &chart.File{
 		Name: "templates/cni-plugin.yaml",
 	})
 
-	for _, template := range chart.Templates {
-		filepath := filepath.Join(chart.Metadata.Sources[0], template.Name)
+	for _, template := range cniChart.Templates {
+		filepath := filepath.Join(cniChart.Metadata.Sources[0], template.Name)
 		template.Data = []byte(readTestdata(t, filepath))
 	}
 
-	return chart
+	return cniChart
 }
 
 func readCniTestValues(t *testing.T) ([]byte, error) {

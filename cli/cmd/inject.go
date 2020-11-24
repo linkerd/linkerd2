@@ -350,17 +350,17 @@ func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[string]string {
 	overrideAnnotations := make(map[string]string)
 
-	proxy := values.Global.Proxy
-	baseProxy := base.Global.Proxy
+	proxy := values.GetGlobal().Proxy
+	baseProxy := base.GetGlobal().Proxy
 	if proxy.Image.Version != baseProxy.Image.Version {
 		overrideAnnotations[k8s.ProxyVersionOverrideAnnotation] = proxy.Image.Version
 	}
 
-	if values.Global.ProxyInit.IgnoreInboundPorts != base.Global.ProxyInit.IgnoreInboundPorts {
-		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = values.Global.ProxyInit.IgnoreInboundPorts
+	if values.GetGlobal().ProxyInit.IgnoreInboundPorts != base.GetGlobal().ProxyInit.IgnoreInboundPorts {
+		overrideAnnotations[k8s.ProxyIgnoreInboundPortsAnnotation] = values.GetGlobal().ProxyInit.IgnoreInboundPorts
 	}
-	if values.Global.ProxyInit.IgnoreOutboundPorts != base.Global.ProxyInit.IgnoreOutboundPorts {
-		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = values.Global.ProxyInit.IgnoreOutboundPorts
+	if values.GetGlobal().ProxyInit.IgnoreOutboundPorts != base.GetGlobal().ProxyInit.IgnoreOutboundPorts {
+		overrideAnnotations[k8s.ProxyIgnoreOutboundPortsAnnotation] = values.GetGlobal().ProxyInit.IgnoreOutboundPorts
 	}
 
 	if proxy.Ports.Admin != baseProxy.Ports.Admin {
@@ -379,15 +379,15 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 	if proxy.Image.Name != baseProxy.Image.Name {
 		overrideAnnotations[k8s.ProxyImageAnnotation] = proxy.Image.Name
 	}
-	if values.Global.ProxyInit.Image.Name != base.Global.ProxyInit.Image.Name {
-		overrideAnnotations[k8s.ProxyInitImageAnnotation] = values.Global.ProxyInit.Image.Name
+	if values.GetGlobal().ProxyInit.Image.Name != base.GetGlobal().ProxyInit.Image.Name {
+		overrideAnnotations[k8s.ProxyInitImageAnnotation] = values.GetGlobal().ProxyInit.Image.Name
 	}
 	if values.DebugContainer.Image.Name != base.DebugContainer.Image.Name {
 		overrideAnnotations[k8s.DebugImageAnnotation] = values.DebugContainer.Image.Name
 	}
 
-	if values.Global.ProxyInit.Image.Version != base.Global.ProxyInit.Image.Version {
-		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = values.Global.ProxyInit.Image.Version
+	if values.GetGlobal().ProxyInit.Image.Version != base.GetGlobal().ProxyInit.Image.Version {
+		overrideAnnotations[k8s.ProxyInitImageVersionAnnotation] = values.GetGlobal().ProxyInit.Image.Version
 	}
 
 	if values.DebugContainer.Image.Version != base.DebugContainer.Image.Version {
@@ -455,7 +455,7 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 	}
 
 	// Set fields that can't be converted into annotations
-	values.Global.Namespace = controlPlaneNamespace
+	values.GetGlobal().Namespace = controlPlaneNamespace
 
 	return overrideAnnotations
 }
