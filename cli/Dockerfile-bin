@@ -14,6 +14,7 @@ FROM go-deps as golang-single-arch
 WORKDIR /linkerd-build
 COPY cli cli
 COPY charts charts
+COPY jaeger jaeger
 
 COPY controller/k8s controller/k8s
 COPY controller/api controller/api
