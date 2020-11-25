@@ -14,10 +14,12 @@ import (
 
 // Values represents the values of jaeger template
 type Values struct {
-	Namespace string    `json:"namespace"`
-	Collector collector `json:"collector"`
-	Jaeger    jaeger    `json:"jaeger"`
-	Webhook   webhook   `json:"webhook"`
+	Namespace           string    `json:"namespace"`
+	Collector           collector `json:"collector"`
+	CollectorSvcAddr    string    `json:"collectorSvcAddr"`
+	CollectorSvcAccount string    `json:"collectorSvcAccount"`
+	Jaeger              jaeger    `json:"jaeger"`
+	Webhook             webhook   `json:"webhook"`
 }
 
 type collector struct {
