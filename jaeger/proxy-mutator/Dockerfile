@@ -26,4 +26,7 @@ FROM scratch
 ENV PATH=$PATH:/go/bin
 COPY --from=golang /out/proxy-mutator /go/bin/proxy-mutator
 
+ARG LINKERD_VERSION
+ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
+
 ENTRYPOINT ["/go/bin/proxy-mutator"]
