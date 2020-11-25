@@ -21,17 +21,15 @@ type profileTranslator struct {
 	fullyQualifiedName string
 	port               uint32
 	endpoint           *pb.WeightedAddr
-	opaquePorts        map[uint32]bool
 }
 
-func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endpoint *pb.WeightedAddr, opaquePorts map[uint32]bool) *profileTranslator {
+func newProfileTranslator(stream pb.Destination_GetProfileServer, log *logging.Entry, fqn string, port uint32, endpoint *pb.WeightedAddr) *profileTranslator {
 	return &profileTranslator{
 		stream:             stream,
 		log:                log.WithField("component", "profile-translator"),
 		fullyQualifiedName: fqn,
 		port:               port,
 		endpoint:           endpoint,
-		opaquePorts:        opaquePorts,
 	}
 }
 
@@ -50,13 +48,11 @@ func (pt *profileTranslator) Update(profile *sp.ServiceProfile) {
 }
 
 func (pt *profileTranslator) defaultServiceProfile() *pb.DestinationProfile {
-	_, opaqueProtocol := pt.opaquePorts[pt.port]
 	return &pb.DestinationProfile{
 		Routes:             []*pb.Route{},
 		RetryBudget:        defaultRetryBudget(),
 		FullyQualifiedName: pt.fullyQualifiedName,
 		Endpoint:           pt.endpoint,
-		OpaqueProtocol:     opaqueProtocol,
 	}
 }
 
@@ -101,12 +97,16 @@ func (pt *profileTranslator) toServiceProfile(profile *sp.ServiceProfile) (*pb.D
 		}
 		budget.Ttl = toDuration(ttl)
 	}
-	_, opaqueProtocol := pt.opaquePorts[pt.port]
+	var opaqueProtocol bool
+	if profile.Spec.OpaquePorts != nil {
+		_, opaqueProtocol = profile.Spec.OpaquePorts[pt.port]
+	}
 	return &pb.DestinationProfile{
 		Routes:             routes,
 		RetryBudget:        budget,
 		DstOverrides:       toDstOverrides(profile.Spec.DstOverrides),
 		FullyQualifiedName: pt.fullyQualifiedName,
+		Endpoint:           pt.endpoint,
 		OpaqueProtocol:     opaqueProtocol,
 	}, nil
 }

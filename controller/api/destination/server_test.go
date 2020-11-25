@@ -422,14 +422,14 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
 		}
 
-		first := stream.updates[0]
-		if first.FullyQualifiedName != fullyQualifiedName {
-			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, first.FullyQualifiedName)
+		last := stream.updates[len(stream.updates)-1]
+		if last.FullyQualifiedName != fullyQualifiedName {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, last.FullyQualifiedName)
 		}
-		if first.OpaqueProtocol {
+		if last.OpaqueProtocol {
 			t.Fatalf("Expected port %d to not be an opaque protocol, but it was", port)
 		}
-		routes := first.GetRoutes()
+		routes := last.GetRoutes()
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
 		}
@@ -559,14 +559,14 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Expected 1 to 3 updates but got %d: %v", len(stream.updates), stream.updates)
 		}
 
-		first := stream.updates[0]
-		if first.FullyQualifiedName != fullyQualifiedName {
-			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, first.FullyQualifiedName)
+		last := stream.updates[len(stream.updates)-1]
+		if last.FullyQualifiedName != fullyQualifiedName {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, last.FullyQualifiedName)
 		}
-		if !first.OpaqueProtocol {
+		if !last.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", opaquePort)
 		}
-		routes := first.GetRoutes()
+		routes := last.GetRoutes()
 		if len(routes) != 1 {
 			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
 		}

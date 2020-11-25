@@ -9,17 +9,14 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
-	"github.com/linkerd/linkerd2/pkg/util"
 	logging "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 type (
@@ -218,43 +215,26 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				// metadata, so it needs to be special-cased.
 				endpoint.MetricLabels["namespace"] = pod.Namespace
 
-				// Need to get namespace annotations
-				obj, err := s.k8sAPI.GetObjects("", pkgk8s.Namespace, pod.Namespace, labels.Everything())
-				if err != nil {
-					return err
-				}
-				if len(obj) == 0 {
-					// TODO: failed to get object
-				}
-				if len(obj) > 1 {
-					// TODO: got too many objects
-				}
-				ns, ok := obj[0].(*corev1.Namespace)
-				if !ok {
-					// TODO: object was not a namespace
-				}
-				override := ns.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]
-
-				// Need to get pod annotations and override the namespace one
-				override = pod.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]
-
-				// Parse into list of uint32
-				opaquePortsStr := util.ParseOpaquePorts(override, pod.Spec.Containers)
-				for _, portStr := range strings.Split(opaquePortsStr, ",") {
-					port, err := strconv.ParseUint(portStr, 10, 32)
-					if err != nil {
-						// TODO: should we silently fail
-						return err
-					}
-					opaquePorts[uint32(port)] = true
-				}
+				opaquePorts, err = getOpaquePortsAnnotations(s.k8sAPI, pod)
 			}
 
 			// When the IP does not map to a service, the default profile is
 			// sent without subscribing for future updates. If the IP mapped
 			// to a pod, then the endpoint will be set in the response.
-			translator := newProfileTranslator(stream, log, path, port, endpoint, opaquePorts)
-			translator.Update(nil)
+			translator := newProfileTranslator(stream, log, path, port, endpoint)
+
+			// If there are opaque ports then update the profile translator
+			// with a service profile that has those values
+			//
+			// TODO: Remove endpoint from profileTranslator and set it here
+			// similar to opaque ports
+			if len(opaquePorts) != 0 {
+				sp := sp.ServiceProfile{}
+				sp.Spec.OpaquePorts = opaquePorts
+				translator.Update(&sp)
+			} else {
+				translator.Update(nil)
+			}
 
 			select {
 			case <-s.shutdown:
@@ -276,12 +256,23 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log, path, port, nil, nil)
-	// translator := newProfileTranslator(stream, log, &service, s.clusterDomain, nil)
+	translator := newProfileTranslator(stream, log, path, port, nil)
 
-	// The adaptor merges profile updates with traffic split updates and
-	// publishes the result to the translator.
-	tsAdaptor := newTrafficSplitAdaptor(translator, service, port, s.clusterDomain)
+	// The opaque ports adaptor merges traffic split updates with opaque ports
+	// updates and publishes the result to the translator
+	opAdaptor := newOpaquePortsAdaptor(translator, s.k8sAPI, log, nil)
+
+	// Subscribe the adaptor to endpoint updates.
+	// TODO: use a hostname?
+	err = s.endpoints.Subscribe(service, port, "", opAdaptor)
+	if err != nil {
+		log.Warnf("Failed to subscribe to endpoint updates for %s: %s", dest.GetPath(), err)
+	}
+	defer s.endpoints.Unsubscribe(service, port, "", opAdaptor)
+
+	// The traffic split adaptor merges profile updates with traffic split
+	// updates and publishes the result to the opaque port adaptor.
+	tsAdaptor := newTrafficSplitAdaptor(opAdaptor, service, port, s.clusterDomain)
 
 	// Subscribe the adaptor to traffic split updates.
 	err = s.trafficSplits.Subscribe(service, tsAdaptor)
