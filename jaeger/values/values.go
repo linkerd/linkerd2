@@ -3,6 +3,7 @@ package values
 import (
 	"fmt"
 
+	"github.com/linkerd/linkerd2/jaeger/static"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -46,7 +47,7 @@ func readDefaults(chartDir string) (*Values, error) {
 		Name: chartutil.ValuesfileName,
 	}
 
-	if err := charts.ReadFile(chartDir, valuesFile); err != nil {
+	if err := charts.ReadFile(static.Templates, chartDir, valuesFile); err != nil {
 		return nil, err
 	}
 
