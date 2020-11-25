@@ -116,7 +116,7 @@ func Main(args []string) {
 	//
 	// Create and start FS creds watcher
 	//
-	watcher := idctl.NewFsCredsWatcher(*issuerPath, issuerEvent, issuerError)
+	watcher := tls.NewFsCredsWatcher(*issuerPath, issuerEvent, issuerError)
 	go func() {
 		if err := watcher.StartWatching(ctx); err != nil {
 			log.Fatalf("Failed to start creds watcher: %s", err)
