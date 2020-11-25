@@ -43,6 +43,11 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 func makeServer(t *testing.T) *server {
 	k8sAPI, err := k8s.NewFakeAPI(`
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns`,
+		`
+apiVersion: v1
 kind: Service
 metadata:
   name: name1
@@ -575,7 +580,7 @@ func TestGetProfiles(t *testing.T) {
 		}
 		stream.Cancel()
 
-		epAddr, err := toAddress(podIP1, port)
+		epAddr, err := toAddress(podIP1, opaquePort)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
@@ -608,8 +613,12 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.ProtocolHint == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
+		if !first.OpaqueProtocol {
+			t.Fatalf("Expected protocol to be opaque but it was not")
+		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
-			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
+			// t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
+			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, first.Endpoint.Addr.Port)
 		}
 	})
 }
