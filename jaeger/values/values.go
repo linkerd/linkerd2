@@ -8,6 +8,7 @@ import (
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -16,6 +17,7 @@ type Values struct {
 	Namespace string    `json:"namespace"`
 	Collector collector `json:"collector"`
 	Jaeger    jaeger    `json:"jaeger"`
+	Webhook   webhook   `json:"webhook"`
 }
 
 type collector struct {
@@ -26,6 +28,18 @@ type collector struct {
 type jaeger struct {
 	Resources l5dcharts.Resources `json:"resources"`
 	Image     l5dcharts.Image     `json:"image"`
+}
+
+type webhook struct {
+	ExternalSecret    bool                  `json:"externalSecret"`
+	CrtPEM            string                `json:"crtPEM"`
+	KeyPEM            string                `json:"keyPEM"`
+	CaBundle          string                `json:"caBundle"`
+	FailurePolicy     string                `json:"failurePolicy"`
+	Image             l5dcharts.Image       `json:"image"`
+	LogLevel          string                `json:"logLevel"`
+	NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector"`
+	ObjectSelector    *metav1.LabelSelector `json:"objectSelector"`
 }
 
 // NewValues returns a new instance of the Values type.
