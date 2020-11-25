@@ -22,6 +22,7 @@ import (
 var (
 	templatesJaeger = []string{
 		"templates/namespace.yaml",
+		"templates/proxy-mutator.yaml",
 		"templates/rbac.yaml",
 		"templates/tracing.yaml",
 	}
