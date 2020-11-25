@@ -6,6 +6,7 @@ import (
 	"github.com/linkerd/linkerd2/jaeger/static"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/version"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,10 +16,12 @@ import (
 // Values represents the values of jaeger template
 type Values struct {
 	Namespace           string    `json:"namespace"`
+	CliVersion          string    `json:"cliVersion"`
 	Collector           collector `json:"collector"`
 	CollectorSvcAddr    string    `json:"collectorSvcAddr"`
 	CollectorSvcAccount string    `json:"collectorSvcAccount"`
 	Jaeger              jaeger    `json:"jaeger"`
+	LinkerdVersion      string    `json:"linkerdVersion"`
 	Webhook             webhook   `json:"webhook"`
 }
 
@@ -52,6 +55,7 @@ func NewValues() (*Values, error) {
 	if err != nil {
 		return nil, err
 	}
+	v.CliVersion = version.Version
 
 	return v, nil
 }

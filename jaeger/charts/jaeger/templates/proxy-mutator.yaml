@@ -29,7 +29,7 @@ spec:
         - -collector-svc-addr={{.Values.collectorSvcAddr}}
         - -collector-svc-account={{.Values.collectorSvcAccount}}
         - -log-level={{.Values.webhook.logLevel}}
-        image: {{.Values.webhook.image.name}}:{{.Values.webhook.image.version}}
+        image: {{.Values.webhook.image.name}}:{{default .Values.webhook.image.version .Values.cliVersion}}
         imagePullPolicy: {{.Values.webhook.image.pullPolicy}}
         livenessProbe:
           httpGet:

@@ -18,6 +18,8 @@ jaeger:
     version: 1.19.2
     pullPolicy: Always
 
+linkerdVersion: &linkerd_version linkerdVersionValue
+
 webhook:
   externalSecret: false
   # if empty, Helm will auto-generate these fields
@@ -31,7 +33,7 @@ webhook:
   failurePolicy: Ignore
   image: 
     name: ghcr.io/linkerd/jaeger-webhook
-    version: 0.0.1
+    version: *linkerd_version
     pullPolicy: IfNotPresent
   logLevel: info
 
