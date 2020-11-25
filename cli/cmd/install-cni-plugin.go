@@ -8,6 +8,7 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/charts"
 	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -217,6 +218,7 @@ func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
 		Namespace: controlPlaneNamespace,
 		RawValues: rawValues,
 		Files:     files,
+		Fs:        static.Templates,
 	}
 	buf, err := chart.RenderCNI()
 	if err != nil {

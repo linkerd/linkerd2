@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/clientcmd"
-
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/cli/flag"
+	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -128,6 +128,9 @@ func init() {
 	RootCmd.AddCommand(newCmdVersion())
 	RootCmd.AddCommand(newCmdMulticluster())
 	RootCmd.AddCommand(newCmdUninstall())
+
+	// Extension Sub Commands
+	RootCmd.AddCommand(jaeger.NewCmdJaeger())
 }
 
 type statOptionsBase struct {
