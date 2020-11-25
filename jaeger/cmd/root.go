@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 
 	log "github.com/sirupsen/logrus"
@@ -39,11 +38,6 @@ func NewCmdJaeger() *cobra.Command {
 				log.SetLevel(log.DebugLevel)
 			} else {
 				log.SetLevel(log.PanicLevel)
-			}
-
-			controlPlaneNamespaceFromEnv := os.Getenv("LINKERD_NAMESPACE")
-			if controlPlaneNamespace == defaultLinkerdNamespace && controlPlaneNamespaceFromEnv != "" {
-				controlPlaneNamespace = controlPlaneNamespaceFromEnv
 			}
 
 			if !alphaNumDash.MatchString(controlPlaneNamespace) {
