@@ -21,6 +21,7 @@ const (
 		"/trace-collector-service-account"
 )
 
+// Params holds the values used in the patch template
 type Params struct {
 	ProxyIndex          int
 	CollectorSvcAddr    string
