@@ -36,43 +36,22 @@ func newOpaquePortsAdaptor(listener watcher.ProfileUpdateListener, k8sAPI *k8s.A
 }
 
 func (opa *opaquePortsAdaptor) Add(set watcher.AddressSet) {
-	opaquePortsNew := make(map[uint32]bool)
-	var err error
-	for _, address := range set.Addresses {
-		pod := address.Pod
-		if pod != nil {
-			opaquePortsNew, err = getOpaquePortsAnnotations(opa.k8sAPI, pod)
-			if err != nil {
-				opa.log.Errorf("Failed to get opaque ports annotation for pod %s: %s", pod, err)
-			}
-			for port := range opaquePortsNew {
-				opa.opaquePorts[port] = true
-			}
-		}
+	diff := opa.diff(set)
+	for port := range diff {
+		opa.opaquePorts[port] = true
 	}
 	opa.publish()
 }
 
 func (opa *opaquePortsAdaptor) Remove(set watcher.AddressSet) {
-	opaquePortsNew := make(map[uint32]bool)
-	var err error
-	for _, address := range set.Addresses {
-		pod := address.Pod
-		if pod != nil {
-			opaquePortsNew, err = getOpaquePortsAnnotations(opa.k8sAPI, pod)
-			if err != nil {
-				opa.log.Errorf("Failed to get opaque ports annotation for pod %s: %s", pod, err)
-			}
-			for port := range opaquePortsNew {
-				delete(opa.opaquePorts, port)
-			}
-		}
+	diff := opa.diff(set)
+	for port := range diff {
+		delete(opa.opaquePorts, port)
 	}
 	opa.publish()
 }
 
 func (opa *opaquePortsAdaptor) NoEndpoints(exists bool) {
-	// TODO: Should we use exists?
 	for port := range opa.opaquePorts {
 		delete(opa.opaquePorts, port)
 	}
@@ -82,6 +61,23 @@ func (opa *opaquePortsAdaptor) NoEndpoints(exists bool) {
 func (opa *opaquePortsAdaptor) Update(profile *sp.ServiceProfile) {
 	opa.profile = profile
 	opa.publish()
+}
+
+func (opa *opaquePortsAdaptor) diff(set watcher.AddressSet) map[uint32]bool {
+	diff := make(map[uint32]bool)
+	for _, address := range set.Addresses {
+		pod := address.Pod
+		if pod != nil {
+			override, err := getOpaquePortsAnnotations(opa.k8sAPI, pod)
+			if err != nil {
+				opa.log.Errorf("Failed to get opaque ports annotation for pod %s: %s", pod, err)
+			}
+			for port := range override {
+				diff[port] = true
+			}
+		}
+	}
+	return diff
 }
 
 func (opa *opaquePortsAdaptor) publish() {
@@ -100,15 +96,16 @@ func getOpaquePortsAnnotations(k8sAPI *k8s.API, pod *corev1.Pod) (map[uint32]boo
 	if err != nil {
 		return nil, err
 	}
-	if len(obj) == 0 {
-		// TODO: failed to get object
-	}
 	if len(obj) > 1 {
-		// TODO: got too many objects
+		return nil, fmt.Errorf("Namespace conflict: %v, %v", obj[0], obj[1])
+	}
+	if len(obj) != 1 {
+		return nil, fmt.Errorf("Namespace not found: %v", pod.Namespace)
 	}
 	ns, ok := obj[0].(*corev1.Namespace)
 	if !ok {
-		// TODO: object was not a namespace
+		// This is very unlikely due to how `GetObjects` works
+		return nil, fmt.Errorf("Object with name %s was not a namespace", pod.Namespace)
 	}
 	override := ns.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]
 
@@ -117,12 +114,10 @@ func getOpaquePortsAnnotations(k8sAPI *k8s.API, pod *corev1.Pod) (map[uint32]boo
 		override = podOverride
 	}
 
-	// Parse into list of uint32
 	opaquePortsStr := util.ParseOpaquePorts(override, pod.Spec.Containers)
 	for _, portStr := range strings.Split(opaquePortsStr, ",") {
 		port, err := strconv.ParseUint(portStr, 10, 32)
 		if err != nil {
-			// TODO: should we silently fail
 			return nil, err
 		}
 		opaquePorts[uint32(port)] = true
