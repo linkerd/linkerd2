@@ -3,7 +3,9 @@ package mutator
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"html/template"
+	"strings"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/controller/webhook"
@@ -67,6 +69,7 @@ func Mutate(collectorSvcAddr, collectorSvcAccount string) webhook.Handler {
 			return nil, err
 		}
 		applyOverrides(namespace, pod, &params)
+		ammendSvcAccount(pod.Namespace, &params)
 
 		t, err := template.New("tpl").Parse(tpl)
 		if err != nil {
@@ -129,4 +132,13 @@ func applyOverrides(ns *corev1.Namespace, pod *corev1.Pod, params *Params) {
 	if override, ok := ann[collectorSvcAccountAnnotation]; ok {
 		params.CollectorSvcAccount = override
 	}
+}
+
+func ammendSvcAccount(ns string, params *Params) {
+	hostAndPort := strings.Split(params.CollectorSvcAddr, ":")
+	hostname := strings.Split(hostAndPort[0], ".")
+	if len(hostname) > 1 {
+		ns = hostname[1]
+	}
+	params.CollectorSvcAccount = fmt.Sprintf("%s.%s", params.CollectorSvcAccount, ns)
 }
