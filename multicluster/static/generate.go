@@ -3,7 +3,7 @@
 package main
 
 import (
-	"github.com/linkerd/linkerd2/jaeger/static"
+	"github.com/linkerd/linkerd2/multicluster/static"
 	"github.com/shurcooL/vfsgen"
 	log "github.com/sirupsen/logrus"
 )
