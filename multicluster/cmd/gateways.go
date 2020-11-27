@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/linkerd/linkerd2/cli/table"
+	"github.com/linkerd/linkerd2/controller/api/public"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
@@ -35,8 +36,17 @@ func newGatewaysCommand() *cobra.Command {
 				TimeWindow:        opts.timeWindow,
 			}
 
-			// TODO: Pass client correctly here
-			resp, err := requestGatewaysFromAPI(nil, req)
+			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			if err != nil {
+				return err
+			}
+
+			client, err := public.NewExternalClient(cmd.Context(), controlPlaneNamespace, k8sAPI)
+			if err != nil {
+				return err
+			}
+
+			resp, err := requestGatewaysFromAPI(client, req)
 			if err != nil {
 				return err
 			}
