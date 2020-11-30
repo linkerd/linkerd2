@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// These constants are used by the `show` flag.
 const (
 
 	// jaegerDeployment is the name of the jaeger deployment
@@ -37,9 +36,8 @@ type dashboardOptions struct {
 }
 
 // newDashboardOptions initializes dashboard options with default
-// values for host, port, and which dashboard to show. Also, set
-// max wait time duration for 300 seconds for the dashboard to
-// become available
+// values for host, port. Also, set max wait time duration for
+// 300 seconds for the dashboard to become available
 //
 // These options may be overridden on the CLI at run-time
 func newDashboardOptions() *dashboardOptions {
