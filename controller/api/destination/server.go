@@ -176,6 +176,8 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	// The stream will subscribe to profile updates for `service`.
 	var service watcher.ServiceID
+	// `instanceID` is used when subscribing to endpoints of `service`.
+	var instanceID string
 	// If `host` is an IP, `fqn` must be constructed from the namespace and
 	// name of the service that the IP maps to.
 	var fqn string
@@ -245,7 +247,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			return nil
 		}
 	} else {
-		service, _, err = parseK8sServiceName(host, s.clusterDomain)
+		service, instanceID, err = parseK8sServiceName(host, s.clusterDomain)
 		if err != nil {
 			log.Debugf("Invalid service %s", path)
 			return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
@@ -264,11 +266,11 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	// Subscribe the adaptor to endpoint updates.
 	// TODO: use a hostname?
-	err = s.endpoints.Subscribe(service, port, "", opAdaptor)
+	err = s.endpoints.Subscribe(service, port, instanceID, opAdaptor)
 	if err != nil {
 		log.Warnf("Failed to subscribe to endpoint updates for %s: %s", path, err)
 	}
-	defer s.endpoints.Unsubscribe(service, port, "", opAdaptor)
+	defer s.endpoints.Unsubscribe(service, port, instanceID, opAdaptor)
 
 	// The traffic split adaptor merges profile updates with traffic split
 	// updates and publishes the result to the opaque port adaptor.
