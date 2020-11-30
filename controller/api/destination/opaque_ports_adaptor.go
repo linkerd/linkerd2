@@ -109,7 +109,7 @@ func getOpaquePortsAnnotations(k8sAPI *k8s.API, pod *corev1.Pod) (map[uint32]boo
 	}
 	override := ns.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]
 
-	// TODO: Should pod annotations override the namespace annotations?
+	// Pod annotations override namespace annotations
 	if podOverride, ok := pod.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]; ok {
 		override = podOverride
 	}
