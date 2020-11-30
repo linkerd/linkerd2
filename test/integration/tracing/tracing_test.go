@@ -48,19 +48,14 @@ func TestTracing(t *testing.T) {
 		t.Skip("Skipped. Jaeger & Open Census images does not support ARM yet")
 	}
 
-	// Tracing Components
-	out, err := TestHelper.LinkerdRun("inject", "testdata/tracing.yaml")
+	// linkerd-jaeger extension
+	tracingNs := "linkerd-jaeger"
+	out, err := TestHelper.LinkerdRun("jaeger", "install")
 	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
+		testutil.AnnotatedFatal(t, "'linkerd jaeger install' command failed", err)
 	}
 
-	tracingNs := TestHelper.GetTestNamespace("tracing")
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, tracingNs, nil)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", tracingNs),
-			"failed to create %s namespace: %s", tracingNs, err)
-	}
-	out, err = TestHelper.KubectlApply(out, tracingNs)
+	out, err = TestHelper.KubectlApply(out, "")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
@@ -121,14 +116,17 @@ func TestTracing(t *testing.T) {
 	}
 
 	// wait for deployments to start
-	for ns, deploy := range map[string]string{
-		emojivotoNs: "vote-bot",
-		emojivotoNs: "web",
-		emojivotoNs: "emoji",
-		emojivotoNs: "voting",
-		ingressNs:   "nginx-ingress",
-		tracingNs:   "oc-collector",
-		tracingNs:   "jaeger",
+	for ns, deploy := range []struct {
+		ns     string
+		deploy string
+	}{
+		{ns: emojivotoNs, deploy: "vote-bot"},
+		{ns: emojivotoNs, deploy: "web"},
+		{ns: emojivotoNs, deploy: "emoji"},
+		{ns: emojivotoNs, deploy: "voting"},
+		{ns: ingressNs, deploy: "nginx-ingress"},
+		{ns: tracingNs, deploy: "collector"},
+		{ns: tracingNs, deploy: "jaeger"},
 	} {
 		if err := TestHelper.CheckPods(ctx, ns, deploy, 1); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
