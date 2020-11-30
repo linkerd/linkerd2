@@ -218,6 +218,9 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				endpoint.MetricLabels["namespace"] = pod.Namespace
 
 				opaquePorts, err = getOpaquePortsAnnotations(s.k8sAPI, pod)
+				if err != nil {
+					return err
+				}
 			}
 
 			// When the IP does not map to a service, the default profile is
