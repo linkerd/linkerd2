@@ -107,11 +107,12 @@ func getOpaquePortsAnnotations(k8sAPI *k8s.API, pod *corev1.Pod) (map[uint32]boo
 		// This is very unlikely due to how `GetObjects` works
 		return nil, fmt.Errorf("Object with name %s was not a namespace", pod.Namespace)
 	}
-
-	// Get the override value if one is present; if there is an annotation on
-	// both the pod and the namespace, the pod annotation takes precedence
 	override := ns.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]
-	override = pod.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]
+
+	// Pod annotations override namespace annotations
+	if podOverride, ok := pod.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]; ok {
+		override = podOverride
+	}
 
 	if override != "" {
 		opaquePortsStr := util.ParseOpaquePorts(override, pod.Spec.Containers)
