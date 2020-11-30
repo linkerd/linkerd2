@@ -116,19 +116,19 @@ func TestTracing(t *testing.T) {
 	}
 
 	// wait for deployments to start
-	for ns, deploy := range []struct {
-		ns     string
-		deploy string
+	for _, deploy := range []struct {
+		ns   string
+		name string
 	}{
-		{ns: emojivotoNs, deploy: "vote-bot"},
-		{ns: emojivotoNs, deploy: "web"},
-		{ns: emojivotoNs, deploy: "emoji"},
-		{ns: emojivotoNs, deploy: "voting"},
-		{ns: ingressNs, deploy: "nginx-ingress"},
-		{ns: tracingNs, deploy: "collector"},
-		{ns: tracingNs, deploy: "jaeger"},
+		{ns: emojivotoNs, name: "vote-bot"},
+		{ns: emojivotoNs, name: "web"},
+		{ns: emojivotoNs, name: "emoji"},
+		{ns: emojivotoNs, name: "voting"},
+		{ns: ingressNs, name: "nginx-ingress"},
+		{ns: tracingNs, name: "collector"},
+		{ns: tracingNs, name: "jaeger"},
 	} {
-		if err := TestHelper.CheckPods(ctx, ns, deploy, 1); err != nil {
+		if err := TestHelper.CheckPods(ctx, deploy.ns, deploy.name, 1); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
@@ -136,8 +136,8 @@ func TestTracing(t *testing.T) {
 			}
 		}
 
-		if err := TestHelper.CheckDeployment(ctx, ns, deploy, 1); err != nil {
-			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
+		if err := TestHelper.CheckDeployment(ctx, deploy.ns, deploy.name, 1); err != nil {
+			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy.name, err)
 		}
 	}
 
