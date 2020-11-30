@@ -31,11 +31,11 @@ var (
 // addOnCategories contain all the checks w.r.t add-ons. It is strongly advised to
 // have warning as true, to not make the check fail for add-on failures as most of them are
 // not hard requirements unless otherwise.
-func (hc *HealthChecker) addOnCategories() []category {
-	return []category{
+func (hc *HealthChecker) addOnCategories() []Category {
+	return []Category{
 		{
 			id: LinkerdPrometheusAddOnChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "prometheus add-on service account exists",
 					warning:     true,
@@ -86,7 +86,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 								return err
 							}
 
-							return checkContainerRunning(hc.controlPlanePods, "prometheus")
+							return CheckContainerRunning(hc.controlPlanePods, "prometheus")
 						}
 						return &SkipError{Reason: "prometheus add-on not enabled"}
 					},
@@ -95,7 +95,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 		},
 		{
 			id: LinkerdGrafanaAddOnChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "grafana add-on service account exists",
 					warning:     true,
@@ -169,7 +169,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 								return err
 							}
 
-							return checkContainerRunning(hc.controlPlanePods, "grafana")
+							return CheckContainerRunning(hc.controlPlanePods, "grafana")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
 					},
@@ -178,7 +178,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 		},
 		{
 			id: LinkerdTracingAddOnChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "collector service account exists",
 					warning:     true,
@@ -296,7 +296,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 								return err
 							}
 
-							return checkContainerRunning(hc.controlPlanePods, "collector")
+							return CheckContainerRunning(hc.controlPlanePods, "collector")
 						}
 						return &SkipError{Reason: "tracing add-on not enabled"}
 					},
@@ -320,7 +320,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 								return err
 							}
 
-							return checkContainerRunning(hc.controlPlanePods, "jaeger")
+							return CheckContainerRunning(hc.controlPlanePods, "jaeger")
 						}
 						return &SkipError{Reason: "tracing add-on not enabled"}
 					},

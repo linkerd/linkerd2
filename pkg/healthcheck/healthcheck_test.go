@@ -51,9 +51,9 @@ func (hc *HealthChecker) addCheckAsCategory(
 	categoryID CategoryID,
 	desc string,
 ) {
-	testCategory := category{
+	testCategory := Category{
 		id:       testCategoryID,
-		checkers: []checker{},
+		checkers: []Checker{},
 	}
 
 	for _, cat := range hc.categories {
@@ -73,9 +73,9 @@ func (hc *HealthChecker) addCheckAsCategory(
 func TestHealthChecker(t *testing.T) {
 	nullObserver := func(*CheckResult) {}
 
-	passingCheck1 := category{
+	passingCheck1 := Category{
 		id: "cat1",
-		checkers: []checker{
+		checkers: []Checker{
 			{
 				description: "desc1",
 				check: func(context.Context) error {
@@ -86,9 +86,9 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	passingCheck2 := category{
+	passingCheck2 := Category{
 		id: "cat2",
-		checkers: []checker{
+		checkers: []Checker{
 			{
 				description: "desc2",
 				check: func(context.Context) error {
@@ -99,9 +99,9 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	failingCheck := category{
+	failingCheck := Category{
 		id: "cat3",
-		checkers: []checker{
+		checkers: []Checker{
 			{
 				description: "desc3",
 				check: func(context.Context) error {
@@ -124,9 +124,9 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	passingRPCCheck := category{
+	passingRPCCheck := Category{
 		id: "cat4",
-		checkers: []checker{
+		checkers: []Checker{
 			{
 				description: "desc4",
 				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
@@ -151,9 +151,9 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	failingRPCCheck := category{
+	failingRPCCheck := Category{
 		id: "cat5",
-		checkers: []checker{
+		checkers: []Checker{
 			{
 				description: "desc5",
 				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
@@ -165,9 +165,9 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	fatalCheck := category{
+	fatalCheck := Category{
 		id: "cat6",
-		checkers: []checker{
+		checkers: []Checker{
 			{
 				description: "desc6",
 				fatal:       true,
@@ -179,9 +179,9 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	skippingCheck := category{
+	skippingCheck := Category{
 		id: "cat7",
-		checkers: []checker{
+		checkers: []Checker{
 			{
 				description: "skip",
 				check: func(context.Context) error {
@@ -192,9 +192,9 @@ func TestHealthChecker(t *testing.T) {
 		},
 	}
 
-	skippingRPCCheck := category{
+	skippingRPCCheck := Category{
 		id: "cat8",
-		checkers: []checker{
+		checkers: []Checker{
 			{
 				description: "skipRpc",
 				checkRPC: func(context.Context) (*healthcheckPb.SelfCheckResponse, error) {
@@ -308,9 +308,9 @@ func TestHealthChecker(t *testing.T) {
 		retryWindow = 0
 		returnError := true
 
-		retryCheck := category{
+		retryCheck := Category{
 			id: "cat7",
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description:   "desc7",
 					retryDeadline: time.Now().Add(100 * time.Second),
