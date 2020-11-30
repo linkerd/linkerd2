@@ -781,9 +781,6 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
-  name: linkerd-collector
-  namespace: linkerd
-- kind: ServiceAccount
   name: linkerd-controller
   namespace: linkerd
 - kind: ServiceAccount
@@ -797,9 +794,6 @@ subjects:
   namespace: linkerd
 - kind: ServiceAccount
   name: linkerd-identity
-  namespace: linkerd
-- kind: ServiceAccount
-  name: linkerd-jaeger
   namespace: linkerd
 - kind: ServiceAccount
   name: linkerd-prometheus
@@ -852,6 +846,7 @@ data:
       clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
       cniEnabled: false
       controlPlaneTracing: false
+      controlPlaneTracingNamespace: linkerd-jaeger
       controllerComponentLabel: linkerd.io/control-plane-component
       controllerImageVersion: linkerd-version
       controllerLogLevel: info
@@ -900,9 +895,6 @@ data:
             limit: ""
             request: ""
         saMountPath: null
-        trace:
-          collectorSvcAccount: default
-          collectorSvcAddr: ""
         uid: 2102
         waitBeforeExitSeconds: 0
       proxyContainerName: linkerd-proxy
@@ -938,6 +930,7 @@ data:
         clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         cniEnabled: false
         controlPlaneTracing: false
+        controlPlaneTracingNamespace: linkerd-jaeger
         controllerComponentLabel: linkerd.io/control-plane-component
         controllerImageVersion: linkerd-version
         controllerLogLevel: info
@@ -986,9 +979,6 @@ data:
               limit: ""
               request: ""
           saMountPath: null
-          trace:
-            collectorSvcAccount: default
-            collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
         proxyContainerName: linkerd-proxy
@@ -1025,6 +1015,7 @@ data:
           clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
           cniEnabled: false
           controlPlaneTracing: false
+          controlPlaneTracingNamespace: linkerd-jaeger
           controllerComponentLabel: linkerd.io/control-plane-component
           controllerImageVersion: linkerd-version
           controllerLogLevel: info
@@ -1073,9 +1064,6 @@ data:
                 limit: ""
                 request: ""
             saMountPath: null
-            trace:
-              collectorSvcAccount: default
-              collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
           proxyContainerName: linkerd-proxy
@@ -1143,6 +1131,7 @@ data:
         clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         cniEnabled: false
         controlPlaneTracing: false
+        controlPlaneTracingNamespace: linkerd-jaeger
         controllerComponentLabel: linkerd.io/control-plane-component
         controllerImageVersion: linkerd-version
         controllerLogLevel: info
@@ -1191,9 +1180,6 @@ data:
               limit: ""
               request: ""
           saMountPath: null
-          trace:
-            collectorSvcAccount: default
-            collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
         proxyContainerName: linkerd-proxy
@@ -1233,6 +1219,7 @@ data:
           clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
           cniEnabled: false
           controlPlaneTracing: false
+          controlPlaneTracingNamespace: linkerd-jaeger
           controllerComponentLabel: linkerd.io/control-plane-component
           controllerImageVersion: linkerd-version
           controllerLogLevel: info
@@ -1281,9 +1268,6 @@ data:
                 limit: ""
                 request: ""
             saMountPath: null
-            trace:
-              collectorSvcAccount: default
-              collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
           proxyContainerName: linkerd-proxy
@@ -1335,181 +1319,6 @@ data:
     tapProxyResources: null
     tapResources: null
     tolerations: null
-    tracing:
-      collector:
-        image: omnition/opencensus-collector:0.1.11
-      enabled: true
-      global:
-        cliVersion: ""
-        clusterDomain: cluster.local
-        clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
-        cniEnabled: false
-        controlPlaneTracing: false
-        controllerComponentLabel: linkerd.io/control-plane-component
-        controllerImageVersion: linkerd-version
-        controllerLogLevel: info
-        controllerNamespaceLabel: linkerd.io/control-plane-ns
-        createdByAnnotation: linkerd.io/created-by
-        enableEndpointSlices: false
-        grafanaUrl: ""
-        highAvailability: false
-        identityTrustAnchorsPEM: test-trust-anchor
-        identityTrustDomain: test.trust.domain
-        imagePullPolicy: IfNotPresent
-        imagePullSecrets: []
-        linkerdNamespaceLabel: linkerd.io/is-control-plane
-        linkerdVersion: linkerd-version
-        namespace: linkerd
-        podAnnotations: {}
-        podLabels: {}
-        prometheusUrl: ""
-        proxy:
-          capabilities: null
-          disableIdentity: false
-          disableTap: false
-          enableExternalProfiles: false
-          image:
-            name: ghcr.io/linkerd/proxy
-            pullPolicy: IfNotPresent
-            version: test-proxy-version
-          inboundConnectTimeout: 100ms
-          isGateway: false
-          isIngress: false
-          logFormat: plain
-          logLevel: warn,linkerd=info
-          opaquePorts: ""
-          outboundConnectTimeout: 1000ms
-          ports:
-            admin: 4191
-            control: 4190
-            inbound: 4143
-            outbound: 4140
-          requireIdentityOnInboundPorts: ""
-          resources:
-            cpu:
-              limit: ""
-              request: ""
-            memory:
-              limit: ""
-              request: ""
-          saMountPath: null
-          trace:
-            collectorSvcAccount: default
-            collectorSvcAddr: ""
-          uid: 2102
-          waitBeforeExitSeconds: 0
-        proxyContainerName: linkerd-proxy
-        proxyInit:
-          capabilities: null
-          closeWaitTimeoutSecs: 0
-          ignoreInboundPorts: "222"
-          ignoreOutboundPorts: "111"
-          image:
-            name: ghcr.io/linkerd/proxy-init
-            pullPolicy: IfNotPresent
-            version: test-proxy-init-version
-          resources:
-            cpu:
-              limit: 100m
-              request: 10m
-            memory:
-              limit: 50Mi
-              request: 10Mi
-          saMountPath: null
-          xtMountPath:
-            mountPath: /run
-            name: linkerd-proxy-init-xtables-lock
-            readOnly: false
-        proxyInjectAnnotation: linkerd.io/inject
-        proxyInjectDisabled: disabled
-        workloadNamespaceLabel: linkerd.io/workload-ns
-      jaeger:
-        image: jaegertracing/all-in-one:1.19.2
-      partials:
-        global:
-          cliVersion: ""
-          clusterDomain: cluster.local
-          clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
-          cniEnabled: false
-          controlPlaneTracing: false
-          controllerComponentLabel: linkerd.io/control-plane-component
-          controllerImageVersion: linkerd-version
-          controllerLogLevel: info
-          controllerNamespaceLabel: linkerd.io/control-plane-ns
-          createdByAnnotation: linkerd.io/created-by
-          enableEndpointSlices: false
-          grafanaUrl: ""
-          highAvailability: false
-          identityTrustAnchorsPEM: test-trust-anchor
-          identityTrustDomain: test.trust.domain
-          imagePullPolicy: IfNotPresent
-          imagePullSecrets: []
-          linkerdNamespaceLabel: linkerd.io/is-control-plane
-          linkerdVersion: linkerd-version
-          namespace: linkerd
-          podAnnotations: {}
-          podLabels: {}
-          prometheusUrl: ""
-          proxy:
-            capabilities: null
-            disableIdentity: false
-            disableTap: false
-            enableExternalProfiles: false
-            image:
-              name: ghcr.io/linkerd/proxy
-              pullPolicy: IfNotPresent
-              version: test-proxy-version
-            inboundConnectTimeout: 100ms
-            isGateway: false
-            isIngress: false
-            logFormat: plain
-            logLevel: warn,linkerd=info
-            opaquePorts: ""
-            outboundConnectTimeout: 1000ms
-            ports:
-              admin: 4191
-              control: 4190
-              inbound: 4143
-              outbound: 4140
-            requireIdentityOnInboundPorts: ""
-            resources:
-              cpu:
-                limit: ""
-                request: ""
-              memory:
-                limit: ""
-                request: ""
-            saMountPath: null
-            trace:
-              collectorSvcAccount: default
-              collectorSvcAddr: ""
-            uid: 2102
-            waitBeforeExitSeconds: 0
-          proxyContainerName: linkerd-proxy
-          proxyInit:
-            capabilities: null
-            closeWaitTimeoutSecs: 0
-            ignoreInboundPorts: "222"
-            ignoreOutboundPorts: "111"
-            image:
-              name: ghcr.io/linkerd/proxy-init
-              pullPolicy: IfNotPresent
-              version: test-proxy-init-version
-            resources:
-              cpu:
-                limit: 100m
-                request: 10m
-              memory:
-                limit: 50Mi
-                request: 10Mi
-            saMountPath: null
-            xtMountPath:
-              mountPath: /run
-              name: linkerd-proxy-init-xtables-lock
-              readOnly: false
-          proxyInjectAnnotation: linkerd.io/inject
-          proxyInjectDisabled: disabled
-          workloadNamespaceLabel: linkerd.io/workload-ns
     webImage: ghcr.io/linkerd/web
     webProxyResources: null
     webResources: null
@@ -2356,7 +2165,6 @@ spec:
         - -api-addr=linkerd-controller-api.linkerd.svc.cluster.local:8085
         - -cluster-domain=cluster.local
         - -grafana-addr=linkerd-grafana.linkerd.svc.cluster.local:3000
-        - -jaeger-addr=linkerd-jaeger.linkerd.svc.cluster.local:16686
         - -controller-namespace=linkerd
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
@@ -3924,504 +3732,6 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
-      - emptyDir: {}
-        name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
----
-# Source: linkerd2/charts/tracing/templates/tracing-rbac.yaml
----
-###
-### linkerd-collector RBAC
-###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-collector
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: linkerd-collector
-    linkerd.io/control-plane-ns: linkerd
----
-###
-### linkerd-jaeger RBAC
-###
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: linkerd-jaeger
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: linkerd-jaeger
-    linkerd.io/control-plane-ns: linkerd
----
-# Source: linkerd2/charts/tracing/templates/tracing.yaml
----
-###
-### Tracing Collector Service
-###
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: linkerd-collector-config
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: linkerd-collector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-data:
-  linkerd-collector-config: |
-    receivers:
-      opencensus:
-        port: 55678
-      zipkin:
-        port: 9411
-      jaeger:
-        jaeger-thrift-http-port: 14268
-    queued-exporters:
-      jaeger-all-in-one:
-        num-workers: 4
-        queue-size: 100
-        retry-on-failure: true
-        sender-type: jaeger-thrift-http
-        jaeger-thrift-http:
-          collector-endpoint: http://linkerd-jaeger.linkerd:14268/api/traces
-          timeout: 5s
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: linkerd-collector
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: linkerd-collector
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-spec:
-  type: ClusterIP
-  ports:
-  - name: opencensus
-    port: 55678
-    protocol: TCP
-    targetPort: 55678
-  - name: zipkin
-    port: 9411
-    protocol: TCP
-    targetPort: 9411
-  - name: jaeger
-    port: 14268
-    protocol: TCP
-    targetPort: 14268
-  selector:
-    linkerd.io/control-plane-component: linkerd-collector
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-  labels:
-    app.kubernetes.io/name: linkerd-collector
-    app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: linkerd-version
-    linkerd.io/control-plane-component: linkerd-collector
-    linkerd.io/control-plane-ns: linkerd
-  name: linkerd-collector
-  namespace: linkerd
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      linkerd.io/control-plane-component: linkerd-collector
-      linkerd.io/control-plane-ns: linkerd
-      linkerd.io/proxy-deployment: linkerd-collector
-  minReadySeconds: 5
-  progressDeadlineSeconds: 120
-  template:
-    metadata:
-      annotations:
-        linkerd.io/created-by: linkerd/helm linkerd-version
-        linkerd.io/identity-mode: default
-        linkerd.io/proxy-version: test-proxy-version
-        prometheus.io/path: /metrics
-        prometheus.io/port: "8888"
-        prometheus.io/scrape: "true"
-      labels:
-        linkerd.io/control-plane-component: linkerd-collector
-        linkerd.io/control-plane-ns: linkerd
-        linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-collector
-    spec:
-      containers:
-      - command:
-        - /occollector_linux
-        - --config=/conf/linkerd-collector-config.yaml
-        env:
-        - name: GOGC
-          value: "80"
-        image: omnition/opencensus-collector:0.1.11
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 13133
-        name: oc-collector
-        ports:
-        - containerPort: 55678
-        - containerPort: 9411
-        - containerPort: 14268
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 13133
-        volumeMounts:
-        - mountPath: /conf
-          name: linkerd-collector-config-val
-      - env:
-        - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info"
-        - name: LINKERD2_PROXY_LOG_FORMAT
-          value: "plain"
-        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
-        - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
-          value: "100ms"
-        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
-          value: "1000ms"
-        - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
-          value: 0.0.0.0:4190
-        - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
-          value: 0.0.0.0:4191
-        - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
-          value: 127.0.0.1:4140
-        - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
-          value: 0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
-          value: svc.cluster.local.
-        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-          value: 10000ms
-        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-          value: 10000ms
-        - name: _pod_ns
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: _pod_nodeName
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: |
-            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
-        - name: LINKERD2_PROXY_IDENTITY_DIR
-          value: /var/run/linkerd/identity/end-entity
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: |
-            test-trust-anchor
-        - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
-        - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
-        - name: _pod_sa
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.serviceAccountName
-        - name: _l5d_ns
-          value: linkerd
-        - name: _l5d_trustdomain
-          value: test.trust.domain
-        - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
-          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
-          value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-          value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TAP_SVC_NAME
-          value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:test-proxy-version
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /live
-            port: 4191
-          initialDelaySeconds: 10
-        name: linkerd-proxy
-        ports:
-        - containerPort: 4143
-          name: linkerd-proxy
-        - containerPort: 4191
-          name: linkerd-admin
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 4191
-          initialDelaySeconds: 2
-        resources:
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          runAsUser: 2102
-        terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /var/run/linkerd/identity/end-entity
-          name: linkerd-identity-end-entity
-      initContainers:
-      - args:
-        - --incoming-proxy-port
-        - "4143"
-        - --outgoing-proxy-port
-        - "4140"
-        - --proxy-uid
-        - "2102"
-        - --inbound-ports-to-ignore
-        - "4190,4191,222"
-        - --outbound-ports-to-ignore
-        - "111"
-        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
-        imagePullPolicy: IfNotPresent
-        name: linkerd-init
-        resources:
-          limits:
-            cpu: "100m"
-            memory: "50Mi"
-          requests:
-            cpu: "10m"
-            memory: "10Mi"
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            add:
-            - NET_ADMIN
-            - NET_RAW
-          privileged: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: false
-          runAsUser: 0
-        terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /run
-          name: linkerd-proxy-init-xtables-lock
-      serviceAccountName: linkerd-collector
-      volumes:
-      - configMap:
-          items:
-          - key: linkerd-collector-config
-            path: linkerd-collector-config.yaml
-          name: linkerd-collector-config
-        name: linkerd-collector-config-val
-      - emptyDir: {}
-        name: linkerd-proxy-init-xtables-lock
-      - emptyDir:
-          medium: Memory
-        name: linkerd-identity-end-entity
----
-###
-### Tracing Jaeger Service
-###
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: linkerd-jaeger
-  namespace: linkerd
-  labels:
-    linkerd.io/control-plane-component: linkerd-jaeger
-    linkerd.io/control-plane-ns: linkerd
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-spec:
-  type: ClusterIP
-  selector:
-    linkerd.io/control-plane-component: linkerd-jaeger
-  ports:
-    - name: collection
-      port: 14268
-    - name: ui
-      port: 16686
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  annotations:
-    linkerd.io/created-by: linkerd/helm linkerd-version
-  labels:
-    app.kubernetes.io/name: linkerd-jaeger
-    app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: linkerd-version
-    linkerd.io/control-plane-component: linkerd-jaeger
-    linkerd.io/control-plane-ns: linkerd
-  name: linkerd-jaeger
-  namespace: linkerd
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      linkerd.io/control-plane-component: linkerd-jaeger
-      linkerd.io/control-plane-ns: linkerd
-      linkerd.io/proxy-deployment: linkerd-jaeger
-  template:
-    metadata:
-      annotations:
-        linkerd.io/created-by: linkerd/helm linkerd-version
-        linkerd.io/identity-mode: default
-        linkerd.io/proxy-version: test-proxy-version
-        prometheus.io/path: /metrics
-        prometheus.io/port: "8888"
-        prometheus.io/scrape: "true"
-      labels:
-        linkerd.io/control-plane-component: linkerd-jaeger
-        linkerd.io/control-plane-ns: linkerd
-        linkerd.io/workload-ns: linkerd
-        linkerd.io/proxy-deployment: linkerd-jaeger
-    spec:
-      containers:
-      - args:
-        - --query.base-path=/jaeger
-        image: jaegertracing/all-in-one:1.19.2
-        imagePullPolicy: IfNotPresent
-        name: jaeger
-        ports:
-        - containerPort: 14268
-          name: collection
-        - containerPort: 16686
-          name: ui
-      - env:
-        - name: LINKERD2_PROXY_LOG
-          value: "warn,linkerd=info"
-        - name: LINKERD2_PROXY_LOG_FORMAT
-          value: "plain"
-        - name: LINKERD2_PROXY_DESTINATION_SVC_ADDR
-          value: linkerd-dst-headless.linkerd.svc.cluster.local:8086
-        - name: LINKERD2_PROXY_DESTINATION_PROFILE_NETWORKS
-          value: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
-        - name: LINKERD2_PROXY_INBOUND_CONNECT_TIMEOUT
-          value: "100ms"
-        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_TIMEOUT
-          value: "1000ms"
-        - name: LINKERD2_PROXY_CONTROL_LISTEN_ADDR
-          value: 0.0.0.0:4190
-        - name: LINKERD2_PROXY_ADMIN_LISTEN_ADDR
-          value: 0.0.0.0:4191
-        - name: LINKERD2_PROXY_OUTBOUND_LISTEN_ADDR
-          value: 127.0.0.1:4140
-        - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
-          value: 0.0.0.0:4143
-        - name: LINKERD2_PROXY_DESTINATION_PROFILE_SUFFIXES
-          value: svc.cluster.local.
-        - name: LINKERD2_PROXY_INBOUND_ACCEPT_KEEPALIVE
-          value: 10000ms
-        - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
-          value: 10000ms
-        - name: _pod_ns
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: _pod_nodeName
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: LINKERD2_PROXY_DESTINATION_CONTEXT
-          value: |
-            {"ns":"$(_pod_ns)", "nodeName":"$(_pod_nodeName)"}
-        - name: LINKERD2_PROXY_IDENTITY_DIR
-          value: /var/run/linkerd/identity/end-entity
-        - name: LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS
-          value: |
-            test-trust-anchor
-        - name: LINKERD2_PROXY_IDENTITY_TOKEN_FILE
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
-        - name: LINKERD2_PROXY_IDENTITY_SVC_ADDR
-          value: linkerd-identity-headless.linkerd.svc.cluster.local:8080
-        - name: _pod_sa
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.serviceAccountName
-        - name: _l5d_ns
-          value: linkerd
-        - name: _l5d_trustdomain
-          value: test.trust.domain
-        - name: LINKERD2_PROXY_IDENTITY_LOCAL_NAME
-          value: $(_pod_sa).$(_pod_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_IDENTITY_SVC_NAME
-          value: linkerd-identity.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_DESTINATION_SVC_NAME
-          value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TAP_SVC_NAME
-          value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        image: ghcr.io/linkerd/proxy:test-proxy-version
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          httpGet:
-            path: /live
-            port: 4191
-          initialDelaySeconds: 10
-        name: linkerd-proxy
-        ports:
-        - containerPort: 4143
-          name: linkerd-proxy
-        - containerPort: 4191
-          name: linkerd-admin
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 4191
-          initialDelaySeconds: 2
-        resources:
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          runAsUser: 2102
-        terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /var/run/linkerd/identity/end-entity
-          name: linkerd-identity-end-entity
-      initContainers:
-      - args:
-        - --incoming-proxy-port
-        - "4143"
-        - --outgoing-proxy-port
-        - "4140"
-        - --proxy-uid
-        - "2102"
-        - --inbound-ports-to-ignore
-        - "4190,4191,222"
-        - --outbound-ports-to-ignore
-        - "111"
-        image: ghcr.io/linkerd/proxy-init:test-proxy-init-version
-        imagePullPolicy: IfNotPresent
-        name: linkerd-init
-        resources:
-          limits:
-            cpu: "100m"
-            memory: "50Mi"
-          requests:
-            cpu: "10m"
-            memory: "10Mi"
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            add:
-            - NET_ADMIN
-            - NET_RAW
-          privileged: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: false
-          runAsUser: 0
-        terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - mountPath: /run
-          name: linkerd-proxy-init-xtables-lock
-      dnsPolicy: ClusterFirst
-      serviceAccountName: linkerd-jaeger
-      volumes:
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:

@@ -367,6 +367,5 @@ func clearAddonOverrides(values *l5dcharts.Values) error {
 	}
 	values.Grafana = defaults.Grafana
 	values.Prometheus = defaults.Prometheus
-	values.Tracing = defaults.Tracing
 	return nil
 }

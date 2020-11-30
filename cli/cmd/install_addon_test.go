@@ -12,32 +12,11 @@ import (
 )
 
 func TestAddOnRender(t *testing.T) {
-	withTracingAddonValues, err := testInstallOptions()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v\n", err)
-	}
-	withTracingAddonValues.Tracing["enabled"] = true
-	addFakeTLSSecrets(withTracingAddonValues)
-
-	withTracingOverwriteValues, err := testInstallOptions()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v\n", err)
-	}
-	data, err := ioutil.ReadFile(filepath.Join("testdata", "addon_config_overwrite.yaml"))
-	if err != nil {
-		t.Fatalf("Unexpected error: %v\n", err)
-	}
-	err = yaml.Unmarshal(data, withTracingOverwriteValues)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v\n", err)
-	}
-	addFakeTLSSecrets(withTracingOverwriteValues)
-
 	withExistingGrafanaValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	data, err = ioutil.ReadFile(filepath.Join("testdata", "existing-grafana-config.yaml"))
+	data, err := ioutil.ReadFile(filepath.Join("testdata", "existing-grafana-config.yaml"))
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
@@ -65,8 +44,7 @@ func TestAddOnRender(t *testing.T) {
 		values         *charts.Values
 		goldenFileName string
 	}{
-		{withTracingAddonValues, "install_tracing.golden"},
-		{withTracingOverwriteValues, "install_tracing_overwrite.golden"},
+
 		{withExistingGrafanaValues, "install_grafana_existing.golden"},
 		{withPrometheusAddOnOverwriteValues, "install_prometheus_overwrite.golden"},
 	}

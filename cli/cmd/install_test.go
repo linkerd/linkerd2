@@ -86,8 +86,7 @@ func TestRender(t *testing.T) {
 					Inbound:  4143,
 					Outbound: 4140,
 				},
-				UID:   2102,
-				Trace: &charts.Trace{},
+				UID: 2102,
 			},
 			ProxyInit: &charts.ProxyInit{
 				Image: &charts.Image{
@@ -134,9 +133,6 @@ func TestRender(t *testing.T) {
 		Prometheus: charts.Prometheus{
 			"enabled": true,
 			"image":   "PrometheusImage",
-		},
-		Tracing: map[string]interface{}{
-			"enabled": false,
 		},
 		Grafana: defaultValues.Grafana,
 	}
@@ -211,13 +207,6 @@ func TestRender(t *testing.T) {
 	}
 	addFakeTLSSecrets(withCustomRegistryValues)
 
-	withAddOnValues, err := testInstallOptions()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v\n", err)
-	}
-	withAddOnValues.Tracing["enabled"] = true
-	addFakeTLSSecrets(withAddOnValues)
-
 	withCustomDestinationGetNetsValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
@@ -239,7 +228,6 @@ func TestRender(t *testing.T) {
 		{withRestrictedDashboardPrivilegesValues, "install_restricted_dashboard.golden"},
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
 		{withCustomRegistryValues, "install_custom_registry.golden"},
-		{withAddOnValues, "install_addon.golden"},
 		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden"},
 	}
 

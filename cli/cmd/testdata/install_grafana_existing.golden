@@ -817,6 +817,7 @@ data:
       clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
       cniEnabled: false
       controlPlaneTracing: false
+      controlPlaneTracingNamespace: linkerd-jaeger
       controllerComponentLabel: linkerd.io/control-plane-component
       controllerImageVersion: install-control-plane-version
       controllerLogLevel: info
@@ -877,9 +878,6 @@ data:
             limit: ""
             request: ""
         saMountPath: null
-        trace:
-          collectorSvcAccount: default
-          collectorSvcAddr: ""
         uid: 2102
         waitBeforeExitSeconds: 0
       proxyContainerName: linkerd-proxy
@@ -974,8 +972,6 @@ data:
     tapProxyResources: null
     tapResources: null
     tolerations: null
-    tracing:
-      enabled: false
     webImage: ghcr.io/linkerd/web
     webProxyResources: null
     webResources: null

@@ -66,36 +66,36 @@ type (
 		// Addon Structures
 		Grafana    Grafana    `json:"grafana"`
 		Prometheus Prometheus `json:"prometheus"`
-		Tracing    Tracing    `json:"tracing"`
 	}
 
 	// Global values common across all charts
 	Global struct {
-		Namespace                string              `json:"namespace"`
-		ClusterDomain            string              `json:"clusterDomain"`
-		ClusterNetworks          string              `json:"clusterNetworks"`
-		ImagePullPolicy          string              `json:"imagePullPolicy"`
-		CliVersion               string              `json:"cliVersion"`
-		ControllerComponentLabel string              `json:"controllerComponentLabel"`
-		ControllerImageVersion   string              `json:"controllerImageVersion"`
-		ControllerLogLevel       string              `json:"controllerLogLevel"`
-		ControllerNamespaceLabel string              `json:"controllerNamespaceLabel"`
-		WorkloadNamespaceLabel   string              `json:"workloadNamespaceLabel"`
-		CreatedByAnnotation      string              `json:"createdByAnnotation"`
-		ProxyInjectAnnotation    string              `json:"proxyInjectAnnotation"`
-		ProxyInjectDisabled      string              `json:"proxyInjectDisabled"`
-		LinkerdNamespaceLabel    string              `json:"linkerdNamespaceLabel"`
-		ProxyContainerName       string              `json:"proxyContainerName"`
-		HighAvailability         bool                `json:"highAvailability"`
-		CNIEnabled               bool                `json:"cniEnabled"`
-		EnableEndpointSlices     bool                `json:"enableEndpointSlices"`
-		ControlPlaneTracing      bool                `json:"controlPlaneTracing"`
-		IdentityTrustAnchorsPEM  string              `json:"identityTrustAnchorsPEM"`
-		IdentityTrustDomain      string              `json:"identityTrustDomain"`
-		PrometheusURL            string              `json:"prometheusUrl"`
-		GrafanaURL               string              `json:"grafanaUrl"`
-		ImagePullSecrets         []map[string]string `json:"imagePullSecrets"`
-		LinkerdVersion           string              `json:"linkerdVersion"`
+		Namespace                    string              `json:"namespace"`
+		ClusterDomain                string              `json:"clusterDomain"`
+		ClusterNetworks              string              `json:"clusterNetworks"`
+		ImagePullPolicy              string              `json:"imagePullPolicy"`
+		CliVersion                   string              `json:"cliVersion"`
+		ControllerComponentLabel     string              `json:"controllerComponentLabel"`
+		ControllerImageVersion       string              `json:"controllerImageVersion"`
+		ControllerLogLevel           string              `json:"controllerLogLevel"`
+		ControllerNamespaceLabel     string              `json:"controllerNamespaceLabel"`
+		WorkloadNamespaceLabel       string              `json:"workloadNamespaceLabel"`
+		CreatedByAnnotation          string              `json:"createdByAnnotation"`
+		ProxyInjectAnnotation        string              `json:"proxyInjectAnnotation"`
+		ProxyInjectDisabled          string              `json:"proxyInjectDisabled"`
+		LinkerdNamespaceLabel        string              `json:"linkerdNamespaceLabel"`
+		ProxyContainerName           string              `json:"proxyContainerName"`
+		HighAvailability             bool                `json:"highAvailability"`
+		CNIEnabled                   bool                `json:"cniEnabled"`
+		EnableEndpointSlices         bool                `json:"enableEndpointSlices"`
+		ControlPlaneTracing          bool                `json:"controlPlaneTracing"`
+		ControlPlaneTracingNamespace string              `json:"controlPlaneTracingNamespace"`
+		IdentityTrustAnchorsPEM      string              `json:"identityTrustAnchorsPEM"`
+		IdentityTrustDomain          string              `json:"identityTrustDomain"`
+		PrometheusURL                string              `json:"prometheusUrl"`
+		GrafanaURL                   string              `json:"grafanaUrl"`
+		ImagePullSecrets             []map[string]string `json:"imagePullSecrets"`
+		LinkerdVersion               string              `json:"linkerdVersion"`
 
 		PodAnnotations map[string]string `json:"podAnnotations"`
 		PodLabels      map[string]string `json:"podLabels"`
@@ -125,7 +125,6 @@ type (
 		SAMountPath                   *VolumeMountPath `json:"saMountPath"`
 		Ports                         *Ports           `json:"ports"`
 		Resources                     *Resources       `json:"resources"`
-		Trace                         *Trace           `json:"trace"`
 		UID                           int64            `json:"uid"`
 		WaitBeforeExitSeconds         uint64           `json:"waitBeforeExitSeconds"`
 		IsGateway                     bool             `json:"isGateway"`
@@ -246,12 +245,6 @@ type (
 	IssuerTLS struct {
 		KeyPEM string `json:"keyPEM"`
 		CrtPEM string `json:"crtPEM"`
-	}
-
-	// Trace has all the tracing-related Helm variables
-	Trace struct {
-		CollectorSvcAddr    string `json:"collectorSvcAddr"`
-		CollectorSvcAccount string `json:"collectorSvcAccount"`
 	}
 )
 

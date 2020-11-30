@@ -231,20 +231,10 @@ const (
 	// CloseWaitTimeoutAnnotation configures nf_conntrack_tcp_timeout_close_wait.
 	CloseWaitTimeoutAnnotation = ProxyConfigAnnotationsPrefix + "/close-wait-timeout"
 
-	// ProxyTraceCollectorSvcAddrAnnotation can be used to enable tracing on a proxy.
-	// It takes the collector service name (e.g. oc-collector.tracing:55678) as
-	// its value.
-	ProxyTraceCollectorSvcAddrAnnotation = ProxyConfigAnnotationsPrefix + "/trace-collector"
-
 	// ProxyWaitBeforeExitSecondsAnnotation makes the proxy container to wait for the given period before exiting
 	// after the Pod entered the Terminating state. Must be smaller than terminationGracePeriodSeconds
 	// configured for the Pod
 	ProxyWaitBeforeExitSecondsAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit-seconds"
-
-	// ProxyTraceCollectorSvcAccountAnnotation is used to specify the service account
-	// associated with the trace collector. It is used to create the service's
-	// mTLS identity.
-	ProxyTraceCollectorSvcAccountAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/trace-collector-service-account"
 
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.

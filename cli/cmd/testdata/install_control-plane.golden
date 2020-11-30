@@ -99,9 +99,6 @@ data:
             limit: ""
             request: ""
         saMountPath: null
-        trace:
-          collectorSvcAccount: default
-          collectorSvcAddr: ""
         uid: 2102
         waitBeforeExitSeconds: 0
         workloadKind: deployment

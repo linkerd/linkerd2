@@ -10,6 +10,10 @@ metadata:
   name: {{ .Values.global.namespace }}
   annotations:
     {{.Values.global.proxyInjectAnnotation}}: {{.Values.global.proxyInjectDisabled}}
+    {{- if .Values.global.controlPlaneTracing }}
+    config.linkerd.io/trace-collector: collector.{{.Values.global.controlPlaneTracingNamespace}}.svc.{{.Values.global.clusterDomain}}:55678
+    config.alpha.linkerd.io/trace-collector-service-account: collector.{{.Values.global.controlPlaneTracingNamespace}}
+    {{- end}}
   labels:
     {{.Values.global.linkerdNamespaceLabel}}: "true"
     config.linkerd.io/admission-webhooks: disabled

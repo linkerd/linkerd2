@@ -442,14 +442,6 @@ func getOverrideAnnotations(values *charts.Values, base *charts.Values) map[stri
 	if proxy.Resources.Memory.Limit != baseProxy.Resources.Memory.Limit {
 		overrideAnnotations[k8s.ProxyMemoryLimitAnnotation] = proxy.Resources.Memory.Limit
 	}
-
-	if proxy.Trace.CollectorSvcAddr != baseProxy.Trace.CollectorSvcAddr {
-		overrideAnnotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] = proxy.Trace.CollectorSvcAddr
-	}
-
-	if proxy.Trace.CollectorSvcAccount != baseProxy.Trace.CollectorSvcAccount {
-		overrideAnnotations[k8s.ProxyTraceCollectorSvcAccountAnnotation] = proxy.Trace.CollectorSvcAccount
-	}
 	if proxy.WaitBeforeExitSeconds != baseProxy.WaitBeforeExitSeconds {
 		overrideAnnotations[k8s.ProxyWaitBeforeExitSecondsAnnotation] = uintToString(proxy.WaitBeforeExitSeconds)
 	}

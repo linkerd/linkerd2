@@ -19,6 +19,7 @@ global:
 
   # control plane trace configuration
   controlPlaneTracing: false
+  controlPlaneTracingNamespace: linkerd-jaeger
 
   # control plane version. See Proxy section for proxy version
   linkerdVersion: &linkerd_version linkerdVersionValue
@@ -77,9 +78,6 @@ global:
       memory:
         limit: ""
         request: ""
-    trace:
-      collectorSvcAddr: ""
-      collectorSvcAccount: default
     uid: 2102
     # If set, the proxy's pre-stop hook will postpone the Kubernetes's SIGTERM signal
     # and wait for this duration before letting the proxy process the SIGTERM signal.
@@ -371,12 +369,3 @@ prometheus:
   # resources:
   # proxy:
   #   resources:
-
-tracing:
-  enabled: false
-  # collector:
-  #  image: omnition/opencensus-collector:0.1.11
-  #  resources:
-  # jaeger:
-  #  image: jaegertracing/all-in-one:1.19.2
-  #  resources:
