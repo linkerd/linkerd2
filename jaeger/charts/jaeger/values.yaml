@@ -8,8 +8,42 @@ collector:
     version: 0.1.11
     pullPolicy: Always
   # resources:
+
+collectorSvcAddr: collector.linkerd-jaeger:55678
+collectorSvcAccount: collector
+
 jaeger:
   image: 
     name: jaegertracing/all-in-one
     version: 1.19.2
     pullPolicy: Always
+
+linkerdVersion: &linkerd_version linkerdVersionValue
+
+webhook:
+  externalSecret: false
+  # if empty, Helm will auto-generate these fields
+  crtPEM: |
+
+  keyPEM: |
+
+  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  caBundle: |
+
+  failurePolicy: Ignore
+  image: 
+    name: ghcr.io/linkerd/jaeger-webhook
+    version: *linkerd_version
+    pullPolicy: IfNotPresent
+  logLevel: info
+
+  namespaceSelector:
+    #matchExpressions:
+    #- key: runlevel
+    #  operator: NotIn
+    #  values: ["0","1"]
+
+  objectSelector:
+    #matchLabels:
+    #  foo: bar
+

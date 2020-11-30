@@ -889,7 +889,7 @@ data:
         image:
           name: ghcr.io/linkerd/proxy-init
           pullPolicy: IfNotPresent
-          version: v1.3.7
+          version: v1.3.8
         resources:
           cpu:
             limit: 100m

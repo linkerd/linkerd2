@@ -18,3 +18,84 @@ apiVersion: v1
 metadata:
   name: jaeger
   namespace: {{.Values.namespace}}
+
+---
+###
+### Proxy Mutator RBAC
+###
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-jaeger-{{.Values.namespace}}-proxy-mutator
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: linkerd-jaeger-{{.Values.namespace}}-proxy-mutator
+subjects:
+- kind: ServiceAccount
+  name: proxy-mutator
+  namespace: {{.Values.namespace}}
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: linkerd-jaeger-{{.Values.namespace}}-proxy-mutator
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: proxy-mutator
+  namespace: {{.Values.namespace}}
+---
+{{- $host := printf "proxy-mutator.%s.svc" .Values.namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
+{{- if (not .Values.webhook.externalSecret) }}
+kind: Secret
+apiVersion: v1
+metadata:
+  name: proxy-mutator-k8s-tls
+  namespace: {{ .Values.namespace }}
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.crtPEM)) (empty .Values.webhook.crtPEM) }}
+  tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.webhook.keyPEM)) (empty .Values.webhook.keyPEM) }}
+---
+{{- end }}
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: linkerd-proxy-mutator-webhook-config
+webhooks:
+- name: proxy-mutator.linkerd.io
+  {{- if .Values.webhook.namespaceSelector }}
+  namespaceSelector: 
+{{ toYaml .Values.webhook.namespaceSelector | trim | indent 4 -}}
+  {{- end }}
+  {{- if .Values.webhook.objectSelector }}
+  objectSelector: 
+{{ toYaml .Values.webhook.objectSelector | trim | indent 4 -}}
+  {{- end }}
+  clientConfig:
+    service:
+      name: proxy-mutator
+      namespace: {{ .Values.namespace }}
+      path: "/"
+{{- if and (.Values.webhook.externalSecret) (empty .Values.webhook.caBundle) }}
+  {{- fail "If webhook.externalSecret is true then you need to provide webook.caBundle" }}
+{{- end }}
+    caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.webhook.caBundle)) (empty .Values.webhook.caBundle) }}
+  failurePolicy: {{.Values.webhook.failurePolicy}}
+  reinvocationPolicy: IfNeeded
+  rules:
+  - operations: [ "CREATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  sideEffects: None
+

@@ -18,6 +18,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -287,6 +288,7 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 		Namespace: conf.values.GetGlobal().Namespace,
 		RawValues: rawValues,
 		Files:     files,
+		Fs:        static.Templates,
 	}
 	buf, err := chart.Render()
 	if err != nil {

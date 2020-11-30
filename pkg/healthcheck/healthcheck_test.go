@@ -2423,7 +2423,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"ghcr.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"ghcr.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.7","debugImage":{"imageName":"ghcr.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"ghcr.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"ghcr.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.8","debugImage":{"imageName":"ghcr.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}`,
 			},
@@ -2469,7 +2469,7 @@ data:
 					},
 					DisableExternalProfiles: true,
 					ProxyVersion:            "install-proxy-version",
-					ProxyInitImageVersion:   "v1.3.7",
+					ProxyInitImageVersion:   "v1.3.8",
 					DebugImage: &configPb.Image{
 						ImageName:  "ghcr.io/linkerd/debug",
 						PullPolicy: "IfNotPresent",
@@ -2561,7 +2561,7 @@ data:
   global: |
     {"linkerdNamespace":"linkerd","cniEnabled":false,"version":"install-control-plane-version","identityContext":{"trustDomain":"cluster.local","trustAnchorsPem":"fake-trust-anchors-pem","issuanceLifetime":"86400s","clockSkewAllowance":"20s"}}
   proxy: |
-    {"proxyImage":{"imageName":"ghcr.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"ghcr.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.7","debugImage":{"imageName":"ghcr.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
+    {"proxyImage":{"imageName":"ghcr.io/linkerd/proxy","pullPolicy":"IfNotPresent"},"proxyInitImage":{"imageName":"ghcr.io/linkerd/proxy-init","pullPolicy":"IfNotPresent"},"controlPort":{"port":4190},"ignoreInboundPorts":[],"ignoreOutboundPorts":[],"inboundPort":{"port":4143},"adminPort":{"port":4191},"outboundPort":{"port":4140},"resource":{"requestCpu":"","requestMemory":"","limitCpu":"","limitMemory":""},"proxyUid":"2102","logLevel":{"level":"warn,linkerd=info"},"disableExternalProfiles":true,"proxyVersion":"install-proxy-version","proxy_init_image_version":"v1.3.8","debugImage":{"imageName":"ghcr.io/linkerd/debug","pullPolicy":"IfNotPresent"},"debugImageVersion":"install-debug-version"}
   install: |
     {"cliVersion":"dev-undefined","flags":[]}
   values: |
