@@ -114,13 +114,15 @@ func getOpaquePortsAnnotations(k8sAPI *k8s.API, pod *corev1.Pod) (map[uint32]boo
 		override = podOverride
 	}
 
-	opaquePortsStr := util.ParseOpaquePorts(override, pod.Spec.Containers)
-	for _, portStr := range strings.Split(opaquePortsStr, ",") {
-		port, err := strconv.ParseUint(portStr, 10, 32)
-		if err != nil {
-			return nil, err
+	if override != "" {
+		opaquePortsStr := util.ParseOpaquePorts(override, pod.Spec.Containers)
+		for _, portStr := range strings.Split(opaquePortsStr, ",") {
+			port, err := strconv.ParseUint(portStr, 10, 32)
+			if err != nil {
+				return nil, err
+			}
+			opaquePorts[uint32(port)] = true
 		}
-		opaquePorts[uint32(port)] = true
 	}
 
 	return opaquePorts, nil
