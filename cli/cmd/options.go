@@ -118,13 +118,13 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 
 		flag.NewBoolFlag(installUpgradeFlags, "control-plane-tracing", defaults.GetGlobal().ControlPlaneTracing,
 			"Enables Control Plane Tracing with the defaults", func(values *l5dcharts.Values, value bool) error {
-				defaults.GetGlobal().ControlPlaneTracing = value
+				values.GetGlobal().ControlPlaneTracing = value
 				return nil
 			}),
 
 		flag.NewStringFlag(installUpgradeFlags, "control-plane-tracing-namespace", defaults.GetGlobal().ControlPlaneTracingNamespace,
 			"Send control plane traces to Linkerd-Jaeger extension in this namespace", func(values *l5dcharts.Values, value string) error {
-				defaults.GetGlobal().ControlPlaneTracingNamespace = value
+				values.GetGlobal().ControlPlaneTracingNamespace = value
 				return nil
 			}),
 
