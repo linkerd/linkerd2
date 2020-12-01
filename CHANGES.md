@@ -1,5 +1,44 @@
 # Changes
 
+## stable-2.9.1
+
+This stable release contains a number of proxy enhancements: better support for
+high-traffic workloads, improved performance by eliminating unnecessary endpoint
+resolutions for TCP traffic and properly tearing down serverside connections
+when errors occur, and reduced memory consumption on proxies which maintain many
+idle connections (such as Prometheus' proxy).
+
+On the CLI and control plane sides, it relaxes checks on root and intermediate
+certificates (following X509 best practices), and fixes two issues: one that
+prevented installation of the control plane into a custom namespace and one
+which failed to update endpoint information when a headless service was
+modified.
+
+* Proxy:
+  * Addressed some issues reported around clients seeing max-concurrency errors
+    by increasing the default in-flight request limit to 100K pending requests
+  * Reduced the default idle connection timeout to 5s for outbound clients and
+    for inbound clients to reduce the proxy's memory footprint, especially on
+      Prometheus instances
+  * Fixed an issue where the proxy did not receive updated endpoint information
+    when a headless service was modified
+  * Added HTTP/2 keepalive PING frames
+  * Removed logic to avoid redundant TCP endpoint resolution
+  * Fixed an issue where serverside connections were not torn down when an error
+    occurred
+
+* CLI / Control Plane:
+  * Fixed a CLI issue where the `linkerd-namespace` flag was not honored when
+    passed to the `install` and `upgrade` commands
+  * Updated `linkerd check` so that it doesn't attempt to validate the subject
+    alternative name (SAN) on root and intermediate certificates. SANs for leaf
+    certificates will continue to be validated
+  * Fixed an issue in the destination service where endpoints always included a
+    protocol hint, regardless of the controller label being present or not
+  * Removed the `get` and `logs` command from the CLI
+  * No longer panic in rare cases when `linkerd-config` doesn't have an entry
+    for `Global` configs (thanks @hodbn!)
+
 ## stable-2.9.0
 
 This release extends Linkerd's zero-config mutual TLS (mTLS) support to all TCP
