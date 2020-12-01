@@ -3,7 +3,6 @@ package destination
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
@@ -15,46 +14,52 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+// opaquePortsAdaptor implements EndpointUpdateListener so that it can watch
+// endpoints for services. When endpoints change, it can check for the opaque
+// ports annotation on the pods and update the list of opaque ports.
+//
+// opaquePortsAdaptor also implements ProfileUpdateListener so that it can
+// receive updates from trafficSplitAdaptor and merge the service profile by
+// adding the list of opaque ports.
+//
+// When either of these implemented interfaces has an update,
+// opaquePortsAdaptor publishes the new service profile to the
+// profileTranslator.
 type opaquePortsAdaptor struct {
 	listener    watcher.ProfileUpdateListener
 	k8sAPI      *k8s.API
 	log         *logging.Entry
 	profile     *sp.ServiceProfile
-	opaquePorts map[uint32]bool
+	opaquePorts map[uint32]struct{}
 }
 
-func newOpaquePortsAdaptor(listener watcher.ProfileUpdateListener, k8sAPI *k8s.API, log *logging.Entry, opaquePorts map[uint32]bool) *opaquePortsAdaptor {
-	if opaquePorts == nil {
-		opaquePorts = make(map[uint32]bool)
-	}
+func newOpaquePortsAdaptor(listener watcher.ProfileUpdateListener, k8sAPI *k8s.API, log *logging.Entry) *opaquePortsAdaptor {
 	return &opaquePortsAdaptor{
 		listener:    listener,
 		k8sAPI:      k8sAPI,
 		log:         log,
-		opaquePorts: opaquePorts,
+		opaquePorts: make(map[uint32]struct{}),
 	}
 }
 
 func (opa *opaquePortsAdaptor) Add(set watcher.AddressSet) {
-	diff := opa.diff(set)
-	for port := range diff {
-		opa.opaquePorts[port] = true
+	ports := opa.getOpaquePorts(set)
+	for port := range ports {
+		opa.opaquePorts[port] = struct{}{}
 	}
 	opa.publish()
 }
 
 func (opa *opaquePortsAdaptor) Remove(set watcher.AddressSet) {
-	diff := opa.diff(set)
-	for port := range diff {
+	ports := opa.getOpaquePorts(set)
+	for port := range ports {
 		delete(opa.opaquePorts, port)
 	}
 	opa.publish()
 }
 
 func (opa *opaquePortsAdaptor) NoEndpoints(exists bool) {
-	for port := range opa.opaquePorts {
-		delete(opa.opaquePorts, port)
-	}
+	opa.opaquePorts = make(map[uint32]struct{})
 	opa.publish()
 }
 
@@ -63,8 +68,8 @@ func (opa *opaquePortsAdaptor) Update(profile *sp.ServiceProfile) {
 	opa.publish()
 }
 
-func (opa *opaquePortsAdaptor) diff(set watcher.AddressSet) map[uint32]bool {
-	diff := make(map[uint32]bool)
+func (opa *opaquePortsAdaptor) getOpaquePorts(set watcher.AddressSet) map[uint32]struct{} {
+	ports := make(map[uint32]struct{})
 	for _, address := range set.Addresses {
 		pod := address.Pod
 		if pod != nil {
@@ -73,11 +78,11 @@ func (opa *opaquePortsAdaptor) diff(set watcher.AddressSet) map[uint32]bool {
 				opa.log.Errorf("Failed to get opaque ports annotation for pod %s: %s", pod, err)
 			}
 			for port := range override {
-				diff[port] = true
+				ports[port] = struct{}{}
 			}
 		}
 	}
-	return diff
+	return ports
 }
 
 func (opa *opaquePortsAdaptor) publish() {
@@ -90,8 +95,8 @@ func (opa *opaquePortsAdaptor) publish() {
 	opa.listener.Update(&merged)
 }
 
-func getOpaquePortsAnnotations(k8sAPI *k8s.API, pod *corev1.Pod) (map[uint32]bool, error) {
-	opaquePorts := make(map[uint32]bool)
+func getOpaquePortsAnnotations(k8sAPI *k8s.API, pod *corev1.Pod) (map[uint32]struct{}, error) {
+	opaquePorts := make(map[uint32]struct{})
 	obj, err := k8sAPI.GetObjects("", pkgk8s.Namespace, pod.Namespace, labels.Everything())
 	if err != nil {
 		return nil, err
@@ -115,13 +120,12 @@ func getOpaquePortsAnnotations(k8sAPI *k8s.API, pod *corev1.Pod) (map[uint32]boo
 	}
 
 	if override != "" {
-		opaquePortsStr := util.ParseOpaquePorts(override, pod.Spec.Containers)
-		for _, portStr := range strings.Split(opaquePortsStr, ",") {
+		for _, portStr := range util.ParseOpaquePorts(override, pod.Spec.Containers) {
 			port, err := strconv.ParseUint(portStr, 10, 32)
 			if err != nil {
 				return nil, err
 			}
-			opaquePorts[uint32(port)] = true
+			opaquePorts[uint32(port)] = struct{}{}
 		}
 	}
 

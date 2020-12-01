@@ -199,7 +199,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			}
 
 			var endpoint *pb.WeightedAddr
-			opaquePorts := make(map[uint32]bool)
+			opaquePorts := make(map[uint32]struct{})
 			if pod != nil {
 				// If the IP maps to a pod, we create a single endpoint and
 				// return it in the DestinationProfile response
@@ -265,7 +265,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 
 	// The opaque ports adaptor merges traffic split updates with opaque ports
 	// updates and publishes the result to the translator
-	opAdaptor := newOpaquePortsAdaptor(translator, s.k8sAPI, log, nil)
+	opAdaptor := newOpaquePortsAdaptor(translator, s.k8sAPI, log)
 
 	// Subscribe the adaptor to endpoint updates.
 	// TODO: use a hostname?

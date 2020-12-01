@@ -13,12 +13,12 @@ import (
 // ParseOpaquePorts parses the opaque ports annotation into a list of ports;
 // this includes converting port ranges into separate ports and named ports
 // into their port number equivalents.
-func ParseOpaquePorts(override string, containers []corev1.Container) string {
+func ParseOpaquePorts(override string, containers []corev1.Container) []string {
 	var portRanges []*config.PortRange
 	split := strings.Split(strings.TrimSuffix(override, ","), ",")
 	portRanges = ToPortRanges(split)
 
-	var value string
+	var values []string
 	for _, portRange := range portRanges {
 		pr := portRange.GetPortRange()
 
@@ -30,7 +30,7 @@ func ParseOpaquePorts(override string, containers []corev1.Container) string {
 			for _, p := range c.Ports {
 				if p.Name == pr {
 					named = true
-					value += strconv.Itoa(int(p.ContainerPort)) + ","
+					values = append(values, strconv.Itoa(int(p.ContainerPort)))
 				}
 			}
 		}
@@ -42,11 +42,11 @@ func ParseOpaquePorts(override string, containers []corev1.Container) string {
 				continue
 			}
 			for i := pr.LowerBound; i <= pr.UpperBound; i++ {
-				value += strconv.Itoa(i) + ","
+				values = append(values, strconv.Itoa(i))
 			}
 		}
 	}
-	return strings.TrimSuffix(value, ",")
+	return values
 }
 
 // ToPortRanges converts a slice of strings into a slice of PortRanges.
