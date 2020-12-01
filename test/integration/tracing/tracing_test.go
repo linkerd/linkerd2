@@ -61,6 +61,19 @@ func TestTracing(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
+	// wait for jaeger proxy mutator to start
+	if err := TestHelper.CheckPods(ctx, tracingNs, "proxy-mutator", 1); err != nil {
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		}
+	}
+
+	if err := TestHelper.CheckDeployment(ctx, tracingNs, "proxy-mutator", 1); err != nil {
+		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", "proxy-mutator", err)
+	}
+
 	// Emojivoto components
 	emojivotoNs := TestHelper.GetTestNamespace("emojivoto")
 	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, emojivotoNs, nil)
@@ -149,7 +162,7 @@ func TestTracing(t *testing.T) {
 		}
 		timeout := 120 * time.Second
 		err = TestHelper.RetryFor(timeout, func() error {
-			tracesJSON, err := TestHelper.HTTPGetURL(url + "/api/traces?lookback=1h&service=nginx")
+			tracesJSON, err := TestHelper.HTTPGetURL(url + "/jaeger/api/traces?lookback=1h&service=nginx")
 			if err != nil {
 				return err
 			}

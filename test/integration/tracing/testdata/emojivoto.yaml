@@ -31,7 +31,8 @@ spec:
       labels:
         app: emoji-svc
       annotations:
-        config.linkerd.io/trace-collector: "oc-collector.___TRACING_NS___:55678"
+        config.linkerd.io/trace-collector: "collector.___TRACING_NS___:55678"
+        config.alpha.linkerd.io/trace-collector-service-account: "collector"
     spec:
       serviceAccountName: emoji
       containers:
@@ -39,7 +40,7 @@ spec:
         - name: GRPC_PORT
           value: "8080"
         - name: OC_AGENT_HOST
-          value: "oc-collector.___TRACING_NS___:55678"
+          value: "collector.___TRACING_NS___:55678"
         image: buoyantio/emojivoto-emoji-svc:v8-tracing
         name: emoji-svc
         ports:
@@ -80,7 +81,8 @@ spec:
       labels:
         app: voting-svc
       annotations:
-        config.linkerd.io/trace-collector: "oc-collector.___TRACING_NS___:55678"
+        config.linkerd.io/trace-collector: "collector.___TRACING_NS___:55678"
+        config.alpha.linkerd.io/trace-collector-service-account: "collector"
     spec:
       serviceAccountName: voting
       containers:
@@ -88,7 +90,7 @@ spec:
         - name: GRPC_PORT
           value: "8080"
         - name: OC_AGENT_HOST
-          value: "oc-collector.___TRACING_NS___:55678"
+          value: "collector.___TRACING_NS___:55678"
         image: buoyantio/emojivoto-voting-svc:v8-tracing
         name: voting-svc
         ports:
@@ -129,7 +131,8 @@ spec:
       labels:
         app: web-svc
       annotations:
-        config.linkerd.io/trace-collector: "oc-collector.___TRACING_NS___:55678"
+        config.linkerd.io/trace-collector: "collector.___TRACING_NS___:55678"
+        config.alpha.linkerd.io/trace-collector-service-account: "collector"
     spec:
       serviceAccountName: web
       containers:
@@ -137,7 +140,7 @@ spec:
         - name: WEB_PORT
           value: "80"
         - name: OC_AGENT_HOST
-          value: "oc-collector.___TRACING_NS___:55678"
+          value: "collector.___TRACING_NS___:55678"
         - name: EMOJISVC_HOST
           value: emoji-svc:8080
         - name: VOTINGSVC_HOST
@@ -184,7 +187,8 @@ spec:
       labels:
         app: vote-bot
       annotations:
-        config.linkerd.io/trace-collector: "oc-collector.___TRACING_NS___:55678"
+        config.linkerd.io/trace-collector: "collector.___TRACING_NS___:55678"
+        config.alpha.linkerd.io/trace-collector-service-account: "collector"
     spec:
       containers:
       - command:

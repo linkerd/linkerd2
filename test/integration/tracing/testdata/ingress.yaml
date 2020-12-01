@@ -97,7 +97,7 @@ data:
   ssl-redirect: "false"
   enable-opentracing: "true"
   enable-vts-status: "false"
-  zipkin-collector-host: oc-collector.___TRACING_NS___
+  zipkin-collector-host: collector.___TRACING_NS___
   zipkin-sample-rate: "0.5"
 ---
 apiVersion: apps/v1
@@ -116,7 +116,8 @@ spec:
       labels:
         app: nginx-ingress
       annotations:
-        config.linkerd.io/trace-collector: "oc-collector.___TRACING_NS___:55678"
+        config.linkerd.io/trace-collector: "collector.___TRACING_NS___:55678"
+        config.alpha.linkerd.io/trace-collector-service-account: "collector"
     spec:
       containers:
       - args:
