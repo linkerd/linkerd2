@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"sync"
+	"sync/atomic"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
@@ -36,8 +36,7 @@ type Server struct {
 	*http.Server
 	api       *k8s.API
 	handler   Handler
-	cert      *tls.Certificate
-	certMutex *sync.RWMutex
+	certValue atomic.Value
 	recorder  record.EventRecorder
 }
 
@@ -71,9 +70,10 @@ func NewServer(
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: component})
 
-	s := &Server{server, api, handler, nil, &sync.RWMutex{}, recorder}
+	var emptyCert atomic.Value
+	s := &Server{server, api, handler, emptyCert, recorder}
 	s.Handler = http.HandlerFunc(s.serve)
-	server.TLSConfig.GetCertificate = s.getCertificate()
+	server.TLSConfig.GetCertificate = s.getCertificate
 
 	if err := s.updateCert(); err != nil {
 		log.Fatalf("Failed to initialized certificate: %s", err)
@@ -101,9 +101,7 @@ func (s *Server) updateCert() error {
 	if err != nil {
 		return err
 	}
-	s.certMutex.Lock()
-	defer s.certMutex.Unlock()
-	s.cert = &cert
+	s.certValue.Store(&cert)
 	log.Debug("Certificate has been updated")
 	return nil
 }
@@ -119,13 +117,9 @@ func (s *Server) Start() {
 	}
 }
 
-// getCertificate returns a function that provides the TLS server with the current cert
-func (s *Server) getCertificate() func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
-		s.certMutex.RLock()
-		defer s.certMutex.RUnlock()
-		return s.cert, nil
-	}
+// getCertificate provides the TLS server with the current cert
+func (s *Server) getCertificate(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return s.certValue.Load().(*tls.Certificate), nil
 }
 
 // run reads from the update and error channels and reloads the certs when necessary
