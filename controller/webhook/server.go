@@ -70,11 +70,7 @@ func NewServer(
 	})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: component})
 
-	var emptyCert atomic.Value
-	s := &Server{server, api, handler, emptyCert, recorder}
-	s.Handler = http.HandlerFunc(s.serve)
-	server.TLSConfig.GetCertificate = s.getCertificate
-
+	s := getConfiguredServer(server, api, handler, recorder)
 	if err := s.updateCert(); err != nil {
 		log.Fatalf("Failed to initialized certificate: %s", err)
 	}
@@ -84,6 +80,19 @@ func NewServer(
 	}()
 
 	return s, nil
+}
+
+func getConfiguredServer(
+	httpServer *http.Server,
+	api *k8s.API,
+	handler Handler,
+	recorder record.EventRecorder,
+) *Server {
+	var emptyCert atomic.Value
+	s := &Server{httpServer, api, handler, emptyCert, recorder}
+	s.Handler = http.HandlerFunc(s.serve)
+	httpServer.TLSConfig.GetCertificate = s.getCertificate
+	return s
 }
 
 func (s *Server) updateCert() error {
