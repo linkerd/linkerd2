@@ -1,14 +1,10 @@
 # linkerd2-cni
 
-<<<<<<< HEAD
-A helm chart containing the resources needed by the Linkerd CNI plugin.
-=======
 Linkerd is a *service mesh*, designed to give platform-wide observability,
 reliability, and security without requiring configuration or code changes. The
 Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of setting
 up your pod's network so  incoming and outgoing traffic is proxied through the
 data plane.
->>>>>>> fc6a988... Add automatic readme generation for charts
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
 
