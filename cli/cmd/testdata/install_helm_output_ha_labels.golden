@@ -1355,10 +1355,6 @@ data:
           proxyInjectAnnotation: linkerd.io/inject
           proxyInjectDisabled: disabled
           workloadNamespaceLabel: linkerd.io/workload-ns
-      persistence:
-        accessMode: null
-        size: null
-        storageClass: null
       proxy:
         resources: null
       remoteWrite: null
@@ -3920,8 +3916,6 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       linkerd.io/control-plane-component: prometheus
@@ -4122,8 +4116,7 @@ spec:
       serviceAccountName: linkerd-prometheus
       volumes:
       - name: data
-        persistentVolumeClaim:
-          claimName: linkerd-prometheus
+        emptyDir: {}
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
@@ -4132,20 +4125,3 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
----
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  labels:
-    app.kubernetes.io/name: prometheus
-    app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: linkerd-version
-    linkerd.io/control-plane-component: prometheus
-  name: linkerd-prometheus
-  namespace: linkerd
-spec:
-  accessModes:
-    - 
-  resources:
-    requests:
-      storage: 
