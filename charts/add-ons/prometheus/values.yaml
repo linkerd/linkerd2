@@ -96,7 +96,11 @@ proxy:
   # (see global.proxy.resources for sub-fields)
   resources:
 
-persistance:
+### WARNING: persistence is experimental and has not been tested/vetted by the Linkerd team.
+### As such, please refer to https://linkerd.io/2/tasks/exporting-metrics/ for the recommended approach to metrics data retention.
+# if enabled, creates a persistent volume claim for prometheus data
+# https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
+persistence:
   # -- Storage class used to create prometheus data PV.
   storageClass:
   # -- PVC access mode.

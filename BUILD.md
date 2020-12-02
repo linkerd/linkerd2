@@ -330,7 +330,7 @@ For additional information checkout their repo above.
 
 ##### Markdown templates
 
-In order to accomodate for extra data that might not have a proper place in the
+In order to accommodate for extra data that might not have a proper place in the
 ´values.yaml´ file the corresponding ´README.md.gotmpl´ can be modified for each
 chart. This template allows the standard markdown syntax as well as the go
 templating functions. Checkout
