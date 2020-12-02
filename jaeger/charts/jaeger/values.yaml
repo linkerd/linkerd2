@@ -22,12 +22,12 @@ linkerdVersion: &linkerd_version linkerdVersionValue
 
 webhook:
   externalSecret: false
-  # if empty, Helm will auto-generate these fields
+  # -- if empty, Helm will auto-generate these fields
   crtPEM: |
 
   keyPEM: |
 
-  # if empty, Helm will auto-generate this field, unless externalSecret is set to true.
+  # -- if empty, Helm will auto-generate this field, unless externalSecret is set to true.
   caBundle: |
 
   failurePolicy: Ignore
