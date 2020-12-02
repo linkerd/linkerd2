@@ -3345,6 +3345,8 @@ metadata:
   namespace: linkerd
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       linkerd.io/control-plane-component: prometheus
@@ -3578,7 +3580,8 @@ spec:
         configMap:
           name: linkerd-prometheus-rules
       - name: data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: linkerd-prometheus
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
@@ -3587,6 +3590,23 @@ spec:
       - emptyDir:
           medium: Memory
         name: linkerd-identity-end-entity
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: install-control-plane-version
+    linkerd.io/control-plane-component: prometheus
+  name: linkerd-prometheus
+  namespace: linkerd
+spec:
+  accessModes:
+    - 
+  resources:
+    requests:
+      storage: 
 ---
 apiVersion: v1
 data:
