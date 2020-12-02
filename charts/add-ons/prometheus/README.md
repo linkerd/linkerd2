@@ -21,9 +21,6 @@ A Helm chart for the prometheus add-on in Linkerd
 | args | object | `{"config.file":"/etc/prometheus/prometheus.yml","log.level":"info","storage.tsdb.path":"/data","storage.tsdb.retention.time":"6h"}` | Command line options for Prometheus binary |
 | globalConfig | object | `{"evaluation_interval":"10s","scrape_interval":"10s","scrape_timeout":"10s"}` | The global configuration specifies parameters that are valid in all other configuration contexts. |
 | image | string | `"prom/prometheus:v2.19.3"` | Docker image for the prometheus instance |
-| persistence.accessMode | string | `nil` | PVC access mode. |
-| persistence.size | string | `nil` | Prometheus data volume size. |
-| persistence.storageClass | string | `nil` | Storage class used to create prometheus data PV. |
 | proxy.resources | string | `nil` | CPU and Memory resources required by proxy injected into prometheus pod (see global.proxy.resources for sub-fields) |
 | remoteWrite | string | `nil` | Allows transparently sending samples to an endpoint. Mostly used for long term storage. |
 | resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the prometheus container can use |
