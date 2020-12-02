@@ -73,18 +73,19 @@ func newCmdInstall() *cobra.Command {
 }
 
 func install(w io.Writer, options values.Options) error {
-	// Merge and create final set of values
-	rawMap, err := options.MergeValues(nil)
+
+	// Create final values override
+	valuesOverrides, err := options.MergeValues(nil)
 	if err != nil {
 		return err
 	}
 
 	// TODO: Add any validation logic here
 
-	return render(w, rawMap)
+	return render(w, valuesOverrides)
 }
 
-func render(w io.Writer, rawValues map[string]interface{}) error {
+func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
@@ -120,16 +121,13 @@ func render(w io.Writer, rawValues map[string]interface{}) error {
 		return err
 	}
 
-	vals, err := chartutil.CoalesceValues(chart, rawValues)
+	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
 	if err != nil {
 		return err
 	}
 
 	// Attach the final values into the `Values` field for rendering to work
-	finalValues := make(map[string]interface{})
-	finalValues["Values"] = vals
-
-	renderedTemplates, err := engine.Render(chart, finalValues)
+	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
 	if err != nil {
 		return err
 	}
