@@ -1370,7 +1370,7 @@ data:
           limit: 8192Mi
           request: 300Mi
       ruleConfigMapMounts: null
-      scapeConfigs: null
+      scrapeConfigs: null
       sideCarContainers: null
     proxyInjector:
       caBundle: test-proxy-injector-ca-bundle

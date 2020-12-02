@@ -1338,7 +1338,7 @@ data:
           limit: null
           request: null
       ruleConfigMapMounts: null
-      scapeConfigs: null
+      scrapeConfigs: null
       sideCarContainers: null
     proxyInjector:
       caBundle: test-proxy-injector-ca-bundle

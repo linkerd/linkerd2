@@ -31,7 +31,7 @@ A Helm chart for the prometheus add-on in Linkerd
 | resources.memory.limit | string | `nil` | Maximum amount of memory that prometheus container can use |
 | resources.memory.request | string | `nil` | Amount of memory that the prometheus container requests |
 | ruleConfigMapMounts | string | `nil` | Alerting/recording rule ConfigMap mounts (sub-path names must end in ´_rules.yml´ or ´_rules.yaml´) |
-| scapeConfigs | string | `nil` | A scrapeConfigs section specifies a set of targets and parameters describing how to scrape them. |
+| scrapeConfigs | string | `nil` | A scrapeConfigs section specifies a set of targets and parameters describing how to scrape them. |
 | sideCarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
 
 ----------------------------------------------

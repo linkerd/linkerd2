@@ -52,7 +52,7 @@ ruleConfigMapMounts:
 
 # -- A scrapeConfigs section specifies a set of targets and parameters
 # describing how to scrape them.
-scapeConfigs:
+scrapeConfigs:
 # Ex:
 # - job_name: 'kubernetes-nodes'
 #   scheme: https
