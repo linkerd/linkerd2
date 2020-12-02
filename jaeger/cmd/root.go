@@ -11,6 +11,7 @@ import (
 
 const (
 	defaultLinkerdNamespace = "linkerd"
+	defaultJaegerNamespace  = "linkerd-jaeger"
 )
 
 var (
@@ -21,6 +22,7 @@ var (
 
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	controlPlaneNamespace string
+	namespace             string
 	kubeconfigPath        string
 	kubeContext           string
 	impersonate           string
@@ -54,7 +56,8 @@ func NewCmdJaeger() *cobra.Command {
 		},
 	}
 
-	jaegerCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
+	jaegerCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed")
+	jaegerCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", defaultJaegerNamespace, "Namespace in which Jaeger extension is installed")
 	jaegerCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	jaegerCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
 	jaegerCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")
@@ -63,6 +66,7 @@ func NewCmdJaeger() *cobra.Command {
 	jaegerCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 	jaegerCmd.AddCommand(newCmdInstall())
 	jaegerCmd.AddCommand(newCmdCheck())
+	jaegerCmd.AddCommand(newCmdDashboard())
 
 	return jaegerCmd
 }

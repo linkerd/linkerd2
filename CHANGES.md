@@ -1,6 +1,24 @@
 
 # Changes
 
+## edge-20.11.5
+
+This edge release improves the proxy's support high-traffic workloads. It also
+contains the first steps towards decoupling non-core Linkerd components, the
+first iteration being a new `linkerd jaeger` sub-command for installing tracing.
+Please note this is still a work in progress.
+
+* Addressed some issues reported around clients seeing max-concurrency errors by
+  increasing the default in-flight request limit to 100K pending requests
+* Have the proxy appropriately set `content-type` when synthesizing gRPC error
+  responses
+* Bumped the `proxy-init` image to `v1.3.8` which is based off of
+  `buster-20201117-slim` to reduce potential security vulnerabilities
+* No longer panic in rare cases when `linkerd-config` doesn't have an entry for
+  `Global` configs (thanks @hodbn!)
+* Work in progress: the `/jaeger` directory now contains the charts and commands
+  for installing the tracing component.
+
 ## edge-20.11.4
 
 * Fixed an issue in the destination service where endpoints always included a
