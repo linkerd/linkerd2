@@ -17,6 +17,7 @@ COPY pkg pkg
 COPY controller controller
 COPY charts/patch charts/patch
 COPY charts/partials charts/partials
+COPY multicluster multicluster
 
 # Generate static templates
 # TODO: `go generate` does not honor -mod=readonly
