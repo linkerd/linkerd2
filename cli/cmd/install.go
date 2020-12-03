@@ -117,7 +117,7 @@ resources for the Linkerd control plane. This command should be followed by
   linkerd install config | kubectl apply -f -
 
   # Install Linkerd into a non-default namespace.
-  linkerd install config -l linkerdtest | kubectl apply -f -`,
+  linkerd install config -L linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := flag.ApplySetFlags(values, flags)
 			if err != nil {
