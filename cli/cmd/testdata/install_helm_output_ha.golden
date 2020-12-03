@@ -1014,6 +1014,7 @@ data:
         workloadNamespaceLabel: linkerd.io/workload-ns
       image:
         name: ghcr.io/linkerd/grafana
+        tag: null
       partials:
         global:
           cliVersion: ""
@@ -1097,6 +1098,8 @@ data:
           proxyInjectAnnotation: linkerd.io/inject
           proxyInjectDisabled: disabled
           workloadNamespaceLabel: linkerd.io/workload-ns
+      proxy:
+        resources: null
       resources:
         cpu:
           limit: ""
@@ -1144,6 +1147,8 @@ data:
           values:
           - disabled
     prometheus:
+      alertManagers: null
+      alertRelabelConfigs: null
       args:
         config.file: /etc/prometheus/prometheus.yml
         log.level: info
@@ -1320,6 +1325,9 @@ data:
           proxyInjectAnnotation: linkerd.io/inject
           proxyInjectDisabled: disabled
           workloadNamespaceLabel: linkerd.io/workload-ns
+      proxy:
+        resources: null
+      remoteWrite: null
       resources:
         cpu:
           limit: ""
@@ -1327,6 +1335,9 @@ data:
         memory:
           limit: 8192Mi
           request: 300Mi
+      ruleConfigMapMounts: null
+      scrapeConfigs: null
+      sideCarContainers: null
     proxyInjector:
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: test-proxy-injector-crt-pem

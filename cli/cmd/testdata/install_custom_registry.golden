@@ -2873,6 +2873,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+        resources:
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -3305,6 +3306,7 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
+        resources:
         securityContext:
           runAsNonRoot: true
           runAsUser: 65534

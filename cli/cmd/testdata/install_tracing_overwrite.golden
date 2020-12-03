@@ -2883,6 +2883,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+        resources:
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -3315,6 +3316,7 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
+        resources:
         securityContext:
           runAsNonRoot: true
           runAsUser: 65534
@@ -3622,6 +3624,7 @@ spec:
           httpGet:
             path: /
             port: 13133
+        resources:
         volumeMounts:
         - mountPath: /conf
           name: linkerd-collector-config-val
@@ -3846,6 +3849,7 @@ spec:
           name: collection
         - containerPort: 16686
           name: ui
+        resources:
       - env:
         - name: LINKERD2_PROXY_LOG
           value: "warn,linkerd=info"
