@@ -1,6 +1,21 @@
 
 # Changes
 
+## edge-20.12.1
+
+This edge release continues the work of moving decoupling non-core Linkerd
+components by moving more tracing related functionality into the Linkerd-jaeger
+extension.
+
+* Continued work on moving tracing functionality from the main control plane
+  into the `linkerd-jaeger` extension
+* Fixed a potential panic in the proxy when looking up a socket's peer address
+  while under high load
+* Added automatic readme generation for charts (thanks @GMarkfjard!)
+* Fixed zsh completion for the CLI (thanks @jiraguha!)
+* Added support for multicluster gateways of types other than LoadBalancer
+  (thanks @DaspawnW!)
+
 ## edge-20.11.5
 
 This edge release improves the proxy's support high-traffic workloads. It also
