@@ -65,7 +65,7 @@ func newUnlinkCommand() *cobra.Command {
 			serviceAccount := resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "ServiceAccount", fmt.Sprintf("linkerd-service-mirror-%s", opts.clusterName), opts.namespace)
 			serviceMirror := resource.NewNamespaced(appsv1.SchemeGroupVersion.String(), "Deployment", fmt.Sprintf("linkerd-service-mirror-%s", opts.clusterName), opts.namespace)
 
-			resources := []resource.KubernetesResource{
+			resources := []resource.Kubernetes{
 				secret, gatewayMirror, link, clusterRole, clusterRoleBinding,
 				role, roleBinding, serviceAccount, serviceMirror,
 			}

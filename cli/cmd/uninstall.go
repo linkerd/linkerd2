@@ -59,12 +59,12 @@ func uninstallRunE(ctx context.Context) error {
 	return nil
 }
 
-func fetchKubernetesResources(ctx context.Context, k *k8s.KubernetesAPI) ([]resource.KubernetesResource, error) {
+func fetchKubernetesResources(ctx context.Context, k *k8s.KubernetesAPI) ([]resource.Kubernetes, error) {
 	options := metav1.ListOptions{
 		LabelSelector: k8s.ControllerNSLabel,
 	}
 
-	resources := make([]resource.KubernetesResource, 0)
+	resources := make([]resource.Kubernetes, 0)
 
 	clusterRoles, err := fetchClusterRoles(ctx, k, options)
 	if err != nil {
@@ -126,13 +126,13 @@ func fetchKubernetesResources(ctx context.Context, k *k8s.KubernetesAPI) ([]reso
 	return resources, nil
 }
 
-func fetchClusterRoles(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.KubernetesResource, error) {
+func fetchClusterRoles(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.Kubernetes, error) {
 	list, err := k.RbacV1().ClusterRoles().List(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := make([]resource.KubernetesResource, len(list.Items))
+	resources := make([]resource.Kubernetes, len(list.Items))
 	for i, item := range list.Items {
 		resources[i] = resource.New(rbac.SchemeGroupVersion.String(), "ClusterRole", item.Name)
 	}
@@ -140,13 +140,13 @@ func fetchClusterRoles(ctx context.Context, k *k8s.KubernetesAPI, options metav1
 	return resources, nil
 }
 
-func fetchClusterRoleBindings(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.KubernetesResource, error) {
+func fetchClusterRoleBindings(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.Kubernetes, error) {
 	list, err := k.RbacV1().ClusterRoleBindings().List(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := make([]resource.KubernetesResource, len(list.Items))
+	resources := make([]resource.Kubernetes, len(list.Items))
 	for i, item := range list.Items {
 		resources[i] = resource.New(rbac.SchemeGroupVersion.String(), "ClusterRoleBinding", item.Name)
 	}
@@ -157,13 +157,13 @@ func fetchClusterRoleBindings(ctx context.Context, k *k8s.KubernetesAPI, options
 // Although role bindings are namespaced resources in nature
 // some admin role bindings are created and persisted in the kube-system namespace and will not be deleted
 // when the namespace is deleted
-func fetchKubeSystemRoleBindings(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.KubernetesResource, error) {
+func fetchKubeSystemRoleBindings(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.Kubernetes, error) {
 	list, err := k.RbacV1().RoleBindings("kube-system").List(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := make([]resource.KubernetesResource, len(list.Items))
+	resources := make([]resource.Kubernetes, len(list.Items))
 	for i, item := range list.Items {
 		r := resource.New(rbac.SchemeGroupVersion.String(), "RoleBinding", item.Name)
 		r.Namespace = item.Namespace
@@ -172,13 +172,13 @@ func fetchKubeSystemRoleBindings(ctx context.Context, k *k8s.KubernetesAPI, opti
 	return resources, nil
 }
 
-func fetchCustomResourceDefinitions(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.KubernetesResource, error) {
+func fetchCustomResourceDefinitions(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.Kubernetes, error) {
 	list, err := k.Apiextensions.ApiextensionsV1beta1().CustomResourceDefinitions().List(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := make([]resource.KubernetesResource, len(list.Items))
+	resources := make([]resource.Kubernetes, len(list.Items))
 	for i, item := range list.Items {
 		resources[i] = resource.New(apiextension.SchemeGroupVersion.String(), "CustomResourceDefinition", item.Name)
 	}
@@ -186,25 +186,25 @@ func fetchCustomResourceDefinitions(ctx context.Context, k *k8s.KubernetesAPI, o
 	return resources, nil
 }
 
-func fetchNamespaceResource(ctx context.Context, k *k8s.KubernetesAPI) (resource.KubernetesResource, error) {
+func fetchNamespaceResource(ctx context.Context, k *k8s.KubernetesAPI) (resource.Kubernetes, error) {
 	obj, err := k.CoreV1().Namespaces().Get(ctx, controlPlaneNamespace, metav1.GetOptions{})
 	if err != nil {
 		if kerrors.IsNotFound(err) {
-			return resource.KubernetesResource{}, nil
+			return resource.Kubernetes{}, nil
 		}
-		return resource.KubernetesResource{}, err
+		return resource.Kubernetes{}, err
 	}
 
 	return resource.New(core.SchemeGroupVersion.String(), "Namespace", obj.Name), nil
 }
 
-func fetchPodSecurityPolicy(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.KubernetesResource, error) {
+func fetchPodSecurityPolicy(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.Kubernetes, error) {
 	list, err := k.PolicyV1beta1().PodSecurityPolicies().List(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := make([]resource.KubernetesResource, len(list.Items))
+	resources := make([]resource.Kubernetes, len(list.Items))
 	for i, item := range list.Items {
 		resources[i] = resource.New(policy.SchemeGroupVersion.String(), "PodSecurityPolicy", item.Name)
 	}
@@ -212,13 +212,13 @@ func fetchPodSecurityPolicy(ctx context.Context, k *k8s.KubernetesAPI, options m
 	return resources, nil
 }
 
-func fetchValidatingWebhooksConfiguration(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.KubernetesResource, error) {
+func fetchValidatingWebhooksConfiguration(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.Kubernetes, error) {
 	list, err := k.AdmissionregistrationV1beta1().ValidatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := make([]resource.KubernetesResource, len(list.Items))
+	resources := make([]resource.Kubernetes, len(list.Items))
 	for i, item := range list.Items {
 		resources[i] = resource.New(admissionRegistration.SchemeGroupVersion.String(), "ValidatingWebhookConfiguration", item.Name)
 	}
@@ -226,20 +226,20 @@ func fetchValidatingWebhooksConfiguration(ctx context.Context, k *k8s.Kubernetes
 	return resources, nil
 }
 
-func fetchMutatingWebhooksConfiguration(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.KubernetesResource, error) {
+func fetchMutatingWebhooksConfiguration(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.Kubernetes, error) {
 	list, err := k.AdmissionregistrationV1beta1().MutatingWebhookConfigurations().List(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := make([]resource.KubernetesResource, len(list.Items))
+	resources := make([]resource.Kubernetes, len(list.Items))
 	for i, item := range list.Items {
 		resources[i] = resource.New(admissionRegistration.SchemeGroupVersion.String(), "MutatingWebhookConfiguration", item.Name)
 	}
 
 	return resources, nil
 }
-func fetchAPIRegistrationResources(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.KubernetesResource, error) {
+func fetchAPIRegistrationResources(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]resource.Kubernetes, error) {
 	apiClient, err := apiregistrationv1client.NewForConfig(k.Config)
 	if err != nil {
 		return nil, err
@@ -250,7 +250,7 @@ func fetchAPIRegistrationResources(ctx context.Context, k *k8s.KubernetesAPI, op
 		return nil, err
 	}
 
-	resources := make([]resource.KubernetesResource, len(list.Items))
+	resources := make([]resource.Kubernetes, len(list.Items))
 	for i, item := range list.Items {
 		resources[i] = resource.New(apiRegistration.SchemeGroupVersion.String(), "APIService", item.Name)
 	}

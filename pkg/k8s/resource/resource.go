@@ -12,15 +12,15 @@ const (
 	yamlSep = "---\n"
 )
 
-// KubernetesResource is a parent object used to generalize all k8s types
-type KubernetesResource struct {
+// Kubernetes is a parent object used to generalize all k8s types
+type Kubernetes struct {
 	runtime.TypeMeta
 	metav1.ObjectMeta `json:"metadata"`
 }
 
 // New returns a kubernetes resource with the given data
-func New(apiVersion, kind, name string) KubernetesResource {
-	return KubernetesResource{
+func New(apiVersion, kind, name string) Kubernetes {
+	return Kubernetes{
 		runtime.TypeMeta{
 			APIVersion: apiVersion,
 			Kind:       kind,
@@ -32,8 +32,8 @@ func New(apiVersion, kind, name string) KubernetesResource {
 }
 
 // NewNamespaced returns a namespace scoped kubernetes resource with the given data
-func NewNamespaced(apiVersion, kind, name, namespace string) KubernetesResource {
-	return KubernetesResource{
+func NewNamespaced(apiVersion, kind, name, namespace string) Kubernetes {
+	return Kubernetes{
 		runtime.TypeMeta{
 			APIVersion: apiVersion,
 			Kind:       kind,
@@ -46,7 +46,7 @@ func NewNamespaced(apiVersion, kind, name, namespace string) KubernetesResource 
 }
 
 // RenderResource renders a kuberetes object as a yaml object
-func (r KubernetesResource) RenderResource(w io.Writer) error {
+func (r Kubernetes) RenderResource(w io.Writer) error {
 	b, err := yaml.Marshal(r)
 	if err != nil {
 		return err
