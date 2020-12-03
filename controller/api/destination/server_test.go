@@ -617,7 +617,6 @@ func TestGetProfiles(t *testing.T) {
 			t.Fatalf("Expected protocol to be opaque but it was not")
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
-			// t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, first.Endpoint.Addr.Port)
 		}
 	})
