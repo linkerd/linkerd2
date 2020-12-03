@@ -1012,6 +1012,7 @@ data:
         workloadNamespaceLabel: linkerd.io/workload-ns
       image:
         name: ghcr.io/linkerd/grafana
+        tag: null
       partials:
         global:
           cliVersion: ""
@@ -1097,6 +1098,15 @@ data:
           proxyInjectAnnotation: linkerd.io/inject
           proxyInjectDisabled: disabled
           workloadNamespaceLabel: linkerd.io/workload-ns
+      proxy:
+        resources: null
+      resources:
+        cpu:
+          limit: null
+          request: null
+        memory:
+          limit: null
+          request: null
     heartbeatResources: null
     heartbeatSchedule: 0 0 * * *
     identity:
@@ -1125,6 +1135,8 @@ data:
           values:
           - disabled
     prometheus:
+      alertManagers: null
+      alertRelabelConfigs: null
       args:
         config.file: /etc/prometheus/prometheus.yml
         log.level: info
@@ -1305,6 +1317,19 @@ data:
           proxyInjectAnnotation: linkerd.io/inject
           proxyInjectDisabled: disabled
           workloadNamespaceLabel: linkerd.io/workload-ns
+      proxy:
+        resources: null
+      remoteWrite: null
+      resources:
+        cpu:
+          limit: null
+          request: null
+        memory:
+          limit: null
+          request: null
+      ruleConfigMapMounts: null
+      scrapeConfigs: null
+      sideCarContainers: null
     proxyInjector:
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: test-proxy-injector-crt-pem
@@ -3175,6 +3200,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+        resources:
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -3600,6 +3626,7 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
+        resources:
         securityContext:
           runAsNonRoot: true
           runAsUser: 65534
