@@ -1,4 +1,4 @@
-package k8s
+package resource
 
 import (
 	"io"
@@ -18,8 +18,8 @@ type KubernetesResource struct {
 	metav1.ObjectMeta `json:"metadata"`
 }
 
-// NewKubernetesResource returns a kubernetes resource with the given data
-func NewKubernetesResource(apiVersion, kind, name string) KubernetesResource {
+// New returns a kubernetes resource with the given data
+func New(apiVersion, kind, name string) KubernetesResource {
 	return KubernetesResource{
 		runtime.TypeMeta{
 			APIVersion: apiVersion,
@@ -31,8 +31,8 @@ func NewKubernetesResource(apiVersion, kind, name string) KubernetesResource {
 	}
 }
 
-// NewNamespacedKubernetesResource returns a namespace scoped kubernetes resource with the given data
-func NewNamespacedKubernetesResource(apiVersion, kind, name, namespace string) KubernetesResource {
+// NewNamespaced returns a namespace scoped kubernetes resource with the given data
+func NewNamespaced(apiVersion, kind, name, namespace string) KubernetesResource {
 	return KubernetesResource{
 		runtime.TypeMeta{
 			APIVersion: apiVersion,

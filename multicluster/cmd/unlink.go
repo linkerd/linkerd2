@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	mc "github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
@@ -54,17 +55,17 @@ func newUnlinkCommand() *cobra.Command {
 				return err
 			}
 
-			secret := k8s.NewNamespacedKubernetesResource(corev1.SchemeGroupVersion.String(), "Secret", fmt.Sprintf("cluster-credentials-%s", opts.clusterName), opts.namespace)
-			gatewayMirror := k8s.NewNamespacedKubernetesResource(corev1.SchemeGroupVersion.String(), "Service", fmt.Sprintf("probe-gateway-%s", opts.clusterName), opts.namespace)
-			link := k8s.NewNamespacedKubernetesResource(k8s.LinkAPIGroupVersion, "Link", opts.clusterName, opts.namespace)
-			clusterRole := k8s.NewKubernetesResource(rbac.SchemeGroupVersion.String(), "ClusterRole", fmt.Sprintf("linkerd-service-mirror-access-local-resources-%s", opts.clusterName))
-			clusterRoleBinding := k8s.NewKubernetesResource(rbac.SchemeGroupVersion.String(), "ClusterRoleBinding", fmt.Sprintf("linkerd-service-mirror-access-local-resources-%s", opts.clusterName))
-			role := k8s.NewNamespacedKubernetesResource(rbac.SchemeGroupVersion.String(), "Role", fmt.Sprintf("linkerd-service-mirror-read-remote-creds-%s", opts.clusterName), opts.namespace)
-			roleBinding := k8s.NewNamespacedKubernetesResource(rbac.SchemeGroupVersion.String(), "RoleBinding", fmt.Sprintf("linkerd-service-mirror-read-remote-creds-%s", opts.clusterName), opts.namespace)
-			serviceAccount := k8s.NewNamespacedKubernetesResource(corev1.SchemeGroupVersion.String(), "ServiceAccount", fmt.Sprintf("linkerd-service-mirror-%s", opts.clusterName), opts.namespace)
-			serviceMirror := k8s.NewNamespacedKubernetesResource(appsv1.SchemeGroupVersion.String(), "Deployment", fmt.Sprintf("linkerd-service-mirror-%s", opts.clusterName), opts.namespace)
+			secret := resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Secret", fmt.Sprintf("cluster-credentials-%s", opts.clusterName), opts.namespace)
+			gatewayMirror := resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Service", fmt.Sprintf("probe-gateway-%s", opts.clusterName), opts.namespace)
+			link := resource.NewNamespaced(k8s.LinkAPIGroupVersion, "Link", opts.clusterName, opts.namespace)
+			clusterRole := resource.New(rbac.SchemeGroupVersion.String(), "ClusterRole", fmt.Sprintf("linkerd-service-mirror-access-local-resources-%s", opts.clusterName))
+			clusterRoleBinding := resource.New(rbac.SchemeGroupVersion.String(), "ClusterRoleBinding", fmt.Sprintf("linkerd-service-mirror-access-local-resources-%s", opts.clusterName))
+			role := resource.NewNamespaced(rbac.SchemeGroupVersion.String(), "Role", fmt.Sprintf("linkerd-service-mirror-read-remote-creds-%s", opts.clusterName), opts.namespace)
+			roleBinding := resource.NewNamespaced(rbac.SchemeGroupVersion.String(), "RoleBinding", fmt.Sprintf("linkerd-service-mirror-read-remote-creds-%s", opts.clusterName), opts.namespace)
+			serviceAccount := resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "ServiceAccount", fmt.Sprintf("linkerd-service-mirror-%s", opts.clusterName), opts.namespace)
+			serviceMirror := resource.NewNamespaced(appsv1.SchemeGroupVersion.String(), "Deployment", fmt.Sprintf("linkerd-service-mirror-%s", opts.clusterName), opts.namespace)
 
-			resources := []k8s.KubernetesResource{
+			resources := []resource.KubernetesResource{
 				secret, gatewayMirror, link, clusterRole, clusterRoleBinding,
 				role, roleBinding, serviceAccount, serviceMirror,
 			}
@@ -79,7 +80,7 @@ func newUnlinkCommand() *cobra.Command {
 			}
 			for _, svc := range svcList.Items {
 				resources = append(resources,
-					k8s.NewNamespacedKubernetesResource(corev1.SchemeGroupVersion.String(), "Service", svc.Name, svc.Namespace),
+					resource.NewNamespaced(corev1.SchemeGroupVersion.String(), "Service", svc.Name, svc.Namespace),
 				)
 			}
 
