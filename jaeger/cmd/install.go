@@ -74,7 +74,7 @@ func newCmdInstall() *cobra.Command {
 
 func install(w io.Writer, options values.Options) error {
 
-	// Create final values override
+	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)
 	if err != nil {
 		return err
