@@ -3,9 +3,8 @@
 
 ## edge-20.12.1
 
-This edge release continues the work of moving decoupling non-core Linkerd
-components by moving more tracing related functionality into the Linkerd-jaeger
-extension.
+This edge release continues the work of decoupling non-core Linkerd components
+by moving more tracing related functionality into the Linkerd-jaeger extension.
 
 * Continued work on moving tracing functionality from the main control plane
   into the `linkerd-jaeger` extension
