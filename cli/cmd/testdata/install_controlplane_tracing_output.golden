@@ -9,8 +9,6 @@ metadata:
   name: linkerd
   annotations:
     linkerd.io/inject: disabled
-    config.linkerd.io/trace-collector: collector.linkerd-jaeger.svc.cluster.local:55678
-    config.alpha.linkerd.io/trace-collector-service-account: collector.linkerd-jaeger
   labels:
     linkerd.io/is-control-plane: "true"
     config.linkerd.io/admission-webhooks: disabled
