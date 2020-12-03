@@ -59,6 +59,7 @@ type (
 		gatewayNginxImage       string
 		gatewayNginxVersion     string
 		remoteMirrorCredentials bool
+		gatewayServiceType      string
 	}
 
 	linkOptions struct {
@@ -73,6 +74,7 @@ type (
 		controlPlaneVersion     string
 		dockerRegistry          string
 		selector                string
+		gatewayAddresses        string
 	}
 
 	gatewaysOptions struct {
@@ -97,6 +99,7 @@ func newMulticlusterInstallOptionsWithDefault() (*multiclusterInstallOptions, er
 		gatewayNginxImage:       defaults.GatewayNginxImage,
 		gatewayNginxVersion:     defaults.GatewayNginxImageVersion,
 		remoteMirrorCredentials: true,
+		gatewayServiceType:      defaults.GatewayServiceType,
 	}, nil
 }
 
@@ -113,6 +116,7 @@ func newLinkOptionsWithDefault() (*linkOptions, error) {
 		serviceMirrorRetryLimit: defaults.ServiceMirrorRetryLimit,
 		logLevel:                defaults.LogLevel,
 		selector:                k8s.DefaultExportedServiceSelector,
+		gatewayAddresses:        "",
 	}, nil
 }
 
@@ -198,6 +202,7 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.ProxyOutboundPort = uint32(values.GetGlobal().Proxy.Ports.Outbound)
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
+	defaults.GatewayServiceType = opts.gatewayServiceType
 
 	return defaults, nil
 }
@@ -395,6 +400,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().StringVar(&options.gatewayNginxImage, "gateway-nginx-image", options.gatewayNginxImage, "The nginx image to be used")
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
+	cmd.Flags().StringVar(&options.gatewayServiceType, "gateway-service-type", options.gatewayServiceType, "Overwrite Service type for gateway service")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)
@@ -617,7 +623,8 @@ func newLinkCommand() *cobra.Command {
 				return err
 			}
 
-			gatewayAddresses := []string{}
+			gatewayAddresses := ""
+			gwAddresses := []string{}
 			for _, ingress := range gateway.Status.LoadBalancer.Ingress {
 				addr := ingress.IP
 				if addr == "" {
@@ -626,10 +633,14 @@ func newLinkCommand() *cobra.Command {
 				if addr == "" {
 					continue
 				}
-				gatewayAddresses = append(gatewayAddresses, addr)
+				gwAddresses = append(gwAddresses, addr)
 			}
-			if len(gatewayAddresses) == 0 {
+			if len(gwAddresses) == 0 && opts.gatewayAddresses == "" {
 				return fmt.Errorf("Gateway %s.%s has no ingress addresses", gateway.Name, gateway.Namespace)
+			} else if len(gwAddresses) > 0 {
+				gatewayAddresses = strings.Join(gwAddresses, ",")
+			} else {
+				gatewayAddresses = opts.gatewayAddresses
 			}
 
 			gatewayIdentity, ok := gateway.Annotations[k8s.GatewayIdentity]
@@ -659,7 +670,7 @@ func newLinkCommand() *cobra.Command {
 				TargetClusterDomain:           configMap.GetGlobal().ClusterDomain,
 				TargetClusterLinkerdNamespace: controlPlaneNamespace,
 				ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
-				GatewayAddress:                strings.Join(gatewayAddresses, ","),
+				GatewayAddress:                gatewayAddresses,
 				GatewayPort:                   gatewayPort,
 				GatewayIdentity:               gatewayIdentity,
 				ProbeSpec:                     probeSpec,
@@ -728,6 +739,7 @@ func newLinkCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.logLevel, "log-level", opts.logLevel, "Log level for the Multicluster components")
 	cmd.Flags().StringVar(&opts.dockerRegistry, "registry", opts.dockerRegistry, "Docker registry to pull service mirror controller image from")
 	cmd.Flags().StringVarP(&opts.selector, "selector", "l", opts.selector, "Selector (label query) to filter which services in the target cluster to mirror")
+	cmd.Flags().StringVar(&opts.gatewayAddresses, "gateway-addresses", opts.gatewayAddresses, "If specified overwrites gateway addresses when gateway service is not type LoadBalancer (comma separated list)")
 
 	return cmd
 }
