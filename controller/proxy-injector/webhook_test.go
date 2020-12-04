@@ -36,8 +36,8 @@ func confNsDisabled() *inject.ResourceConfig {
 
 func TestGetPatch(t *testing.T) {
 
-	values.Global.Proxy.DisableIdentity = true
-	values.Global.Proxy.DisableTap = true
+	values.GetGlobal().Proxy.DisableIdentity = true
+	values.GetGlobal().Proxy.DisableTap = true
 
 	factory := fake.NewFactory(filepath.Join("fake", "data"))
 	nsEnabled, err := factory.Namespace("namespace-inject-enabled.yaml")

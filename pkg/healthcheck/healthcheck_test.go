@@ -1798,6 +1798,29 @@ metadata:
 				"cat1 'linkerd-config' config map exists",
 			},
 		},
+		{
+			checkDescription: "'linkerd-config' config map exists",
+			resources: []string{`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: linkerd-config
+  namespace: test-ns
+data:
+  values: |-
+    tracing:
+      collector:
+        name: linkerd-collector
+      enabled: false
+      jaeger:
+        name: linkerd-jaeger
+      enabled: true
+`,
+			},
+			expected: []string{
+				"cat1 'linkerd-config' config map exists",
+			},
+		},
 	}
 
 	for id, testCase := range testCases {
@@ -2696,7 +2719,7 @@ data:
 					LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
 					ProxyContainerName:       "ProxyContainerName",
 					CNIEnabled:               false,
-					IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
+					IdentityTrustDomain:      defaultValues.GetGlobal().IdentityTrustDomain,
 					Proxy: &linkerd2.Proxy{
 						Image: &linkerd2.Image{
 							Name:       "ProxyImageName",
@@ -3075,15 +3098,6 @@ func TestLinkerdIdentityCheckCertValidity(t *testing.T) {
 		fakeSecret := getFakeSecret(k8s.IdentityIssuerSchemeLinkerd, issuerData)
 		runIdentityCheckTestCase(context.Background(), t, id, testCase.checkDescription, testCase.checkerToTest, fakeConfigMap, fakeSecret, testCase.expectedOutput)
 	}
-}
-
-func TestLinkerdIdentityCheckWrongDns(t *testing.T) {
-	expectedOutput := []string{"linkerd-identity-test-cat issuer cert is issued by the trust anchor: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"}
-	issuerData := createIssuerData("wrong.linkerd.cluster.local", time.Now().AddDate(-1, 0, 0), time.Now().AddDate(1, 0, 0))
-	fakeConfigMap := getFakeConfigMap(k8s.IdentityIssuerSchemeLinkerd, issuerData)
-	fakeSecret := getFakeSecret(k8s.IdentityIssuerSchemeLinkerd, issuerData)
-	runIdentityCheckTestCase(context.Background(), t, 0, "fails when cert dns is wrong", "issuer cert is issued by the trust anchor", fakeConfigMap, fakeSecret, expectedOutput)
-
 }
 
 type fakeCniResourcesOpts struct {

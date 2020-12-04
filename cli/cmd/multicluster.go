@@ -191,9 +191,9 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.GatewayProbePort = opts.gatewayProbePort
 	defaults.GatewayNginxImage = opts.gatewayNginxImage
 	defaults.GatewayNginxImageVersion = opts.gatewayNginxVersion
-	defaults.IdentityTrustDomain = values.Global.IdentityTrustDomain
+	defaults.IdentityTrustDomain = values.GetGlobal().IdentityTrustDomain
 	defaults.LinkerdNamespace = controlPlaneNamespace
-	defaults.ProxyOutboundPort = uint32(values.Global.Proxy.Ports.Outbound)
+	defaults.ProxyOutboundPort = uint32(values.GetGlobal().Proxy.Ports.Outbound)
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
 
@@ -651,7 +651,7 @@ func newLinkCommand() *cobra.Command {
 				Name:                          opts.clusterName,
 				Namespace:                     opts.namespace,
 				TargetClusterName:             opts.clusterName,
-				TargetClusterDomain:           configMap.Global.ClusterDomain,
+				TargetClusterDomain:           configMap.GetGlobal().ClusterDomain,
 				TargetClusterLinkerdNamespace: controlPlaneNamespace,
 				ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
 				GatewayAddress:                strings.Join(gatewayAddresses, ","),
