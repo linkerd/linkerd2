@@ -10,19 +10,26 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	// LinkerdJaegerExtensionCheck adds checks related to the jaeger extension
-	LinkerdJaegerExtensionCheck healthcheck.CategoryID = "linkerd-jaeger"
+
+	// jaegerExtensionName is the name fo jaeger extension
+	jaegerExtensionName = "linkerd-jaeger"
+
+	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
+	linkerdJaegerExtensionCheck healthcheck.CategoryID = jaegerExtensionName
+)
+
+var (
+	jaegerNamespace string
 )
 
 type checkOptions struct {
-	wait      time.Duration
-	namespace string
-	output    string
+	wait   time.Duration
+	output string
 }
 
 func jaegerCategory() *healthcheck.Category {
@@ -37,7 +44,7 @@ func jaegerCategory() *healthcheck.Category {
 					return err
 				}
 
-				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"collector"}, "linkerd-jaeger", "")
+				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"collector"}, jaegerNamespace, "")
 			}))
 
 	checkers = append(checkers,
@@ -49,7 +56,7 @@ func jaegerCategory() *healthcheck.Category {
 					return err
 				}
 
-				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"jaeger"}, "linkerd-jaeger", "")
+				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"jaeger"}, jaegerNamespace, "")
 			}))
 
 	checkers = append(checkers,
@@ -61,7 +68,7 @@ func jaegerCategory() *healthcheck.Category {
 					return err
 				}
 
-				_, err = kubeAPI.CoreV1().ConfigMaps("linkerd-jaeger").Get(ctx, "collector-config", metav1.GetOptions{})
+				_, err = kubeAPI.CoreV1().ConfigMaps(jaegerNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
 				if err != nil {
 					return err
 				}
@@ -76,7 +83,7 @@ func jaegerCategory() *healthcheck.Category {
 					return err
 				}
 
-				pods, err := kubeAPI.GetPodsByNamespace(ctx, "linkerd-jaeger")
+				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
 				if err != nil {
 					return err
 				}
@@ -93,7 +100,7 @@ func jaegerCategory() *healthcheck.Category {
 					return err
 				}
 
-				pods, err := kubeAPI.GetPodsByNamespace(ctx, "linkerd-jaeger")
+				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
 				if err != nil {
 					return err
 				}
@@ -101,26 +108,31 @@ func jaegerCategory() *healthcheck.Category {
 				return healthcheck.CheckContainerRunning(pods, "jaeger")
 			}))
 
-	return healthcheck.NewCategory(LinkerdJaegerExtensionCheck, checkers, true)
+	checkers = append(checkers,
+		*healthcheck.NewChecker("jaeger extension pods are injected", "", false, true, time.Time{}, false).
+			WithCheck(func(ctx context.Context) error {
+				// Check for Jaeger pod
+				kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+				if err != nil {
+					return err
+				}
+
+				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
+				if err != nil {
+					return err
+				}
+
+				return checkIfDataPlanePodsExist(pods)
+			}))
+
+	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
 }
 
 func newCheckOptions() *checkOptions {
 	return &checkOptions{
-		wait:      300 * time.Second,
-		namespace: "",
-		output:    healthcheck.TableOutput,
+		wait:   300 * time.Second,
+		output: healthcheck.TableOutput,
 	}
-}
-
-// checkFlagSet specifies flags allowed with and without `config`
-func (options *checkOptions) checkFlagSet() *pflag.FlagSet {
-	flags := pflag.NewFlagSet("check", pflag.ExitOnError)
-
-	flags.StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace to use for --proxy checks (default: all namespaces)")
-	flags.StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
-	flags.DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
-
-	return flags
 }
 
 func (options *checkOptions) validate() error {
@@ -132,8 +144,6 @@ func (options *checkOptions) validate() error {
 
 func newCmdCheck() *cobra.Command {
 	options := newCheckOptions()
-	checkFlags := options.checkFlagSet()
-
 	cmd := &cobra.Command{
 		Use:   "check [flags]",
 		Args:  cobra.NoArgs,
@@ -147,11 +157,21 @@ non-zero exit code.`,
 		Example: `  # Check that the Jaeger extension is up and running
   linkerd jaeger check`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			// Get jaeger Extension Namespace
+			ns, err := getNamespaceOfExtension("linkerd-jaeger")
+			if err != nil {
+				fmt.Fprint(os.Stderr, err.Error())
+				os.Exit(1)
+			}
+			jaegerNamespace = ns.Name
+
 			return configureAndRunChecks(stdout, stderr, options)
 		},
 	}
 
-	cmd.PersistentFlags().AddFlagSet(checkFlags)
+	cmd.PersistentFlags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of: basic, json")
+	cmd.PersistentFlags().DurationVar(&options.wait, "wait", options.wait, "Maximum allowed time for all tests to pass")
 
 	return cmd
 }
@@ -163,7 +183,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	checks := []healthcheck.CategoryID{
-		LinkerdJaegerExtensionCheck,
+		linkerdJaegerExtensionCheck,
 	}
 
 	hc := healthcheck.NewHealthChecker(checks, &healthcheck.Options{
@@ -183,6 +203,42 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 
 	if !success {
 		os.Exit(1)
+	}
+
+	return nil
+}
+
+func getNamespaceOfExtension(name string) (*corev1.Namespace, error) {
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	namespaces, err := kubeAPI.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{LabelSelector: k8s.LinkerdExtensionLabel})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ns := range namespaces.Items {
+		if ns.Labels[k8s.LinkerdExtensionLabel] == name {
+			return &ns, err
+		}
+	}
+	return nil, fmt.Errorf("Could not find the namespace for extension %s", name)
+}
+
+func checkIfDataPlanePodsExist(pods []corev1.Pod) error {
+	for _, pod := range pods {
+		proxyContainer := false
+		for _, containerSpec := range pod.Spec.Containers {
+			if containerSpec.Name == k8s.ProxyContainerName {
+				proxyContainer = true
+			}
+		}
+
+		if !proxyContainer {
+			return fmt.Errorf("could not find proxy container for %s pod", pod.Name)
+		}
 	}
 
 	return nil
