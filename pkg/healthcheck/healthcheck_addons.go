@@ -86,7 +86,7 @@ func (hc *HealthChecker) addOnCategories() []Category {
 								return err
 							}
 
-							return CheckContainerRunning(hc.controlPlanePods, "prometheus")
+							return checkContainerRunning(hc.controlPlanePods, "prometheus")
 						}
 						return &SkipError{Reason: "prometheus add-on not enabled"}
 					},
@@ -169,7 +169,7 @@ func (hc *HealthChecker) addOnCategories() []Category {
 								return err
 							}
 
-							return CheckContainerRunning(hc.controlPlanePods, "grafana")
+							return checkContainerRunning(hc.controlPlanePods, "grafana")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
 					},
@@ -296,7 +296,7 @@ func (hc *HealthChecker) addOnCategories() []Category {
 								return err
 							}
 
-							return CheckContainerRunning(hc.controlPlanePods, "collector")
+							return checkContainerRunning(hc.controlPlanePods, "collector")
 						}
 						return &SkipError{Reason: "tracing add-on not enabled"}
 					},
@@ -320,7 +320,7 @@ func (hc *HealthChecker) addOnCategories() []Category {
 								return err
 							}
 
-							return CheckContainerRunning(hc.controlPlanePods, "jaeger")
+							return checkContainerRunning(hc.controlPlanePods, "jaeger")
 						}
 						return &SkipError{Reason: "tracing add-on not enabled"}
 					},

@@ -720,7 +720,7 @@ func (hc *HealthChecker) allCategories() []Category {
 							return err
 						}
 
-						return CheckContainerRunning(hc.controlPlanePods, "controller")
+						return checkContainerRunning(hc.controlPlanePods, "controller")
 					},
 				},
 				{
@@ -2445,20 +2445,17 @@ func getPodStatuses(pods []corev1.Pod) map[string]map[string][]corev1.ContainerS
 	statuses := make(map[string]map[string][]corev1.ContainerStatus)
 
 	for _, pod := range pods {
-		if pod.Status.Phase == corev1.PodRunning {
+		if pod.Status.Phase == corev1.PodRunning && strings.HasPrefix(pod.Name, "linkerd-") {
 			parts := strings.Split(pod.Name, "-")
 			// All control plane pods should have a name that results in at least 4
 			// substrings when string.Split on '-'
-			// start denotes the index where the name starts, This is one for `linkerd-*` names
-			start := 0
 			if len(parts) >= 4 {
-				start = 1
+				name := strings.Join(parts[1:len(parts)-2], "-")
+				if _, found := statuses[name]; !found {
+					statuses[name] = make(map[string][]corev1.ContainerStatus)
+				}
+				statuses[name][pod.Name] = pod.Status.ContainerStatuses
 			}
-			name := strings.Join(parts[start:len(parts)-2], "-")
-			if _, found := statuses[name]; !found {
-				statuses[name] = make(map[string][]corev1.ContainerStatus)
-			}
-			statuses[name][pod.Name] = pod.Status.ContainerStatuses
 		}
 	}
 
@@ -2510,8 +2507,7 @@ func validateControlPlanePods(pods []corev1.Pod) error {
 	return nil
 }
 
-// CheckContainerRunning checks if the container is running
-func CheckContainerRunning(pods []corev1.Pod, container string) error {
+func checkContainerRunning(pods []corev1.Pod, container string) error {
 	statuses := getPodStatuses(pods)
 	if _, ok := statuses[container]; !ok {
 		for _, pod := range pods {

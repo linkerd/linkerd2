@@ -88,7 +88,7 @@ func jaegerCategory() *healthcheck.Category {
 					return err
 				}
 
-				return healthcheck.CheckContainerRunning(pods, "collector")
+				return checkPodsStatus(pods)
 			}))
 
 	checkers = append(checkers,
@@ -105,7 +105,7 @@ func jaegerCategory() *healthcheck.Category {
 					return err
 				}
 
-				return healthcheck.CheckContainerRunning(pods, "jaeger")
+				return checkPodsStatus(pods)
 			}))
 
 	checkers = append(checkers,
@@ -242,4 +242,16 @@ func checkIfDataPlanePodsExist(pods []corev1.Pod) error {
 	}
 
 	return nil
+}
+
+// checkPodsStatus checks if the pod is in running state
+func checkPodsStatus(pods []corev1.Pod) error {
+	for _, pod := range pods {
+		fmt.Println(pod.Name, pod.Status.Phase)
+		if pod.Status.Phase != "Running" {
+			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
+		}
+	}
+	return nil
+
 }
