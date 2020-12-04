@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 set -eu
 
@@ -10,6 +10,6 @@ if [ -z "$dir_dirty" ]; then
   exit 0
 else
   echo "Helm-docs generated readmes diverge from current chart readmes:"
-  echo "$(git status)"
+  git status
   exit 64
 fi

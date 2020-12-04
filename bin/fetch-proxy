@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 # If the first argument to this script is "latest" or unset, it fetches the
 # latest proxy binary from the linkerd2-proxy github releases. If it's set to

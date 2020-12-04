@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 # This script is used in the multiple Dockerfiles for caching
 # some of the slow-to-build go dependencies.
