@@ -24,6 +24,7 @@ type Values struct {
 	ControllerImageVersion         string `json:"controllerImageVersion"`
 	CreatedByAnnotation            string `json:"createdByAnnotation"`
 	Gateway                        bool   `json:"gateway"`
+	GatewayReplicas                uint32 `json:"gatewayReplicas"`
 	GatewayLocalProbePath          string `json:"gatewayLocalProbePath"`
 	GatewayLocalProbePort          uint32 `json:"gatewayLocalProbePort"`
 	GatewayName                    string `json:"gatewayName"`

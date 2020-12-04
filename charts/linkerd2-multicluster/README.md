@@ -27,6 +27,7 @@ Kubernetes: `>=1.13.0-0`
 | gatewayProbePath | string | `"/health"` | The path that will be used by remote clusters for determining whether the gateway is alive |
 | gatewayProbePort | int | `4181` | The port used for liveliness probing |
 | gatewayProbeSeconds | int | `3` | The interval (in seconds) between liveness probes |
+| gatewayReplicas | int | `1` | Specifies the replica count of gateway deployment |
 | gatewayServiceType | string | `"LoadBalancer"` | Service Type of gateway Service |
 | installNamespace | bool | `true` | If the namespace should be installed |
 | linkerdVersion | string | `"linkerdVersionValue"` | Control plane version |

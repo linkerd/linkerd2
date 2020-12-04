@@ -52,6 +52,7 @@ type (
 
 	multiclusterInstallOptions struct {
 		gateway                 bool
+		gatewayHighAvailability bool
 		gatewayPort             uint32
 		gatewayProbeSeconds     uint32
 		gatewayProbePort        uint32
@@ -203,6 +204,9 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
 	defaults.GatewayServiceType = opts.gatewayServiceType
+	if opts.gatewayHighAvailability {
+		defaults.GatewayReplicas = uint32(3)
+	}
 
 	return defaults, nil
 }
@@ -401,6 +405,7 @@ func newMulticlusterInstallCommand() *cobra.Command {
 	cmd.Flags().StringVar(&options.gatewayNginxVersion, "gateway-nginx-image-version", options.gatewayNginxVersion, "The version of nginx to be used")
 	cmd.Flags().BoolVar(&options.remoteMirrorCredentials, "service-mirror-credentials", options.remoteMirrorCredentials, "Whether to install the service account which can be used by service mirror components in source clusters to discover exported services")
 	cmd.Flags().StringVar(&options.gatewayServiceType, "gateway-service-type", options.gatewayServiceType, "Overwrite Service type for gateway service")
+	cmd.Flags().BoolVar(&options.gatewayHighAvailability, "ha", options.gatewayHighAvailability, "Enable HA deployment for the gateway (default false)")
 
 	// Hide developer focused flags in release builds.
 	release, err := version.IsReleaseChannel(version.Version)

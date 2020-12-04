@@ -4,6 +4,8 @@ controllerComponentLabel: linkerd.io/control-plane-component
 createdByAnnotation: linkerd.io/created-by
 # -- If the gateway component should be installed
 gateway: true
+# -- Specifies the replica count of gateway deployment
+gatewayReplicas: 1
 # -- The path that will be used by the local liveness checks to ensure the
 # gateway is alive
 gatewayLocalProbePath: /health-local

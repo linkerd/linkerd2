@@ -61,7 +61,7 @@ metadata:
   name: {{.Values.gatewayName}}
   namespace: {{.Values.namespace}}
 spec:
-  replicas: 1
+  replicas: {{ .Values.gatewayReplicas }}
   selector:
     matchLabels:
       app: {{.Values.gatewayName}}
