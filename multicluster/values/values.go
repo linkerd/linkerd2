@@ -46,6 +46,7 @@ type Values struct {
 	RemoteMirrorServiceAccount     bool   `json:"remoteMirrorServiceAccount"`
 	RemoteMirrorServiceAccountName string `json:"remoteMirrorServiceAccountName"`
 	TargetClusterName              string `json:"targetClusterName"`
+	GatewayServiceType             string `json:"gatewayServiceType"`
 }
 
 // NewInstallValues returns a new instance of the Values type.

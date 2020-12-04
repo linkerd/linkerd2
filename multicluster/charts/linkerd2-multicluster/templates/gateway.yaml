@@ -133,7 +133,7 @@ spec:
     protocol: TCP
   selector:
     app: {{.Values.gatewayName}}
-  type: LoadBalancer
+  type: {{ .Values.gatewayServiceType }}
 {{- if .Values.loadBalancerIP }}
   loadBalancerIP: {{ .Values.loadBalancerIP }}
 {{- end }}
