@@ -115,9 +115,6 @@ spec:
     metadata:
       labels:
         app: nginx-ingress
-      annotations:
-        config.linkerd.io/trace-collector: "collector.___TRACING_NS___:55678"
-        config.alpha.linkerd.io/trace-collector-service-account: "collector"
     spec:
       containers:
       - args:

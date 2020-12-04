@@ -30,9 +30,6 @@ spec:
       creationTimestamp: null
       labels:
         app: emoji-svc
-      annotations:
-        config.linkerd.io/trace-collector: "collector.___TRACING_NS___:55678"
-        config.alpha.linkerd.io/trace-collector-service-account: "collector"
     spec:
       serviceAccountName: emoji
       containers:
@@ -80,9 +77,6 @@ spec:
       creationTimestamp: null
       labels:
         app: voting-svc
-      annotations:
-        config.linkerd.io/trace-collector: "collector.___TRACING_NS___:55678"
-        config.alpha.linkerd.io/trace-collector-service-account: "collector"
     spec:
       serviceAccountName: voting
       containers:
@@ -130,9 +124,6 @@ spec:
       creationTimestamp: null
       labels:
         app: web-svc
-      annotations:
-        config.linkerd.io/trace-collector: "collector.___TRACING_NS___:55678"
-        config.alpha.linkerd.io/trace-collector-service-account: "collector"
     spec:
       serviceAccountName: web
       containers:
@@ -186,9 +177,6 @@ spec:
       creationTimestamp: null
       labels:
         app: vote-bot
-      annotations:
-        config.linkerd.io/trace-collector: "collector.___TRACING_NS___:55678"
-        config.alpha.linkerd.io/trace-collector-service-account: "collector"
     spec:
       containers:
       - command:
