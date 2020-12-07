@@ -64,12 +64,10 @@ var (
 		"templates/controller-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
-		"templates/web-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
-		"templates/tap-rbac.yaml",
 		"templates/psp.yaml",
 	}
 
@@ -80,10 +78,8 @@ var (
 		"templates/controller.yaml",
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
-		"templates/web.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
-		"templates/tap.yaml",
 	}
 
 	ignoreCluster bool

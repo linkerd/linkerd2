@@ -1,0 +1,104 @@
+---
+###
+### Web
+###
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: linkerd-web
+  namespace: {{.Values.namespace}}
+  labels:
+    {{.Values.controllerComponentLabel}}: web
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+  annotations:
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+spec:
+  type: ClusterIP
+  selector:
+    {{.Values.controllerComponentLabel}}: web
+  ports:
+  - name: http
+    port: 8084
+    targetPort: 8084
+  - name: admin-http
+    port: 9994
+    targetPort: 9994
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/part-of: Linkerd
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    {{.Values.controllerComponentLabel}}: web
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+  name: linkerd-web
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: {{.Values.dashboard.replicas}}
+  selector:
+    matchLabels:
+      {{.Values.controllerComponentLabel}}: web
+      {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+  template:
+    metadata:
+      annotations:
+        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+        {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+      labels:
+        {{.Values.controllerComponentLabel}}: web
+        {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+        {{.Values.workloadNamespaceLabel}}: {{.Values.namespace}}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+    spec:
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
+      {{- include "linkerd.node-selector" . | nindent 6 }}
+      containers:
+      - args:
+        - -api-addr=linkerd-controller-api.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:8085
+        - -cluster-domain={{.Values.clusterDomain}}
+        {{- if .Values.grafanaUrl }}
+        - -grafana-addr={{.Values.grafanaUrl}}
+        {{- else if .Values.grafana.enabled }}
+        - -grafana-addr=grafana.linkerd-viz.svc.{{.Values.clusterDomain}}:3000
+        {{- end}}
+        - -jaeger-addr=jaeger.linkerd-jaeger.svc.{{.Values.clusterDomain}}:16686
+        - -controller-namespace={{.Values.namespace}}
+        - -log-level={{.Values.controllerLogLevel}}
+        {{- if .Values.enforcedHostRegexp }}
+        - -enforced-host={{.Values.enforcedHostRegexp}}
+        {{- else -}}
+        {{- $hostFull := replace "." "\\." (printf "linkerd-web.%s.svc.%s" .Values.namespace .Values.clusterDomain) }}
+        {{- $hostAbbrev := replace "." "\\." (printf "linkerd-web.%s.svc" .Values.namespace) }}
+        - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
+        {{- end}}
+        image: {{.Values.webImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
+        imagePullPolicy: {{.Values.imagePullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9994
+          initialDelaySeconds: 10
+        name: web
+        ports:
+        - containerPort: 8084
+          name: http
+        - containerPort: 9994
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9994
+        {{- if .Values.webResources -}}
+        {{- include "partials.resources" .Values.webResources | nindent 8 }}
+        {{- end }}
+        securityContext:
+          runAsUser: {{.Values.controllerUID}}
+      serviceAccountName: linkerd-web

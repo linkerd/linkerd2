@@ -7,17 +7,17 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: linkerd-prometheus-config
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerComponentLabel}}: prometheus
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{.Values.controllerComponentLabel}}: prometheus
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   annotations:
-    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 data:
   prometheus.yml: |-
     global:
-      {{- if .Values.globalConfig -}}
-      {{- toYaml .Values.globalConfig | trim | nindent 6 }}
+      {{- if .ValuesConfig -}}
+      {{- toYaml .ValuesConfig | trim | nindent 6 }}
       {{- end}}
 
     rule_files:
@@ -33,7 +33,7 @@ data:
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['{{.Values.global.namespace}}']
+          names: ['{{.Values.namespace}}']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_container_name
@@ -70,7 +70,7 @@ data:
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['{{.Values.global.namespace}}']
+          names: ['{{.Values.namespace}}']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
@@ -103,7 +103,7 @@ data:
         - __meta_kubernetes_pod_container_port_name
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
         action: keep
-        regex: ^{{default .Values.global.proxyContainerName "linkerd-proxy" .Values.global.proxyContainerName}};linkerd-admin;{{.Values.global.namespace}}$
+        regex: ^{{default .Values.proxyContainerName "linkerd-proxy" .Values.proxyContainerName}};linkerd-admin;{{.Values.namespace}}$
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
@@ -171,38 +171,34 @@ kind: Service
 apiVersion: v1
 metadata:
   name: linkerd-prometheus
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
   labels:
-    {{.Values.global.controllerComponentLabel}}: prometheus
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    {{.Values.controllerComponentLabel}}: prometheus
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   annotations:
-    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.global.controllerComponentLabel}}: prometheus
+    {{.Values.controllerComponentLabel}}: prometheus
   ports:
   - name: admin-http
     port: 9090
     targetPort: 9090
 ---
-{{- $tree := deepCopy . }}
-{{ $_ := set $tree.Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set $tree.Values.global.proxy "component" "linkerd-prometheus" -}}
-{{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
-    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
   labels:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
-    {{.Values.global.controllerComponentLabel}}: prometheus
-    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    {{.Values.controllerComponentLabel}}: prometheus
+    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   name: linkerd-prometheus
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   {{- if .Values.persistence }}
@@ -211,21 +207,18 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{.Values.global.controllerComponentLabel}}: prometheus
-      {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-      {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 6}}
+      {{.Values.controllerComponentLabel}}: prometheus
+      {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
   template:
     metadata:
       annotations:
-        {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-        {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
-        {{- with .Values.global.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+        {{- with .Values.podAnnotations }}{{  . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.global.controllerComponentLabel}}: prometheus
-        {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-        {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
-        {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 8}}
-        {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
+        {{.Values.controllerComponentLabel}}: prometheus
+        {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+        {{.Values.workloadNamespaceLabel}}: {{.Values.namespace}}
+        {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
       {{- include "linkerd.tolerations" . | nindent 6 }}
@@ -242,7 +235,7 @@ spec:
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}
         image: {{.Values.image}}
-        imagePullPolicy: {{.Values.global.imagePullPolicy}}
+        imagePullPolicy: {{.Values.imagePullPolicy}}
         livenessProbe:
           httpGet:
             path: /-/healthy
@@ -279,18 +272,6 @@ spec:
           name: prometheus-config
           subPath: prometheus.yml
           readOnly: true
-      {{- if not (empty .Values.proxy) }}
-      {{- if not (empty .Values.proxy.resources) }}
-      {{- $r := merge .Values.proxy.resources .Values.global.proxy.resources }}
-      {{- $_ := set $tree.Values.global.proxy "resources" $r }}
-      {{- end }}
-      {{- end }}
-      {{- include "partials.setControlPlaneTracing.proxy" $tree }}
-      - {{- include "partials.proxy" $tree | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ if not .Values.global.cniEnabled -}}
-      initContainers:
-      - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ end -}}
       serviceAccountName: linkerd-prometheus
       volumes:
     {{- range .Values.ruleConfigMapMounts }}
@@ -308,13 +289,6 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
-      {{ if .Values.global.controlPlaneTracing -}}
-      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ end -}}
-      {{ if not .Values.global.cniEnabled -}}
-      - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
-      {{ end -}}
-      - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
 {{- if .Values.persistence }}
 ---
 kind: PersistentVolumeClaim
@@ -323,10 +297,10 @@ metadata:
   labels:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
-    app.kubernetes.io/version: {{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
-    {{.Values.global.controllerComponentLabel}}: prometheus
+    app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
+    {{.Values.controllerComponentLabel}}: prometheus
   name: linkerd-prometheus
-  namespace: {{.Values.global.namespace}}
+  namespace: {{.Values.namespace}}
 spec:
   accessModes:
     - {{ .Values.persistence.accessMode | quote }}

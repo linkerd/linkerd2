@@ -81,7 +81,7 @@ spec:
         - -cluster-domain={{.Values.global.clusterDomain}}
         {{- if .Values.global.prometheusUrl }}
         - -prometheus-url={{.Values.global.prometheusUrl}}
-        {{- else if .Values.prometheus.enabled }}
+        {{- else }}
         - -prometheus-url=http://linkerd-prometheus.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090
         {{- end }}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
