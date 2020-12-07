@@ -1661,6 +1661,7 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
 			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
 		}
+
 	}
 
 	if err != nil {
