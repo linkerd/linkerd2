@@ -1,9 +1,5 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
-# Note we don't use bash here because this is called from Alpine-based images,
-# which don't have bash, and we'd like to avoid the extra 50MB when installing
-# it.
-#
 # This script is used in the multiple Dockerfiles for caching
 # some of the slow-to-build go dependencies.
 
