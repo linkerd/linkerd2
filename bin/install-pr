@@ -97,11 +97,9 @@ tag=$(echo "$image" | cut -f 2 -d ":")
 
 if [ $is_kind ] || [ $is_k3d ]
 then
-  distro=""
-  if [ $is_k3d ]
+  distro="k3d"
+  if [ $is_kind ]
   then
-    distro="k3d"
-  else
     distro="kind"
   fi
   "$bindir"/image-load --"$distro" --archive "$cluster"
