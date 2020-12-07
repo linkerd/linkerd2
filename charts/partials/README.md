@@ -1,4 +1,4 @@
-# partials
+# new-partials
 
 A Helm chart containing Linkerd partial templates,
 depended by the 'linkerd' and 'patch' charts.

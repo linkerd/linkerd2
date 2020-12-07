@@ -1,4 +1,4 @@
-# l5d
+# linkerd2
 
 Linkerd gives you observability, reliability, and security
 for your microservices — with no code change required.
@@ -137,7 +137,7 @@ Kubernetes: `>=1.13.0-0`
 | createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit.  |
 | debugContainer.image.name | string | `"ghcr.io/linkerd/debug"` | Docker image for the debug container |
 | debugContainer.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the debug container Docker image |
-| debugContainer.image.version | string | `"linkerdVersionValue"` | Tag for the debug container Docker image |
+| debugContainer.image.version | string | `"edge-20.12.1"` | Tag for the debug container Docker image |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob  |
 | enableEndpointSlices | bool | `false` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on; the feature is still experimental. |
 | enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading   |
@@ -157,7 +157,7 @@ Kubernetes: `>=1.13.0-0`
 | imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | installNamespace | bool | `true` | Set to false when installing Linkerd in a custom namespace. See the [Linkerd documentation](https://linkerd.io/2/tasks/install-helmcustomizing-the-namespace) for more information. |
 | linkerdNamespaceLabel | string | `"linkerd.io/is-control-plane"` | Control plane label. Do not edit  |
-| linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
+| linkerdVersion | string | `"edge-20.12.1"` | control plane version. See Proxy section for proxy version |
 | namespace | string | `"linkerd"` | Control plane namespace |
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | omitWebhookSideEffects | bool | `false` | Omit the `sideEffects` flag in the webhook manifests |
@@ -172,7 +172,7 @@ Kubernetes: `>=1.13.0-0`
 | proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
 | proxy.image.name | string | `"ghcr.io/linkerd/proxy"` | Docker image for the proxy |
 | proxy.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the proxy container Docker image |
-| proxy.image.version | string | `"linkerdVersionValue"` | Tag for the proxy container Docker image |
+| proxy.image.version | string | `"edge-20.12.1"` | Tag for the proxy container Docker image |
 | proxy.inboundConnectTimeout | string | `"100ms"` | Maximum time allowed for the proxy to establish an inbound TCP connection |
 | proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
 | proxy.logLevel | string | `"warn,linkerd=info"` | Log level for the proxy |
