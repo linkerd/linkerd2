@@ -2722,6 +2722,19 @@ func TestLinkerdIdentityCheckCertConfig(t *testing.T) {
 				return issuerData
 			},
 		},
+		{
+			checkDescription: "supports multiple CA certs in IdentityContext.TrustAnchorsPEM",
+			tlsSecretScheme:  string(corev1.SecretTypeTLS),
+			schemeInConfig:   string(corev1.SecretTypeTLS),
+			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid"},
+			configMapIssuerDataModifier: func(issuerData issuercerts.IssuerCertData) issuercerts.IssuerCertData {
+				extraIssuer := createIssuerData("identity.linkerd.cluster.local", time.Now().AddDate(-2, 2, 0), time.Now().AddDate(0, 2, 0))
+
+				issuerData.TrustAnchors = issuerData.TrustAnchors +
+					extraIssuer.TrustAnchors
+				return issuerData
+			},
+		},
 	}
 
 	for id, testCase := range testCases {
