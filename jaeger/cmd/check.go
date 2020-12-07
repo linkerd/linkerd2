@@ -32,18 +32,18 @@ type checkOptions struct {
 	output string
 }
 
-func jaegerCategory() *healthcheck.Category {
+func jaegerCategory() (*healthcheck.Category, error) {
+
+	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	if err != nil {
+		return nil, err
+	}
 
 	checkers := []healthcheck.Checker{}
 	checkers = append(checkers,
 		*healthcheck.NewChecker("collector service account exists", "", false, true, time.Time{}, false).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Collector Service Account
-				kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-				if err != nil {
-					return err
-				}
-
 				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"collector"}, jaegerNamespace, "")
 			}))
 
@@ -51,11 +51,6 @@ func jaegerCategory() *healthcheck.Category {
 		*healthcheck.NewChecker("jaeger service account exists", "", false, true, time.Time{}, false).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger Service Account
-				kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-				if err != nil {
-					return err
-				}
-
 				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"jaeger"}, jaegerNamespace, "")
 			}))
 
@@ -63,11 +58,6 @@ func jaegerCategory() *healthcheck.Category {
 		*healthcheck.NewChecker("collector config map exists", "", false, true, time.Time{}, false).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger Service Account
-				kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-				if err != nil {
-					return err
-				}
-
 				_, err = kubeAPI.CoreV1().ConfigMaps(jaegerNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
 				if err != nil {
 					return err
@@ -78,16 +68,10 @@ func jaegerCategory() *healthcheck.Category {
 		*healthcheck.NewChecker("collector pod is running", "", false, true, time.Time{}, false).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Collector pod
-				kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+				pods, err := kubeAPI.GetPods(ctx, jaegerNamespace, "component=collector")
 				if err != nil {
 					return err
 				}
-
-				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
-				if err != nil {
-					return err
-				}
-
 				return checkPodsStatus(pods)
 			}))
 
@@ -95,16 +79,10 @@ func jaegerCategory() *healthcheck.Category {
 		*healthcheck.NewChecker("jaeger pod is running", "", false, true, time.Time{}, false).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger pod
-				kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+				pods, err := kubeAPI.GetPods(ctx, jaegerNamespace, "component=jaeger")
 				if err != nil {
 					return err
 				}
-
-				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
-				if err != nil {
-					return err
-				}
-
 				return checkPodsStatus(pods)
 			}))
 
@@ -112,11 +90,6 @@ func jaegerCategory() *healthcheck.Category {
 		*healthcheck.NewChecker("jaeger extension pods are injected", "", false, true, time.Time{}, false).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger pod
-				kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-				if err != nil {
-					return err
-				}
-
 				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
 				if err != nil {
 					return err
@@ -125,7 +98,7 @@ func jaegerCategory() *healthcheck.Category {
 				return checkIfDataPlanePodsExist(pods)
 			}))
 
-	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true)
+	return healthcheck.NewCategory(linkerdJaegerExtensionCheck, checkers, true), nil
 }
 
 func newCheckOptions() *checkOptions {
@@ -197,7 +170,11 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		MultiCluster:          false,
 	})
 
-	hc.AppendCategories(*jaegerCategory())
+	category, err := jaegerCategory()
+	if err != nil {
+		return err
+	}
+	hc.AppendCategories(*category)
 
 	success := healthcheck.RunChecks(wout, werr, hc, options.output)
 
@@ -247,11 +224,9 @@ func checkIfDataPlanePodsExist(pods []corev1.Pod) error {
 // checkPodsStatus checks if the pod is in running state
 func checkPodsStatus(pods []corev1.Pod) error {
 	for _, pod := range pods {
-		fmt.Println(pod.Name, pod.Status.Phase)
 		if pod.Status.Phase != "Running" {
 			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
 		}
 	}
 	return nil
-
 }
