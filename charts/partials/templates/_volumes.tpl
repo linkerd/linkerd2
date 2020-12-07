@@ -27,5 +27,5 @@ name: podinfo
 
 {{ define "partials.proxyInit.volumes.xtables" -}}
 emptyDir: {}
-name: {{ .Values.global.proxyInit.xtMountPath.name }}
+name: {{ .Values.proxyInit.xtMountPath.name }}
 {{- end -}}

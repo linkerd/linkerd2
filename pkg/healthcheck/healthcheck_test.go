@@ -2693,7 +2693,6 @@ data:
 			},
 			&linkerd2.Values{
 				ControllerImage:             "ControllerImage",
-				WebImage:                    "WebImage",
 				ControllerUID:               2103,
 				EnableH2Upgrade:             true,
 				WebhookFailurePolicy:        "WebhookFailurePolicy",
@@ -2702,75 +2701,65 @@ data:
 				InstallNamespace:            true,
 				NodeSelector:                defaultValues.NodeSelector,
 				Tolerations:                 defaultValues.Tolerations,
-				Global: &linkerd2.Global{
-					Namespace:                "Namespace",
-					ClusterDomain:            "cluster.local",
-					ClusterNetworks:          "ClusterNetworks",
-					ImagePullPolicy:          "ImagePullPolicy",
-					CliVersion:               "CliVersion",
-					ControllerComponentLabel: "ControllerComponentLabel",
-					ControllerLogLevel:       "ControllerLogLevel",
-					ControllerImageVersion:   "ControllerImageVersion",
-					ControllerNamespaceLabel: "ControllerNamespaceLabel",
-					WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
-					CreatedByAnnotation:      "CreatedByAnnotation",
-					ProxyInjectAnnotation:    "ProxyInjectAnnotation",
-					ProxyInjectDisabled:      "ProxyInjectDisabled",
-					LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
-					ProxyContainerName:       "ProxyContainerName",
-					CNIEnabled:               false,
-					IdentityTrustDomain:      defaultValues.GetGlobal().IdentityTrustDomain,
-					Proxy: &linkerd2.Proxy{
-						Image: &linkerd2.Image{
-							Name:       "ProxyImageName",
-							PullPolicy: "ImagePullPolicy",
-							Version:    "ProxyVersion",
-						},
-						LogLevel:  "warn,linkerd=info",
-						LogFormat: "plain",
-						Ports: &linkerd2.Ports{
-							Admin:    4191,
-							Control:  4190,
-							Inbound:  4143,
-							Outbound: 4140,
-						},
-						UID:   2102,
-						Trace: &linkerd2.Trace{},
+				Namespace:                   "Namespace",
+				ClusterDomain:               "cluster.local",
+				ClusterNetworks:             "ClusterNetworks",
+				ImagePullPolicy:             "ImagePullPolicy",
+				CliVersion:                  "CliVersion",
+				ControllerComponentLabel:    "ControllerComponentLabel",
+				ControllerLogLevel:          "ControllerLogLevel",
+				ControllerImageVersion:      "ControllerImageVersion",
+				ControllerNamespaceLabel:    "ControllerNamespaceLabel",
+				WorkloadNamespaceLabel:      "WorkloadNamespaceLabel",
+				CreatedByAnnotation:         "CreatedByAnnotation",
+				ProxyInjectAnnotation:       "ProxyInjectAnnotation",
+				ProxyInjectDisabled:         "ProxyInjectDisabled",
+				LinkerdNamespaceLabel:       "LinkerdNamespaceLabel",
+				ProxyContainerName:          "ProxyContainerName",
+				CNIEnabled:                  false,
+				IdentityTrustDomain:         defaultValues.IdentityTrustDomain,
+				Proxy: &linkerd2.Proxy{
+					Image: &linkerd2.Image{
+						Name:       "ProxyImageName",
+						PullPolicy: "ImagePullPolicy",
+						Version:    "ProxyVersion",
 					},
-					ProxyInit: &linkerd2.ProxyInit{
-						Image: &linkerd2.Image{
-							Name:       "ProxyInitImageName",
-							PullPolicy: "ImagePullPolicy",
-							Version:    "ProxyInitVersion",
+					LogLevel:  "warn,linkerd=info",
+					LogFormat: "plain",
+					Ports: &linkerd2.Ports{
+						Admin:    4191,
+						Control:  4190,
+						Inbound:  4143,
+						Outbound: 4140,
+					},
+					UID:   2102,
+					Trace: &linkerd2.Trace{},
+				},
+				ProxyInit: &linkerd2.ProxyInit{
+					Image: &linkerd2.Image{
+						Name:       "ProxyInitImageName",
+						PullPolicy: "ImagePullPolicy",
+						Version:    "ProxyInitVersion",
+					},
+					Resources: &linkerd2.Resources{
+						CPU: linkerd2.Constraints{
+							Limit:   "100m",
+							Request: "10m",
 						},
-						Resources: &linkerd2.Resources{
-							CPU: linkerd2.Constraints{
-								Limit:   "100m",
-								Request: "10m",
-							},
-							Memory: linkerd2.Constraints{
-								Limit:   "50Mi",
-								Request: "10Mi",
-							},
+						Memory: linkerd2.Constraints{
+							Limit:   "50Mi",
+							Request: "10Mi",
 						},
-						XTMountPath: &linkerd2.VolumeMountPath{
-							MountPath: "/run",
-							Name:      "linkerd-proxy-init-xtables-lock",
-						},
+					},
+					XTMountPath: &linkerd2.VolumeMountPath{
+						MountPath: "/run",
+						Name:      "linkerd-proxy-init-xtables-lock",
 					},
 				},
 				ControllerReplicas: 1,
 				Dashboard: &linkerd2.Dashboard{
 					Replicas: 1,
 				},
-				Prometheus: linkerd2.Prometheus{
-					"enabled": true,
-					"image":   "PrometheusImage",
-				},
-				Tracing: map[string]interface{}{
-					"enabled": false,
-				},
-				Grafana: defaultValues.Grafana,
 			},
 			nil,
 		},
@@ -2790,26 +2779,24 @@ data:
     {"flags":[{"name":"ha","value":"true"}]}`,
 			},
 			&linkerd2.Values{
-				Global: &linkerd2.Global{
-					Namespace:        "ns",
-					CNIEnabled:       true,
-					HighAvailability: true,
-					Proxy: &linkerd2.Proxy{
-						EnableExternalProfiles: true,
-						Image: &linkerd2.Image{
-							Name:       "registry",
-							PullPolicy: "Always",
-						},
-						LogLevel: "",
-						Ports:    &linkerd2.Ports{},
-						Resources: &linkerd2.Resources{
-							CPU:    linkerd2.Constraints{},
-							Memory: linkerd2.Constraints{},
-						},
+				Namespace:        "ns",
+				CNIEnabled:       true,
+				HighAvailability: true,
+				Proxy: &linkerd2.Proxy{
+					EnableExternalProfiles: true,
+					Image: &linkerd2.Image{
+						Name:       "registry",
+						PullPolicy: "Always",
 					},
-					ProxyInit: &linkerd2.ProxyInit{
-						Image: &linkerd2.Image{},
+					LogLevel: "",
+					Ports:    &linkerd2.Ports{},
+					Resources: &linkerd2.Resources{
+						CPU:    linkerd2.Constraints{},
+						Memory: linkerd2.Constraints{},
 					},
+				},
+				ProxyInit: &linkerd2.ProxyInit{
+					Image: &linkerd2.Image{},
 				},
 				Identity: &linkerd2.Identity{
 					Issuer: &linkerd2.Issuer{},
@@ -3533,68 +3520,6 @@ func TestMinReplicaCheck(t *testing.T) {
 			if err != nil {
 				if err.Error() != tc.expected.Error() {
 					t.Logf("Expected error: %s\n", tc.expected)
-					t.Logf("Received error: %s\n", err)
-					t.Fatal("test case failed")
-				}
-			}
-		})
-	}
-}
-
-func TestGetString(t *testing.T) {
-	testCases := []struct {
-		i             interface{}
-		k             string
-		expected      string
-		expectedError error
-	}{
-		{
-			i: map[string]interface{}{
-				"key": "value",
-			},
-			k:             "key",
-			expected:      "value",
-			expectedError: nil,
-		},
-		{
-			i: map[string]interface{}{
-				"key": map[string]interface{}{
-					"key1": "value1",
-				},
-			},
-			k:             "key",
-			expected:      "",
-			expectedError: errors.New("config value 'map[key1:value1]' for key 'key' is not a string"),
-		},
-		{
-			i: map[string]interface{}{
-				"key": "value",
-			},
-			k:             "key1",
-			expected:      "",
-			expectedError: errorKeyNotFound,
-		},
-	}
-
-	for i, tc := range testCases {
-		tc := tc //pin
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			ans, err := GetString(tc.i, tc.k)
-
-			if ans != tc.expected {
-				t.Logf("Expected value: %s\n", tc.expected)
-				t.Logf("Received value: %s\n", ans)
-				t.Fatal("test case failed")
-			}
-
-			if err == nil && tc.expectedError != nil {
-				t.Log("Expected error: nil")
-				t.Logf("Received error: %s\n", err)
-				t.Fatal("test case failed")
-			}
-			if err != nil {
-				if err.Error() != tc.expectedError.Error() {
-					t.Logf("Expected error: %s\n", tc.expectedError)
 					t.Logf("Received error: %s\n", err)
 					t.Fatal("test case failed")
 				}

@@ -248,15 +248,6 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 
 	linkerd2Chart.AddDependency(chartPartials)
 
-	addons, err := l5dcharts.ParseAddOnValues(values)
-	if err != nil {
-		t.Fatal("Unexpected error", err)
-	}
-
-	for _, addon := range addons {
-		linkerd2Chart.AddDependency(buildAddOnChart(t, addon, chartPartials))
-	}
-
 	for _, filepath := range append(templatesConfigStage, templatesControlPlaneStage...) {
 		linkerd2Chart.Templates = append(linkerd2Chart.Templates, &chart.File{
 			Name: filepath,
@@ -269,41 +260,6 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 	}
 
 	return linkerd2Chart
-}
-
-func buildAddOnChart(t *testing.T, addon l5dcharts.AddOn, chartPartials *chart.Chart) *chart.Chart {
-	rawValues := readValuesFile(t, filepath.Join("add-ons", addon.Name()))
-
-	var values chartutil.Values
-	err := yaml.Unmarshal(rawValues, &values)
-	if err != nil {
-		t.Fatal("Unexpected error", err)
-	}
-
-	addOnChart := chart.Chart{
-		Metadata: &chart.Metadata{
-			Name: addon.Name(),
-			Sources: []string{
-				filepath.Join("..", "..", "..", "charts", "add-ons", addon.Name()),
-			},
-		},
-		Values: values,
-	}
-
-	addOnChart.AddDependency(chartPartials)
-
-	for _, filepath := range append(addon.ConfigStageTemplates(), addon.ControlPlaneStageTemplates()...) {
-		addOnChart.Templates = append(addOnChart.Templates, &chart.File{
-			Name: filepath.Name,
-		})
-	}
-
-	for _, template := range addOnChart.Templates {
-		filepath := filepath.Join(addOnChart.Metadata.Sources[0], template.Name)
-		template.Data = []byte(readTestdata(t, filepath))
-	}
-
-	return &addOnChart
 }
 
 func chartPartials(t *testing.T, paths []string) *chart.Chart {
@@ -336,8 +292,8 @@ func readTestValues(ha bool, ignoreOutboundPorts string, ignoreInboundPorts stri
 	if err != nil {
 		return nil, err
 	}
-	values.GetGlobal().ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
-	values.GetGlobal().ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
+	values.ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
+	values.ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
 
 	return values, nil
 }
@@ -350,7 +306,12 @@ func readValuesFile(t *testing.T, path string) []byte {
 	}
 
 	if err := charts.FilesReader(static.Templates, path+"/", valuesFiles); err != nil {
-		t.Fatal("Unexpected error", err)
+		t.Fatal("Unexpected error", er
+		
+		
+		
+		.
+		r)
 	}
 
 	return valuesFiles[0].Data

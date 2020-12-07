@@ -1,0 +1,477 @@
+# Default values for linkerd.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Values that are passed along to sub-charts
+global:
+  # -- Kubernetes DNS Domain name to use  
+  clusterDomain: &cluster_domain cluster.local
+
+  # -- The cluster networks for which service discovery is performed. This should
+  # include the pod network but need not include the node network.
+  #
+  # By default, all private networks are specified so that resolution works in
+  # typical Kubernetes environments.
+  clusterNetworks: "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"
+  # -- Docker image pull policy 
+  imagePullPolicy: &image_pull_policy IfNotPresent
+  # -- Log level for the control plane components
+  controllerLogLevel: &controller_log_level info
+
+  # -- control plane trace configuration
+  controlPlaneTracing: false
+
+  # -- control plane version. See Proxy section for proxy version
+  linkerdVersion: &linkerd_version linkerdVersionValue
+
+  # -- Control plane namespace
+  namespace: linkerd
+
+  # -- enables the use of EndpointSlice informers for the destination service;
+  # enableEndpointSlices should be set to true only if EndpointSlice K8s feature
+  # gate is on; the feature is still experimental.
+  enableEndpointSlices: false
+
+  # -- enabling this omits the NET_ADMIN capability in the PSP
+  # and the proxy-init container when injecting the proxy;
+  # requires the linkerd-cni plugin to already be installed
+  cniEnabled: false
+
+  # -- Trust root certificate (ECDSA). It must be provided during install. 
+  identityTrustAnchorsPEM: |
+
+  # -- Trust domain used for identity 
+  identityTrustDomain: *cluster_domain
+
+  # -- url of existing prometheus
+  prometheusUrl: ""
+  # -- url of external grafana instance with reverse proxy configured.
+  grafanaUrl: ""
+
+  # -- Additional annotations to add to all pods
+  podAnnotations: {}
+
+  # -- Additional labels to add to all pods
+  podLabels: {}
+
+  # proxy configuration
+  proxy:
+    # -- Enable service profiles for non-Kubernetes services
+    enableExternalProfiles: false
+    # -- Maximum time allowed for the proxy to establish an outbound TCP
+    # connection
+    outboundConnectTimeout: 1000ms
+    # -- Maximum time allowed for the proxy to establish an inbound TCP
+    # connection
+    inboundConnectTimeout: 100ms
+    image:
+      # -- Docker image for the proxy
+      name: ghcr.io/linkerd/proxy
+      # -- Pull policy for the proxy container Docker image
+      pullPolicy: *image_pull_policy
+      # -- Tag for the proxy container Docker image
+      version: *linkerd_version
+    # -- Log level for the proxy
+    logLevel: warn,linkerd=info
+    # -- Log format (`plain` or `json`) for the proxy
+    logFormat: plain
+    ports:
+      # -- Admin port for the proxy container
+      admin: 4191
+      # -- Control port for the proxy container
+      control: 4190
+      # -- Inbound port for the proxy container
+      inbound: 4143
+      # -- Outbound port for the proxy container  
+      outbound: 4140
+    # -- The `cpu.limit` and `cores` should be kept in sync. The value of `cores`
+    # must be an integer and should typically be set by rounding up from the
+    # limit. E.g. if cpu.limit is '1500m', cores should be 2.
+    cores: 0
+    resources:
+      cpu:
+        # -- Maximum amount of CPU units that the proxy can use 
+        limit: ""
+        # -- Amount of CPU units that the proxy requests
+        request: ""
+      memory:
+        # -- Maximum amount of memory that the proxy can use 
+        limit: ""
+        # -- Maximum amount of memory that the proxy requests
+        request: ""
+    trace:
+      # -- Collector Service address for the proxies to send Trace Data 
+      collectorSvcAddr: ""
+      # -- Service account associated with the Trace collector instance 
+      collectorSvcAccount: default
+    # -- User id under which the proxy runs
+    uid: 2102
+   
+    # -- If set the proxy sidecar will stay alive for at
+    # least the given period before receiving SIGTERM signal from Kubernetes but
+    # no longer than pod's `terminationGracePeriodSeconds`. See [Lifecycle
+    # hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks)
+    # for more info on container lifecycle hooks.
+    waitBeforeExitSeconds: 0
+    requireIdentityOnInboundPorts: ""
+
+  # proxy-init configuration
+  proxyInit:
+    # -- Default set of ports to skip via itpables:
+    # - SMTP (25,587) server-first
+    # - HTTPS (443) opaque TLS
+    # - MYSQL (3306) server-first
+    # - Memcached (11211) clients do not issue any preamble, which breaks detection
+    ignoreInboundPorts: "25,443,587,3306,11211"
+    # -- Default set of ports to skip via itpables, same defaults as InboudPorts
+    ignoreOutboundPorts: "25,443,587,3306,11211"
+    image:
+      # -- Docker image for the proxy-init container
+      name: ghcr.io/linkerd/proxy-init
+      # -- Pull policy for the proxy-init container Docker image
+      pullPolicy: *image_pull_policy
+      # -- Tag for the proxy-init container Docker image
+      version: v1.3.8
+    resources:
+      cpu:
+        # -- Maximum amount of CPU units that the proxy-init container can use
+        limit: 100m
+        # -- Amount of CPU units that the proxy-init container requests
+        request: 10m
+      memory:
+        # -- Maximum amount of memory that the proxy-init container can use
+        limit: 50Mi
+        # -- Amount of memory that the proxy-init container requests
+        request: 10Mi
+    closeWaitTimeoutSecs: 0
+    xtMountPath:
+      mountPath: /run
+      name: linkerd-proxy-init-xtables-lock
+
+  # -- Annotation label for the proxy create. Do not edit. 
+  createdByAnnotation: linkerd.io/created-by
+  # -- Annotation label to signal injection. Do not edit.
+  proxyInjectAnnotation: linkerd.io/inject
+  # -- Annotation value to disable injection. Do not edit. 
+  proxyInjectDisabled: disabled
+
+  # -- Control plane label. Do not edit
+  controllerComponentLabel: linkerd.io/control-plane-component
+  # -- Control plane label. Do not edit  
+  controllerNamespaceLabel: linkerd.io/control-plane-ns
+  # -- Control plane label. Do not edit 
+  linkerdNamespaceLabel: linkerd.io/is-control-plane
+  workloadNamespaceLabel: linkerd.io/workload-ns
+
+  # -- For Private docker registries, authentication is needed.
+  #  Registry secrets are applied to the respective service accounts
+  imagePullSecrets: []
+  # - name: my-private-docker-registry-login-secret
+
+# -- Host header validation regex for the dashboard. See the [Linkerd
+# documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more
+# information
+enforcedHostRegexp: ""
+
+# -- Allow proxies to perform transparent HTTP/2 upgrading  
+enableH2Upgrade: true
+
+# -- Omit the `sideEffects` flag in the webhook manifests
+omitWebhookSideEffects: false
+# -- Failure policy for the proxy injector 
+webhookFailurePolicy: Ignore
+
+
+# controllerImage -- Docker image for the controller, tap and identity
+# components
+controllerImage: ghcr.io/linkerd/controller
+# -- Number of replicas for each control plane pod
+controllerReplicas: 1
+# -- User ID for the control plane components
+controllerUID: 2103
+
+
+# destination configuration
+# set resources for the sp-validator and its linkerd proxy respectively
+# see global.proxy.resources for details.
+# destinationResources -- CPU and Memory resources required by destination (see `global.proxy.resources` for sub-fields)
+#destinationResources:
+#destinationProxyResources -- CPU and Memory resources required by proxy 
+# injected into destination pod (see `global.proxy.resources` for sub-fields)
+#destinationProxyResources:
+
+
+# web dashboard configuration
+dashboard:
+  # -- Number of replicas of dashboard
+  replicas: 1
+
+# debug configuration
+debugContainer:
+  image:
+    # -- Docker image for the debug container
+    name: ghcr.io/linkerd/debug
+    # -- Pull policy for the debug container Docker image
+    pullPolicy: *image_pull_policy
+    # -- Tag for the debug container Docker image
+    version: *linkerd_version
+
+identity:
+  issuer:
+    scheme: linkerd.io/tls
+
+    # -- Amount of time to allow for clock skew within a Linkerd cluster
+    clockSkewAllowance: 20s
+
+    # -- Expiration timestamp for the issuer certificate. It must be provided during install. Must match the expiry date in crtPEM
+    crtExpiry:
+
+    # -- Annotation used to identity the issuer certificate expiration timestamp. Do not edit.
+    crtExpiryAnnotation: linkerd.io/identity-issuer-expiry
+    # -- Amount of time for which the Identity issuer should certify identity
+    issuanceLifetime: 24h0m0s
+    
+    # -- Which scheme is used for the identity issuer secret format 
+    tls:
+      # -- Issuer certificate (ECDSA). It must be provided during install.
+      crtPEM: |
+
+      # -- Key for the issuer certificate (ECDSA). It must be provided during
+      # install
+      keyPEM: |
+
+
+# -|- CPU and Memory resources required by the identity controller (see `global.proxy.resources` for sub-fields)
+#identityResources:
+# -|- CPU and Memory resources required by proxy injected into identity pod (see `global.proxy.resources` for sub-fields)
+#identityProxyResources:
+
+# heartbeat configuration
+# disableHeartBeat -- Set to true to not start the heartbeat cronjob 
+disableHeartBeat: false
+# -- Config for the heartbeat cronjob
+heartbeatSchedule: "0 0 * * *"
+
+# proxy injector configuration
+proxyInjector:
+  # -- Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below)
+  externalSecret: false
+
+  # -- Namespace selector used by admission webhook. If not set defaults to all
+  # namespaces without the annotation
+  # config.linkerd.io/admission-webhooks=disabled
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+
+  # -- Certificate for the proxy injector. If not provided then Helm will generate one.
+  crtPEM: |
+
+  # -- Certificate key for the proxy injector. If not provided then Helm will generate one. 
+  keyPEM: |
+
+  # -- Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated.
+  caBundle: |
+
+# -|- CPU and Memory resources required by the proxy injector (see
+#`global.proxy.resources` for sub-fields)
+#proxyInjectorResources:
+#-|- CPU and Memory resources required by proxy injected into the proxy injector
+#pod (see `global.proxy.resources` for sub-fields)
+#proxyInjectorProxyResources:
+
+# service profile validator configuration
+profileValidator:
+  # -- Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below).
+  externalSecret: false
+
+  # -- Namespace selector used by admission webhook
+  namespaceSelector:
+    matchExpressions:
+    - key: config.linkerd.io/admission-webhooks
+      operator: NotIn
+      values:
+      - disabled
+
+  # -- Certificate for the service profile validator. If not provided then Helm
+  # will generate one.
+  crtPEM: |
+
+  # -- Certificate key for the service profile validator. If not provided then
+  # Helm will generate one.
+  keyPEM: |
+
+  # -- Bundle of CA certificates for service profile validator. If not provided
+  # then Helm will use the certificate generated  for `profileValidator.crtPEM`.
+  # If `profileValidator.externalSecret` is set to true, this value must be set,
+  # as no certificate will be generated. 
+  caBundle: |
+
+# -|- CPU and Memory resources required by the SP validator (see
+#`global.proxy.resources` for sub-fields)
+#spValidatorResources:
+# -|- CPU and Memory resources required by proxy injected into the SP validator
+#pod (see `global.proxy.resources` for sub-fields)
+#spValidatorProxyResources:
+
+# -|- CPU and Memory resources required by controllers publicAPI (see
+#`global.proxy.resources` for sub-fields)
+#publicAPIResources:
+#-|- CPU and Memory resources required by proxy injected into controllers public
+#API pod (see `global.proxy.resources` for sub-fields) values
+#`global.proxy.resources`
+#publicAPIProxyResources:
+
+# tap configuration
+tap:
+  # -- Do not create a secret resource for the Tap component. If this is set to
+  # `true`, the value `tap.caBundle` must be set (see below).
+  externalSecret: false
+  # -- Certificate for the Tap component. If not provided then Helm will
+  # generate one.
+  crtPEM: |
+
+  # -- Certificate key for Tap component. If not provided then Helm will
+  # generate one. 
+  keyPEM: |
+
+  # -- Bundle of CA certificates for Tap component. If not provided then Helm
+  # will use the certificate generated  for `tap.crtPEM`. If
+  # `tap.externalSecret` is set to true, this value must be set, as no
+  # certificate will be generated.
+  caBundle: |
+
+# -|- CPU and Memory resources required by tap (see `global.proxy.resources` for
+#sub-fields)
+#tapResources:
+# -|- CPU and Memory resources required by proxy injected into tap pod (see
+#`global.proxy.resources` for sub-fields)
+#tapProxyResources:
+
+# -- Docker image for the web container
+webImage: ghcr.io/linkerd/web
+# -<- CPU and Memory resources required by web UI (see `global.proxy.resources`
+#for sub-fields)
+#webResources:
+# -|- CPU and Memory resources required by proxy injected into web UI pod (see
+#`global.proxy.resources` for sub-fields)
+#webProxyResources:
+
+
+# If the namespace is controlled by an external tool or can't be installed with Helm
+# you can disable its installation. In this case:
+# - The namespace created by the external tool must match the namespace value above
+# - The external tool needs to create the namespace with the label:
+#     config.linkerd.io/admission-webhooks: disabled
+
+# installNamespace -- Set to false when installing Linkerd in a custom namespace. See the
+# [Linkerd documentation](https://linkerd.io/2/tasks/install-helmcustomizing-the-namespace) for more information.
+installNamespace: true
+
+# -- NodeSelector section, See the [K8S
+# documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)
+# for more information
+nodeSelector:
+  beta.kubernetes.io/os: linux
+
+# -|- Tolerations section, See the 
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+# for more information
+#tolerations:
+
+# Configuration for Add-ons
+# Full configuration fields https://github.com/linkerd/linkerd2/tree/master/charts/linkerd2#add-ons-configuration
+
+grafana:
+  enabled: true
+  # image:
+  #   name: ghcr.io/linkerd/grafana
+  #   tag: latest
+  # set resource requests and limits for grafana and its linkerd proxy respectively
+  # see global.proxy.resources in the linkerd2 chart for details.
+  # resources:
+  # proxy:
+  #   resources:
+
+prometheus:
+  enabled: true
+  # image: prom/prometheus:v2.15.3
+  # args:
+  #  storage.tsdb.retention.time: 6h
+  #  log.level: debug
+  # globalConfig:
+  #   scrape_interval: 10s
+  #   scrape_timeout: 10s
+  # scrapeConfigs:
+  # - job_name: 'kubernetes-nodes'
+  #   scheme: https
+  #   tls_config:
+  #     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  #   bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+  #   kubernetes_sd_configs:
+  #   - role: node
+  #   relabel_configs:
+  #   - action: labelmap
+  #     regex: __meta_kubernetes_node_label_(.+)
+  # alertManagers:
+  # - scheme: http
+  #   static_configs:
+  #   - targets:
+  #     - "alertmanager.linkerd.svc:9093"
+  # alertRelabelConfigs:
+  # - action: labeldrop
+  #   regex: prometheus_replica
+  # ruleConfigMapMounts:
+  # - name: alerting-rules
+  #   subPath: alerting_rules.yml
+  #   configMap: linkerd-prometheus-rules
+  # - name: recording-rules
+  #   subPath: recording_rules.yml
+  #   configMap: linkerd-prometheus-rules
+  ###
+  ### Sidecar containers allow access to the prometheus data directory,
+  ### e.g. for exporting data to non-prometheus systems.
+  # sidecarContainers:
+  # - name: sidecar
+  #   image: gcr.io/myproject/stackdriver-prometheus-sidecar
+  #   imagePullPolicy: Always
+  #   command:
+  #   - /bin/sh
+  #   - -c
+  #   - |
+  #     exec /bin/stackdriver-prometheus-sidecar \
+  #       --stackdriver.project-id=myproject \
+  #       --stackdriver.kubernetes.location=us-central1 \
+  #       --stackdriver.kubernetes.cluster-name=mycluster \
+  #       --prometheus.wal-directory=/data/wal \
+  #       --log.level=info
+  #   volumeMounts:
+  #   - mountPath: /data
+  #     name: data
+  #   ports:
+  #   - name: foo
+  #     containerPort: 9091
+  #     protocol: TCP
+  ### WARNING: persistence is experimental and has not been tested/vetted by the Linkerd team.
+  ### As such, please refer to https://linkerd.io/2/tasks/exporting-metrics/ for the recommended approach to metrics data retention.
+  # if enabled, creates a persistent volume claim for prometheus data
+  # https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
+  # persistence:
+  #   storageClass: ""
+  #   accessMode: ReadWriteOnce
+  #   size: 8Gi
+  # resources:
+  # proxy:
+  #   resources:
+
+tracing:
+  enabled: false
+  # collector:
+  #  image: omnition/opencensus-collector:0.1.11
+  #  resources:
+  # jaeger:
+  #  image: jaegertracing/all-in-one:1.19.2
+  #  resources:

@@ -386,7 +386,6 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 		Options: options,
 	}
 
-	hc.categories = append(hc.allCategories(), hc.addOnCategories()...)
 	hc.categories = append(hc.categories, hc.multiClusterCategory()...)
 
 	checkMap := map[CategoryID]struct{}{}
@@ -619,7 +618,7 @@ func (hc *HealthChecker) allCategories() []category {
 						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap(ctx)
 
 						if hc.linkerdConfig != nil {
-							hc.CNIEnabled = hc.linkerdConfig.GetGlobal().CNIEnabled
+							hc.CNIEnabled = hc.linkerdConfig.CNIEnabled
 						}
 						return
 					},
@@ -1289,16 +1288,6 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 
-						// Check if prometheus configured
-						prometheusValues := make(map[string]interface{})
-						err = yaml.Unmarshal(hc.linkerdConfig.Prometheus.Values(), &prometheusValues)
-						if err != nil {
-							return err
-						}
-						if !GetBool(prometheusValues, "enabled") && hc.linkerdConfig.GetGlobal().PrometheusURL == "" {
-							return &SkipError{Reason: "no prometheus instance to connect"}
-						}
-
 						return validateDataPlanePodReporting(pods)
 					},
 				},
@@ -1653,11 +1642,11 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 	var data *issuercerts.IssuerCertData
 
 	if values.Identity.Issuer.Scheme == "" || values.Identity.Issuer.Scheme == k8s.IdentityIssuerSchemeLinkerd {
-		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.GetGlobal().IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
+		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
 		// ensure trust anchors in config matches what's in the secret
-		if data != nil && strings.TrimSpace(values.GetGlobal().IdentityTrustAnchorsPEM) != strings.TrimSpace(data.TrustAnchors) {
+		if data != nil && strings.TrimSpace(values.IdentityTrustAnchorsPEM) != strings.TrimSpace(data.TrustAnchors) {
 			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
 			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
 		}
@@ -1926,7 +1915,7 @@ func (hc *HealthChecker) checkClusterRoleBindings(ctx context.Context, shouldExi
 }
 
 func (hc *HealthChecker) isHA() bool {
-	return hc.linkerdConfig.GetGlobal().HighAvailability
+	return hc.linkerdConfig.HighAvailability
 }
 
 func (hc *HealthChecker) isHeartbeatDisabled() bool {
@@ -2088,7 +2077,7 @@ func (hc *HealthChecker) checkDataPlaneProxiesCertificate(ctx context.Context) e
 		return err
 	}
 
-	trustAnchorsPem := values.GetGlobal().IdentityTrustAnchorsPEM
+	trustAnchorsPem := values.IdentityTrustAnchorsPEM
 	offendingPods := []string{}
 	for _, pod := range meshedPods {
 		if strings.TrimSpace(pod.Anchors) != strings.TrimSpace(trustAnchorsPem) {

@@ -154,9 +154,9 @@ func buildMulticlusterInstallValues(ctx context.Context, opts *multiclusterInsta
 	defaults.GatewayProbePort = opts.gatewayProbePort
 	defaults.GatewayNginxImage = opts.gatewayNginxImage
 	defaults.GatewayNginxImageVersion = opts.gatewayNginxVersion
-	defaults.IdentityTrustDomain = values.GetGlobal().IdentityTrustDomain
+	defaults.IdentityTrustDomain = values.IdentityTrustDomain
 	defaults.LinkerdNamespace = controlPlaneNamespace
-	defaults.ProxyOutboundPort = uint32(values.GetGlobal().Proxy.Ports.Outbound)
+	defaults.ProxyOutboundPort = uint32(values.Proxy.Ports.Outbound)
 	defaults.LinkerdVersion = version.Version
 	defaults.RemoteMirrorServiceAccount = opts.remoteMirrorCredentials
 

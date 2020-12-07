@@ -31,7 +31,6 @@ func TestRender(t *testing.T) {
 	// by `render()`.
 	metaValues := &charts.Values{
 		ControllerImage:             "ControllerImage",
-		WebImage:                    "WebImage",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
@@ -41,75 +40,73 @@ func TestRender(t *testing.T) {
 		Identity:                    defaultValues.Identity,
 		NodeSelector:                defaultValues.NodeSelector,
 		Tolerations:                 defaultValues.Tolerations,
-		Global: &charts.Global{
-			Namespace:                "Namespace",
-			ClusterDomain:            "cluster.local",
-			ClusterNetworks:          "ClusterNetworks",
-			ImagePullPolicy:          "ImagePullPolicy",
-			CliVersion:               "CliVersion",
-			ControllerComponentLabel: "ControllerComponentLabel",
-			ControllerLogLevel:       "ControllerLogLevel",
-			ControllerImageVersion:   "ControllerImageVersion",
-			ControllerNamespaceLabel: "ControllerNamespaceLabel",
-			WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
-			CreatedByAnnotation:      "CreatedByAnnotation",
-			ProxyInjectAnnotation:    "ProxyInjectAnnotation",
-			ProxyInjectDisabled:      "ProxyInjectDisabled",
-			LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
-			ProxyContainerName:       "ProxyContainerName",
-			CNIEnabled:               false,
-			IdentityTrustDomain:      defaultValues.GetGlobal().IdentityTrustDomain,
-			IdentityTrustAnchorsPEM:  defaultValues.GetGlobal().IdentityTrustAnchorsPEM,
-			PodAnnotations:           map[string]string{},
-			PodLabels:                map[string]string{},
-			Proxy: &charts.Proxy{
-				Image: &charts.Image{
-					Name:       "ProxyImageName",
-					PullPolicy: "ImagePullPolicy",
-					Version:    "ProxyVersion",
-				},
-				LogLevel:  "warn,linkerd=info",
-				LogFormat: "plain",
-				Resources: &charts.Resources{
-					CPU: charts.Constraints{
-						Limit:   "cpu-limit",
-						Request: "cpu-request",
-					},
-					Memory: charts.Constraints{
-						Limit:   "memory-limit",
-						Request: "memory-request",
-					},
-				},
-				Ports: &charts.Ports{
-					Admin:    4191,
-					Control:  4190,
-					Inbound:  4143,
-					Outbound: 4140,
-				},
-				UID:   2102,
-				Trace: &charts.Trace{},
+		Namespace:                   "Namespace",
+		ClusterDomain:               "cluster.local",
+		ClusterNetworks:             "ClusterNetworks",
+		ImagePullPolicy:             "ImagePullPolicy",
+		CliVersion:                  "CliVersion",
+		ControllerComponentLabel:    "ControllerComponentLabel",
+		ControllerLogLevel:          "ControllerLogLevel",
+		ControllerImageVersion:      "ControllerImageVersion",
+		ControllerNamespaceLabel:    "ControllerNamespaceLabel",
+		WorkloadNamespaceLabel:      "WorkloadNamespaceLabel",
+		CreatedByAnnotation:         "CreatedByAnnotation",
+		ProxyInjectAnnotation:       "ProxyInjectAnnotation",
+		ProxyInjectDisabled:         "ProxyInjectDisabled",
+		LinkerdNamespaceLabel:       "LinkerdNamespaceLabel",
+		ProxyContainerName:          "ProxyContainerName",
+		CNIEnabled:                  false,
+		IdentityTrustDomain:         defaultValues.IdentityTrustDomain,
+		IdentityTrustAnchorsPEM:     defaultValues.IdentityTrustAnchorsPEM,
+		PodAnnotations:              map[string]string{},
+		PodLabels:                   map[string]string{},
+		Proxy: &charts.Proxy{
+			Image: &charts.Image{
+				Name:       "ProxyImageName",
+				PullPolicy: "ImagePullPolicy",
+				Version:    "ProxyVersion",
 			},
-			ProxyInit: &charts.ProxyInit{
-				Image: &charts.Image{
-					Name:       "ProxyInitImageName",
-					PullPolicy: "ImagePullPolicy",
-					Version:    "ProxyInitVersion",
+			LogLevel:  "warn,linkerd=info",
+			LogFormat: "plain",
+			Resources: &charts.Resources{
+				CPU: charts.Constraints{
+					Limit:   "cpu-limit",
+					Request: "cpu-request",
 				},
-				IgnoreOutboundPorts: "443",
-				Resources: &charts.Resources{
-					CPU: charts.Constraints{
-						Limit:   "100m",
-						Request: "10m",
-					},
-					Memory: charts.Constraints{
-						Limit:   "50Mi",
-						Request: "10Mi",
-					},
+				Memory: charts.Constraints{
+					Limit:   "memory-limit",
+					Request: "memory-request",
 				},
-				XTMountPath: &charts.VolumeMountPath{
-					MountPath: "/run",
-					Name:      "linkerd-proxy-init-xtables-lock",
+			},
+			Ports: &charts.Ports{
+				Admin:    4191,
+				Control:  4190,
+				Inbound:  4143,
+				Outbound: 4140,
+			},
+			UID:   2102,
+			Trace: &charts.Trace{},
+		},
+		ProxyInit: &charts.ProxyInit{
+			Image: &charts.Image{
+				Name:       "ProxyInitImageName",
+				PullPolicy: "ImagePullPolicy",
+				Version:    "ProxyInitVersion",
+			},
+			IgnoreOutboundPorts: "443",
+			Resources: &charts.Resources{
+				CPU: charts.Constraints{
+					Limit:   "100m",
+					Request: "10m",
 				},
+				Memory: charts.Constraints{
+					Limit:   "50Mi",
+					Request: "10Mi",
+				},
+			},
+			XTMountPath: &charts.VolumeMountPath{
+				MountPath: "/run",
+				Name:      "linkerd-proxy-init-xtables-lock",
 			},
 		},
 		Configs: charts.ConfigJSONs{
@@ -127,18 +124,9 @@ func TestRender(t *testing.T) {
 		ControllerReplicas: 1,
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
-		Tap:                defaultValues.Tap,
 		Dashboard: &charts.Dashboard{
 			Replicas: 1,
 		},
-		Prometheus: charts.Prometheus{
-			"enabled": true,
-			"image":   "PrometheusImage",
-		},
-		Tracing: map[string]interface{}{
-			"enabled": false,
-		},
-		Grafana: defaultValues.Grafana,
 	}
 
 	haValues, err := testInstallOptionsHA(true)
@@ -152,10 +140,10 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	haWithOverridesValues.GetGlobal().HighAvailability = true
+	haWithOverridesValues.HighAvailability = true
 	haWithOverridesValues.ControllerReplicas = 2
-	haWithOverridesValues.GetGlobal().Proxy.Resources.CPU.Request = "400m"
-	haWithOverridesValues.GetGlobal().Proxy.Resources.Memory.Request = "300Mi"
+	haWithOverridesValues.Proxy.Resources.CPU.Request = "400m"
+	haWithOverridesValues.Proxy.Resources.Memory.Request = "300Mi"
 	addFakeTLSSecrets(haWithOverridesValues)
 
 	cniEnabledValues, err := testInstallOptions()
@@ -163,15 +151,15 @@ func TestRender(t *testing.T) {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	cniEnabledValues.GetGlobal().CNIEnabled = true
+	cniEnabledValues.CNIEnabled = true
 	addFakeTLSSecrets(cniEnabledValues)
 
 	withProxyIgnoresValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withProxyIgnoresValues.GetGlobal().ProxyInit.IgnoreInboundPorts = "22,8100-8102"
-	withProxyIgnoresValues.GetGlobal().ProxyInit.IgnoreOutboundPorts = "5432"
+	withProxyIgnoresValues.ProxyInit.IgnoreInboundPorts = "22,8100-8102"
+	withProxyIgnoresValues.ProxyInit.IgnoreOutboundPorts = "5432"
 	addFakeTLSSecrets(withProxyIgnoresValues)
 
 	withHeartBeatDisabledValues, err := testInstallOptions()
@@ -192,7 +180,7 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withControlPlaneTracingValues.GetGlobal().ControlPlaneTracing = true
+	withControlPlaneTracingValues.ControlPlaneTracing = true
 	addFakeTLSSecrets(withControlPlaneTracingValues)
 
 	customRegistryOverride := "my.custom.registry/linkerd-io"
@@ -211,18 +199,11 @@ func TestRender(t *testing.T) {
 	}
 	addFakeTLSSecrets(withCustomRegistryValues)
 
-	withAddOnValues, err := testInstallOptions()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v\n", err)
-	}
-	withAddOnValues.Tracing["enabled"] = true
-	addFakeTLSSecrets(withAddOnValues)
-
 	withCustomDestinationGetNetsValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withCustomDestinationGetNetsValues.GetGlobal().ClusterNetworks = "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
+	withCustomDestinationGetNetsValues.ClusterNetworks = "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
 	addFakeTLSSecrets(withCustomDestinationGetNetsValues)
 
 	testCases := []struct {
@@ -239,7 +220,6 @@ func TestRender(t *testing.T) {
 		{withRestrictedDashboardPrivilegesValues, "install_restricted_dashboard.golden"},
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
 		{withCustomRegistryValues, "install_custom_registry.golden"},
-		{withAddOnValues, "install_addon.golden"},
 		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden"},
 	}
 
@@ -261,7 +241,7 @@ func TestValidateAndBuild_Errors(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
-		values.GetGlobal().ProxyInit.IgnoreInboundPorts = "-25"
+		values.ProxyInit.IgnoreInboundPorts = "-25"
 		err = validateValues(context.Background(), nil, values)
 		if err == nil {
 			t.Fatal("expected error but got nothing")
@@ -273,7 +253,7 @@ func TestValidateAndBuild_Errors(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
-		values.GetGlobal().ProxyInit.IgnoreOutboundPorts = "-25"
+		values.ProxyInit.IgnoreOutboundPorts = "-25"
 		err = validateValues(context.Background(), nil, values)
 		if err == nil {
 			t.Fatal("expected error but got nothing")
@@ -313,7 +293,7 @@ func testInstallOptionsHA(ha bool) (*charts.Values, error) {
 	if err != nil {
 		return nil, err
 	}
-	values.GetGlobal().IdentityTrustAnchorsPEM = string(data)
+	values.IdentityTrustAnchorsPEM = string(data)
 
 	return values, nil
 }
@@ -324,9 +304,9 @@ func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
 		return nil, err
 	}
 
-	values.GetGlobal().Proxy.Image.Version = installProxyVersion
+	values.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
-	values.GetGlobal().ControllerImageVersion = installControlPlaneVersion
+	values.ControllerImageVersion = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	return values, nil
@@ -338,10 +318,10 @@ func testInstallValues() (*charts.Values, error) {
 		return nil, err
 	}
 
-	values.GetGlobal().Proxy.Image.Version = installProxyVersion
+	values.Proxy.Image.Version = installProxyVersion
 	values.DebugContainer.Image.Version = installDebugVersion
-	values.GetGlobal().LinkerdVersion = installControlPlaneVersion
-	values.GetGlobal().ControllerImageVersion = installControlPlaneVersion
+	values.LinkerdVersion = installControlPlaneVersion
+	values.ControllerImageVersion = installControlPlaneVersion
 	values.HeartbeatSchedule = fakeHeartbeatSchedule()
 
 	identityCert, err := ioutil.ReadFile(filepath.Join("testdata", "valid-crt.pem"))
@@ -359,7 +339,7 @@ func testInstallValues() (*charts.Values, error) {
 
 	values.Identity.Issuer.TLS.CrtPEM = string(identityCert)
 	values.Identity.Issuer.TLS.KeyPEM = string(identityKey)
-	values.GetGlobal().IdentityTrustAnchorsPEM = string(trustAnchorsPEM)
+	values.IdentityTrustAnchorsPEM = string(trustAnchorsPEM)
 	return values, nil
 }
 
@@ -381,7 +361,7 @@ func TestValidate(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
-		values.GetGlobal().ClusterNetworks = "wrong"
+		values.ClusterNetworks = "wrong"
 		expected := "cannot parse destination get networks: invalid CIDR address: wrong"
 
 		err = validateValues(context.Background(), nil, values)
@@ -399,7 +379,7 @@ func TestValidate(t *testing.T) {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
-		values.GetGlobal().ControllerLogLevel = "super"
+		values.ControllerLogLevel = "super"
 		expected := "--controller-log-level must be one of: panic, fatal, error, warn, info, debug"
 
 		err = validateValues(context.Background(), nil, values)
@@ -435,7 +415,7 @@ func TestValidate(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
-			values.GetGlobal().Proxy.LogLevel = tc.input
+			values.Proxy.LogLevel = tc.input
 			err := validateValues(context.Background(), nil, values)
 			if tc.valid && err != nil {
 				t.Fatalf("Error not expected: %s", err)
@@ -487,7 +467,7 @@ func TestValidate(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			values.GetGlobal().IdentityTrustAnchorsPEM = string(ca)
+			values.IdentityTrustAnchorsPEM = string(ca)
 
 			err = validateValues(context.Background(), nil, values)
 
@@ -563,7 +543,4 @@ func addFakeTLSSecrets(values *charts.Values) {
 	values.ProfileValidator.CrtPEM = "profile validator crt"
 	values.ProfileValidator.KeyPEM = "profile validator key"
 	values.ProfileValidator.CaBundle = "profile validator CA bundle"
-	values.Tap.CrtPEM = "tap crt"
-	values.Tap.KeyPEM = "tap key"
-	values.Tap.CaBundle = "tap CA bundle"
 }

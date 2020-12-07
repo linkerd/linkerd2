@@ -29,7 +29,6 @@ func TestNewValues(t *testing.T) {
 
 	expected := &Values{
 		ControllerImage:             "ghcr.io/linkerd/controller",
-		WebImage:                    "ghcr.io/linkerd/web",
 		ControllerReplicas:          1,
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
@@ -40,88 +39,83 @@ func TestNewValues(t *testing.T) {
 		DisableHeartBeat:            false,
 		HeartbeatSchedule:           "0 0 * * *",
 		InstallNamespace:            true,
-		Prometheus: Prometheus{
-			"enabled": true,
-		},
-		Global: &Global{
-			Namespace:                "linkerd",
-			ClusterDomain:            "cluster.local",
-			ClusterNetworks:          "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
-			ImagePullPolicy:          "IfNotPresent",
-			CliVersion:               "linkerd/cli dev-undefined",
-			ControllerComponentLabel: "linkerd.io/control-plane-component",
-			ControllerLogLevel:       "info",
-			ControllerImageVersion:   testVersion,
-			LinkerdVersion:           version.Version,
-			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
-			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
-			CreatedByAnnotation:      "linkerd.io/created-by",
-			ProxyInjectAnnotation:    "linkerd.io/inject",
-			ProxyInjectDisabled:      "disabled",
-			LinkerdNamespaceLabel:    "linkerd.io/is-control-plane",
-			ProxyContainerName:       "linkerd-proxy",
-			CNIEnabled:               false,
-			ControlPlaneTracing:      false,
-			HighAvailability:         false,
-			IdentityTrustDomain:      "cluster.local",
-			PodAnnotations:           map[string]string{},
-			PodLabels:                map[string]string{},
-			Proxy: &Proxy{
-				EnableExternalProfiles: false,
-				Image: &Image{
-					Name:       "ghcr.io/linkerd/proxy",
-					PullPolicy: "IfNotPresent",
-					Version:    testVersion,
-				},
-				LogLevel:  "warn,linkerd=info",
-				LogFormat: "plain",
-				Ports: &Ports{
-					Admin:    4191,
-					Control:  4190,
-					Inbound:  4143,
-					Outbound: 4140,
-				},
-				Resources: &Resources{
-					CPU: Constraints{
-						Limit:   "",
-						Request: "",
-					},
-					Memory: Constraints{
-						Limit:   "",
-						Request: "",
-					},
-				},
-				Trace: &Trace{
-					CollectorSvcAddr:    "",
-					CollectorSvcAccount: "default",
-				},
-				UID:                    2102,
-				WaitBeforeExitSeconds:  0,
-				OutboundConnectTimeout: "1000ms",
-				InboundConnectTimeout:  "100ms",
+		Namespace:                   "linkerd",
+		ClusterDomain:               "cluster.local",
+		ClusterNetworks:             "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
+		ImagePullPolicy:             "IfNotPresent",
+		CliVersion:                  "linkerd/cli dev-undefined",
+		ControllerComponentLabel:    "linkerd.io/control-plane-component",
+		ControllerLogLevel:          "info",
+		ControllerImageVersion:      testVersion,
+		LinkerdVersion:              version.Version,
+		ControllerNamespaceLabel:    "linkerd.io/control-plane-ns",
+		WorkloadNamespaceLabel:      "linkerd.io/workload-ns",
+		CreatedByAnnotation:         "linkerd.io/created-by",
+		ProxyInjectAnnotation:       "linkerd.io/inject",
+		ProxyInjectDisabled:         "disabled",
+		LinkerdNamespaceLabel:       "linkerd.io/is-control-plane",
+		ProxyContainerName:          "linkerd-proxy",
+		CNIEnabled:                  false,
+		ControlPlaneTracing:         false,
+		HighAvailability:            false,
+		IdentityTrustDomain:         "cluster.local",
+		PodAnnotations:              map[string]string{},
+		PodLabels:                   map[string]string{},
+		Proxy: &Proxy{
+			EnableExternalProfiles: false,
+			Image: &Image{
+				Name:       "ghcr.io/linkerd/proxy",
+				PullPolicy: "IfNotPresent",
+				Version:    testVersion,
 			},
-			ProxyInit: &ProxyInit{
-				IgnoreInboundPorts:  "25,443,587,3306,11211",
-				IgnoreOutboundPorts: "25,443,587,3306,11211",
-				Image: &Image{
-					Name:       "ghcr.io/linkerd/proxy-init",
-					PullPolicy: "IfNotPresent",
-					Version:    testVersion,
+			LogLevel:  "warn,linkerd=info",
+			LogFormat: "plain",
+			Ports: &Ports{
+				Admin:    4191,
+				Control:  4190,
+				Inbound:  4143,
+				Outbound: 4140,
+			},
+			Resources: &Resources{
+				CPU: Constraints{
+					Limit:   "",
+					Request: "",
 				},
-				Resources: &Resources{
-					CPU: Constraints{
-						Limit:   "100m",
-						Request: "10m",
-					},
-					Memory: Constraints{
-						Limit:   "50Mi",
-						Request: "10Mi",
-					},
+				Memory: Constraints{
+					Limit:   "",
+					Request: "",
 				},
-				XTMountPath: &VolumeMountPath{
-					Name:      "linkerd-proxy-init-xtables-lock",
-					MountPath: "/run",
+			},
+			Trace: &Trace{
+				CollectorSvcAddr:    "",
+				CollectorSvcAccount: "default",
+			},
+			UID:                    2102,
+			WaitBeforeExitSeconds:  0,
+			OutboundConnectTimeout: "1000ms",
+			InboundConnectTimeout:  "100ms",
+		},
+		ProxyInit: &ProxyInit{
+			IgnoreInboundPorts:  "25,443,587,3306,11211",
+			IgnoreOutboundPorts: "25,443,587,3306,11211",
+			Image: &Image{
+				Name:       "ghcr.io/linkerd/proxy-init",
+				PullPolicy: "IfNotPresent",
+				Version:    testVersion,
+			},
+			Resources: &Resources{
+				CPU: Constraints{
+					Limit:   "100m",
+					Request: "10m",
 				},
+				Memory: Constraints{
+					Limit:   "50Mi",
+					Request: "10Mi",
+				},
+			},
+			XTMountPath: &VolumeMountPath{
+				Name:      "linkerd-proxy-init-xtables-lock",
+				MountPath: "/run",
 			},
 		},
 		Identity: &Identity{
@@ -149,23 +143,18 @@ func TestNewValues(t *testing.T) {
 
 		ProxyInjector:    &ProxyInjector{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
-		Tap:              &Tap{TLS: &TLS{}},
-		Grafana: Grafana{
-			"enabled": true,
-		},
 	}
 
 	// pin the versions to ensure consistent test result.
 	// in non-test environment, the default versions are read from the
 	// values.yaml.
-	actual.Global.ControllerImageVersion = testVersion
-	actual.Global.Proxy.Image.Version = testVersion
-	actual.Global.ProxyInit.Image.Version = testVersion
+	actual.ControllerImageVersion = testVersion
+	actual.Proxy.Image.Version = testVersion
+	actual.ProxyInit.Image.Version = testVersion
 	actual.DebugContainer.Image.Version = testVersion
 
 	// Make Add-On Values nil to not have to check for their defaults
-	actual.Tracing = nil
-	actual.Global.ImagePullSecrets = nil
+	actual.ImagePullSecrets = nil
 
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Mismatch Helm values.\nExpected: %+v\nActual: %+v", expected, actual)
@@ -192,26 +181,9 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 		expected.DestinationResources = controllerResources
-		expected.PublicAPIResources = controllerResources
 		expected.ProxyInjectorResources = controllerResources
 		expected.SPValidatorResources = controllerResources
-		expected.TapResources = controllerResources
-		expected.WebResources = controllerResources
 		expected.HeartbeatResources = controllerResources
-
-		expected.Grafana = Grafana{
-			"enabled": true,
-			"resources": map[string]interface{}{
-				"cpu": map[string]interface{}{
-					"limit":   controllerResources.CPU.Limit,
-					"request": controllerResources.CPU.Request,
-				},
-				"memory": map[string]interface{}{
-					"limit":   "1024Mi",
-					"request": "50Mi",
-				},
-			},
-		}
 
 		expected.IdentityResources = &Resources{
 			CPU: Constraints{
@@ -224,21 +196,7 @@ func TestNewValues(t *testing.T) {
 			},
 		}
 
-		expected.Prometheus = Prometheus{
-			"enabled": true,
-			"resources": map[string]interface{}{
-				"cpu": map[string]interface{}{
-					"limit":   "",
-					"request": "300m",
-				},
-				"memory": map[string]interface{}{
-					"limit":   "8192Mi",
-					"request": "300Mi",
-				},
-			},
-		}
-
-		expected.Global.Proxy.Resources = &Resources{
+		expected.Proxy.Resources = &Resources{
 			CPU: Constraints{
 				Limit:   "",
 				Request: controllerResources.CPU.Request,
@@ -252,12 +210,11 @@ func TestNewValues(t *testing.T) {
 		// pin the versions to ensure consistent test result.
 		// in non-test environment, the default versions are read from the
 		// values.yaml.
-		actual.Global.ControllerImageVersion = testVersion
-		actual.Global.Proxy.Image.Version = testVersion
-		actual.Global.ProxyInit.Image.Version = testVersion
+		actual.ControllerImageVersion = testVersion
+		actual.Proxy.Image.Version = testVersion
+		actual.ProxyInit.Image.Version = testVersion
 		actual.DebugContainer.Image.Version = testVersion
 		// Make Add-On Values nil to not have to check for their defaults
-		actual.Tracing = nil
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)

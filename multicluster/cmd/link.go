@@ -199,7 +199,7 @@ func newLinkCommand() *cobra.Command {
 				Name:                          opts.clusterName,
 				Namespace:                     opts.namespace,
 				TargetClusterName:             opts.clusterName,
-				TargetClusterDomain:           configMap.GetGlobal().ClusterDomain,
+				TargetClusterDomain:           configMap.ClusterDomain,
 				TargetClusterLinkerdNamespace: controlPlaneNamespace,
 				ClusterCredentialsSecret:      fmt.Sprintf("cluster-credentials-%s", opts.clusterName),
 				GatewayAddress:                strings.Join(gatewayAddresses, ","),

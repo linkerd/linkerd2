@@ -23,85 +23,65 @@ const (
 type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
-		ControllerImage             string            `json:"controllerImage"`
-		WebImage                    string            `json:"webImage"`
-		ControllerReplicas          uint              `json:"controllerReplicas"`
-		ControllerUID               int64             `json:"controllerUID"`
-		EnableH2Upgrade             bool              `json:"enableH2Upgrade"`
-		EnablePodAntiAffinity       bool              `json:"enablePodAntiAffinity"`
-		WebhookFailurePolicy        string            `json:"webhookFailurePolicy"`
-		OmitWebhookSideEffects      bool              `json:"omitWebhookSideEffects"`
-		RestrictDashboardPrivileges bool              `json:"restrictDashboardPrivileges"`
-		DisableHeartBeat            bool              `json:"disableHeartBeat"`
-		HeartbeatSchedule           string            `json:"heartbeatSchedule"`
-		InstallNamespace            bool              `json:"installNamespace"`
-		Configs                     ConfigJSONs       `json:"configs"`
-		Global                      *Global           `json:"global"`
-		Identity                    *Identity         `json:"identity"`
-		Dashboard                   *Dashboard        `json:"dashboard"`
-		DebugContainer              *DebugContainer   `json:"debugContainer"`
-		ProxyInjector               *ProxyInjector    `json:"proxyInjector"`
-		ProfileValidator            *ProfileValidator `json:"profileValidator"`
-		Tap                         *Tap              `json:"tap"`
-		NodeSelector                map[string]string `json:"nodeSelector"`
-		Tolerations                 []interface{}     `json:"tolerations"`
-
-		DestinationResources   *Resources `json:"destinationResources"`
-		HeartbeatResources     *Resources `json:"heartbeatResources"`
-		IdentityResources      *Resources `json:"identityResources"`
-		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
-		PublicAPIResources     *Resources `json:"publicAPIResources"`
-		SPValidatorResources   *Resources `json:"spValidatorResources"`
-		TapResources           *Resources `json:"tapResources"`
-		WebResources           *Resources `json:"webResources"`
-
-		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
-		IdentityProxyResources      *Resources `json:"identityProxyResources"`
-		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
-		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
-		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
-		TapProxyResources           *Resources `json:"tapProxyResources"`
-		WebProxyResources           *Resources `json:"webProxyResources"`
-
-		// Addon Structures
-		Grafana    Grafana    `json:"grafana"`
-		Prometheus Prometheus `json:"prometheus"`
-		Tracing    Tracing    `json:"tracing"`
-	}
-
-	// Global values common across all charts
-	Global struct {
-		Namespace                string              `json:"namespace"`
-		ClusterDomain            string              `json:"clusterDomain"`
-		ClusterNetworks          string              `json:"clusterNetworks"`
-		ImagePullPolicy          string              `json:"imagePullPolicy"`
-		CliVersion               string              `json:"cliVersion"`
-		ControllerComponentLabel string              `json:"controllerComponentLabel"`
-		ControllerImageVersion   string              `json:"controllerImageVersion"`
-		ControllerLogLevel       string              `json:"controllerLogLevel"`
-		ControllerNamespaceLabel string              `json:"controllerNamespaceLabel"`
-		WorkloadNamespaceLabel   string              `json:"workloadNamespaceLabel"`
-		CreatedByAnnotation      string              `json:"createdByAnnotation"`
-		ProxyInjectAnnotation    string              `json:"proxyInjectAnnotation"`
-		ProxyInjectDisabled      string              `json:"proxyInjectDisabled"`
-		LinkerdNamespaceLabel    string              `json:"linkerdNamespaceLabel"`
-		ProxyContainerName       string              `json:"proxyContainerName"`
-		HighAvailability         bool                `json:"highAvailability"`
-		CNIEnabled               bool                `json:"cniEnabled"`
-		EnableEndpointSlices     bool                `json:"enableEndpointSlices"`
-		ControlPlaneTracing      bool                `json:"controlPlaneTracing"`
-		IdentityTrustAnchorsPEM  string              `json:"identityTrustAnchorsPEM"`
-		IdentityTrustDomain      string              `json:"identityTrustDomain"`
-		PrometheusURL            string              `json:"prometheusUrl"`
-		GrafanaURL               string              `json:"grafanaUrl"`
-		ImagePullSecrets         []map[string]string `json:"imagePullSecrets"`
-		LinkerdVersion           string              `json:"linkerdVersion"`
+		ControllerImage             string              `json:"controllerImage"`
+		ControllerReplicas          uint                `json:"controllerReplicas"`
+		ControllerUID               int64               `json:"controllerUID"`
+		EnableH2Upgrade             bool                `json:"enableH2Upgrade"`
+		EnablePodAntiAffinity       bool                `json:"enablePodAntiAffinity"`
+		WebhookFailurePolicy        string              `json:"webhookFailurePolicy"`
+		OmitWebhookSideEffects      bool                `json:"omitWebhookSideEffects"`
+		RestrictDashboardPrivileges bool                `json:"restrictDashboardPrivileges"`
+		DisableHeartBeat            bool                `json:"disableHeartBeat"`
+		HeartbeatSchedule           string              `json:"heartbeatSchedule"`
+		InstallNamespace            bool                `json:"installNamespace"`
+		Configs                     ConfigJSONs         `json:"configs"`
+		Identity                    *Identity           `json:"identity"`
+		Dashboard                   *Dashboard          `json:"dashboard"`
+		DebugContainer              *DebugContainer     `json:"debugContainer"`
+		ProxyInjector               *ProxyInjector      `json:"proxyInjector"`
+		ProfileValidator            *ProfileValidator   `json:"profileValidator"`
+		NodeSelector                map[string]string   `json:"nodeSelector"`
+		Tolerations                 []interface{}       `json:"tolerations"`
+		Namespace                   string              `json:"namespace"`
+		ClusterDomain               string              `json:"clusterDomain"`
+		ClusterNetworks             string              `json:"clusterNetworks"`
+		ImagePullPolicy             string              `json:"imagePullPolicy"`
+		CliVersion                  string              `json:"cliVersion"`
+		ControllerComponentLabel    string              `json:"controllerComponentLabel"`
+		ControllerImageVersion      string              `json:"controllerImageVersion"`
+		ControllerLogLevel          string              `json:"controllerLogLevel"`
+		ControllerNamespaceLabel    string              `json:"controllerNamespaceLabel"`
+		WorkloadNamespaceLabel      string              `json:"workloadNamespaceLabel"`
+		CreatedByAnnotation         string              `json:"createdByAnnotation"`
+		ProxyInjectAnnotation       string              `json:"proxyInjectAnnotation"`
+		ProxyInjectDisabled         string              `json:"proxyInjectDisabled"`
+		LinkerdNamespaceLabel       string              `json:"linkerdNamespaceLabel"`
+		ProxyContainerName          string              `json:"proxyContainerName"`
+		HighAvailability            bool                `json:"highAvailability"`
+		CNIEnabled                  bool                `json:"cniEnabled"`
+		EnableEndpointSlices        bool                `json:"enableEndpointSlices"`
+		ControlPlaneTracing         bool                `json:"controlPlaneTracing"`
+		IdentityTrustAnchorsPEM     string              `json:"identityTrustAnchorsPEM"`
+		IdentityTrustDomain         string              `json:"identityTrustDomain"`
+		ImagePullSecrets            []map[string]string `json:"imagePullSecrets"`
+		LinkerdVersion              string              `json:"linkerdVersion"`
 
 		PodAnnotations map[string]string `json:"podAnnotations"`
 		PodLabels      map[string]string `json:"podLabels"`
 
 		Proxy     *Proxy     `json:"proxy"`
 		ProxyInit *ProxyInit `json:"proxyInit"`
+
+		DestinationResources   *Resources `json:"destinationResources"`
+		HeartbeatResources     *Resources `json:"heartbeatResources"`
+		IdentityResources      *Resources `json:"identityResources"`
+		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
+		SPValidatorResources   *Resources `json:"spValidatorResources"`
+
+		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
+		IdentityProxyResources      *Resources `json:"identityProxyResources"`
+		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
+		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
 	}
 
 	// ConfigJSONs is the JSON encoding of the Linkerd configuration
@@ -263,14 +243,13 @@ func NewValues(ha bool) (*Values, error) {
 		return nil, err
 	}
 
-	v.Global.ControllerImageVersion = version.Version
-	v.Global.Proxy.Image.Version = version.Version
+	v.ControllerImageVersion = version.Version
+	v.Proxy.Image.Version = version.Version
 	v.DebugContainer.Image.Version = version.Version
-	v.Global.CliVersion = k8s.CreatedByAnnotationValue()
+	v.CliVersion = k8s.CreatedByAnnotationValue()
 	v.ProfileValidator.TLS = &TLS{}
 	v.ProxyInjector.TLS = &TLS{}
-	v.Global.ProxyContainerName = k8s.ProxyContainerName
-	v.Tap = &Tap{TLS: &TLS{}}
+	v.ProxyContainerName = k8s.ProxyContainerName
 
 	return v, nil
 }
@@ -342,13 +321,4 @@ func (v *Values) DeepCopy() (*Values, error) {
 func (v *Values) String() string {
 	bytes, _ := yaml.Marshal(v)
 	return string(bytes)
-}
-
-// GetGlobal is a safe accessor for Global. It initializes Global on the first
-// access.
-func (v *Values) GetGlobal() *Global {
-	if v.Global == nil {
-		v.Global = &Global{}
-	}
-	return v.Global
 }

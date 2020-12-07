@@ -64,12 +64,10 @@ var (
 		"templates/controller-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
-		"templates/web-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
-		"templates/tap-rbac.yaml",
 		"templates/psp.yaml",
 	}
 
@@ -80,10 +78,8 @@ var (
 		"templates/controller.yaml",
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
-		"templates/web.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
-		"templates/tap.yaml",
 	}
 
 	ignoreCluster bool
@@ -125,7 +121,7 @@ resources for the Linkerd control plane. This command should be followed by
 			}
 			if !ignoreCluster {
 				// Ensure k8s is reachable and that Linkerd is not already installed.
-				if err := errAfterRunningChecks(values.GetGlobal().CNIEnabled); err != nil {
+				if err := errAfterRunningChecks(values.CNIEnabled); err != nil {
 					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
 						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
 					} else {
@@ -175,7 +171,7 @@ control plane. It should be run after "linkerd install config".`,
 			if !skipChecks {
 				// check if global resources exist to determine if the `install config`
 				// stage succeeded
-				if err := errAfterRunningChecks(values.GetGlobal().CNIEnabled); err == nil {
+				if err := errAfterRunningChecks(values.CNIEnabled); err == nil {
 					if healthcheck.IsCategoryError(err, healthcheck.KubernetesAPIChecks) {
 						fmt.Fprintf(os.Stderr, errMsgCannotInitializeClient, err)
 					} else {
@@ -299,7 +295,7 @@ func install(ctx context.Context, w io.Writer, values *l5dcharts.Values, flags [
 func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 
 	// Set any global flags if present, common with install and upgrade
-	values.GetGlobal().Namespace = controlPlaneNamespace
+	values.Namespace = controlPlaneNamespace
 
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
@@ -311,41 +307,11 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 		{Name: chartutil.ChartfileName},
 	}
 
-	addOns, err := l5dcharts.ParseAddOnValues(values)
-	if err != nil {
-		return err
-	}
-
-	// Initialize add-on sub-charts
-	addOnCharts := make(map[string]*charts.Chart)
-	for _, addOn := range addOns {
-		addOnCharts[addOn.Name()] = &charts.Chart{
-			Name:      addOn.Name(),
-			Dir:       addOnChartsPath + "/" + addOn.Name(),
-			Namespace: controlPlaneNamespace,
-			RawValues: append(addOn.Values(), rawValues...),
-			Files: []*loader.BufferedFile{
-				{
-					Name: chartutil.ChartfileName,
-				},
-				{
-					Name: chartutil.ValuesfileName,
-				},
-			},
-			Fs: static.Templates,
-		}
-	}
-
 	if stage == "" || stage == configStage {
 		for _, template := range templatesConfigStage {
 			files = append(files,
 				&loader.BufferedFile{Name: template},
 			)
-		}
-
-		// Fill add-on's sub-charts with config templates
-		for _, addOn := range addOns {
-			addOnCharts[addOn.Name()].Files = append(addOnCharts[addOn.Name()].Files, addOn.ConfigStageTemplates()...)
 		}
 	}
 
@@ -355,12 +321,6 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 				&loader.BufferedFile{Name: template},
 			)
 		}
-
-		// Fill add-on's sub-charts with control-plane templates
-		for _, addOn := range addOns {
-			addOnCharts[addOn.Name()].Files = append(addOnCharts[addOn.Name()].Files, addOn.ControlPlaneStageTemplates()...)
-		}
-
 	}
 
 	// TODO refactor to use l5dcharts.LoadChart()
@@ -377,19 +337,8 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 		return err
 	}
 
-	for _, addon := range addOns {
-		b, err := addOnCharts[addon.Name()].Render()
-		if err != nil {
-			return err
-		}
-
-		if _, err := buf.WriteString(b.String()); err != nil {
-			return err
-		}
-	}
-
 	if stage == "" || stage == controlPlaneStage {
-		overrides, err := renderOverrides(values, values.GetGlobal().Namespace)
+		overrides, err := renderOverrides(values, values.Namespace)
 		if err != nil {
 			return err
 		}
