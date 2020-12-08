@@ -27,7 +27,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-jaeger-{{.Values.namespace}}-proxy-mutator
+  name: linkerd-jaeger-injector
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -36,30 +36,30 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: linkerd-jaeger-{{.Values.namespace}}-proxy-mutator
+  name: linkerd-jaeger-injector
 subjects:
 - kind: ServiceAccount
-  name: proxy-mutator
+  name: jaeger-injector
   namespace: {{.Values.namespace}}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: linkerd-jaeger-{{.Values.namespace}}-proxy-mutator
+  name: linkerd-jaeger-injector
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: proxy-mutator
+  name: jaeger-injector
   namespace: {{.Values.namespace}}
 ---
-{{- $host := printf "proxy-mutator.%s.svc" .Values.namespace }}
+{{- $host := printf "jaeger-injector.%s.svc" .Values.namespace }}
 {{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.webhook.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:
-  name: proxy-mutator-k8s-tls
+  name: jaeger-injector-k8s-tls
   namespace: {{ .Values.namespace }}
 type: kubernetes.io/tls
 data:
@@ -70,9 +70,9 @@ data:
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: linkerd-proxy-mutator-webhook-config
+  name: linkerd-jaeger-injector-webhook-config
 webhooks:
-- name: proxy-mutator.linkerd.io
+- name: jaeger-injector.linkerd.io
   {{- if .Values.webhook.namespaceSelector }}
   namespaceSelector: 
 {{ toYaml .Values.webhook.namespaceSelector | trim | indent 4 -}}
@@ -83,7 +83,7 @@ webhooks:
   {{- end }}
   clientConfig:
     service:
-      name: proxy-mutator
+      name: jaeger-injector
       namespace: {{ .Values.namespace }}
       path: "/"
 {{- if and (.Values.webhook.externalSecret) (empty .Values.webhook.caBundle) }}
