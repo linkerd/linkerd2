@@ -155,15 +155,6 @@ func (kubeAPI *KubernetesAPI) GetPodsByNamespace(ctx context.Context, namespace 
 	return podList.Items, nil
 }
 
-// GetPods returns all pods in a given namespace, with the label selector
-func (kubeAPI *KubernetesAPI) GetPods(ctx context.Context, namespace string, selector string) ([]corev1.Pod, error) {
-	podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
-	if err != nil {
-		return nil, err
-	}
-	return podList.Items, nil
-}
-
 // GetReplicaSets returns all replicasets in a given namespace
 func (kubeAPI *KubernetesAPI) GetReplicaSets(ctx context.Context, namespace string) ([]appsv1.ReplicaSet, error) {
 	replicaSetList, err := kubeAPI.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{})

@@ -16,7 +16,7 @@ import (
 
 const (
 
-	// jaegerExtensionName is the name fo jaeger extension
+	// jaegerExtensionName is the name of jaeger extension
 	jaegerExtensionName = "linkerd-jaeger"
 
 	// linkerdJaegerExtensionCheck adds checks related to the jaeger extension
@@ -41,21 +41,14 @@ func jaegerCategory() (*healthcheck.Category, error) {
 
 	checkers := []healthcheck.Checker{}
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector service account exists", "", false, true, time.Time{}, false).
+		*healthcheck.NewChecker("collector and jaeger service account exists", "l5d-jaeger-sc-exists", true, true, time.Time{}, false).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Collector Service Account
-				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"collector"}, jaegerNamespace, "")
+				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"collector", "jaeger"}, jaegerNamespace, "")
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger service account exists", "", false, true, time.Time{}, false).
-			WithCheck(func(ctx context.Context) error {
-				// Check for Jaeger Service Account
-				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"jaeger"}, jaegerNamespace, "")
-			}))
-
-	checkers = append(checkers,
-		*healthcheck.NewChecker("collector config map exists", "", false, true, time.Time{}, false).
+		*healthcheck.NewChecker("collector config map exists", "l5d-jaeger-oc-cm-exists", false, true, time.Time{}, false).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger Service Account
 				_, err = kubeAPI.CoreV1().ConfigMaps(jaegerNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
@@ -64,37 +57,37 @@ func jaegerCategory() (*healthcheck.Category, error) {
 				}
 				return nil
 			}))
+
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector pod is running", "", false, true, time.Time{}, false).
+		*healthcheck.NewChecker("collector pod is running", "l5d-jaeger-collector-running", false, true, time.Time{}, false).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Collector pod
-				pods, err := kubeAPI.GetPods(ctx, jaegerNamespace, "component=collector")
+				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=collector"})
 				if err != nil {
 					return err
 				}
-				return checkPodsStatus(pods)
+				return checkPodsRunning(podList.Items)
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger pod is running", "", false, true, time.Time{}, false).
+		*healthcheck.NewChecker("jaeger pod is running", "l5d-jaeger-jaeger-running", false, true, time.Time{}, false).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger pod
-				pods, err := kubeAPI.GetPods(ctx, jaegerNamespace, "component=jaeger")
+				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger"})
 				if err != nil {
 					return err
 				}
-				return checkPodsStatus(pods)
+				return checkPodsRunning(podList.Items)
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger extension pods are injected", "", false, true, time.Time{}, false).
+		*healthcheck.NewChecker("jaeger extension pods are injected", "l5d-jaeger-pods-injection", false, true, time.Time{}, false).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger pod
 				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
 				if err != nil {
 					return err
 				}
-
 				return checkIfDataPlanePodsExist(pods)
 			}))
 
@@ -132,7 +125,7 @@ non-zero exit code.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			// Get jaeger Extension Namespace
-			ns, err := getNamespaceOfExtension("linkerd-jaeger")
+			ns, err := getNamespaceOfExtension(jaegerExtensionName)
 			if err != nil {
 				fmt.Fprint(os.Stderr, err.Error())
 				os.Exit(1)
@@ -206,23 +199,25 @@ func getNamespaceOfExtension(name string) (*corev1.Namespace, error) {
 
 func checkIfDataPlanePodsExist(pods []corev1.Pod) error {
 	for _, pod := range pods {
-		proxyContainer := false
-		for _, containerSpec := range pod.Spec.Containers {
-			if containerSpec.Name == k8s.ProxyContainerName {
-				proxyContainer = true
-			}
-		}
-
-		if !proxyContainer {
+		if !containsProxy(&pod) {
 			return fmt.Errorf("could not find proxy container for %s pod", pod.Name)
 		}
 	}
-
 	return nil
 }
 
-// checkPodsStatus checks if the pod is in running state
-func checkPodsStatus(pods []corev1.Pod) error {
+func containsProxy(pod *corev1.Pod) bool {
+	proxyContainer := false
+	for _, containerSpec := range pod.Spec.Containers {
+		if containerSpec.Name == k8s.ProxyContainerName {
+			proxyContainer = true
+		}
+	}
+	return proxyContainer
+}
+
+// checkPodsRunning checks if the given pods are in running state
+func checkPodsRunning(pods []corev1.Pod) error {
 	for _, pod := range pods {
 		if pod.Status.Phase != "Running" {
 			return fmt.Errorf("%s status is %s", pod.Name, pod.Status.Phase)
