@@ -18,8 +18,9 @@ global:
   # -- Log level for the control plane components
   controllerLogLevel: &controller_log_level info
 
-  # -- control plane trace configuration
+  # -- enables control plane tracing
   controlPlaneTracing: false
+  # -- namespace to send control plane traces to
   controlPlaneTracingNamespace: linkerd-jaeger
 
   # -- control plane version. See Proxy section for proxy version
@@ -100,6 +101,7 @@ global:
         limit: ""
         # -- Maximum amount of memory that the proxy requests
         request: ""
+    # -- User id under which the proxy runs
     uid: 2102
    
     # -- If set the proxy sidecar will stay alive for at
