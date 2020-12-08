@@ -126,6 +126,11 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 		return err
 	}
 
+	vals, err = charts.InsertVersionValues(vals)
+	if err != nil {
+		return err
+	}
+
 	// Attach the final values into the `Values` field for rendering to work
 	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
 	if err != nil {

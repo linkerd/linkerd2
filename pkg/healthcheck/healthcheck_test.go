@@ -1808,13 +1808,6 @@ metadata:
   namespace: test-ns
 data:
   values: |-
-    tracing:
-      collector:
-        name: linkerd-collector
-      enabled: false
-      jaeger:
-        name: linkerd-jaeger
-      enabled: true
 `,
 			},
 			expected: []string{
@@ -2628,9 +2621,6 @@ data:
         requireIdentityOnInboundPorts: ""
         resources: null
         saMountPath: null
-        trace:
-          collectorSvcAccount: ""
-          collectorSvcAddr: ""
         uid: 2102
         waitBeforeExitSeconds: 0
         workloadKind: deployment
@@ -2683,8 +2673,6 @@ data:
     tapProxyResources: null
     tapResources: null
     tolerations: null
-    tracing:
-      enabled: false
     webImage: WebImage
     webProxyResources: null
     webResources: null
@@ -2734,8 +2722,7 @@ data:
 							Inbound:  4143,
 							Outbound: 4140,
 						},
-						UID:   2102,
-						Trace: &linkerd2.Trace{},
+						UID: 2102,
 					},
 					ProxyInit: &linkerd2.ProxyInit{
 						Image: &linkerd2.Image{
@@ -2766,9 +2753,6 @@ data:
 				Prometheus: linkerd2.Prometheus{
 					"enabled": true,
 					"image":   "PrometheusImage",
-				},
-				Tracing: map[string]interface{}{
-					"enabled": false,
 				},
 				Grafana: defaultValues.Grafana,
 			},

@@ -18,8 +18,10 @@ global:
   # -- Log level for the control plane components
   controllerLogLevel: &controller_log_level info
 
-  # -- control plane trace configuration
+  # -- enables control plane tracing
   controlPlaneTracing: false
+  # -- namespace to send control plane traces to
+  controlPlaneTracingNamespace: linkerd-jaeger
 
   # -- control plane version. See Proxy section for proxy version
   linkerdVersion: &linkerd_version linkerdVersionValue
@@ -99,11 +101,6 @@ global:
         limit: ""
         # -- Maximum amount of memory that the proxy requests
         request: ""
-    trace:
-      # -- Collector Service address for the proxies to send Trace Data 
-      collectorSvcAddr: ""
-      # -- Service account associated with the Trace collector instance 
-      collectorSvcAccount: default
     # -- User id under which the proxy runs
     uid: 2102
    
@@ -466,12 +463,3 @@ prometheus:
   # resources:
   # proxy:
   #   resources:
-
-tracing:
-  enabled: false
-  # collector:
-  #  image: omnition/opencensus-collector:0.1.11
-  #  resources:
-  # jaeger:
-  #  image: jaegertracing/all-in-one:1.19.2
-  #  resources:

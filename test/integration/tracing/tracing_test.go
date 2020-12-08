@@ -48,22 +48,30 @@ func TestTracing(t *testing.T) {
 		t.Skip("Skipped. Jaeger & Open Census images does not support ARM yet")
 	}
 
-	// Tracing Components
-	out, err := TestHelper.LinkerdRun("inject", "testdata/tracing.yaml")
+	// linkerd-jaeger extension
+	tracingNs := "linkerd-jaeger"
+	out, err := TestHelper.LinkerdRun("jaeger", "install")
 	if err != nil {
-		testutil.AnnotatedFatal(t, "'linkerd inject' command failed", err)
+		testutil.AnnotatedFatal(t, "'linkerd jaeger install' command failed", err)
 	}
 
-	tracingNs := TestHelper.GetTestNamespace("tracing")
-	err = TestHelper.CreateDataPlaneNamespaceIfNotExists(ctx, tracingNs, nil)
-	if err != nil {
-		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", tracingNs),
-			"failed to create %s namespace: %s", tracingNs, err)
-	}
-	out, err = TestHelper.KubectlApply(out, tracingNs)
+	out, err = TestHelper.KubectlApply(out, "")
 	if err != nil {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
+	}
+
+	// wait for jaeger proxy mutator to start
+	if err := TestHelper.CheckPods(ctx, tracingNs, "proxy-mutator", 1); err != nil {
+		if rce, ok := err.(*testutil.RestartCountError); ok {
+			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
+		} else {
+			testutil.AnnotatedError(t, "CheckPods timed-out", err)
+		}
+	}
+
+	if err := TestHelper.CheckDeployment(ctx, tracingNs, "proxy-mutator", 1); err != nil {
+		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", "proxy-mutator", err)
 	}
 
 	// Emojivoto components
@@ -121,16 +129,19 @@ func TestTracing(t *testing.T) {
 	}
 
 	// wait for deployments to start
-	for ns, deploy := range map[string]string{
-		emojivotoNs: "vote-bot",
-		emojivotoNs: "web",
-		emojivotoNs: "emoji",
-		emojivotoNs: "voting",
-		ingressNs:   "nginx-ingress",
-		tracingNs:   "oc-collector",
-		tracingNs:   "jaeger",
+	for _, deploy := range []struct {
+		ns   string
+		name string
+	}{
+		{ns: emojivotoNs, name: "vote-bot"},
+		{ns: emojivotoNs, name: "web"},
+		{ns: emojivotoNs, name: "emoji"},
+		{ns: emojivotoNs, name: "voting"},
+		{ns: ingressNs, name: "nginx-ingress"},
+		{ns: tracingNs, name: "collector"},
+		{ns: tracingNs, name: "jaeger"},
 	} {
-		if err := TestHelper.CheckPods(ctx, ns, deploy, 1); err != nil {
+		if err := TestHelper.CheckPods(ctx, deploy.ns, deploy.name, 1); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
@@ -138,8 +149,8 @@ func TestTracing(t *testing.T) {
 			}
 		}
 
-		if err := TestHelper.CheckDeployment(ctx, ns, deploy, 1); err != nil {
-			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
+		if err := TestHelper.CheckDeployment(ctx, deploy.ns, deploy.name, 1); err != nil {
+			testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy.name, err)
 		}
 	}
 
@@ -151,7 +162,7 @@ func TestTracing(t *testing.T) {
 		}
 		timeout := 120 * time.Second
 		err = TestHelper.RetryFor(timeout, func() error {
-			tracesJSON, err := TestHelper.HTTPGetURL(url + "/api/traces?lookback=1h&service=nginx")
+			tracesJSON, err := TestHelper.HTTPGetURL(url + "/jaeger/api/traces?lookback=1h&service=nginx")
 			if err != nil {
 				return err
 			}
