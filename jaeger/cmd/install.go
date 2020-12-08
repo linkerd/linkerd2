@@ -1,22 +1,26 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"os"
+	"path"
 
 	"github.com/linkerd/linkerd2/jaeger/static"
-	jaeger "github.com/linkerd/linkerd2/jaeger/values"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	partials "github.com/linkerd/linkerd2/pkg/charts/static"
+	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli/values"
+	"helm.sh/helm/v3/pkg/engine"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -30,12 +34,7 @@ var (
 
 func newCmdInstall() *cobra.Command {
 	var skipChecks bool
-
-	values, err := jaeger.NewValues()
-	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+	var options values.Options
 
 	cmd := &cobra.Command{
 		Use:   "install [flags]",
@@ -59,7 +58,7 @@ func newCmdInstall() *cobra.Command {
 				}
 			}
 
-			return install(os.Stdout, values)
+			return install(os.Stdout, options)
 		},
 	}
 
@@ -68,27 +67,29 @@ func newCmdInstall() *cobra.Command {
 		`Skip checks for namespace existence`,
 	)
 
-	// TODO: Add --set flag set and also config
+	flags.AddValueOptionsFlags(cmd.Flags(), &options)
 
 	return cmd
 }
 
-func install(w io.Writer, values *jaeger.Values) error {
+func install(w io.Writer, options values.Options) error {
 
-	// TODO: Add any validation logic here
-
-	return render(w, values)
-}
-
-func render(w io.Writer, values *jaeger.Values) error {
-	// Render raw values and create chart config
-	rawValues, err := yaml.Marshal(values)
+	// Create values override
+	valuesOverrides, err := options.MergeValues(nil)
 	if err != nil {
 		return err
 	}
 
+	// TODO: Add any validation logic here
+
+	return render(w, valuesOverrides)
+}
+
+func render(w io.Writer, valuesOverrides map[string]interface{}) error {
+
 	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
+		{Name: chartutil.ValuesfileName},
 	}
 
 	for _, template := range templatesJaeger {
@@ -97,17 +98,47 @@ func render(w io.Writer, values *jaeger.Values) error {
 		)
 	}
 
-	chart := &charts.Chart{
-		Name:      "jaeger",
-		Dir:       "jaeger",
-		Namespace: values.Namespace,
-		RawValues: rawValues,
-		Files:     files,
-		Fs:        static.Templates,
+	var partialFiles []*loader.BufferedFile
+	for _, template := range charts.L5dPartials {
+		partialFiles = append(partialFiles,
+			&loader.BufferedFile{Name: template},
+		)
 	}
-	buf, err := chart.Render()
+
+	// Load all jaeger chart files into buffer
+	if err := charts.FilesReader(static.Templates, "jaeger/", files); err != nil {
+		return err
+	}
+
+	// Load all partial chart files into buffer
+	if err := charts.FilesReader(partials.Templates, "", partialFiles); err != nil {
+		return err
+	}
+
+	// Create a Chart obj from the files
+	chart, err := loader.LoadFiles(append(files, partialFiles...))
 	if err != nil {
 		return err
+	}
+
+	vals, err := chartutil.CoalesceValues(chart, valuesOverrides)
+	if err != nil {
+		return err
+	}
+
+	// Attach the final values into the `Values` field for rendering to work
+	renderedTemplates, err := engine.Render(chart, map[string]interface{}{"Values": vals})
+	if err != nil {
+		return err
+	}
+
+	// Merge templates and inject
+	var buf bytes.Buffer
+	for _, tmpl := range chart.Templates {
+		t := path.Join(chart.Metadata.Name, tmpl.Name)
+		if _, err := buf.WriteString(renderedTemplates[t]); err != nil {
+			return err
+		}
 	}
 
 	_, err = w.Write(buf.Bytes())

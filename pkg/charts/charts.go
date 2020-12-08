@@ -16,6 +16,29 @@ import (
 
 const versionPlaceholder = "linkerdVersionValue"
 
+var (
+	// L5dPartials is the list of templates in partials chart
+	// Keep this slice synced with the contents of /charts/partials
+	L5dPartials = []string{
+		"charts/partials/" + chartutil.ChartfileName,
+		"charts/partials/templates/_proxy.tpl",
+		"charts/partials/templates/_proxy-init.tpl",
+		"charts/partials/templates/_volumes.tpl",
+		"charts/partials/templates/_resources.tpl",
+		"charts/partials/templates/_metadata.tpl",
+		"charts/partials/templates/_helpers.tpl",
+		"charts/partials/templates/_debug.tpl",
+		"charts/partials/templates/_capabilities.tpl",
+		"charts/partials/templates/_trace.tpl",
+		"charts/partials/templates/_nodeselector.tpl",
+		"charts/partials/templates/_tolerations.tpl",
+		"charts/partials/templates/_affinity.tpl",
+		"charts/partials/templates/_addons.tpl",
+		"charts/partials/templates/_validate.tpl",
+		"charts/partials/templates/_pull-secrets.tpl",
+	}
+)
+
 // Chart holds the necessary info to render a Helm chart
 type Chart struct {
 	Name      string
@@ -80,25 +103,13 @@ func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, erro
 // Render returns a bytes buffer with the result of rendering a Helm chart
 func (c *Chart) Render() (bytes.Buffer, error) {
 
-	// Keep this slice synced with the contents of /charts/partials
-	l5dPartials := []*loader.BufferedFile{
-		{Name: "charts/partials/" + chartutil.ChartfileName},
-		{Name: "charts/partials/templates/_proxy.tpl"},
-		{Name: "charts/partials/templates/_proxy-init.tpl"},
-		{Name: "charts/partials/templates/_volumes.tpl"},
-		{Name: "charts/partials/templates/_resources.tpl"},
-		{Name: "charts/partials/templates/_metadata.tpl"},
-		{Name: "charts/partials/templates/_helpers.tpl"},
-		{Name: "charts/partials/templates/_debug.tpl"},
-		{Name: "charts/partials/templates/_capabilities.tpl"},
-		{Name: "charts/partials/templates/_trace.tpl"},
-		{Name: "charts/partials/templates/_nodeselector.tpl"},
-		{Name: "charts/partials/templates/_tolerations.tpl"},
-		{Name: "charts/partials/templates/_affinity.tpl"},
-		{Name: "charts/partials/templates/_addons.tpl"},
-		{Name: "charts/partials/templates/_validate.tpl"},
-		{Name: "charts/partials/templates/_pull-secrets.tpl"},
+	l5dPartials := []*loader.BufferedFile{}
+	for _, template := range L5dPartials {
+		l5dPartials = append(l5dPartials, &loader.BufferedFile{
+			Name: template,
+		})
 	}
+
 	return c.render(l5dPartials)
 }
 

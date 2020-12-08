@@ -17,20 +17,23 @@ Kubernetes: `>=1.13.0-0`
 |-----|------|---------|-------------|
 | controllerComponentLabel | string | `"linkerd.io/control-plane-component"` | Control plane label. Do not edit |
 | createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit. |
-| gateway | bool | `true` | If the gateway component should be installed  |
+| gateway | bool | `true` | If the gateway component should be installed |
 | gatewayLocalProbePath | string | `"/health-local"` | The path that will be used by the local liveness checks to ensure the gateway is alive |
 | gatewayLocalProbePort | int | `8888` | The port that will be used by the local liveness checks to ensure the gateway is alive |
-| gatewayName | string | `"linkerd-gateway"` | The name of the gateway that will be installed  |
+| gatewayName | string | `"linkerd-gateway"` | The name of the gateway that will be installed |
 | gatewayNginxImage | string | `"nginx"` | The Nginx image |
-| gatewayNginxImageVersion | float | `1.17` | The version of the Nginx image  |
+| gatewayNginxImageVersion | float | `1.17` | The version of the Nginx image |
 | gatewayPort | int | `4143` | The port on which all the gateway will accept incoming traffic |
 | gatewayProbePath | string | `"/health"` | The path that will be used by remote clusters for determining whether the gateway is alive |
 | gatewayProbePort | int | `4181` | The port used for liveliness probing |
-| gatewayProbeSeconds | int | `3` | The interval (in seconds) between liveness probes  |
+| gatewayProbeSeconds | int | `3` | The interval (in seconds) between liveness probes |
+| gatewayServiceType | string | `"LoadBalancer"` | Service Type of gateway Service |
+| identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
 | installNamespace | bool | `true` | If the namespace should be installed |
-| linkerdVersion | string | `"linkerdVersionValue"` | Control plane version  |
+| linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |
+| linkerdVersion | string | `"linkerdVersionValue"` | Control plane version |
 | namespace | string | `"linkerd-multicluster"` | Service Mirror component namespace |
-| proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic  |
+| proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |
 | remoteMirrorServiceAccount | bool | `true` | If the remote mirror service account should be installed |
 | remoteMirrorServiceAccountName | string | `"linkerd-service-mirror-remote-access-default"` | The name of the service account used to allow remote clusters to mirror local services |
 
