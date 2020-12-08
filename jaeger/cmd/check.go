@@ -199,6 +199,7 @@ func getNamespaceOfExtension(name string) (*corev1.Namespace, error) {
 
 func checkIfDataPlanePodsExist(pods []corev1.Pod) error {
 	for _, pod := range pods {
+		pod := pod // pin
 		if !containsProxy(&pod) {
 			return fmt.Errorf("could not find proxy container for %s pod", pod.Name)
 		}
