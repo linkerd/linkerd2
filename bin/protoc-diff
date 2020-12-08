@@ -2,14 +2,8 @@
 
 set -eu
 
-# Install unzip if not already installed (Linux only)
-system=$(uname -s)
-if [ "$system" = Linux ] && ! [ -x "$(command -v unzip)" ]; then
-  apt-get update
-  apt-get install unzip
-fi
-
-bin/protoc-go.sh
+bindir=$( cd "${0%/*}" && pwd )
+"$bindir"/protoc-go.sh
 
 dir_dirty=$(git diff HEAD)
 if [ -z "$dir_dirty" ]; then
