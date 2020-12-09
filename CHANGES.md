@@ -30,6 +30,8 @@ modified.
 * CLI / Helm / Control Plane:
   * Fixed a CLI issue where the `linkerd-namespace` flag was not honored when
     passed to the `install` and `upgrade` commands
+  * Fixed installing HA through the CLI (`linkerd install --ha`) that wasn't
+    honoring some of the default settings found in `values-ha.yml`
   * Fixed multicluster installation using Helm
   * Updated `linkerd check` so that it doesn't attempt to validate the subject
     alternative name (SAN) on root and intermediate certificates. SANs for leaf
