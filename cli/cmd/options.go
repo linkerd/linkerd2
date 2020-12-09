@@ -48,6 +48,8 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 				return nil
 			}),
 
+		// The HA flag must be processed before flags that set these values individually so that the
+		// individual flags can override the HA defaults.
 		flag.NewBoolFlag(installUpgradeFlags, "ha", false, "Enable HA deployment config for the control plane (default false)",
 			func(values *l5dcharts.Values, value bool) error {
 				values.GetGlobal().HighAvailability = value
@@ -56,30 +58,11 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 					if err != nil {
 						return err
 					}
-					// The HA flag must be processed before flags that set these values individually so that the
-					// individual flags can override the HA defaults.
-					values.EnablePodAntiAffinity = haValues.EnablePodAntiAffinity
-					values.GetGlobal().Proxy.Resources.CPU.Request = haValues.GetGlobal().Proxy.Resources.CPU.Request
-					values.GetGlobal().Proxy.Resources.Memory.Request = haValues.GetGlobal().Proxy.Resources.Memory.Request
-					values.GetGlobal().Proxy.Resources.Memory.Limit = haValues.GetGlobal().Proxy.Resources.Memory.Limit
-					values.ControllerReplicas = haValues.ControllerReplicas
-					values.DestinationResources = haValues.DestinationResources
-					values.PublicAPIResources = haValues.PublicAPIResources
-					values.IdentityResources = haValues.IdentityResources
-
-					initResourceMaps(values.Grafana, haValues.Grafana)
-					values.Grafana["resources"] = haValues.Grafana["resources"]
-
-					values.HeartbeatResources = haValues.HeartbeatResources
-
-					initResourceMaps(values.Prometheus, haValues.Prometheus)
-					values.Prometheus["resources"] = haValues.Prometheus["resources"]
-
-					values.ProxyInjectorResources = haValues.ProxyInjectorResources
-					values.WebhookFailurePolicy = haValues.WebhookFailurePolicy
-					values.SPValidatorResources = haValues.SPValidatorResources
-					values.TapResources = haValues.TapResources
-					values.WebResources = haValues.WebResources
+					changedValues, err := (*values).Merge(*haValues)
+					if err != nil {
+						return err
+					}
+					*values = changedValues
 				}
 				return nil
 			}),
@@ -201,14 +184,6 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 	installUpgradeFlags.MarkHidden("control-plane-tracing")
 
 	return flags, installUpgradeFlags, nil
-}
-
-func initResourceMaps(values ...map[string]interface{}) {
-	for _, value := range values {
-		if _, ok := value["Resources"]; !ok {
-			value["Resources"] = map[string]interface{}{}
-		}
-	}
 }
 
 func loadCrtPEM(path string) (string, error) {
