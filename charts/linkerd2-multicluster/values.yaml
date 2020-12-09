@@ -10,7 +10,9 @@ gatewayPort: 4143
 gatewayProbePath: /health
 gatewayProbePort: 4181
 gatewayProbeSeconds: 3
+identityTrustDomain: cluster.local
 installNamespace: true
+linkerdNamespace: linkerd
 linkerdVersion: linkerdVersionValue
 namespace: linkerd-multicluster
 proxyOutboundPort: 4140

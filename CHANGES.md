@@ -27,9 +27,10 @@ modified.
   * Fixed an issue where serverside connections were not torn down when an error
     occurred
 
-* CLI / Control Plane:
+* CLI / Helm / Control Plane:
   * Fixed a CLI issue where the `linkerd-namespace` flag was not honored when
     passed to the `install` and `upgrade` commands
+  * Fixed multicluster installation using Helm
   * Updated `linkerd check` so that it doesn't attempt to validate the subject
     alternative name (SAN) on root and intermediate certificates. SANs for leaf
     certificates will continue to be validated
