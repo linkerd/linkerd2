@@ -157,6 +157,9 @@ spec:
       initContainers:
       - {{- include "partials.proxy-init" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
+      {{- if .Values.identity.priorityClassName }}
+      priorityClassName: {{ .Values.identity.priorityClassName }}
+      {{- end }}
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer

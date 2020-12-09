@@ -214,6 +214,7 @@ debugContainer:
     version: *linkerd_version
 
 identity:
+  priorityClassName: ""
   issuer:
     scheme: linkerd.io/tls
 
