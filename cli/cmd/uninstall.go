@@ -8,8 +8,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	"github.com/spf13/cobra"
-	core "k8s.io/api/core/v1"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -47,28 +45,10 @@ func uninstallRunE(ctx context.Context) error {
 		return err
 	}
 
-	ns, err := fetchNamespaceResource(ctx, k8sAPI)
-	if err != nil {
-		return fmt.Errorf("could not fetch Namespace %s:%v", controlPlaneNamespace, err)
-	}
-	resources = append(resources, ns)
-
 	for _, r := range resources {
 		if err := r.RenderResource(os.Stdout); err != nil {
 			return fmt.Errorf("error rendering Kubernetes resource:%v", err)
 		}
 	}
 	return nil
-}
-
-func fetchNamespaceResource(ctx context.Context, k *k8s.KubernetesAPI) (resource.Kubernetes, error) {
-	obj, err := k.CoreV1().Namespaces().Get(ctx, controlPlaneNamespace, metav1.GetOptions{})
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			return resource.Kubernetes{}, nil
-		}
-		return resource.Kubernetes{}, err
-	}
-
-	return resource.New(core.SchemeGroupVersion.String(), "Namespace", obj.Name), nil
 }
