@@ -62,7 +62,7 @@ func TestTracing(t *testing.T) {
 	}
 
 	// wait for jaeger proxy mutator to start
-	if err := TestHelper.CheckPods(ctx, tracingNs, "proxy-mutator", 1); err != nil {
+	if err := TestHelper.CheckPods(ctx, tracingNs, "jaeger-injector", 1); err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 		} else {
