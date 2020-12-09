@@ -70,7 +70,7 @@ data:
       kubernetes_sd_configs:
       - role: pod
         namespaces:
-          names: ['{{.Values.namespace}}']
+          names: ['{{.Values.linkerdNamespace}}']
       relabel_configs:
       - source_labels:
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_component
@@ -146,25 +146,25 @@ data:
       - action: labelmap
         regex: __tmp_pod_label_(.+)
 
-    {{- if .Values.scrapeConfigs }}
-    {{- toYaml .Values.scrapeConfigs | trim | nindent 4 }}
+    {{- if .Values.prometheus.scrapeConfigs }}
+    {{- toYaml .Values.prometheus.scrapeConfigs | trim | nindent 4 }}
     {{- end }}
 
-    {{-  if (or .Values.alertManagers .Values.alertRelabelConfigs) }}
+    {{-  if (or .Values.prometheus.alertManagers .Values.prometheus.alertRelabelConfigs) }}
     alerting:
       alert_relabel_configs:
-        {{- if .Values.alertRelabelConfigs }}
-        {{- toYaml .Values.alertRelabelConfigs | trim | nindent 6 }}
+        {{- if .Values.prometheus.alertRelabelConfigs }}
+        {{- toYaml .Values.prometheus.alertRelabelConfigs | trim | nindent 6 }}
         {{- end }}
       alertmanagers:
-        {{- if .Values.alertManagers }}
-        {{- toYaml .Values.alertManagers | trim | nindent 6 }}
+        {{- if .Values.prometheus.alertManagers }}
+        {{- toYaml .Values.prometheus.alertManagers | trim | nindent 6 }}
         {{- end }}
     {{- end }}
 
-    {{- if .Values.remoteWrite }}
+    {{- if .Values.prometheus.remoteWrite }}
     remote_write:
-      {{- toYaml .Values.remoteWrite | trim | nindent 4 }}
+      {{- toYaml .Values.prometheus.remoteWrite | trim | nindent 4 }}
     {{- end }}
 ---
 kind: Service
@@ -201,7 +201,7 @@ metadata:
   namespace: {{.Values.namespace}}
 spec:
   replicas: 1
-  {{- if .Values.persistence }}
+  {{- if .Values.prometheus.persistence }}
   strategy:
     type: Recreate
   {{- end }}
@@ -227,15 +227,15 @@ spec:
       securityContext:
         fsGroup: 65534
       containers:
-      {{- if .Values.sidecarContainers -}}
-      {{- toYaml .Values.sidecarContainers | trim | nindent 6 }}
+      {{- if .Values.prometheus.sidecarContainers -}}
+      {{- toYaml .Values.prometheus.sidecarContainers | trim | nindent 6 }}
       {{- end}}
       - args:
-        {{- range $key, $value := .Values.args}}
+        {{- range $key, $value := .Values.prometheus.args}}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}
-        image: {{.Values.image}}
-        imagePullPolicy: {{.Values.imagePullPolicy}}
+        image: {{.Values.prometheus.image.name}}:{{.Values.prometheus.image.tag}}
+        imagePullPolicy: {{.Values.prometheus.imagepullPolicy}}
         livenessProbe:
           httpGet:
             path: /-/healthy
@@ -252,15 +252,15 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
-        {{- if .Values.resources -}}
-        {{- include "partials.resources" .Values.resources | nindent 8 }}
+        {{- if .Values.prometheus.resources -}}
+        {{- include "partials.resources" .Values.prometheus.resources | nindent 8 }}
         {{- end }}
         securityContext:
           runAsNonRoot: true
           runAsUser: 65534
           runAsGroup: 65534
         volumeMounts:
-      {{- range .Values.ruleConfigMapMounts }}
+      {{- range .Values.prometheus.ruleConfigMapMounts }}
         - name: {{ .name }}
           mountPath: /etc/prometheus/{{ .subPath }}
           subPath: {{ .subPath }}
@@ -274,13 +274,13 @@ spec:
           readOnly: true
       serviceAccountName: linkerd-prometheus
       volumes:
-    {{- range .Values.ruleConfigMapMounts }}
+    {{- range .Values.prometheus.ruleConfigMapMounts }}
       - name: {{ .name }}
         configMap:
           name: {{ .configMap }}
     {{- end }}
       - name: data
-    {{- if .Values.persistence }}
+    {{- if .Values.prometheus.persistence }}
         persistentVolumeClaim:
           claimName: linkerd-prometheus
     {{- else }}
@@ -289,7 +289,7 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
-{{- if .Values.persistence }}
+{{- if .Values.prometheus.persistence }}
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -303,11 +303,11 @@ metadata:
   namespace: {{.Values.namespace}}
 spec:
   accessModes:
-    - {{ .Values.persistence.accessMode | quote }}
+    - {{ .Values.prometheus.persistence.accessMode | quote }}
   resources:
     requests:
-      storage: {{ .Values.persistence.size | quote }}
-{{- if .Values.persistence.storageClass }}
-  storageClassName: "{{ .Values.persistence.storageClass }}"
+      storage: {{ .Values.prometheus.persistence.size | quote }}
+{{- if .Values.prometheus.persistence.storageClass }}
+  storageClassName: "{{ .Values.prometheus.persistence.storageClass }}"
 {{- end }}
 {{- end }}

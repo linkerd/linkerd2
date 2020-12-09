@@ -61,25 +61,27 @@ spec:
       {{- include "linkerd.node-selector" . | nindent 6 }}
       containers:
       - args:
-        - -api-addr=linkerd-controller-api.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:8085
+        - -api-addr=linkerd-controller-api.{{.Values.linkerdNamespace}}.svc.{{.Values.clusterDomain}}:8085
         - -cluster-domain={{.Values.clusterDomain}}
         {{- if .Values.grafanaUrl }}
         - -grafana-addr={{.Values.grafanaUrl}}
         {{- else if .Values.grafana.enabled }}
-        - -grafana-addr=grafana.linkerd-viz.svc.{{.Values.clusterDomain}}:3000
+        - -grafana-addr=grafana.{{.Values.namespace}}.svc.{{.Values.clusterDomain}}:3000
         {{- end}}
-        - -jaeger-addr=jaeger.linkerd-jaeger.svc.{{.Values.clusterDomain}}:16686
-        - -controller-namespace={{.Values.namespace}}
+        {{- if .Values.jaegerUrl }}
+        - -jaeger-addr={{.Values.jaegerUrl}}
+        {{- end}}
+        - -controller-namespace={{.Values.linkerdNamespace}}
         - -log-level={{.Values.controllerLogLevel}}
-        {{- if .Values.enforcedHostRegexp }}
-        - -enforced-host={{.Values.enforcedHostRegexp}}
+        {{- if .Values.dashboard.enforcedHostRegexp }}
+        - -enforced-host={{.Values.dashboard.enforcedHostRegexp}}
         {{- else -}}
         {{- $hostFull := replace "." "\\." (printf "linkerd-web.%s.svc.%s" .Values.namespace .Values.clusterDomain) }}
         {{- $hostAbbrev := replace "." "\\." (printf "linkerd-web.%s.svc" .Values.namespace) }}
         - -enforced-host=^(localhost|127\.0\.0\.1|{{ $hostFull }}|{{ $hostAbbrev }}|\[::1\])(:\d+)?$
         {{- end}}
-        image: {{.Values.webImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
-        imagePullPolicy: {{.Values.imagePullPolicy}}
+        image: {{.Values.dashboard.image.name}}:{{ default (default .Values.linkerdVersion .Values.controllerImageVersion) .Values.dashboard.image.tag}}
+        imagePullPolicy: {{.Values.dashboard.image.pullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping
@@ -96,9 +98,9 @@ spec:
           httpGet:
             path: /ready
             port: 9994
-        {{- if .Values.webResources -}}
-        {{- include "partials.resources" .Values.webResources | nindent 8 }}
+        {{- if .Values.dashboard.resources -}}
+        {{- include "partials.resources" .Values.dashboard.resources | nindent 8 }}
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.controllerUID}}
+          runAsUser: {{.Values.dashboard.UID}}
       serviceAccountName: linkerd-web

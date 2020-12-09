@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-namespace: linkerd-viz
+# Common variables across extensions
 
 # -- Control plane label. Do not edit
 controllerComponentLabel: linkerd.io/control-plane-component
@@ -11,13 +11,22 @@ controllerNamespaceLabel: linkerd.io/control-plane-ns
 # -- Control plane label. Do not edit 
 linkerdNamespaceLabel: linkerd.io/is-control-plane
 workloadNamespaceLabel: linkerd.io/workload-ns
-
+# -- Annotation label for the proxy create. Do not edit. 
+createdByAnnotation: linkerd.io/created-by
 proxyInjectAnnotation: linkerd.io/inject
 
-# -- Host header validation regex for the dashboard. See the [Linkerd
-# documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more
-# information
-enforcedHostRegexp: ""
+namespace: linkerd-viz
+linkerdVersion: &linkerd_version linkerdVersionValue
+clusterDomain: cluster.local
+identityTrustDomain: cluster.local
+linkerdNamespace: linkerd
+
+# -- url of external prometheus instance
+# prometheusUrl:
+
+# -- url of external jaeger instance
+# Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension
+# jaegerUrl:
 
 
 # -|- CPU and Memory resources required by controllers publicAPI (see
@@ -30,6 +39,11 @@ enforcedHostRegexp: ""
 
 # tap configuration
 tap:
+  image:
+    # -- Docker image name for the grafana instance
+    name: ghcr.io/linkerd/grafana
+    # -- Docker image tag for the grafana instance
+    tag: *linkerd_version
   # -- Do not create a secret resource for the Tap component. If this is set to
   # `true`, the value `tap.caBundle` must be set (see below).
   externalSecret: false
@@ -47,25 +61,46 @@ tap:
   # certificate will be generated.
   caBundle: |
 
-# -|- CPU and Memory resources required by tap (see `global.proxy.resources` for
-#sub-fields)
-#tapResources:
-# -|- CPU and Memory resources required by proxy injected into tap pod (see
-#`global.proxy.resources` for sub-fields)
-#tapProxyResources:
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the tap container can use
+      limit:
+      # -- Amount of CPU units that the tap container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that tap container can use
+      limit:
+      # -- Amount of memory that the tap container requests
+      request:
 
 # web dashboard configuration
 dashboard:
   # -- Number of replicas of dashboard
   replicas: 1
-  # -- Docker image for the web container
-  image: ghcr.io/linkerd/web
-# -<- CPU and Memory resources required by web UI (see `global.proxy.resources`
-#for sub-fields)
-#webResources:
-# -|- CPU and Memory resources required by proxy injected into web UI pod (see
-#`global.proxy.resources` for sub-fields)
-#webProxyResources:
+  image:
+    # -- Docker image name for the web instance
+    name: ghcr.io/linkerd/web
+    # -- Docker image tag for the web instance
+    tag: *linkerd_version
+
+  # UID for the dashboard resource
+  UID: 2103
+
+  # -- Host header validation regex for the dashboard. See the [Linkerd
+  # documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more
+  # information
+  enforcedHostRegexp: ""
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the web container can use
+      limit:
+      # -- Amount of CPU units that the web container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that web container can use
+      limit:
+      # -- Amount of memory that the web container requests
+      request:
 
 # -- NodeSelector section, See the [K8S
 # documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)
@@ -82,26 +117,85 @@ nodeSelector:
 # Full configuration fields https://github.com/linkerd/linkerd2/tree/master/charts/linkerd2#add-ons-configuration
 
 grafana:
+  # -- toggle field to enable or disable grafana
   enabled: true
-  # image:
-  #   name: ghcr.io/linkerd/grafana
-  #   tag: latest
-  # set resource requests and limits for grafana and its linkerd proxy respectively
-  # see global.proxy.resources in the linkerd2 chart for details.
-  # resources:
-  # proxy:
-  #   resources:
+  image:
+    # -- Docker image name for the grafana instance
+    name: ghcr.io/linkerd/grafana
+    # -- Docker image tag for the grafana instance
+    tag: *linkerd_version
+
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the grafana container can use
+      limit:
+      # -- Amount of CPU units that the grafana container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that grafana container can use
+      limit:
+      # -- Amount of memory that the grafana container requests
+      request:
 
 prometheus:
+  # -- toggle field to enable or disable prometheus
   enabled: true
-  # image: prom/prometheus:v2.15.3
-  # args:
-  #  storage.tsdb.retention.time: 6h
-  #  log.level: debug
-  # globalConfig:
-  #   scrape_interval: 10s
-  #   scrape_timeout: 10s
-  # scrapeConfigs:
+  image: 
+    # -- Docker image name for the prometheus instance
+    name: prom/prometheus
+    # -- Docker image tag for the prometheus instance
+    tag: v2.19.3
+    # == Pull policy for the prometheus instance
+    pullPolicy: Always
+
+  # -- Command line options for Prometheus binary
+  args:
+    storage.tsdb.path: /data
+    storage.tsdb.retention.time: 6h
+    config.file: /etc/prometheus/prometheus.yml
+    log.level: info
+  # -- The global configuration specifies parameters that are valid in all other
+  # configuration contexts.
+  globalConfig:
+    scrape_interval: 10s
+    scrape_timeout: 10s
+    evaluation_interval: 10s
+
+  # -- Alert relabeling is applied to alerts before they are sent to the
+  # Alertmanager.
+  alertRelabelConfigs:
+  # Ex:
+  # - action: labeldrop
+  #   regex: prometheus_replica
+
+  # -- Alertmanager instances the Prometheus server sends alerts to configured via
+  # the static_configs parameter.
+  alertManagers:
+  # Ex:
+  # - scheme: http
+  #   static_configs:
+  #   - targets:
+  #     - "alertmanager.linkerd.svc:9093"
+
+  # -- Allows transparently sending samples to an endpoint. Mostly used for long
+  # term storage.
+  remoteWrite:
+
+  # -- Alerting/recording rule ConfigMap mounts (sub-path names must end in
+  # ´_rules.yml´ or ´_rules.yaml´)
+  ruleConfigMapMounts:
+  # Ex:
+  # - name: alerting-rules
+  #   subPath: alerting_rules.yml
+  #   configMap: linkerd-prometheus-rules
+  # - name: recording-rules
+  #   subPath: recording_rules.yml
+  #   configMap: linkerd-prometheus-rules
+
+  # -- A scrapeConfigs section specifies a set of targets and parameters
+  # describing how to scrape them.
+  scrapeConfigs:
+  # Ex:
   # - job_name: 'kubernetes-nodes'
   #   scheme: https
   #   tls_config:
@@ -112,25 +206,11 @@ prometheus:
   #   relabel_configs:
   #   - action: labelmap
   #     regex: __meta_kubernetes_node_label_(.+)
-  # alertManagers:
-  # - scheme: http
-  #   static_configs:
-  #   - targets:
-  #     - "alertmanager.linkerd.svc:9093"
-  # alertRelabelConfigs:
-  # - action: labeldrop
-  #   regex: prometheus_replica
-  # ruleConfigMapMounts:
-  # - name: alerting-rules
-  #   subPath: alerting_rules.yml
-  #   configMap: linkerd-prometheus-rules
-  # - name: recording-rules
-  #   subPath: recording_rules.yml
-  #   configMap: linkerd-prometheus-rules
-  ###
-  ### Sidecar containers allow access to the prometheus data directory,
-  ### e.g. for exporting data to non-prometheus systems.
-  # sidecarContainers:
+
+  # -- A sidecarContainers section specifies a list of secondary containers to run
+  # in the prometheus pod e.g. to export data to non-prometheus systems
+  sideCarContainers:
+  # Ex:
   # - name: sidecar
   #   image: gcr.io/myproject/stackdriver-prometheus-sidecar
   #   imagePullPolicy: Always
@@ -155,19 +235,22 @@ prometheus:
   ### As such, please refer to https://linkerd.io/2/tasks/exporting-metrics/ for the recommended approach to metrics data retention.
   # if enabled, creates a persistent volume claim for prometheus data
   # https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
-  # persistence:
-  #   storageClass: ""
-  #   accessMode: ReadWriteOnce
-  #   size: 8Gi
-  # resources:
-  # proxy:
-  #   resources:
+  #persistence:
+  # -- Storage class used to create prometheus data PV.
+  #  storageClass:
+  # -- PVC access mode.
+  #  accessMode:
+  # -- Prometheus data volume size.
+  #  size:
 
-tracing:
-  enabled: false
-  # collector:
-  #  image: omnition/opencensus-collector:0.1.11
-  #  resources:
-  # jaeger:
-  #  image: jaegertracing/all-in-one:1.19.2
-  #  resources:
+  resources:
+    cpu:
+      # -- Maximum amount of CPU units that the prometheus container can use
+      limit:
+      # -- Amount of CPU units that the prometheus container requests
+      request:
+    memory:
+      # -- Maximum amount of memory that prometheus container can use
+      limit:
+      # -- Amount of memory that the prometheus container requests
+      request:

@@ -74,11 +74,11 @@ spec:
       containers:
       - args:
         - tap
-        - -controller-namespace={{.Values.namespace}}
+        - -controller-namespace={{.Values.linkerdnamespace}}
         - -log-level={{.Values.controllerLogLevel}}
-        - -identity-trust-domain={{.Values.identityTrustDomain }}
-        image: {{.Values.controllerImage}}:{{default .Values.linkerdVersion .Values.controllerImageVersion}}
-        imagePullPolicy: {{.Values.imagePullPolicy}}
+        - -identity-trust-domain={{.Values.identityTrustDomain}}
+        image: {{.Values.tap.image.name}}:{{ default (default .Values.linkerdVersion .Values.controllerImageVersion) .Values.tap.image.tag}}
+        imagePullPolicy: {{.Values.tap.image.pullPolicy}}
         livenessProbe:
           httpGet:
             path: /ping

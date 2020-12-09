@@ -118,8 +118,6 @@ Kubernetes: `>=1.13.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
-| file://../add-ons/grafana | grafana | 0.1.0 |
-| file://../add-ons/prometheus | prometheus | 0.1.0 |
 | file://../partials | partials | 0.1.0 |
 
 ## Values
@@ -135,7 +133,6 @@ Kubernetes: `>=1.13.0-0`
 | debugContainer.image.version | string | `"linkerdVersionValue"` | Tag for the debug container Docker image |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob  |
 | enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading   |
-| enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
 | global.clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use   |
 | global.clusterNetworks | string | `"10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"` | The cluster networks for which service discovery is performed. This should include the pod network but need not include the node network. By default, all private networks are specified so that resolution works in typical Kubernetes environments. |
 | global.cniEnabled | bool | `false` | enabling this omits the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed |
@@ -192,7 +189,6 @@ Kubernetes: `>=1.13.0-0`
 | global.proxyInjectAnnotation | string | `"linkerd.io/inject"` | Annotation label to signal injection. Do not edit. |
 | global.proxyInjectDisabled | string | `"disabled"` | Annotation value to disable injection. Do not edit.  |
 | global.workloadNamespaceLabel | string | `"linkerd.io/workload-ns"` |  |
-| grafana.enabled | bool | `true` |  |
 | heartbeatSchedule | string | `"0 0 * * *"` | Config for the heartbeat cronjob |
 | identity.issuer.clockSkewAllowance | string | `"20s"` | Amount of time to allow for clock skew within a Linkerd cluster |
 | identity.issuer.crtExpiry | string | `nil` | Expiration timestamp for the issuer certificate. It must be provided during install. Must match the expiry date in crtPEM |
@@ -210,7 +206,6 @@ Kubernetes: `>=1.13.0-0`
 | profileValidator.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below). |
 | profileValidator.keyPEM | string | `""` | Certificate key for the service profile validator. If not provided then Helm will generate one. |
 | profileValidator.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook |
-| prometheus.enabled | bool | `true` |  |
 | proxyInjector.caBundle | string | `""` | Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | proxyInjector.crtPEM | string | `""` | Certificate for the proxy injector. If not provided then Helm will generate one. |
 | proxyInjector.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below) |

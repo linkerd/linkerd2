@@ -1,7 +1,7 @@
-# linkerd2
+# linkerd-viz
 
-Linkerd gives you observability, reliability, and security
-for your microservices — with no code change required.
+Linkerd Viz extension contains the observability and visualization
+components that can be integrated directly.
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
 
@@ -124,104 +124,61 @@ Kubernetes: `>=1.13.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| controllerImage | string | `"ghcr.io/linkerd/controller"` | Docker image for the controller, tap and identity components |
-| controllerReplicas | int | `1` | Number of replicas for each control plane pod |
-| controllerUID | int | `2103` | User ID for the control plane components |
+| clusterDomain | string | `"cluster.local"` |  |
+| controllerComponentLabel | string | `"linkerd.io/control-plane-component"` | Control plane label. Do not edit |
+| controllerNamespaceLabel | string | `"linkerd.io/control-plane-ns"` | Control plane label. Do not edit   |
+| createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit.  |
+| dashboard.UID | int | `2103` |  |
+| dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
+| dashboard.image.name | string | `"ghcr.io/linkerd/web"` | Docker image name for the web instance |
+| dashboard.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the web instance |
 | dashboard.replicas | int | `1` | Number of replicas of dashboard |
-| debugContainer.image.name | string | `"ghcr.io/linkerd/debug"` | Docker image for the debug container |
-| debugContainer.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the debug container Docker image |
-| debugContainer.image.version | string | `"linkerdVersionValue"` | Tag for the debug container Docker image |
-| disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob  |
-| enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading   |
-| enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
-| global.clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use   |
-| global.clusterNetworks | string | `"10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"` | The cluster networks for which service discovery is performed. This should include the pod network but need not include the node network. By default, all private networks are specified so that resolution works in typical Kubernetes environments. |
-| global.cniEnabled | bool | `false` | enabling this omits the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed |
-| global.controlPlaneTracing | bool | `false` | control plane trace configuration |
-| global.controllerComponentLabel | string | `"linkerd.io/control-plane-component"` | Control plane label. Do not edit |
-| global.controllerLogLevel | string | `"info"` | Log level for the control plane components |
-| global.controllerNamespaceLabel | string | `"linkerd.io/control-plane-ns"` | Control plane label. Do not edit   |
-| global.createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit.  |
-| global.enableEndpointSlices | bool | `false` | enables the use of EndpointSlice informers for the destination service; enableEndpointSlices should be set to true only if EndpointSlice K8s feature gate is on; the feature is still experimental. |
-| global.grafanaUrl | string | `""` | url of external grafana instance with reverse proxy configured. |
-| global.identityTrustAnchorsPEM | string | `""` | Trust root certificate (ECDSA). It must be provided during install.  |
-| global.identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity  |
-| global.imagePullPolicy | string | `"IfNotPresent"` | Docker image pull policy  |
-| global.imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
-| global.linkerdNamespaceLabel | string | `"linkerd.io/is-control-plane"` | Control plane label. Do not edit  |
-| global.linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
-| global.namespace | string | `"linkerd"` | Control plane namespace |
-| global.podAnnotations | object | `{}` | Additional annotations to add to all pods |
-| global.podLabels | object | `{}` | Additional labels to add to all pods |
-| global.prometheusUrl | string | `""` | url of existing prometheus |
-| global.proxy.cores | int | `0` | The `cpu.limit` and `cores` should be kept in sync. The value of `cores` must be an integer and should typically be set by rounding up from the limit. E.g. if cpu.limit is '1500m', cores should be 2. |
-| global.proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
-| global.proxy.image.name | string | `"ghcr.io/linkerd/proxy"` | Docker image for the proxy |
-| global.proxy.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the proxy container Docker image |
-| global.proxy.image.version | string | `"linkerdVersionValue"` | Tag for the proxy container Docker image |
-| global.proxy.inboundConnectTimeout | string | `"100ms"` | Maximum time allowed for the proxy to establish an inbound TCP connection |
-| global.proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
-| global.proxy.logLevel | string | `"warn,linkerd=info"` | Log level for the proxy |
-| global.proxy.outboundConnectTimeout | string | `"1000ms"` | Maximum time allowed for the proxy to establish an outbound TCP connection |
-| global.proxy.ports.admin | int | `4191` | Admin port for the proxy container |
-| global.proxy.ports.control | int | `4190` | Control port for the proxy container |
-| global.proxy.ports.inbound | int | `4143` | Inbound port for the proxy container |
-| global.proxy.ports.outbound | int | `4140` | Outbound port for the proxy container   |
-| global.proxy.requireIdentityOnInboundPorts | string | `""` |  |
-| global.proxy.resources.cpu.limit | string | `""` | Maximum amount of CPU units that the proxy can use  |
-| global.proxy.resources.cpu.request | string | `""` | Amount of CPU units that the proxy requests |
-| global.proxy.resources.memory.limit | string | `""` | Maximum amount of memory that the proxy can use  |
-| global.proxy.resources.memory.request | string | `""` | Maximum amount of memory that the proxy requests |
-| global.proxy.trace.collectorSvcAccount | string | `"default"` | Service account associated with the Trace collector instance  |
-| global.proxy.trace.collectorSvcAddr | string | `""` | Collector Service address for the proxies to send Trace Data  |
-| global.proxy.uid | int | `2102` | User id under which the proxy runs |
-| global.proxy.waitBeforeExitSeconds | int | `0` | If set the proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. See [Lifecycle hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks) for more info on container lifecycle hooks. |
-| global.proxyInit.closeWaitTimeoutSecs | int | `0` |  |
-| global.proxyInit.ignoreInboundPorts | string | `"25,443,587,3306,11211"` | Default set of ports to skip via itpables: - SMTP (25,587) server-first - HTTPS (443) opaque TLS - MYSQL (3306) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
-| global.proxyInit.ignoreOutboundPorts | string | `"25,443,587,3306,11211"` | Default set of ports to skip via itpables, same defaults as InboudPorts |
-| global.proxyInit.image.name | string | `"ghcr.io/linkerd/proxy-init"` | Docker image for the proxy-init container |
-| global.proxyInit.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the proxy-init container Docker image |
-| global.proxyInit.image.version | string | `"v1.3.8"` | Tag for the proxy-init container Docker image |
-| global.proxyInit.resources.cpu.limit | string | `"100m"` | Maximum amount of CPU units that the proxy-init container can use |
-| global.proxyInit.resources.cpu.request | string | `"10m"` | Amount of CPU units that the proxy-init container requests |
-| global.proxyInit.resources.memory.limit | string | `"50Mi"` | Maximum amount of memory that the proxy-init container can use |
-| global.proxyInit.resources.memory.request | string | `"10Mi"` | Amount of memory that the proxy-init container requests |
-| global.proxyInit.xtMountPath.mountPath | string | `"/run"` |  |
-| global.proxyInit.xtMountPath.name | string | `"linkerd-proxy-init-xtables-lock"` |  |
-| global.proxyInjectAnnotation | string | `"linkerd.io/inject"` | Annotation label to signal injection. Do not edit. |
-| global.proxyInjectDisabled | string | `"disabled"` | Annotation value to disable injection. Do not edit.  |
-| global.workloadNamespaceLabel | string | `"linkerd.io/workload-ns"` |  |
-| grafana.enabled | bool | `true` |  |
-| heartbeatSchedule | string | `"0 0 * * *"` | Config for the heartbeat cronjob |
-| identity.issuer.clockSkewAllowance | string | `"20s"` | Amount of time to allow for clock skew within a Linkerd cluster |
-| identity.issuer.crtExpiry | string | `nil` | Expiration timestamp for the issuer certificate. It must be provided during install. Must match the expiry date in crtPEM |
-| identity.issuer.crtExpiryAnnotation | string | `"linkerd.io/identity-issuer-expiry"` | Annotation used to identity the issuer certificate expiration timestamp. Do not edit. |
-| identity.issuer.issuanceLifetime | string | `"24h0m0s"` | Amount of time for which the Identity issuer should certify identity |
-| identity.issuer.scheme | string | `"linkerd.io/tls"` |  |
-| identity.issuer.tls | object | `{"crtPEM":"","keyPEM":""}` | Which scheme is used for the identity issuer secret format  |
-| identity.issuer.tls.crtPEM | string | `""` | Issuer certificate (ECDSA). It must be provided during install. |
-| identity.issuer.tls.keyPEM | string | `""` | Key for the issuer certificate (ECDSA). It must be provided during install |
-| installNamespace | bool | `true` | Set to false when installing Linkerd in a custom namespace. See the [Linkerd documentation](https://linkerd.io/2/tasks/install-helmcustomizing-the-namespace) for more information. |
+| dashboard.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the web container can use |
+| dashboard.resources.cpu.request | string | `nil` | Amount of CPU units that the web container requests |
+| dashboard.resources.memory.limit | string | `nil` | Maximum amount of memory that web container can use |
+| dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
+| grafana.enabled | bool | `true` | toggle field to enable or disable grafana |
+| grafana.image.name | string | `"ghcr.io/linkerd/grafana"` | Docker image name for the grafana instance |
+| grafana.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the grafana instance |
+| grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
+| grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
+| grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
+| grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
+| identityTrustDomain | string | `"cluster.local"` |  |
+| linkerdNamespace | string | `"linkerd"` |  |
+| linkerdNamespaceLabel | string | `"linkerd.io/is-control-plane"` | Control plane label. Do not edit  |
+| linkerdVersion | string | `"linkerdVersionValue"` |  |
+| namespace | string | `"linkerd-viz"` |  |
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
-| omitWebhookSideEffects | bool | `false` | Omit the `sideEffects` flag in the webhook manifests |
-| profileValidator.caBundle | string | `""` | Bundle of CA certificates for service profile validator. If not provided then Helm will use the certificate generated  for `profileValidator.crtPEM`. If `profileValidator.externalSecret` is set to true, this value must be set, as no certificate will be generated.  |
-| profileValidator.crtPEM | string | `""` | Certificate for the service profile validator. If not provided then Helm will generate one. |
-| profileValidator.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below). |
-| profileValidator.keyPEM | string | `""` | Certificate key for the service profile validator. If not provided then Helm will generate one. |
-| profileValidator.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook |
-| prometheus.enabled | bool | `true` |  |
-| proxyInjector.caBundle | string | `""` | Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
-| proxyInjector.crtPEM | string | `""` | Certificate for the proxy injector. If not provided then Helm will generate one. |
-| proxyInjector.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below) |
-| proxyInjector.keyPEM | string | `""` | Certificate key for the proxy injector. If not provided then Helm will generate one.  |
-| proxyInjector.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook. If not set defaults to all namespaces without the annotation config.linkerd.io/admission-webhooks=disabled |
+| prometheus.alertManagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
+| prometheus.alertRelabelConfigs | string | `nil` | Alert relabeling is applied to alerts before they are sent to the Alertmanager. |
+| prometheus.args | object | `{"config.file":"/etc/prometheus/prometheus.yml","log.level":"info","storage.tsdb.path":"/data","storage.tsdb.retention.time":"6h"}` | Command line options for Prometheus binary |
+| prometheus.enabled | bool | `true` | toggle field to enable or disable prometheus |
+| prometheus.globalConfig | object | `{"evaluation_interval":"10s","scrape_interval":"10s","scrape_timeout":"10s"}` | The global configuration specifies parameters that are valid in all other configuration contexts. |
+| prometheus.image.name | string | `"prom/prometheus"` | Docker image name for the prometheus instance |
+| prometheus.image.pullPolicy | string | `"Always"` |  |
+| prometheus.image.tag | string | `"v2.19.3"` | Docker image tag for the prometheus instance |
+| prometheus.remoteWrite | string | `nil` | Allows transparently sending samples to an endpoint. Mostly used for long term storage. |
+| prometheus.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the prometheus container can use |
+| prometheus.resources.cpu.request | string | `nil` | Amount of CPU units that the prometheus container requests |
+| prometheus.resources.memory.limit | string | `nil` | Maximum amount of memory that prometheus container can use |
+| prometheus.resources.memory.request | string | `nil` | Amount of memory that the prometheus container requests |
+| prometheus.ruleConfigMapMounts | string | `nil` | Alerting/recording rule ConfigMap mounts (sub-path names must end in ´_rules.yml´ or ´_rules.yaml´) |
+| prometheus.scrapeConfigs | string | `nil` | A scrapeConfigs section specifies a set of targets and parameters describing how to scrape them. |
+| prometheus.sideCarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
+| proxyInjectAnnotation | string | `"linkerd.io/inject"` |  |
+| tap | object | `{"caBundle":"","crtPEM":"","externalSecret":false,"image":{"name":"ghcr.io/linkerd/grafana","tag":"linkerdVersionValue"},"keyPEM":"","resources":{"cpu":{"limit":null,"request":null},"memory":{"limit":null,"request":null}}}` | url of external prometheus instance prometheusUrl: -- url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension jaegerUrl: -|- CPU and Memory resources required by controllers publicAPI (see tap configuration |
 | tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
 | tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
+| tap.image.name | string | `"ghcr.io/linkerd/grafana"` | Docker image name for the grafana instance |
+| tap.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the grafana instance |
 | tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one.  |
-| tracing.enabled | bool | `false` |  |
-| webImage | string | `"ghcr.io/linkerd/web"` |  |
-| webhookFailurePolicy | string | `"Ignore"` | Failure policy for the proxy injector  |
+| tap.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the tap container can use |
+| tap.resources.cpu.request | string | `nil` | Amount of CPU units that the tap container requests |
+| tap.resources.memory.limit | string | `nil` | Maximum amount of memory that tap container can use |
+| tap.resources.memory.request | string | `nil` | Amount of memory that the tap container requests |
+| workloadNamespaceLabel | string | `"linkerd.io/workload-ns"` |  |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.4.0](https://github.com/norwoodj/helm-docs/releases/v1.4.0)

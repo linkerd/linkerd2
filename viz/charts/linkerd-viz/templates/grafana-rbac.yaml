@@ -11,4 +11,3 @@ metadata:
   labels:
     {{.Values.controllerComponentLabel}}: grafana
     {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
-{{- include "partials.image-pull-secrets" . }}
