@@ -15,7 +15,16 @@ protocversion=3.6.0
 protocbin=$targetbin/protoc-$protocversion
 protocurl=https://github.com/google/protobuf/releases/download/v$protocversion/protoc-$protocversion-$os-$arch.zip
 
+require_from() {
+    if ! command -v "$1" >/dev/null 2>/dev/null ; then
+        echo "Please acquire $1 from $2" >&2
+        return 1
+    fi
+}
+
 if [ ! -f "$protocbin" ]; then
+  require_from curl 'https://curl.se/download.html'
+  require_from unzip 'http://infozip.sourceforge.net/UnZip.html#Downloads'
   tmp=$(mktemp -d -t protoc.XXX)
   mkdir -p "$targetbin"
   (
