@@ -55,6 +55,11 @@ func (h *handler) handleIndex(w http.ResponseWriter, req *http.Request, p httpro
 	if err != nil {
 		params.Error = true
 		params.ErrorMessage = err.Error()
+		params.Data = &pb.VersionInfo{
+			GoVersion:      "Unavailable",
+			BuildDate:      "Unavailable",
+			ReleaseVersion: "Unavailable",
+		}
 		log.Error(err)
 	} else {
 		params.Data = version
