@@ -10,6 +10,4 @@ rootdir=$( cd "$bindir"/.. && pwd )
 
 # We want the word splitting for the shellcheck arguments
 # shellcheck disable=SC2046
-"$bindir"/shellcheck -x -P "$bindir" $(find "$rootdir" -type f \
-		! -path "$rootdir"/.git/hooks/\*.sample \
-		| while read -r f; do [ "$(file -b --mime-type "$f")" = 'text/x-shellscript' ] && printf '%s\0' "$f"; done | xargs -0)
+"$bindir"/shellcheck -x -P "$bindir" $(grep -rnsle '^#!/usr/bin/env \(bash\|sh\)' "$rootdir"/* | xargs)

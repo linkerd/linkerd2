@@ -22,6 +22,6 @@ rootdir=$( cd "$bindir"/.. && pwd )
     GO111MODULE=on go generate -mod=readonly ./jaeger/static
     GO111MODULE=on go generate -mod=readonly ./multicluster/static
     root_tag=$("$bindir"/root-tag)
-    GO111MODULE=on CGO_ENABLED=0 go build -o $target -tags prod -mod=readonly -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$root_tag" ./cli
+    GO111MODULE=on CGO_ENABLED=0 go build -o "$target" -tags prod -mod=readonly -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$root_tag" ./cli
     echo "$target"
 )

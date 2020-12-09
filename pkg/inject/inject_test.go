@@ -59,8 +59,6 @@ func TestGetOverriddenValues(t *testing.T) {
 							k8s.ProxyLogFormatAnnotation:                     "json",
 							k8s.ProxyEnableExternalProfilesAnnotation:        "false",
 							k8s.ProxyVersionOverrideAnnotation:               proxyVersionOverride,
-							k8s.ProxyTraceCollectorSvcAddrAnnotation:         "oc-collector.tracing:55678",
-							k8s.ProxyTraceCollectorSvcAccountAnnotation:      "default",
 							k8s.ProxyWaitBeforeExitSecondsAnnotation:         "123",
 							k8s.ProxyRequireIdentityOnInboundPortsAnnotation: "8888,9999",
 							k8s.ProxyOutboundConnectTimeout:                  "6000ms",
@@ -102,10 +100,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.GetGlobal().ProxyInit.Image.Version = version.ProxyInitVersion
 				values.GetGlobal().ProxyInit.IgnoreInboundPorts = "4222,6222"
 				values.GetGlobal().ProxyInit.IgnoreOutboundPorts = "8079,8080"
-				values.GetGlobal().Proxy.Trace = &l5dcharts.Trace{
-					CollectorSvcAddr:    "oc-collector.tracing:55678",
-					CollectorSvcAccount: "default.tracing",
-				}
 				values.GetGlobal().Proxy.RequireIdentityOnInboundPorts = "8888,9999"
 				values.GetGlobal().Proxy.OutboundConnectTimeout = "6000ms"
 				values.GetGlobal().Proxy.InboundConnectTimeout = "600ms"
@@ -128,31 +122,29 @@ func TestGetOverriddenValues(t *testing.T) {
 		},
 		{id: "use namespace overrides",
 			nsAnnotations: map[string]string{
-				k8s.ProxyDisableIdentityAnnotation:          "true",
-				k8s.ProxyImageAnnotation:                    "ghcr.io/linkerd/proxy",
-				k8s.ProxyImagePullPolicyAnnotation:          pullPolicy,
-				k8s.ProxyInitImageAnnotation:                "ghcr.io/linkerd/proxy-init",
-				k8s.ProxyControlPortAnnotation:              "4000",
-				k8s.ProxyInboundPortAnnotation:              "5000",
-				k8s.ProxyAdminPortAnnotation:                "5001",
-				k8s.ProxyOutboundPortAnnotation:             "5002",
-				k8s.ProxyIgnoreInboundPortsAnnotation:       "4222,6222",
-				k8s.ProxyIgnoreOutboundPortsAnnotation:      "8079,8080",
-				k8s.ProxyCPURequestAnnotation:               "0.15",
-				k8s.ProxyMemoryRequestAnnotation:            "120",
-				k8s.ProxyCPULimitAnnotation:                 "1.5",
-				k8s.ProxyMemoryLimitAnnotation:              "256",
-				k8s.ProxyUIDAnnotation:                      "8500",
-				k8s.ProxyLogLevelAnnotation:                 "debug,linkerd=debug",
-				k8s.ProxyLogFormatAnnotation:                "json",
-				k8s.ProxyEnableExternalProfilesAnnotation:   "false",
-				k8s.ProxyVersionOverrideAnnotation:          proxyVersionOverride,
-				k8s.ProxyTraceCollectorSvcAddrAnnotation:    "oc-collector.tracing:55678",
-				k8s.ProxyTraceCollectorSvcAccountAnnotation: "default",
-				k8s.ProxyWaitBeforeExitSecondsAnnotation:    "123",
-				k8s.ProxyOutboundConnectTimeout:             "6000ms",
-				k8s.ProxyInboundConnectTimeout:              "600ms",
-				k8s.ProxyOpaquePortsAnnotation:              "4320-4325,3306",
+				k8s.ProxyDisableIdentityAnnotation:        "true",
+				k8s.ProxyImageAnnotation:                  "ghcr.io/linkerd/proxy",
+				k8s.ProxyImagePullPolicyAnnotation:        pullPolicy,
+				k8s.ProxyInitImageAnnotation:              "ghcr.io/linkerd/proxy-init",
+				k8s.ProxyControlPortAnnotation:            "4000",
+				k8s.ProxyInboundPortAnnotation:            "5000",
+				k8s.ProxyAdminPortAnnotation:              "5001",
+				k8s.ProxyOutboundPortAnnotation:           "5002",
+				k8s.ProxyIgnoreInboundPortsAnnotation:     "4222,6222",
+				k8s.ProxyIgnoreOutboundPortsAnnotation:    "8079,8080",
+				k8s.ProxyCPURequestAnnotation:             "0.15",
+				k8s.ProxyMemoryRequestAnnotation:          "120",
+				k8s.ProxyCPULimitAnnotation:               "1.5",
+				k8s.ProxyMemoryLimitAnnotation:            "256",
+				k8s.ProxyUIDAnnotation:                    "8500",
+				k8s.ProxyLogLevelAnnotation:               "debug,linkerd=debug",
+				k8s.ProxyLogFormatAnnotation:              "json",
+				k8s.ProxyEnableExternalProfilesAnnotation: "false",
+				k8s.ProxyVersionOverrideAnnotation:        proxyVersionOverride,
+				k8s.ProxyWaitBeforeExitSecondsAnnotation:  "123",
+				k8s.ProxyOutboundConnectTimeout:           "6000ms",
+				k8s.ProxyInboundConnectTimeout:            "600ms",
+				k8s.ProxyOpaquePortsAnnotation:            "4320-4325,3306",
 			},
 			spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
@@ -190,10 +182,6 @@ func TestGetOverriddenValues(t *testing.T) {
 				values.GetGlobal().ProxyInit.Image.Version = version.ProxyInitVersion
 				values.GetGlobal().ProxyInit.IgnoreInboundPorts = "4222,6222"
 				values.GetGlobal().ProxyInit.IgnoreOutboundPorts = "8079,8080"
-				values.GetGlobal().Proxy.Trace = &l5dcharts.Trace{
-					CollectorSvcAddr:    "oc-collector.tracing:55678",
-					CollectorSvcAccount: "default.tracing",
-				}
 				values.GetGlobal().Proxy.OutboundConnectTimeout = "6000ms"
 				values.GetGlobal().Proxy.InboundConnectTimeout = "600ms"
 				values.GetGlobal().Proxy.OpaquePorts = "4320,4321,4322,4323,4324,4325,3306"

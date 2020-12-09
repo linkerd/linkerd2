@@ -13,10 +13,10 @@ bin/protoc-go.sh
 
 dir_dirty=$(git diff HEAD)
 if [ -z "$dir_dirty" ]; then
-  echo "Protobuf definitions match generated code"
+  echo 'Protobuf definitions match generated code'
   exit 0
 else
-  echo "Protobuf definitions diverge from generated code:"
-  echo "$(git status)"
+  echo 'Protobuf definitions diverge from generated code:'
+  git status
   exit 64
 fi

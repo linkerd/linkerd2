@@ -118,7 +118,13 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 
 		flag.NewBoolFlag(installUpgradeFlags, "control-plane-tracing", defaults.GetGlobal().ControlPlaneTracing,
 			"Enables Control Plane Tracing with the defaults", func(values *l5dcharts.Values, value bool) error {
-				defaults.GetGlobal().ControlPlaneTracing = value
+				values.GetGlobal().ControlPlaneTracing = value
+				return nil
+			}),
+
+		flag.NewStringFlag(installUpgradeFlags, "control-plane-tracing-namespace", defaults.GetGlobal().ControlPlaneTracingNamespace,
+			"Send control plane traces to Linkerd-Jaeger extension in this namespace", func(values *l5dcharts.Values, value string) error {
+				values.GetGlobal().ControlPlaneTracingNamespace = value
 				return nil
 			}),
 
@@ -185,6 +191,7 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 		installUpgradeFlags.MarkHidden("control-plane-version")
 	}
 	installUpgradeFlags.MarkHidden("control-plane-tracing")
+	installUpgradeFlags.MarkHidden("control-plane-tracing-namespace")
 
 	return flags, installUpgradeFlags, nil
 }
@@ -490,18 +497,6 @@ func makeInjectFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 		flag.NewBoolFlag(injectFlags, "disable-tap", defaults.GetGlobal().Proxy.DisableTap,
 			"Disables resources from being tapped", func(values *l5dcharts.Values, value bool) error {
 				values.GetGlobal().Proxy.DisableTap = value
-				return nil
-			}),
-
-		flag.NewStringFlag(injectFlags, "trace-collector", defaults.GetGlobal().Proxy.Trace.CollectorSvcAddr,
-			"Collector Service address for the proxies to send Trace Data", func(values *l5dcharts.Values, value string) error {
-				values.GetGlobal().Proxy.Trace.CollectorSvcAddr = value
-				return nil
-			}),
-
-		flag.NewStringFlag(injectFlags, "trace-collector-svc-account", defaults.GetGlobal().Proxy.Trace.CollectorSvcAccount,
-			"Service account associated with the Trace collector instance", func(values *l5dcharts.Values, value string) error {
-				values.GetGlobal().Proxy.Trace.CollectorSvcAccount = value
 				return nil
 			}),
 

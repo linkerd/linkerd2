@@ -51,7 +51,6 @@ type Report struct {
 	InjectDisabled               bool
 	InjectDisabledReason         string
 	InjectAnnotationAt           string
-	TracingEnabled               bool
 	AutomountServiceAccountToken bool
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
@@ -89,7 +88,6 @@ func newReport(conf *ResourceConfig) *Report {
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
-		report.TracingEnabled = conf.pod.meta.Annotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != "" || conf.nsAnnotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != ""
 		if conf.pod.spec.AutomountServiceAccountToken != nil {
 			report.AutomountServiceAccountToken = *conf.pod.spec.AutomountServiceAccountToken
 		}
