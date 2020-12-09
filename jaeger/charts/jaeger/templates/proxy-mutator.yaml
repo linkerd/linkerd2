@@ -26,8 +26,8 @@ spec:
     spec:
       containers:
       - args:
-        - -collector-svc-addr={{.Values.collectorSvcAddr}}
-        - -collector-svc-account={{.Values.collectorSvcAccount}}
+        - -collector-svc-addr={{.Values.collector.svcAddr}}
+        - -collector-svc-account={{.Values.collector.svcAccount}}
         - -log-level={{.Values.webhook.logLevel}}
         image: {{.Values.webhook.image.name}}:{{default .Values.webhook.image.version .Values.cliVersion}}
         imagePullPolicy: {{.Values.webhook.image.pullPolicy}}

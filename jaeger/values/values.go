@@ -15,19 +15,19 @@ import (
 
 // Values represents the values of jaeger template
 type Values struct {
-	Namespace           string    `json:"namespace"`
-	CliVersion          string    `json:"cliVersion"`
-	Collector           collector `json:"collector"`
-	CollectorSvcAddr    string    `json:"collectorSvcAddr"`
-	CollectorSvcAccount string    `json:"collectorSvcAccount"`
-	Jaeger              jaeger    `json:"jaeger"`
-	LinkerdVersion      string    `json:"linkerdVersion"`
-	Webhook             webhook   `json:"webhook"`
+	Namespace      string    `json:"namespace"`
+	CliVersion     string    `json:"cliVersion"`
+	Collector      collector `json:"collector"`
+	Jaeger         jaeger    `json:"jaeger"`
+	LinkerdVersion string    `json:"linkerdVersion"`
+	Webhook        webhook   `json:"webhook"`
 }
 
 type collector struct {
-	Resources l5dcharts.Resources `json:"resources"`
-	Image     l5dcharts.Image     `json:"image"`
+	Resources  l5dcharts.Resources `json:"resources"`
+	Image      l5dcharts.Image     `json:"image"`
+	SvcAddr    string              `json:"svcAddr"`
+	SvcAccount string              `json:"svcAccount"`
 }
 
 type jaeger struct {

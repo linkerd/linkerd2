@@ -6,7 +6,7 @@
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: collector
+  name: {{.Values.collector.svcAccount}}
   namespace: {{.Values.namespace}}
 ---
 ###
