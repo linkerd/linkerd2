@@ -28,7 +28,9 @@ Kubernetes: `>=1.13.0-0`
 | gatewayProbePort | int | `4181` | The port used for liveliness probing |
 | gatewayProbeSeconds | int | `3` | The interval (in seconds) between liveness probes |
 | gatewayServiceType | string | `"LoadBalancer"` | Service Type of gateway Service |
+| identityTrustDomain | string | `"cluster.local"` | Identity Trust Domain of the certificate authority |
 | installNamespace | bool | `true` | If the namespace should be installed |
+| linkerdNamespace | string | `"linkerd"` | Namespace of linkerd installation |
 | linkerdVersion | string | `"linkerdVersionValue"` | Control plane version |
 | namespace | string | `"linkerd-multicluster"` | Service Mirror component namespace |
 | proxyOutboundPort | int | `4140` | The port on which the proxy accepts outbound traffic |

@@ -22,7 +22,6 @@ import (
 const (
 	eventTypeSkipped  = "InjectionSkipped"
 	eventTypeInjected = "Injected"
-	eventTypeTracing  = "Tracing"
 )
 
 // Inject returns an AdmissionResponse containing the patch, if any, to apply
@@ -107,9 +106,6 @@ func Inject(
 
 	if parent != nil {
 		recorder.Event(*parent, v1.EventTypeNormal, eventTypeInjected, "Linkerd sidecar proxy injected")
-		if report.TracingEnabled {
-			recorder.Event(*parent, v1.EventTypeNormal, eventTypeTracing, "Tracing Enabled")
-		}
 	}
 	log.Infof("patch generated for: %s", report.ResName())
 	log.Debugf("patch: %s", patchJSON)

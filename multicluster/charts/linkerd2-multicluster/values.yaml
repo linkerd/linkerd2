@@ -40,3 +40,7 @@ remoteMirrorServiceAccount: true
 remoteMirrorServiceAccountName: linkerd-service-mirror-remote-access-default
 # -- Service Type of gateway Service
 gatewayServiceType: LoadBalancer
+# -- Namespace of linkerd installation
+linkerdNamespace: linkerd
+# -- Identity Trust Domain of the certificate authority
+identityTrustDomain: cluster.local

@@ -162,6 +162,16 @@ func FilesReader(fs http.FileSystem, dir string, files []*loader.BufferedFile) e
 // InsertVersion returns the chart values file contents passed in
 // with the version placeholder replaced with the current version
 func InsertVersion(data []byte) []byte {
-	dataWithVersion := strings.Replace(string(data), versionPlaceholder, version.Version, 1)
+	dataWithVersion := strings.Replace(string(data), versionPlaceholder, version.Version, -1)
 	return []byte(dataWithVersion)
+}
+
+// InsertVersionValues returns the chart values with the version placeholder
+// replaced with the current version.
+func InsertVersionValues(values chartutil.Values) (chartutil.Values, error) {
+	raw, err := values.YAML()
+	if err != nil {
+		return nil, err
+	}
+	return chartutil.ReadValues(InsertVersion([]byte(raw)))
 }

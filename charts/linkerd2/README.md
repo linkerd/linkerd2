@@ -120,7 +120,6 @@ Kubernetes: `>=1.13.0-0`
 |------------|------|---------|
 | file://../add-ons/grafana | grafana | 0.1.0 |
 | file://../add-ons/prometheus | prometheus | 0.1.0 |
-| file://../add-ons/tracing | tracing | 0.1.0 |
 | file://../partials | partials | 0.1.0 |
 
 ## Values
@@ -140,7 +139,8 @@ Kubernetes: `>=1.13.0-0`
 | global.clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use   |
 | global.clusterNetworks | string | `"10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16"` | The cluster networks for which service discovery is performed. This should include the pod network but need not include the node network. By default, all private networks are specified so that resolution works in typical Kubernetes environments. |
 | global.cniEnabled | bool | `false` | enabling this omits the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed |
-| global.controlPlaneTracing | bool | `false` | control plane trace configuration |
+| global.controlPlaneTracing | bool | `false` | enables control plane tracing |
+| global.controlPlaneTracingNamespace | string | `"linkerd-jaeger"` | namespace to send control plane traces to |
 | global.controllerComponentLabel | string | `"linkerd.io/control-plane-component"` | Control plane label. Do not edit |
 | global.controllerLogLevel | string | `"info"` | Log level for the control plane components |
 | global.controllerNamespaceLabel | string | `"linkerd.io/control-plane-ns"` | Control plane label. Do not edit   |
@@ -175,8 +175,6 @@ Kubernetes: `>=1.13.0-0`
 | global.proxy.resources.cpu.request | string | `""` | Amount of CPU units that the proxy requests |
 | global.proxy.resources.memory.limit | string | `""` | Maximum amount of memory that the proxy can use  |
 | global.proxy.resources.memory.request | string | `""` | Maximum amount of memory that the proxy requests |
-| global.proxy.trace.collectorSvcAccount | string | `"default"` | Service account associated with the Trace collector instance  |
-| global.proxy.trace.collectorSvcAddr | string | `""` | Collector Service address for the proxies to send Trace Data  |
 | global.proxy.uid | int | `2102` | User id under which the proxy runs |
 | global.proxy.waitBeforeExitSeconds | int | `0` | If set the proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. See [Lifecycle hooks](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks) for more info on container lifecycle hooks. |
 | global.proxyInit.closeWaitTimeoutSecs | int | `0` |  |
@@ -222,7 +220,6 @@ Kubernetes: `>=1.13.0-0`
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
 | tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
 | tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one.  |
-| tracing.enabled | bool | `false` |  |
 | webImage | string | `"ghcr.io/linkerd/web"` |  |
 | webhookFailurePolicy | string | `"Ignore"` | Failure policy for the proxy injector  |
 

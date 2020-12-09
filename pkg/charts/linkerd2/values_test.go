@@ -44,28 +44,29 @@ func TestNewValues(t *testing.T) {
 			"enabled": true,
 		},
 		Global: &Global{
-			Namespace:                "linkerd",
-			ClusterDomain:            "cluster.local",
-			ClusterNetworks:          "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
-			ImagePullPolicy:          "IfNotPresent",
-			CliVersion:               "linkerd/cli dev-undefined",
-			ControllerComponentLabel: "linkerd.io/control-plane-component",
-			ControllerLogLevel:       "info",
-			ControllerImageVersion:   testVersion,
-			LinkerdVersion:           version.Version,
-			ControllerNamespaceLabel: "linkerd.io/control-plane-ns",
-			WorkloadNamespaceLabel:   "linkerd.io/workload-ns",
-			CreatedByAnnotation:      "linkerd.io/created-by",
-			ProxyInjectAnnotation:    "linkerd.io/inject",
-			ProxyInjectDisabled:      "disabled",
-			LinkerdNamespaceLabel:    "linkerd.io/is-control-plane",
-			ProxyContainerName:       "linkerd-proxy",
-			CNIEnabled:               false,
-			ControlPlaneTracing:      false,
-			HighAvailability:         false,
-			IdentityTrustDomain:      "cluster.local",
-			PodAnnotations:           map[string]string{},
-			PodLabels:                map[string]string{},
+			Namespace:                    "linkerd",
+			ClusterDomain:                "cluster.local",
+			ClusterNetworks:              "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16",
+			ImagePullPolicy:              "IfNotPresent",
+			CliVersion:                   "linkerd/cli dev-undefined",
+			ControllerComponentLabel:     "linkerd.io/control-plane-component",
+			ControllerLogLevel:           "info",
+			ControllerImageVersion:       testVersion,
+			LinkerdVersion:               version.Version,
+			ControllerNamespaceLabel:     "linkerd.io/control-plane-ns",
+			WorkloadNamespaceLabel:       "linkerd.io/workload-ns",
+			CreatedByAnnotation:          "linkerd.io/created-by",
+			ProxyInjectAnnotation:        "linkerd.io/inject",
+			ProxyInjectDisabled:          "disabled",
+			LinkerdNamespaceLabel:        "linkerd.io/is-control-plane",
+			ProxyContainerName:           "linkerd-proxy",
+			CNIEnabled:                   false,
+			ControlPlaneTracing:          false,
+			ControlPlaneTracingNamespace: "linkerd-jaeger",
+			HighAvailability:             false,
+			IdentityTrustDomain:          "cluster.local",
+			PodAnnotations:               map[string]string{},
+			PodLabels:                    map[string]string{},
 			Proxy: &Proxy{
 				EnableExternalProfiles: false,
 				Image: &Image{
@@ -90,10 +91,6 @@ func TestNewValues(t *testing.T) {
 						Limit:   "",
 						Request: "",
 					},
-				},
-				Trace: &Trace{
-					CollectorSvcAddr:    "",
-					CollectorSvcAccount: "default",
 				},
 				UID:                    2102,
 				WaitBeforeExitSeconds:  0,
@@ -164,7 +161,6 @@ func TestNewValues(t *testing.T) {
 	actual.DebugContainer.Image.Version = testVersion
 
 	// Make Add-On Values nil to not have to check for their defaults
-	actual.Tracing = nil
 	actual.Global.ImagePullSecrets = nil
 
 	if !reflect.DeepEqual(expected, actual) {
@@ -256,8 +252,6 @@ func TestNewValues(t *testing.T) {
 		actual.Global.Proxy.Image.Version = testVersion
 		actual.Global.ProxyInit.Image.Version = testVersion
 		actual.DebugContainer.Image.Version = testVersion
-		// Make Add-On Values nil to not have to check for their defaults
-		actual.Tracing = nil
 
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Mismatch Helm HA defaults.\nExpected: %+v\nActual: %+v", expected, actual)

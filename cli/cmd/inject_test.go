@@ -288,18 +288,6 @@ func TestUninjectAndInject(t *testing.T) {
 			injectProxy:      true,
 			testInjectConfig: proxyIgnorePortsConfig,
 		},
-		{
-			inputFileName:  "inject_emojivoto_deployment.input.yml",
-			goldenFileName: "inject_emojivoto_deployment_trace.golden.yml",
-			reportFileName: "inject_emojivoto_deployment_trace.report",
-			injectProxy:    true,
-			testInjectConfig: func() *linkerd2.Values {
-				values := defaultConfig()
-				values.GetGlobal().Proxy.Trace.CollectorSvcAddr = "linkerd-collector"
-				values.GetGlobal().Proxy.Trace.CollectorSvcAccount = "linkerd-collector.linkerd"
-				return values
-			}(),
-		},
 	}
 
 	for i, tc := range testCases {
@@ -611,30 +599,26 @@ func TestProxyConfigurationAnnotations(t *testing.T) {
 	values.GetGlobal().Proxy.Resources.CPU.Limit = "100m"
 	values.GetGlobal().Proxy.Resources.Memory.Request = "10Mi"
 	values.GetGlobal().Proxy.Resources.Memory.Limit = "50Mi"
-	values.GetGlobal().Proxy.Trace.CollectorSvcAddr = "oc-collector.tracing:55678"
-	values.GetGlobal().Proxy.Trace.CollectorSvcAccount = "svcAccount"
 	values.GetGlobal().Proxy.WaitBeforeExitSeconds = 10
 
 	expectedOverrides := map[string]string{
-		k8s.ProxyIgnoreInboundPortsAnnotation:       "8500-8505",
-		k8s.ProxyIgnoreOutboundPortsAnnotation:      "3306",
-		k8s.ProxyAdminPortAnnotation:                "1234",
-		k8s.ProxyControlPortAnnotation:              "4191",
-		k8s.ProxyInboundPortAnnotation:              "4144",
-		k8s.ProxyOutboundPortAnnotation:             "4141",
-		k8s.ProxyUIDAnnotation:                      "999",
-		k8s.ProxyLogLevelAnnotation:                 "debug",
-		k8s.ProxyLogFormatAnnotation:                "cool",
-		k8s.ProxyDisableIdentityAnnotation:          "true",
-		k8s.ProxyDisableTapAnnotation:               "true",
-		k8s.ProxyEnableExternalProfilesAnnotation:   "true",
-		k8s.ProxyCPURequestAnnotation:               "10m",
-		k8s.ProxyCPULimitAnnotation:                 "100m",
-		k8s.ProxyMemoryRequestAnnotation:            "10Mi",
-		k8s.ProxyMemoryLimitAnnotation:              "50Mi",
-		k8s.ProxyTraceCollectorSvcAddrAnnotation:    "oc-collector.tracing:55678",
-		k8s.ProxyTraceCollectorSvcAccountAnnotation: "svcAccount",
-		k8s.ProxyWaitBeforeExitSecondsAnnotation:    "10",
+		k8s.ProxyIgnoreInboundPortsAnnotation:     "8500-8505",
+		k8s.ProxyIgnoreOutboundPortsAnnotation:    "3306",
+		k8s.ProxyAdminPortAnnotation:              "1234",
+		k8s.ProxyControlPortAnnotation:            "4191",
+		k8s.ProxyInboundPortAnnotation:            "4144",
+		k8s.ProxyOutboundPortAnnotation:           "4141",
+		k8s.ProxyUIDAnnotation:                    "999",
+		k8s.ProxyLogLevelAnnotation:               "debug",
+		k8s.ProxyLogFormatAnnotation:              "cool",
+		k8s.ProxyDisableIdentityAnnotation:        "true",
+		k8s.ProxyDisableTapAnnotation:             "true",
+		k8s.ProxyEnableExternalProfilesAnnotation: "true",
+		k8s.ProxyCPURequestAnnotation:             "10m",
+		k8s.ProxyCPULimitAnnotation:               "100m",
+		k8s.ProxyMemoryRequestAnnotation:          "10Mi",
+		k8s.ProxyMemoryLimitAnnotation:            "50Mi",
+		k8s.ProxyWaitBeforeExitSecondsAnnotation:  "10",
 	}
 
 	overrides := getOverrideAnnotations(values, baseValues)

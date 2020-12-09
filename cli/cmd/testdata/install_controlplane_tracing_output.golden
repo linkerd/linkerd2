@@ -820,6 +820,7 @@ data:
       clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
       cniEnabled: false
       controlPlaneTracing: true
+      controlPlaneTracingNamespace: linkerd-jaeger
       controllerComponentLabel: linkerd.io/control-plane-component
       controllerImageVersion: install-control-plane-version
       controllerLogLevel: info
@@ -880,9 +881,6 @@ data:
             limit: ""
             request: ""
         saMountPath: null
-        trace:
-          collectorSvcAccount: default
-          collectorSvcAddr: ""
         uid: 2102
         waitBeforeExitSeconds: 0
       proxyContainerName: linkerd-proxy
@@ -977,8 +975,6 @@ data:
     tapProxyResources: null
     tapResources: null
     tolerations: null
-    tracing:
-      enabled: false
     webImage: ghcr.io/linkerd/web
     webProxyResources: null
     webResources: null
@@ -1085,7 +1081,7 @@ spec:
         - -identity-clock-skew-allowance=20s
         - -identity-trust-anchors-pem=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ3VENDQVdhZ0F3SUJBZ0lRZURacDVsRGFJeWdRNVVmTUtackZBVEFLQmdncWhrak9QUVFEQWpBcE1TY3cKSlFZRFZRUURFeDVwWkdWdWRHbDBlUzVzYVc1clpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d0hoY05NakF3T0RJNApNRGN4TWpRM1doY05NekF3T0RJMk1EY3hNalEzV2pBcE1TY3dKUVlEVlFRREV4NXBaR1Z1ZEdsMGVTNXNhVzVyClpYSmtMbU5zZFhOMFpYSXViRzlqWVd3d1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFScWM3MFoKbDF2Z3c3OXJqQjV1U0lUSUNVQTZHeWZ2U0ZmY3VJaXM3Qi9YRlNra3dBSFU1Uy9zMUFBUCtSMFRYN0hCV1VDNAp1YUc0V1dzaXdKS05uN21nbzNBd2JqQU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3dCZ0VCCi93SUJBVEFkQmdOVkhRNEVGZ1FVNVl0alZWUGZkN0k3TkxIc24yQzI2RUJ5R1Ywd0tRWURWUjBSQkNJd0lJSWUKYVdSbGJuUnBkSGt1YkdsdWEyVnlaQzVqYkhWemRHVnlMbXh2WTJGc01Bb0dDQ3FHU000OUJBTUNBMGtBTUVZQwpJUUNON2xCRkxERHZqeDZWMCtYa2pwS0VSUnNKWWY1YWRNdm5sb0ZsNDhpbEpnSWhBTnR4aG5kY3IrUUpQdUM4CnZnVUMwZDIvOUZNdWVJVk1iKzQ2V1RDT2pzcXIKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
         - -identity-scheme=linkerd.io/tls
-        - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
+        - -trace-collector=collector.linkerd-jaeger.svc.cluster.local:55678
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1136,8 +1132,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1185,10 +1179,6 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
-          value: linkerd-collector.linkerd.svc.cluster.local:55678
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-          value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ghcr.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1214,8 +1204,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - mountPath: var/run/linkerd/podinfo
-          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1259,12 +1247,6 @@ spec:
       - name: identity-issuer
         secret:
           secretName: linkerd-identity-issuer
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -1336,7 +1318,7 @@ spec:
         - -log-level=info
         - -cluster-domain=cluster.local
         - -prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090
-        - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
+        - -trace-collector=collector.linkerd-jaeger.svc.cluster.local:55678
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1384,8 +1366,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1433,10 +1413,6 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
-          value: linkerd-collector.linkerd.svc.cluster.local:55678
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-          value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ghcr.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1462,8 +1438,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - mountPath: var/run/linkerd/podinfo
-          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1504,12 +1478,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-controller
       volumes:
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -1602,7 +1570,7 @@ spec:
         - -enable-endpoint-slices=false
         - -cluster-domain=cluster.local
         - -identity-trust-domain=cluster.local
-        - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
+        - -trace-collector=collector.linkerd-jaeger.svc.cluster.local:55678
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1650,8 +1618,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1699,10 +1665,6 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
-          value: linkerd-collector.linkerd.svc.cluster.local:55678
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-          value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ghcr.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1728,8 +1690,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - mountPath: var/run/linkerd/podinfo
-          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -1770,12 +1730,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-destination
       volumes:
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -1896,7 +1850,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -enforced-host=^(localhost|127\.0\.0\.1|linkerd-web\.linkerd\.svc\.cluster\.local|linkerd-web\.linkerd\.svc|\[::1\])(:\d+)?$
-        - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
+        - -trace-collector=collector.linkerd-jaeger.svc.cluster.local:55678
         image: ghcr.io/linkerd/web:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -1944,8 +1898,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -1993,10 +1945,6 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
-          value: linkerd-collector.linkerd.svc.cluster.local:55678
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-          value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ghcr.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2022,8 +1970,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - mountPath: var/run/linkerd/podinfo
-          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2064,12 +2010,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-web
       volumes:
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2169,8 +2109,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2218,10 +2156,6 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
-          value: linkerd-collector.linkerd.svc.cluster.local:55678
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-          value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ghcr.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2247,8 +2181,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - mountPath: var/run/linkerd/podinfo
-          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2295,12 +2227,6 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-proxy-injector-k8s-tls
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2436,8 +2362,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2485,10 +2409,6 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
-          value: linkerd-collector.linkerd.svc.cluster.local:55678
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-          value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ghcr.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2514,8 +2434,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - mountPath: var/run/linkerd/podinfo
-          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2559,12 +2477,6 @@ spec:
       - name: tls
         secret:
           secretName: linkerd-sp-validator-k8s-tls
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -2637,7 +2549,7 @@ spec:
         - -controller-namespace=linkerd
         - -log-level=info
         - -identity-trust-domain=cluster.local
-        - -trace-collector=linkerd-collector.linkerd.svc.cluster.local:55678
+        - -trace-collector=collector.linkerd-jaeger.svc.cluster.local:55678
         image: ghcr.io/linkerd/controller:install-control-plane-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2691,8 +2603,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -2740,10 +2650,6 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
-          value: linkerd-collector.linkerd.svc.cluster.local:55678
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-          value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ghcr.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -2769,8 +2675,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - mountPath: var/run/linkerd/podinfo
-          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -2811,12 +2715,6 @@ spec:
           name: linkerd-proxy-init-xtables-lock
       serviceAccountName: linkerd-tap
       volumes:
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -3016,8 +2914,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -3065,10 +2961,6 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
-          value: linkerd-collector.linkerd.svc.cluster.local:55678
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-          value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ghcr.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -3094,8 +2986,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - mountPath: var/run/linkerd/podinfo
-          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -3148,12 +3038,6 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
@@ -3466,8 +3350,6 @@ spec:
           value: 10000ms
         - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
           value: 10000ms
-        - name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
-          value: /var/run/linkerd/podinfo/labels
         - name: _pod_ns
           valueFrom:
             fieldRef:
@@ -3515,10 +3397,6 @@ spec:
           value: linkerd-destination.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         - name: LINKERD2_PROXY_TAP_SVC_NAME
           value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
-          value: linkerd-collector.linkerd.svc.cluster.local:55678
-        - name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-          value: linkerd-collector.linkerd.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
         image: ghcr.io/linkerd/proxy:install-proxy-version
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -3544,8 +3422,6 @@ spec:
           runAsUser: 2102
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
-        - mountPath: var/run/linkerd/podinfo
-          name: podinfo
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
       initContainers:
@@ -3591,12 +3467,6 @@ spec:
       - configMap:
           name: linkerd-prometheus-config
         name: prometheus-config
-      - downwardAPI:
-          items:
-          - fieldRef:
-              fieldPath: metadata.labels
-            path: "labels"
-        name: podinfo
       - emptyDir: {}
         name: linkerd-proxy-init-xtables-lock
       - emptyDir:
