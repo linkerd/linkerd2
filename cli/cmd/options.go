@@ -42,12 +42,6 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 	}
 
 	flags := []flag.Flag{
-		flag.NewUintFlag(installUpgradeFlags, "controller-replicas", defaults.ControllerReplicas,
-			"Replicas of the controller to deploy", func(values *l5dcharts.Values, value uint) error {
-				values.ControllerReplicas = value
-				return nil
-			}),
-
 		flag.NewStringFlag(installUpgradeFlags, "controller-log-level", defaults.GetGlobal().ControllerLogLevel,
 			"Log level for the controller and web components", func(values *l5dcharts.Values, value string) error {
 				values.GetGlobal().ControllerLogLevel = value
@@ -63,16 +57,36 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 						return err
 					}
 					// The HA flag must be processed before flags that set these values individually so that the
-					// individual flags can override the HA defaults.  This means that the HA flag must appear
-					// before the individual flags in the slice passed to flags.ApplyIfSet.
-					values.ControllerReplicas = haValues.ControllerReplicas
+					// individual flags can override the HA defaults.
+					values.EnablePodAntiAffinity = haValues.EnablePodAntiAffinity
 					values.GetGlobal().Proxy.Resources.CPU.Request = haValues.GetGlobal().Proxy.Resources.CPU.Request
 					values.GetGlobal().Proxy.Resources.Memory.Request = haValues.GetGlobal().Proxy.Resources.Memory.Request
-					// NOTE: CPU Limits are not currently set by default HA charts.
-					//values.Global.Proxy.Cores = haValues.Global.Proxy.Cores
-					//values.Global.Proxy.Resources.CPU.Limit = haValues.Global.Proxy.Resources.CPU.Limit
 					values.GetGlobal().Proxy.Resources.Memory.Limit = haValues.GetGlobal().Proxy.Resources.Memory.Limit
+					values.ControllerReplicas = haValues.ControllerReplicas
+					values.DestinationResources = haValues.DestinationResources
+					values.PublicAPIResources = haValues.PublicAPIResources
+					values.IdentityResources = haValues.IdentityResources
+
+					initResourceMaps(values.Grafana, haValues.Grafana)
+					values.Grafana["resources"] = haValues.Grafana["resources"]
+
+					values.HeartbeatResources = haValues.HeartbeatResources
+
+					initResourceMaps(values.Prometheus, haValues.Prometheus)
+					values.Prometheus["resources"] = haValues.Prometheus["resources"]
+
+					values.ProxyInjectorResources = haValues.ProxyInjectorResources
+					values.WebhookFailurePolicy = haValues.WebhookFailurePolicy
+					values.SPValidatorResources = haValues.SPValidatorResources
+					values.TapResources = haValues.TapResources
+					values.WebResources = haValues.WebResources
 				}
+				return nil
+			}),
+
+		flag.NewUintFlag(installUpgradeFlags, "controller-replicas", defaults.ControllerReplicas,
+			"Replicas of the controller to deploy", func(values *l5dcharts.Values, value uint) error {
+				values.ControllerReplicas = value
 				return nil
 			}),
 
@@ -187,6 +201,14 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 	installUpgradeFlags.MarkHidden("control-plane-tracing")
 
 	return flags, installUpgradeFlags, nil
+}
+
+func initResourceMaps(values ...map[string]interface{}) {
+	for _, value := range values {
+		if _, ok := value["Resources"]; !ok {
+			value["Resources"] = map[string]interface{}{}
+		}
+	}
 }
 
 func loadCrtPEM(path string) (string, error) {
