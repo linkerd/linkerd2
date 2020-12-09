@@ -58,11 +58,10 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 					if err != nil {
 						return err
 					}
-					changedValues, err := (*values).Merge(*haValues)
+					*values, err = values.Merge(*haValues)
 					if err != nil {
 						return err
 					}
-					*values = changedValues
 				}
 				return nil
 			}),
