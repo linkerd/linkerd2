@@ -52,9 +52,9 @@ spec:
   template:
     metadata:
       annotations:
-        {{- if not (eq .Values.stage "control-plane") -}}
+        {{ if not (eq .Values.stage "control-plane") -}}
         checksum/config: {{ include (print $.Template.BasePath "/sp-validator-rbac.yaml") . | sha256sum }}
-        {{- end -}}
+        {{- end }}
         {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
         {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
         {{- with .Values.global.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
