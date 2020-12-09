@@ -235,20 +235,10 @@ const (
 	// CloseWaitTimeoutAnnotation configures nf_conntrack_tcp_timeout_close_wait.
 	CloseWaitTimeoutAnnotation = ProxyConfigAnnotationsPrefix + "/close-wait-timeout"
 
-	// ProxyTraceCollectorSvcAddrAnnotation can be used to enable tracing on a proxy.
-	// It takes the collector service name (e.g. oc-collector.tracing:55678) as
-	// its value.
-	ProxyTraceCollectorSvcAddrAnnotation = ProxyConfigAnnotationsPrefix + "/trace-collector"
-
 	// ProxyWaitBeforeExitSecondsAnnotation makes the proxy container to wait for the given period before exiting
 	// after the Pod entered the Terminating state. Must be smaller than terminationGracePeriodSeconds
 	// configured for the Pod
 	ProxyWaitBeforeExitSecondsAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit-seconds"
-
-	// ProxyTraceCollectorSvcAccountAnnotation is used to specify the service account
-	// associated with the trace collector. It is used to create the service's
-	// mTLS identity.
-	ProxyTraceCollectorSvcAccountAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/trace-collector-service-account"
 
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
@@ -287,10 +277,6 @@ const (
 	// IdentityEndEntityVolumeName is the name assigned the temporary end-entity
 	// volume mounted into each proxy to store identity credentials.
 	IdentityEndEntityVolumeName = "linkerd-identity-end-entity"
-
-	// PodInfoVolumeName is the name assigned to the
-	// volume mounted into each proxy to store pod labels.
-	PodInfoVolumeName = "podinfo"
 
 	// IdentityIssuerSecretName is the name of the Secret that stores issuer credentials.
 	IdentityIssuerSecretName = "linkerd-identity-issuer"
@@ -361,11 +347,14 @@ const (
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
 
+	// MountPathTLSBase is the path at which the TLS cert and key PEM files are mounted
+	MountPathTLSBase = MountPathBase + "/tls"
+
 	// MountPathTLSKeyPEM is the path at which the TLS key PEM file is mounted.
-	MountPathTLSKeyPEM = MountPathBase + "/tls/tls.key"
+	MountPathTLSKeyPEM = MountPathTLSBase + "/tls.key"
 
 	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
-	MountPathTLSCrtPEM = MountPathBase + "/tls/tls.crt"
+	MountPathTLSCrtPEM = MountPathTLSBase + "/tls.crt"
 
 	// MountPathXtablesLock is the path at which the proxy init container mounts xtables
 	// This is necessary for xtables-legacy support

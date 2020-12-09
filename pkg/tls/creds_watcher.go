@@ -1,4 +1,4 @@
-package identity
+package tls
 
 import (
 	"context"
@@ -12,14 +12,14 @@ const dataDirectoryLnName = "..data"
 
 // FsCredsWatcher is used to monitor tls credentials on the filesystem
 type FsCredsWatcher struct {
-	issuerPath string
-	EventChan  chan<- struct{}
-	ErrorChan  chan<- error
+	certPath  string
+	EventChan chan<- struct{}
+	ErrorChan chan<- error
 }
 
 // NewFsCredsWatcher constructs a FsCredsWatcher instance
-func NewFsCredsWatcher(issuerPath string, issuerEvent chan<- struct{}, issuerError chan<- error) *FsCredsWatcher {
-	return &FsCredsWatcher{issuerPath, issuerEvent, issuerError}
+func NewFsCredsWatcher(certPath string, updateEvent chan<- struct{}, errEvent chan<- error) *FsCredsWatcher {
+	return &FsCredsWatcher{certPath, updateEvent, errEvent}
 }
 
 // StartWatching starts watching the filesystem for cert updates
@@ -31,7 +31,7 @@ func (fscw *FsCredsWatcher) StartWatching(ctx context.Context) error {
 	defer watcher.Close()
 
 	// no point of proceeding if we fail to watch this
-	if err := watcher.Add(fscw.issuerPath); err != nil {
+	if err := watcher.Add(fscw.certPath); err != nil {
 		return err
 	}
 
@@ -43,12 +43,12 @@ LOOP:
 			// Watching the folder for create events as this indicates
 			// that the secret has been updated.
 			if event.Op&fsnotify.Create == fsnotify.Create &&
-				event.Name == filepath.Join(fscw.issuerPath, dataDirectoryLnName) {
+				event.Name == filepath.Join(fscw.certPath, dataDirectoryLnName) {
 				fscw.EventChan <- struct{}{}
 			}
 		case err := <-watcher.Errors:
 			fscw.ErrorChan <- err
-			log.Warnf("Error while watching %s: %s", fscw.issuerPath, err)
+			log.Warnf("Error while watching %s: %s", fscw.certPath, err)
 			break LOOP
 		case <-ctx.Done():
 			if err := ctx.Err(); err != nil {

@@ -15,9 +15,6 @@ const (
 
 	// LinkerdPrometheusAddOnChecks adds checks related to Prometheus add-on components
 	LinkerdPrometheusAddOnChecks CategoryID = "linkerd-prometheus"
-
-	// LinkerdTracingAddOnChecks adds checks related to tracing add-on components
-	LinkerdTracingAddOnChecks CategoryID = "linkerd-tracing"
 )
 
 var (
@@ -25,7 +22,7 @@ var (
 	errorKeyNotFound error = errors.New("key not found")
 
 	// AddOnCategories is the list of add-on category checks
-	AddOnCategories = []CategoryID{LinkerdPrometheusAddOnChecks, LinkerdGrafanaAddOnChecks, LinkerdTracingAddOnChecks}
+	AddOnCategories = []CategoryID{LinkerdPrometheusAddOnChecks, LinkerdGrafanaAddOnChecks}
 )
 
 // addOnCategories contain all the checks w.r.t add-ons. It is strongly advised to
@@ -172,157 +169,6 @@ func (hc *HealthChecker) addOnCategories() []Category {
 							return checkContainerRunning(hc.controlPlanePods, "grafana")
 						}
 						return &SkipError{Reason: "grafana add-on not enabled"}
-					},
-				},
-			},
-		},
-		{
-			id: LinkerdTracingAddOnChecks,
-			checkers: []Checker{
-				{
-					description: "collector service account exists",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						tracing := make(map[string]interface{})
-						err := yaml.Unmarshal(hc.linkerdConfig.Tracing.Values(), &tracing)
-						if err != nil {
-							return err
-						}
-						if GetBool(tracing, "enabled") {
-
-							collector, mapError := GetMap(tracing, "collector")
-
-							collectorName, keyError := GetString(collector, "name")
-
-							if errors.Is(mapError, errorKeyNotFound) || errors.Is(keyError, errorKeyNotFound) {
-								// default name of collector instance
-								collectorName = "linkerd-collector"
-							} else {
-								if mapError != nil {
-									return mapError
-								}
-								if keyError != nil {
-									return keyError
-								}
-							}
-
-							return hc.checkServiceAccounts(ctx, []string{collectorName}, hc.ControlPlaneNamespace, "")
-						}
-						return &SkipError{Reason: "tracing add-on not enabled"}
-					},
-				},
-				{
-					description: "jaeger service account exists",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						tracing := make(map[string]interface{})
-						err := yaml.Unmarshal(hc.linkerdConfig.Tracing.Values(), &tracing)
-						if err != nil {
-							return err
-						}
-						if GetBool(tracing, "enabled") {
-							jaeger, mapError := GetMap(tracing, "jaeger")
-
-							jaegerName, keyError := GetString(jaeger, "name")
-
-							if errors.Is(mapError, errorKeyNotFound) || errors.Is(keyError, errorKeyNotFound) {
-								// default name of jaeger instance
-								jaegerName = "linkerd-jaeger"
-							} else {
-								if mapError != nil {
-									return mapError
-								}
-								if keyError != nil {
-									return keyError
-								}
-							}
-
-							return hc.checkServiceAccounts(ctx, []string{jaegerName}, hc.ControlPlaneNamespace, "")
-						}
-						return &SkipError{Reason: "tracing add-on not enabled"}
-					},
-				},
-				{
-					description: "collector config map exists",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						tracing := make(map[string]interface{})
-						err := yaml.Unmarshal(hc.linkerdConfig.Tracing.Values(), &tracing)
-						if err != nil {
-							return err
-						}
-						if GetBool(tracing, "enabled") {
-							collector, mapError := GetMap(tracing, "collector")
-
-							collectorName, keyError := GetString(collector, "name")
-
-							if errors.Is(mapError, errorKeyNotFound) || errors.Is(keyError, errorKeyNotFound) {
-								// default name of collector instance
-								collectorName = "linkerd-collector"
-							} else {
-								if mapError != nil {
-									return mapError
-								}
-								if keyError != nil {
-									return keyError
-								}
-							}
-
-							_, err := hc.kubeAPI.CoreV1().ConfigMaps(hc.ControlPlaneNamespace).Get(ctx, fmt.Sprintf("%s-config", collectorName), metav1.GetOptions{})
-							if err != nil {
-								return err
-							}
-							return nil
-						}
-						return &SkipError{Reason: "tracing add-on not enabled"}
-					},
-				},
-				{
-					description:         "collector pod is running",
-					warning:             true,
-					retryDeadline:       hc.RetryDeadline,
-					surfaceErrorOnRetry: true,
-					check: func(ctx context.Context) error {
-						tracing := make(map[string]interface{})
-						err := yaml.Unmarshal(hc.linkerdConfig.Tracing.Values(), &tracing)
-						if err != nil {
-							return err
-						}
-						if GetBool(tracing, "enabled") {
-							// populate controlPlanePods to get the latest status, during retries
-							var err error
-							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
-							if err != nil {
-								return err
-							}
-
-							return checkContainerRunning(hc.controlPlanePods, "collector")
-						}
-						return &SkipError{Reason: "tracing add-on not enabled"}
-					},
-				},
-				{
-					description:         "jaeger pod is running",
-					warning:             true,
-					retryDeadline:       hc.RetryDeadline,
-					surfaceErrorOnRetry: true,
-					check: func(ctx context.Context) error {
-						tracing := make(map[string]interface{})
-						err := yaml.Unmarshal(hc.linkerdConfig.Tracing.Values(), &tracing)
-						if err != nil {
-							return err
-						}
-						if GetBool(tracing, "enabled") {
-							// populate controlPlanePods to get the latest status, during retries
-							var err error
-							hc.controlPlanePods, err = hc.kubeAPI.GetPodsByNamespace(ctx, hc.ControlPlaneNamespace)
-							if err != nil {
-								return err
-							}
-
-							return checkContainerRunning(hc.controlPlanePods, "jaeger")
-						}
-						return &SkipError{Reason: "tracing add-on not enabled"}
 					},
 				},
 			},

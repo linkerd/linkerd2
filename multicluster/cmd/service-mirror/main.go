@@ -9,19 +9,18 @@ import (
 	"syscall"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	dynamic "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/tools/clientcmd"
-
 	controllerK8s "github.com/linkerd/linkerd2/controller/k8s"
-	servicemirror "github.com/linkerd/linkerd2/controller/service-mirror"
+	servicemirror "github.com/linkerd/linkerd2/multicluster/service-mirror"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/multicluster"
 	sm "github.com/linkerd/linkerd2/pkg/servicemirror"
 	log "github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	dynamic "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const linkWatchRestartAfter = 10 * time.Second

@@ -1,10 +1,10 @@
-package multicluster
+package values
 
 import (
 	"fmt"
 
+	"github.com/linkerd/linkerd2/multicluster/static"
 	"github.com/linkerd/linkerd2/pkg/charts"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
