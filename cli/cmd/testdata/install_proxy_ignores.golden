@@ -1241,6 +1241,7 @@ spec:
         volumeMounts:
         - mountPath: /run
           name: linkerd-proxy-init-xtables-lock
+      
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer

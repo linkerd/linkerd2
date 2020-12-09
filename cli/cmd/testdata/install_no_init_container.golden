@@ -1202,6 +1202,7 @@ spec:
         volumeMounts:
         - mountPath: /var/run/linkerd/identity/end-entity
           name: linkerd-identity-end-entity
+      
       serviceAccountName: linkerd-identity
       volumes:
       - name: identity-issuer
