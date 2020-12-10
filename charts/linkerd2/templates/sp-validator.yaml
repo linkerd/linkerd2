@@ -52,7 +52,7 @@ spec:
   template:
     metadata:
       annotations:
-        {{- if empty .Values.global.cliVersion }}
+        {{- if (or (empty .Values.global.cliVersion) (not (eq (.Values.stage | toString) "control-plane"))) }}
         checksum/config: {{ include (print $.Template.BasePath "/sp-validator-rbac.yaml") . | sha256sum }}
         {{- end }}
         {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
