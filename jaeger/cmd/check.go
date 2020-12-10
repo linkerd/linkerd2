@@ -32,9 +32,9 @@ type checkOptions struct {
 	output string
 }
 
-func jaegerCategory() (*healthcheck.Category, error) {
+func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error) {
 
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+	kubeAPI, err := k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func jaegerCategory() (*healthcheck.Category, error) {
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector pod is running", "l5d-jaeger-collector-running", false, true, time.Time{}, false).
+		*healthcheck.NewChecker("collector pod is running", "l5d-jaeger-collector-running", false, true, hc.RetryDeadline, true).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Collector pod
 				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=collector"})
@@ -70,7 +70,7 @@ func jaegerCategory() (*healthcheck.Category, error) {
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger pod is running", "l5d-jaeger-jaeger-running", false, true, time.Time{}, false).
+		*healthcheck.NewChecker("jaeger pod is running", "l5d-jaeger-jaeger-running", false, true, hc.RetryDeadline, true).
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger pod
 				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger"})
@@ -127,7 +127,7 @@ non-zero exit code.`,
 			// Get jaeger Extension Namespace
 			ns, err := getNamespaceOfExtension(jaegerExtensionName)
 			if err != nil {
-				fmt.Fprint(os.Stderr, err.Error())
+				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
 			jaegerNamespace = ns.Name
@@ -163,7 +163,7 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		MultiCluster:          false,
 	})
 
-	category, err := jaegerCategory()
+	category, err := jaegerCategory(hc)
 	if err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func getNamespaceOfExtension(name string) (*corev1.Namespace, error) {
 			return &ns, err
 		}
 	}
-	return nil, fmt.Errorf("Could not find the namespace for extension %s", name)
+	return nil, fmt.Errorf("could not find the linkerd-jaeger extension. it can be installed by running `linkerd jaeger install | kubectl apply -f -`")
 }
 
 func checkIfDataPlanePodsExist(pods []corev1.Pod) error {
