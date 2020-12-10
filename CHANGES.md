@@ -32,6 +32,8 @@ modified.
     passed to the `install` and `upgrade` commands
   * Fixed installing HA through the CLI (`linkerd install --ha`) that wasn't
     honoring some of the default settings found in `values-ha.yml`
+  * Force the webhook pods (proxy-injector, sp-validator and tap) to be
+    restarted when upgrading through the CLI, if a secret they rely on changes
   * Fixed multicluster installation using Helm
   * Updated `linkerd check` so that it doesn't attempt to validate the subject
     alternative name (SAN) on root and intermediate certificates. SANs for leaf
