@@ -71,6 +71,8 @@ func (r Kubernetes) RenderResource(w io.Writer) error {
 	return err
 }
 
+// FetchKubernetesResources returns a slice of all cluster scoped kubernetes
+// resources which match the given ListOptions.
 func FetchKubernetesResources(ctx context.Context, k *k8s.KubernetesAPI, options metav1.ListOptions) ([]Kubernetes, error) {
 
 	resources := make([]Kubernetes, 0)
