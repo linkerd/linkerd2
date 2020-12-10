@@ -61,7 +61,7 @@ func TestTracing(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
-	// wait for jaeger proxy mutator to start
+	// wait for jaeger injector to start
 	if err := TestHelper.CheckPods(ctx, tracingNs, "jaeger-injector", 1); err != nil {
 		if rce, ok := err.(*testutil.RestartCountError); ok {
 			testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
@@ -70,8 +70,8 @@ func TestTracing(t *testing.T) {
 		}
 	}
 
-	if err := TestHelper.CheckDeployment(ctx, tracingNs, "proxy-mutator", 1); err != nil {
-		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", "proxy-mutator", err)
+	if err := TestHelper.CheckDeployment(ctx, tracingNs, "jaeger-injector", 1); err != nil {
+		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", "jaeger-injector", err)
 	}
 
 	// Emojivoto components
