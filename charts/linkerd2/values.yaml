@@ -178,7 +178,6 @@ omitWebhookSideEffects: false
 # -- Failure policy for the proxy injector 
 webhookFailurePolicy: Ignore
 
-stage: ""
 
 # controllerImage -- Docker image for the controller, tap and identity
 # components
