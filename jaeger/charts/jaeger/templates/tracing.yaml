@@ -107,7 +107,7 @@ spec:
         volumeMounts:
         - mountPath: /conf
           name: collector-config-val
-      serviceAccountName: {{.Values.collector.svcAccount}}
+      serviceAccountName: collector
       volumes:
       - configMap:
           items:

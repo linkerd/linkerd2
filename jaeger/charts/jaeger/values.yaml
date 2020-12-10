@@ -8,8 +8,9 @@ collector:
     version: 0.1.11
     pullPolicy: Always
   # resources:
-  svcAddr: collector.linkerd-jaeger:55678
-  svcAccount: collector
+
+collectorSvcAddr: collector.linkerd-jaeger:55678
+collectorSvcAccount: collector
 
 jaeger:
   image: 
