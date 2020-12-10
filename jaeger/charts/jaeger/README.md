@@ -19,8 +19,8 @@ A Helm chart for the jaeger add-on in Linkerd
 | collector.image.name | string | `"omnition/opencensus-collector"` |  |
 | collector.image.pullPolicy | string | `"Always"` |  |
 | collector.image.version | string | `"0.1.11"` |  |
-| collector.svcAccount | string | `"collector"` |  |
-| collector.svcAddr | string | `"collector.linkerd-jaeger:55678"` |  |
+| collectorSvcAccount | string | `"collector"` |  |
+| collectorSvcAddr | string | `"collector.linkerd-jaeger:55678"` |  |
 | jaeger.image.name | string | `"jaegertracing/all-in-one"` |  |
 | jaeger.image.pullPolicy | string | `"Always"` |  |
 | jaeger.image.version | string | `"1.19.2"` |  |
