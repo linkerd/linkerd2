@@ -125,13 +125,18 @@ Kubernetes: `>=1.13.0-0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | clusterDomain | string | `"cluster.local"` |  |
-| controllerComponentLabel | string | `"linkerd.io/control-plane-component"` | Control plane label. Do not edit |
-| controllerNamespaceLabel | string | `"linkerd.io/control-plane-ns"` | Control plane label. Do not edit   |
+| controller.UID | int | `2103` | User ID for the controller |
+| controller.image.name | string | `"ghcr.io/linkerd/controller"` | Docker image name for the controller instance |
+| controller.image.tag | string | `"edge-20.12.1"` | Docker image tag for the controller instance |
+| controller.replicas | int | `1` | Number of replicas of dashboard |
+| controllerComponentLabel | string | `"component"` | Control plane label. Do not edit |
+| controllerLogLevel | string | `"debug"` |  |
+| controllerNamespaceLabel | string | `"namespace"` | Control plane label. Do not edit   |
 | createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit.  |
 | dashboard.UID | int | `2103` |  |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
 | dashboard.image.name | string | `"ghcr.io/linkerd/web"` | Docker image name for the web instance |
-| dashboard.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the web instance |
+| dashboard.image.tag | string | `"edge-20.12.1"` | Docker image tag for the web instance |
 | dashboard.replicas | int | `1` | Number of replicas of dashboard |
 | dashboard.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the web container can use |
 | dashboard.resources.cpu.request | string | `nil` | Amount of CPU units that the web container requests |
@@ -139,7 +144,7 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
 | grafana.enabled | bool | `true` | toggle field to enable or disable grafana |
 | grafana.image.name | string | `"ghcr.io/linkerd/grafana"` | Docker image name for the grafana instance |
-| grafana.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the grafana instance |
+| grafana.image.tag | string | `"edge-20.12.1"` | Docker image tag for the grafana instance |
 | grafana.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the grafana container can use |
 | grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
 | grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
@@ -147,7 +152,7 @@ Kubernetes: `>=1.13.0-0`
 | identityTrustDomain | string | `"cluster.local"` |  |
 | linkerdNamespace | string | `"linkerd"` |  |
 | linkerdNamespaceLabel | string | `"linkerd.io/is-control-plane"` | Control plane label. Do not edit  |
-| linkerdVersion | string | `"linkerdVersionValue"` |  |
+| linkerdVersion | string | `"edge-20.12.1"` |  |
 | namespace | string | `"linkerd-viz"` |  |
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.alertManagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
@@ -167,12 +172,12 @@ Kubernetes: `>=1.13.0-0`
 | prometheus.scrapeConfigs | string | `nil` | A scrapeConfigs section specifies a set of targets and parameters describing how to scrape them. |
 | prometheus.sideCarContainers | string | `nil` | A sidecarContainers section specifies a list of secondary containers to run in the prometheus pod e.g. to export data to non-prometheus systems |
 | proxyInjectAnnotation | string | `"linkerd.io/inject"` |  |
-| tap | object | `{"caBundle":"","crtPEM":"","externalSecret":false,"image":{"name":"ghcr.io/linkerd/grafana","tag":"linkerdVersionValue"},"keyPEM":"","resources":{"cpu":{"limit":null,"request":null},"memory":{"limit":null,"request":null}}}` | url of external prometheus instance prometheusUrl: -- url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension jaegerUrl: -|- CPU and Memory resources required by controllers publicAPI (see tap configuration |
+| tap | object | `{"caBundle":"","crtPEM":"","externalSecret":false,"image":{"name":"ghcr.io/linkerd/grafana","tag":"edge-20.12.1"},"keyPEM":"","replicas":1,"resources":{"cpu":{"limit":null,"request":null},"memory":{"limit":null,"request":null}}}` | url of external prometheus instance prometheusUrl: -- url of external jaeger instance Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension jaegerUrl: -|- CPU and Memory resources required by controllers publicAPI (see tap configuration |
 | tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
 | tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
 | tap.image.name | string | `"ghcr.io/linkerd/grafana"` | Docker image name for the grafana instance |
-| tap.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the grafana instance |
+| tap.image.tag | string | `"edge-20.12.1"` | Docker image tag for the grafana instance |
 | tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one.  |
 | tap.resources.cpu.limit | string | `nil` | Maximum amount of CPU units that the tap container can use |
 | tap.resources.cpu.request | string | `nil` | Amount of CPU units that the tap container requests |

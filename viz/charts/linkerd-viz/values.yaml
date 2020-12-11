@@ -5,9 +5,9 @@
 # Common variables across extensions
 
 # -- Control plane label. Do not edit
-controllerComponentLabel: linkerd.io/control-plane-component
+controllerComponentLabel: component
 # -- Control plane label. Do not edit  
-controllerNamespaceLabel: linkerd.io/control-plane-ns
+controllerNamespaceLabel: namespace
 # -- Control plane label. Do not edit 
 linkerdNamespaceLabel: linkerd.io/is-control-plane
 workloadNamespaceLabel: linkerd.io/workload-ns
@@ -16,10 +16,11 @@ createdByAnnotation: linkerd.io/created-by
 proxyInjectAnnotation: linkerd.io/inject
 
 namespace: linkerd-viz
-linkerdVersion: &linkerd_version linkerdVersionValue
+linkerdVersion: &linkerd_version edge-20.12.1
 clusterDomain: cluster.local
 identityTrustDomain: cluster.local
 linkerdNamespace: linkerd
+controllerLogLevel: debug
 
 # -- url of external prometheus instance
 # prometheusUrl:
@@ -39,6 +40,7 @@ linkerdNamespace: linkerd
 
 # tap configuration
 tap:
+  replicas: 1
   image:
     # -- Docker image name for the grafana instance
     name: ghcr.io/linkerd/grafana
@@ -72,6 +74,19 @@ tap:
       limit:
       # -- Amount of memory that the tap container requests
       request:
+
+# controller configuration
+controller:
+  # -- Number of replicas of dashboard
+  replicas: 1
+  image:
+    # -- Docker image name for the controller instance
+    name: ghcr.io/linkerd/controller
+    # -- Docker image tag for the controller instance
+    tag: *linkerd_version
+  # -- User ID for the controller
+  UID: 2103
+
 
 # web dashboard configuration
 dashboard:

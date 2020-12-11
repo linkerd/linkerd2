@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
 	multicluster "github.com/linkerd/linkerd2/multicluster/cmd"
+	viz "github.com/linkerd/linkerd2/viz/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -132,6 +133,7 @@ func init() {
 	// Extension Sub Commands
 	RootCmd.AddCommand(jaeger.NewCmdJaeger())
 	RootCmd.AddCommand(multicluster.NewCmdMulticluster())
+	RootCmd.AddCommand(viz.NewCmdViz())
 }
 
 type statOptionsBase struct {

@@ -16,6 +16,7 @@ COPY cli cli
 COPY charts charts
 COPY jaeger jaeger
 COPY multicluster multicluster
+COPY viz viz
 
 COPY controller/k8s controller/k8s
 COPY controller/api controller/api
@@ -28,6 +29,7 @@ RUN mkdir -p /out
 RUN go generate -mod=readonly ./pkg/charts/static
 RUN go generate -mod=readonly ./jaeger/static
 RUN go generate -mod=readonly ./multicluster/static
+RUN go generate -mod=readonly ./viz/static
 
 # Cache builds without version info
 RUN CGO_ENABLED=0 GOOS=darwin go build -o /out/linkerd-darwin -tags prod -mod=readonly -ldflags "-s -w" ./cli

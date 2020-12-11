@@ -129,4 +129,3 @@ spec:
   {{- fail "If tap.externalSecret is true then you need to provide tap.caBundle" }}
 {{- end }}
   caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tap.caBundle)) (empty .Values.tap.caBundle) }}
----
