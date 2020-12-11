@@ -770,6 +770,14 @@ func ignorableDiff(id string, diff diff) bool {
 		// caBundle to change.
 		return true
 	}
+
+	if (id == "Deployment/linkerd-sp-validator" || id == "Deployment/linkerd-proxy-injector" || id == "Deployment/linkerd-tap") &&
+		pathMatch(diff.path, []string{"spec", "template", "metadata", "annotations", "checksum/config"}) {
+		// APIService TLS chains are regenerated upon upgrade so we expect the
+		// caBundle to change.
+		return true
+	}
+
 	if id == "Secret/linkerd-proxy-injector-tls" || id == "Secret/linkerd-sp-validator-tls" ||
 		id == "Secret/linkerd-tap-tls" || id == "Secret/linkerd-sp-validator-k8s-tls" ||
 		id == "Secret/linkerd-proxy-injector-k8s-tls" || id == "Secret/linkerd-tap-k8s-tls" {

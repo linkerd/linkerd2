@@ -39,6 +39,8 @@ jobs:
     container:
       image: golang:1.13.4
     steps:
+      - name: Prerequisites
+        run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip
       - name: Checkout code
         # actions/checkout@v2
         uses: actions/checkout@722adc6

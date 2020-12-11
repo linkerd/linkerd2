@@ -294,6 +294,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 
 	// Set any global flags if present, common with install and upgrade
 	values.GetGlobal().Namespace = controlPlaneNamespace
+	values.Stage = stage
 
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
