@@ -1,6 +1,26 @@
 
 # Changes
 
+## edge-20.12.2
+
+* Fixed an issue where the `proxy-injector` and `sp-validator` did not refresh
+  their certs automatically when provided externally—like through cert-manager
+* Added support for overrides flags to the `jaeger install` command to allow
+  setting Helm values when installing the Linkerd-jaeger extension
+* Added missing Helm values to the multicluster chart (thanks @DaspawnW!)
+* Moved tracing functionality to the `linkerd-jaeger` extension
+* Fixed various issues in developer shell scripts (thanks @joakimr-axis!)
+* Fixed an issue where `install --ha` was only partially applying the high
+  availability config
+* Updated RBAC API versions in the CNI chart (thanks @glitchcrab!)
+* Fixed an issue where TLS credentials are changed during upgrades, but the
+  Linkerd webhooks would not restart, leaving them to use older credentials and
+  fail requests
+* Stopped publishing the multicluster link chart as its primary use case is in
+  the `multicluster link` command and not being installed through Helm
+* Added service mirror error logs for when the multicluster gateway's hostname
+  cannot be resolved.
+
 ## edge-20.12.1
 
 This edge release continues the work of decoupling non-core Linkerd components
