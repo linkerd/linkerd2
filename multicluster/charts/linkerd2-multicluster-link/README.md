@@ -1,7 +1,13 @@
 # linkerd2-multicluster-link
 
 A helm chart containing the resources to enable mirroring
-of services from a remote cluster
+of services from a remote cluster.
+
+Warning: The purpose of this chart is just to support the `linkerd
+multicluster link` CLI command, which also produces the
+`cluster-credentials` secret and the Link CR, which are not found in this
+chart. Therefore this chart is not a replacement for that command, and
+shouldn't be used as-is unless you really know what you're doing ;-)
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
 

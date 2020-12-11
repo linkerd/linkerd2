@@ -15,14 +15,12 @@ import (
 
 // Values represents the values of jaeger template
 type Values struct {
-	Namespace           string    `json:"namespace"`
-	CliVersion          string    `json:"cliVersion"`
-	Collector           collector `json:"collector"`
-	CollectorSvcAddr    string    `json:"collectorSvcAddr"`
-	CollectorSvcAccount string    `json:"collectorSvcAccount"`
-	Jaeger              jaeger    `json:"jaeger"`
-	LinkerdVersion      string    `json:"linkerdVersion"`
-	Webhook             webhook   `json:"webhook"`
+	Namespace      string    `json:"namespace"`
+	CliVersion     string    `json:"cliVersion"`
+	Collector      collector `json:"collector"`
+	Jaeger         jaeger    `json:"jaeger"`
+	LinkerdVersion string    `json:"linkerdVersion"`
+	Webhook        webhook   `json:"webhook"`
 }
 
 type collector struct {
@@ -36,15 +34,17 @@ type jaeger struct {
 }
 
 type webhook struct {
-	ExternalSecret    bool                  `json:"externalSecret"`
-	CrtPEM            string                `json:"crtPEM"`
-	KeyPEM            string                `json:"keyPEM"`
-	CaBundle          string                `json:"caBundle"`
-	FailurePolicy     string                `json:"failurePolicy"`
-	Image             l5dcharts.Image       `json:"image"`
-	LogLevel          string                `json:"logLevel"`
-	NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector"`
-	ObjectSelector    *metav1.LabelSelector `json:"objectSelector"`
+	ExternalSecret      bool                  `json:"externalSecret"`
+	CrtPEM              string                `json:"crtPEM"`
+	KeyPEM              string                `json:"keyPEM"`
+	CaBundle            string                `json:"caBundle"`
+	CollectorSvcAddr    string                `json:"collectorSvcAddr"`
+	CollectorSvcAccount string                `json:"collectorSvcAccount"`
+	FailurePolicy       string                `json:"failurePolicy"`
+	Image               l5dcharts.Image       `json:"image"`
+	LogLevel            string                `json:"logLevel"`
+	NamespaceSelector   *metav1.LabelSelector `json:"namespaceSelector"`
+	ObjectSelector      *metav1.LabelSelector `json:"objectSelector"`
 }
 
 // NewValues returns a new instance of the Values type.

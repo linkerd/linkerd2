@@ -30,4 +30,5 @@ data:
   {{- end -}}
   {{- $_ := unset $values "partials"}}
   {{- $_ := unset $values "configs"}}
+  {{- $_ := unset $values "stage"}}
   {{- toYaml $values | trim | nindent 4 }}

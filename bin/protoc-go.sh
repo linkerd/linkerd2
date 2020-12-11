@@ -2,9 +2,11 @@
 
 set -eu
 
+bindir=$( cd "${0%/*}" && pwd )
+
 gen() {
     for f in "$@"; do
-        bin/protoc -I proto --go_out=plugins=grpc,paths=source_relative:controller/gen "$f"
+        "$bindir"/protoc -I proto --go_out=plugins=grpc,paths=source_relative:controller/gen "$f"
     done
 }
 
