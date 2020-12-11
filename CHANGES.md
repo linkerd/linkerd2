@@ -18,6 +18,7 @@
   fail requests
 * Stopped publishing the multicluster link chart as its primary use case is in
   the `multicluster link` command and not being installed through Helm
+* Added error logs for when the multicluster gateway cannot resolve a hostname
 
 ## edge-20.12.1
 
