@@ -691,7 +691,9 @@ func (rcsw *RemoteClusterServiceWatcher) resolveGatewayAddress() ([]corev1.Endpo
 				IP: ipAddr.String(),
 			})
 		} else {
-			errors = append(errors, fmt.Errorf("Error resolving '%s': %s", addr, err))
+			err = fmt.Errorf("Error resolving '%s': %s", addr, err)
+			rcsw.log.Warn(err)
+			errors = append(errors, err)
 		}
 	}
 	// one resolved address is enough
