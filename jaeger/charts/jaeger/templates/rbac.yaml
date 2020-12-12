@@ -21,7 +21,7 @@ metadata:
 
 ---
 ###
-### Proxy Mutator RBAC
+### Jaeger Injector RBAC
 ###
 ---
 kind: ClusterRole
