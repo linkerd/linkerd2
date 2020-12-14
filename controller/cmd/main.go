@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	servicemirror "github.com/linkerd/linkerd2/controller/cmd/service-mirror"
-
 	"github.com/linkerd/linkerd2/controller/cmd/destination"
 	"github.com/linkerd/linkerd2/controller/cmd/heartbeat"
 	"github.com/linkerd/linkerd2/controller/cmd/identity"
@@ -13,6 +11,7 @@ import (
 	publicapi "github.com/linkerd/linkerd2/controller/cmd/public-api"
 	spvalidator "github.com/linkerd/linkerd2/controller/cmd/sp-validator"
 	"github.com/linkerd/linkerd2/controller/cmd/tap"
+	servicemirror "github.com/linkerd/linkerd2/multicluster/cmd/service-mirror"
 )
 
 func main() {

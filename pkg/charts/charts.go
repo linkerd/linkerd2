@@ -2,6 +2,7 @@ package charts
 
 import (
 	"bytes"
+	"net/http"
 	"path"
 	"strings"
 
@@ -15,6 +16,29 @@ import (
 
 const versionPlaceholder = "linkerdVersionValue"
 
+var (
+	// L5dPartials is the list of templates in partials chart
+	// Keep this slice synced with the contents of /charts/partials
+	L5dPartials = []string{
+		"charts/partials/" + chartutil.ChartfileName,
+		"charts/partials/templates/_proxy.tpl",
+		"charts/partials/templates/_proxy-init.tpl",
+		"charts/partials/templates/_volumes.tpl",
+		"charts/partials/templates/_resources.tpl",
+		"charts/partials/templates/_metadata.tpl",
+		"charts/partials/templates/_helpers.tpl",
+		"charts/partials/templates/_debug.tpl",
+		"charts/partials/templates/_capabilities.tpl",
+		"charts/partials/templates/_trace.tpl",
+		"charts/partials/templates/_nodeselector.tpl",
+		"charts/partials/templates/_tolerations.tpl",
+		"charts/partials/templates/_affinity.tpl",
+		"charts/partials/templates/_addons.tpl",
+		"charts/partials/templates/_validate.tpl",
+		"charts/partials/templates/_pull-secrets.tpl",
+	}
+)
+
 // Chart holds the necessary info to render a Helm chart
 type Chart struct {
 	Name      string
@@ -22,14 +46,16 @@ type Chart struct {
 	Namespace string
 	RawValues []byte
 	Files     []*loader.BufferedFile
+	Fs        http.FileSystem
 }
 
 func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, error) {
-	if err := FilesReader(c.Dir+"/", c.Files); err != nil {
+	if err := FilesReader(c.Fs, c.Dir+"/", c.Files); err != nil {
 		return bytes.Buffer{}, err
 	}
 
-	if err := FilesReader("", partialsFiles); err != nil {
+	// static.Templates is used as partials are always available there
+	if err := FilesReader(static.Templates, "", partialsFiles); err != nil {
 		return bytes.Buffer{}, err
 	}
 
@@ -77,25 +103,13 @@ func (c *Chart) render(partialsFiles []*loader.BufferedFile) (bytes.Buffer, erro
 // Render returns a bytes buffer with the result of rendering a Helm chart
 func (c *Chart) Render() (bytes.Buffer, error) {
 
-	// Keep this slice synced with the contents of /charts/partials
-	l5dPartials := []*loader.BufferedFile{
-		{Name: "charts/partials/" + chartutil.ChartfileName},
-		{Name: "charts/partials/templates/_proxy.tpl"},
-		{Name: "charts/partials/templates/_proxy-init.tpl"},
-		{Name: "charts/partials/templates/_volumes.tpl"},
-		{Name: "charts/partials/templates/_resources.tpl"},
-		{Name: "charts/partials/templates/_metadata.tpl"},
-		{Name: "charts/partials/templates/_helpers.tpl"},
-		{Name: "charts/partials/templates/_debug.tpl"},
-		{Name: "charts/partials/templates/_capabilities.tpl"},
-		{Name: "charts/partials/templates/_trace.tpl"},
-		{Name: "charts/partials/templates/_nodeselector.tpl"},
-		{Name: "charts/partials/templates/_tolerations.tpl"},
-		{Name: "charts/partials/templates/_affinity.tpl"},
-		{Name: "charts/partials/templates/_addons.tpl"},
-		{Name: "charts/partials/templates/_validate.tpl"},
-		{Name: "charts/partials/templates/_pull-secrets.tpl"},
+	l5dPartials := []*loader.BufferedFile{}
+	for _, template := range L5dPartials {
+		l5dPartials = append(l5dPartials, &loader.BufferedFile{
+			Name: template,
+		})
 	}
+
 	return c.render(l5dPartials)
 }
 
@@ -115,12 +129,12 @@ func (c *Chart) RenderNoPartials() (bytes.Buffer, error) {
 }
 
 // ReadFile updates the buffered file with the data read from disk
-func ReadFile(dir string, f *loader.BufferedFile) error {
+func ReadFile(fs http.FileSystem, dir string, f *loader.BufferedFile) error {
 	filename := dir + f.Name
 	if dir == "" {
 		filename = filename[7:]
 	}
-	file, err := static.Templates.Open(filename)
+	file, err := fs.Open(filename)
 	if err != nil {
 		return err
 	}
@@ -136,9 +150,9 @@ func ReadFile(dir string, f *loader.BufferedFile) error {
 }
 
 // FilesReader reads all the files from a directory
-func FilesReader(dir string, files []*loader.BufferedFile) error {
+func FilesReader(fs http.FileSystem, dir string, files []*loader.BufferedFile) error {
 	for _, f := range files {
-		if err := ReadFile(dir, f); err != nil {
+		if err := ReadFile(fs, dir, f); err != nil {
 			return err
 		}
 	}
@@ -148,6 +162,16 @@ func FilesReader(dir string, files []*loader.BufferedFile) error {
 // InsertVersion returns the chart values file contents passed in
 // with the version placeholder replaced with the current version
 func InsertVersion(data []byte) []byte {
-	dataWithVersion := strings.Replace(string(data), versionPlaceholder, version.Version, 1)
+	dataWithVersion := strings.Replace(string(data), versionPlaceholder, version.Version, -1)
 	return []byte(dataWithVersion)
+}
+
+// InsertVersionValues returns the chart values with the version placeholder
+// replaced with the current version.
+func InsertVersionValues(values chartutil.Values) (chartutil.Values, error) {
+	raw, err := values.YAML()
+	if err != nil {
+		return nil, err
+	}
+	return chartutil.ReadValues(InsertVersion([]byte(raw)))
 }

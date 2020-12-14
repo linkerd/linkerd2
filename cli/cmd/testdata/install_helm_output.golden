@@ -846,6 +846,7 @@ data:
       clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
       cniEnabled: false
       controlPlaneTracing: false
+      controlPlaneTracingNamespace: linkerd-jaeger
       controllerComponentLabel: linkerd.io/control-plane-component
       controllerImageVersion: linkerd-version
       controllerLogLevel: info
@@ -894,9 +895,6 @@ data:
             limit: ""
             request: ""
         saMountPath: null
-        trace:
-          collectorSvcAccount: default
-          collectorSvcAddr: ""
         uid: 2102
         waitBeforeExitSeconds: 0
       proxyContainerName: linkerd-proxy
@@ -932,6 +930,7 @@ data:
         clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         cniEnabled: false
         controlPlaneTracing: false
+        controlPlaneTracingNamespace: linkerd-jaeger
         controllerComponentLabel: linkerd.io/control-plane-component
         controllerImageVersion: linkerd-version
         controllerLogLevel: info
@@ -980,9 +979,6 @@ data:
               limit: ""
               request: ""
           saMountPath: null
-          trace:
-            collectorSvcAccount: default
-            collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
         proxyContainerName: linkerd-proxy
@@ -1012,6 +1008,7 @@ data:
         workloadNamespaceLabel: linkerd.io/workload-ns
       image:
         name: ghcr.io/linkerd/grafana
+        tag: null
       partials:
         global:
           cliVersion: ""
@@ -1019,6 +1016,7 @@ data:
           clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
           cniEnabled: false
           controlPlaneTracing: false
+          controlPlaneTracingNamespace: linkerd-jaeger
           controllerComponentLabel: linkerd.io/control-plane-component
           controllerImageVersion: linkerd-version
           controllerLogLevel: info
@@ -1067,9 +1065,6 @@ data:
                 limit: ""
                 request: ""
             saMountPath: null
-            trace:
-              collectorSvcAccount: default
-              collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
           proxyContainerName: linkerd-proxy
@@ -1097,6 +1092,15 @@ data:
           proxyInjectAnnotation: linkerd.io/inject
           proxyInjectDisabled: disabled
           workloadNamespaceLabel: linkerd.io/workload-ns
+      proxy:
+        resources: null
+      resources:
+        cpu:
+          limit: null
+          request: null
+        memory:
+          limit: null
+          request: null
     heartbeatResources: null
     heartbeatSchedule: 0 0 * * *
     identity:
@@ -1125,6 +1129,8 @@ data:
           values:
           - disabled
     prometheus:
+      alertManagers: null
+      alertRelabelConfigs: null
       args:
         config.file: /etc/prometheus/prometheus.yml
         log.level: info
@@ -1137,6 +1143,7 @@ data:
         clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         cniEnabled: false
         controlPlaneTracing: false
+        controlPlaneTracingNamespace: linkerd-jaeger
         controllerComponentLabel: linkerd.io/control-plane-component
         controllerImageVersion: linkerd-version
         controllerLogLevel: info
@@ -1185,9 +1192,6 @@ data:
               limit: ""
               request: ""
           saMountPath: null
-          trace:
-            collectorSvcAccount: default
-            collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
         proxyContainerName: linkerd-proxy
@@ -1227,6 +1231,7 @@ data:
           clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
           cniEnabled: false
           controlPlaneTracing: false
+          controlPlaneTracingNamespace: linkerd-jaeger
           controllerComponentLabel: linkerd.io/control-plane-component
           controllerImageVersion: linkerd-version
           controllerLogLevel: info
@@ -1275,9 +1280,6 @@ data:
                 limit: ""
                 request: ""
             saMountPath: null
-            trace:
-              collectorSvcAccount: default
-              collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
           proxyContainerName: linkerd-proxy
@@ -1305,6 +1307,19 @@ data:
           proxyInjectAnnotation: linkerd.io/inject
           proxyInjectDisabled: disabled
           workloadNamespaceLabel: linkerd.io/workload-ns
+      proxy:
+        resources: null
+      remoteWrite: null
+      resources:
+        cpu:
+          limit: null
+          request: null
+        memory:
+          limit: null
+          request: null
+      ruleConfigMapMounts: null
+      scrapeConfigs: null
+      sideCarContainers: null
     proxyInjector:
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: test-proxy-injector-crt-pem
@@ -1329,8 +1344,6 @@ data:
     tapProxyResources: null
     tapResources: null
     tolerations: null
-    tracing:
-      enabled: false
     webImage: ghcr.io/linkerd/web
     webProxyResources: null
     webResources: null
@@ -3175,6 +3188,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+        resources:
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -3600,6 +3614,7 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
+        resources:
         securityContext:
           runAsNonRoot: true
           runAsUser: 65534

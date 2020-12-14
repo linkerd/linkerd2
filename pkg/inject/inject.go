@@ -16,6 +16,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
@@ -29,10 +30,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/yaml"
-)
-
-const (
-	traceDefaultSvcAccount = "default"
 )
 
 var (
@@ -63,7 +60,6 @@ var (
 		k8s.ProxyIgnoreInboundPortsAnnotation,
 		k8s.ProxyOpaquePortsAnnotation,
 		k8s.ProxyIgnoreOutboundPortsAnnotation,
-		k8s.ProxyTraceCollectorSvcAddrAnnotation,
 		k8s.ProxyOutboundConnectTimeout,
 		k8s.ProxyInboundConnectTimeout,
 	}
@@ -291,6 +287,7 @@ func (conf *ResourceConfig) GetPatch(injectProxy bool) ([]byte, error) {
 		Namespace: conf.values.GetGlobal().Namespace,
 		RawValues: rawValues,
 		Files:     files,
+		Fs:        static.Templates,
 	}
 	buf, err := chart.Render()
 	if err != nil {
@@ -564,11 +561,6 @@ func (conf *ResourceConfig) injectPodSpec(values *patch) {
 
 	conf.injectProxyInit(values)
 	values.AddRootVolumes = len(conf.pod.spec.Volumes) == 0
-
-	// Configure Tracing values based on svcAddr, as it is the main toggle for tracing
-	if conf.values.GetGlobal().Proxy.Trace.CollectorSvcAddr != "" {
-		values.GetGlobal().Proxy.Trace = conf.trace(conf.values.GetGlobal().Proxy.Trace.CollectorSvcAddr, conf.values.GetGlobal().Proxy.Trace.CollectorSvcAccount)
-	}
 }
 
 func (conf *ResourceConfig) injectProxyInit(values *patch) {
@@ -601,31 +593,6 @@ func (conf *ResourceConfig) serviceAccountVolumeMount() *corev1.VolumeMount {
 		}
 	}
 	return nil
-}
-
-func (conf *ResourceConfig) trace(svcAddr, svcAccount string) *l5dcharts.Trace {
-	if svcAddr == "" {
-		return nil
-	}
-
-	if svcAccount == "" {
-		svcAccount = traceDefaultSvcAccount
-	}
-
-	hostAndPort := strings.Split(svcAddr, ":")
-	hostname := strings.Split(hostAndPort[0], ".")
-
-	var ns string
-	if len(hostname) == 1 {
-		ns = conf.pod.meta.Namespace
-	} else {
-		ns = hostname[1]
-	}
-
-	return &l5dcharts.Trace{
-		CollectorSvcAddr:    svcAddr,
-		CollectorSvcAccount: fmt.Sprintf("%s.%s", svcAccount, ns),
-	}
 }
 
 // Given a ObjectMeta, update ObjectMeta in place with the new labels and
@@ -873,21 +840,6 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 
 	if override, ok := annotations[k8s.DebugImagePullPolicyAnnotation]; ok {
 		values.DebugContainer.Image.PullPolicy = override
-	}
-
-	// Get Trace Overrides
-	var svcAddr, svcAccount string
-	if override, ok := annotations[k8s.ProxyTraceCollectorSvcAddrAnnotation]; ok {
-		svcAddr = override
-	}
-
-	if override, ok := annotations[k8s.ProxyTraceCollectorSvcAccountAnnotation]; ok {
-		svcAccount = override
-	}
-
-	// Configure Tracing values based on svcAddr, as it is the main toggle for tracing
-	if svcAddr != "" {
-		values.GetGlobal().Proxy.Trace = conf.trace(svcAddr, svcAccount)
 	}
 }
 

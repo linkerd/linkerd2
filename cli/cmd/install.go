@@ -12,6 +12,7 @@ import (
 	"github.com/linkerd/linkerd2/cli/flag"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/tree"
@@ -116,7 +117,7 @@ resources for the Linkerd control plane. This command should be followed by
   linkerd install config | kubectl apply -f -
 
   # Install Linkerd into a non-default namespace.
-  linkerd install config -l linkerdtest | kubectl apply -f -`,
+  linkerd install config -L linkerdtest | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := flag.ApplySetFlags(values, flags)
 			if err != nil {
@@ -299,6 +300,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 
 	// Set any global flags if present, common with install and upgrade
 	values.GetGlobal().Namespace = controlPlaneNamespace
+	values.Stage = stage
 
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
@@ -331,6 +333,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 					Name: chartutil.ValuesfileName,
 				},
 			},
+			Fs: static.Templates,
 		}
 	}
 
@@ -368,6 +371,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 		Namespace: controlPlaneNamespace,
 		RawValues: rawValues,
 		Files:     files,
+		Fs:        static.Templates,
 	}
 	buf, err := chart.Render()
 	if err != nil {

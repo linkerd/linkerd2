@@ -826,6 +826,7 @@ data:
       clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
       cniEnabled: false
       controlPlaneTracing: false
+      controlPlaneTracingNamespace: linkerd-jaeger
       controllerComponentLabel: linkerd.io/control-plane-component
       controllerImageVersion: install-control-plane-version
       controllerLogLevel: info
@@ -886,9 +887,6 @@ data:
             limit: 250Mi
             request: 300Mi
         saMountPath: null
-        trace:
-          collectorSvcAccount: default
-          collectorSvcAddr: ""
         uid: 2102
         waitBeforeExitSeconds: 0
       proxyContainerName: linkerd-proxy
@@ -900,7 +898,7 @@ data:
         image:
           name: ghcr.io/linkerd/proxy-init
           pullPolicy: IfNotPresent
-          version: v1.3.7
+          version: v1.3.8
         resources:
           cpu:
             limit: 100m
@@ -1033,8 +1031,6 @@ data:
         limit: 250Mi
         request: 50Mi
     tolerations: null
-    tracing:
-      enabled: false
     webImage: ghcr.io/linkerd/web
     webProxyResources: null
     webResources:
@@ -1317,7 +1313,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.7
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1584,7 +1580,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.7
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1869,7 +1865,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.7
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2165,7 +2161,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.7
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2225,6 +2221,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 34434799a6867cce161426b50265dfd03620ec94a9f90a01ccc64bc7811af9a5
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2410,7 +2407,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.7
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2514,6 +2511,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 89b4768cd03ce9a74f021b6b2cb026c1b25980b0fed5d2e15b100b4ef428a2bd
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2697,7 +2695,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.7
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2784,6 +2782,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 51c6f0865aca4a1b4e25e619385ff0d9f95683e27c4d29c3072eac39b3fa7220
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2971,7 +2970,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.7
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3292,7 +3291,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.7
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3738,7 +3737,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.7
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/imdario/mergo"
 	"github.com/linkerd/linkerd2/pkg/charts"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/version"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -45,6 +45,7 @@ type (
 		Tap                         *Tap              `json:"tap"`
 		NodeSelector                map[string]string `json:"nodeSelector"`
 		Tolerations                 []interface{}     `json:"tolerations"`
+		Stage                       string            `json:"stage"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
 		HeartbeatResources     *Resources `json:"heartbeatResources"`
@@ -66,36 +67,36 @@ type (
 		// Addon Structures
 		Grafana    Grafana    `json:"grafana"`
 		Prometheus Prometheus `json:"prometheus"`
-		Tracing    Tracing    `json:"tracing"`
 	}
 
 	// Global values common across all charts
 	Global struct {
-		Namespace                string              `json:"namespace"`
-		ClusterDomain            string              `json:"clusterDomain"`
-		ClusterNetworks          string              `json:"clusterNetworks"`
-		ImagePullPolicy          string              `json:"imagePullPolicy"`
-		CliVersion               string              `json:"cliVersion"`
-		ControllerComponentLabel string              `json:"controllerComponentLabel"`
-		ControllerImageVersion   string              `json:"controllerImageVersion"`
-		ControllerLogLevel       string              `json:"controllerLogLevel"`
-		ControllerNamespaceLabel string              `json:"controllerNamespaceLabel"`
-		WorkloadNamespaceLabel   string              `json:"workloadNamespaceLabel"`
-		CreatedByAnnotation      string              `json:"createdByAnnotation"`
-		ProxyInjectAnnotation    string              `json:"proxyInjectAnnotation"`
-		ProxyInjectDisabled      string              `json:"proxyInjectDisabled"`
-		LinkerdNamespaceLabel    string              `json:"linkerdNamespaceLabel"`
-		ProxyContainerName       string              `json:"proxyContainerName"`
-		HighAvailability         bool                `json:"highAvailability"`
-		CNIEnabled               bool                `json:"cniEnabled"`
-		EnableEndpointSlices     bool                `json:"enableEndpointSlices"`
-		ControlPlaneTracing      bool                `json:"controlPlaneTracing"`
-		IdentityTrustAnchorsPEM  string              `json:"identityTrustAnchorsPEM"`
-		IdentityTrustDomain      string              `json:"identityTrustDomain"`
-		PrometheusURL            string              `json:"prometheusUrl"`
-		GrafanaURL               string              `json:"grafanaUrl"`
-		ImagePullSecrets         []map[string]string `json:"imagePullSecrets"`
-		LinkerdVersion           string              `json:"linkerdVersion"`
+		Namespace                    string              `json:"namespace"`
+		ClusterDomain                string              `json:"clusterDomain"`
+		ClusterNetworks              string              `json:"clusterNetworks"`
+		ImagePullPolicy              string              `json:"imagePullPolicy"`
+		CliVersion                   string              `json:"cliVersion"`
+		ControllerComponentLabel     string              `json:"controllerComponentLabel"`
+		ControllerImageVersion       string              `json:"controllerImageVersion"`
+		ControllerLogLevel           string              `json:"controllerLogLevel"`
+		ControllerNamespaceLabel     string              `json:"controllerNamespaceLabel"`
+		WorkloadNamespaceLabel       string              `json:"workloadNamespaceLabel"`
+		CreatedByAnnotation          string              `json:"createdByAnnotation"`
+		ProxyInjectAnnotation        string              `json:"proxyInjectAnnotation"`
+		ProxyInjectDisabled          string              `json:"proxyInjectDisabled"`
+		LinkerdNamespaceLabel        string              `json:"linkerdNamespaceLabel"`
+		ProxyContainerName           string              `json:"proxyContainerName"`
+		HighAvailability             bool                `json:"highAvailability"`
+		CNIEnabled                   bool                `json:"cniEnabled"`
+		EnableEndpointSlices         bool                `json:"enableEndpointSlices"`
+		ControlPlaneTracing          bool                `json:"controlPlaneTracing"`
+		ControlPlaneTracingNamespace string              `json:"controlPlaneTracingNamespace"`
+		IdentityTrustAnchorsPEM      string              `json:"identityTrustAnchorsPEM"`
+		IdentityTrustDomain          string              `json:"identityTrustDomain"`
+		PrometheusURL                string              `json:"prometheusUrl"`
+		GrafanaURL                   string              `json:"grafanaUrl"`
+		ImagePullSecrets             []map[string]string `json:"imagePullSecrets"`
+		LinkerdVersion               string              `json:"linkerdVersion"`
 
 		PodAnnotations map[string]string `json:"podAnnotations"`
 		PodLabels      map[string]string `json:"podLabels"`
@@ -125,7 +126,6 @@ type (
 		SAMountPath                   *VolumeMountPath `json:"saMountPath"`
 		Ports                         *Ports           `json:"ports"`
 		Resources                     *Resources       `json:"resources"`
-		Trace                         *Trace           `json:"trace"`
 		UID                           int64            `json:"uid"`
 		WaitBeforeExitSeconds         uint64           `json:"waitBeforeExitSeconds"`
 		IsGateway                     bool             `json:"isGateway"`
@@ -247,12 +247,6 @@ type (
 		KeyPEM string `json:"keyPEM"`
 		CrtPEM string `json:"crtPEM"`
 	}
-
-	// Trace has all the tracing-related Helm variables
-	Trace struct {
-		CollectorSvcAddr    string `json:"collectorSvcAddr"`
-		CollectorSvcAccount string `json:"collectorSvcAccount"`
-	}
 )
 
 // NewValues returns a new instance of the Values type.
@@ -288,7 +282,7 @@ func readDefaults(chartDir string, ha bool) (*Values, error) {
 		})
 	}
 
-	if err := charts.FilesReader(chartDir, valuesFiles); err != nil {
+	if err := charts.FilesReader(static.Templates, chartDir, valuesFiles); err != nil {
 		return nil, err
 	}
 
@@ -300,7 +294,7 @@ func readDefaults(chartDir string, ha bool) (*Values, error) {
 		}
 
 		var err error
-		values, err = values.merge(v)
+		values, err = values.Merge(v)
 		if err != nil {
 			return nil, err
 		}
@@ -309,10 +303,10 @@ func readDefaults(chartDir string, ha bool) (*Values, error) {
 	return &values, nil
 }
 
-// merge merges the non-empty properties of src into v.
+// Merge merges the non-empty properties of src into v.
 // A new Values instance is returned. Neither src nor v are mutated after
 // calling merge.
-func (v Values) merge(src Values) (Values, error) {
+func (v Values) Merge(src Values) (Values, error) {
 	// By default, mergo.Merge doesn't overwrite any existing non-empty values
 	// in its first argument. So in HA mode, we are merging values.yaml into
 	// values-ha.yaml, instead of the other way round (like Helm). This ensures

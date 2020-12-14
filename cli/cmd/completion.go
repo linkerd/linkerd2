@@ -11,25 +11,30 @@ import (
 // newCmdCompletion creates a new cobra command `completion` which contains commands for
 // enabling linkerd auto completion
 func newCmdCompletion() *cobra.Command {
-	example := `  # bash <= 3.2
+	example := `  # bash <= 3.2:
   source /dev/stdin <<< "$(linkerd completion bash)"
 
-  # bash >= 4.0
+  # bash >= 4.0:
   source <(linkerd completion bash)
 
-  # bash <= 3.2 on osx
+  # bash <= 3.2 on osx:
   brew install bash-completion # ensure you have bash-completion 1.3+
   linkerd completion bash > $(brew --prefix)/etc/bash_completion.d/linkerd
 
-  # bash >= 4.0 on osx
+  # bash >= 4.0 on osx:
   brew install bash-completion@2
   linkerd completion bash > $(brew --prefix)/etc/bash_completion.d/linkerd
 
-  # zsh
-  source <(linkerd completion zsh)
+  # zsh:
+  # If shell completion is not already enabled in your environment you will need
+  # to enable it.  You can execute the following once:
 
-  # zsh on osx / oh-my-zsh
+  echo "autoload -U compinit; compinit" >> ~/.zshrc
+
+  # To load completions for each session, execute once:
   linkerd completion zsh > "${fpath[1]}/_linkerd"
+
+  # You will need to start a new shell for this setup to take effect.
 
   # fish:
   linkerd completion fish | source

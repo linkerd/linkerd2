@@ -277,90 +277,6 @@ func TestUpgradeRootFailsWithOldPods(t *testing.T) {
 	}
 }
 
-func TestUpgradeTracingAddon(t *testing.T) {
-	installOpts, upgradeOpts, flagSet := testOptions(t)
-
-	install := renderInstall(t, installOpts)
-
-	flagSet.Set("config", filepath.Join("testdata", "addon_config.yaml"))
-
-	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := replaceVersions(install.String())
-	expectedManifests := parseManifestList(expected)
-	upgradeManifests := parseManifestList(upgrade.String())
-	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
-	tracingManifests := []string{
-		"Service/linkerd-jaeger", "Deployment/linkerd-jaeger",
-		"ServiceAccount/linkerd-jaeger", "Service/linkerd-collector", "ConfigMap/linkerd-collector-config",
-		"ServiceAccount/linkerd-collector", "Deployment/linkerd-collector", "RoleBinding/linkerd-psp",
-	}
-	for _, id := range tracingManifests {
-		if _, ok := diffMap[id]; ok {
-			delete(diffMap, id)
-		} else {
-			t.Errorf("Expected %s in upgrade output but was absent", id)
-		}
-	}
-	for id, diffs := range diffMap {
-		for _, diff := range diffs {
-			if ignorableDiff(id, diff) {
-				continue
-			}
-			if id == "Deployment/linkerd-web" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args"}) {
-				continue
-			}
-			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
-		}
-	}
-}
-
-func TestUpgradeOverwriteTracingAddon(t *testing.T) {
-	installOpts, upgradeOpts, flagSet := testOptions(t)
-
-	installAddons, err := ioutil.ReadFile(filepath.Join("testdata", "addon_config.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = yaml.Unmarshal(installAddons, installOpts)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	install := renderInstall(t, installOpts)
-
-	flagSet.Set("config", filepath.Join("testdata", "addon_config_overwrite.yaml"))
-	flagSet.Set("trace-collector", "overwrite-collector")
-	flagSet.Set("trace-collector-svc-account", "overwrite-collector.default")
-
-	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := replaceVersions(install.String())
-	expectedManifests := parseManifestList(expected)
-	upgradeManifests := parseManifestList(upgrade.String())
-	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
-	tracingManifests := []string{"Deployment/linkerd-collector"}
-	for _, id := range tracingManifests {
-		if _, ok := diffMap[id]; ok {
-			delete(diffMap, id)
-		} else {
-			t.Errorf("Expected %s in upgrade output diff but was absent", id)
-		}
-	}
-	for id, diffs := range diffMap {
-		for _, diff := range diffs {
-			if ignorableDiff(id, diff) {
-				continue
-			}
-			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
-		}
-	}
-}
-
 // this test constructs a set of secrets resources
 func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
 	installOpts, upgradeOpts, _ := testOptions(t)
@@ -854,6 +770,14 @@ func ignorableDiff(id string, diff diff) bool {
 		// caBundle to change.
 		return true
 	}
+
+	if (id == "Deployment/linkerd-sp-validator" || id == "Deployment/linkerd-proxy-injector" || id == "Deployment/linkerd-tap") &&
+		pathMatch(diff.path, []string{"spec", "template", "metadata", "annotations", "checksum/config"}) {
+		// APIService TLS chains are regenerated upon upgrade so we expect the
+		// caBundle to change.
+		return true
+	}
+
 	if id == "Secret/linkerd-proxy-injector-tls" || id == "Secret/linkerd-sp-validator-tls" ||
 		id == "Secret/linkerd-tap-tls" || id == "Secret/linkerd-sp-validator-k8s-tls" ||
 		id == "Secret/linkerd-proxy-injector-k8s-tls" || id == "Secret/linkerd-tap-k8s-tls" {

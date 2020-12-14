@@ -42,18 +42,14 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 	}
 
 	flags := []flag.Flag{
-		flag.NewUintFlag(installUpgradeFlags, "controller-replicas", defaults.ControllerReplicas,
-			"Replicas of the controller to deploy", func(values *l5dcharts.Values, value uint) error {
-				values.ControllerReplicas = value
-				return nil
-			}),
-
 		flag.NewStringFlag(installUpgradeFlags, "controller-log-level", defaults.GetGlobal().ControllerLogLevel,
 			"Log level for the controller and web components", func(values *l5dcharts.Values, value string) error {
 				values.GetGlobal().ControllerLogLevel = value
 				return nil
 			}),
 
+		// The HA flag must be processed before flags that set these values individually so that the
+		// individual flags can override the HA defaults.
 		flag.NewBoolFlag(installUpgradeFlags, "ha", false, "Enable HA deployment config for the control plane (default false)",
 			func(values *l5dcharts.Values, value bool) error {
 				values.GetGlobal().HighAvailability = value
@@ -62,17 +58,17 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 					if err != nil {
 						return err
 					}
-					// The HA flag must be processed before flags that set these values individually so that the
-					// individual flags can override the HA defaults.  This means that the HA flag must appear
-					// before the individual flags in the slice passed to flags.ApplyIfSet.
-					values.ControllerReplicas = haValues.ControllerReplicas
-					values.GetGlobal().Proxy.Resources.CPU.Request = haValues.GetGlobal().Proxy.Resources.CPU.Request
-					values.GetGlobal().Proxy.Resources.Memory.Request = haValues.GetGlobal().Proxy.Resources.Memory.Request
-					// NOTE: CPU Limits are not currently set by default HA charts.
-					//values.Global.Proxy.Cores = haValues.Global.Proxy.Cores
-					//values.Global.Proxy.Resources.CPU.Limit = haValues.Global.Proxy.Resources.CPU.Limit
-					values.GetGlobal().Proxy.Resources.Memory.Limit = haValues.GetGlobal().Proxy.Resources.Memory.Limit
+					*values, err = values.Merge(*haValues)
+					if err != nil {
+						return err
+					}
 				}
+				return nil
+			}),
+
+		flag.NewUintFlag(installUpgradeFlags, "controller-replicas", defaults.ControllerReplicas,
+			"Replicas of the controller to deploy", func(values *l5dcharts.Values, value uint) error {
+				values.ControllerReplicas = value
 				return nil
 			}),
 
@@ -118,7 +114,13 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 
 		flag.NewBoolFlag(installUpgradeFlags, "control-plane-tracing", defaults.GetGlobal().ControlPlaneTracing,
 			"Enables Control Plane Tracing with the defaults", func(values *l5dcharts.Values, value bool) error {
-				defaults.GetGlobal().ControlPlaneTracing = value
+				values.GetGlobal().ControlPlaneTracing = value
+				return nil
+			}),
+
+		flag.NewStringFlag(installUpgradeFlags, "control-plane-tracing-namespace", defaults.GetGlobal().ControlPlaneTracingNamespace,
+			"Send control plane traces to Linkerd-Jaeger extension in this namespace", func(values *l5dcharts.Values, value string) error {
+				values.GetGlobal().ControlPlaneTracingNamespace = value
 				return nil
 			}),
 
@@ -185,6 +187,7 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 		installUpgradeFlags.MarkHidden("control-plane-version")
 	}
 	installUpgradeFlags.MarkHidden("control-plane-tracing")
+	installUpgradeFlags.MarkHidden("control-plane-tracing-namespace")
 
 	return flags, installUpgradeFlags, nil
 }
@@ -490,18 +493,6 @@ func makeInjectFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 		flag.NewBoolFlag(injectFlags, "disable-tap", defaults.GetGlobal().Proxy.DisableTap,
 			"Disables resources from being tapped", func(values *l5dcharts.Values, value bool) error {
 				values.GetGlobal().Proxy.DisableTap = value
-				return nil
-			}),
-
-		flag.NewStringFlag(injectFlags, "trace-collector", defaults.GetGlobal().Proxy.Trace.CollectorSvcAddr,
-			"Collector Service address for the proxies to send Trace Data", func(values *l5dcharts.Values, value string) error {
-				values.GetGlobal().Proxy.Trace.CollectorSvcAddr = value
-				return nil
-			}),
-
-		flag.NewStringFlag(injectFlags, "trace-collector-svc-account", defaults.GetGlobal().Proxy.Trace.CollectorSvcAccount,
-			"Service account associated with the Trace collector instance", func(values *l5dcharts.Values, value string) error {
-				values.GetGlobal().Proxy.Trace.CollectorSvcAccount = value
 				return nil
 			}),
 

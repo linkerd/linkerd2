@@ -216,14 +216,6 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Inject a debug sidecar for data plane debugging",
 		},
 		{
-			Name:        k8s.ProxyTraceCollectorSvcAddrAnnotation,
-			Description: "Service name of the trace collector. E.g. `oc-collector.tracing:55678`",
-		},
-		{
-			Name:        k8s.ProxyTraceCollectorSvcAccountAnnotation,
-			Description: "The trace collector's service account name. E.g., `tracing-service-account`. If not provided, it will be defaulted to `default`.",
-		},
-		{
 			Name:        k8s.ProxyWaitBeforeExitSecondsAnnotation,
 			Description: "The proxy sidecar will stay alive for at least the given period before receiving SIGTERM signal from Kubernetes but no longer than pod's `terminationGracePeriodSeconds`. If not provided, it will be defaulted to `0`",
 		},

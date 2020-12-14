@@ -58,7 +58,7 @@ subjects:
   namespace: other
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-cni
   labels:
@@ -68,7 +68,7 @@ rules:
   resources: ["pods", "nodes", "namespaces"]
   verbs: ["list", "get", "watch"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni

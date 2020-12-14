@@ -1,6 +1,58 @@
 
 # Changes
 
+## edge-20.12.2
+
+* Fixed an issue where the `proxy-injector` and `sp-validator` did not refresh
+  their certs automatically when provided externally—like through cert-manager
+* Added support for overrides flags to the `jaeger install` command to allow
+  setting Helm values when installing the Linkerd-jaeger extension
+* Added missing Helm values to the multicluster chart (thanks @DaspawnW!)
+* Moved tracing functionality to the `linkerd-jaeger` extension
+* Fixed various issues in developer shell scripts (thanks @joakimr-axis!)
+* Fixed an issue where `install --ha` was only partially applying the high
+  availability config
+* Updated RBAC API versions in the CNI chart (thanks @glitchcrab!)
+* Fixed an issue where TLS credentials are changed during upgrades, but the
+  Linkerd webhooks would not restart, leaving them to use older credentials and
+  fail requests
+* Stopped publishing the multicluster link chart as its primary use case is in
+  the `multicluster link` command and not being installed through Helm
+* Added service mirror error logs for when the multicluster gateway's hostname
+  cannot be resolved.
+
+## edge-20.12.1
+
+This edge release continues the work of decoupling non-core Linkerd components
+by moving more tracing related functionality into the Linkerd-jaeger extension.
+
+* Continued work on moving tracing functionality from the main control plane
+  into the `linkerd-jaeger` extension
+* Fixed a potential panic in the proxy when looking up a socket's peer address
+  while under high load
+* Added automatic readme generation for charts (thanks @GMarkfjard!)
+* Fixed zsh completion for the CLI (thanks @jiraguha!)
+* Added support for multicluster gateways of types other than LoadBalancer
+  (thanks @DaspawnW!)
+
+## edge-20.11.5
+
+This edge release improves the proxy's support high-traffic workloads. It also
+contains the first steps towards decoupling non-core Linkerd components, the
+first iteration being a new `linkerd jaeger` sub-command for installing tracing.
+Please note this is still a work in progress.
+
+* Addressed some issues reported around clients seeing max-concurrency errors by
+  increasing the default in-flight request limit to 100K pending requests
+* Have the proxy appropriately set `content-type` when synthesizing gRPC error
+  responses
+* Bumped the `proxy-init` image to `v1.3.8` which is based off of
+  `buster-20201117-slim` to reduce potential security vulnerabilities
+* No longer panic in rare cases when `linkerd-config` doesn't have an entry for
+  `Global` configs (thanks @hodbn!)
+* Work in progress: the `/jaeger` directory now contains the charts and commands
+  for installing the tracing component.
+
 ## edge-20.11.4
 
 * Fixed an issue in the destination service where endpoints always included a

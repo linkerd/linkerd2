@@ -3,13 +3,121 @@
 # when installing with the parent linkerd2 chart
 # Do not override them in this file!
 # If installing/upgrading with linkerd's CLI, use the `--config` flag.
+
+# -- Docker image for the prometheus instance
 image: prom/prometheus:v2.19.3
+# -- Command line options for Prometheus binary
 args:
   storage.tsdb.path: /data
   storage.tsdb.retention.time: 6h
   config.file: /etc/prometheus/prometheus.yml
   log.level: info
+# -- The global configuration specifies parameters that are valid in all other
+# configuration contexts.
 globalConfig:
   scrape_interval: 10s
   scrape_timeout: 10s
   evaluation_interval: 10s
+
+# -- Alert relabeling is applied to alerts before they are sent to the
+# Alertmanager.
+alertRelabelConfigs:
+# Ex:
+# - action: labeldrop
+#   regex: prometheus_replica
+
+# -- Alertmanager instances the Prometheus server sends alerts to configured via
+# the static_configs parameter.
+alertManagers:
+# Ex:
+# - scheme: http
+#   static_configs:
+#   - targets:
+#     - "alertmanager.linkerd.svc:9093"
+
+# -- Allows transparently sending samples to an endpoint. Mostly used for long
+# term storage.
+remoteWrite:
+
+# -- Alerting/recording rule ConfigMap mounts (sub-path names must end in
+# ´_rules.yml´ or ´_rules.yaml´)
+ruleConfigMapMounts:
+# Ex:
+# - name: alerting-rules
+#   subPath: alerting_rules.yml
+#   configMap: linkerd-prometheus-rules
+# - name: recording-rules
+#   subPath: recording_rules.yml
+#   configMap: linkerd-prometheus-rules
+
+# -- A scrapeConfigs section specifies a set of targets and parameters
+# describing how to scrape them.
+scrapeConfigs:
+# Ex:
+# - job_name: 'kubernetes-nodes'
+#   scheme: https
+#   tls_config:
+#     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+#   bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+#   kubernetes_sd_configs:
+#   - role: node
+#   relabel_configs:
+#   - action: labelmap
+#     regex: __meta_kubernetes_node_label_(.+)
+
+# -- A sidecarContainers section specifies a list of secondary containers to run
+# in the prometheus pod e.g. to export data to non-prometheus systems
+sideCarContainers:
+# Ex:
+# - name: sidecar
+#   image: gcr.io/myproject/stackdriver-prometheus-sidecar
+#   imagePullPolicy: Always
+#   command:
+#   - /bin/sh
+#   - -c
+#   - |
+#     exec /bin/stackdriver-prometheus-sidecar \
+#       --stackdriver.project-id=myproject \
+#       --stackdriver.kubernetes.location=us-central1 \
+#       --stackdriver.kubernetes.cluster-name=mycluster \
+#       --prometheus.wal-directory=/data/wal \
+#       --log.level=info
+#   volumeMounts:
+#   - mountPath: /data
+#     name: data
+#   ports:
+#   - name: foo
+#     containerPort: 9091
+#     protocol: TCP
+
+
+proxy:
+  # -- CPU and Memory resources required by proxy injected into prometheus pod
+  # (see global.proxy.resources for sub-fields)
+  resources:
+
+### WARNING: persistence is experimental and has not been tested/vetted by the Linkerd team.
+### As such, please refer to https://linkerd.io/2/tasks/exporting-metrics/ for the recommended approach to metrics data retention.
+# if enabled, creates a persistent volume claim for prometheus data
+# https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
+#persistence:
+# -- Storage class used to create prometheus data PV.
+#  storageClass:
+# -- PVC access mode.
+#  accessMode:
+# -- Prometheus data volume size.
+#  size:
+
+
+resources:
+  cpu:
+    # -- Maximum amount of CPU units that the prometheus container can use
+    limit:
+    # -- Amount of CPU units that the prometheus container requests
+    request:
+  memory:
+    # -- Maximum amount of memory that prometheus container can use
+    limit:
+    # -- Amount of memory that the prometheus container requests
+    request:
+

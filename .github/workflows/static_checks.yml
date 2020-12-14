@@ -39,6 +39,8 @@ jobs:
     container:
       image: golang:1.13.4
     steps:
+      - name: Prerequisites
+        run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install unzip
       - name: Checkout code
         # actions/checkout@v2
         uses: actions/checkout@722adc6
@@ -83,3 +85,12 @@ jobs:
       uses: actions/checkout@722adc6
     - name: Markdown lint
       run: bin/markdownlint-all
+  chart_docs_diff:
+    name: Chart readme diff check
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Checkout code
+      # actions/checkout@v2
+      uses: actions/checkout@722adc6
+    - name: Check docs for diff
+      run: bin/helm-docs-diff
