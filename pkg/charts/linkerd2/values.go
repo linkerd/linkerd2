@@ -46,6 +46,7 @@ type (
 		NodeSelector                map[string]string `json:"nodeSelector"`
 		Tolerations                 []interface{}     `json:"tolerations"`
 		Stage                       string            `json:"stage"`
+		LinkerdVizNamespace         string            `json:"linkerdVizNamespace"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
 		HeartbeatResources     *Resources `json:"heartbeatResources"`

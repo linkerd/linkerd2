@@ -74,7 +74,7 @@ spec:
       containers:
       - args:
         - tap
-        - -controller-namespace={{.Values.linkerdnamespace}}
+        - -controller-namespace={{.Values.linkerdNamespace}}
         - -log-level={{.Values.controllerLogLevel}}
         - -identity-trust-domain={{.Values.identityTrustDomain}}
         image: {{.Values.tap.image.name}}:{{ default (default .Values.linkerdVersion .Values.controllerImageVersion) .Values.tap.image.tag}}

@@ -26,13 +26,11 @@ import (
 var (
 	templaesVIz = []string{
 		"templates/namespace.yaml",
-		"templates/controller-rbac.yaml",
 		"templates/grafana-rbac.yaml",
 		"templates/prometheus-rbac.yaml",
 		"templates/tap-rbac.yaml",
 		"templates/web-rbac.yaml",
 		"templates/psp.yaml",
-		"templates/controller.yaml",
 		"templates/grafana.yaml",
 		"templates/prometheus.yaml",
 		"templates/tap.yaml",

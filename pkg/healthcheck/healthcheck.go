@@ -189,7 +189,6 @@ var linkerdHAControlPlaneComponents = []string{
 	"linkerd-identity",
 	"linkerd-proxy-injector",
 	"linkerd-sp-validator",
-	"linkerd-tap",
 }
 
 // ExpectedServiceAccountNames is a list of the service accounts that a healthy
@@ -201,8 +200,6 @@ var ExpectedServiceAccountNames = []string{
 	"linkerd-identity",
 	"linkerd-proxy-injector",
 	"linkerd-sp-validator",
-	"linkerd-web",
-	"linkerd-tap",
 }
 
 var (
@@ -1028,121 +1025,6 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
-			id: LinkerdWebhooksAndAPISvcTLS,
-			checkers: []checker{
-				{
-					description: "tap API server has valid cert",
-					hintAnchor:  "l5d-tap-cert-valid",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						anchors, err := hc.fetchTapCaBundle(ctx)
-						if err != nil {
-							return err
-						}
-						cert, err := hc.fetchCredsFromSecret(ctx, tapTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, tapOldTLSSecretName)
-						}
-						if err != nil {
-							return err
-						}
-
-						identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.ControlPlaneNamespace)
-						return hc.checkCertAndAnchors(cert, anchors, identityName)
-					},
-				},
-				{
-					description: "tap API server cert is valid for at least 60 days",
-					warning:     true,
-					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
-					check: func(ctx context.Context) error {
-						cert, err := hc.fetchCredsFromSecret(ctx, tapTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, tapOldTLSSecretName)
-						}
-						if err != nil {
-							return err
-						}
-						return hc.checkCertAndAnchorsExpiringSoon(cert)
-
-					},
-				},
-				{
-					description: "proxy-injector webhook has valid cert",
-					hintAnchor:  "l5d-proxy-injector-webhook-cert-valid",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						anchors, err := hc.fetchProxyInjectorCaBundle(ctx)
-						if err != nil {
-							return err
-						}
-						cert, err := hc.fetchCredsFromSecret(ctx, proxyInjectorTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, proxyInjectorOldTLSSecretName)
-						}
-						if err != nil {
-							return err
-						}
-
-						identityName := fmt.Sprintf("linkerd-proxy-injector.%s.svc", hc.ControlPlaneNamespace)
-						return hc.checkCertAndAnchors(cert, anchors, identityName)
-					},
-				},
-				{
-					description: "proxy-injector cert is valid for at least 60 days",
-					warning:     true,
-					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
-					check: func(ctx context.Context) error {
-						cert, err := hc.fetchCredsFromSecret(ctx, proxyInjectorTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, proxyInjectorOldTLSSecretName)
-						}
-						if err != nil {
-							return err
-						}
-						return hc.checkCertAndAnchorsExpiringSoon(cert)
-
-					},
-				},
-				{
-					description: "sp-validator webhook has valid cert",
-					hintAnchor:  "l5d-sp-validator-webhook-cert-valid",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						anchors, err := hc.fetchSpValidatorCaBundle(ctx)
-						if err != nil {
-							return err
-						}
-						cert, err := hc.fetchCredsFromSecret(ctx, spValidatorTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, spValidatorOldTLSSecretName)
-						}
-						if err != nil {
-							return err
-						}
-						identityName := fmt.Sprintf("linkerd-sp-validator.%s.svc", hc.ControlPlaneNamespace)
-						return hc.checkCertAndAnchors(cert, anchors, identityName)
-					},
-				},
-				{
-					description: "sp-validator cert is valid for at least 60 days",
-					warning:     true,
-					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
-					check: func(ctx context.Context) error {
-						cert, err := hc.fetchCredsFromSecret(ctx, spValidatorTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, spValidatorOldTLSSecretName)
-						}
-						if err != nil {
-							return err
-						}
-						return hc.checkCertAndAnchorsExpiringSoon(cert)
-
-					},
-				},
-			},
-		},
-		{
 			id: LinkerdIdentityDataPlane,
 			checkers: []checker{
 				{
@@ -1171,27 +1053,6 @@ func (hc *HealthChecker) allCategories() []category {
 							return err
 						}
 						return validateControlPlanePods(hc.controlPlanePods)
-					},
-				},
-				{
-					description: "control plane self-check",
-					hintAnchor:  "l5d-api-control-api",
-					// to avoid confusing users with a prometheus readiness error, we only show
-					// "waiting for check to complete" while things converge. If after the timeout
-					// it still hasn't converged, we show the real error (a 503 usually).
-					surfaceErrorOnRetry: false,
-					fatal:               true,
-					retryDeadline:       hc.RetryDeadline,
-					checkRPC: func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, error) {
-						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
-					},
-				},
-				{
-					description: "tap api service is running",
-					hintAnchor:  "l5d-tap-api",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkAPIService(ctx, linkerdTapAPIServiceName)
 					},
 				},
 			},
@@ -1845,7 +1706,6 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 		fmt.Sprintf("linkerd-%s-identity", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-proxy-injector", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-sp-validator", hc.ControlPlaneNamespace),
-		fmt.Sprintf("linkerd-%s-tap", hc.ControlPlaneNamespace),
 	}
 }
 
@@ -2421,7 +2281,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "identity", "sp-validator", "web", "tap"}
+	names := []string{"identity", "sp-validator"}
 	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")

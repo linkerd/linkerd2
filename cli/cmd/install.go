@@ -61,6 +61,7 @@ var (
 	templatesConfigStage = []string{
 		"templates/namespace.yaml",
 		"templates/identity-rbac.yaml",
+		"templates/controller-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
@@ -78,6 +79,7 @@ var (
 		"templates/heartbeat.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
+		"templates/controller.yaml",
 	}
 
 	ignoreCluster bool

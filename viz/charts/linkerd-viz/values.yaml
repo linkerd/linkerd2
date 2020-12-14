@@ -43,7 +43,7 @@ tap:
   replicas: 1
   image:
     # -- Docker image name for the grafana instance
-    name: ghcr.io/linkerd/grafana
+    name: ghcr.io/linkerd/controller
     # -- Docker image tag for the grafana instance
     tag: *linkerd_version
   # -- Do not create a secret resource for the Tap component. If this is set to
