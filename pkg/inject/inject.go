@@ -82,6 +82,8 @@ const (
 	// OriginUnknown is the value of the ResourceConfig's 'origin' field if the
 	// input YAML comes from an unknown source
 	OriginUnknown
+
+	Foo
 )
 
 // OwnerRetrieverFunc is a function that returns a pod's owner reference
