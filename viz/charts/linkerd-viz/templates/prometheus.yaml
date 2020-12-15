@@ -16,8 +16,8 @@ metadata:
 data:
   prometheus.yml: |-
     global:
-      {{- if .ValuesConfig -}}
-      {{- toYaml .ValuesConfig | trim | nindent 6 }}
+      {{- if .Values.prometheus.globalConfig -}}
+      {{- toYaml .Values.prometheus.globalConfig | trim | nindent 6 }}
       {{- end}}
 
     rule_files:
@@ -103,7 +103,7 @@ data:
         - __meta_kubernetes_pod_container_port_name
         - __meta_kubernetes_pod_label_linkerd_io_control_plane_ns
         action: keep
-        regex: ^{{default .Values.proxyContainerName "linkerd-proxy" .Values.proxyContainerName}};linkerd-admin;{{.Values.namespace}}$
+        regex: ^{{default .Values.proxyContainerName "linkerd-proxy" .Values.proxyContainerName}};linkerd-admin;{{.Values.linkerdNamespace}}$
       - source_labels: [__meta_kubernetes_namespace]
         action: replace
         target_label: namespace
