@@ -1,6 +1,7 @@
 package issuercerts
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"fmt"
@@ -26,9 +27,9 @@ type IssuerCertData struct {
 	Expiry       *time.Time
 }
 
-// FetchIssuerData fetches the issuer data from the linkerd-identitiy-issuer secrets (used for linkerd.io/tls schemed secrets)
-func FetchIssuerData(api kubernetes.Interface, trustAnchors, controlPlaneNamespace string) (*IssuerCertData, error) {
-	secret, err := api.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
+// FetchIssuerData fetches the issuer data from the linkerd-identity-issuer secrets (used for linkerd.io/tls schemed secrets)
+func FetchIssuerData(ctx context.Context, api kubernetes.Interface, trustAnchors, controlPlaneNamespace string) (*IssuerCertData, error) {
+	secret, err := api.CoreV1().Secrets(controlPlaneNamespace).Get(ctx, k8s.IdentityIssuerSecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -43,12 +44,17 @@ func FetchIssuerData(api kubernetes.Interface, trustAnchors, controlPlaneNamespa
 		return nil, fmt.Errorf(keyMissingError, k8s.IdentityIssuerKeyName, "issuer key", k8s.IdentityIssuerSecretName, true)
 	}
 
-	return &IssuerCertData{trustAnchors, string(crt), string(key), nil}, nil
+	cert, err := tls.DecodePEMCrt(string(crt))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse issuer certificate: %w", err)
+	}
+
+	return &IssuerCertData{trustAnchors, string(crt), string(key), &cert.Certificate.NotAfter}, nil
 }
 
-// FetchExternalIssuerData fetches the issuer data from the linkerd-identitiy-issuer secrets (used for kubernetes.io/tls schemed secrets)
-func FetchExternalIssuerData(api kubernetes.Interface, controlPlaneNamespace string) (*IssuerCertData, error) {
-	secret, err := api.CoreV1().Secrets(controlPlaneNamespace).Get(k8s.IdentityIssuerSecretName, metav1.GetOptions{})
+// FetchExternalIssuerData fetches the issuer data from the linkerd-identity-issuer secrets (used for kubernetes.io/tls schemed secrets)
+func FetchExternalIssuerData(ctx context.Context, api kubernetes.Interface, controlPlaneNamespace string) (*IssuerCertData, error) {
+	secret, err := api.CoreV1().Secrets(controlPlaneNamespace).Get(ctx, k8s.IdentityIssuerSecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +74,12 @@ func FetchExternalIssuerData(api kubernetes.Interface, controlPlaneNamespace str
 		return nil, fmt.Errorf(keyMissingError, corev1.TLSPrivateKeyKey, "issuer key", k8s.IdentityIssuerSecretName, true)
 	}
 
-	return &IssuerCertData{string(anchors), string(crt), string(key), nil}, nil
+	cert, err := tls.DecodePEMCrt(string(crt))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse issuer certificate: %w", err)
+	}
+
+	return &IssuerCertData{string(anchors), string(crt), string(key), &cert.Certificate.NotAfter}, nil
 }
 
 // LoadIssuerCrtAndKeyFromFiles loads the issuer certificate and key from files
@@ -125,7 +136,7 @@ func CheckExpiringSoon(cert *x509.Certificate) error {
 // we have posed on the public key and signature algorithms
 func CheckCertAlgoRequirements(cert *x509.Certificate) error {
 	if cert.PublicKeyAlgorithm == x509.ECDSA {
-		// this si a safe cast here as wel know we are using ECDSA
+		// this is a safe cast here as we know we are using ECDSA
 		k, ok := cert.PublicKey.(*ecdsa.PublicKey)
 		if !ok {
 			return fmt.Errorf("expected ecdsa.PublicKey but got something %v", cert.PublicKey)
@@ -144,7 +155,7 @@ func CheckCertAlgoRequirements(cert *x509.Certificate) error {
 }
 
 // VerifyAndBuildCreds builds and validates the creds out of the data in IssuerCertData
-func (ic *IssuerCertData) VerifyAndBuildCreds(dnsName string) (*tls.Cred, error) {
+func (ic *IssuerCertData) VerifyAndBuildCreds() (*tls.Cred, error) {
 	creds, err := tls.ValidateAndCreateCreds(ic.IssuerCrt, ic.IssuerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA: %s", err)
@@ -169,7 +180,7 @@ func (ic *IssuerCertData) VerifyAndBuildCreds(dnsName string) (*tls.Cred, error)
 		return nil, err
 	}
 
-	if err := creds.Verify(anchors, dnsName, time.Time{}); err != nil {
+	if err := creds.Verify(anchors, "", time.Time{}); err != nil {
 		return nil, err
 	}
 

@@ -68,7 +68,7 @@ subjects:
   namespace: linkerd-cni
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-cni
   labels:
@@ -78,7 +78,7 @@ rules:
   resources: ["pods", "nodes", "namespaces"]
   verbs: ["list", "get", "watch"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
@@ -123,8 +123,8 @@ data:
         "outgoing-proxy-port": 4140,
         "proxy-uid": 2102,
         "ports-to-redirect": [],
-        "inbound-ports-to-ignore": ["4190","4191"],
-        "outbound-ports-to-ignore": [],
+        "inbound-ports-to-ignore": ["4190","4191","25","443","587","3306","11211"],
+        "outbound-ports-to-ignore": ["25","443","587","3306","11211"],
         "simulate": false,
         "use-wait-flag": false
       }
@@ -165,7 +165,7 @@ spec:
       # script copies the files into place and then sleeps so
       # that Kubernetes doesn't keep trying to restart it.
       - name: install-cni
-        image: gcr.io/linkerd-io/cni-plugin:dev-undefined
+        image: ghcr.io/linkerd/cni-plugin:dev-undefined
         env:
         - name: DEST_CNI_NET_DIR
           valueFrom:

@@ -269,7 +269,7 @@ func (h *handler) handleAPITap(w http.ResponseWriter, req *http.Request, p httpr
 	}
 
 	go func() {
-		reader, body, err := tap.Reader(h.k8sAPI, tapReq, 0)
+		reader, body, err := tap.Reader(req.Context(), h.k8sAPI, tapReq)
 		if err != nil {
 			// If there was a [403] error when initiating a tap, close the
 			// socket with `ClosePolicyViolation` status code so that the error
@@ -406,21 +406,21 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 	options := metav1.GetOptions{}
 	switch resourceType {
 	case k8s.CronJob:
-		resource, err = h.k8sAPI.BatchV1beta1().CronJobs(namespace).Get(resourceName, options)
+		resource, err = h.k8sAPI.BatchV1beta1().CronJobs(namespace).Get(req.Context(), resourceName, options)
 	case k8s.DaemonSet:
-		resource, err = h.k8sAPI.AppsV1().DaemonSets(namespace).Get(resourceName, options)
+		resource, err = h.k8sAPI.AppsV1().DaemonSets(namespace).Get(req.Context(), resourceName, options)
 	case k8s.Deployment:
-		resource, err = h.k8sAPI.AppsV1().Deployments(namespace).Get(resourceName, options)
+		resource, err = h.k8sAPI.AppsV1().Deployments(namespace).Get(req.Context(), resourceName, options)
 	case k8s.Job:
-		resource, err = h.k8sAPI.BatchV1().Jobs(namespace).Get(resourceName, options)
+		resource, err = h.k8sAPI.BatchV1().Jobs(namespace).Get(req.Context(), resourceName, options)
 	case k8s.Pod:
-		resource, err = h.k8sAPI.CoreV1().Pods(namespace).Get(resourceName, options)
+		resource, err = h.k8sAPI.CoreV1().Pods(namespace).Get(req.Context(), resourceName, options)
 	case k8s.ReplicationController:
-		resource, err = h.k8sAPI.CoreV1().ReplicationControllers(namespace).Get(resourceName, options)
+		resource, err = h.k8sAPI.CoreV1().ReplicationControllers(namespace).Get(req.Context(), resourceName, options)
 	case k8s.ReplicaSet:
-		resource, err = h.k8sAPI.AppsV1().ReplicaSets(namespace).Get(resourceName, options)
+		resource, err = h.k8sAPI.AppsV1().ReplicaSets(namespace).Get(req.Context(), resourceName, options)
 	case k8s.TrafficSplit:
-		resource, err = h.k8sAPI.TsClient.SplitV1alpha1().TrafficSplits(namespace).Get(resourceName, options)
+		resource, err = h.k8sAPI.TsClient.SplitV1alpha1().TrafficSplits(namespace).Get(req.Context(), resourceName, options)
 	default:
 		renderJSONError(w, errors.New("Invalid resource type: "+resourceType), http.StatusBadRequest)
 		return
@@ -437,4 +437,27 @@ func (h *handler) handleAPIResourceDefinition(w http.ResponseWriter, req *http.R
 	}
 	w.Header().Set("Content-Type", "text/yaml")
 	w.Write(resourceDefinition)
+}
+
+func (h *handler) handleAPIGateways(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	window := req.FormValue("window")
+	if window == "" {
+		window = "1m"
+	}
+	_, err := time.ParseDuration(window)
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+	gatewayRequest := &pb.GatewaysRequest{
+		TimeWindow:        window,
+		GatewayNamespace:  req.FormValue("gatewayNamespace"),
+		RemoteClusterName: req.FormValue("remoteClusterName"),
+	}
+	result, err := h.apiClient.Gateways(req.Context(), gatewayRequest)
+	if err != nil {
+		renderJSONError(w, err, http.StatusInternalServerError)
+		return
+	}
+	renderJSONPb(w, result)
 }

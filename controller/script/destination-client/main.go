@@ -68,6 +68,7 @@ func get(client pb.DestinationClient, req *pb.GetDestination) {
 				default:
 					log.Printf("  - protocol hint: UNKNOWN")
 				}
+				log.Printf("  - identity: %s", addr.GetTlsIdentity())
 			}
 			log.Println()
 		case *pb.Update_Remove:

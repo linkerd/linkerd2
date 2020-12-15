@@ -73,6 +73,7 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: tap
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- include "partials.image-pull-secrets" . }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -91,22 +92,23 @@ subjects:
   name: linkerd-tap
   namespace: {{.Values.global.namespace}}
 ---
-{{-  $ca := genCA (printf "linkerd-tap.%s.svc" .Values.global.namespace) 365 }}
+{{- $host := printf "linkerd-tap.%s.svc" .Values.global.namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.tap.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-tap-tls
+  name: linkerd-tap-k8s-tls
   namespace: {{ .Values.global.namespace }}
   labels:
     {{.Values.global.controllerComponentLabel}}: tap
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.tap.keyPEM)) (empty .Values.tap.keyPEM) }}
+  tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tap.crtPEM)) (empty .Values.tap.crtPEM) }}
+  tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.tap.keyPEM)) (empty .Values.tap.keyPEM) }}
 ---
 {{- end }}
 apiVersion: apiregistration.k8s.io/v1
@@ -127,4 +129,4 @@ spec:
 {{- if and (.Values.tap.externalSecret) (empty .Values.tap.caBundle) }}
   {{- fail "If tap.externalSecret is true then you need to provide tap.caBundle" }}
 {{- end }}
-  caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.tap.caBundle)) (empty .Values.tap.caBundle) }}
+  caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.tap.caBundle)) (empty .Values.tap.caBundle) }}

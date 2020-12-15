@@ -1,3 +1,4 @@
+import { Plural, Trans } from '@lingui/macro';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Step from '@material-ui/core/Step';
@@ -17,9 +18,9 @@ const styles = theme => ({
 
 function getSteps(numResources, resource) {
   return [
-    { label: 'Controller successfully installed' },
-    { label: `${numResources || 'No'} ${resource}s detected` },
-    { label: `Connect your first ${resource}`, content: incompleteMeshMessage() },
+    { label: <Trans>controllerInstalledMsg</Trans>, key: 'installedMsg' },
+    { label: <Plural value={numResources} zero={resource} one={resource} other={resource} />, key: 'resourceMsg' },
+    { label: <Trans>connectResourceMsg {resource}</Trans>, content: incompleteMeshMessage(), key: 'connectMsg' },
   ];
 }
 
@@ -29,7 +30,7 @@ const CallToAction = ({ resource, numResources, classes }) => {
 
   return (
     <React.Fragment>
-      <Typography>The service mesh was successfully installed!</Typography>
+      <Typography><Trans>serviceMeshInstalledMsg</Trans></Typography>
       <Stepper
         activeStep={lastStep}
         className={classes.instructions}
@@ -40,7 +41,7 @@ const CallToAction = ({ resource, numResources, classes }) => {
             props.completed = i < lastStep; // select the last step as the currently active one
 
             return (
-              <Step key={step.label} {...props}>
+              <Step key={step.key} {...props}>
                 <StepLabel>{step.label}</StepLabel>
                 <StepContent>{step.content}</StepContent>
               </Step>

@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -30,6 +31,9 @@ type TestHelper struct {
 	externalIssuer     bool
 	multicluster       bool
 	uninstall          bool
+	cni                bool
+	calico             bool
+	certsPath          string
 	httpClient         http.Client
 	KubernetesHelper
 	helm
@@ -83,6 +87,8 @@ func NewGenericTestHelper(
 	helmMulticlusterChart string,
 	externalIssuer,
 	multicluster,
+	cni,
+	calico,
 	uninstall bool,
 	httpClient http.Client,
 	kubernetesHelper KubernetesHelper,
@@ -104,6 +110,8 @@ func NewGenericTestHelper(
 		clusterDomain:    clusterDomain,
 		externalIssuer:   externalIssuer,
 		uninstall:        uninstall,
+		cni:              cni,
+		calico:           calico,
 		httpClient:       httpClient,
 		multicluster:     multicluster,
 		KubernetesHelper: kubernetesHelper,
@@ -113,8 +121,7 @@ func NewGenericTestHelper(
 // MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
 // container name for multicluster components
 var MulticlusterDeployReplicas = map[string]DeploySpec{
-	"linkerd-gateway":        {1, []string{"nginx"}},
-	"linkerd-service-mirror": {1, []string{"service-mirror"}},
+	"linkerd-gateway": {1, []string{"nginx"}},
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -127,7 +134,7 @@ func NewTestHelper() *TestHelper {
 
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
-	namespace := flag.String("linkerd-namespace", "l5d-integration", "the namespace where linkerd is installed")
+	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
 	multicluster := flag.Bool("multicluster", false, "when specified the multicluster install functionality is tested")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
@@ -142,6 +149,9 @@ func NewTestHelper() *TestHelper {
 	verbose := flag.Bool("verbose", false, "turn on debug logging")
 	upgradeHelmFromVersion := flag.String("upgrade-helm-from-version", "", "Indicate a version of the Linkerd helm chart from which the helm installation is being upgraded")
 	uninstall := flag.Bool("uninstall", false, "whether to run the 'linkerd uninstall' integration test")
+	cni := flag.Bool("cni", false, "whether to install linkerd with CNI enabled")
+	calico := flag.Bool("calico", false, "whether to install calico CNI plugin")
+	certsPath := flag.String("certs-path", "", "if non-empty, 'linkerd install' will use the files ca.crt, issuer.crt and issuer.key under this path in its --identity-* flags")
 	flag.Parse()
 
 	if !*runTests {
@@ -183,18 +193,21 @@ func NewTestHelper() *TestHelper {
 		},
 		clusterDomain:  *clusterDomain,
 		externalIssuer: *externalIssuer,
+		cni:            *cni,
+		calico:         *calico,
 		uninstall:      *uninstall,
+		certsPath:      *certsPath,
 	}
 
-	version, stderr, err := testHelper.LinkerdRun("version", "--client", "--short")
+	version, err := testHelper.LinkerdRun("version", "--client", "--short")
 	if err != nil {
-		exit(1, fmt.Sprintf("error getting linkerd version: %s\n%s", err.Error(), stderr))
+		exit(1, fmt.Sprintf("error getting linkerd version: %s", err.Error()))
 	}
 	testHelper.version = strings.TrimSpace(version)
 
 	kubernetesHelper, err := NewKubernetesHelper(*k8sContext, testHelper.RetryFor)
 	if err != nil {
-		exit(1, fmt.Sprintf("error creating kubernetes helper: %s\n%s", err.Error(), stderr))
+		exit(1, fmt.Sprintf("error creating kubernetes helper: %s", err.Error()))
 	}
 	testHelper.KubernetesHelper = *kubernetesHelper
 
@@ -275,6 +288,12 @@ func (h *TestHelper) Uninstall() bool {
 	return h.uninstall
 }
 
+// CertsPath returns the path for the ca.cert, issuer.crt and issuer.key files that `linkerd install`
+// will use in its --identity-* flags
+func (h *TestHelper) CertsPath() string {
+	return h.certsPath
+}
+
 // UpgradeFromVersion returns the base version of the upgrade test.
 func (h *TestHelper) UpgradeFromVersion() string {
 	return h.upgradeFromVersion
@@ -283,6 +302,16 @@ func (h *TestHelper) UpgradeFromVersion() string {
 // GetClusterDomain returns the custom cluster domain that needs to be used during linkerd installation
 func (h *TestHelper) GetClusterDomain() string {
 	return h.clusterDomain
+}
+
+// CNI determines whether CNI should be enabled
+func (h *TestHelper) CNI() bool {
+	return h.cni
+}
+
+// Calico determines whether Calico CNI plug-in is enabled
+func (h *TestHelper) Calico() bool {
+	return h.calico
 }
 
 // CreateTLSSecret creates a TLS Kubernetes secret
@@ -302,10 +331,13 @@ type: kubernetes.io/tls`, base64.StdEncoding.EncodeToString([]byte(root)), base6
 	return err
 }
 
-// LinkerdRun executes a linkerd command appended with the --linkerd-namespace
-// flag.
-func (h *TestHelper) LinkerdRun(arg ...string) (string, string, error) {
-	return h.PipeToLinkerdRun("", arg...)
+// LinkerdRun executes a linkerd command returning its stdout.
+func (h *TestHelper) LinkerdRun(arg ...string) (string, error) {
+	out, stderr, err := h.PipeToLinkerdRun("", arg...)
+	if err != nil {
+		return out, fmt.Errorf("command failed: linkerd %s\n%s\n%s", strings.Join(arg, " "), err, stderr)
+	}
+	return out, nil
 }
 
 // PipeToLinkerdRun executes a linkerd command appended with the
@@ -315,12 +347,51 @@ func (h *TestHelper) PipeToLinkerdRun(stdin string, arg ...string) (string, stri
 	return combinedOutput(stdin, h.linkerd, withParams...)
 }
 
+// HelmRun executes a helm command appended with the --context
+func (h *TestHelper) HelmRun(arg ...string) (string, string, error) {
+	return h.PipeToHelmRun("", arg...)
+}
+
+// PipeToHelmRun executes a Helm command appended with the
+// --context flag, and provides a string at Stdin.
+func (h *TestHelper) PipeToHelmRun(stdin string, arg ...string) (string, string, error) {
+	withParams := append([]string{"--kube-context=" + h.k8sContext}, arg...)
+	return combinedOutput(stdin, h.helm.path, withParams...)
+}
+
 // LinkerdRunStream initiates a linkerd command appended with the
 // --linkerd-namespace flag, and returns a Stream that can be used to read the
 // command's output while it is still executing.
 func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
 	withParams := append([]string{"--linkerd-namespace", h.namespace, "--context=" + h.k8sContext}, arg...)
 	cmd := exec.Command(h.linkerd, withParams...)
+
+	cmdReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	time.Sleep(500 * time.Millisecond)
+
+	if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+		return nil, fmt.Errorf("Process exited: %s", cmd.ProcessState)
+	}
+
+	return &Stream{cmd: cmd, out: cmdReader}, nil
+}
+
+// KubectlStream initiates a kubectl command appended with the
+// --namespace flag, and returns a Stream that can be used to read the
+// command's output while it is still executing.
+func (h *TestHelper) KubectlStream(arg ...string) (*Stream, error) {
+
+	withContext := append([]string{"--namespace", h.namespace, "--context=" + h.k8sContext}, arg...)
+	cmd := exec.Command("kubectl", withContext...)
 
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -378,6 +449,16 @@ func (h *TestHelper) HelmInstallMulticluster(chart string, arg ...string) (strin
 	return combinedOutput("", h.helm.path, withParams...)
 }
 
+// HelmUninstallMulticluster runs the helm delete subcommand for multicluster
+func (h *TestHelper) HelmUninstallMulticluster(chart string) (string, string, error) {
+	withParams := []string{
+		"delete",
+		h.helm.multiclusterReleaseName,
+		"--kube-context", h.k8sContext,
+	}
+	return combinedOutput("", h.helm.path, withParams...)
+}
+
 // ValidateOutput validates a string against the contents of a file in the
 // test's testdata directory.
 func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
@@ -396,9 +477,9 @@ func (h *TestHelper) ValidateOutput(out, fixtureFile string) error {
 
 // CheckVersion validates the output of the "linkerd version" command.
 func (h *TestHelper) CheckVersion(serverVersion string) error {
-	out, _, err := h.LinkerdRun("version")
+	out, err := h.LinkerdRun("version")
 	if err != nil {
-		return fmt.Errorf("Unexpected error: %s\n%s", err.Error(), out)
+		return err
 	}
 	if !strings.Contains(out, fmt.Sprintf("Client version: %s", h.version)) {
 		return fmt.Errorf("Expected client version [%s], got:\n%s", h.version, out)
@@ -461,6 +542,20 @@ func (h *TestHelper) HTTPGetURL(url string) (string, error) {
 	})
 
 	return body, err
+}
+
+// WithDataPlaneNamespace is used to create a test namespace that is deleted before the function returns
+func (h *TestHelper) WithDataPlaneNamespace(ctx context.Context, testName string, annotations map[string]string, t *testing.T, test func(t *testing.T, ns string)) {
+	prefixedNs := h.GetTestNamespace(testName)
+	if err := h.CreateDataPlaneNamespaceIfNotExists(ctx, prefixedNs, annotations); err != nil {
+		AnnotatedFatalf(t, fmt.Sprintf("failed to create %s namespace", prefixedNs),
+			"failed to create %s namespace: %s", prefixedNs, err)
+	}
+	test(t, prefixedNs)
+	if err := h.deleteNamespaceIfExists(ctx, prefixedNs); err != nil {
+		AnnotatedFatalf(t, fmt.Sprintf("failed to delete %s namespace", prefixedNs),
+			"failed to delete %s namespace: %s", prefixedNs, err)
+	}
 }
 
 // ReadFile reads a file from disk and returns the contents as a string.
@@ -578,24 +673,4 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	}
 
 	return events, nil
-}
-
-// Run calls `m.Run()`, shows unexpected logs/events,
-// and returns the exit code for the tests
-func Run(m *testing.M, helper *TestHelper) int {
-	code := m.Run()
-	if code != 0 {
-		_, errs1 := FetchAndCheckLogs(helper)
-		for _, err := range errs1 {
-			fmt.Println(err)
-		}
-		errs2 := FetchAndCheckEvents(helper)
-		for _, err := range errs2 {
-			fmt.Println(err)
-		}
-		if len(errs1) == 0 && len(errs2) == 0 {
-			fmt.Println("No unexpected log entries or events found")
-		}
-	}
-	return code
 }

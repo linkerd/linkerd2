@@ -1,22 +1,34 @@
-ARG RUNTIME_IMAGE=debian:buster-20200514-slim
+ARG RUNTIME_IMAGE=debian:buster-20201117-slim
+ARG BUILDPLATFORM=linux/amd64
 
-FROM debian:buster-20200514-slim as fetch
-RUN apt-get update && apt-get install -y ca-certificates curl
+# Precompile key slow-to-build dependencies
+FROM --platform=$BUILDPLATFORM golang:1.14.2-alpine as go-deps
+WORKDIR /linkerd-build
+COPY go.mod go.sum ./
+COPY bin/install-deps bin/
+RUN go mod download
+ARG TARGETARCH
+RUN ./bin/install-deps $TARGETARCH
+
+FROM --platform=$BUILDPLATFORM $RUNTIME_IMAGE as fetch
+RUN apt-get update && apt-get install -y ca-certificates curl jq
 WORKDIR /build
 COPY bin/fetch-proxy bin/fetch-proxy
 COPY .proxy-version proxy-version
-RUN (proxy=$(bin/fetch-proxy $(cat proxy-version)) && \
+ARG TARGETARCH
+RUN (proxy=$(bin/fetch-proxy $(cat proxy-version) $TARGETARCH) && \
     mv "$proxy" linkerd2-proxy)
 
 ## compile proxy-identity agent
-FROM gcr.io/linkerd-io/go-deps:1a8bf322 as golang
+FROM go-deps as golang
 WORKDIR /linkerd-build
 COPY pkg/flags pkg/flags
 COPY pkg/tls pkg/tls
 COPY pkg/version pkg/version
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly ./pkg/...
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly ./pkg/...
 COPY proxy-identity proxy-identity
-RUN CGO_ENABLED=0 GOOS=linux go build -o /out/proxy-identity -mod=readonly -ldflags "-s -w" ./proxy-identity
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o /out/proxy-identity -mod=readonly -ldflags "-s -w" ./proxy-identity
 
 FROM $RUNTIME_IMAGE as runtime
 COPY --from=fetch /build/target/proxy/LICENSE /usr/lib/linkerd/LICENSE
@@ -27,4 +39,5 @@ COPY proxy-identity/run-proxy.sh /usr/bin/linkerd2-proxy-run
 ARG LINKERD_VERSION
 ENV LINKERD_CONTAINER_VERSION_OVERRIDE=${LINKERD_VERSION}
 ENV LINKERD2_PROXY_LOG=warn,linkerd=info
+ENV LINKERD2_PROXY_LOG_FORMAT=plain
 ENTRYPOINT ["/usr/bin/linkerd2-proxy-run"]

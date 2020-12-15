@@ -27,12 +27,12 @@ support, verify "kubectl api-versions" outputs "linkerd.io/v1alpha2".`,
 				return err
 			}
 
-			_, configs, err := healthcheck.FetchLinkerdConfigMap(k8sAPI, controlPlaneNamespace)
+			_, values, err := healthcheck.FetchCurrentConfiguration(cmd.Context(), k8sAPI, controlPlaneNamespace)
 			if err != nil {
 				return err
 			}
 
-			clusterDomain := configs.GetGlobal().GetClusterDomain()
+			clusterDomain := values.GetGlobal().ClusterDomain
 			if clusterDomain == "" {
 				clusterDomain = defaultClusterDomain
 			}

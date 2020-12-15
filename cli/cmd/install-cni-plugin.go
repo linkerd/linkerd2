@@ -6,14 +6,14 @@ import (
 	"os"
 	"strings"
 
-	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
-
 	"github.com/linkerd/linkerd2/pkg/charts"
-	"k8s.io/helm/pkg/chartutil"
-
+	cnicharts "github.com/linkerd/linkerd2/pkg/charts/cni"
+	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"sigs.k8s.io/yaml"
 )
 
@@ -38,6 +38,8 @@ type cniPluginOptions struct {
 	destCNINetDir       string
 	destCNIBinDir       string
 	useWaitFlag         bool
+	priorityClassName   string
+	installNamespace    bool
 }
 
 func (options *cniPluginOptions) validate() error {
@@ -64,7 +66,10 @@ func (options *cniPluginOptions) validate() error {
 }
 
 func (options *cniPluginOptions) pluginImage() string {
-	return registryOverride(options.cniPluginImage, options.dockerRegistry)
+	if options.dockerRegistry != defaultDockerRegistry {
+		return registryOverride(options.cniPluginImage, options.dockerRegistry)
+	}
+	return options.cniPluginImage
 }
 
 func newCmdInstallCNIPlugin() *cobra.Command {
@@ -102,7 +107,9 @@ assumes that the 'linkerd install' command will be executed with the
 	cmd.PersistentFlags().StringVar(&options.cniPluginImage, "cni-image", options.cniPluginImage, "Image for the cni-plugin")
 	cmd.PersistentFlags().StringVar(&options.logLevel, "cni-log-level", options.logLevel, "Log level for the cni-plugin")
 	cmd.PersistentFlags().StringVar(&options.destCNINetDir, "dest-cni-net-dir", options.destCNINetDir, "Directory on the host where the CNI configuration will be placed")
-	cmd.PersistentFlags().StringVar(&options.destCNIBinDir, "dest-cni-bin-dir", options.destCNIBinDir, "Directory on the host where the CNI plugin binaries reside")
+	cmd.PersistentFlags().StringVar(&options.destCNIBinDir, "dest-cni-bin-dir", options.destCNIBinDir, "Directory on the host where the CNI binary will be placed")
+	cmd.PersistentFlags().StringVar(&options.priorityClassName, "priority-class-name", options.priorityClassName, "Pod priorityClassName for CNI daemonset's pods")
+	cmd.PersistentFlags().BoolVar(&options.installNamespace, "install-namespace", options.installNamespace, "Whether to create the CNI namespace or not")
 	cmd.PersistentFlags().BoolVar(
 		&options.useWaitFlag,
 		"use-wait-flag",
@@ -117,7 +124,7 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &cniPluginOptions{
+	cniOptions := cniPluginOptions{
 		linkerdVersion:      version.Version,
 		dockerRegistry:      defaultDockerRegistry,
 		proxyControlPort:    4190,
@@ -132,7 +139,19 @@ func newCNIInstallOptionsWithDefaults() (*cniPluginOptions, error) {
 		destCNINetDir:       defaults.DestCNINetDir,
 		destCNIBinDir:       defaults.DestCNIBinDir,
 		useWaitFlag:         defaults.UseWaitFlag,
-	}, nil
+		priorityClassName:   defaults.PriorityClassName,
+		installNamespace:    defaults.InstallNamespace,
+	}
+
+	if defaults.IgnoreInboundPorts != "" {
+		cniOptions.ignoreInboundPorts = strings.Split(defaults.IgnoreInboundPorts, ",")
+
+	}
+	if defaults.IgnoreOutboundPorts != "" {
+		cniOptions.ignoreOutboundPorts = strings.Split(defaults.IgnoreOutboundPorts, ",")
+	}
+
+	return &cniOptions, nil
 }
 
 func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
@@ -166,6 +185,8 @@ func (options *cniPluginOptions) buildValues() (*cnicharts.Values, error) {
 	installValues.DestCNIBinDir = options.destCNIBinDir
 	installValues.UseWaitFlag = options.useWaitFlag
 	installValues.Namespace = cniNamespace
+	installValues.PriorityClassName = options.priorityClassName
+	installValues.InstallNamespace = options.installNamespace
 	return installValues, nil
 }
 
@@ -186,7 +207,7 @@ func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
 		return err
 	}
 
-	files := []*chartutil.BufferedFile{
+	files := []*loader.BufferedFile{
 		{Name: chartutil.ChartfileName},
 		{Name: "templates/cni-plugin.yaml"},
 	}
@@ -197,6 +218,7 @@ func renderCNIPlugin(w io.Writer, config *cniPluginOptions) error {
 		Namespace: controlPlaneNamespace,
 		RawValues: rawValues,
 		Files:     files,
+		Fs:        static.Templates,
 	}
 	buf, err := chart.RenderCNI()
 	if err != nil {

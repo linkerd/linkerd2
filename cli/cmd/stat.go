@@ -652,7 +652,7 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 		return nil, err
 	}
 
-	var toRes, fromRes pb.Resource
+	var toRes, fromRes *pb.Resource
 	if options.toResource != "" {
 		toRes, err = util.BuildResource(options.toNamespace, options.toResource)
 		if err != nil {
@@ -681,14 +681,18 @@ func buildStatSummaryRequests(resources []string, options *statOptions) ([]*pb.S
 				Namespace:     options.namespace,
 				AllNamespaces: options.allNamespaces,
 			},
-			ToName:        toRes.Name,
-			ToType:        toRes.Type,
 			ToNamespace:   options.toNamespace,
-			FromName:      fromRes.Name,
-			FromType:      fromRes.Type,
 			FromNamespace: options.fromNamespace,
 			TCPStats:      true,
 			LabelSelector: options.labelSelector,
+		}
+		if fromRes != nil {
+			requestParams.FromName = fromRes.Name
+			requestParams.FromType = fromRes.Type
+		}
+		if toRes != nil {
+			requestParams.ToName = toRes.Name
+			requestParams.ToType = toRes.Type
 		}
 
 		req, err := util.BuildStatSummaryRequest(requestParams)
@@ -738,7 +742,7 @@ func (o *statOptions) validateConflictingFlags() error {
 		return fmt.Errorf("--to-namespace and --from-namespace flags are mutually exclusive")
 	}
 
-	if o.allNamespaces && o.namespace != "default" {
+	if o.allNamespaces && o.namespace != defaultNamespace {
 		return fmt.Errorf("--all-namespaces and --namespace flags are mutually exclusive")
 	}
 
@@ -756,9 +760,9 @@ func (o *statOptions) validateNamespaceFlags() error {
 		return fmt.Errorf("--from-namespace flag is incompatible with namespace resource type")
 	}
 
-	// Note: technically, this allows you to say `stat ns --namespace default`, but that
+	// Note: technically, this allows you to say `stat ns --namespace <default-namespace-from-kubectl-context>`, but that
 	// seems like an edge case.
-	if o.namespace != "default" {
+	if o.namespace != defaultNamespace {
 		return fmt.Errorf("--namespace flag is incompatible with namespace resource type")
 	}
 

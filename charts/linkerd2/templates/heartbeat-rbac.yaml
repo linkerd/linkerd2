@@ -41,4 +41,5 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: heartbeat
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- include "partials.image-pull-secrets" . }}
 {{- end }}

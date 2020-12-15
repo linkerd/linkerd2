@@ -9,8 +9,9 @@
 
 :balloon: Welcome to Linkerd! :wave:
 
-Linkerd is a *service mesh*, designed to give platform-wide observability,
-reliability, and security without requiring configuration or code changes.
+Linkerd is an ultralight, security-first service mesh for Kubernetes. Linkerd
+adds critical security, observability, and reliability features to your
+Kubernetes stack with no code change required.
 
 Linkerd is a Cloud Native Computing Foundation ([CNCF][cncf]) project.
 
@@ -29,8 +30,8 @@ The complete list of Linkerd repos is:
 
 ## Quickstart and documentation
 
-You can run Linkerd on any Kubernetes 1.13+ cluster in a matter of seconds. See
-the [Linkerd Getting Started Guide][getting-started] for how.
+You can run Linkerd on any modern Kubernetes cluster in a matter of seconds.
+See the [Linkerd Getting Started Guide][getting-started] for how.
 
 For more comprehensive documentation, start with the [Linkerd
 docs][linkerd-docs]. (The doc source code is available in the
@@ -47,15 +48,15 @@ contributing changes.
 
 * Join Linkerd's [user mailing list][linkerd-users], [developer mailing
   list][linkerd-dev], and [announcements mailing list][linkerd-announce].
-* Follow [@linkerd][twitter] on Twitter.
+* Follow [@Linkerd][twitter] on Twitter.
 * Join the [Linkerd Slack][slack].
 * Join us in the regular online community meetings!
 
 ## Community meetings
 
 We host regular online meetings for contributors, adopters, maintainers, and
-anyone else interested to connect in a synchronous fashion. These meetings take
-place the last Wednesday of the month at 9am Pacific / 4pm UTC.
+anyone else interested to connect in a synchronous fashion. These meetings
+usually take place the last Wednesday of the month at 9am Pacific / 4pm UTC.
 
 * [Zoom link](https://zoom.us/my/cncflinkerd)
 * [Google calendar](https://calendar.google.com/calendar/embed?src=buoyant.io_j28ik70vrl3418f4oldkdici7o%40group.calendar.google.com)
@@ -64,10 +65,10 @@ place the last Wednesday of the month at 9am Pacific / 4pm UTC.
 
 We're a friendly group, so please feel free to join us!
 
-## Code of conduct
+## Code of Conduct
 
 This project is for everyone. We ask that our users and contributors take a few
-minutes to review our [code of conduct][coc].
+minutes to review our [Code of Conduct][CoC].
 
 ## Security
 
@@ -78,7 +79,7 @@ report [here](SECURITY_AUDIT.pdf).
 
 ## License
 
-Copyright 2019, Linkerd Authors. All rights reserved.
+Copyright 2020 the Linkerd Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 these files except in compliance with the License. You may obtain a copy of the
@@ -93,9 +94,9 @@ specific language governing permissions and limitations under the License.
 
 <!-- refs -->
 [github-actions]: https://github.com/linkerd/linkerd2/actions
-[github-actions-badge]: https://github.com/linkerd/linkerd2/workflows/CI/badge.svg
+[github-actions-badge]: https://github.com/linkerd/linkerd2/workflows/Cloud%20integration/badge.svg
 [cncf]: https://www.cncf.io/
-[coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
+[CoC]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
 [getting-started]: https://linkerd.io/2/getting-started/
 [golang]: https://golang.org/
 [go-report-card]: https://goreportcard.com/report/github.com/linkerd/linkerd2

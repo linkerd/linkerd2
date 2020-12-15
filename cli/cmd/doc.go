@@ -192,6 +192,10 @@ func generateAnnotationsDocs() []annotationDoc {
 			Description: "Log level for the proxy",
 		},
 		{
+			Name:        k8s.ProxyLogFormatAnnotation,
+			Description: "Log format (plain or json) for the proxy",
+		},
+		{
 			Name:        k8s.ProxyEnableExternalProfilesAnnotation,
 			Description: "Enable service profiles for non-Kubernetes services",
 		},
@@ -210,14 +214,6 @@ func generateAnnotationsDocs() []annotationDoc {
 		{
 			Name:        k8s.ProxyEnableDebugAnnotation,
 			Description: "Inject a debug sidecar for data plane debugging",
-		},
-		{
-			Name:        k8s.ProxyTraceCollectorSvcAddrAnnotation,
-			Description: "Service name of the trace collector. E.g. `oc-collector.tracing:55678`",
-		},
-		{
-			Name:        k8s.ProxyTraceCollectorSvcAccountAnnotation,
-			Description: "The trace collector's service account name. E.g., `tracing-service-account`. If not provided, it will be defaulted to `default`.",
 		},
 		{
 			Name:        k8s.ProxyWaitBeforeExitSecondsAnnotation,

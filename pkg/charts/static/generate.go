@@ -10,7 +10,7 @@ import (
 
 func main() {
 	err := vfsgen.Generate(static.Templates, vfsgen.Options{
-		Filename:     "generated_templates.gogen.go",
+		Filename:     "generated_linkerd_templates.gogen.go",
 		PackageName:  "static",
 		BuildTags:    "prod",
 		VariableName: "Templates",

@@ -52,23 +52,25 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: proxy-injector
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- include "partials.image-pull-secrets" . }}
 ---
-{{- $ca := genCA (printf "linkerd-proxy-injector.%s.svc" .Values.global.namespace) 365 }}
+{{- $host := printf "linkerd-proxy-injector.%s.svc" .Values.global.namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.proxyInjector.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-proxy-injector-tls
+  name: linkerd-proxy-injector-k8s-tls
   namespace: {{ .Values.global.namespace }}
   labels:
     {{.Values.global.controllerComponentLabel}}: proxy-injector
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.proxyInjector.crtPEM)) (empty .Values.proxyInjector.crtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.proxyInjector.keyPEM)) (empty .Values.proxyInjector.keyPEM) }}
+  tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.proxyInjector.crtPEM)) (empty .Values.proxyInjector.crtPEM) }}
+  tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.proxyInjector.keyPEM)) (empty .Values.proxyInjector.keyPEM) }}
 ---
 {{- end }}
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -81,11 +83,7 @@ metadata:
 webhooks:
 - name: linkerd-proxy-injector.linkerd.io
   namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
+    {{- toYaml .Values.proxyInjector.namespaceSelector | trim | nindent 4 }}
   clientConfig:
     service:
       name: linkerd-proxy-injector
@@ -94,7 +92,7 @@ webhooks:
 {{- if and (.Values.proxyInjector.externalSecret) (empty .Values.proxyInjector.caBundle) }}
   {{- fail "If proxyInjector.externalSecret is true then you need to provide proxyInjector.caBundle" }}
 {{- end }}
-    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.proxyInjector.caBundle)) (empty .Values.proxyInjector.caBundle) }}
+    caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.proxyInjector.caBundle)) (empty .Values.proxyInjector.caBundle) }}
   failurePolicy: {{.Values.webhookFailurePolicy}}
   rules:
   - operations: [ "CREATE" ]

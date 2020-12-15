@@ -27,9 +27,14 @@ spec:
           labels:
             {{.Values.global.controllerComponentLabel}}: heartbeat
             {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
+            {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 12 }}{{- end }}
           annotations:
             {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+            {{- with .Values.global.podAnnotations }}{{ toYaml . | trim | nindent 12 }}{{- end }}
         spec:
+          {{- if .Values.tolerations -}}
+          {{- include "linkerd.tolerations" . | nindent 10 }}
+          {{- end -}}
           {{- include "linkerd.node-selector" . | nindent 10 }}
           serviceAccountName: linkerd-heartbeat
           restartPolicy: Never
@@ -39,9 +44,13 @@ spec:
             imagePullPolicy: {{.Values.global.imagePullPolicy}}
             args:
             - "heartbeat"
-            - "-prometheus-url=http://linkerd-prometheus.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090"
             - "-controller-namespace={{.Values.global.namespace}}"
-            - "-log-level={{.Values.controllerLogLevel}}"
+            - "-log-level={{.Values.global.controllerLogLevel}}"
+            {{- if .Values.global.prometheusUrl }}
+            - "-prometheus-url={{.Values.global.prometheusUrl}}"
+            {{- else if .Values.prometheus.enabled }}
+            - "-prometheus-url=http://linkerd-prometheus.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090"
+            {{- end }}
             {{- if .Values.heartbeatResources -}}
             {{- include "partials.resources" .Values.heartbeatResources | nindent 12 }}
             {{- end }}

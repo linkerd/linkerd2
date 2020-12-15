@@ -2,62 +2,36 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerd/linkerd2/controller/gen/config"
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/cli/flag"
 	charts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/tls"
+	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	installProxyVersion        = "install-proxy-version"
+	installControlPlaneVersion = "install-control-plane-version"
+	installDebugVersion        = "install-debug-version"
 )
 
 func TestRender(t *testing.T) {
-	defaultOptions, err := testInstallOptions()
+	defaultValues, err := testInstallOptions()
 	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-
-	defaultValues, _, err := defaultOptions.validateAndBuild("", nil)
-	if err != nil {
-		t.Fatalf("Unexpected error validating options: %v", err)
+		t.Fatal(err)
 	}
 	addFakeTLSSecrets(defaultValues)
 
-	configValues, _, err := defaultOptions.validateAndBuild(configStage, nil)
-	if err != nil {
-		t.Fatalf("Unexpected error validating options: %v", err)
-	}
-	addFakeTLSSecrets(configValues)
-
-	controlPlaneValues, _, err := defaultOptions.validateAndBuild(controlPlaneStage, nil)
-	if err != nil {
-		t.Fatalf("Unexpected error validating options: %v", err)
-	}
-
 	// A configuration that shows that all config setting strings are honored
 	// by `render()`.
-	metaOptions, err := testInstallOptions()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v\n", err)
-	}
-
-	identityContext := toIdentityContext(&identityWithAnchorsAndTrustDomain{
-		TrustAnchorsPEM: "test-trust-anchor",
-		Identity: &charts.Identity{
-			Issuer: &charts.Issuer{
-				ClockSkewAllowance: "20s",
-				IssuanceLifetime:   "86400s",
-			},
-		},
-	})
-	metaConfig := metaOptions.configs(identityContext)
-	metaConfig.Global.LinkerdNamespace = "Namespace"
 	metaValues := &charts.Values{
 		ControllerImage:             "ControllerImage",
 		WebImage:                    "WebImage",
-		PrometheusImage:             "PrometheusImage",
-		ControllerLogLevel:          "ControllerLogLevel",
-		PrometheusLogLevel:          "PrometheusLogLevel",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
@@ -66,12 +40,15 @@ func TestRender(t *testing.T) {
 		InstallNamespace:            true,
 		Identity:                    defaultValues.Identity,
 		NodeSelector:                defaultValues.NodeSelector,
+		Tolerations:                 defaultValues.Tolerations,
 		Global: &charts.Global{
 			Namespace:                "Namespace",
 			ClusterDomain:            "cluster.local",
+			ClusterNetworks:          "ClusterNetworks",
 			ImagePullPolicy:          "ImagePullPolicy",
 			CliVersion:               "CliVersion",
 			ControllerComponentLabel: "ControllerComponentLabel",
+			ControllerLogLevel:       "ControllerLogLevel",
 			ControllerImageVersion:   "ControllerImageVersion",
 			ControllerNamespaceLabel: "ControllerNamespaceLabel",
 			WorkloadNamespaceLabel:   "WorkloadNamespaceLabel",
@@ -81,24 +58,35 @@ func TestRender(t *testing.T) {
 			LinkerdNamespaceLabel:    "LinkerdNamespaceLabel",
 			ProxyContainerName:       "ProxyContainerName",
 			CNIEnabled:               false,
-			IdentityTrustDomain:      defaultValues.Global.IdentityTrustDomain,
-			IdentityTrustAnchorsPEM:  defaultValues.Global.IdentityTrustAnchorsPEM,
+			IdentityTrustDomain:      defaultValues.GetGlobal().IdentityTrustDomain,
+			IdentityTrustAnchorsPEM:  defaultValues.GetGlobal().IdentityTrustAnchorsPEM,
+			PodAnnotations:           map[string]string{},
+			PodLabels:                map[string]string{},
 			Proxy: &charts.Proxy{
-				DestinationGetNetworks: "DestinationGetNetworks",
 				Image: &charts.Image{
 					Name:       "ProxyImageName",
 					PullPolicy: "ImagePullPolicy",
 					Version:    "ProxyVersion",
 				},
-				LogLevel: "warn,linkerd=info",
+				LogLevel:  "warn,linkerd=info",
+				LogFormat: "plain",
+				Resources: &charts.Resources{
+					CPU: charts.Constraints{
+						Limit:   "cpu-limit",
+						Request: "cpu-request",
+					},
+					Memory: charts.Constraints{
+						Limit:   "memory-limit",
+						Request: "memory-request",
+					},
+				},
 				Ports: &charts.Ports{
 					Admin:    4191,
 					Control:  4190,
 					Inbound:  4143,
 					Outbound: 4140,
 				},
-				UID:   2102,
-				Trace: &charts.Trace{},
+				UID: 2102,
 			},
 			ProxyInit: &charts.ProxyInit{
 				Image: &charts.Image{
@@ -106,6 +94,7 @@ func TestRender(t *testing.T) {
 					PullPolicy: "ImagePullPolicy",
 					Version:    "ProxyInitVersion",
 				},
+				IgnoreOutboundPorts: "443",
 				Resources: &charts.Resources{
 					CPU: charts.Constraints{
 						Limit:   "100m",
@@ -116,6 +105,10 @@ func TestRender(t *testing.T) {
 						Request: "10Mi",
 					},
 				},
+				XTMountPath: &charts.VolumeMountPath{
+					MountPath: "/run",
+					Name:      "linkerd-proxy-init-xtables-lock",
+				},
 			},
 		},
 		Configs: charts.ConfigJSONs{
@@ -123,125 +116,102 @@ func TestRender(t *testing.T) {
 			Proxy:   "ProxyConfig",
 			Install: "InstallConfig",
 		},
+		DebugContainer: &charts.DebugContainer{
+			Image: &charts.Image{
+				Name:       "DebugImageName",
+				PullPolicy: "DebugImagePullPolicy",
+				Version:    "DebugVersion",
+			},
+		},
 		ControllerReplicas: 1,
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
 		Tap:                defaultValues.Tap,
-		SMIMetrics:         defaultValues.SMIMetrics,
 		Dashboard: &charts.Dashboard{
 			Replicas: 1,
 		},
-		Tracing: map[string]interface{}{
-			"enabled": false,
+		Prometheus: charts.Prometheus{
+			"enabled": true,
+			"image":   "PrometheusImage",
 		},
 		Grafana: defaultValues.Grafana,
 	}
 
-	haOptions, err := testInstallOptions()
+	haValues, err := testInstallOptionsHA(true)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-
-	haOptions.recordedFlags = []*config.Install_Flag{{Name: "ha", Value: "true"}}
-	haOptions.highAvailability = true
-	haValues, _, _ := haOptions.validateAndBuild("", nil)
 	addFakeTLSSecrets(haValues)
 
-	haWithOverridesOptions, err := testInstallOptions()
+	haWithOverridesValues, err := testInstallOptionsHA(true)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	haWithOverridesOptions.recordedFlags = []*config.Install_Flag{
-		{Name: "ha", Value: "true"},
-		{Name: "controller-replicas", Value: "2"},
-		{Name: "proxy-cpu-request", Value: "400m"},
-		{Name: "proxy-memory-request", Value: "300Mi"},
-	}
-	haWithOverridesOptions.highAvailability = true
-	haWithOverridesOptions.controllerReplicas = 2
-	haWithOverridesOptions.proxyCPURequest = "400m"
-	haWithOverridesOptions.proxyMemoryRequest = "300Mi"
-	haWithOverridesValues, _, _ := haWithOverridesOptions.validateAndBuild("", nil)
+	haWithOverridesValues.GetGlobal().HighAvailability = true
+	haWithOverridesValues.ControllerReplicas = 2
+	haWithOverridesValues.GetGlobal().Proxy.Resources.CPU.Request = "400m"
+	haWithOverridesValues.GetGlobal().Proxy.Resources.Memory.Request = "300Mi"
 	addFakeTLSSecrets(haWithOverridesValues)
 
-	cniEnabledOptions, err := testInstallOptions()
+	cniEnabledValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
 
-	cniEnabledOptions.recordedFlags = []*config.Install_Flag{{Name: "linkerd-cni-enabled", Value: "true"}}
-	cniEnabledOptions.cniEnabled = true
-	cniEnabledValues, _, _ := cniEnabledOptions.validateAndBuild("", nil)
+	cniEnabledValues.GetGlobal().CNIEnabled = true
 	addFakeTLSSecrets(cniEnabledValues)
 
-	withProxyIgnoresOptions, err := testInstallOptions()
+	withProxyIgnoresValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withProxyIgnoresOptions.ignoreInboundPorts = []string{"22", "8100-8102"}
-	withProxyIgnoresOptions.ignoreOutboundPorts = []string{"5432"}
-	withProxyIgnoresValues, _, _ := withProxyIgnoresOptions.validateAndBuild("", nil)
+	withProxyIgnoresValues.GetGlobal().ProxyInit.IgnoreInboundPorts = "22,8100-8102"
+	withProxyIgnoresValues.GetGlobal().ProxyInit.IgnoreOutboundPorts = "5432"
 	addFakeTLSSecrets(withProxyIgnoresValues)
 
-	withHeartBeatDisabled, err := testInstallOptions()
+	withHeartBeatDisabledValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withHeartBeatDisabled.disableHeartbeat = true
-	withHeartBeatDisabledValues, _, _ := withHeartBeatDisabled.validateAndBuild("", nil)
+	withHeartBeatDisabledValues.DisableHeartBeat = true
 	addFakeTLSSecrets(withHeartBeatDisabledValues)
 
-	withRestrictedDashboardPriviliges, err := testInstallOptions()
+	withRestrictedDashboardPrivilegesValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withRestrictedDashboardPriviliges.restrictDashboardPrivileges = true
-	withRestrictedDashboardPriviligesValues, _, _ := withRestrictedDashboardPriviliges.validateAndBuild("", nil)
-	addFakeTLSSecrets(withRestrictedDashboardPriviligesValues)
+	withRestrictedDashboardPrivilegesValues.RestrictDashboardPrivileges = true
+	addFakeTLSSecrets(withRestrictedDashboardPrivilegesValues)
 
-	withControlPlaneTracing, err := testInstallOptions()
+	withControlPlaneTracingValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withControlPlaneTracing.controlPlaneTracing = true
-	withControlPlaneTracingValues, _, _ := withControlPlaneTracing.validateAndBuild("", nil)
+	withControlPlaneTracingValues.GetGlobal().ControlPlaneTracing = true
 	addFakeTLSSecrets(withControlPlaneTracingValues)
 
 	customRegistryOverride := "my.custom.registry/linkerd-io"
-	withCustomRegistryOptions, err := testInstallOptions()
+	withCustomRegistryValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withCustomRegistryOptions.dockerRegistry = customRegistryOverride
-	withCustomRegistryOptions.recordedFlags = []*config.Install_Flag{
-		{Name: "registry", Value: customRegistryOverride},
+	flags, flagSet := makeProxyFlags(withCustomRegistryValues)
+	err = flagSet.Set("registry", customRegistryOverride)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withCustomRegistryValues, _, _ := withCustomRegistryOptions.validateAndBuild("", nil)
+	err = flag.ApplySetFlags(withCustomRegistryValues, flags)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
 	addFakeTLSSecrets(withCustomRegistryValues)
 
-	withAddOnConfigStage, err := testInstallOptions()
+	withCustomDestinationGetNetsValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
-	withAddOnConfigStageValues, _, _ := withAddOnConfigStage.validateAndBuild(configStage, nil)
-	withAddOnConfigStageValues.Tracing["enabled"] = true
-	addFakeTLSSecrets(withAddOnConfigStageValues)
-
-	withAddOnControlPlaneStage, err := testInstallOptions()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v\n", err)
-	}
-	withAddOnControlPlaneStageValues, _, _ := withAddOnControlPlaneStage.validateAndBuild(controlPlaneStage, nil)
-	withAddOnControlPlaneStageValues.Tracing["enabled"] = true
-	addFakeTLSSecrets(withAddOnControlPlaneStageValues)
-
-	withCustomDestinationGetNets, err := testInstallOptions()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v\n", err)
-	}
-	withCustomDestinationGetNets.destinationGetNetworks = []string{"10.0.0.0/8", "172.0.0.0/8"}
-	withCustomDestinationGetNetsValues, _, _ := withCustomDestinationGetNets.validateAndBuild("", nil)
+	withCustomDestinationGetNetsValues.GetGlobal().ClusterNetworks = "10.0.0.0/8,100.64.0.0/10,172.0.0.0/8"
 	addFakeTLSSecrets(withCustomDestinationGetNetsValues)
 
 	testCases := []struct {
@@ -249,19 +219,15 @@ func TestRender(t *testing.T) {
 		goldenFileName string
 	}{
 		{defaultValues, "install_default.golden"},
-		{configValues, "install_config.golden"},
-		{controlPlaneValues, "install_control-plane.golden"},
 		{metaValues, "install_output.golden"},
 		{haValues, "install_ha_output.golden"},
 		{haWithOverridesValues, "install_ha_with_overrides_output.golden"},
 		{cniEnabledValues, "install_no_init_container.golden"},
 		{withProxyIgnoresValues, "install_proxy_ignores.golden"},
 		{withHeartBeatDisabledValues, "install_heartbeat_disabled_output.golden"},
-		{withRestrictedDashboardPriviligesValues, "install_restricted_dashboard.golden"},
+		{withRestrictedDashboardPrivilegesValues, "install_restricted_dashboard.golden"},
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
 		{withCustomRegistryValues, "install_custom_registry.golden"},
-		{withAddOnConfigStageValues, "install_addon_config.golden"},
-		{withAddOnControlPlaneStageValues, "install_addon_control-plane.golden"},
 		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden"},
 	}
 
@@ -269,7 +235,7 @@ func TestRender(t *testing.T) {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
 			var buf bytes.Buffer
-			if err := render(&buf, tc.values); err != nil {
+			if err := render(&buf, tc.values, ""); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
 			diffTestdata(t, tc.goldenFileName, buf.String())
@@ -279,69 +245,134 @@ func TestRender(t *testing.T) {
 
 func TestValidateAndBuild_Errors(t *testing.T) {
 	t.Run("Fails validation for invalid ignoreInboundPorts", func(t *testing.T) {
-		installOptions, err := testInstallOptions()
+		values, err := testInstallOptions()
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
-		installOptions.ignoreInboundPorts = []string{"-25"}
-		_, _, err = installOptions.validateAndBuild("", nil)
+		values.GetGlobal().ProxyInit.IgnoreInboundPorts = "-25"
+		err = validateValues(context.Background(), nil, values)
 		if err == nil {
 			t.Fatal("expected error but got nothing")
 		}
 	})
 
 	t.Run("Fails validation for invalid ignoreOutboundPorts", func(t *testing.T) {
-		installOptions, err := testInstallOptions()
+		values, err := testInstallOptions()
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
-		installOptions.ignoreOutboundPorts = []string{"-25"}
-		_, _, err = installOptions.validateAndBuild("", nil)
+		values.GetGlobal().ProxyInit.IgnoreOutboundPorts = "-25"
+		err = validateValues(context.Background(), nil, values)
 		if err == nil {
 			t.Fatal("expected error but got nothing")
 		}
 	})
 }
 
-func testInstallOptions() (*installOptions, error) {
-	o, err := newInstallOptionsWithDefaults()
+func testInstallOptions() (*charts.Values, error) {
+	return testInstallOptionsHA(false)
+}
+
+func testInstallOptionsHA(ha bool) (*charts.Values, error) {
+	values, err := testInstallOptionsNoCerts(ha)
 	if err != nil {
 		return nil, err
 	}
 
-	o.ignoreCluster = true
-	o.proxyVersion = "install-proxy-version"
-	o.debugImageVersion = "install-debug-version"
-	o.controlPlaneVersion = "install-control-plane-version"
-	o.heartbeatSchedule = fakeHeartbeatSchedule
-	o.identityOptions.crtPEMFile = filepath.Join("testdata", "valid-crt.pem")
-	o.identityOptions.keyPEMFile = filepath.Join("testdata", "valid-key.pem")
-	o.identityOptions.trustPEMFile = filepath.Join("testdata", "valid-trust-anchors.pem")
-	return o, nil
+	data, err := ioutil.ReadFile(filepath.Join("testdata", "valid-crt.pem"))
+	if err != nil {
+		return nil, err
+	}
+
+	crt, err := tls.DecodePEMCrt(string(data))
+	if err != nil {
+		return nil, err
+	}
+	values.Identity.Issuer.TLS.CrtPEM = crt.EncodeCertificatePEM()
+	values.Identity.Issuer.CrtExpiry = crt.Certificate.NotAfter
+
+	key, err := loadKeyPEM(filepath.Join("testdata", "valid-key.pem"))
+	if err != nil {
+		return nil, err
+	}
+	values.Identity.Issuer.TLS.KeyPEM = key
+
+	data, err = ioutil.ReadFile(filepath.Join("testdata", "valid-trust-anchors.pem"))
+	if err != nil {
+		return nil, err
+	}
+	values.GetGlobal().IdentityTrustAnchorsPEM = string(data)
+
+	return values, nil
+}
+
+func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
+	values, err := charts.NewValues(ha)
+	if err != nil {
+		return nil, err
+	}
+
+	values.GetGlobal().Proxy.Image.Version = installProxyVersion
+	values.DebugContainer.Image.Version = installDebugVersion
+	values.GetGlobal().ControllerImageVersion = installControlPlaneVersion
+	values.HeartbeatSchedule = fakeHeartbeatSchedule()
+
+	return values, nil
+}
+
+func testInstallValues() (*charts.Values, error) {
+	values, err := charts.NewValues(false)
+	if err != nil {
+		return nil, err
+	}
+
+	values.GetGlobal().Proxy.Image.Version = installProxyVersion
+	values.DebugContainer.Image.Version = installDebugVersion
+	values.GetGlobal().LinkerdVersion = installControlPlaneVersion
+	values.GetGlobal().ControllerImageVersion = installControlPlaneVersion
+	values.HeartbeatSchedule = fakeHeartbeatSchedule()
+
+	identityCert, err := ioutil.ReadFile(filepath.Join("testdata", "valid-crt.pem"))
+	if err != nil {
+		return nil, err
+	}
+	identityKey, err := ioutil.ReadFile(filepath.Join("testdata", "valid-key.pem"))
+	if err != nil {
+		return nil, err
+	}
+	trustAnchorsPEM, err := ioutil.ReadFile(filepath.Join("testdata", "valid-trust-anchors.pem"))
+	if err != nil {
+		return nil, err
+	}
+
+	values.Identity.Issuer.TLS.CrtPEM = string(identityCert)
+	values.Identity.Issuer.TLS.KeyPEM = string(identityKey)
+	values.GetGlobal().IdentityTrustAnchorsPEM = string(trustAnchorsPEM)
+	return values, nil
 }
 
 func TestValidate(t *testing.T) {
 	t.Run("Accepts the default options as valid", func(t *testing.T) {
-		opts, err := testInstallOptions()
+		values, err := testInstallOptions()
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
-		if err := opts.validate(); err != nil {
+		if err := validateValues(context.Background(), nil, values); err != nil {
 			t.Fatalf("Unexpected error: %s", err)
 		}
 	})
 
 	t.Run("Rejects invalid destination networks", func(t *testing.T) {
-		options, err := testInstallOptions()
+		values, err := testInstallOptions()
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
-		options.destinationGetNetworks = []string{"wrong"}
+		values.GetGlobal().ClusterNetworks = "wrong"
 		expected := "cannot parse destination get networks: invalid CIDR address: wrong"
 
-		err = options.validate()
+		err = validateValues(context.Background(), nil, values)
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
@@ -351,45 +382,20 @@ func TestValidate(t *testing.T) {
 	})
 
 	t.Run("Rejects invalid controller log level", func(t *testing.T) {
-		options, err := testInstallOptions()
+		values, err := testInstallOptions()
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
-		options.controllerLogLevel = "super"
+		values.GetGlobal().ControllerLogLevel = "super"
 		expected := "--controller-log-level must be one of: panic, fatal, error, warn, info, debug"
 
-		err = options.validate()
+		err = validateValues(context.Background(), nil, values)
 		if err == nil {
 			t.Fatal("Expected error, got nothing")
 		}
 		if err.Error() != expected {
 			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, err)
-		}
-	})
-
-	t.Run("Ensure log level input is converted to lower case before passing to prometheus", func(t *testing.T) {
-		underTest, err := testInstallOptions()
-		if err != nil {
-			t.Fatalf("Unexpected error: %v\n", err)
-		}
-
-		underTest.controllerLogLevel = "DEBUG"
-		expected := "debug"
-
-		testValues := new(pb.All)
-		testValues.Global = new(pb.Global)
-		testValues.Proxy = new(pb.Proxy)
-		testValues.Install = new(pb.Install)
-
-		actual, err := underTest.buildValuesWithoutIdentity(testValues)
-
-		if err != nil {
-			t.Fatalf("Unexpected error occurred %s", err)
-		}
-
-		if actual.PrometheusLogLevel != expected {
-			t.Fatalf("Expected error string\"%s\", got \"%s\"", expected, actual.PrometheusLogLevel)
 		}
 	})
 
@@ -399,25 +405,26 @@ func TestValidate(t *testing.T) {
 			valid bool
 		}{
 			{"", false},
+			{"off", true},
 			{"info", true},
 			{"somemodule", true},
 			{"bad%name", false},
-			{"linkerd2_proxy=debug", true},
+			{"linkerd=debug", true},
 			{"linkerd2%proxy=debug", false},
-			{"linkerd2_proxy=foobar", false},
+			{"linkerd=foobar", false},
 			{"linker2d_proxy,std::option", true},
 			{"warn,linkerd=info", true},
 			{"warn,linkerd=foobar", false},
 		}
 
-		options, err := testInstallOptions()
+		values, err := testInstallOptions()
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
 		for _, tc := range testCases {
-			options.proxyLogLevel = tc.input
-			err := options.validate()
+			values.GetGlobal().Proxy.LogLevel = tc.input
+			err := validateValues(context.Background(), nil, values)
 			if tc.valid && err != nil {
 				t.Fatalf("Error not expected: %s", err)
 			}
@@ -441,23 +448,36 @@ func TestValidate(t *testing.T) {
 			expectedError string
 		}{
 			{"valid", ""},
-			{"expired", "failed to verify issuer certs stored on disk: not valid anymore. Expired on 1990-01-01T01:01:11Z"},
-			{"not-valid-yet", "failed to verify issuer certs stored on disk: not valid before: 2100-01-01T01:00:51Z"},
-			{"wrong-domain", "failed to verify issuer certs stored on disk: x509: certificate is valid for wrong.linkerd.cluster.local, not identity.linkerd.cluster.local"},
-			{"wrong-algo", "failed to verify issuer certs stored on disk: must use P-256 curve for public key, instead P-521 was used"},
+			{"expired", "failed to validate issuer credentials: not valid anymore. Expired on 1990-01-01T01:01:11Z"},
+			{"not-valid-yet", "failed to validate issuer credentials: not valid before: 2100-01-01T01:00:51Z"},
+			{"wrong-algo", "failed to validate issuer credentials: must use P-256 curve for public key, instead P-521 was used"},
 		}
 		for _, tc := range testCases {
 
-			options, err := testInstallOptions()
+			values, err := testInstallOptions()
 			if err != nil {
 				t.Fatalf("Unexpected error: %v\n", err)
 			}
 
-			options.identityOptions.crtPEMFile = filepath.Join("testdata", tc.crtFilePrefix+"-crt.pem")
-			options.identityOptions.keyPEMFile = filepath.Join("testdata", tc.crtFilePrefix+"-key.pem")
-			options.identityOptions.trustPEMFile = filepath.Join("testdata", tc.crtFilePrefix+"-trust-anchors.pem")
+			crt, err := loadCrtPEM(filepath.Join("testdata", tc.crtFilePrefix+"-crt.pem"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			values.Identity.Issuer.TLS.CrtPEM = crt
 
-			_, err = options.identityOptions.validateAndBuild()
+			key, err := loadKeyPEM(filepath.Join("testdata", tc.crtFilePrefix+"-key.pem"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			values.Identity.Issuer.TLS.KeyPEM = key
+
+			ca, err := ioutil.ReadFile(filepath.Join("testdata", tc.crtFilePrefix+"-trust-anchors.pem"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			values.GetGlobal().IdentityTrustAnchorsPEM = string(ca)
+
+			err = validateValues(context.Background(), nil, values)
 
 			if tc.expectedError != "" {
 				if err == nil {
@@ -476,47 +496,43 @@ func TestValidate(t *testing.T) {
 
 	t.Run("Rejects identity cert files data when external issuer is set", func(t *testing.T) {
 
-		options, err := testInstallOptions()
-		options.identityOptions.crtPEMFile = ""
-		options.identityOptions.keyPEMFile = ""
-		options.identityOptions.trustPEMFile = ""
-
+		values, err := testInstallOptionsNoCerts(false)
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
 		}
 
-		withoutCertDataOptions := options.identityOptions
-		withoutCertDataOptions.identityExternalIssuer = true
-		withCrtFile := *withoutCertDataOptions
-		withCrtFile.crtPEMFile = "crt-file"
-		withTrustAnchorsFile := *withoutCertDataOptions
-		withTrustAnchorsFile.trustPEMFile = "ta-file"
-		withKeyFile := *withoutCertDataOptions
-		withKeyFile.keyPEMFile = "key-file"
+		values.Identity.Issuer.Scheme = string(corev1.SecretTypeTLS)
+
+		withoutCertDataOptions, _ := values.DeepCopy()
+
+		withCrtFile, _ := values.DeepCopy()
+		withCrtFile.Identity.Issuer.TLS.CrtPEM = "certificate"
+
+		withKeyFile, _ := values.DeepCopy()
+		withKeyFile.Identity.Issuer.TLS.KeyPEM = "key"
 
 		testCases := []struct {
-			input         *installIdentityOptions
+			input         *charts.Values
 			expectedError string
 		}{
 			{withoutCertDataOptions, ""},
-			{&withCrtFile, "--identity-issuer-certificate-file must not be specified if --identity-external-issuer=true"},
-			{&withTrustAnchorsFile, "--identity-trust-anchors-file must not be specified if --identity-external-issuer=true"},
-			{&withKeyFile, "--identity-issuer-key-file must not be specified if --identity-external-issuer=true"},
+			{withCrtFile, "--identity-issuer-certificate-file must not be specified if --identity-external-issuer=true"},
+			{withKeyFile, "--identity-issuer-key-file must not be specified if --identity-external-issuer=true"},
 		}
 
 		for _, tc := range testCases {
-			err = tc.input.validate()
+			err = validateValues(context.Background(), nil, tc.input)
 
 			if tc.expectedError != "" {
 				if err == nil {
-					t.Fatal("Expected error, got nothing")
+					t.Fatalf("Expected error '%s', got nothing", tc.expectedError)
 				}
 				if err.Error() != tc.expectedError {
 					t.Fatalf("Expected error string\"%s\", got \"%s\"", tc.expectedError, err)
 				}
 			} else {
 				if err != nil {
-					t.Fatalf("Expected no error bu got \"%s\"", err)
+					t.Fatalf("Expected no error but got \"%s\"", err)
 
 				}
 			}
@@ -538,7 +554,4 @@ func addFakeTLSSecrets(values *charts.Values) {
 	values.Tap.CrtPEM = "tap crt"
 	values.Tap.KeyPEM = "tap key"
 	values.Tap.CaBundle = "tap CA bundle"
-	values.SMIMetrics.CrtPEM = "smi metrics crt"
-	values.SMIMetrics.KeyPEM = "smi metrics key"
-	values.SMIMetrics.CaBundle = "smi metrics CA bundle"
 }

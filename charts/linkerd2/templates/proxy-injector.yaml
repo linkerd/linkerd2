@@ -3,8 +3,9 @@
 ### Proxy Injector
 ###
 ---
-{{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set .Values.global.proxy "component" "linkerd-proxy-injector" -}}
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values.global.proxy "workloadKind" "deployment" -}}
+{{ $_ := set $tree.Values.global.proxy "component" "linkerd-proxy-injector" -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 apiVersion: apps/v1
 kind: Deployment
@@ -32,17 +33,22 @@ spec:
   template:
     metadata:
       annotations:
-        {{- if empty .Values.global.cliVersion }}
-        linkerd.io/helm-release-version: {{ $.Release.Revision | quote}}
+        {{- if (or (empty .Values.global.cliVersion) (not (eq (.Values.stage | toString) "control-plane"))) }}
+        checksum/config: {{ include (print $.Template.BasePath "/proxy-injector-rbac.yaml") . | sha256sum }}
         {{- end }}
         {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
         {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
+        {{- with .Values.global.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
         {{.Values.global.controllerComponentLabel}}: proxy-injector
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
         {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
-        {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
+        {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 8}}
+        {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- if .Values.enablePodAntiAffinity -}}
       {{- $local := dict "component" "proxy-injector" "label" .Values.global.controllerComponentLabel -}}
@@ -51,7 +57,7 @@ spec:
       containers:
       - args:
         - proxy-injector
-        - -log-level={{.Values.controllerLogLevel}}
+        - -log-level={{.Values.global.controllerLogLevel}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
         livenessProbe:
@@ -81,7 +87,6 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
-      {{- $tree := deepCopy . }}      
       {{- if not (empty .Values.proxyInjectorProxyResources) }}
       {{- $r := merge .Values.proxyInjectorProxyResources .Values.global.proxy.resources }}
       {{- $_ := set $tree.Values.global.proxy "resources" $r }}
@@ -98,9 +103,9 @@ spec:
         name: config
       - name: tls
         secret:
-          secretName: linkerd-proxy-injector-tls
-      {{ if .Values.global.controlPlaneTracing -}}
-      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+          secretName: linkerd-proxy-injector-k8s-tls
+      {{ if not .Values.global.cniEnabled -}}
+      - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
 ---

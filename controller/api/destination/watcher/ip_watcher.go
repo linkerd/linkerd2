@@ -1,11 +1,14 @@
 package watcher
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
 	logging "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -40,6 +43,19 @@ type (
 		sync.Mutex
 	}
 )
+
+// WithPort sets the port field in all addresses of an address set.
+func (as AddressSet) WithPort(port Port) AddressSet {
+	wp := AddressSet{
+		Addresses: map[PodID]Address{},
+		Labels:    as.Labels,
+	}
+	for id, addr := range as.Addresses {
+		addr.Port = port
+		wp.Addresses[id] = addr
+	}
+	return wp
+}
 
 // NewIPWatcher creates an IPWatcher and begins watching the k8sAPI for service
 // changes.
@@ -104,6 +120,53 @@ func (iw *IPWatcher) Unsubscribe(clusterIP string, port Port, listener EndpointU
 	ss.unsubscribe(port, listener)
 }
 
+// GetSvcID returns the service that corresponds to a Cluster IP address if one
+// exists.
+func (iw *IPWatcher) GetSvcID(clusterIP string) (*ServiceID, error) {
+	resource, err := getResource(clusterIP, iw.k8sAPI.Svc().Informer())
+	if err != nil {
+		return nil, err
+	}
+	if svc, ok := resource.(*corev1.Service); ok {
+		service := &ServiceID{
+			Namespace: svc.Namespace,
+			Name:      svc.Name,
+		}
+		return service, nil
+	}
+	// Either `clusterIP` does not map to a service that the indexer is aware
+	// of, or it maps to a resource that is ignored
+	return nil, nil
+}
+
+// GetPod returns the pod that corresponds to an IP address if one exists.
+func (iw *IPWatcher) GetPod(podIP string) (*corev1.Pod, error) {
+	resource, err := getResource(podIP, iw.k8sAPI.Pod().Informer())
+	if err != nil {
+		return nil, err
+	}
+	if pod, ok := resource.(*corev1.Pod); ok {
+		return pod, nil
+	}
+	// Either `podIP` does not map to a pod that the indexer is aware of, or
+	// it maps to a resource that is ignored
+	return nil, nil
+}
+
+func getResource(ip string, informer cache.SharedIndexInformer) (interface{}, error) {
+	objs, err := informer.GetIndexer().ByIndex(podIPIndex, ip)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+	if len(objs) > 1 {
+		return nil, status.Errorf(codes.FailedPrecondition, "IP address conflict: %v, %v", objs[0], objs[1])
+	}
+	if len(objs) == 1 {
+		return objs[0], nil
+	}
+	return nil, nil
+}
+
 func (iw *IPWatcher) addService(obj interface{}) {
 	service := obj.(*corev1.Service)
 	if service.Namespace == kubeSystem || service.Spec.ClusterIP == "None" {
@@ -154,7 +217,7 @@ func (iw *IPWatcher) addPod(obj interface{}) {
 		return
 	}
 	ss := iw.getOrNewServiceSubscriptions(pod.Status.PodIP)
-	ss.updatePod(iw.podToAddressSet(pod))
+	ss.updatePod(iw.PodToAddressSet(pod))
 }
 
 func (iw *IPWatcher) deletePod(obj interface{}) {
@@ -232,7 +295,7 @@ func (iw *IPWatcher) getOrNewServiceSubscriptions(clusterIP string) *serviceSubs
 				iw.log.Errorf("Pod IP conflict: %v, %v", objs[0], objs[1])
 			}
 			if len(pods) == 1 {
-				ss.pod = iw.podToAddressSet(pods[0])
+				ss.pod = iw.PodToAddressSet(pods[0])
 			}
 		}
 
@@ -248,8 +311,9 @@ func (iw *IPWatcher) getServiceSubscriptions(clusterIP string) (ss *serviceSubsc
 	return
 }
 
-func (iw *IPWatcher) podToAddressSet(pod *corev1.Pod) AddressSet {
-	ownerKind, ownerName := iw.k8sAPI.GetOwnerKindAndName(pod, true)
+// PodToAddressSet converts a Pod spec into a set of Addresses.
+func (iw *IPWatcher) PodToAddressSet(pod *corev1.Pod) AddressSet {
+	ownerKind, ownerName := iw.k8sAPI.GetOwnerKindAndName(context.Background(), pod, true)
 	return AddressSet{
 		Addresses: map[PodID]Address{
 			PodID{
@@ -318,7 +382,7 @@ func (ss *serviceSubscriptions) updatePod(podSet AddressSet) {
 		// NoEndpoints update to clear our the previous address; sending an
 		// Add with the same address will replace the previous one.
 		if len(podSet.Addresses) != 0 {
-			podSetWithPort := withPort(podSet, port)
+			podSetWithPort := podSet.WithPort(port)
 			listener.Add(podSetWithPort)
 		}
 	}
@@ -345,7 +409,7 @@ func (ss *serviceSubscriptions) subscribe(port Port, listener EndpointUpdateList
 			return err
 		}
 	} else if len(ss.pod.Addresses) != 0 {
-		podSetWithPort := withPort(ss.pod, port)
+		podSetWithPort := ss.pod.WithPort(port)
 		listener.Add(podSetWithPort)
 	} else {
 		listener.Add(singletonAddress(ss.clusterIP, port))
@@ -362,18 +426,6 @@ func (ss *serviceSubscriptions) unsubscribe(port Port, listener EndpointUpdateLi
 		ss.endpoints.Unsubscribe(ss.service, port, "", listener)
 	}
 	delete(ss.listeners, listener)
-}
-
-func withPort(pods AddressSet, port Port) AddressSet {
-	wp := AddressSet{
-		Addresses: map[PodID]Address{},
-		Labels:    pods.Labels,
-	}
-	for id, addr := range pods.Addresses {
-		addr.Port = port
-		wp.Addresses[id] = addr
-	}
-	return wp
 }
 
 func singletonAddress(ip string, port Port) AddressSet {

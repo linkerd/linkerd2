@@ -35,6 +35,8 @@ const (
 	defaultPort = 50750
 )
 
+// dashboardOptions holds values for command line flags that apply to the dashboard
+// command.
 type dashboardOptions struct {
 	host string
 	port int
@@ -42,6 +44,12 @@ type dashboardOptions struct {
 	wait time.Duration
 }
 
+// newDashboardOptions initializes dashboard options with default
+// values for host, port, and which dashboard to show. Also, set
+// max wait time duration for 300 seconds for the dashboard to
+// become available
+//
+// These options may be overridden on the CLI at run-time
 func newDashboardOptions() *dashboardOptions {
 	return &dashboardOptions{
 		host: defaultHost,
@@ -51,6 +59,9 @@ func newDashboardOptions() *dashboardOptions {
 	}
 }
 
+// newCmdDashboard creates a new cobra command `dashboard` which contains commands for visualizing linkerd's dashboards.
+// After validating flag values, it will use the Kubernetes API to portforward requests to the Grafana and Web Deployments
+// until the process gets killed/canceled
 func newCmdDashboard() *cobra.Command {
 	options := newDashboardOptions()
 
@@ -81,6 +92,7 @@ func newCmdDashboard() *cobra.Command {
 			defer signal.Stop(signals)
 
 			portforward, err := k8s.NewPortForward(
+				cmd.Context(),
 				k8sAPI,
 				controlPlaneNamespace,
 				webDeployment,

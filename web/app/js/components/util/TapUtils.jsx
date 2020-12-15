@@ -8,6 +8,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import TapLink from '../TapLink.jsx';
 import Tooltip from '@material-ui/core/Tooltip';
+import { Trans } from '@lingui/macro';
 import _each from 'lodash/each';
 import _get from 'lodash/get';
 import _has from 'lodash/has';
@@ -102,45 +103,45 @@ export const processNeighborData = (source, labels, resourceAgg, resourceType) =
     return resourceAgg;
   }
 
-  let neighb = {};
+  let neighbor = {};
   if (_has(labels, resourceType)) {
-    neighb = {
+    neighbor = {
       type: resourceType,
       name: labels[resourceType],
       namespace: labels.namespace,
     };
   } else if (_has(labels, 'pod')) {
-    neighb = {
+    neighbor = {
       type: 'pod',
       name: labels.pod,
       namespace: labels.namespace,
     };
   } else if (_has(labels, 'node')) {
-    neighb = {
+    neighbor = {
       type: 'node',
       name: labels.node,
     };
   } else {
-    neighb = {
+    neighbor = {
       type: 'ip',
       name: source.str,
     };
   }
 
   // keep track of pods under this resource to display the number of unmeshed source pods
-  neighb.pods = {};
+  neighbor.pods = {};
   if (labels.pod) {
-    neighb.pods[labels.pod] = true;
+    neighbor.pods[labels.pod] = true;
   }
 
-  const key = `${neighb.type}/${neighb.name}`;
+  const key = `${neighbor.type}/${neighbor.name}`;
   if (_has(labels, 'control_plane_ns')) {
     delete resourceAgg[key];
   } else {
     if (_has(resourceAgg, key)) {
-      _merge(neighb.pods, resourceAgg[key].pods);
+      _merge(neighbor.pods, resourceAgg[key].pods);
     }
-    resourceAgg[key] = neighb;
+    resourceAgg[key] = neighbor;
   }
 
   return resourceAgg;
@@ -228,9 +229,9 @@ export const processTapEvent = jsonString => {
 
 const displayLimit = 3; // how many upstreams/downstreams to display in the popover table
 const popoverSrcDstColumns = [
-  { title: 'Source', dataIndex: 'source' },
+  { title: <Trans>columnTitleSource</Trans>, dataIndex: 'source' },
   { title: '', key: 'arrow', render: () => <FontAwesomeIcon icon={faLongArrowAltRight} /> },
-  { title: 'Destination', dataIndex: 'destination' },
+  { title: <Trans>columnTitleDestination</Trans>, dataIndex: 'destination' },
 ];
 
 const getPodOwner = (labels, ResourceLink) => {
@@ -310,8 +311,8 @@ const popoverResourceTable = (d, ResourceLink) => { // eslint-disable-line no-un
 };
 
 export const directionColumn = d => (
-  <Tooltip title={d} placement="right">
-    <span>{d === 'INBOUND' ? 'FROM' : 'TO'}</span>
+  <Tooltip title={d === 'INBOUND' ? <Trans>tooltipInbound</Trans> : <Trans>tooltipOutbound</Trans>} placement="right">
+    <span>{d === 'INBOUND' ? <Trans>columnTitleFrom</Trans> : <Trans>columnTitleTo</Trans>}</span>
   </Tooltip>
 );
 

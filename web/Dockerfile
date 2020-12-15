@@ -1,5 +1,16 @@
+ARG BUILDPLATFORM=linux/amd64
+
+# Precompile key slow-to-build dependencies
+FROM --platform=$BUILDPLATFORM golang:1.14.2-alpine as go-deps
+WORKDIR /linkerd-build
+COPY go.mod go.sum ./
+COPY bin/install-deps bin/
+RUN go mod download
+ARG TARGETARCH
+RUN ./bin/install-deps $TARGETARCH
+
 ## bundle web assets
-FROM node:14-buster as webpack-bundle
+FROM --platform=$BUILDPLATFORM node:14-buster as webpack-bundle
 RUN curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 1.21.1 --network-concurrency 1
 
 ENV PATH /root/.yarn/bin:$PATH
@@ -21,18 +32,18 @@ COPY web/app ./web/app
 RUN ./bin/web build
 
 ## compile go server
-FROM gcr.io/linkerd-io/go-deps:1a8bf322 as golang
+FROM go-deps as golang
 WORKDIR /linkerd-build
 RUN mkdir -p web
 COPY web/main.go web
 COPY web/srv web/srv
 COPY controller controller
 COPY pkg pkg
-
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -o web/web -ldflags "-s -w" ./web
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly -o web/web -ldflags "-s -w" ./web
 
 ## package it all up
-FROM debian:buster-20200514-slim
+FROM debian:buster-20201117-slim
 WORKDIR /linkerd
 
 COPY LICENSE .

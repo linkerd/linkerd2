@@ -1,0 +1,66 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smoke-test-terminus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smoke-test-terminus
+  template:
+    metadata:
+      labels:
+        app: smoke-test-terminus
+    spec:
+      containers:
+      - name: http-to-grpc
+        image: buoyantio/bb:v0.0.6
+        args: ["terminus", "--grpc-server-port", "9090", "--response-text", "BANANA"]
+        ports:
+        - containerPort: 9090
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smoke-test-terminus-svc
+spec:
+  selector:
+    app: smoke-test-terminus
+  ports:
+  - name: grpc
+    port: 9090
+    targetPort: 9090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smoke-test-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smoke-test-gateway
+  template:
+    metadata:
+      labels:
+        app: smoke-test-gateway
+    spec:
+      containers:
+      - name: http-to-grpc
+        image: buoyantio/bb:v0.0.6
+        args: ["point-to-point-channel", "--grpc-downstream-server", "smoke-test-terminus-svc:9090", "--h1-server-port", "8080"]
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smoke-test-gateway-svc
+spec:
+  selector:
+    app: smoke-test-gateway
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080

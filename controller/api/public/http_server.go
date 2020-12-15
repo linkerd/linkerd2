@@ -28,7 +28,6 @@ var (
 	selfCheckPath    = fullURLPathFor("SelfCheck")
 	edgesPath        = fullURLPathFor("Edges")
 	destGetPath      = fullURLPathFor("DestinationGet")
-	configPath       = fullURLPathFor("Config")
 )
 
 type handler struct {
@@ -65,8 +64,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		h.handleEdges(w, req)
 	case destGetPath:
 		h.handleDestGet(w, req)
-	case configPath:
-		h.handleConfig(w, req)
 	default:
 		http.NotFound(w, req)
 	}
@@ -264,27 +261,6 @@ func (h *handler) handleDestGet(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *handler) handleConfig(w http.ResponseWriter, req *http.Request) {
-	var protoRequest pb.Empty
-	err := protohttp.HTTPRequestToProto(req, &protoRequest)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-
-	rsp, err := h.grpcServer.Config(req.Context(), &protoRequest)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-
-	err = protohttp.WriteProtoToHTTPResponse(w, rsp)
-	if err != nil {
-		protohttp.WriteErrorToHTTPResponse(w, err)
-		return
-	}
-}
-
 type streamServer struct {
 	w   protohttp.FlushableResponseWriter
 	req *http.Request
@@ -331,9 +307,15 @@ func NewServer(
 	clusterDomain string,
 	ignoredNamespaces []string,
 ) *http.Server {
+
+	var promAPI promv1.API
+	if prometheusClient != nil {
+		promAPI = promv1.NewAPI(prometheusClient)
+	}
+
 	baseHandler := &handler{
 		grpcServer: newGrpcServer(
-			promv1.NewAPI(prometheusClient),
+			promAPI,
 			destinationClient,
 			k8sAPI,
 			controllerNamespace,

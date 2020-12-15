@@ -42,7 +42,7 @@ func TestInjectable(t *testing.T) {
 				Containers: []corev1.Container{
 					{
 						Name:  k8s.ProxyContainerName,
-						Image: "gcr.io/linkerd-io/proxy:",
+						Image: "ghcr.io/linkerd/proxy:",
 					},
 				},
 			},
@@ -59,7 +59,7 @@ func TestInjectable(t *testing.T) {
 				InitContainers: []corev1.Container{
 					{
 						Name:  k8s.InitContainerName,
-						Image: "gcr.io/linkerd-io/proxy-init:",
+						Image: "ghcr.io/linkerd/proxy-init:",
 					},
 				},
 			},
@@ -138,7 +138,7 @@ func TestInjectable(t *testing.T) {
 				Containers: []corev1.Container{
 					{
 						Name:  k8s.ProxyContainerName,
-						Image: "gcr.io/linkerd-io/proxy:",
+						Image: "ghcr.io/linkerd/proxy:",
 					},
 				}},
 			podMeta: &metav1.ObjectMeta{

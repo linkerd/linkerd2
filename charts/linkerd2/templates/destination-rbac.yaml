@@ -18,7 +18,7 @@ rules:
   resources: ["jobs"]
   verbs: ["list", "get", "watch"]
 - apiGroups: [""]
-  resources: ["pods", "endpoints", "services"]
+  resources: ["pods", "endpoints", "services", "nodes"]
   verbs: ["list", "get", "watch"]
 - apiGroups: ["linkerd.io"]
   resources: ["serviceprofiles"]
@@ -26,6 +26,11 @@ rules:
 - apiGroups: ["split.smi-spec.io"]
   resources: ["trafficsplits"]
   verbs: ["list", "get", "watch"]
+  {{- if .Values.global.enableEndpointSlices }}
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["list", "get", "watch"]
+  {{- end }}
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -51,3 +56,4 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: destination
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- include "partials.image-pull-secrets" . }}

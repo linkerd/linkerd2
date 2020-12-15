@@ -7,11 +7,8 @@ args:
 - --proxy-uid
 - {{.Values.global.proxy.uid | quote}}
 - --inbound-ports-to-ignore
-- {{.Values.global.proxy.ports.control}},{{.Values.global.proxy.ports.admin}}{{ternary (printf ",%s" .Values.global.proxyInit.ignoreInboundPorts) "" (not (empty .Values.global.proxyInit.ignoreInboundPorts)) }}
-{{- if hasPrefix "linkerd-" .Values.global.proxy.component }}
-- --outbound-ports-to-ignore
-- {{ternary (printf "443,%s" .Values.global.proxyInit.ignoreOutboundPorts) (quote "443") (not (empty .Values.global.proxyInit.ignoreOutboundPorts)) }}
-{{- else if .Values.global.proxyInit.ignoreOutboundPorts }}
+- "{{.Values.global.proxy.ports.control}},{{.Values.global.proxy.ports.admin}}{{ternary (printf ",%s" .Values.global.proxyInit.ignoreInboundPorts) "" (not (empty .Values.global.proxyInit.ignoreInboundPorts)) }}"
+{{- if .Values.global.proxyInit.ignoreOutboundPorts }}
 - --outbound-ports-to-ignore
 - {{.Values.global.proxyInit.ignoreOutboundPorts | quote}}
 {{- end }}
@@ -50,10 +47,16 @@ securityContext:
   runAsNonRoot: false
   runAsUser: 0
 terminationMessagePolicy: FallbackToLogsOnError
-{{- if .Values.global.proxyInit.saMountPath }}
+{{- if or (not .Values.global.cniEnabled) .Values.global.proxyInit.saMountPath }}
 volumeMounts:
+{{- end -}}
+{{- if not .Values.global.cniEnabled }}
+- mountPath: {{.Values.global.proxyInit.xtMountPath.mountPath}}
+  name: {{.Values.global.proxyInit.xtMountPath.name}}
+{{- end -}}
+{{- if .Values.global.proxyInit.saMountPath }}
 - mountPath: {{.Values.global.proxyInit.saMountPath.mountPath}}
   name: {{.Values.global.proxyInit.saMountPath.name}}
   readOnly: {{.Values.global.proxyInit.saMountPath.readOnly}}
-{{- end -}}
+{{- end -}}  
 {{- end -}}

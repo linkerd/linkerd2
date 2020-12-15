@@ -2,52 +2,53 @@ import BaseTable from './BaseTable.jsx';
 import PropTypes from 'prop-types';
 import React from 'react';
 import SuccessRateMiniChart from './util/SuccessRateMiniChart.jsx';
+import { Trans } from '@lingui/macro';
 import { metricToFormatter } from './util/Utils.js';
 
 const routesColumns = [
   {
-    title: 'Route',
+    title: <Trans>columnTitleRoute</Trans>,
     dataIndex: 'route',
     filter: d => d.route,
     sorter: d => d.route,
   },
   {
-    title: 'Service',
+    title: <Trans>columnTitleService</Trans>,
     tooltip: 'hostname:port used when communicating with this target',
     dataIndex: 'authority',
     filter: d => d.authority,
     sorter: d => d.authority,
   },
   {
-    title: 'Success Rate',
+    title: <Trans>columnTitleSuccessRate</Trans>,
     dataIndex: 'successRate',
     isNumeric: true,
     render: d => <SuccessRateMiniChart sr={d.successRate} />,
     sorter: d => d.successRate,
   },
   {
-    title: 'RPS',
+    title: <Trans>columnTitleRPS</Trans>,
     dataIndex: 'requestRate',
     isNumeric: true,
     render: d => metricToFormatter.NO_UNIT(d.requestRate),
     sorter: d => d.requestRate,
   },
   {
-    title: 'P50 Latency',
+    title: <Trans>columnTitleP50Latency</Trans>,
     dataIndex: 'latency.P50',
     isNumeric: true,
     render: d => metricToFormatter.LATENCY(d.latency.P50),
     sorter: d => d.latency.P50,
   },
   {
-    title: 'P95 Latency',
+    title: <Trans>columnTitleP95Latency</Trans>,
     dataIndex: 'latency.P95',
     isNumeric: true,
     render: d => metricToFormatter.LATENCY(d.latency.P95),
     sorter: d => d.latency.P95,
   },
   {
-    title: 'P99 Latency',
+    title: <Trans>columnTitleP99Latency</Trans>,
     dataIndex: 'latency.P99',
     isNumeric: true,
     render: d => metricToFormatter.LATENCY(d.latency.P99),

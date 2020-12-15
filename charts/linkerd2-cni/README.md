@@ -1,5 +1,4 @@
-
-# Linkerd2-cni Helm Chart
+# linkerd2-cni
 
 Linkerd is a *service mesh*, designed to give platform-wide observability,
 reliability, and security without requiring configuration or code changes. The
@@ -7,26 +6,42 @@ Linkerd [CNI plugin](https://linkerd.io/2/features/cni/) takes care of setting
 up your pod's network so  incoming and outgoing traffic is proxied through the
 data plane.
 
-## Configuration
+![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square)
 
-The following table lists the configurable parameters of the Linkerd2-cni chart
-and their default values.
+![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
-| Parameter                            | Description                                                           | Default                       |
-|--------------------------------------|-----------------------------------------------------------------------|-------------------------------|
-|`cniPluginImage`                      | Docker image for the CNI plugin                                       |`gcr.io/linkerd-io/cni-plugin`|
-|`cniPluginVersion`                    | Tag for the CNI container Docker image                                |latest version|
-|`cniResourceAnnotation`               | CNI resource annotation. Do not edit                                  |`linkerd.io/cni-resource`
-|`controllerNamespaceLabel`            | Control plane label. Do not edit                                      |`linkerd.io/control-plane-ns`|
-|`createdByAnnotation`                 | Annotation label for the proxy create. Do not edit.                   |`linkerd.io/created-by`|
-|`destCNIBinDir`                       | Directory on the host where the CNI plugin binaries reside            |`/opt/cni/bin`|
-|`destCNINetDir`                       | Directory on the host where the CNI configuration will be placed      |`/etc/cni/net.d`|
-|`ignoreInboundPorts`                  | Inbound ports the proxy should ignore                                 ||
-|`ignoreOutboundPorts`                 | Outbound ports the proxy should ignore                                ||
-|`inboundProxyPort`                    | Inbound port for the proxy container                                  |`4143`|
-|`logLevel`                            | Log level for the CNI plugin                                          |`info`|
-|`namespace`                           | CNI plugin plane namespace                                            |`linkerd-cni`|
-|`outboundProxyPort`                   | Outbound port for the proxy container                                 |`4140`|
-|`portsToRedirect`                     | Ports to redirect to proxy                                            ||
-|`proxyUID`                            | User id under which the proxy shall be ran                            |`2102`|
-|`useWaitFlag`                         | Configures the CNI plugin to use the -w flag for the iptables command |`false`|
+## Requirements
+
+Kubernetes: `>=1.13.0-0`
+
+| Repository | Name | Version |
+|------------|------|---------|
+| file://../partials | partials | 0.1.0 |
+
+## Values
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| cniPluginImage | string | `"ghcr.io/linkerd/cni-plugin"` | Docker image for the CNI plugin |
+| cniPluginVersion | string | `"linkerdVersionValue"` | Tag for the CNI container Docker image |
+| cniResourceLabel | string | `"linkerd.io/cni-resource"` | CNI resource annotation. Do not edit |
+| createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy create. Do not edit.  |
+| destCNIBinDir | string | `"/opt/cni/bin"` | Directory on the host where the CNI configuration will be placed |
+| destCNINetDir | string | `"/etc/cni/net.d"` | Directory on the host where the CNI plugin binaries reside  |
+| ignoreInboundPorts | string | `"25,443,587,3306,11211"` | Inbound ports the proxy should ignore - SMTP (25,587) server-first - HTTPS (443) opaque TLS - MYSQL (3306) server-first - Memcached (11211) clients do not issue any preamble, which breaks detection |
+| ignoreOutboundPorts | string | `"25,443,587,3306,11211"` | Outbound ports the proxy should ignore |
+| imagePullSecrets | string | `nil` |  |
+| inboundProxyPort | int | `4143` | Inbound port for the proxy container |
+| installNamespace | bool | `true` | Whether to create the CNI plugin plane namespace or not  |
+| logLevel | string | `"info"` | Log level for the CNI plugin |
+| namespace | string | `"linkerd-cni"` | CNI plugin plane namespace |
+| outboundProxyPort | int | `4140` | Outbound port for the proxy container |
+| portsToRedirect | string | `""` | Ports to redirect to proxy  |
+| priorityClassName | string | `""` | Kubernetes priorityClassName for the CNI plugin's Pods |
+| proxyInjectAnnotation | string | `"linkerd.io/inject"` |  |
+| proxyInjectDisabled | string | `"disabled"` |  |
+| proxyUID | int | `2102` | User id under which the proxy shall be ran |
+| useWaitFlag | bool | `false` | Configures the CNI plugin to use the -w flag for the iptables command |
+
+----------------------------------------------
+Autogenerated from chart metadata using [helm-docs v1.4.0](https://github.com/norwoodj/helm-docs/releases/v1.4.0)

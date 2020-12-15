@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: vote-bot
+    app.kubernetes.io/part-of: emojivoto
+    app.kubernetes.io/version: v10
+  name: vote-bot
+  namespace: emojivoto
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vote-bot
+      version: v10
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+      labels:
+        app: vote-bot
+        version: v10
+    spec:
+      containers:
+      - command:
+        - emojivoto-vote-bot
+        env:
+        - name: WEB_HOST
+          value: web-svc-target.emojivoto:80
+        image: buoyantio/emojivoto-web:v10
+        name: vote-bot
+        resources:
+          requests:
+            cpu: 10m
+---

@@ -2,10 +2,12 @@
 
 ### Install PR ###
 #
-# This script takes a Github pull request number as an argument, downloads the
-# docker images from the pull request's artifacts, pushes them, and installs
-# them on your Kubernetes cluster.  Requires a Github personal access token
-# in the $GITHUB_TOKEN environment variable.
+# This script takes a GitHub pull request number as an argument and loads the
+# images into a local Kubernetes cluster. It then installs the CLI so that it
+# can be used to install with any specific configuration needed.
+#
+# It requires a GitHub personal access token in the $GITHUB_TOKEN environment
+# variable.
 
 set -eo pipefail
 
@@ -17,24 +19,30 @@ do
       echo "Install Linkerd with the changes made in a GitHub Pull Request."
       echo ""
       echo "Usage:"
-      echo "    --context: The name of the kubeconfig context to use"
+      echo "    --cluster: The name of the cluster to use"
       echo ""
       echo "    # Install Linkerd into the current cluster"
       echo "    bin/install-pr 1234"
       echo ""
-      echo "    # Install Linkerd into the current KinD cluster"
-      echo "    bin/install-pr [-k|--kind] 1234"
+      echo "    # Install Linkerd into the current k3d cluster"
+      echo "    bin/install-pr --k3d 1234"
       echo ""
-      echo "    # Install Linkerd into the 'kind-pr-1234' KinD cluster"
-      echo "    bin/install-pr [-k|--kind] --context kind-pr-1234 1234"
+      echo "    # Install Linkerd into the current KinD cluster"
+      echo "    bin/install-pr --kind 1234"
+      echo ""
+      echo "    # Install Linkerd into the 'pr-1234' k3d cluster"
+      echo "    bin/install-pr --k3d --cluster pr-1234 1234"
       exit 0
       ;;
-    --context)
-      context=$2
+    --cluster)
+      cluster=$2
       shift
       ;;
-    -k|--kind)
+    --kind)
       is_kind=1
+      ;;
+    --k3d)
+      is_k3d=1
       ;;
     -?*)
       echo "Error: Unknown option: $1" >&2
@@ -64,12 +72,12 @@ then
 fi
 
 linkerd2_pulls_url="https://api.github.com/repos/linkerd/linkerd2/pulls"
-linkerd2_kind_integration_url="https://api.github.com/repos/linkerd/linkerd2/actions/workflows/kind_integration.yml"
+linkerd2_integration_url="https://api.github.com/repos/linkerd/linkerd2/actions/workflows/integration_tests.yml"
 
 # Get the URL for downloading the artifacts archive
 auth="Authorization: token $GITHUB_TOKEN"
 branch=$(curl -sL -H "$auth" "$linkerd2_pulls_url/$pr" | jq -r '.head.ref')
-artifacts=$(curl -sL -H "$auth" "$linkerd2_kind_integration_url/runs?branch=$branch" | jq -r '.workflow_runs[0].artifacts_url')
+artifacts=$(curl -sL -H "$auth" "$linkerd2_integration_url/runs?branch=$branch" | jq -r '.workflow_runs[0].artifacts_url')
 archive=$(curl -sL -H "$auth" "$artifacts" | jq -r '.artifacts[0].archive_download_url')
 
 bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
@@ -87,15 +95,14 @@ echo "### Loading images into Docker ###"
 image=$(docker load -i image-archives/cli-bin.tar | sed 's/Loaded image: //')
 tag=$(echo "$image" | cut -f 2 -d ":")
 
-if [ $is_kind ]
+if [ $is_kind ] || [ $is_k3d ]
 then
-  # KinD context strings are created by prepending `kind-` to the cluster name
-  if [ "$context" ]
+  distro="k3d"
+  if [ $is_kind ]
   then
-    name=$(echo "$context" | sed -n -E "s/(kind)-(.*)/\2/p")
+    distro="kind"
   fi
-
-  "$bindir"/kind-load --images ${name:+'--name' "$name"}
+  "$bindir"/image-load --"$distro" --archive "$cluster"
 else
   for image in cni-plugin controller debug grafana proxy web
   do
@@ -122,21 +129,6 @@ esac
 
 linkerd=$("$bindir"/docker-pull-binaries "$tag" | awk -v platform=$platform '$0 ~ platform')
 
-echo "### Pre checks ###"
-
-(
-  set -x
-  "$linkerd" ${context:+'--context' "$context"} check --pre
-)
-
-echo "### Installing $tag ###"
-
-(
-  set -x
-  "$linkerd" ${context:+'--context' "$context"} install | kubectl ${context:+'--context' "$context"} apply -f -
-  "$linkerd" ${context:+'--context' "$context"} check
-)
-
 echo ""
-echo "Linkerd installed. CLI available:"
+echo "Linkerd CLI available:"
 echo "$linkerd"

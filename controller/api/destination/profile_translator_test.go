@@ -134,9 +134,7 @@ var (
 				IsFailure: true,
 			},
 		},
-		Timeout: &duration.Duration{
-			Seconds: 10,
-		},
+		Timeout: nil,
 	}
 
 	route2 = &sp.RouteSpec{
@@ -161,9 +159,7 @@ var (
 				IsFailure: true,
 			},
 		},
-		Timeout: &duration.Duration{
-			Seconds: 10,
-		},
+		Timeout: nil,
 	}
 
 	profile = &sp.ServiceProfile{
@@ -180,12 +176,12 @@ var (
 			pbRoute1,
 			pbRoute2,
 		},
-		RetryBudget: &defaultRetryBudget,
+		RetryBudget: defaultRetryBudget(),
 	}
 
 	defaultPbProfile = &pb.DestinationProfile{
 		Routes:      []*pb.Route{},
-		RetryBudget: &defaultRetryBudget,
+		RetryBudget: defaultRetryBudget(),
 	}
 
 	multipleRequestMatches = &sp.ServiceProfile{
@@ -233,12 +229,10 @@ var (
 					"route": "multipleRequestMatches",
 				},
 				ResponseClasses: []*pb.ResponseClass{},
-				Timeout: &duration.Duration{
-					Seconds: 10,
-				},
+				Timeout:         nil,
 			},
 		},
-		RetryBudget: &defaultRetryBudget,
+		RetryBudget: defaultRetryBudget(),
 	}
 
 	notEnoughRequestMatches = &sp.ServiceProfile{
@@ -325,12 +319,10 @@ var (
 						},
 					},
 				},
-				Timeout: &duration.Duration{
-					Seconds: 10,
-				},
+				Timeout: nil,
 			},
 		},
-		RetryBudget: &defaultRetryBudget,
+		RetryBudget: defaultRetryBudget(),
 	}
 
 	oneSidedStatusRange = &sp.ServiceProfile{
@@ -423,7 +415,7 @@ var (
 		Routes: []*pb.Route{
 			pbRouteWithTimeout,
 		},
-		RetryBudget: &defaultRetryBudget,
+		RetryBudget: defaultRetryBudget(),
 	}
 )
 

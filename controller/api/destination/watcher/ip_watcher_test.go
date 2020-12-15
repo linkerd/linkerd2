@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"fmt"
 	"testing"
 
 	"k8s.io/client-go/tools/cache"
@@ -430,7 +431,7 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
 			watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
 
 			k8sAPI.Sync(nil)
@@ -564,7 +565,7 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
 			watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
 
 			k8sAPI.Sync(nil)
@@ -603,7 +604,7 @@ status:
   phase: Running
   podIP: 172.17.0.12`
 
-	hostNetworkPodConifg := `
+	hostNetworkPodConfig := `
 apiVersion: v1
 kind: Pod
 metadata:
@@ -637,7 +638,7 @@ status:
 		},
 		{
 			description: "host network pod update",
-			k8sConfigs:  hostNetworkPodConifg,
+			k8sConfigs:  hostNetworkPodConfig,
 			host:        "172.17.0.12",
 			port:        12345,
 			objectToUpdate: &corev1.Pod{
@@ -655,7 +656,7 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
 			watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
 
 			k8sAPI.Sync(nil)
@@ -674,4 +675,64 @@ status:
 			}
 		})
 	}
+}
+
+func TestIpWatcherGetSvc(t *testing.T) {
+	name := "service"
+	namespace := "test"
+	clusterIP := "10.256.0.1"
+	var port uint32 = 1234
+	k8sConfigs := fmt.Sprintf(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  type: ClusterIP
+  clusterIP: %s
+  ports:
+  - port: %d`, name, namespace, clusterIP, port)
+
+	t.Run("get services IDs by IP address", func(t *testing.T) {
+		k8sAPI, err := k8s.NewFakeAPI(k8sConfigs)
+		if err != nil {
+			t.Fatalf("NewFakeAPI returned an error: %s", err)
+		}
+
+		endpoints := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+		watcher := NewIPWatcher(k8sAPI, endpoints, logging.WithField("test", t.Name()))
+
+		k8sAPI.Sync(nil)
+
+		listener := newBufferingEndpointListener()
+
+		err = watcher.Subscribe(clusterIP, port, listener)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		svc, err := watcher.GetSvcID(clusterIP)
+		if err != nil {
+			t.Fatalf("Error getting service: %s", err)
+		}
+		if svc == nil {
+			t.Fatalf("Expected to find service mapped to [%s]", clusterIP)
+		}
+		if svc.Name != name {
+			t.Fatalf("Expected service name to be [%s], but got [%s]", name, svc.Name)
+		}
+		if svc.Namespace != namespace {
+			t.Fatalf("Expected service namespace to be [%s], but got [%s]", namespace, svc.Namespace)
+		}
+
+		badClusterIP := "10.256.0.2"
+		svc, err = watcher.GetSvcID(badClusterIP)
+		if err != nil {
+			t.Fatalf("Error getting service: %s", err)
+		}
+		if svc != nil {
+			t.Fatalf("Expected not to find service mapped to [%s]", badClusterIP)
+		}
+	})
 }

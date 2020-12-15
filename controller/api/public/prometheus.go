@@ -2,6 +2,7 @@ package public
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -41,6 +42,11 @@ const (
 	remoteClusterNameLabel = model.LabelName("target_cluster_name")
 )
 
+var (
+	// ErrNoPrometheusInstance is returned when there is no prometheus instance configured
+	ErrNoPrometheusInstance = errors.New("No prometheus instance to connect")
+)
+
 func extractSampleValue(sample *model.Sample) uint64 {
 	value := uint64(0)
 	if !math.IsNaN(float64(sample.Value)) {
@@ -55,6 +61,10 @@ func (s *grpcServer) queryProm(ctx context.Context, query string) (model.Vector,
 	_, span := trace.StartSpan(ctx, "query.prometheus")
 	defer span.End()
 	span.AddAttributes(trace.StringAttribute("queryString", query))
+
+	if s.prometheusAPI == nil {
+		return nil, ErrNoPrometheusInstance
+	}
 
 	// single data point (aka summary) query
 	res, warn, err := s.prometheusAPI.Query(ctx, query, time.Time{})

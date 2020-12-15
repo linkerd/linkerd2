@@ -34,6 +34,7 @@ import (
 	batchv1informers "k8s.io/client-go/informers/batch/v1"
 	batchv1beta1informers "k8s.io/client-go/informers/batch/v1beta1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
+	discoveryinformers "k8s.io/client-go/informers/discovery/v1beta1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -61,6 +62,7 @@ const (
 	TS
 	Node
 	Secret
+	ES // EndpointSlice resource
 )
 
 // API provides shared informers for all Kubernetes objects
@@ -72,6 +74,7 @@ type API struct {
 	deploy   appv1informers.DeploymentInformer
 	ds       appv1informers.DaemonSetInformer
 	endpoint coreinformers.EndpointsInformer
+	es       discoveryinformers.EndpointSliceInformer
 	job      batchv1informers.JobInformer
 	mwc      arinformers.MutatingWebhookConfigurationInformer
 	ns       coreinformers.NamespaceInformer
@@ -92,7 +95,7 @@ type API struct {
 }
 
 // InitializeAPI creates Kubernetes clients and returns an initialized API wrapper.
-func InitializeAPI(kubeConfig string, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
+func InitializeAPI(ctx context.Context, kubeConfig string, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
 	config, err := k8s.GetConfig(kubeConfig, "")
 	if err != nil {
 		return nil, fmt.Errorf("error configuring Kubernetes API client: %v", err)
@@ -103,25 +106,25 @@ func InitializeAPI(kubeConfig string, ensureClusterWideAccess bool, resources ..
 		return nil, err
 	}
 
-	return initAPI(k8sClient, config, ensureClusterWideAccess, resources...)
+	return initAPI(ctx, k8sClient, config, ensureClusterWideAccess, resources...)
 }
 
 // InitializeAPIForConfig creates Kubernetes clients and returns an initialized API wrapper.
-func InitializeAPIForConfig(kubeConfig *rest.Config, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
+func InitializeAPIForConfig(ctx context.Context, kubeConfig *rest.Config, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
 	k8sClient, err := k8s.NewAPIForConfig(kubeConfig, "", []string{}, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	return initAPI(k8sClient, kubeConfig, ensureClusterWideAccess, resources...)
+	return initAPI(ctx, k8sClient, kubeConfig, ensureClusterWideAccess, resources...)
 }
 
-func initAPI(k8sClient *k8s.KubernetesAPI, kubeConfig *rest.Config, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
+func initAPI(ctx context.Context, k8sClient *k8s.KubernetesAPI, kubeConfig *rest.Config, ensureClusterWideAccess bool, resources ...APIResource) (*API, error) {
 	// check for cluster-wide access
 	var err error
 
 	if ensureClusterWideAccess {
-		err := k8s.ClusterAccess(k8sClient)
+		err := k8s.ClusterAccess(ctx, k8sClient)
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +134,7 @@ func initAPI(k8sClient *k8s.KubernetesAPI, kubeConfig *rest.Config, ensureCluste
 	var spClient *spclient.Clientset
 	for _, res := range resources {
 		if res == SP {
-			err := k8s.ServiceProfilesAccess(k8sClient)
+			err := k8s.ServiceProfilesAccess(ctx, k8sClient)
 			if err != nil {
 				return nil, err
 			}
@@ -204,6 +207,9 @@ func NewAPI(
 		case Endpoint:
 			api.endpoint = sharedInformers.Core().V1().Endpoints()
 			api.syncChecks = append(api.syncChecks, api.endpoint.Informer().HasSynced)
+		case ES:
+			api.es = sharedInformers.Discovery().V1beta1().EndpointSlices()
+			api.syncChecks = append(api.syncChecks, api.es.Informer().HasSynced)
 		case Job:
 			api.job = sharedInformers.Batch().V1().Jobs()
 			api.syncChecks = append(api.syncChecks, api.job.Informer().HasSynced)
@@ -334,6 +340,14 @@ func (api *API) Endpoint() coreinformers.EndpointsInformer {
 	return api.endpoint
 }
 
+// ES provides access to a shared informer and lister for EndpointSlices
+func (api *API) ES() discoveryinformers.EndpointSliceInformer {
+	if api.es == nil {
+		panic("EndpointSlices informer not configured")
+	}
+	return api.es
+}
+
 // CM provides access to a shared informer and lister for ConfigMaps.
 func (api *API) CM() coreinformers.ConfigMapInformer {
 	if api.cm == nil {
@@ -440,7 +454,7 @@ func (api *API) GetObjects(namespace, restype, name string, label labels.Selecto
 // singular resource type (e.g. deployment, daemonset, job, etc.).
 // If retry is true, when the shared informer cache doesn't return anything
 // we try again with a direct Kubernetes API call.
-func (api *API) GetOwnerKindAndName(pod *corev1.Pod, retry bool) (string, string) {
+func (api *API) GetOwnerKindAndName(ctx context.Context, pod *corev1.Pod, retry bool) (string, string) {
 	ownerRefs := pod.GetOwnerReferences()
 	if len(ownerRefs) == 0 {
 		// pod without a parent
@@ -459,7 +473,7 @@ func (api *API) GetOwnerKindAndName(pod *corev1.Pod, retry bool) (string, string
 		if err != nil {
 			log.Warnf("failed to retrieve job from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
 			if retry {
-				parentObj, err = api.Client.BatchV1().Jobs(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
+				parentObj, err = api.Client.BatchV1().Jobs(pod.Namespace).Get(ctx, parent.Name, metav1.GetOptions{})
 				if err != nil {
 					log.Warnf("failed to retrieve job from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
 				}
@@ -470,7 +484,7 @@ func (api *API) GetOwnerKindAndName(pod *corev1.Pod, retry bool) (string, string
 		if err != nil {
 			log.Warnf("failed to retrieve replicaset from indexer %s/%s: %s", pod.Namespace, parent.Name, err)
 			if retry {
-				parentObj, err = api.Client.AppsV1().ReplicaSets(pod.Namespace).Get(parent.Name, metav1.GetOptions{})
+				parentObj, err = api.Client.AppsV1().ReplicaSets(pod.Namespace).Get(ctx, parent.Name, metav1.GetOptions{})
 				if err != nil {
 					log.Warnf("failed to retrieve replicaset from direct API call %s/%s: %s", pod.Namespace, parent.Name, err)
 				}

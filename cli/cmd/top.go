@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"sort"
@@ -355,7 +356,7 @@ func newCmdTop() *cobra.Command {
 				return err
 			}
 
-			return getTrafficByResourceFromAPI(k8sAPI, req, table)
+			return getTrafficByResourceFromAPI(cmd.Context(), k8sAPI, req, table)
 		},
 	}
 
@@ -382,8 +383,8 @@ func newCmdTop() *cobra.Command {
 	return cmd
 }
 
-func getTrafficByResourceFromAPI(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, table *topTable) error {
-	reader, body, err := tap.Reader(k8sAPI, req, 0)
+func getTrafficByResourceFromAPI(ctx context.Context, k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourceRequest, table *topTable) error {
+	reader, body, err := tap.Reader(ctx, k8sAPI, req)
 	if err != nil {
 		return err
 	}
@@ -402,7 +403,7 @@ func getTrafficByResourceFromAPI(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourc
 	//       processEvents() ->
 	//         requestCh ->
 	//           renderTable()
-	eventCh := make(chan pb.TapEvent)
+	eventCh := make(chan *pb.TapEvent)
 	requestCh := make(chan topRequest, 100)
 
 	// for closing:
@@ -427,14 +428,14 @@ func getTrafficByResourceFromAPI(k8sAPI *k8s.KubernetesAPI, req *pb.TapByResourc
 	return nil
 }
 
-func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- pb.TapEvent, closing chan<- struct{}) {
+func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- *pb.TapEvent, closing chan<- struct{}) {
 	for {
-		event := pb.TapEvent{}
-		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, &event)
+		event := &pb.TapEvent{}
+		err := protohttp.FromByteStreamToProtocolBuffers(tapByteStream, event)
 		if err != nil {
 			if err == io.EOF {
 				fmt.Println("Tap stream terminated")
-			} else if !strings.HasSuffix(err.Error(), "http2: response body closed") {
+			} else if !strings.HasSuffix(err.Error(), tap.ErrClosedResponseBody) {
 				fmt.Println(err.Error())
 			}
 
@@ -446,7 +447,7 @@ func recvEvents(tapByteStream *bufio.Reader, eventCh chan<- pb.TapEvent, closing
 	}
 }
 
-func processEvents(eventCh <-chan pb.TapEvent, requestCh chan<- topRequest, done <-chan struct{}) {
+func processEvents(eventCh <-chan *pb.TapEvent, requestCh chan<- topRequest, done <-chan struct{}) {
 	outstandingRequests := make(map[topRequestID]topRequest)
 
 	for {
@@ -462,7 +463,7 @@ func processEvents(eventCh <-chan pb.TapEvent, requestCh chan<- topRequest, done
 			case *pb.TapEvent_Http_RequestInit_:
 				id.stream = ev.RequestInit.GetId().Stream
 				outstandingRequests[id] = topRequest{
-					event:   &event,
+					event:   event,
 					reqInit: ev.RequestInit,
 				}
 

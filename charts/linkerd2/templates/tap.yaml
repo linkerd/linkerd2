@@ -25,8 +25,9 @@ spec:
     port: 443
     targetPort: apiserver
 ---
-{{ $_ := set .Values.global.proxy "workloadKind" "deployment" -}}
-{{ $_ := set .Values.global.proxy "component" "linkerd-tap" -}}
+{{- $tree := deepCopy . }}
+{{ $_ := set $tree.Values.global.proxy "workloadKind" "deployment" -}}
+{{ $_ := set $tree.Values.global.proxy "component" "linkerd-tap" -}}
 {{ include "linkerd.proxy.validation" .Values.global.proxy -}}
 kind: Deployment
 apiVersion: apps/v1
@@ -47,7 +48,7 @@ spec:
     matchLabels:
       {{.Values.global.controllerComponentLabel}}: tap
       {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-      {{- include "partials.proxy.labels" .Values.global.proxy | nindent 6}}
+      {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 6}}
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
     rollingUpdate:
@@ -56,17 +57,22 @@ spec:
   template:
     metadata:
       annotations:
-        {{- if empty .Values.global.cliVersion }}
-        linkerd.io/helm-release-version: {{ $.Release.Revision | quote}}
+        {{- if (or (empty .Values.global.cliVersion) (not (eq (.Values.stage | toString) "control-plane"))) }}
+        checksum/config: {{ include (print $.Template.BasePath "/tap-rbac.yaml") . | sha256sum }}
         {{- end }}
         {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
         {{- include "partials.proxy.annotations" .Values.global.proxy| nindent 8}}
+        {{- with .Values.global.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
         {{.Values.global.controllerComponentLabel}}: tap
         {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
         {{.Values.global.workloadNamespaceLabel}}: {{.Values.global.namespace}}
-        {{- include "partials.proxy.labels" .Values.global.proxy | nindent 8}}
+        {{- include "partials.proxy.labels" $tree.Values.global.proxy | nindent 8}}
+        {{- with .Values.global.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
+      {{- if .Values.tolerations -}}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end -}}
       {{- include "linkerd.node-selector" . | nindent 6 }}
       {{- if .Values.enablePodAntiAffinity -}}
       {{- $local := dict "component" "tap" "label" .Values.global.controllerComponentLabel -}}
@@ -76,7 +82,8 @@ spec:
       - args:
         - tap
         - -controller-namespace={{.Values.global.namespace}}
-        - -log-level={{.Values.controllerLogLevel}}
+        - -log-level={{.Values.global.controllerLogLevel}}
+        - -identity-trust-domain={{.Values.global.identityTrustDomain }}
         {{- include "partials.linkerd.trace" . | nindent 8 -}}
         image: {{.Values.controllerImage}}:{{default .Values.global.linkerdVersion .Values.global.controllerImageVersion}}
         imagePullPolicy: {{.Values.global.imagePullPolicy}}
@@ -107,9 +114,6 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
-        - mountPath: /var/run/linkerd/config
-          name: config
-      {{- $tree := deepCopy . }}      
       {{- if not (empty .Values.tapProxyResources) }}
       {{- $r := merge .Values.tapProxyResources .Values.global.proxy.resources }}
       {{- $_ := set $tree.Values.global.proxy "resources" $r }}
@@ -121,13 +125,11 @@ spec:
       {{ end -}}
       serviceAccountName: linkerd-tap
       volumes:
-      - configMap:
-          name: linkerd-config
-        name: config
-      {{ if .Values.global.controlPlaneTracing -}}
-      - {{- include "partials.proxy.volumes.labels" . | indent 8 | trimPrefix (repeat 7 " ") }}
+      {{ if not .Values.global.cniEnabled -}}
+      - {{- include "partials.proxyInit.volumes.xtables" . | indent 8 | trimPrefix (repeat 7 " ") }}
       {{ end -}}
       - {{- include "partials.proxy.volumes.identity" . | indent 8 | trimPrefix (repeat 7 " ") }}
       - name: tls
         secret:
-          secretName: linkerd-tap-tls
+          secretName: linkerd-tap-k8s-tls
+

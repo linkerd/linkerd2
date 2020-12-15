@@ -1,0 +1,193 @@
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: emoji
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: voting
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: web
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: emoji
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: emoji-svc
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: emoji-svc
+    spec:
+      serviceAccountName: emoji
+      containers:
+      - env:
+        - name: GRPC_PORT
+          value: "8080"
+        - name: OC_AGENT_HOST
+          value: "collector.___TRACING_NS___:55678"
+        image: buoyantio/emojivoto-emoji-svc:v8-tracing
+        name: emoji-svc
+        ports:
+        - containerPort: 8080
+          name: grpc
+        resources:
+          requests:
+            cpu: 100m
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: emoji-svc
+spec:
+  selector:
+    app: emoji-svc
+  clusterIP: None
+  ports:
+  - name: grpc
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: voting
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: voting-svc
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: voting-svc
+    spec:
+      serviceAccountName: voting
+      containers:
+      - env:
+        - name: GRPC_PORT
+          value: "8080"
+        - name: OC_AGENT_HOST
+          value: "collector.___TRACING_NS___:55678"
+        image: buoyantio/emojivoto-voting-svc:v8-tracing
+        name: voting-svc
+        ports:
+        - containerPort: 8080
+          name: grpc
+        resources:
+          requests:
+            cpu: 100m
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: voting-svc
+spec:
+  selector:
+    app: voting-svc
+  clusterIP: None
+  ports:
+  - name: grpc
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-svc
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: web-svc
+    spec:
+      serviceAccountName: web
+      containers:
+      - env:
+        - name: WEB_PORT
+          value: "80"
+        - name: OC_AGENT_HOST
+          value: "collector.___TRACING_NS___:55678"
+        - name: EMOJISVC_HOST
+          value: emoji-svc:8080
+        - name: VOTINGSVC_HOST
+          value: voting-svc:8080
+        - name: INDEX_BUNDLE
+          value: dist/index_bundle.js
+        image: buoyantio/emojivoto-web:v8-tracing
+        name: web-svc
+        ports:
+        - containerPort: 80
+          name: http
+        resources:
+          requests:
+            cpu: 100m
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-svc
+spec:
+  type: LoadBalancer
+  selector:
+    app: web-svc
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  name: vote-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vote-bot
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: vote-bot
+    spec:
+      containers:
+      - command:
+        - emojivoto-vote-bot
+        env:
+        - name: WEB_HOST
+          value: nginx-ingress:80
+        image: buoyantio/emojivoto-web:v10
+        name: vote-bot
+        resources:
+          requests:
+            cpu: 10m
+status: {}
+---

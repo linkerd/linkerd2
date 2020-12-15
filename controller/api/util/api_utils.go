@@ -116,6 +116,14 @@ type TapRequestParams struct {
 	LabelSelector string
 }
 
+// GatewayRequestParams contains parameters that are used to build a
+// GatewayRequest
+type GatewayRequestParams struct {
+	RemoteClusterName string
+	GatewayNamespace  string
+	TimeWindow        string
+}
+
 // GRPCError generates a gRPC error code, as defined in
 // google.golang.org/grpc/status.
 // If the error is nil or already a gRPC error, return the error.
@@ -248,9 +256,12 @@ func BuildStatSummaryRequest(p StatsSummaryRequestParams) (*pb.StatSummaryReques
 // EdgesRequestParams.
 func BuildEdgesRequest(p EdgesRequestParams) (*pb.EdgesRequest, error) {
 	namespace := p.Namespace
-	if namespace == "" && !p.AllNamespaces {
-		namespace = corev1.NamespaceDefault
+
+	// If all namespaces was specified, ignore namespace value.
+	if p.AllNamespaces {
+		namespace = ""
 	}
+
 	resourceType, err := k8s.CanonicalResourceNameFromFriendlyName(p.ResourceType)
 	if err != nil {
 		return nil, err
@@ -353,10 +364,10 @@ func validateFromResourceType(resourceType string) (string, error) {
 // BuildResource parses input strings, typically from CLI flags, to build a
 // Resource object for use in the protobuf API.
 // It's the same as BuildResources but only admits one arg and only returns one resource
-func BuildResource(namespace, arg string) (pb.Resource, error) {
+func BuildResource(namespace, arg string) (*pb.Resource, error) {
 	res, err := BuildResources(namespace, []string{arg})
 	if err != nil {
-		return pb.Resource{}, err
+		return &pb.Resource{}, err
 	}
 
 	return res[0], err
@@ -365,7 +376,7 @@ func BuildResource(namespace, arg string) (pb.Resource, error) {
 // BuildResources parses input strings, typically from CLI flags, to build a
 // slice of Resource objects for use in the protobuf API.
 // It's the same as BuildResource but it admits any number of args and returns multiple resources
-func BuildResources(namespace string, args []string) ([]pb.Resource, error) {
+func BuildResources(namespace string, args []string) ([]*pb.Resource, error) {
 	switch len(args) {
 	case 0:
 		return nil, errors.New("No resource arguments provided")
@@ -381,11 +392,11 @@ func BuildResources(namespace string, args []string) ([]pb.Resource, error) {
 	}
 }
 
-func parseResources(namespace string, resType string, args []string) ([]pb.Resource, error) {
+func parseResources(namespace string, resType string, args []string) ([]*pb.Resource, error) {
 	if err := validateResources(args); err != nil {
 		return nil, err
 	}
-	resources := make([]pb.Resource, 0)
+	resources := make([]*pb.Resource, 0)
 	for _, arg := range args {
 		res, err := parseResource(namespace, resType, arg)
 		if err != nil {
@@ -414,7 +425,7 @@ func validateResources(args []string) error {
 	return nil
 }
 
-func parseResource(namespace, resType string, arg string) (pb.Resource, error) {
+func parseResource(namespace, resType string, arg string) (*pb.Resource, error) {
 	if resType != "" {
 		return buildResource(namespace, resType, arg)
 	}
@@ -427,21 +438,21 @@ func parseResource(namespace, resType string, arg string) (pb.Resource, error) {
 		// --namespace my-ns deploy/foo
 		return buildResource(namespace, elems[0], elems[1])
 	default:
-		return pb.Resource{}, errors.New("Invalid resource string: " + arg)
+		return &pb.Resource{}, errors.New("Invalid resource string: " + arg)
 	}
 }
 
-func buildResource(namespace string, resType string, name string) (pb.Resource, error) {
+func buildResource(namespace string, resType string, name string) (*pb.Resource, error) {
 	canonicalType, err := k8s.CanonicalResourceNameFromFriendlyName(resType)
 	if err != nil {
-		return pb.Resource{}, err
+		return &pb.Resource{}, err
 	}
 	if canonicalType == k8s.Namespace {
 		// ignore --namespace flags if type is namespace
 		namespace = ""
 	}
 
-	return pb.Resource{
+	return &pb.Resource{
 		Namespace: namespace,
 		Type:      canonicalType,
 		Name:      name,
@@ -473,7 +484,7 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 		match := pb.TapByResourceRequest_Match{
 			Match: &pb.TapByResourceRequest_Match_Destinations{
 				Destinations: &pb.ResourceSelection{
-					Resource: &destination,
+					Resource: destination,
 				},
 			},
 		}
@@ -516,7 +527,7 @@ func BuildTapByResourceRequest(params TapRequestParams) (*pb.TapByResourceReques
 
 	return &pb.TapByResourceRequest{
 		Target: &pb.ResourceSelection{
-			Resource:      &target,
+			Resource:      target,
 			LabelSelector: params.LabelSelector,
 		},
 		MaxRps: params.MaxRps,
@@ -557,8 +568,8 @@ func contains(list []string, s string) bool {
 }
 
 // CreateTapEvent generates tap events for use in tests
-func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, proxyDirection pb.TapEvent_ProxyDirection) pb.TapEvent {
-	event := pb.TapEvent{
+func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, proxyDirection pb.TapEvent_ProxyDirection) *pb.TapEvent {
+	event := &pb.TapEvent{
 		ProxyDirection: proxyDirection,
 		Source: &pb.TcpAddress{
 			Ip: &pb.IPAddress{
@@ -589,11 +600,16 @@ func CreateTapEvent(eventHTTP *pb.TapEvent_Http, dstMeta map[string]string, prox
 }
 
 // K8sPodToPublicPod converts a Kubernetes Pod to a Public API Pod
-func K8sPodToPublicPod(pod corev1.Pod, ownerKind string, ownerName string) pb.Pod {
+func K8sPodToPublicPod(pod corev1.Pod, ownerKind string, ownerName string) *pb.Pod {
 	status := string(pod.Status.Phase)
 	if pod.DeletionTimestamp != nil {
 		status = "Terminating"
 	}
+
+	if pod.Status.Reason == "Evicted" {
+		status = "Evicted"
+	}
+
 	controllerComponent := pod.Labels[k8s.ControllerComponentLabel]
 	controllerNS := pod.Labels[k8s.ControllerNSLabel]
 
@@ -612,7 +628,7 @@ func K8sPodToPublicPod(pod corev1.Pod, ownerKind string, ownerName string) pb.Po
 		}
 	}
 
-	item := pb.Pod{
+	item := &pb.Pod{
 		Name:                pod.Namespace + "/" + pod.Name,
 		Status:              status,
 		PodIP:               pod.Status.PodIP,

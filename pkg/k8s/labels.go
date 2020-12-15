@@ -103,6 +103,10 @@ const (
 	// enable injection for a pod or namespace.
 	ProxyInjectEnabled = "enabled"
 
+	// ProxyInjectIngress is assigned to the ProxyInjectAnnotation annotation to
+	// enable injection in ingress mode for a pod.
+	ProxyInjectIngress = "ingress"
+
 	// ProxyInjectDisabled is assigned to the ProxyInjectAnnotation annotation to
 	// disable injection for a pod or namespace.
 	ProxyInjectDisabled = "disabled"
@@ -132,7 +136,7 @@ const (
 	// config.
 	ProxyInitImageAnnotation = ProxyConfigAnnotationsPrefix + "/init-image"
 
-	// ProxyInitImageVersionAnnotation can be used to overrided the proxy-init image version
+	// ProxyInitImageVersionAnnotation can be used to override the proxy-init image version
 	ProxyInitImageVersionAnnotation = ProxyConfigAnnotationsPrefix + "/init-image-version"
 
 	// DebugImageAnnotation can be used to override the debugImage config.
@@ -150,6 +154,10 @@ const (
 	// ProxyIgnoreInboundPortsAnnotation can be used to override the
 	// ignoreInboundPorts config.
 	ProxyIgnoreInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/skip-inbound-ports"
+
+	// ProxyOpaquePortsAnnotation can be used to override the opaquePorts
+	// config.
+	ProxyOpaquePortsAnnotation = ProxyConfigAnnotationsPrefix + "/opaque-ports"
 
 	// ProxyIgnoreOutboundPortsAnnotation can be used to override the
 	// ignoreOutboundPorts config.
@@ -184,6 +192,9 @@ const (
 	// ProxyLogLevelAnnotation can be used to override the log level config.
 	ProxyLogLevelAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-level"
 
+	// ProxyLogFormatAnnotation can be used to override the log format config.
+	ProxyLogFormatAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-log-format"
+
 	// ProxyEnableExternalProfilesAnnotation can be used to override the
 	// disableExternalProfilesAnnotation config.
 	ProxyEnableExternalProfilesAnnotation = ProxyConfigAnnotationsPrefix + "/enable-external-profiles"
@@ -195,9 +206,13 @@ const (
 	// to always require identity on inbound ports
 	ProxyRequireIdentityOnInboundPortsAnnotation = ProxyConfigAnnotationsPrefix + "/proxy-require-identity-inbound-ports"
 
-	// ProxyDestinationGetNetworks can be used to configure the proxy to do
-	// destination lookups on IP addresses from the specified network ranges
-	ProxyDestinationGetNetworks = ProxyConfigAnnotationsPrefix + "/proxy-destination-get-networks"
+	// ProxyOutboundConnectTimeout can be used to configure the outbound TCP connection
+	// timeout in the proxy
+	ProxyOutboundConnectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-outbound-connect-timeout"
+
+	// ProxyInboundConnectTimeout can be used to configure the inbound TCP connection
+	// timeout in the proxy
+	ProxyInboundConnectTimeout = ProxyConfigAnnotationsPrefix + "/proxy-inbound-connect-timeout"
 
 	// ProxyEnableGatewayAnnotation can be used to configure the proxy
 	// to operate as a gateway, routing requests that target the inbound router.
@@ -216,20 +231,10 @@ const (
 	// CloseWaitTimeoutAnnotation configures nf_conntrack_tcp_timeout_close_wait.
 	CloseWaitTimeoutAnnotation = ProxyConfigAnnotationsPrefix + "/close-wait-timeout"
 
-	// ProxyTraceCollectorSvcAddrAnnotation can be used to enable tracing on a proxy.
-	// It takes the collector service name (e.g. oc-collector.tracing:55678) as
-	// its value.
-	ProxyTraceCollectorSvcAddrAnnotation = ProxyConfigAnnotationsPrefix + "/trace-collector"
-
 	// ProxyWaitBeforeExitSecondsAnnotation makes the proxy container to wait for the given period before exiting
 	// after the Pod entered the Terminating state. Must be smaller than terminationGracePeriodSeconds
 	// configured for the Pod
 	ProxyWaitBeforeExitSecondsAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/proxy-wait-before-exit-seconds"
-
-	// ProxyTraceCollectorSvcAccountAnnotation is used to specify the service account
-	// associated with the trace collector. It is used to create the service's
-	// mTLS identity.
-	ProxyTraceCollectorSvcAccountAnnotation = ProxyConfigAnnotationsPrefixAlpha + "/trace-collector-service-account"
 
 	// IdentityModeDefault is assigned to IdentityModeAnnotation to
 	// use the control plane's default identity scheme.
@@ -253,10 +258,14 @@ const (
 	DebugSidecarName = "linkerd-debug"
 
 	// DebugSidecarImage is the image name of the default linkerd debug container
-	DebugSidecarImage = "gcr.io/linkerd-io/debug"
+	DebugSidecarImage = "ghcr.io/linkerd/debug"
 
 	// InitContainerName is the name assigned to the injected init container.
 	InitContainerName = "linkerd-init"
+
+	// InitXtablesLockVolumeMountName is the name of the volumeMount used by proxy-init
+	// to handle iptables-legacy
+	InitXtablesLockVolumeMountName = "linkerd-proxy-init-xtables-lock"
 
 	// ProxyContainerName is the name assigned to the injected proxy container.
 	ProxyContainerName = "linkerd-proxy"
@@ -264,10 +273,6 @@ const (
 	// IdentityEndEntityVolumeName is the name assigned the temporary end-entity
 	// volume mounted into each proxy to store identity credentials.
 	IdentityEndEntityVolumeName = "linkerd-identity-end-entity"
-
-	// PodInfoVolumeName is the name assigned to the
-	// volume mounted into each proxy to store pod labels.
-	PodInfoVolumeName = "podinfo"
 
 	// IdentityIssuerSecretName is the name of the Secret that stores issuer credentials.
 	IdentityIssuerSecretName = "linkerd-identity-issuer"
@@ -308,12 +313,6 @@ const (
 	// TapAPIRegistrationServiceName is the name of the tap APIService registration resource
 	TapAPIRegistrationServiceName = "v1alpha1.tap.linkerd.io"
 
-	// SmiMetricsServiceName is the name of the SMI metrics APIService
-	SmiMetricsServiceName = "linkerd-smi-metrics"
-
-	// SmiMetricsAPIRegistrationServiceName is the name of the SMI metrics APIService registration resource
-	SmiMetricsAPIRegistrationServiceName = "v1alpha1.metrics.smi-spec.io"
-
 	// AdmissionWebhookLabel indicates whether admission webhooks are enabled for a namespace
 	AdmissionWebhookLabel = ProxyConfigAnnotationsPrefix + "/admission-webhooks"
 
@@ -324,7 +323,7 @@ const (
 	// MountPathBase is the base directory of the mount path.
 	MountPathBase = "/var/run/linkerd"
 
-	// MountPathServiceAccount is the default path where Kuberenetes stores
+	// MountPathServiceAccount is the default path where Kubernetes stores
 	// the service account token
 	MountPathServiceAccount = "/var/run/secrets/kubernetes.io/serviceaccount"
 
@@ -337,15 +336,25 @@ const (
 	// MountPathInstallConfig is the path at which the install config file is mounted.
 	MountPathInstallConfig = MountPathBase + "/config/install"
 
+	// MountPathValuesConfig is the path at which the values config file is mounted.
+	MountPathValuesConfig = MountPathBase + "/config/values"
+
 	// MountPathEndEntity is the path at which a tmpfs directory is mounted to
 	// store identity credentials.
 	MountPathEndEntity = MountPathBase + "/identity/end-entity"
 
+	// MountPathTLSBase is the path at which the TLS cert and key PEM files are mounted
+	MountPathTLSBase = MountPathBase + "/tls"
+
 	// MountPathTLSKeyPEM is the path at which the TLS key PEM file is mounted.
-	MountPathTLSKeyPEM = MountPathBase + "/tls/key.pem"
+	MountPathTLSKeyPEM = MountPathTLSBase + "/tls.key"
 
 	// MountPathTLSCrtPEM is the path at which the TLS cert PEM file is mounted.
-	MountPathTLSCrtPEM = MountPathBase + "/tls/crt.pem"
+	MountPathTLSCrtPEM = MountPathTLSBase + "/tls.crt"
+
+	// MountPathXtablesLock is the path at which the proxy init container mounts xtables
+	// This is necessary for xtables-legacy support
+	MountPathXtablesLock = "/run"
 
 	// IdentityServiceAccountTokenPath is the path to the kubernetes service
 	// account token used by proxies to provision identity.
@@ -365,21 +374,9 @@ const (
 	// the access information for remote clusters.
 	MirrorSecretType = SvcMirrorPrefix + "/remote-kubeconfig"
 
-	// GatewayNameAnnotation is the annotation that is present on the remote
-	// service, indicating which gateway is supposed to route traffic to it
-	GatewayNameAnnotation = SvcMirrorPrefix + "/gateway-name"
-
-	// RemoteGatewayNameLabel is same as GatewayNameAnnotation but on the local,
-	// mirrored service. It's used for quick querying when we want to figure out
-	// the services that are being associated with a certain gateway
-	RemoteGatewayNameLabel = SvcMirrorPrefix + "/remote-gateway-name"
-
-	// GatewayNsAnnotation is present on the remote service, indicating the ns
-	// in which we can find the gateway
-	GatewayNsAnnotation = SvcMirrorPrefix + "/gateway-ns"
-
-	// RemoteGatewayNsLabel follows the same kind of logic as RemoteGatewayNameLabel
-	RemoteGatewayNsLabel = SvcMirrorPrefix + "/remote-gateway-ns"
+	// DefaultExportedServiceSelector is the default label selector for exported
+	// services.
+	DefaultExportedServiceSelector = SvcMirrorPrefix + "/exported"
 
 	// MirroredResourceLabel indicates that this resource is the result
 	// of a mirroring operation (can be a namespace or a service)
@@ -388,34 +385,9 @@ const (
 	// MirroredGatewayLabel indicates that this is a mirrored gateway
 	MirroredGatewayLabel = SvcMirrorPrefix + "/mirrored-gateway"
 
-	// MirroredGatewayProbePeriod specifies the probe period for the gateway mirror
-	MirroredGatewayProbePeriod = SvcMirrorPrefix + "/mirrored-gateway-probe-period"
-
-	// MirroredGatewayProbePath specifies the probe path for the gateway mirror
-	MirroredGatewayProbePath = SvcMirrorPrefix + "/mirrored-gateway-probe-path"
-
-	// MirroredGatewayRemoteName specifies the name of the remote gateway that has been mirrored
-	MirroredGatewayRemoteName = SvcMirrorPrefix + "/mirrored-gateway-remote-name"
-
-	// MirroredGatewayRemoteNameSpace specifies the namespace of the remote gateway that has been mirrored
-	MirroredGatewayRemoteNameSpace = SvcMirrorPrefix + "/mirrored-gateway-remote-namespace"
-
-	// MulticlusterGatewayAnnotation indicates that this service is a
-	// gateway
-	MulticlusterGatewayAnnotation = SvcMirrorPrefix + "/multicluster-gateway"
-
 	// RemoteClusterNameLabel put on a local mirrored service, it
 	// allows us to associate a mirrored service with a remote cluster
 	RemoteClusterNameLabel = SvcMirrorPrefix + "/cluster-name"
-
-	// RemoteClusterDomainAnnotation is present on the secret
-	// carrying the config of the remote cluster, to allow for
-	// using custom cluster domains
-	RemoteClusterDomainAnnotation = SvcMirrorPrefix + "/remote-cluster-domain"
-
-	// RemoteClusterLinkerdNamespaceAnnotation is present on the secret
-	// carrying the config of the remote cluster
-	RemoteClusterLinkerdNamespaceAnnotation = SvcMirrorPrefix + "/remote-cluster-l5d-ns"
 
 	// RemoteResourceVersionAnnotation is the last observed remote resource
 	// version of a mirrored resource. Useful when doing updates

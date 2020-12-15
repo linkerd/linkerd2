@@ -261,10 +261,10 @@ BaseTable.propTypes = {
     isNumeric: PropTypes.bool,
     render: PropTypes.func,
     sorter: PropTypes.func,
-    title: PropTypes.string,
+    title: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
   })).isRequired,
   tableRows: PropTypes.arrayOf(PropTypes.shape({})),
-  title: PropTypes.string,
+  title: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
 };
 
 BaseTable.defaultProps = {

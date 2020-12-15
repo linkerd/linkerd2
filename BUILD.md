@@ -14,12 +14,13 @@ about testing from source can be found in the [TEST.md](TEST.md) guide.
 - [Components](#components)
 - [Development configurations](#development-configurations)
   - [Comprehensive](#comprehensive)
+  - [Publishing Images](#publishing-images)
   - [Go](#go)
   - [Web](#web)
   - [Rust](#rust)
+  - [Multi-architecture builds](#multi-architecture-builds)
 - [Dependencies](#dependencies)
   - [Updating protobuf dependencies](#updating-protobuf-dependencies)
-  - [Updating Docker dependencies](#updating-docker-dependencies)
   - [Updating ServiceProfile generated
     code](#updating-serviceprofile-generated-code)
 - [Helm Chart](#helm-chart)
@@ -56,7 +57,7 @@ written in Go. The dashboard UI is a React application.
 
 ## Components
 
-![Linkerd2 Components](https://g.gravizo.com/source/svg/linkerd2_components?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
+![Linkerd2 Components](https://g.gravizo.com/source/svg/linkerd2_components?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmain%2FBUILD.md)
 
 <!-- markdownlint-disable no-inline-html -->
 <details>
@@ -104,23 +105,26 @@ linkerd2_components
 Depending on use case, there are several configurations with which to develop
 and run Linkerd2:
 
-- [Comprehensive](#comprehensive): Integrated configuration using Minikube, most
+- [Comprehensive](#comprehensive): Integrated configuration using k3d, most
   closely matches release.
 - [Web](#web): Development of the Linkerd2 Dashboard.
 
 ### Comprehensive
 
 This configuration builds all Linkerd2 components in Docker images, and deploys
-them onto Minikube. This setup most closely parallels our recommended production
-installation, documented in [Getting
+them onto a k3d cluster. This setup most closely parallels our recommended
+production installation, documented in [Getting
 Started](https://linkerd.io/2/getting-started/)
 
-These commands assume a working
-[Minikube](https://github.com/kubernetes/minikube) environment.
-
 ```bash
-# build all docker images, using minikube as our docker repo
-DOCKER_TRACE=1 bin/mkube bin/docker-build
+# create the k3d cluster
+bin/k3d cluster create
+
+# build all docker images
+DOCKER_TRACE=1 bin/docker-build
+
+# load all the images into k3d
+bin/image-load --k3d
 
 # install linkerd
 bin/linkerd install | kubectl apply -f -
@@ -138,8 +142,8 @@ bin/linkerd dashboard
 # install the demo app
 curl https://run.linkerd.io/emojivoto.yml | bin/linkerd inject - | kubectl apply -f -
 
-# view demo app
-minikube -n emojivoto service web-svc
+# port-forward the demo app's frontend to see it at http://localhost:8080
+kubectl -n emojivoto port-forward svc/web-svc 8080:80
 
 # view details per deployment
 bin/linkerd -n emojivoto stat deployments
@@ -168,6 +172,19 @@ linkerd inject https://gist.githubusercontent.com/Pothulapati/245842ce7f319e8bcd
 ```
 
 *Note:* Collector instance has to be injected, for the proxy spans to show up.
+
+### Publishing images
+
+The example above builds and loads the docker images into k3d. For testing your
+built images outside your local environment, you need to publish your images so
+they become accessible in those external environments.
+
+To signal `bin/docker-build` or any of the more specific scripts
+`bin/docker-build-*` what registry to use, just set the environment variable
+`DOCKER_REGISTRY` (which defaults to the official registry `ghcr.io/linkerd`).
+After having pushed those images through the usual means (`docker push`) you'll
+have to pass the `--registry` flag to `linkerd install` with a value  matching
+your registry.
 
 ### Go
 
@@ -215,26 +232,30 @@ the `bin/fmt` script.
 
 #### Building the CLI for development
 
-When Linkerd2's CLI is built using `bin/docker-build` it always creates binaries
-for all three platforms. For local development and a faster edit-build-test
-cycle you might want to avoid that. For those situations you can set
-`LINKERD_LOCAL_BUILD_CLI=1`, which builds the CLI using the local Go toolchain
-outside of Docker.
+The script for building the CLI binaries using docker is
+`bin/docker-build-cli-bin`. This will also be called indirectly when calling
+`bin/docker-build`. By default it creates binaries for Linux, Darwin and
+Windows. For Linux it creates binaries for the three architectures supported:
+amd64, arm64 and arm/v7. If you're using docker buildx, the build will be more
+efficient as the three OSes will still be targeted but the Linux build will only
+target your current architecture (more about buildx under [Multi-architecture
+Builds](#multi-architecture-builds) below).
+
+For local development and a faster edit-build-test cycle you might want to just
+target your local OS and architecture. For those situations you can just call
+`bin/build-cli-bin`.
+
+If you want to build all the controller images, plus only the CLI for your OS
+and architecture, just call:
 
 ```bash
 LINKERD_LOCAL_BUILD_CLI=1 bin/docker-build
 ```
 
-To build only the cli (locally):
-
-```bash
-bin/build-cli-bin
-```
-
 #### Running the control plane for development
 
 Linkerd2's control plane is composed of several Go microservices. You can run
-these components in a Kubernetes (or Minikube) cluster, or even locally.
+these components in a Kubernetes cluster, or even locally.
 
 To run an individual component locally, you can use the `go-run` command, and
 pass in valid Kubernetes credentials via the `-kubeconfig` flag. For instance,
@@ -274,6 +295,46 @@ automatically regenerated with the command:
 ```sh
 go test ./cli/cmd/... --update
 ```
+
+#### Generating helm charts docs
+
+Whenever a new chart is created, or updated a readme should be generated from
+the chart's values.yml. This can be done by utilizing the bundled
+[helm-docs](https://github.com/norwoodj/helm-docs) binary. For adding additional
+information, such as specific installation instructions a readme template is
+required to be created. Check existing charts for example.
+
+##### Annotating values.yml
+
+To allow helm-docs to properly document the values in values.yml a descriptive
+comment is required. This can be done in two ways.
+Either comment the value directly above with
+`# -- This is a really nice value` where the double dashes automatically
+annotates the value. Another explicit usage is to type out the value name.
+`# global.MyNiceValue -- I really like this value`
+
+##### Using helm-docs
+
+Example usage:
+
+```sh
+bin/helm-docs
+bin/helm-docs --dry-run #Prints to cli instead
+bin/helm-docs --chart-search-root=./charts #Sets search root for charts
+bin/helm-docs --template-files=README.md.gotmpl #Sets the template file used
+```
+
+Note:
+The tool searches through the current directory and sub-directories by default.
+For additional information checkout their repo above.
+
+##### Markdown templates
+
+In order to accommodate for extra data that might not have a proper place in the
+´values.yaml´ file the corresponding ´README.md.gotmpl´ can be modified for each
+chart. This template allows the standard markdown syntax as well as the go
+templating functions. Checkout
+[helm-docs](https://github.com/norwoodj/helm-docs) for more info.
 
 ##### Pretty-printed diffs for templated text
 
@@ -341,6 +402,24 @@ cd web/app
 yarn add [dep]
 ```
 
+#### Translations
+
+To add a locale:
+
+```bash
+cd web/app
+yarn lingui add-locale [locales...] # will create a messages.json file for new locale(s)
+```
+
+To extract message keys from existing components:
+
+```bash
+cd web/app
+yarn lingui extract
+...
+yarn lingui compile # done automatically in bin/web run
+```
+
 ### Rust
 
 All Rust development happens in the
@@ -355,6 +434,30 @@ proxy binary:
 DOCKER_TRACE=1 bin/docker-build-proxy
 ```
 
+### Multi-architecture builds
+
+Besides the default Linux/amd64 architecture, you can build controller images
+targeting Linux/arm64 and Linux/arm/v7. For that you need to have first
+installed docker buildx, as explained [here](https://github.com/docker/buildx).
+
+If you run `bin/docker-build` or any of the more focused `bin/docker-build-*`
+scripts, docker buildx will be used, as long as you have set the environment
+variable `DOCKER_BUILDKIT=1`.
+
+For signaling that you want to build multi-architecture images, set the
+environment variable `DOCKER_MULTIARCH=1`. Do to some limitations on buildx, if
+you'd like to do that you're also forced to signal buildx to push the images to
+the registry by setting `DOCKER_PUSH=1`. Naturally, you can't push to the
+official registry and will have to override `DOCKER_REGISTRY` with a registry
+that you control.
+
+To summarize, in order to build all the images for multiple architectures and
+push them to your registry located for example at `ghcr.io/user` you can issue:
+
+```bash
+DOCKER_BUILDKIT=1 DOCKER_MULTIARCH=1 DOCKER_PUSH=1 DOCKER_REGISTRY=ghcr.io/user bin/docker-build
+```
+
 ## Dependencies
 
 ### Updating protobuf dependencies
@@ -363,22 +466,6 @@ DOCKER_TRACE=1 bin/docker-build-proxy
 
  ```bash
 bin/protoc-go.sh
-```
-
-### Updating Docker dependencies
-
-The Go Docker images rely on base dependency images with hard-coded SHA's:
-
-`gcr.io/linkerd-io/go-deps` depends on
-
-- [`go.mod`](go.mod)
-- [`Dockerfile-go-deps`](Dockerfile-go-deps)
-
-When Go dependencies change, run the following:
-
-```bash
-go mod tidy
-bin/update-go-deps-shas
 ```
 
 ### Updating ServiceProfile generated code
@@ -432,7 +519,7 @@ the templates.
 
 ## Build Architecture
 
-![Build Architecture](https://g.gravizo.com/source/svg/build_architecture?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmaster%2FBUILD.md)
+![Build Architecture](https://g.gravizo.com/source/svg/build_architecture?https%3A%2F%2Fraw.githubusercontent.com%2Flinkerd%2Flinkerd2%2Fmain%2FBUILD.md)
 
 <!-- markdownlint-disable no-inline-html -->
 <details>
@@ -441,8 +528,6 @@ build_architecture
   digraph G {
     rankdir=LR;
 
-    "Dockerfile-base" [color=lightblue, style=filled, shape=rect];
-    "Dockerfile-go-deps" [color=lightblue, style=filled, shape=rect];
     "Dockerfile-proxy" [color=lightblue, style=filled, shape=rect];
     "controller/Dockerfile" [color=lightblue, style=filled, shape=rect];
     "cli/Dockerfile-bin" [color=lightblue, style=filled, shape=rect];
@@ -452,7 +537,6 @@ build_architecture
     "_docker.sh" -> "_log.sh";
     "_gcp.sh";
     "_log.sh";
-    "_tag.sh" -> "Dockerfile-go-deps";
 
     "build-cli-bin" -> "_tag.sh";
     "build-cli-bin" -> "root-tag";
@@ -464,24 +548,13 @@ build_architecture
     "docker-build" -> "docker-build-proxy";
     "docker-build" -> "docker-build-web";
 
-    "docker-build-base" -> "_docker.sh";
-    "docker-build-base" -> "Dockerfile-base";
-
     "docker-build-cli-bin" -> "_docker.sh";
     "docker-build-cli-bin" -> "_tag.sh";
-    "docker-build-cli-bin" -> "docker-build-base";
-    "docker-build-cli-bin" -> "docker-build-go-deps";
     "docker-build-cli-bin" -> "cli/Dockerfile-bin";
 
     "docker-build-controller" -> "_docker.sh";
     "docker-build-controller" -> "_tag.sh";
-    "docker-build-controller" -> "docker-build-base";
-    "docker-build-controller" -> "docker-build-go-deps";
     "docker-build-controller" -> "controller/Dockerfile";
-
-    "docker-build-go-deps" -> "_docker.sh";
-    "docker-build-go-deps" -> "_tag.sh";
-    "docker-build-go-deps" -> "Dockerfile-go-deps";
 
     "docker-build-grafana" -> "_docker.sh";
     "docker-build-grafana" -> "_tag.sh";
@@ -493,8 +566,6 @@ build_architecture
 
     "docker-build-web" -> "_docker.sh";
     "docker-build-web" -> "_tag.sh";
-    "docker-build-web" -> "docker-build-base";
-    "docker-build-web" -> "docker-build-go-deps";
     "docker-build-web" -> "web/Dockerfile";
 
     "docker-images" -> "_docker.sh";
@@ -502,13 +573,7 @@ build_architecture
 
     "docker-pull" -> "_docker.sh";
 
-    "docker-pull-deps" -> "_docker.sh";
-    "docker-pull-deps" -> "_tag.sh";
-
     "docker-push" -> "_docker.sh";
-
-    "docker-push-deps" -> "_docker.sh";
-    "docker-push-deps" -> "_tag.sh";
 
     "docker-retag-all" -> "_docker.sh";
 
@@ -537,15 +602,8 @@ build_architecture
     "workflow.yml" -> "_tag.sh";
     "workflow.yml" -> "docker-build";
     "workflow.yml" -> "docker-push";
-    "workflow.yml" -> "docker-push-deps";
     "workflow.yml" -> "docker-retag-all";
     "workflow.yml" -> "lint";
-
-    "update-go-deps-shas" -> "_tag.sh";
-    "update-go-deps-shas" -> "cli/Dockerfile-bin";
-    "update-go-deps-shas" -> "controller/Dockerfile";
-    "update-go-deps-shas" -> "grafana/Dockerfile";
-    "update-go-deps-shas" -> "web/Dockerfile";
 
     "web" -> "go-run";
   }

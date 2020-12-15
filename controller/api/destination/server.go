@@ -1,6 +1,7 @@
 package destination
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"strconv"
@@ -29,6 +30,7 @@ type (
 		identityTrustDomain string
 		clusterDomain       string
 
+		k8sAPI   *k8s.API
 		log      *logging.Entry
 		shutdown <-chan struct{}
 	}
@@ -51,6 +53,7 @@ func NewServer(
 	controllerNS string,
 	identityTrustDomain string,
 	enableH2Upgrade bool,
+	enableEndpointSlices bool,
 	k8sAPI *k8s.API,
 	clusterDomain string,
 	shutdown <-chan struct{},
@@ -59,7 +62,7 @@ func NewServer(
 		"addr":      addr,
 		"component": "server",
 	})
-	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log)
+	endpoints := watcher.NewEndpointsWatcher(k8sAPI, log, enableEndpointSlices)
 	profiles := watcher.NewProfileWatcher(k8sAPI, log)
 	trafficSplits := watcher.NewTrafficSplitWatcher(k8sAPI, log)
 	ips := watcher.NewIPWatcher(k8sAPI, endpoints, log)
@@ -73,6 +76,7 @@ func NewServer(
 		controllerNS,
 		identityTrustDomain,
 		clusterDomain,
+		k8sAPI,
 		log,
 		shutdown,
 	}
@@ -91,11 +95,20 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 	}
 	log.Debugf("Get %s", dest.GetPath())
 
+	var token contextToken
+	if dest.GetContextToken() != "" {
+		token = s.parseContextToken(dest.GetContextToken())
+		log.Debugf("Dest token: %v", token)
+	}
+
 	translator := newEndpointTranslator(
+		stream.Context(),
 		s.controllerNS,
 		s.identityTrustDomain,
 		s.enableH2Upgrade,
 		dest.GetPath(),
+		token.NodeName,
+		s.k8sAPI.Client,
 		stream,
 		log,
 	)
@@ -152,11 +165,6 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	}
 	log.Debugf("GetProfile(%+v)", dest)
 
-	// We build up the pipeline of profile updaters backwards, starting from
-	// the translator which takes profile updates, translates them to protobuf
-	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log)
-
 	// The host must be fully-qualified or be an IP address.
 	host, port, err := getHostAndPort(dest.GetPath())
 	if err != nil {
@@ -164,17 +172,72 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		return status.Errorf(codes.InvalidArgument, "invalid authority: %s", err)
 	}
 
+	// The stream will subscribe to profile updates for `service`.
+	var service watcher.ServiceID
+	// If `host` is an IP, path must be constructed from the namespace and
+	// name of the service that the IP maps to.
+	var path string
+
 	if ip := net.ParseIP(host); ip != nil {
-		// TODO handle lookup by IP address
-		log.Debug("Lookup of IP addresses is not supported for profiles")
-		return status.Errorf(codes.InvalidArgument, "cannot discover profiles for IP addresses")
+		// Get the service that the IP currently maps to.
+		svcID, err := s.ips.GetSvcID(ip.String())
+		if err != nil {
+			return err
+		}
+		if svcID != nil {
+			service = *svcID
+			path = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
+		} else {
+			// If the IP does not map to a service, check if it maps to a pod
+			pod, err := s.ips.GetPod(ip.String())
+			if err != nil {
+				return err
+			}
+			var endpoint *pb.WeightedAddr
+			if pod != nil {
+				// If the IP maps to a pod, we create a single endpoint and
+				// return it in the DestinationProfile response
+				podSet := s.ips.PodToAddressSet(pod).WithPort(port)
+				podID := watcher.PodID{
+					Namespace: pod.Namespace,
+					Name:      pod.Name,
+				}
+				endpoint, err = toWeightedAddr(podSet.Addresses[podID], s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS)
+				// `Get` doesn't include the namespace in the per-endpoint
+				// metadata, so it needs to be special-cased.
+				endpoint.MetricLabels["namespace"] = pod.Namespace
+				if err != nil {
+					return err
+				}
+			}
+
+			// When the IP does not map to a service, the default profile is
+			// sent without subscribing for future updates. If the IP mapped
+			// to a pod, then the endpoint will be set in the response.
+			translator := newProfileTranslator(stream, log, nil, "", endpoint)
+			translator.Update(nil)
+
+			select {
+			case <-s.shutdown:
+			case <-stream.Context().Done():
+				log.Debugf("GetProfile(%+v) cancelled", dest)
+			}
+
+			return nil
+		}
+	} else {
+		service, _, err = parseK8sServiceName(host, s.clusterDomain)
+		if err != nil {
+			log.Debugf("Invalid service %s", dest.GetPath())
+			return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
+		}
+		path = dest.GetPath()
 	}
 
-	service, _, err := parseK8sServiceName(host, s.clusterDomain)
-	if err != nil {
-		log.Debugf("Invalid service %s", dest.GetPath())
-		return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
-	}
+	// We build up the pipeline of profile updaters backwards, starting from
+	// the translator which takes profile updates, translates them to protobuf
+	// and pushes them onto the gRPC stream.
+	translator := newProfileTranslator(stream, log, &service, s.clusterDomain, nil)
 
 	// The adaptor merges profile updates with traffic split updates and
 	// publishes the result to the translator.
@@ -183,7 +246,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// Subscribe the adaptor to traffic split updates.
 	err = s.trafficSplits.Subscribe(service, tsAdaptor)
 	if err != nil {
-		log.Warnf("Failed to subscribe to traffic split for %s: %s", dest.GetPath(), err)
+		log.Warnf("Failed to subscribe to traffic split for %s: %s", path, err)
 		return err
 	}
 	defer s.trafficSplits.Unsubscribe(service, tsAdaptor)
@@ -198,28 +261,30 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	// up to the fallbackProfileListener to merge updates from the primary and
 	// secondary listeners and send the appropriate updates to the stream.
 	if dest.GetContextToken() != "" {
-		profile, err := profileID(dest.GetPath(), dest.GetContextToken(), s.clusterDomain)
+		ctxToken := s.parseContextToken(dest.GetContextToken())
+
+		profile, err := profileID(path, ctxToken, s.clusterDomain)
 		if err != nil {
-			log.Debugf("Invalid service %s", dest.GetPath())
+			log.Debugf("Invalid service %s", path)
 			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 		}
 
 		err = s.profiles.Subscribe(profile, primary)
 		if err != nil {
-			log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
+			log.Warnf("Failed to subscribe to profile %s: %s", path, err)
 			return err
 		}
 		defer s.profiles.Unsubscribe(profile, primary)
 	}
 
-	profile, err := profileID(dest.GetPath(), "", s.clusterDomain)
+	profile, err := profileID(path, contextToken{}, s.clusterDomain)
 	if err != nil {
-		log.Debugf("Invalid service %s", dest.GetPath())
+		log.Debugf("Invalid service %s", path)
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
 	}
 	err = s.profiles.Subscribe(profile, secondary)
 	if err != nil {
-		log.Warnf("Failed to subscribe to profile %s: %s", dest.GetPath(), err)
+		log.Warnf("Failed to subscribe to profile %s: %s", path, err)
 		return err
 	}
 	defer s.profiles.Unsubscribe(profile, secondary)
@@ -237,17 +302,29 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 /// util ///
 ////////////
 
-func nsFromToken(token string) string {
-	// ns:<namespace>
-	parts := strings.Split(token, ":")
-	if len(parts) == 2 && parts[0] == "ns" {
-		return parts[1]
-	}
-
-	return ""
+type contextToken struct {
+	Ns       string `json:"ns,omitempty"`
+	NodeName string `json:"nodeName,omitempty"`
 }
 
-func profileID(authority string, contextToken string, clusterDomain string) (watcher.ProfileID, error) {
+func (s *server) parseContextToken(token string) contextToken {
+	ctxToken := contextToken{}
+	if err := json.Unmarshal([]byte(token), &ctxToken); err != nil {
+		// if json is invalid, means token can have ns:<namespace> form
+		parts := strings.Split(token, ":")
+		if len(parts) == 2 && parts[0] == "ns" {
+			s.log.Warnf("context token %s using old token format", token)
+			ctxToken = contextToken{
+				Ns: parts[1],
+			}
+		} else {
+			s.log.Errorf("context token %s is invalid: %s", token, err)
+		}
+	}
+	return ctxToken
+}
+
+func profileID(authority string, ctxToken contextToken, clusterDomain string) (watcher.ProfileID, error) {
 	host, _, err := getHostAndPort(authority)
 	if err != nil {
 		return watcher.ProfileID{}, fmt.Errorf("invalid authority: %s", err)
@@ -260,8 +337,8 @@ func profileID(authority string, contextToken string, clusterDomain string) (wat
 		Name:      fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, clusterDomain),
 		Namespace: service.Namespace,
 	}
-	if contextNs := nsFromToken(contextToken); contextNs != "" {
-		id.Namespace = contextNs
+	if ctxToken.Ns != "" {
+		id.Namespace = ctxToken.Ns
 	}
 	return id, nil
 }
@@ -285,7 +362,7 @@ func getHostAndPort(authority string) (string, watcher.Port, error) {
 
 type instanceID = string
 
-// parseK8sServiceName is a utility that destructures a Kubernetes serviec hostname into its constituent components.
+// parseK8sServiceName is a utility that destructures a Kubernetes service hostname into its constituent components.
 //
 // If the authority does not represent a Kubernetes service, an error is returned.
 //

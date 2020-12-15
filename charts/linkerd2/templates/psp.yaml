@@ -92,7 +92,7 @@ subjects:
   namespace: {{.Values.global.namespace}}
 {{ if .Values.grafana.enabled -}}
 - kind: ServiceAccount
-  name: {{.Values.grafana.name}}
+  name: linkerd-grafana
   namespace: {{.Values.global.namespace}}
 {{ end -}}
 {{ if not .Values.disableHeartBeat -}}
@@ -103,9 +103,11 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-identity
   namespace: {{.Values.global.namespace}}
+{{ if .Values.prometheus.enabled -}}
 - kind: ServiceAccount
   name: linkerd-prometheus
   namespace: {{.Values.global.namespace}}
+{{ end -}}
 - kind: ServiceAccount
   name: linkerd-proxy-injector
   namespace: {{.Values.global.namespace}}
@@ -118,8 +120,3 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-web
   namespace: {{.Values.global.namespace}}
-{{- if .Values.smiMetrics.enabled }}
-- kind: ServiceAccount
-  name: linkerd-smi-metrics
-  namespace: {{.Values.global.namespace}}
-{{- end }}

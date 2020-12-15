@@ -1,6 +1,7 @@
 package inject
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -20,6 +21,7 @@ const (
 	invalidInjectAnnotationWorkload      = "invalid_inject_annotation_at_workload"
 	invalidInjectAnnotationNamespace     = "invalid_inject_annotation_at_ns"
 	disabledAutomountServiceAccountToken = "disabled_automount_service_account_token_account"
+	udpPortsEnabled                      = "udp_ports_enabled"
 )
 
 var (
@@ -33,6 +35,7 @@ var (
 		invalidInjectAnnotationWorkload:      fmt.Sprintf("invalid value for annotation \"%s\" at workload", k8s.ProxyInjectAnnotation),
 		invalidInjectAnnotationNamespace:     fmt.Sprintf("invalid value for annotation \"%s\" at namespace", k8s.ProxyInjectAnnotation),
 		disabledAutomountServiceAccountToken: fmt.Sprintf("automountServiceAccountToken set to \"false\""),
+		udpPortsEnabled:                      "UDP port(s) configured on pod spec",
 	}
 )
 
@@ -48,7 +51,6 @@ type Report struct {
 	InjectDisabled               bool
 	InjectDisabledReason         string
 	InjectAnnotationAt           string
-	TracingEnabled               bool
 	AutomountServiceAccountToken bool
 
 	// Uninjected consists of two boolean flags to indicate if a proxy and
@@ -86,7 +88,6 @@ func newReport(conf *ResourceConfig) *Report {
 		report.HostNetwork = conf.pod.spec.HostNetwork
 		report.Sidecar = healthcheck.HasExistingSidecars(conf.pod.spec)
 		report.UDP = checkUDPPorts(conf.pod.spec)
-		report.TracingEnabled = conf.pod.meta.Annotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != "" || conf.nsAnnotations[k8s.ProxyTraceCollectorSvcAddrAnnotation] != ""
 		if conf.pod.spec.AutomountServiceAccountToken != nil {
 			report.AutomountServiceAccountToken = *conf.pod.spec.AutomountServiceAccountToken
 		}
@@ -177,14 +178,14 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string
 		return true, invalidInjectAnnotationWorkload, ""
 	}
 
-	if nsAnnotation == k8s.ProxyInjectEnabled {
+	if nsAnnotation == k8s.ProxyInjectEnabled || nsAnnotation == k8s.ProxyInjectIngress {
 		if podAnnotation == k8s.ProxyInjectDisabled {
 			return true, injectDisableAnnotationPresent, annotationAtWorkload
 		}
 		return false, "", annotationAtNamespace
 	}
 
-	if podAnnotation != k8s.ProxyInjectEnabled {
+	if podAnnotation != k8s.ProxyInjectEnabled && podAnnotation != k8s.ProxyInjectIngress {
 		return true, injectEnableAnnotationAbsent, ""
 	}
 
@@ -192,8 +193,35 @@ func (r *Report) disableByAnnotation(conf *ResourceConfig) (bool, string, string
 }
 
 func isInjectAnnotationValid(annotation string) bool {
-	if annotation != "" && !(annotation == k8s.ProxyInjectEnabled || annotation == k8s.ProxyInjectDisabled) {
+	if annotation != "" && !(annotation == k8s.ProxyInjectEnabled || annotation == k8s.ProxyInjectDisabled || annotation == k8s.ProxyInjectIngress) {
 		return false
 	}
 	return true
+}
+
+// ThrowInjectError errors out `inject` when the report contains errors
+// related to automountServiceAccountToken, hostNetwork, existing sidecar,
+// or udp ports
+// See - https://github.com/linkerd/linkerd2/issues/4214
+func (r *Report) ThrowInjectError() []error {
+
+	errs := []error{}
+
+	if !r.AutomountServiceAccountToken {
+		errs = append(errs, errors.New(Reasons[disabledAutomountServiceAccountToken]))
+	}
+
+	if r.HostNetwork {
+		errs = append(errs, errors.New(Reasons[hostNetworkEnabled]))
+	}
+
+	if r.Sidecar {
+		errs = append(errs, errors.New(Reasons[sidecarExists]))
+	}
+
+	if r.UDP {
+		errs = append(errs, errors.New(Reasons[udpPortsEnabled]))
+	}
+
+	return errs
 }

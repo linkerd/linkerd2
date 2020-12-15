@@ -14,6 +14,7 @@ import SimpleChip from './util/Chip.jsx';
 import Spinner from './util/Spinner.jsx';
 import TopRoutesTabs from './TopRoutesTabs.jsx';
 import TrafficSplitDetail from './TrafficSplitDetail.jsx';
+import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import _filter from 'lodash/filter';
 import _get from 'lodash/get';
@@ -69,7 +70,7 @@ export class ResourceDetailBase extends React.Component {
       resourceMetrics: [],
       podMetrics: [], // metrics for all pods whose owner is this resource
       upstreamMetrics: {}, // metrics for resources who send traffic to this resource
-      downstreamMetrics: {}, // metrics for resources who this resouce sends traffic to
+      downstreamMetrics: {}, // metrics for resources who this resource sends traffic to
       unmeshedSources: {},
       resourceIsMeshed: true,
       pendingRequests: false,
@@ -366,11 +367,11 @@ export class ResourceDetailBase extends React.Component {
           <Grid item><Typography variant="h5">{resourceType}/{resourceName}</Typography></Grid>
           <Grid item>
             <Grid container spacing={1}>
-              {showNoTrafficMsg ? <Grid item><SimpleChip label="no traffic" type="warning" /></Grid> : null}
+              {showNoTrafficMsg ? <Grid item><SimpleChip label={<Trans>columnTitleNoTraffic</Trans>} type="warning" /></Grid> : null}
               <Grid item>
                 {resourceIsMeshed ?
-                  <SimpleChip label="meshed" type="good" /> :
-                  <SimpleChip label="unmeshed" type="bad" />
+                  <SimpleChip label={<Trans>columnTitleMeshed</Trans>} type="good" /> :
+                  <SimpleChip label={<Trans>columnTitleUnmeshed</Trans>} type="bad" />
                 }
               </Grid>
             </Grid>
@@ -402,14 +403,14 @@ export class ResourceDetailBase extends React.Component {
         {_isEmpty(upstreams) ? null :
         <MetricsTable
           resource="multi_resource"
-          title="Inbound"
+          title={<Trans>tableTitleInbound</Trans>}
           metrics={upstreamDisplayMetrics} />
         }
 
         {_isEmpty(downstreamDisplayMetrics) ? null :
         <MetricsTable
           resource="multi_resource"
-          title="Outbound"
+          title={<Trans>tableTitleOutbound</Trans>}
           metrics={downstreamDisplayMetrics} />
         }
 
@@ -417,13 +418,13 @@ export class ResourceDetailBase extends React.Component {
           resourceType === 'pod' || isTcpOnly ? null :
           <MetricsTable
             resource="pod"
-            title="Pods"
+            title={<Trans>tableTitlePods</Trans>}
             metrics={podMetrics} />
         }
 
         <MetricsTable
           resource="pod"
-          title="TCP"
+          title={<Trans>tableTitleTCP</Trans>}
           isTcpTable
           metrics={podMetrics} />
 

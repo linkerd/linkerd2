@@ -86,7 +86,7 @@ func TestHttpRequestToProto(t *testing.T) {
 		}
 
 		if !proto.Equal(&actualProtoMessage, &expectedProtoMessage) {
-			t.Fatalf("Expected request to be [%v], but got [%v]", expectedProtoMessage, actualProtoMessage)
+			t.Fatalf("Expected request to be [%s], but got [%s]", expectedProtoMessage.String(), actualProtoMessage.String())
 		}
 	})
 
@@ -143,7 +143,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 		}
 
 		if !proto.Equal(&actualErrorPayload, &expectedErrorPayload) {
-			t.Fatalf("Expecting error to be serialized as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
+			t.Fatalf("Expecting error to be serialized as [%s], but got [%s]", expectedErrorPayload.String(), actualErrorPayload.String())
 		}
 	})
 
@@ -177,7 +177,7 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 		}
 
 		if !proto.Equal(&actualErrorPayload, &expectedErrorPayload) {
-			t.Fatalf("Expecting error to be serialized as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
+			t.Fatalf("Expecting error to be serialized as [%s], but got [%s]", expectedErrorPayload.String(), actualErrorPayload.String())
 		}
 	})
 
@@ -209,8 +209,8 @@ func TestWriteErrorToHttpResponse(t *testing.T) {
 			t.Fatalf("Unexpected error: %v", err)
 		}
 
-		if !reflect.DeepEqual(actualErrorPayload, expectedErrorPayload) {
-			t.Fatalf("Expecting error to be serialized as [%v], but got [%v]", expectedErrorPayload, actualErrorPayload)
+		if actualErrorPayload.String() != expectedErrorPayload.String() {
+			t.Fatalf("Expecting error to be serialized as [%s], but got [%s]", expectedErrorPayload.String(), actualErrorPayload.String())
 		}
 	})
 }
@@ -243,7 +243,7 @@ func TestWriteProtoToHttpResponse(t *testing.T) {
 		}
 
 		if !proto.Equal(&actualMessage, &expectedMessage) {
-			t.Fatalf("Expected response body to contain message [%v], but got [%v]", expectedMessage, actualMessage)
+			t.Fatalf("Expected response body to contain message [%s], but got [%s]", expectedMessage.String(), actualMessage.String())
 		}
 	})
 }
@@ -409,7 +409,7 @@ func TestNewStreamingWriter(t *testing.T) {
 		}
 	})
 
-	t.Run("Returns an error if writer doesnt support streaming", func(t *testing.T) {
+	t.Run("Returns an error if writer does not support streaming", func(t *testing.T) {
 		_, err := NewStreamingWriter(&nonStreamingResponseWriter{})
 		if err == nil {
 			t.Fatalf("Expecting error, got nothing")

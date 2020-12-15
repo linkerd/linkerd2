@@ -7,7 +7,9 @@ import (
 
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/klog"
+	"github.com/spf13/pflag"
+	"helm.sh/helm/v3/pkg/cli/values"
+	klog "k8s.io/klog/v2"
 )
 
 // ConfigureAndParse adds flags that are common to all go processes. This
@@ -51,7 +53,7 @@ func setLogLevel(logLevel string) {
 	if level == log.DebugLevel {
 		flag.Set("stderrthreshold", "INFO")
 		flag.Set("logtostderr", "true")
-		flag.Set("v", "6") // At 7 and higher, authorization tokens get logged.
+		flag.Set("v", "12") // At 7 and higher, authorization tokens get logged.
 		// pipe klog entries to logrus
 		klog.SetOutput(log.StandardLogger().Writer())
 	}
@@ -63,4 +65,12 @@ func maybePrintVersionAndExit(printVersion bool) {
 		os.Exit(0)
 	}
 	log.Infof("running version %s", version.Version)
+}
+
+// AddValueOptionsFlags adds flags used to override default values
+func AddValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
+	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{}, "specify values in a YAML file or a URL (can specify multiple)")
+	f.StringArrayVar(&v.Values, "set", []string{}, "set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&v.StringValues, "set-string", []string{}, "set STRING values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	f.StringArrayVar(&v.FileValues, "set-file", []string{}, "set values from respective files specified via the command line (can specify multiple or separate values with commas: key1=path1,key2=path2)")
 }

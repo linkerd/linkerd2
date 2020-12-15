@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
+
+# shellcheck source=_test-helpers.sh
+. "$bindir"/_test-helpers.sh
+handle_input "$@"
+
+if [ -n "$test_name" ]; then
+  start_test "$test_name"
+else
+  printf '==================RUNNING ALL TESTS==================
+Note: cluster-domain, cni-calico-deep and multicluster require a specific cluster configuration and are skipped by default\n\n'
+
+  for test_name in "${default_test_names[@]}"; do
+    start_test "$test_name"
+  done
+
+  if [ $exit_code -eq 0 ]; then
+  printf '\n=== PASS: all tests passed\n'
+  else
+    printf '\n=== FAIL: at least one test failed\n'
+  fi
+
+  exit $exit_code
+fi

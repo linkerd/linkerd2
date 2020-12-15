@@ -1360,7 +1360,7 @@
           "step": 10
         },
         {
-          "expr": "rate(prometheus_tsdb_wal_truncate_duration_seconds_sum{job=\"prometheus\",instance=\"$Prometheus:9090\"}[1m]) / rate(prometheus_tsdb_wal_trunacte_duration_seconds_count{job=\"prometheus\",instance=\"$Prometheus:9090\"}[1m])",
+          "expr": "rate(prometheus_tsdb_wal_truncate_duration_seconds_sum{job=\"prometheus\",instance=\"$Prometheus:9090\"}[1m]) / rate(prometheus_tsdb_wal_truncate_duration_seconds_count{job=\"prometheus\",instance=\"$Prometheus:9090\"}[1m])",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -3261,7 +3261,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Rule group evaulation problems/s",
+      "title": "Rule group evaluation problems/s",
       "tooltip": {
         "msResolution": false,
         "shared": true,

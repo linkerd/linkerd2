@@ -27,7 +27,7 @@ type listPodsExpected struct {
 type listServicesExpected struct {
 	err    error
 	k8sRes []string
-	res    pb.ListServicesResponse
+	res    *pb.ListServicesResponse
 }
 
 // sort Pods in ListPodResponses for easier comparison
@@ -438,7 +438,7 @@ func verifyPromQueries(mProm *MockProm, namespace string) error {
 		namespaceSelector, mProm.QueriesExecuted)
 }
 
-func listServiceResponsesEqual(a pb.ListServicesResponse, b pb.ListServicesResponse) bool {
+func listServiceResponsesEqual(a *pb.ListServicesResponse, b *pb.ListServicesResponse) bool {
 	if len(a.Services) != len(b.Services) {
 		return false
 	}
@@ -477,7 +477,7 @@ metadata:
   namespace: default
 `,
 				},
-				res: pb.ListServicesResponse{
+				res: &pb.ListServicesResponse{
 					Services: []*pb.Service{
 						{
 							Name:      "service-foo",
@@ -514,61 +514,9 @@ metadata:
 				t.Fatalf("Expected error: %s, Got: %s", exp.err, err)
 			}
 
-			if !listServiceResponsesEqual(exp.res, *rsp) {
+			if !listServiceResponsesEqual(exp.res, rsp) {
 				t.Fatalf("Expected: %+v, Got: %+v", &exp.res, rsp)
 			}
 		}
-	})
-}
-
-func TestConfig(t *testing.T) {
-	t.Run("Configs are parsed and returned", func(t *testing.T) {
-		k8sAPI, err := k8s.NewFakeAPI()
-		if err != nil {
-			t.Fatalf("NewFakeAPI returned an error: %s", err)
-		}
-
-		fakeGrpcServer := newGrpcServer(
-			&MockProm{},
-			nil,
-			k8sAPI,
-			"linkerd",
-			"mycluster.local",
-			[]string{},
-		)
-		fakeGrpcServer.mountPathGlobalConfig = "testdata/global.conf.json"
-		fakeGrpcServer.mountPathProxyConfig = "testdata/proxy.conf.json"
-		fakeGrpcServer.mountPathInstallConfig = "testdata/install.conf.json"
-
-		k8sAPI.Sync(nil)
-
-		rsp, err := fakeGrpcServer.Config(context.Background(), &pb.Empty{})
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
-		}
-
-		expectedVersion := "dev-206ff685-foo"
-		if v := rsp.GetGlobal().GetVersion(); v != expectedVersion {
-			t.Fatalf("Unexpected global config response: \"%s\" != \"%s\"", expectedVersion, v)
-		}
-
-		expectedPort := "123"
-		portRanges := rsp.GetProxy().GetIgnoreOutboundPorts()
-		if len(portRanges) != 1 {
-			t.Fatal("Unexpected proxy config response: didn't get the outbound port")
-		}
-		if p := portRanges[0].GetPortRange(); p != expectedPort {
-			t.Fatalf("Unexpected proxy config response: %s != %s", expectedPort, p)
-		}
-		expectedVersion = "test-debug-version"
-		if v := rsp.GetProxy().GetDebugImageVersion(); v != expectedVersion {
-			t.Fatalf("Unexpected proxy debug config response: \"%s\" != \"%s\"", expectedVersion, v)
-		}
-
-		expectedVersion = "test-install-version"
-		if v := rsp.GetInstall().GetCliVersion(); v != expectedVersion {
-			t.Fatalf("Unexpected install config response: \"%s\" != \"%s\"", expectedVersion, v)
-		}
-
 	})
 }

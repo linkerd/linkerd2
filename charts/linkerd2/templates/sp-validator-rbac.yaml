@@ -40,23 +40,25 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: sp-validator
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+{{- include "partials.image-pull-secrets" . }}
 ---
-{{- $ca := genCA (printf "linkerd-sp-validator.%s.svc" .Values.global.namespace) 365 }}
+{{- $host := printf "linkerd-sp-validator.%s.svc" .Values.global.namespace }}
+{{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}
 {{- if (not .Values.profileValidator.externalSecret) }}
 kind: Secret
 apiVersion: v1
 metadata:
-  name: linkerd-sp-validator-tls
+  name: linkerd-sp-validator-k8s-tls
   namespace: {{ .Values.global.namespace }}
   labels:
     {{.Values.global.controllerComponentLabel}}: sp-validator
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
-type: Opaque
+type: kubernetes.io/tls
 data:
-  crt.pem: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
-  key.pem: {{ ternary (b64enc $ca.Key) (b64enc (trim .Values.profileValidator.keyPEM)) (empty .Values.profileValidator.keyPEM) }}
+  tls.crt: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.profileValidator.crtPEM)) (empty .Values.profileValidator.crtPEM) }}
+  tls.key: {{ ternary (b64enc (trim $ca.Key)) (b64enc (trim .Values.profileValidator.keyPEM)) (empty .Values.profileValidator.keyPEM) }}
 ---
 {{- end }}
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -69,11 +71,7 @@ metadata:
 webhooks:
 - name: linkerd-sp-validator.linkerd.io
   namespaceSelector:
-    matchExpressions:
-    - key: config.linkerd.io/admission-webhooks
-      operator: NotIn
-      values:
-      - disabled
+    {{- toYaml .Values.profileValidator.namespaceSelector | trim | nindent 4 }}
   clientConfig:
     service:
       name: linkerd-sp-validator
@@ -82,7 +80,7 @@ webhooks:
 {{- if and (.Values.profileValidator.externalSecret) (empty .Values.profileValidator.caBundle) }}
   {{- fail "If profileValidator.externalSecret is true then you need to provide profileValidator.caBundle" }}
 {{- end }}
-    caBundle: {{ ternary (b64enc $ca.Cert) (b64enc (trim .Values.profileValidator.caBundle)) (empty .Values.profileValidator.caBundle) }}
+    caBundle: {{ ternary (b64enc (trim $ca.Cert)) (b64enc (trim .Values.profileValidator.caBundle)) (empty .Values.profileValidator.caBundle) }}
   failurePolicy: {{.Values.webhookFailurePolicy}}
   rules:
   - operations: [ "CREATE" , "UPDATE" ]

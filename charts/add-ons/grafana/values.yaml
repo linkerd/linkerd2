@@ -1,0 +1,21 @@
+image:
+  # -- Docker image name for the grafana instance
+  name: ghcr.io/linkerd/grafana
+  # -- Docker image tag for the grafana instance
+  tag:
+
+resources:
+  cpu:
+    # -- Maximum amount of CPU units that the grafana container can use
+    limit:
+    # -- Amount of CPU units that the grafana container requests
+    request:
+  memory:
+    # -- Maximum amount of memory that grafana container can use
+    limit:
+    # -- Amount of memory that the grafana container requests
+    request:
+proxy:
+  # -- Structure analog to the resources fields above, but overriding the
+  # resources of the linkerd proxy injected into the grafana pod.
+  resources:

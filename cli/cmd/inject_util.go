@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,12 +30,13 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 	reportBuf := &bytes.Buffer{}
 
 	for _, input := range inputs {
-		err := processYAML(input, postInjectBuf, reportBuf, rt)
-		if err != nil {
-			fmt.Fprintf(errWriter, "Error transforming resources: %v\n", err)
+		errs := processYAML(input, postInjectBuf, reportBuf, rt)
+		if len(errs) > 0 {
+			fmt.Fprintf(errWriter, "Error transforming resources:\n%v", concatErrors(errs, "\n"))
 			return 1
 		}
-		_, err = io.Copy(outWriter, postInjectBuf)
+
+		_, err := io.Copy(outWriter, postInjectBuf)
 
 		// print error report after yaml output, for better visibility
 		io.Copy(errWriter, reportBuf)
@@ -48,10 +50,12 @@ func transformInput(inputs []io.Reader, errWriter, outWriter io.Writer, rt resou
 }
 
 // processYAML takes an input stream of YAML, outputting injected/uninjected YAML to out.
-func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) error {
+func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTransformer) []error {
 	reader := yamlDecoder.NewYAMLReader(bufio.NewReaderSize(in, 4096))
 
 	reports := []inject.Report{}
+
+	errs := []error{}
 
 	// Iterate over all YAML objects in the input
 	for {
@@ -61,7 +65,7 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 			break
 		}
 		if err != nil {
-			return err
+			return []error{err}
 		}
 
 		var result []byte
@@ -69,7 +73,7 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 
 		isList, err := kindIsList(bytes)
 		if err != nil {
-			return err
+			return []error{err}
 		}
 		if isList {
 			result, irs, err = processList(bytes, rt)
@@ -77,16 +81,19 @@ func processYAML(in io.Reader, out io.Writer, report io.Writer, rt resourceTrans
 			result, irs, err = rt.transform(bytes)
 		}
 		if err != nil {
-			return err
+			errs = append(errs, err)
 		}
 		reports = append(reports, irs...)
-		out.Write(result)
-		out.Write([]byte("---\n"))
+
+		if len(errs) == 0 {
+			out.Write(result)
+			out.Write([]byte("---\n"))
+		}
 	}
 
 	rt.generateReport(reports, report)
 
-	return nil
+	return errs
 }
 
 func kindIsList(bytes []byte) (bool, error) {
@@ -220,4 +227,16 @@ func walk(path string) ([]io.Reader, error) {
 	}
 
 	return in, nil
+}
+
+// a helper function to concatenate the items in a []error
+// into a single error
+func concatErrors(errs []error, delimiter string) error {
+	message, errs := errs[0].Error(), errs[1:] // pop the first element of the errs
+	// this is done so that the first error message is not prefixed by the delimiter
+
+	for _, err := range errs {
+		message = fmt.Sprintf("%s%s%s", message, delimiter, err.Error())
+	}
+	return errors.New(message)
 }

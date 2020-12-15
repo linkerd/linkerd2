@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/linkerd/linkerd2/controller/k8s"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	dv1beta1 "k8s.io/api/discovery/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type bufferingEndpointListener struct {
@@ -104,7 +104,7 @@ func newBufferingEndpointListenerWithResVersion() *bufferingEndpointListenerWith
 	}
 }
 
-func addressStringWithResVerson(address Address) string {
+func addressStringWithResVersion(address Address) string {
 	return fmt.Sprintf("%s:%d:%s", address.IP, address.Port, address.Pod.ResourceVersion)
 }
 
@@ -126,7 +126,7 @@ func (bel *bufferingEndpointListenerWithResVersion) Add(set AddressSet) {
 	bel.Lock()
 	defer bel.Unlock()
 	for _, address := range set.Addresses {
-		bel.added = append(bel.added, addressStringWithResVerson(address))
+		bel.added = append(bel.added, addressStringWithResVersion(address))
 	}
 }
 
@@ -134,7 +134,7 @@ func (bel *bufferingEndpointListenerWithResVersion) Remove(set AddressSet) {
 	bel.Lock()
 	defer bel.Unlock()
 	for _, address := range set.Addresses {
-		bel.removed = append(bel.removed, addressStringWithResVerson(address))
+		bel.removed = append(bel.removed, addressStringWithResVersion(address))
 	}
 }
 
@@ -563,7 +563,623 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
+
+			k8sAPI.Sync(nil)
+
+			listener := newBufferingEndpointListener()
+
+			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			if tt.expectedError && err == nil {
+				t.Fatal("Expected error but was ok")
+			}
+			if !tt.expectedError && err != nil {
+				t.Fatalf("Expected no error, got [%s]", err)
+			}
+
+			listener.ExpectAdded(tt.expectedAddresses, t)
+
+			if listener.endpointsAreNotCalled() != tt.expectedNoEndpoints {
+				t.Fatalf("Expected noEndpointsCalled to be [%t], got [%t]",
+					tt.expectedNoEndpoints, listener.endpointsAreNotCalled())
+			}
+
+			if listener.endpointsDoNotExist() != tt.expectedNoEndpointsServiceExists {
+				t.Fatalf("Expected noEndpointsExist to be [%t], got [%t]",
+					tt.expectedNoEndpointsServiceExists, listener.endpointsDoNotExist())
+			}
+		})
+	}
+}
+
+func TestEndpointsWatcherWithEndpointSlices(t *testing.T) {
+	for _, tt := range []struct {
+		serviceType                      string
+		k8sConfigs                       []string
+		id                               ServiceID
+		hostname                         string
+		port                             Port
+		expectedAddresses                []string
+		expectedNoEndpoints              bool
+		expectedNoEndpointsServiceExists bool
+		expectedError                    bool
+	}{
+		{
+			serviceType: "local services with EndpointSlice",
+			k8sConfigs: []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1beta1
+resources:
+  - name: endpointslices
+    singularName: endpointslice
+    namespaced: true
+    kind: EndpointSlice
+    verbs:
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - create
+      - update
+      - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`,
+				`
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1beta1
+endpoints:
+- addresses:
+  - 172.17.0.12
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name-1-1
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-1
+- addresses:
+  - 172.17.0.19
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name-1-2
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-1
+- addresses:
+  - 172.17.0.20
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name-1-3
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-2
+- addresses:
+  - 172.17.0.21
+  conditions:
+    ready: true
+  topology:
+    kubernetes.io/hostname: node-2
+kind: EndpointSlice
+metadata:
+  labels:
+    kubernetes.io/service-name: name-1
+  name: name-1-bhnqh
+  namespace: ns
+ports:
+- name: ""
+  port: 8989`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name-1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.12`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name-1-2
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.19`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name-1-3
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.20`,
+			},
+			id:   ServiceID{Name: "name-1", Namespace: "ns"},
+			port: 8989,
+			expectedAddresses: []string{
+				"172.17.0.12:8989",
+				"172.17.0.19:8989",
+				"172.17.0.20:8989",
+				"172.17.0.21:8989",
+			},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
+		},
+		{
+			serviceType: "local services with missing addresses and EndpointSlice",
+			k8sConfigs: []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1beta1
+resources:
+  - name: endpointslices
+    singularName: endpointslice
+    namespaced: true
+    kind: EndpointSlice
+    verbs:
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - create
+      - update
+      - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`, `
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1beta1
+endpoints:
+- addresses:
+  - 172.17.0.23
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name-1-1
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-1
+- addresses:
+  - 172.17.0.24
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name-1-2
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-1
+- addresses:
+  - 172.17.0.25
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name-1-3
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-2
+kind: EndpointSlice
+metadata:
+  labels:
+    kubernetes.io/service-name: name-1
+  name: name1-f5fad
+  namespace: ns
+ports:
+- name: ""
+  port: 8989`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name-1-3
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  podIP: 172.17.0.25
+  phase: Running`,
+			},
+			id:                               ServiceID{Name: "name-1", Namespace: "ns"},
+			port:                             8989,
+			expectedAddresses:                []string{"172.17.0.25:8989"},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
+		},
+		{
+			serviceType: "local services with no EndpointSlices",
+			k8sConfigs: []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1beta1
+resources:
+  - name: endpointslices
+    singularName: endpointslice
+    namespaced: true
+    kind: EndpointSlice
+    verbs:
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - create
+      - update
+      - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-2
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 7979`,
+			},
+			id:                               ServiceID{Name: "name-2", Namespace: "ns"},
+			port:                             7979,
+			expectedAddresses:                []string{},
+			expectedNoEndpoints:              true,
+			expectedNoEndpointsServiceExists: true,
+			expectedError:                    false,
+		},
+		{
+			serviceType: "external name services with EndpointSlices",
+			k8sConfigs: []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1beta1
+resources:
+  - name: endpointslices
+    singularName: endpointslice
+    namespaced: true
+    kind: EndpointSlice
+    verbs:
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - create
+      - update
+      - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-3-external-svc
+  namespace: ns
+spec:
+  type: ExternalName
+  externalName: foo`,
+			},
+			id:                               ServiceID{Name: "name-3-external-svc", Namespace: "ns"},
+			port:                             7777,
+			expectedAddresses:                []string{},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+			expectedError:                    true,
+		},
+		{
+			serviceType:                      "services that do not exist",
+			k8sConfigs:                       []string{},
+			id:                               ServiceID{Name: "name-4-inexistent-svc", Namespace: "ns"},
+			port:                             5555,
+			expectedAddresses:                []string{},
+			expectedNoEndpoints:              true,
+			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
+		},
+		{
+			serviceType: "stateful sets with EndpointSlices",
+			k8sConfigs: []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1beta1
+resources:
+  - name: endpointslices
+    singularName: endpointslice
+    namespaced: true
+    kind: EndpointSlice
+    verbs:
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - create
+      - update
+      - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`, `
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1beta1
+endpoints:
+- addresses:
+  - 172.17.0.12
+  conditions:
+    ready: true
+  hostname: name-1-1
+  targetRef:
+    kind: Pod
+    name: name-1-1
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-1
+- addresses:
+  - 172.17.0.19
+  hostname: name-1-2
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name-1-2
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-1
+- addresses:
+  - 172.17.0.20
+  hostname: name-1-3
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name-1-3
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-2
+kind: EndpointSlice
+metadata:
+  labels:
+    kubernetes.io/service-name: name-1
+  name: name-1-f5fad
+  namespace: ns
+ports:
+- name: ""
+  port: 8989`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name-1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.12`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name-1-2
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.19`,
+				`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name-1-3
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.20`,
+			},
+			id:                               ServiceID{Name: "name-1", Namespace: "ns"},
+			hostname:                         "name-1-3",
+			port:                             6000,
+			expectedAddresses:                []string{"172.17.0.20:6000"},
+			expectedNoEndpoints:              false,
+			expectedNoEndpointsServiceExists: false,
+			expectedError:                    false,
+		},
+		{
+			serviceType: "service with EndpointSlice without labels",
+			k8sConfigs: []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1beta1
+resources:
+  - name: endpointslices
+    singularName: endpointslice
+    namespaced: true
+    kind: EndpointSlice
+    verbs:
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - create
+      - update
+      - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-5
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`, `
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1beta1
+endpoints:
+- addresses:
+  - 172.17.0.12
+  conditions:
+    ready: true
+  hostname: name-1-1
+  targetRef:
+    kind: Pod
+    name: name-1-1
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-1
+kind: EndpointSlice
+metadata:
+  labels:
+  name: name-1-f5fad
+  namespace: ns
+ports:
+- name: ""
+  port: 8989`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name-1-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 172.17.0.12`,
+			},
+			id:                               ServiceID{Name: "name-5", Namespace: "ns"},
+			port:                             8989,
+			expectedAddresses:                []string{},
+			expectedNoEndpoints:              true,
+			expectedNoEndpointsServiceExists: true,
+			expectedError:                    false,
+		},
+		{
+			serviceType: "service with IPv6 address type EndpointSlice",
+			k8sConfigs: []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1beta1
+resources:
+  - name: endpointslices
+    singularName: endpointslice
+    namespaced: true
+    kind: EndpointSlice
+    verbs:
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - create
+      - update
+      - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name-5
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 9000`, `
+addressType: IPv6
+apiVersion: discovery.k8s.io/v1beta1
+endpoints:
+- addresses:
+  - 0:0:0:0:0:0:0:1
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name-5-1
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-1
+kind: EndpointSlice
+metadata:
+  labels:
+  name: name-5-f65dv
+  namespace: ns
+  ownerReferences:
+  - apiVersion: v1
+    kind: Service
+    name: name-5
+ports:
+- name: ""
+  port: 9000`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name-5-1
+  namespace: ns
+  ownerReferences:
+  - kind: ReplicaSet
+    name: rs-1
+status:
+  phase: Running
+  podIP: 0:0:0:0:0:0:0:1`,
+			},
+			id:                               ServiceID{Name: "name-5", Namespace: "ns"},
+			port:                             9000,
+			expectedAddresses:                []string{},
+			expectedNoEndpoints:              true,
+			expectedNoEndpointsServiceExists: true,
+			expectedError:                    false,
+		}} {
+		tt := tt // pin
+		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
 
 			k8sAPI.Sync(nil)
 
@@ -680,7 +1296,7 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
 
 			k8sAPI.Sync(nil)
 
@@ -693,7 +1309,6 @@ status:
 
 			if tt.deletingServices {
 				watcher.deleteService(tt.objectToDelete)
-
 			} else {
 				watcher.deleteEndpoints(tt.objectToDelete)
 			}
@@ -703,6 +1318,122 @@ status:
 			}
 		})
 
+	}
+}
+
+func TestEndpointsWatcherDeletionWithEndpointSlices(t *testing.T) {
+	k8sConfigsWithES := []string{`
+kind: APIResourceList
+apiVersion: v1
+groupVersion: discovery.k8s.io/v1beta1
+resources:
+  - name: endpointslices
+    singularName: endpointslice
+    namespaced: true
+    kind: EndpointSlice
+    verbs:
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - create
+      - update
+      - watch
+`, `
+apiVersion: v1
+kind: Service
+metadata:
+  name: name1
+  namespace: ns
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8989`, `
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1beta1
+endpoints:
+- addresses:
+  - 172.17.0.12
+  conditions:
+    ready: true
+  targetRef:
+    kind: Pod
+    name: name1-1
+    namespace: ns
+  topology:
+    kubernetes.io/hostname: node-1
+kind: EndpointSlice
+metadata:
+  labels:
+    kubernetes.io/service-name: name1
+  name: name1-del
+  namespace: ns
+ports:
+- name: ""
+  port: 8989`, `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name1-1
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.12`}
+
+	for _, tt := range []struct {
+		serviceType      string
+		k8sConfigs       []string
+		id               ServiceID
+		hostname         string
+		port             Port
+		objectToDelete   interface{}
+		deletingServices bool
+		hasSliceAccess   bool
+	}{
+		{
+			serviceType:    "can delete EndpointSlices",
+			k8sConfigs:     k8sConfigsWithES,
+			id:             ServiceID{Name: "name1", Namespace: "ns"},
+			port:           8989,
+			hostname:       "name1-1",
+			objectToDelete: createTestEndpointSlice(),
+			hasSliceAccess: true,
+		},
+		{
+			serviceType:    "can delete EndpointSlices when wrapped in a DeletedFinalStateUnknown",
+			k8sConfigs:     k8sConfigsWithES,
+			id:             ServiceID{Name: "name1", Namespace: "ns"},
+			port:           8989,
+			hostname:       "name1-1",
+			objectToDelete: createTestEndpointSlice(),
+			hasSliceAccess: true,
+		},
+	} {
+		tt := tt // pin
+		t.Run("subscribes listener to "+tt.serviceType, func(t *testing.T) {
+			k8sAPI, err := k8s.NewFakeAPI(tt.k8sConfigs...)
+			if err != nil {
+				t.Fatalf("NewFakeAPI returned an error: %s", err)
+			}
+
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), true)
+
+			k8sAPI.Sync(nil)
+
+			listener := newBufferingEndpointListener()
+
+			err = watcher.Subscribe(tt.id, tt.port, tt.hostname, listener)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			watcher.deleteEndpointSlice(tt.objectToDelete)
+
+			if !listener.endpointsAreNotCalled() {
+				t.Fatal("Expected NoEndpoints to be Called")
+			}
+		})
 	}
 }
 
@@ -873,7 +1604,7 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
 
 			k8sAPI.Sync(nil)
 
@@ -952,6 +1683,26 @@ func endpoints(identity string) *corev1.Endpoints {
 	}
 }
 
+func createTestEndpointSlice() *dv1beta1.EndpointSlice {
+	return &dv1beta1.EndpointSlice{
+		AddressType: "IPv4",
+		ObjectMeta:  metav1.ObjectMeta{Name: "name1-del", Namespace: "ns", Labels: map[string]string{dv1beta1.LabelServiceName: "name1"}},
+		Endpoints: []dv1beta1.Endpoint{
+			{
+				Addresses:  []string{"172.17.0.12"},
+				Conditions: dv1beta1.EndpointConditions{Ready: func(b bool) *bool { return &b }(true)},
+				TargetRef:  &corev1.ObjectReference{Name: "name1-1", Namespace: "ns", Kind: "Pod"},
+			},
+		},
+		Ports: []dv1beta1.EndpointPort{
+			{
+				Name: func(s string) *string { return &s }(""),
+				Port: func(i int32) *int32 { return &i }(8989),
+			},
+		},
+	}
+}
+
 func TestEndpointsChangeDetection(t *testing.T) {
 
 	k8sConfigs := []string{`
@@ -1013,7 +1764,7 @@ subsets:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
 
 			k8sAPI.Sync(nil)
 
@@ -1136,7 +1887,7 @@ status:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()))
+			watcher := NewEndpointsWatcher(k8sAPI, logging.WithField("test", t.Name()), false)
 
 			k8sAPI.Sync(nil)
 

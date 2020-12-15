@@ -1,7 +1,7 @@
 package linkerd2
 
 import (
-	"k8s.io/helm/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"sigs.k8s.io/yaml"
 )
 
@@ -28,15 +28,15 @@ func (g Grafana) Values() []byte {
 }
 
 // ConfigStageTemplates returns the template files that are part of the config stage
-func (g Grafana) ConfigStageTemplates() []*chartutil.BufferedFile {
-	return []*chartutil.BufferedFile{
+func (g Grafana) ConfigStageTemplates() []*loader.BufferedFile {
+	return []*loader.BufferedFile{
 		{Name: "templates/grafana-rbac.yaml"},
 	}
 }
 
 // ControlPlaneStageTemplates returns the template files that are part of the Control Plane Stage.
-func (g Grafana) ControlPlaneStageTemplates() []*chartutil.BufferedFile {
-	return []*chartutil.BufferedFile{
+func (g Grafana) ControlPlaneStageTemplates() []*loader.BufferedFile {
+	return []*loader.BufferedFile{
 		{Name: "templates/grafana.yaml"},
 	}
 }

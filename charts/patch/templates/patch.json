@@ -35,7 +35,16 @@
     "value": "{{$value}}"
   },
   {{- end }}
-  {{- if .Values.global.proxyInit }}
+  {{- if or .Values.global.proxyInit .Values.global.proxy }}
+  {{- if .Values.addRootVolumes }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes",
+    "value": []
+  },
+  {{- end }}
+  {{- end}}
+  {{- if and .Values.global.proxyInit (not .Values.global.cniEnabled) }}
   {{- if .Values.addRootInitContainers }}
   {
     "op": "add",
@@ -43,6 +52,14 @@
     "value": []
   },
   {{- end }}
+  {
+    "op": "add",
+    "path": "{{$prefix}}/spec/volumes/-",
+    "value": {
+      "emptyDir": {},
+      "name": "linkerd-proxy-init-xtables-lock"
+    }
+  },  
   {
     "op": "add",
     "path": "{{$prefix}}/spec/initContainers/-",
@@ -59,21 +76,6 @@
   },
   {{- end }}
   {{- if .Values.global.proxy }}
-  {{- if .Values.addRootVolumes }}
-  {
-    "op": "add",
-    "path": "{{$prefix}}/spec/volumes",
-    "value": []
-  },
-  {{- end }}
-  {{- if (.Values.global.proxy.trace.collectorSvcAddr) }}
-  {
-    "op": "add",
-    "path": "{{$prefix}}/spec/volumes/-",
-    "value":
-      {{- include "partials.proxy.volumes.labels" . | fromYaml | toPrettyJson | nindent 6 }}
-  },
-  {{- end }}
   {{- if not .Values.global.proxy.disableIdentity -}}
   {
     "op": "add",

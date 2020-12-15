@@ -11,8 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerd/linkerd2/controller/gen/config"
-	pb "github.com/linkerd/linkerd2/controller/gen/config"
+	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
@@ -21,8 +20,7 @@ type testCase struct {
 	goldenFileName         string
 	reportFileName         string
 	injectProxy            bool
-	testInjectConfig       *config.All
-	overrideAnnotations    map[string]string
+	testInjectConfig       *linkerd2.Values
 	enableDebugSidecarFlag bool
 }
 
@@ -45,8 +43,8 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	report := new(bytes.Buffer)
 	transformer := &resourceTransformerInject{
 		injectProxy:         tc.injectProxy,
-		configs:             tc.testInjectConfig,
-		overrideAnnotations: tc.overrideAnnotations,
+		values:              tc.testInjectConfig,
+		overrideAnnotations: getOverrideAnnotations(tc.testInjectConfig, defaultConfig()),
 		enableDebugSidecar:  tc.enableDebugSidecarFlag,
 		allowNsInject:       true,
 	}
@@ -60,59 +58,42 @@ func testUninjectAndInject(t *testing.T, tc testCase) {
 	diffTestdata(t, reportFileName, report.String())
 }
 
-func testInstallConfig() *pb.All {
-	installOptions, err := testInstallOptions()
+func defaultConfig() *linkerd2.Values {
+	defaultConfig, err := testInstallValues()
 	if err != nil {
 		log.Fatalf("Unexpected error: %v", err)
 	}
+	defaultConfig.GetGlobal().LinkerdVersion = "test-inject-control-plane-version"
+	defaultConfig.GetGlobal().Proxy.Image.Version = "test-inject-proxy-version"
+	defaultConfig.DebugContainer.Image.Version = "test-inject-debug-version"
 
-	_, c, err := installOptions.validateAndBuild("", nil)
-	if err != nil {
-		log.Fatalf("test install options must be valid: %s", err)
-	}
-	return c
+	return defaultConfig
 }
 
 func TestUninjectAndInject(t *testing.T) {
-	defaultConfig := testInstallConfig()
-	defaultConfig.Global.Version = "test-inject-control-plane-version"
-	defaultConfig.Proxy.ProxyVersion = "test-inject-proxy-version"
-	defaultConfig.Proxy.DebugImageVersion = "test-inject-debug-version"
+	defaultValues := defaultConfig()
 
-	emptyVersionConfig := testInstallConfig()
-	emptyVersionConfig.Global.Version = ""
-	emptyVersionConfig.Proxy.ProxyVersion = ""
+	overrideConfig := defaultConfig()
+	overrideConfig.GetGlobal().Proxy.Image.Version = "override"
 
-	emptyProxyVersionConfig := testInstallConfig()
-	emptyProxyVersionConfig.Global.Version = "test-inject-control-plane-version"
-	emptyProxyVersionConfig.Proxy.ProxyVersion = ""
-
-	overrideConfig := testInstallConfig()
-	overrideConfig.Proxy.ProxyVersion = "override"
-
-	proxyResourceConfig := testInstallConfig()
-	proxyResourceConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
-	proxyResourceConfig.Proxy.Resource = &config.ResourceRequirements{
-		RequestCpu:    "110m",
-		RequestMemory: "100Mi",
-		LimitCpu:      "160m",
-		LimitMemory:   "150Mi",
+	proxyResourceConfig := defaultConfig()
+	proxyResourceConfig.GetGlobal().Proxy.Resources = &linkerd2.Resources{
+		CPU: linkerd2.Constraints{
+			Request: "110m",
+			Limit:   "160m",
+		},
+		Memory: linkerd2.Constraints{
+			Request: "100Mi",
+			Limit:   "150Mi",
+		},
 	}
 
-	cniEnabledConfig := testInstallConfig()
-	cniEnabledConfig.Proxy.ProxyVersion = defaultConfig.Proxy.ProxyVersion
-	cniEnabledConfig.Global.CniEnabled = true
+	cniEnabledConfig := defaultConfig()
+	cniEnabledConfig.GetGlobal().CNIEnabled = true
 
-	proxyIgnorePortsOptions, err := testInstallOptions()
-	if err != nil {
-		log.Fatalf("Unexpected error: %v", err)
-	}
-	proxyIgnorePortsOptions.ignoreInboundPorts = []string{"22", "8100-8102"}
-	proxyIgnorePortsOptions.ignoreOutboundPorts = []string{"5432"}
-	_, proxyIgnorePortsConfig, err := proxyIgnorePortsOptions.validateAndBuild("", nil)
-	if err != nil {
-		log.Fatalf("test install proxy-ignore options must be valid: %s", err)
-	}
+	proxyIgnorePortsConfig := defaultConfig()
+	proxyIgnorePortsConfig.GetGlobal().ProxyInit.IgnoreInboundPorts = "22,8100-8102"
+	proxyIgnorePortsConfig.GetGlobal().ProxyInit.IgnoreOutboundPorts = "5432"
 
 	testCases := []testCase{
 		{
@@ -120,111 +101,92 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_deployment.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
-			inputFileName:    "inject_emojivoto_deployment.input.yml",
-			goldenFileName:   "inject_emojivoto_deployment_empty_version_config.golden.yml",
-			reportFileName:   "inject_emojivoto_deployment.report",
-			injectProxy:      true,
-			testInjectConfig: emptyVersionConfig,
+			inputFileName:  "inject_emojivoto_deployment.input.yml",
+			goldenFileName: "inject_emojivoto_deployment_overridden_noinject.golden.yml",
+			reportFileName: "inject_emojivoto_deployment.report",
+			injectProxy:    false,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.GetGlobal().Proxy.Ports.Admin = 1234
+				return values
+			}(),
 		},
 		{
-			inputFileName:    "inject_emojivoto_deployment.input.yml",
-			goldenFileName:   "inject_emojivoto_deployment_empty_proxy_version_config.golden.yml",
-			reportFileName:   "inject_emojivoto_deployment.report",
-			injectProxy:      true,
-			testInjectConfig: emptyProxyVersionConfig,
-		},
-		{
-			inputFileName:    "inject_emojivoto_deployment.input.yml",
-			goldenFileName:   "inject_emojivoto_deployment_overridden_noinject.golden.yml",
-			reportFileName:   "inject_emojivoto_deployment.report",
-			injectProxy:      false,
-			testInjectConfig: defaultConfig,
-			overrideAnnotations: map[string]string{
-				k8s.ProxyAdminPortAnnotation: "1234",
-			},
-		},
-		{
-			inputFileName:    "inject_emojivoto_deployment.input.yml",
-			goldenFileName:   "inject_emojivoto_deployment_overridden.golden.yml",
-			reportFileName:   "inject_emojivoto_deployment.report",
-			injectProxy:      true,
-			testInjectConfig: defaultConfig,
-			overrideAnnotations: map[string]string{
-				k8s.ProxyAdminPortAnnotation: "1234",
-			},
+			inputFileName:  "inject_emojivoto_deployment.input.yml",
+			goldenFileName: "inject_emojivoto_deployment_overridden.golden.yml",
+			reportFileName: "inject_emojivoto_deployment.report",
+			injectProxy:    true,
+			testInjectConfig: func() *linkerd2.Values {
+				values := defaultConfig()
+				values.GetGlobal().Proxy.Ports.Admin = 1234
+				return values
+			}(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_list.input.yml",
 			goldenFileName:   "inject_emojivoto_list.golden.yml",
 			reportFileName:   "inject_emojivoto_list.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_hostNetwork_false.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_false.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_hostNetwork_false.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
-		},
-		{
-			inputFileName:    "inject_emojivoto_deployment_hostNetwork_true.input.yml",
-			goldenFileName:   "inject_emojivoto_deployment_hostNetwork_true.input.yml",
-			reportFileName:   "inject_emojivoto_deployment_hostNetwork_true.report",
-			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_capabilities.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_capabilities.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_injectDisabled.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_injectDisabled.input.yml",
 			reportFileName:   "inject_emojivoto_deployment_injectDisabled.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_controller_name.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_controller_name.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_controller_name.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_statefulset.input.yml",
 			goldenFileName:   "inject_emojivoto_statefulset.golden.yml",
 			reportFileName:   "inject_emojivoto_statefulset.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_cronjob.input.yml",
 			goldenFileName:   "inject_emojivoto_cronjob.golden.yml",
 			reportFileName:   "inject_emojivoto_cronjob.report",
 			injectProxy:      false,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_cronjob_nometa.input.yml",
 			goldenFileName:   "inject_emojivoto_cronjob_nometa.golden.yml",
 			reportFileName:   "inject_emojivoto_cronjob.report",
 			injectProxy:      false,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod.input.yml",
 			goldenFileName:   "inject_emojivoto_pod.golden.yml",
 			reportFileName:   "inject_emojivoto_pod.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_pod_with_requests.input.yml",
@@ -238,42 +200,35 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_deployment_udp.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_udp.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_already_injected.input.yml",
 			goldenFileName:   "inject_emojivoto_already_injected.golden.yml",
 			reportFileName:   "inject_emojivoto_already_injected.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
-		},
-		{
-			inputFileName:    "inject_emojivoto_istio.input.yml",
-			goldenFileName:   "inject_emojivoto_istio.input.yml",
-			reportFileName:   "inject_emojivoto_istio.report",
-			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_contour.input.yml",
 			goldenFileName:   "inject_contour.golden.yml",
 			reportFileName:   "inject_contour.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment_empty_resources.input.yml",
 			goldenFileName:   "inject_emojivoto_deployment_empty_resources.golden.yml",
 			reportFileName:   "inject_emojivoto_deployment_empty_resources.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_list_empty_resources.input.yml",
 			goldenFileName:   "inject_emojivoto_list_empty_resources.golden.yml",
 			reportFileName:   "inject_emojivoto_list_empty_resources.report",
 			injectProxy:      true,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultValues,
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
@@ -294,7 +249,7 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:         "inject_emojivoto_deployment_debug.golden.yml",
 			reportFileName:         "inject_emojivoto_deployment.report",
 			injectProxy:            true,
-			testInjectConfig:       defaultConfig,
+			testInjectConfig:       defaultValues,
 			enableDebugSidecarFlag: true,
 		},
 		{
@@ -302,7 +257,7 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:         "inject_tap_deployment_debug.golden.yml",
 			reportFileName:         "inject_tap_deployment_debug.report",
 			injectProxy:            true,
-			testInjectConfig:       defaultConfig,
+			testInjectConfig:       defaultValues,
 			enableDebugSidecarFlag: true,
 		},
 		{
@@ -310,18 +265,14 @@ func TestUninjectAndInject(t *testing.T) {
 			goldenFileName:   "inject_emojivoto_namespace_good.golden.yml",
 			reportFileName:   "inject_emojivoto_namespace_good.golden.report",
 			injectProxy:      false,
-			testInjectConfig: defaultConfig,
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_namespace_good.input.yml",
 			goldenFileName:   "inject_emojivoto_namespace_overidden_good.golden.yml",
 			reportFileName:   "inject_emojivoto_namespace_good.golden.report",
 			injectProxy:      false,
-			testInjectConfig: defaultConfig,
-			overrideAnnotations: map[string]string{
-				k8s.IdentityModeAnnotation: "default",
-				k8s.CreatedByAnnotation:    "linkerd/cli dev-undefined",
-			},
+			testInjectConfig: defaultConfig(),
 		},
 		{
 			inputFileName:    "inject_emojivoto_deployment.input.yml",
@@ -336,17 +287,6 @@ func TestUninjectAndInject(t *testing.T) {
 			reportFileName:   "inject_emojivoto_pod.report",
 			injectProxy:      true,
 			testInjectConfig: proxyIgnorePortsConfig,
-		},
-		{
-			inputFileName:    "inject_emojivoto_deployment.input.yml",
-			goldenFileName:   "inject_emojivoto_deployment_trace.golden.yml",
-			reportFileName:   "inject_emojivoto_deployment_trace.report",
-			injectProxy:      true,
-			testInjectConfig: defaultConfig,
-			overrideAnnotations: map[string]string{
-				k8s.ProxyTraceCollectorSvcAddrAnnotation:    "linkerd-collector",
-				k8s.ProxyTraceCollectorSvcAccountAnnotation: "linkerd-collector.linkerd",
-			},
 		},
 	}
 
@@ -372,8 +312,11 @@ type injectCmd struct {
 }
 
 func testInjectCmd(t *testing.T, tc injectCmd) {
-	testConfig := testInstallConfig()
-	testConfig.Proxy.ProxyVersion = "testinjectversion"
+	testConfig, err := testInstallValues()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	testConfig.GetGlobal().Proxy.Image.Version = "testinjectversion"
 
 	errBuffer := &bytes.Buffer{}
 	outBuffer := &bytes.Buffer{}
@@ -385,7 +328,7 @@ func testInjectCmd(t *testing.T, tc injectCmd) {
 
 	transformer := &resourceTransformerInject{
 		injectProxy: tc.injectProxy,
-		configs:     testConfig,
+		values:      testConfig,
 	}
 	exitCode := runInjectCmd([]io.Reader{in}, errBuffer, outBuffer, transformer)
 	if exitCode != tc.exitCode {
@@ -429,6 +372,20 @@ func TestRunInjectCmd(t *testing.T) {
 			exitCode:             1,
 			injectProxy:          false,
 		},
+		{
+			inputFileName:        "inject_emojivoto_istio.input.yml",
+			stdOutGoldenFileName: "inject_emojivoto_istio.golden.yml",
+			stdErrGoldenFileName: "inject_emojivoto_istio.golden.stderr",
+			exitCode:             1,
+			injectProxy:          true,
+		},
+		{
+			inputFileName:        "inject_emojivoto_deployment_hostNetwork_true.input.yml",
+			stdOutGoldenFileName: "inject_emojivoto_deployment_hostNetwork_true.golden.yml",
+			stdErrGoldenFileName: "inject_emojivoto_deployment_hostNetwork_true.golden.stderr",
+			exitCode:             1,
+			injectProxy:          true,
+		},
 	}
 
 	for i, tc := range testCases {
@@ -459,9 +416,13 @@ func testInjectFilePath(t *testing.T, tc injectFilePath) {
 
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
+	values, err := testInstallValues()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 	transformer := &resourceTransformerInject{
 		injectProxy: true,
-		configs:     testInstallConfig(),
+		values:      values,
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
@@ -478,11 +439,15 @@ func testReadFromFolder(t *testing.T, resourceFolder string, expectedFolder stri
 		t.Fatal("Unexpected error: ", err)
 	}
 
+	values, err := testInstallValues()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 	errBuf := &bytes.Buffer{}
 	actual := &bytes.Buffer{}
 	transformer := &resourceTransformerInject{
 		injectProxy: true,
-		configs:     testInstallConfig(),
+		values:      values,
 	}
 	if exitCode := runInjectCmd(in, errBuf, actual, transformer); exitCode != 0 {
 		t.Fatal("Unexpected error. Exit code from runInjectCmd: ", exitCode)
@@ -575,7 +540,12 @@ func TestWalk(t *testing.T) {
 	if err := os.MkdirAll(tmpFolderData, os.ModeDir|os.ModePerm); err != nil {
 		t.Fatal("Unexpected error: ", err)
 	}
-	defer os.RemoveAll(tmpFolderRoot)
+	defer func() {
+		err := os.RemoveAll(tmpFolderRoot)
+		if err != nil {
+			t.Errorf("failed to remove temp dir %q: %v", tmpFolderRoot, err)
+		}
+	}()
 
 	var (
 		data  = []byte(readTestdata(t, "inject_gettest_deployment.bad.input.yml"))
@@ -604,227 +574,123 @@ func TestWalk(t *testing.T) {
 	}
 }
 
-func TestOverrideConfigsParameterized(t *testing.T) {
+func TestProxyConfigurationAnnotations(t *testing.T) {
+	baseValues, err := linkerd2.NewValues(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values, err := baseValues.DeepCopy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	values.GetGlobal().ProxyInit.IgnoreInboundPorts = "8500-8505"
+	values.GetGlobal().ProxyInit.IgnoreOutboundPorts = "3306"
+	values.GetGlobal().Proxy.Ports.Admin = 1234
+	values.GetGlobal().Proxy.Ports.Control = 4191
+	values.GetGlobal().Proxy.Ports.Inbound = 4144
+	values.GetGlobal().Proxy.Ports.Outbound = 4141
+	values.GetGlobal().Proxy.UID = 999
+	values.GetGlobal().Proxy.LogLevel = "debug"
+	values.GetGlobal().Proxy.LogFormat = "cool"
+	values.GetGlobal().Proxy.DisableIdentity = true
+	values.GetGlobal().Proxy.DisableTap = true
+	values.GetGlobal().Proxy.EnableExternalProfiles = true
+	values.GetGlobal().Proxy.Resources.CPU.Request = "10m"
+	values.GetGlobal().Proxy.Resources.CPU.Limit = "100m"
+	values.GetGlobal().Proxy.Resources.Memory.Request = "10Mi"
+	values.GetGlobal().Proxy.Resources.Memory.Limit = "50Mi"
+	values.GetGlobal().Proxy.WaitBeforeExitSeconds = 10
 
-	tests := []struct {
-		description       string
-		configOptions     proxyConfigOptions
-		expectedOverrides map[string]string
-	}{
-		{
-			description: "proxy configuration overrides",
-			configOptions: proxyConfigOptions{
-				ignoreInboundPorts:       []string{"8500-8505"},
-				ignoreOutboundPorts:      []string{"3306"},
-				proxyAdminPort:           1234,
-				proxyControlPort:         4190,
-				proxyInboundPort:         4143,
-				proxyOutboundPort:        4140,
-				proxyUID:                 999,
-				proxyLogLevel:            "debug",
-				disableIdentity:          true,
-				disableTap:               true,
-				enableExternalProfiles:   true,
-				proxyCPURequest:          "10m",
-				proxyCPULimit:            "100m",
-				proxyMemoryRequest:       "10Mi",
-				proxyMemoryLimit:         "50Mi",
-				traceCollector:           "oc-collector.tracing:55678",
-				traceCollectorSvcAccount: "default",
-				waitBeforeExitSeconds:    10,
-			},
-			expectedOverrides: map[string]string{
-				k8s.ProxyIgnoreInboundPortsAnnotation:       "8500-8505",
-				k8s.ProxyIgnoreOutboundPortsAnnotation:      "3306",
-				k8s.ProxyAdminPortAnnotation:                "1234",
-				k8s.ProxyControlPortAnnotation:              "4190",
-				k8s.ProxyInboundPortAnnotation:              "4143",
-				k8s.ProxyOutboundPortAnnotation:             "4140",
-				k8s.ProxyUIDAnnotation:                      "999",
-				k8s.ProxyLogLevelAnnotation:                 "debug",
-				k8s.ProxyDisableIdentityAnnotation:          "true",
-				k8s.ProxyDisableTapAnnotation:               "true",
-				k8s.ProxyEnableExternalProfilesAnnotation:   "true",
-				k8s.ProxyCPURequestAnnotation:               "10m",
-				k8s.ProxyCPULimitAnnotation:                 "100m",
-				k8s.ProxyMemoryRequestAnnotation:            "10Mi",
-				k8s.ProxyMemoryLimitAnnotation:              "50Mi",
-				k8s.ProxyTraceCollectorSvcAddrAnnotation:    "oc-collector.tracing:55678",
-				k8s.ProxyTraceCollectorSvcAccountAnnotation: "default",
-				k8s.ProxyWaitBeforeExitSecondsAnnotation:    "10",
-			},
-		},
-		{
-			description: "proxy image overrides",
-			configOptions: proxyConfigOptions{
-				proxyImage:      "gcr.io/linkerd-io/proxy",
-				proxyVersion:    "test-proxy-version",
-				imagePullPolicy: "IfNotPresent",
-			},
-			expectedOverrides: map[string]string{
-				k8s.ProxyImageAnnotation:           "gcr.io/linkerd-io/proxy",
-				k8s.ProxyVersionOverrideAnnotation: "test-proxy-version",
-				k8s.ProxyImagePullPolicyAnnotation: "IfNotPresent",
-			},
-		},
-		{
-			description: "proxy-init image overrides",
-			configOptions: proxyConfigOptions{
-				initImage:        "gcr.io/linkerd-io/proxy-init",
-				initImageVersion: "test-proxy-init-version",
-				imagePullPolicy:  "IfNotPresent",
-			},
-			expectedOverrides: map[string]string{
-				k8s.ProxyInitImageAnnotation:        "gcr.io/linkerd-io/proxy-init",
-				k8s.ProxyInitImageVersionAnnotation: "test-proxy-init-version",
-				k8s.ProxyImagePullPolicyAnnotation:  "IfNotPresent",
-			},
-		},
-		{
-			description: "custom docker registry with proxy and proxy-init",
-			configOptions: proxyConfigOptions{
-				proxyImage:     "gcr.io/linkerd-io/proxy",
-				initImage:      "gcr.io/linkerd-io/proxy-init",
-				dockerRegistry: "my.custom.registry/linkerd-io",
-			},
-			expectedOverrides: map[string]string{
-				k8s.ProxyImageAnnotation:     "gcr.io/linkerd-io/proxy",
-				k8s.ProxyInitImageAnnotation: "gcr.io/linkerd-io/proxy-init",
-				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
-			},
-		},
-		{
-			description: "custom docker registry",
-			configOptions: proxyConfigOptions{
-				dockerRegistry: "my.custom.registry/linkerd-io",
-			},
-			expectedOverrides: map[string]string{
-				k8s.ProxyImageAnnotation:     "my.custom.registry/linkerd-io/proxy",
-				k8s.ProxyInitImageAnnotation: "my.custom.registry/linkerd-io/proxy-init",
-				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
-			},
-		},
-		{
-			description:       "no overrides",
-			configOptions:     proxyConfigOptions{},
-			expectedOverrides: map[string]string{},
-		},
+	expectedOverrides := map[string]string{
+		k8s.ProxyIgnoreInboundPortsAnnotation:     "8500-8505",
+		k8s.ProxyIgnoreOutboundPortsAnnotation:    "3306",
+		k8s.ProxyAdminPortAnnotation:              "1234",
+		k8s.ProxyControlPortAnnotation:            "4191",
+		k8s.ProxyInboundPortAnnotation:            "4144",
+		k8s.ProxyOutboundPortAnnotation:           "4141",
+		k8s.ProxyUIDAnnotation:                    "999",
+		k8s.ProxyLogLevelAnnotation:               "debug",
+		k8s.ProxyLogFormatAnnotation:              "cool",
+		k8s.ProxyDisableIdentityAnnotation:        "true",
+		k8s.ProxyDisableTapAnnotation:             "true",
+		k8s.ProxyEnableExternalProfilesAnnotation: "true",
+		k8s.ProxyCPURequestAnnotation:             "10m",
+		k8s.ProxyCPULimitAnnotation:               "100m",
+		k8s.ProxyMemoryRequestAnnotation:          "10Mi",
+		k8s.ProxyMemoryLimitAnnotation:            "50Mi",
+		k8s.ProxyWaitBeforeExitSecondsAnnotation:  "10",
 	}
 
-	for _, tt := range tests {
-		tt := tt // pin
-		t.Run(tt.description, func(t *testing.T) {
-			defaultConfig := testInstallConfig()
-			actualOverrides := map[string]string{}
-			tt.configOptions.overrideConfigs(defaultConfig, actualOverrides)
-			if len(tt.expectedOverrides) != len(actualOverrides) {
-				t.Fatalf("expected %d annotation(s), but received %d", len(tt.expectedOverrides), len(actualOverrides))
-			}
-			for key, expected := range tt.expectedOverrides {
-				actual := actualOverrides[key]
-				if actual != expected {
-					t.Fatalf("expected annotation %q with %q, but got %q", key, expected, actual)
-				}
-			}
-		})
-	}
+	overrides := getOverrideAnnotations(values, baseValues)
+
+	diffOverrides(t, expectedOverrides, overrides)
 }
 
-func TestOverrideConfigsWithCustomRegistryInstall(t *testing.T) {
-
-	tests := []struct {
-		description       string
-		configOptions     proxyConfigOptions
-		expectedOverrides map[string]string
-	}{
-		{
-			description: "proxy image overrides",
-			configOptions: proxyConfigOptions{
-				proxyImage:      "gcr.io/linkerd-io/proxy",
-				proxyVersion:    "test-proxy-version",
-				imagePullPolicy: "IfNotPresent",
-			},
-			expectedOverrides: map[string]string{
-				k8s.ProxyImageAnnotation:           "gcr.io/linkerd-io/proxy",
-				k8s.ProxyVersionOverrideAnnotation: "test-proxy-version",
-				k8s.ProxyImagePullPolicyAnnotation: "IfNotPresent",
-			},
-		},
-		{
-			description: "proxy-init image overrides",
-			configOptions: proxyConfigOptions{
-				initImage:        "gcr.io/linkerd-io/proxy-init",
-				initImageVersion: "test-proxy-init-version",
-				imagePullPolicy:  "IfNotPresent",
-			},
-			expectedOverrides: map[string]string{
-				k8s.ProxyInitImageAnnotation:        "gcr.io/linkerd-io/proxy-init",
-				k8s.ProxyInitImageVersionAnnotation: "test-proxy-init-version",
-				k8s.ProxyImagePullPolicyAnnotation:  "IfNotPresent",
-			},
-		},
-		{
-			description: "custom docker registry with proxy and proxy-init",
-			configOptions: proxyConfigOptions{
-				proxyImage:     "gcr.io/linkerd-io/proxy",
-				initImage:      "gcr.io/linkerd-io/proxy-init",
-				dockerRegistry: "my.custom.registry/linkerd-io",
-			},
-			expectedOverrides: map[string]string{
-				k8s.ProxyImageAnnotation:     "gcr.io/linkerd-io/proxy",
-				k8s.ProxyInitImageAnnotation: "gcr.io/linkerd-io/proxy-init",
-				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
-			},
-		},
-		{
-			description: "custom docker registry",
-			configOptions: proxyConfigOptions{
-				dockerRegistry: "my.custom.registry/linkerd-io",
-			},
-			expectedOverrides: map[string]string{
-				k8s.ProxyImageAnnotation:     "my.custom.registry/linkerd-io/proxy",
-				k8s.ProxyInitImageAnnotation: "my.custom.registry/linkerd-io/proxy-init",
-				k8s.DebugImageAnnotation:     "my.custom.registry/linkerd-io/debug",
-			},
-		},
-		{
-			description:       "no overrides",
-			configOptions:     proxyConfigOptions{},
-			expectedOverrides: map[string]string{},
-		},
+func TestProxyImageAnnotations(t *testing.T) {
+	baseValues, err := linkerd2.NewValues(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values, err := baseValues.DeepCopy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	values.GetGlobal().Proxy.Image = &linkerd2.Image{
+		Name:       "my.registry/linkerd/proxy",
+		Version:    "test-proxy-version",
+		PullPolicy: "Always",
 	}
 
-	// Setup the registry used when "installing" linkerd
-	customRegistryAtInstall := "custom.install.registry/linkerd-io"
-	installFlags := make([]*pb.Install_Flag, 0)
-	installFlags = append(installFlags, &pb.Install_Flag{
-		Name:  "registry",
-		Value: customRegistryAtInstall,
-	})
-
-	for _, tt := range tests {
-		tt := tt // pin
-		t.Run(tt.description, func(t *testing.T) {
-
-			defaultConfig := testInstallConfig()
-			defaultConfig.Install.Flags = installFlags
-			defaultConfig.Proxy.ProxyImage.ImageName = customRegistryAtInstall + "/proxy"
-			defaultConfig.Proxy.ProxyInitImage.ImageName = customRegistryAtInstall + "/proxy-init"
-			defaultConfig.Proxy.DebugImage.ImageName = customRegistryAtInstall + "/debug"
-
-			actualOverrides := map[string]string{}
-			tt.configOptions.overrideConfigs(defaultConfig, actualOverrides)
-			if len(tt.expectedOverrides) != len(actualOverrides) {
-				t.Fatalf("expected %d annotation(s), but received %d", len(tt.expectedOverrides), len(actualOverrides))
-			}
-			for key, expected := range tt.expectedOverrides {
-				actual := actualOverrides[key]
-				if actual != expected {
-					t.Fatalf("expected annotation %q with %q, but got %q", key, expected, actual)
-				}
-			}
-		})
+	expectedOverrides := map[string]string{
+		k8s.ProxyImageAnnotation:           "my.registry/linkerd/proxy",
+		k8s.ProxyVersionOverrideAnnotation: "test-proxy-version",
+		k8s.ProxyImagePullPolicyAnnotation: "Always",
 	}
+
+	overrides := getOverrideAnnotations(values, baseValues)
+
+	diffOverrides(t, expectedOverrides, overrides)
+}
+
+func TestProxyInitImageAnnotations(t *testing.T) {
+	baseValues, err := linkerd2.NewValues(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values, err := baseValues.DeepCopy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	values.GetGlobal().ProxyInit.Image = &linkerd2.Image{
+		Name:    "my.registry/linkerd/proxy-init",
+		Version: "test-proxy-init-version",
+	}
+
+	expectedOverrides := map[string]string{
+		k8s.ProxyInitImageAnnotation:        "my.registry/linkerd/proxy-init",
+		k8s.ProxyInitImageVersionAnnotation: "test-proxy-init-version",
+	}
+
+	overrides := getOverrideAnnotations(values, baseValues)
+
+	diffOverrides(t, expectedOverrides, overrides)
+}
+
+func TestNoAnnotations(t *testing.T) {
+	baseValues, err := linkerd2.NewValues(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values, err := baseValues.DeepCopy()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedOverrides := map[string]string{}
+
+	overrides := getOverrideAnnotations(values, baseValues)
+
+	diffOverrides(t, expectedOverrides, overrides)
 }
 
 func TestOverwriteRegistry(t *testing.T) {
@@ -834,12 +700,12 @@ func TestOverwriteRegistry(t *testing.T) {
 		expected string
 	}{
 		{
-			image:    "gcr.io/linkerd-io/image",
+			image:    "ghcr.io/linkerd/image",
 			registry: "my.custom.registry",
 			expected: "my.custom.registry/image",
 		},
 		{
-			image:    "gcr.io/linkerd-io/image",
+			image:    "ghcr.io/linkerd/image",
 			registry: "my.custom.registry/",
 			expected: "my.custom.registry/image",
 		},
@@ -850,8 +716,8 @@ func TestOverwriteRegistry(t *testing.T) {
 		},
 		{
 			image:    "my.custom.registry/image",
-			registry: "gcr.io/linkerd-io",
-			expected: "gcr.io/linkerd-io/image",
+			registry: "ghcr.io/linkerd",
+			expected: "ghcr.io/linkerd/image",
 		},
 		{
 			image:    "",
@@ -859,23 +725,35 @@ func TestOverwriteRegistry(t *testing.T) {
 			expected: "",
 		},
 		{
-			image:    "gcr.io/linkerd-io/image",
+			image:    "ghcr.io/linkerd/image",
 			registry: "",
 			expected: "image",
 		},
 		{
 			image:    "image",
-			registry: "gcr.io/linkerd-io",
-			expected: "gcr.io/linkerd-io/image",
+			registry: "ghcr.io/linkerd",
+			expected: "ghcr.io/linkerd/image",
 		},
 	}
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			actual := overwriteRegistry(tc.image, tc.registry)
+			actual := registryOverride(tc.image, tc.registry)
 			if actual != tc.expected {
 				t.Fatalf("expected %q, but got %q", tc.expected, actual)
 			}
 		})
+	}
+}
+
+func diffOverrides(t *testing.T, expectedOverrides map[string]string, actualOverrides map[string]string) {
+	if len(expectedOverrides) != len(actualOverrides) {
+		t.Fatalf("expected annotations:\n%s\nbut received:\n%s", expectedOverrides, actualOverrides)
+	}
+	for key, expected := range expectedOverrides {
+		actual := actualOverrides[key]
+		if actual != expected {
+			t.Fatalf("expected annotation %q with %q, but got %q", key, expected, actual)
+		}
 	}
 }

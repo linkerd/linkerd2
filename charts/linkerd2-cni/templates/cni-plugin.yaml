@@ -17,7 +17,7 @@ limitations under the License.
 This file was inspired by
 1) https://github.com/istio/cni/blob/c63a509539b5ed165a6617548c31b686f13c2133/deployments/kubernetes/install/manifests/istio-cni.yaml
 */ -}}
-
+{{- if .Values.installNamespace -}}
 kind: Namespace
 apiVersion: v1
 metadata:
@@ -28,6 +28,7 @@ metadata:
     {{.Values.cniResourceLabel}}: "true"
     config.linkerd.io/admission-webhooks: disabled
 ---
+{{ end -}}
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
 metadata:
@@ -56,6 +57,10 @@ metadata:
   namespace: {{.Values.namespace}}
   labels:
     {{.Values.cniResourceLabel}}: "true"
+{{- if .Values.imagePullSecrets }}
+imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 2 }}
+{{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -88,7 +93,7 @@ subjects:
   namespace: {{.Values.namespace}}
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-cni
   labels:
@@ -98,7 +103,7 @@ rules:
   resources: ["pods", "nodes", "namespaces"]
   verbs: ["list", "get", "watch"]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: linkerd-cni
@@ -163,7 +168,7 @@ metadata:
     k8s-app: linkerd-cni
     {{.Values.cniResourceLabel}}: "true"
   annotations:
-    {{.Values.createdByAnnotation}}: {{.Values.cliVersion}}
+    {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.cniPluginVersion) .Values.cliVersion}}
 spec:
   selector:
     matchLabels:
@@ -177,12 +182,15 @@ spec:
       labels:
         k8s-app: linkerd-cni
       annotations:
-        {{.Values.createdByAnnotation}}: {{.Values.cliVersion}}
+        {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.cniPluginVersion) .Values.cliVersion}}
     spec:
       nodeSelector:
         beta.kubernetes.io/os: linux
       hostNetwork: true
       serviceAccountName: linkerd-cni
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
       containers:
       # This container installs the linkerd CNI binaries
       # and CNI network config file on each node. The install

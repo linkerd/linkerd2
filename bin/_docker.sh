@@ -9,10 +9,25 @@ bindir=$( cd "${BASH_SOURCE[0]%/*}" && pwd )
 
 # TODO this should be set to the canonical public docker registry; we can override this
 # docker registry in, for instance, CI.
-export DOCKER_REGISTRY=${DOCKER_REGISTRY:-gcr.io/linkerd-io}
+export DOCKER_REGISTRY=${DOCKER_REGISTRY:-ghcr.io/linkerd}
 
 # When set, causes docker's build output to be emitted to stderr.
 export DOCKER_TRACE=${DOCKER_TRACE:-}
+
+# When set, use `docker buildx` and use the github actions cache to store/retrieve images
+export DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-}
+
+# buildx cache directory. Needed if DOCKER_BUILDKIT is used
+export DOCKER_BUILDKIT_CACHE=${DOCKER_BUILDKIT_CACHE:-}
+
+# When set together with DOCKER_BUILDKIT, it will build the multi-arch images. Currently DOCKER_PUSH is also required
+export DOCKER_MULTIARCH=${DOCKER_MULTIARCH:-}
+
+# When set together with DOCKER_MULTIARCH, it will push the multi-arch images to the registry
+export DOCKER_PUSH=${DOCKER_PUSH:-}
+
+# Default supported docker image architectures
+export SUPPORTED_ARCHS=${SUPPORTED_ARCHS:-linux/amd64,linux/arm64,linux/arm/v7}
 
 docker_repo() {
     repo=$1
@@ -42,12 +57,41 @@ docker_build() {
 
     rootdir=$( cd "$bindir"/.. && pwd )
 
-    log_debug "  :; docker build $rootdir -t $repo:$tag -f $file $*"
-    docker build "$rootdir" \
-        -t "$repo:$tag" \
-        -f "$file" \
-        "$@" \
-        > "$output"
+    if [ -n "$DOCKER_BUILDKIT" ]; then
+      cache_params=""
+      if [ -n "$DOCKER_BUILDKIT_CACHE" ]; then
+        cache_params="--cache-from type=local,src=${DOCKER_BUILDKIT_CACHE} --cache-to type=local,dest=${DOCKER_BUILDKIT_CACHE},mode=max"
+      fi
+
+      output_params="--load"
+      if [ -n "$DOCKER_MULTIARCH" ]; then
+        output_params="--platform $SUPPORTED_ARCHS"
+        if [ -n "$DOCKER_PUSH" ]; then
+          output_params+=" --push"
+        else
+          echo "Error: env DOCKER_PUSH=1 is missing"
+          echo "When building the multi-arch images it is required to push the images to the registry"
+          echo "See https://github.com/docker/buildx/issues/59 for more details"
+          exit 1
+        fi
+      fi
+
+      log_debug "  :; docker buildx $rootdir $cache_params $output_params -t $repo:$tag -f $file $*"
+      # shellcheck disable=SC2086
+      docker buildx build "$rootdir" $cache_params \
+          $output_params \
+          -t "$repo:$tag" \
+          -f "$file" \
+          "$@" \
+          > "$output"
+    else
+      log_debug "  :; docker build $rootdir -t $repo:$tag -f $file $*"
+      docker build "$rootdir" \
+          -t "$repo:$tag" \
+          -f "$file" \
+          "$@" \
+          > "$output"
+    fi
 
     echo "$repo:$tag"
 }

@@ -10,25 +10,18 @@ bindir=$( cd "${0%/*}" && pwd )
 rootdir=$( cd "$bindir"/.. && pwd )
 # shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
-
-case $(uname) in
-	Darwin)
-		host_platform=darwin
-		;;
-	Linux)
-		host_platform=linux
-		;;
-	*)
-		host_platform=windows
-		;;
-esac
+# shellcheck source=_os.sh
+. "$bindir"/_os.sh
 
 (
     cd "$rootdir"
     cd "$(pwd -P)"
-    target=target/cli/$host_platform/linkerd
-    GO111MODULE=on go generate -mod=readonly ./pkg/charts/static # TODO: `go generate` does not honor -mod=readonly
+    target=target/cli/$(os)/linkerd
+     # TODO: `go generate` does not honor -mod=readonly
+    GO111MODULE=on go generate -mod=readonly ./pkg/charts/static
+    GO111MODULE=on go generate -mod=readonly ./jaeger/static
+    GO111MODULE=on go generate -mod=readonly ./multicluster/static
     root_tag=$("$bindir"/root-tag)
-    GO111MODULE=on CGO_ENABLED=0 go build -o $target -tags prod -mod=readonly -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$root_tag" ./cli
+    GO111MODULE=on CGO_ENABLED=0 go build -o "$target" -tags prod -mod=readonly -ldflags "-s -w -X github.com/linkerd/linkerd2/pkg/version.Version=$root_tag" ./cli
     echo "$target"
 )

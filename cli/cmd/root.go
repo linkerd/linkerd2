@@ -2,29 +2,27 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"net"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/spf13/pflag"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/clientcmd"
-
 	"github.com/fatih/color"
+	"github.com/linkerd/linkerd2/cli/flag"
+	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
+	multicluster "github.com/linkerd/linkerd2/multicluster/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	k8sResource "k8s.io/apimachinery/pkg/api/resource"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
 	defaultLinkerdNamespace = "linkerd"
 	defaultCNINamespace     = "linkerd-cni"
 	defaultClusterDomain    = "cluster.local"
-	defaultDockerRegistry   = "gcr.io/linkerd-io"
+	defaultDockerRegistry   = "ghcr.io/linkerd"
 
 	jsonOutput  = "json"
 	tableOutput = "table"
@@ -55,10 +53,9 @@ var (
 
 	// These regexs are not as strict as they could be, but are a quick and dirty
 	// sanity check against illegal characters.
-	alphaNumDash                        = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
-	alphaNumDashDot                     = regexp.MustCompile(`^[\.a-zA-Z0-9-]+$`)
-	alphaNumDashDotSlashColon           = regexp.MustCompile(`^[\./a-zA-Z0-9-:]+$`)
-	alphaNumDashDotSlashColonUnderscore = regexp.MustCompile(`^[\./a-zA-Z0-9-:_]+$`)
+	alphaNumDash              = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
+	alphaNumDashDot           = regexp.MustCompile(`^[\.a-zA-Z0-9-]+$`)
+	alphaNumDashDotSlashColon = regexp.MustCompile(`^[\./a-zA-Z0-9-:]+$`)
 
 	// Full Rust log level syntax at
 	// https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging
@@ -101,7 +98,7 @@ var RootCmd = &cobra.Command{
 
 func init() {
 	defaultNamespace = getDefaultNamespace()
-	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
+	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed ($LINKERD_NAMESPACE)")
 	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
@@ -117,12 +114,10 @@ func init() {
 	RootCmd.AddCommand(newCmdDoc())
 	RootCmd.AddCommand(newCmdEdges())
 	RootCmd.AddCommand(newCmdEndpoints())
-	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
 	RootCmd.AddCommand(newCmdInstallCNIPlugin())
 	RootCmd.AddCommand(newCmdInstallSP())
-	RootCmd.AddCommand(newCmdLogs())
 	RootCmd.AddCommand(newCmdMetrics())
 	RootCmd.AddCommand(newCmdProfile())
 	RootCmd.AddCommand(newCmdRoutes())
@@ -132,8 +127,11 @@ func init() {
 	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
-	RootCmd.AddCommand(newCmdMulticluster())
 	RootCmd.AddCommand(newCmdUninstall())
+
+	// Extension Sub Commands
+	RootCmd.AddCommand(jaeger.NewCmdJaeger())
+	RootCmd.AddCommand(multicluster.NewCmdMulticluster())
 }
 
 type statOptionsBase struct {
@@ -208,163 +206,34 @@ func getDefaultNamespace() string {
 	ns, _, err := kubeCfg.Namespace()
 
 	if err != nil {
-		log.Errorf("could not set namespace from kubectl context: ensure a valid KUBECONFIG path has been set")
+		log.Warnf(`could not set namespace from kubectl context, using 'default' namespace: %s
+		 ensure the KUBECONFIG path %s is valid`, err, kubeconfigPath)
 		return corev1.NamespaceDefault
 	}
 
 	return ns
 }
 
-// proxyConfigOptions holds values for command line flags that apply to both the
-// install and inject commands. All fields in this struct should have
-// corresponding flags added in the addProxyConfigFlags func later in this file.
-type proxyConfigOptions struct {
-	proxyVersion                  string
-	proxyImage                    string
-	initImage                     string
-	initImageVersion              string
-	debugImage                    string
-	debugImageVersion             string
-	dockerRegistry                string
-	imagePullPolicy               string
-	destinationGetNetworks        []string
-	ignoreInboundPorts            []string
-	ignoreOutboundPorts           []string
-	proxyUID                      int64
-	proxyLogLevel                 string
-	proxyInboundPort              uint
-	proxyOutboundPort             uint
-	proxyControlPort              uint
-	proxyAdminPort                uint
-	proxyCPURequest               string
-	proxyMemoryRequest            string
-	proxyCPULimit                 string
-	proxyMemoryLimit              string
-	enableExternalProfiles        bool
-	traceCollector                string
-	traceCollectorSvcAccount      string
-	waitBeforeExitSeconds         uint64
-	ignoreCluster                 bool // not validated by validate()
-	disableIdentity               bool
-	requireIdentityOnInboundPorts []string
-	disableTap                    bool
+// registryOverride replaces the registry-portion of the provided image with the provided registry.
+func registryOverride(image, newRegistry string) string {
+	if image == "" {
+		return image
+	}
+	registry := newRegistry
+	if registry != "" && !strings.HasSuffix(registry, slash) {
+		registry += slash
+	}
+	imageName := image
+	if strings.Contains(image, slash) {
+		imageName = image[strings.LastIndex(image, slash)+1:]
+	}
+	return registry + imageName
 }
 
-func (options *proxyConfigOptions) validate() error {
-
-	for _, network := range options.destinationGetNetworks {
-		if _, _, err := net.ParseCIDR(network); err != nil {
-			return fmt.Errorf("cannot parse destination get networks: %s", err)
-		}
+func flattenFlags(flags ...[]flag.Flag) []flag.Flag {
+	out := []flag.Flag{}
+	for _, f := range flags {
+		out = append(out, f...)
 	}
-
-	if options.disableIdentity && len(options.requireIdentityOnInboundPorts) > 0 {
-		return errors.New("Identity must be enabled when  --require-identity-on-inbound-ports is specified")
-	}
-
-	if options.proxyVersion != "" && !alphaNumDashDot.MatchString(options.proxyVersion) {
-		return fmt.Errorf("%s is not a valid version", options.proxyVersion)
-	}
-
-	if options.initImageVersion != "" && !alphaNumDashDot.MatchString(options.initImageVersion) {
-		return fmt.Errorf("%s is not a valid version", options.initImageVersion)
-	}
-
-	if options.dockerRegistry != "" && !alphaNumDashDotSlashColon.MatchString(options.dockerRegistry) {
-		return fmt.Errorf("%s is not a valid Docker registry. The url can contain only letters, numbers, dash, dot, slash and colon", options.dockerRegistry)
-	}
-
-	if options.imagePullPolicy != "" && options.imagePullPolicy != "Always" && options.imagePullPolicy != "IfNotPresent" && options.imagePullPolicy != "Never" {
-		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
-	}
-
-	if options.proxyCPURequest != "" {
-		if _, err := k8sResource.ParseQuantity(options.proxyCPURequest); err != nil {
-			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu-request flag", options.proxyCPURequest)
-		}
-	}
-
-	if options.proxyMemoryRequest != "" {
-		if _, err := k8sResource.ParseQuantity(options.proxyMemoryRequest); err != nil {
-			return fmt.Errorf("Invalid memory request '%s' for --proxy-memory-request flag", options.proxyMemoryRequest)
-		}
-	}
-
-	if options.proxyCPULimit != "" {
-		cpuLimit, err := k8sResource.ParseQuantity(options.proxyCPULimit)
-		if err != nil {
-			return fmt.Errorf("Invalid cpu limit '%s' for --proxy-cpu-limit flag", options.proxyCPULimit)
-		}
-		if options.proxyCPURequest != "" {
-			// Not checking for error because option proxyCPURequest was already validated
-			if cpuRequest, _ := k8sResource.ParseQuantity(options.proxyCPURequest); cpuRequest.MilliValue() > cpuLimit.MilliValue() {
-				return fmt.Errorf("The cpu limit '%s' cannot be lower than the cpu request '%s'", options.proxyCPULimit, options.proxyCPURequest)
-			}
-		}
-	}
-
-	if options.proxyMemoryLimit != "" {
-		memoryLimit, err := k8sResource.ParseQuantity(options.proxyMemoryLimit)
-		if err != nil {
-			return fmt.Errorf("Invalid memory limit '%s' for --proxy-memory-limit flag", options.proxyMemoryLimit)
-		}
-		if options.proxyMemoryRequest != "" {
-			// Not checking for error because option proxyMemoryRequest was already validated
-			if memoryRequest, _ := k8sResource.ParseQuantity(options.proxyMemoryRequest); memoryRequest.Value() > memoryLimit.Value() {
-				return fmt.Errorf("The memory limit '%s' cannot be lower than the memory request '%s'", options.proxyMemoryLimit, options.proxyMemoryRequest)
-			}
-		}
-	}
-
-	if options.proxyLogLevel != "" && !validProxyLogLevel.MatchString(options.proxyLogLevel) {
-		return fmt.Errorf("\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging",
-			options.proxyLogLevel)
-	}
-
-	if err := validateRangeSlice(options.ignoreInboundPorts); err != nil {
-		return err
-	}
-
-	if err := validateRangeSlice(options.ignoreOutboundPorts); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// registryOverride replaces the registry of the provided image if the image is
-// using the default registry and the provided registry is not the default.
-func registryOverride(image, registry string) string {
-	return strings.Replace(image, defaultDockerRegistry, registry, 1)
-}
-
-func (options *proxyConfigOptions) flagSet(e pflag.ErrorHandling) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("proxy", e)
-	flags.StringVarP(&options.proxyVersion, "proxy-version", "v", options.proxyVersion, "Tag to be used for the Linkerd proxy images")
-	flags.StringVar(&options.proxyImage, "proxy-image", options.proxyImage, "Linkerd proxy container image name")
-	flags.StringVar(&options.initImage, "init-image", options.initImage, "Linkerd init container image name")
-	flags.StringVar(&options.initImageVersion, "init-image-version", options.initImageVersion, "Linkerd init container image version")
-	flags.StringVar(&options.dockerRegistry, "registry", options.dockerRegistry, "Docker registry to pull images from")
-	flags.StringVar(&options.imagePullPolicy, "image-pull-policy", options.imagePullPolicy, "Docker image pull policy")
-	flags.UintVar(&options.proxyInboundPort, "inbound-port", options.proxyInboundPort, "Proxy port to use for inbound traffic")
-	flags.UintVar(&options.proxyOutboundPort, "outbound-port", options.proxyOutboundPort, "Proxy port to use for outbound traffic")
-	flags.StringSliceVar(&options.ignoreInboundPorts, "skip-inbound-ports", options.ignoreInboundPorts, "Ports and/or port ranges (inclusive) that should skip the proxy and send directly to the application")
-	flags.StringSliceVar(&options.ignoreOutboundPorts, "skip-outbound-ports", options.ignoreOutboundPorts, "Outbound ports and/or port ranges (inclusive) that should skip the proxy")
-	flags.Int64Var(&options.proxyUID, "proxy-uid", options.proxyUID, "Run the proxy under this user ID")
-	flags.StringVar(&options.proxyLogLevel, "proxy-log-level", options.proxyLogLevel, "Log level for the proxy")
-	flags.UintVar(&options.proxyControlPort, "control-port", options.proxyControlPort, "Proxy port to use for control")
-	flags.UintVar(&options.proxyAdminPort, "admin-port", options.proxyAdminPort, "Proxy port to serve metrics on")
-	flags.StringVar(&options.proxyCPURequest, "proxy-cpu-request", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
-	flags.StringVar(&options.proxyMemoryRequest, "proxy-memory-request", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
-	flags.StringVar(&options.proxyCPULimit, "proxy-cpu-limit", options.proxyCPULimit, "Maximum amount of CPU units that the proxy sidecar can use")
-	flags.StringVar(&options.proxyMemoryLimit, "proxy-memory-limit", options.proxyMemoryLimit, "Maximum amount of Memory that the proxy sidecar can use")
-	flags.BoolVar(&options.enableExternalProfiles, "enable-external-profiles", options.enableExternalProfiles, "Enable service profiles for non-Kubernetes services")
-
-	// Deprecated flags
-	flags.StringVar(&options.proxyMemoryRequest, "proxy-memory", options.proxyMemoryRequest, "Amount of Memory that the proxy sidecar requests")
-	flags.StringVar(&options.proxyCPURequest, "proxy-cpu", options.proxyCPURequest, "Amount of CPU units that the proxy sidecar requests")
-	flags.MarkDeprecated("proxy-memory", "use --proxy-memory-request instead")
-	flags.MarkDeprecated("proxy-cpu", "use --proxy-cpu-request instead")
-
-	return flags
+	return out
 }

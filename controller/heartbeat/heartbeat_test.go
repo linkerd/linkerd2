@@ -1,6 +1,7 @@
 package heartbeat
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -52,6 +53,7 @@ metadata:
 		},
 	}
 
+	ctx := context.Background()
 	for i, tc := range testCases {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
@@ -60,7 +62,7 @@ metadata:
 				t.Fatalf("NewFakeAPI returned an error: %s", err)
 			}
 
-			v := K8sValues(k8sAPI, tc.namespace)
+			v := K8sValues(ctx, k8sAPI, tc.namespace)
 			if !reflect.DeepEqual(v, tc.expected) {
 				t.Fatalf("K8sValues returned: %+v, expected: %+v", v, tc.expected)
 			}

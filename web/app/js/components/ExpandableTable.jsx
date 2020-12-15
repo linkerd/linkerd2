@@ -14,6 +14,7 @@ import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
+import { Trans } from '@lingui/macro';
 import { withStyles } from '@material-ui/core/styles';
 
 const styles = theme => ({
@@ -131,7 +132,7 @@ class ExpandableTable extends React.Component {
           open={open}
           onClose={this.handleDialogClose}
           aria-labelledby="form-dialog-title">
-          <DialogTitle id="form-dialog-title">Request Details</DialogTitle>
+          <DialogTitle id="form-dialog-title"><Trans>tableTitleRequestDetails</Trans></DialogTitle>
           <DialogContent>
             {expandedRowRender(datum, classes.expandedWrap)}
           </DialogContent>
@@ -148,7 +149,7 @@ ExpandableTable.propTypes = {
   expandedRowRender: PropTypes.func.isRequired,
   tableClassName: PropTypes.string,
   tableColumns: PropTypes.arrayOf(PropTypes.shape({
-    title: PropTypes.string,
+    title: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
     isNumeric: PropTypes.bool,
     render: PropTypes.func,
   })).isRequired,

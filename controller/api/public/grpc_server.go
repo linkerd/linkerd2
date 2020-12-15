@@ -11,10 +11,8 @@ import (
 	destinationPb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	healthcheckPb "github.com/linkerd/linkerd2/controller/gen/common/healthcheck"
-	configPb "github.com/linkerd/linkerd2/controller/gen/config"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	"github.com/linkerd/linkerd2/pkg/config"
 	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	"github.com/linkerd/linkerd2/pkg/version"
@@ -33,15 +31,12 @@ type APIServer interface {
 }
 
 type grpcServer struct {
-	prometheusAPI          promv1.API
-	destinationClient      destinationPb.DestinationClient
-	k8sAPI                 *k8s.API
-	controllerNamespace    string
-	clusterDomain          string
-	ignoredNamespaces      []string
-	mountPathGlobalConfig  string
-	mountPathProxyConfig   string
-	mountPathInstallConfig string
+	prometheusAPI       promv1.API
+	destinationClient   destinationPb.DestinationClient
+	k8sAPI              *k8s.API
+	controllerNamespace string
+	clusterDomain       string
+	ignoredNamespaces   []string
 }
 
 type podReport struct {
@@ -67,15 +62,12 @@ func newGrpcServer(
 ) *grpcServer {
 
 	grpcServer := &grpcServer{
-		prometheusAPI:          promAPI,
-		destinationClient:      destinationClient,
-		k8sAPI:                 k8sAPI,
-		controllerNamespace:    controllerNamespace,
-		clusterDomain:          clusterDomain,
-		ignoredNamespaces:      ignoredNamespaces,
-		mountPathGlobalConfig:  pkgK8s.MountPathGlobalConfig,
-		mountPathProxyConfig:   pkgK8s.MountPathProxyConfig,
-		mountPathInstallConfig: pkgK8s.MountPathInstallConfig,
+		prometheusAPI:       promAPI,
+		destinationClient:   destinationClient,
+		k8sAPI:              k8sAPI,
+		controllerNamespace: controllerNamespace,
+		clusterDomain:       clusterDomain,
+		ignoredNamespaces:   ignoredNamespaces,
 	}
 
 	pb.RegisterApiServer(prometheus.NewGrpcServer(), grpcServer)
@@ -125,9 +117,10 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 
 	// Query Prometheus for all pods present
 	vec, err := s.queryProm(ctx, processStartTimeQuery)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrNoPrometheusInstance) {
 		return nil, err
 	}
+
 	for _, sample := range vec {
 		pod := string(sample.Metric["pod"])
 		timestamp := sample.Timestamp
@@ -155,7 +148,7 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 			continue
 		}
 
-		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(pod, false)
+		ownerKind, ownerName := s.k8sAPI.GetOwnerKindAndName(ctx, pod, false)
 		// filter out pods without matching owner
 		if targetOwner.GetNamespace() != "" && targetOwner.GetNamespace() != pod.GetNamespace() {
 			continue
@@ -185,12 +178,12 @@ func (s *grpcServer) ListPods(ctx context.Context, req *pb.ListPodsRequest) (*pb
 			}
 		}
 
-		podList = append(podList, &item)
+		podList = append(podList, item)
 	}
 
 	rsp := pb.ListPodsResponse{Pods: podList}
 
-	log.Debugf("ListPods response: %+v", rsp)
+	log.Debugf("ListPods response: %s", rsp.String())
 
 	return &rsp, nil
 }
@@ -207,40 +200,28 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 		k8sClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling the Kubernetes API: %s", err)
 	}
 
-	promClientCheck := &healthcheckPb.CheckResult{
-		SubsystemName:    promClientSubsystemName,
-		CheckDescription: promClientCheckDescription,
-		Status:           healthcheckPb.CheckStatus_OK,
-	}
-	_, err = s.queryProm(ctx, fmt.Sprintf(podQuery, ""))
-	if err != nil {
-		promClientCheck.Status = healthcheckPb.CheckStatus_ERROR
-		promClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling Prometheus from the control plane: %s", err)
-	}
-
 	response := &healthcheckPb.SelfCheckResponse{
 		Results: []*healthcheckPb.CheckResult{
 			k8sClientCheck,
-			promClientCheck,
 		},
 	}
-	return response, nil
-}
 
-func (s *grpcServer) Config(ctx context.Context, req *pb.Empty) (*configPb.All, error) {
-	global, err := config.Global(s.mountPathGlobalConfig)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving global config - %s", err)
+	if s.prometheusAPI != nil {
+		promClientCheck := &healthcheckPb.CheckResult{
+			SubsystemName:    promClientSubsystemName,
+			CheckDescription: promClientCheckDescription,
+			Status:           healthcheckPb.CheckStatus_OK,
+		}
+		_, err = s.queryProm(ctx, fmt.Sprintf(podQuery, ""))
+		if err != nil {
+			promClientCheck.Status = healthcheckPb.CheckStatus_ERROR
+			promClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling Prometheus from the control plane: %s", err)
+		}
+
+		response.Results = append(response.Results, promClientCheck)
 	}
-	proxy, err := config.Proxy(s.mountPathProxyConfig)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving proxy config - %s", err)
-	}
-	install, err := config.Install(s.mountPathInstallConfig)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving install config - %s", err)
-	}
-	return &configPb.All{Global: global, Proxy: proxy, Install: install}, nil
+
+	return response, nil
 }
 
 func (s *grpcServer) Tap(req *pb.TapRequest, stream pb.Api_TapServer) error {

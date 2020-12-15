@@ -8,6 +8,7 @@ import Tab from '@material-ui/core/Tab';
 import Tabs from '@material-ui/core/Tabs';
 import TopModule from './TopModule.jsx';
 import TopRoutesModule from './TopRoutesModule.jsx';
+import { Trans } from '@lingui/macro';
 import _isEmpty from 'lodash/isEmpty';
 import _noop from 'lodash/noop';
 import { withStyles } from '@material-ui/core/styles';
@@ -91,8 +92,8 @@ class TopRoutesTabs extends React.Component {
             onChange={this.handleChange}
             indicatorColor="primary"
             textColor="primary">
-            <Tab label="Live Calls" />
-            <Tab label="Route Metrics" />
+            <Tab label={<Trans>tabLiveCalls</Trans>} />
+            <Tab label={<Trans>tabRouteMetrics</Trans>} />
           </Tabs>
         </AppBar>
         {value === 0 && this.renderTopComponent()}

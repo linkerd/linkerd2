@@ -5,6 +5,7 @@ package cmd
 // https://github.com/linkerd/linkerd2/issues/2735
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -16,7 +17,7 @@ import (
 )
 
 // rawPublicAPIClient creates a raw public API client with no validation.
-func rawPublicAPIClient() (pb.ApiClient, error) {
+func rawPublicAPIClient(ctx context.Context) (pb.ApiClient, error) {
 	if apiAddr != "" {
 		return public.NewInternalClient(controlPlaneNamespace, apiAddr)
 	}
@@ -26,7 +27,7 @@ func rawPublicAPIClient() (pb.ApiClient, error) {
 		return nil, err
 	}
 
-	return public.NewExternalClient(controlPlaneNamespace, kubeAPI)
+	return public.NewExternalClient(ctx, controlPlaneNamespace, kubeAPI)
 }
 
 // checkPublicAPIClientOrExit builds a new public API client and executes default status

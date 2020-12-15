@@ -22,11 +22,13 @@ import React from 'react';
 import ReactRouterPropTypes from 'react-router-prop-types';
 import TextField from '@material-ui/core/TextField';
 import Toolbar from '@material-ui/core/Toolbar';
+import { Trans } from '@lingui/macro';
 import Typography from '@material-ui/core/Typography';
 import Version from './Version.jsx';
 import _maxBy from 'lodash/maxBy';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faCloud } from '@fortawesome/free-solid-svg-icons/faCloud';
+import { faDungeon } from '@fortawesome/free-solid-svg-icons/faDungeon';
 import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons/faExternalLinkAlt';
 import { faFilter } from '@fortawesome/free-solid-svg-icons/faFilter';
 import { faMicroscope } from '@fortawesome/free-solid-svg-icons/faMicroscope';
@@ -449,13 +451,16 @@ class NavigationBase extends React.Component {
         <Divider />
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            Cluster
+            <Trans>sidebarHeadingCluster</Trans>
           </Typography>
-          { this.menuItem('/namespaces', 'Namespaces', namespaceIcon) }
+          { this.menuItem('/namespaces', <Trans>menuItemNamespaces</Trans>, namespaceIcon) }
 
 
-          { this.menuItem('/controlplane', 'Control Plane',
+          { this.menuItem('/controlplane', <Trans>menuItemControlPlane</Trans>,
             <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />) }
+
+          { this.menuItem('/gateways', <Trans>menuItemGateway</Trans>,
+            <FontAwesomeIcon icon={faDungeon} className={classes.shrinkIcon} />) }
 
         </MenuList>
 
@@ -496,48 +501,48 @@ class NavigationBase extends React.Component {
 
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            Workloads
+            <Trans>sidebarHeadingWorkloads</Trans>
           </Typography>
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/cronjobs`, 'Cron Jobs', cronJobIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/cronjobs`, <Trans>menuItemCronJobs</Trans>, cronJobIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, 'Daemon Sets', daemonsetIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/daemonsets`, <Trans>menuItemDaemonSets</Trans>, daemonsetIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, 'Deployments', deploymentIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/deployments`, <Trans>menuItemDeployments</Trans>, deploymentIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, 'Jobs', jobIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/jobs`, <Trans>menuItemJobs</Trans>, jobIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/pods`, 'Pods', podIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/pods`, <Trans>menuItemPods</Trans>, podIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/replicasets`, 'Replica Sets', replicaSetIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/replicasets`, <Trans>menuItemReplicaSets</Trans>, replicaSetIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, 'Replication Controllers', replicaSetIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/replicationcontrollers`, <Trans>menuItemReplicationControllers</Trans>, replicaSetIcon) }
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, 'Stateful Sets', statefulSetIcon) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/statefulsets`, <Trans>menuItemStatefulSets</Trans>, statefulSetIcon) }
         </MenuList>
 
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            Configuration
+            <Trans>sidebarHeadingConfiguration</Trans>
           </Typography>
 
-          { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, 'Traffic Splits', <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
+          { this.menuItem(`/namespaces/${selectedNamespace}/trafficsplits`, <Trans>menuItemTrafficSplits</Trans>, <FontAwesomeIcon icon={faFilter} className={classes.shrinkIcon} />) }
 
         </MenuList>
         <Divider />
         <MenuList>
           <Typography variant="button" component="div" className={classes.sidebarHeading}>
-            Tools
+            <Trans>sidebarHeadingTools</Trans>
           </Typography>
 
-          { this.menuItem('/tap', 'Tap', <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
-          { this.menuItem('/top', 'Top', <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
-          { this.menuItem('/routes', 'Routes', <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />) }
+          { this.menuItem('/tap', <Trans>menuItemTap</Trans>, <FontAwesomeIcon icon={faMicroscope} className={classes.shrinkIcon} />) }
+          { this.menuItem('/top', <Trans>menuItemTop</Trans>, <FontAwesomeIcon icon={faStream} className={classes.shrinkIcon} />) }
+          { this.menuItem('/routes', <Trans>menuItemRoutes</Trans>, <FontAwesomeIcon icon={faRandom} className={classes.shrinkIcon} />) }
 
         </MenuList>
         <Divider />
         <MenuList>
-          { this.menuItem('/community', 'Community',
+          { this.menuItem('/community', <Trans>menuItemCommunity</Trans>,
             <Badge
               classes={{ badge: classes.badge }}
               invisible={hideUpdateBadge}
@@ -547,25 +552,25 @@ class NavigationBase extends React.Component {
 
           <MenuItem component="a" href="https://linkerd.io/2/overview/" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon><LibraryBooksIcon className={classes.shrinkIcon} /></ListItemIcon>
-            <ListItemText primary="Documentation" />
+            <ListItemText primary={<Trans>menuItemDocumentation</Trans>} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
           <MenuItem component="a" href="https://github.com/linkerd/linkerd2/issues/new/choose" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon>{githubIcon}</ListItemIcon>
-            <ListItemText primary="GitHub" />
+            <ListItemText primary={<Trans>menuItemGitHub</Trans>} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
           <MenuItem component="a" href="https://lists.cncf.io/g/cncf-linkerd-users" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon><EmailIcon className={classes.shrinkIcon} /></ListItemIcon>
-            <ListItemText primary="Mailing List" />
+            <ListItemText primary={<Trans>menuItemMailingList</Trans>} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
           <MenuItem component="a" href="https://slack.linkerd.io" target="_blank" className={classes.navMenuItem}>
             <ListItemIcon>{slackIcon}</ListItemIcon>
-            <ListItemText primary="Slack" />
+            <ListItemText primary={<Trans>menuItemSlack</Trans>} />
             <FontAwesomeIcon icon={faExternalLinkAlt} className={classes.externalLinkIcon} size="xs" />
           </MenuItem>
 
