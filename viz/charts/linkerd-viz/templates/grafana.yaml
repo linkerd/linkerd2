@@ -1,4 +1,4 @@
-
+{{ if .Values.grafana.enabled -}}
 ---
 ###
 ### Grafana
@@ -162,3 +162,4 @@ spec:
             path: provisioning/dashboards/dashboards.yaml
           name: linkerd-grafana-config
         name: grafana-config
+{{ end -}}

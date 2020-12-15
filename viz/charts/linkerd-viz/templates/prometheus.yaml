@@ -1,3 +1,4 @@
+{{ if .Values.prometheus.enabled -}}
 ---
 ###
 ### Prometheus
@@ -29,6 +30,7 @@ data:
       static_configs:
       - targets: ['localhost:9090']
 
+    {{ if .Values.grafana.enabled -}}
     - job_name: 'grafana'
       kubernetes_sd_configs:
       - role: pod
@@ -39,6 +41,7 @@ data:
         - __meta_kubernetes_pod_container_name
         action: keep
         regex: ^grafana$
+    {{- end }}
 
     #  Required for: https://grafana.com/grafana/dashboards/315
     - job_name: 'kubernetes-nodes-cadvisor'
@@ -311,3 +314,4 @@ spec:
   storageClassName: "{{ .Values.prometheus.persistence.storageClass }}"
 {{- end }}
 {{- end }}
+{{ end -}}
