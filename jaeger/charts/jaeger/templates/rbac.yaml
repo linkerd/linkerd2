@@ -28,6 +28,8 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-jaeger-{{.Values.namespace}}-proxy-mutator
+  labels:
+    linkerd.io/extension: linkerd-jaeger
 rules:
 - apiGroups: [""]
   resources: ["namespaces"]
@@ -37,6 +39,8 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-jaeger-{{.Values.namespace}}-proxy-mutator
+  labels:
+    linkerd.io/extension: linkerd-jaeger
 subjects:
 - kind: ServiceAccount
   name: proxy-mutator
@@ -71,6 +75,8 @@ apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
   name: linkerd-proxy-mutator-webhook-config
+  labels:
+    linkerd.io/extension: linkerd-jaeger
 webhooks:
 - name: proxy-mutator.linkerd.io
   {{- if .Values.webhook.namespaceSelector }}

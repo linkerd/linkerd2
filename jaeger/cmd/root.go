@@ -66,6 +66,7 @@ func NewCmdJaeger() *cobra.Command {
 	jaegerCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 	jaegerCmd.AddCommand(newCmdInstall())
 	jaegerCmd.AddCommand(newCmdCheck())
+	jaegerCmd.AddCommand(newCmdUninstall())
 	jaegerCmd.AddCommand(newCmdDashboard())
 
 	return jaegerCmd

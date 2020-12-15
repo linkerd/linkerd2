@@ -45,6 +45,7 @@ type (
 		Tap                         *Tap              `json:"tap"`
 		NodeSelector                map[string]string `json:"nodeSelector"`
 		Tolerations                 []interface{}     `json:"tolerations"`
+		Stage                       string            `json:"stage"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
 		HeartbeatResources     *Resources `json:"heartbeatResources"`
@@ -293,7 +294,7 @@ func readDefaults(chartDir string, ha bool) (*Values, error) {
 		}
 
 		var err error
-		values, err = values.merge(v)
+		values, err = values.Merge(v)
 		if err != nil {
 			return nil, err
 		}
@@ -302,10 +303,10 @@ func readDefaults(chartDir string, ha bool) (*Values, error) {
 	return &values, nil
 }
 
-// merge merges the non-empty properties of src into v.
+// Merge merges the non-empty properties of src into v.
 // A new Values instance is returned. Neither src nor v are mutated after
 // calling merge.
-func (v Values) merge(src Values) (Values, error) {
+func (v Values) Merge(src Values) (Values, error) {
 	// By default, mergo.Merge doesn't overwrite any existing non-empty values
 	// in its first argument. So in HA mode, we are merging values.yaml into
 	// values-ha.yaml, instead of the other way round (like Helm). This ensures

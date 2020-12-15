@@ -11,19 +11,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	yamlSep = "---\n"
-)
-
 func newCmdUninstall() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "uninstall",
 		Args:  cobra.NoArgs,
-		Short: "Output Kubernetes resources to uninstall Linkerd control plane",
-		Long: `Output Kubernetes resources to uninstall Linkerd control plane.
+		Short: "Output Kubernetes resources to uninstall the Linkerd-jaeger extension",
+		Long: `Output Kubernetes resources to uninstall the Linkerd-jaeger extension.
 
-This command provides all Kubernetes namespace-scoped and cluster-scoped resources (e.g services, deployments, RBACs, etc.) necessary to uninstall Linkerd control plane.`,
-		Example: ` linkerd uninstall | kubectl delete -f -`,
+This command provides all Kubernetes namespace-scoped and cluster-scoped resources (e.g services, deployments, RBACs, etc.) necessary to uninstall the Linkerd-jaeger extension.`,
+		Example: `linkerd uninstall | kubectl delete -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return uninstallRunE(cmd.Context())
 		},
@@ -39,7 +35,7 @@ func uninstallRunE(ctx context.Context) error {
 	}
 
 	resources, err := resource.FetchKubernetesResources(ctx, k8sAPI,
-		metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel},
+		metav1.ListOptions{LabelSelector: "linkerd.io/extension=linkerd-jaeger"},
 	)
 	if err != nil {
 		return err
@@ -47,7 +43,7 @@ func uninstallRunE(ctx context.Context) error {
 
 	for _, r := range resources {
 		if err := r.RenderResource(os.Stdout); err != nil {
-			return fmt.Errorf("error rendering Kubernetes resource:%v", err)
+			return fmt.Errorf("error rendering Kubernetes resource: %v", err)
 		}
 	}
 	return nil
