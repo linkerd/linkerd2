@@ -9,14 +9,14 @@ metadata:
   name: linkerd-web
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: web
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: web
+    namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.controllerComponentLabel}}: web
+    component: web
   ports:
   - name: http
     port: 8084
@@ -34,25 +34,24 @@ metadata:
     app.kubernetes.io/name: web
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
-    {{.Values.controllerComponentLabel}}: web
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: web
+    namespace: {{.Values.namespace}}
   name: linkerd-web
   namespace: {{.Values.namespace}}
 spec:
   replicas: {{.Values.dashboard.replicas}}
   selector:
     matchLabels:
-      {{.Values.controllerComponentLabel}}: web
-      {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+      component: web
+      namespace: {{.Values.namespace}}
   template:
     metadata:
       annotations:
         {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.controllerComponentLabel}}: web
-        {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
-        {{.Values.workloadNamespaceLabel}}: {{.Values.namespace}}
+        component: web
+        namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
@@ -72,7 +71,7 @@ spec:
         - -jaeger-addr={{.Values.jaegerUrl}}
         {{- end}}
         - -controller-namespace={{.Values.linkerdNamespace}}
-        - -log-level={{.Values.controllerLogLevel}}
+        - -log-level={{.Values.dashboard.logLevel}}
         {{- if .Values.dashboard.enforcedHostRegexp }}
         - -enforced-host={{.Values.dashboard.enforcedHostRegexp}}
         {{- else -}}

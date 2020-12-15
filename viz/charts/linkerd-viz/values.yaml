@@ -3,24 +3,28 @@
 # Declare variables to be passed into your templates.
 
 # Common variables across extensions
+namespace: linkerd-viz
+linkerdVersion: &linkerd_version linkerdVersionValue
+clusterDomain: &cluster_domain cluster.local
+identityTrustDomain: *cluster_domain
+linkerdNamespace: linkerd
+globalLogLevel: &log_level info
+globalUID: &uid 2103
 
-# -- Control plane label. Do not edit
-controllerComponentLabel: component
-# -- Control plane label. Do not edit  
-controllerNamespaceLabel: namespace
-# -- Control plane label. Do not edit 
-linkerdNamespaceLabel: linkerd.io/is-control-plane
-workloadNamespaceLabel: linkerd.io/workload-ns
-# -- Annotation label for the proxy create. Do not edit. 
+# -- Annotation label for the proxy. Do not edit.
 createdByAnnotation: linkerd.io/created-by
 proxyInjectAnnotation: linkerd.io/inject
 
-namespace: linkerd-viz
-linkerdVersion: &linkerd_version edge-20.12.1
-clusterDomain: cluster.local
-identityTrustDomain: cluster.local
-linkerdNamespace: linkerd
-controllerLogLevel: debug
+# -- NodeSelector section, See the [K8S
+# documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)
+# for more information
+nodeSelector:
+  beta.kubernetes.io/os: linux
+
+# -|- Tolerations section, See the 
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+# for more information
+# tolerations:
 
 # -- url of external prometheus instance
 # prometheusUrl:
@@ -29,18 +33,11 @@ controllerLogLevel: debug
 # Set this to `jaeger.linkerd-jaeger.svc.<clusterDomain>` if you plan to use jaeger extension
 # jaegerUrl:
 
-
-# -|- CPU and Memory resources required by controllers publicAPI (see
-#`global.proxy.resources` for sub-fields)
-#publicAPIResources:
-#-|- CPU and Memory resources required by proxy injected into controllers public
-#API pod (see `global.proxy.resources` for sub-fields) values
-#`global.proxy.resources`
-#publicAPIProxyResources:
-
 # tap configuration
 tap:
   replicas: 1
+  # -- log level of the tap component
+  logLevel: *log_level
   image:
     # -- Docker image name for the grafana instance
     name: ghcr.io/linkerd/controller
@@ -75,23 +72,14 @@ tap:
       # -- Amount of memory that the tap container requests
       request:
 
-# controller configuration
-controller:
-  # -- Number of replicas of dashboard
-  replicas: 1
-  image:
-    # -- Docker image name for the controller instance
-    name: ghcr.io/linkerd/controller
-    # -- Docker image tag for the controller instance
-    tag: *linkerd_version
-  # -- User ID for the controller
-  UID: 2103
-
+  UID: *uid
 
 # web dashboard configuration
 dashboard:
   # -- Number of replicas of dashboard
   replicas: 1
+  # -- log level of the dashboard component
+  logLevel: *log_level
   image:
     # -- Docker image name for the web instance
     name: ghcr.io/linkerd/web
@@ -99,7 +87,7 @@ dashboard:
     tag: *linkerd_version
 
   # UID for the dashboard resource
-  UID: 2103
+  UID: *uid
 
   # -- Host header validation regex for the dashboard. See the [Linkerd
   # documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more
@@ -116,20 +104,6 @@ dashboard:
       limit:
       # -- Amount of memory that the web container requests
       request:
-
-# -- NodeSelector section, See the [K8S
-# documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector)
-# for more information
-nodeSelector:
-  beta.kubernetes.io/os: linux
-
-# -|- Tolerations section, See the 
-# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
-# for more information
-#tolerations:
-
-# Configuration for Add-ons
-# Full configuration fields https://github.com/linkerd/linkerd2/tree/master/charts/linkerd2#add-ons-configuration
 
 grafana:
   # -- toggle field to enable or disable grafana
@@ -168,7 +142,7 @@ prometheus:
     storage.tsdb.path: /data
     storage.tsdb.retention.time: 6h
     config.file: /etc/prometheus/prometheus.yml
-    log.level: info
+    log.level: *log_level
   # -- The global configuration specifies parameters that are valid in all other
   # configuration contexts.
   globalConfig:

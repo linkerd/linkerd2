@@ -8,8 +8,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-tap
   labels:
-    {{.Values.controllerComponentLabel}}: tap
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: tap
+    namespace: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["pods", "services", "replicationcontrollers", "namespaces", "nodes"]
@@ -26,8 +26,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-tap-admin
   labels:
-    {{.Values.controllerComponentLabel}}: tap
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: tap
+    namespace: {{.Values.namespace}}
 rules:
 - apiGroups: ["tap.linkerd.io"]
   resources: ["*"]
@@ -38,8 +38,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: linkerd-{{.Values.namespace}}-tap
   labels:
-    {{.Values.controllerComponentLabel}}: tap
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: tap
+    namespace: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -54,8 +54,8 @@ kind: ClusterRoleBinding
 metadata:
   name: linkerd-{{.Values.namespace}}-tap-auth-delegator
   labels:
-    {{.Values.controllerComponentLabel}}: tap
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: tap
+    namespace: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -71,8 +71,8 @@ metadata:
   name: linkerd-tap
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: tap
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: tap
+    namespace: {{.Values.namespace}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -80,8 +80,8 @@ metadata:
   name: linkerd-{{.Values.namespace}}-tap-auth-reader
   namespace: kube-system
   labels:
-    {{.Values.controllerComponentLabel}}: tap
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: tap
+    namespace: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -100,8 +100,8 @@ metadata:
   name: linkerd-tap-k8s-tls
   namespace: {{ .Values.namespace }}
   labels:
-    {{.Values.controllerComponentLabel}}: tap
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: tap
+    namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 type: kubernetes.io/tls
@@ -115,8 +115,8 @@ kind: APIService
 metadata:
   name: v1alpha1.tap.linkerd.io
   labels:
-    {{.Values.controllerComponentLabel}}: tap
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: tap
+    namespace: {{.Values.namespace}}
 spec:
   group: tap.linkerd.io
   version: v1alpha1

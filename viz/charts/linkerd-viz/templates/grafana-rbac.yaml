@@ -10,6 +10,6 @@ metadata:
   name: linkerd-grafana
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: grafana
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: grafana
+    namespace: {{.Values.namespace}}
 {{ end -}}

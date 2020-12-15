@@ -9,14 +9,14 @@ metadata:
   name: linkerd-tap
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: tap
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: tap
+    namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.controllerComponentLabel}}: tap
+    component: tap
   ports:
   - name: grpc
     port: 8088
@@ -34,16 +34,16 @@ metadata:
     app.kubernetes.io/name: tap
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
-    {{.Values.controllerComponentLabel}}: tap
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: tap
+    namespace: {{.Values.namespace}}
   name: linkerd-tap
   namespace: {{.Values.namespace}}
 spec:
   replicas: {{.Values.tap.replicas}}
   selector:
     matchLabels:
-      {{.Values.controllerComponentLabel}}: tap
-      {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+      component: tap
+      namespace: {{.Values.namespace}}
   {{- if .Values.enablePodAntiAffinity }}
   strategy:
     rollingUpdate:
@@ -58,9 +58,8 @@ spec:
         {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
         {{- with .Values.podAnnotations }}{{ toYaml . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.controllerComponentLabel}}: tap
-        {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
-        {{.Values.workloadNamespaceLabel}}: {{.Values.namespace}}
+        component: tap
+        namespace: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}
@@ -75,7 +74,7 @@ spec:
       - args:
         - tap
         - -controller-namespace={{.Values.linkerdNamespace}}
-        - -log-level={{.Values.controllerLogLevel}}
+        - -log-level={{.Values.tap.logLevel}}
         - -identity-trust-domain={{.Values.identityTrustDomain}}
         image: {{.Values.tap.image.name}}:{{ default (default .Values.linkerdVersion .Values.controllerImageVersion) .Values.tap.image.tag}}
         imagePullPolicy: {{.Values.tap.image.pullPolicy}}
@@ -101,7 +100,7 @@ spec:
         {{- include "partials.resources" .Values.tapResources | nindent 8 }}
         {{- end }}
         securityContext:
-          runAsUser: {{.Values.controllerUID}}
+          runAsUser: {{.Values.tap.UID}}
         volumeMounts:
         - mountPath: /var/run/linkerd/tls
           name: tls

@@ -10,8 +10,8 @@ metadata:
   name: linkerd-prometheus-config
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: prometheus
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: prometheus
+    namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 data:
@@ -176,14 +176,14 @@ metadata:
   name: linkerd-prometheus
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerComponentLabel}}: prometheus
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: prometheus
+    namespace: {{.Values.namespace}}
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
 spec:
   type: ClusterIP
   selector:
-    {{.Values.controllerComponentLabel}}: prometheus
+    component: prometheus
   ports:
   - name: admin-http
     port: 9090
@@ -198,8 +198,8 @@ metadata:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
-    {{.Values.controllerComponentLabel}}: prometheus
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    component: prometheus
+    namespace: {{.Values.namespace}}
   name: linkerd-prometheus
   namespace: {{.Values.namespace}}
 spec:
@@ -210,16 +210,16 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{.Values.controllerComponentLabel}}: prometheus
-      {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+      component: prometheus
+      namespace: {{.Values.namespace}}
   template:
     metadata:
       annotations:
         {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
         {{- with .Values.podAnnotations }}{{  . | trim | nindent 8 }}{{- end }}
       labels:
-        {{.Values.controllerComponentLabel}}: prometheus
-        {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+        component: prometheus
+        namespace: {{.Values.namespace}}
         {{.Values.workloadNamespaceLabel}}: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
@@ -301,7 +301,7 @@ metadata:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: Linkerd
     app.kubernetes.io/version: {{default .Values.linkerdVersion .Values.controllerImageVersion}}
-    {{.Values.controllerComponentLabel}}: prometheus
+    component: prometheus
   name: linkerd-prometheus
   namespace: {{.Values.namespace}}
 spec:

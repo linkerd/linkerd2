@@ -5,7 +5,7 @@ metadata:
   name: linkerd-viz-psp
   namespace: {{.Values.namespace}}
   labels:
-    {{.Values.controllerNamespaceLabel}}: {{.Values.namespace}}
+    namespace: {{.Values.namespace}}
 roleRef:
   kind: Role
   name: linkerd-psp
