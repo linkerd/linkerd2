@@ -114,12 +114,12 @@ func newCmdCheck() *cobra.Command {
 		Use:   "check [flags]",
 		Args:  cobra.NoArgs,
 		Short: "Check the Jaeger extension for potential problems",
-		Long: `Check the jaeger extension for potential problems.
+		Long: `Check the Jaeger extension for potential problems.
 
-The check command will perform a series of checks to validate that the Jaeger extension
- is configured correctly. If the command encounters a
-failure it will print additional information about the failure and exit with a
-non-zero exit code.`,
+The check command will perform a series of checks to validate that the Jaeger
+extension is configured correctly. If the command encounters a failure it will
+print additional information about the failure and exit with a non-zero exit
+code.`,
 		Example: `  # Check that the Jaeger extension is up and running
   linkerd jaeger check`,
 		RunE: func(cmd *cobra.Command, args []string) error {
