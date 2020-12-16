@@ -2,7 +2,6 @@ package tap
 
 import (
 	"context"
-	"crypto/tls"
 	"flag"
 	"os"
 	"os/signal"
@@ -12,7 +11,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/tap"
 	"github.com/linkerd/linkerd2/pkg/admin"
 	"github.com/linkerd/linkerd2/pkg/flags"
-	pkgK8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/trace"
 	log "github.com/sirupsen/logrus"
 )
@@ -28,8 +26,6 @@ func Main(args []string) {
 	kubeConfigPath := cmd.String("kubeconfig", "", "path to kube config")
 	controllerNamespace := cmd.String("controller-namespace", "linkerd", "namespace in which Linkerd is installed")
 	tapPort := cmd.Uint("tap-port", 4190, "proxy tap port to connect to")
-	tlsCertPath := cmd.String("tls-cert", pkgK8s.MountPathTLSCrtPEM, "path to TLS Cert PEM")
-	tlsKeyPath := cmd.String("tls-key", pkgK8s.MountPathTLSKeyPEM, "path to TLS Key PEM")
 	disableCommonNames := cmd.Bool("disable-common-names", false, "disable checks for Common Names (for development)")
 	trustDomain := cmd.String("identity-trust-domain", defaultDomain, "configures the name suffix used for identities")
 
@@ -70,24 +66,14 @@ func Main(args []string) {
 	}
 	grpcTapServer := tap.NewGrpcTapServer(*tapPort, *controllerNamespace, *trustDomain, k8sAPI)
 
-	// TODO: make this configurable for local development
-	cert, err := tls.LoadX509KeyPair(*tlsCertPath, *tlsKeyPath)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	apiServer, apiLis, err := tap.NewAPIServer(ctx, *apiServerAddr, cert, k8sAPI, grpcTapServer, *disableCommonNames)
+	apiServer, err := tap.NewAPIServer(ctx, *apiServerAddr, k8sAPI, grpcTapServer, *disableCommonNames)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
 	k8sAPI.Sync(nil) // blocks until caches are synced
 
-	go func() {
-		log.Infof("starting APIServer on %s", *apiServerAddr)
-		apiServer.ServeTLS(apiLis, "", "")
-	}()
-
+	go apiServer.Start(ctx)
 	go admin.StartServer(*metricsAddr)
 
 	<-stop
