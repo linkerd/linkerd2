@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -14,6 +15,11 @@ const (
 )
 
 var (
+	// special handling for Windows, on all other platforms these resolve to
+	// os.Stdout and os.Stderr, thanks to https://github.com/mattn/go-colorable
+	stdout = color.Output
+	stderr = color.Error
+
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	controlPlaneNamespace string
 	namespace             string
@@ -59,6 +65,8 @@ func NewCmdJaeger() *cobra.Command {
 	jaegerCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	jaegerCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 	jaegerCmd.AddCommand(newCmdInstall())
+	jaegerCmd.AddCommand(newCmdCheck())
+	jaegerCmd.AddCommand(newCmdUninstall())
 	jaegerCmd.AddCommand(newCmdDashboard())
 
 	return jaegerCmd

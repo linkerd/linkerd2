@@ -3,6 +3,7 @@
 - [Advance Latam](http://www.advlatam.com)
 - [Allotrac](https://allotrac.com.au)
 - [AlphaSights](https://www.alphasights.com)
+- [Altinn](https://www.altinn.no/en/)
 - [Apester](https://apester.com)
 - [AppddictionStudio](https://appddicitonstudio.com)
 - [Attest](https://www.askattest.com)
