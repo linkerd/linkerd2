@@ -44,6 +44,7 @@ linkerd-cni-plugin
 linkerd-identity
 ----------------
 √ certificate config is valid
+√ trust anchors in config and secret match
 √ trust anchors are using supported crypto algorithm
 √ trust anchors are within their validity period
 √ trust anchors are valid for at least 60 days

@@ -934,7 +934,7 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
-					description: "CA certificates match",
+					description: "trust anchors in config and secret  match",
 					hintAnchor:  "l5d-identity-cert-config-valid",
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
