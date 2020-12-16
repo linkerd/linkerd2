@@ -20,10 +20,11 @@ import (
 )
 
 const (
-	defaultLinkerdNamespace = "linkerd"
-	defaultCNINamespace     = "linkerd-cni"
-	defaultClusterDomain    = "cluster.local"
-	defaultDockerRegistry   = "ghcr.io/linkerd"
+	defaultLinkerdNamespace    = "linkerd"
+	defaultCNINamespace        = "linkerd-cni"
+	defaultLinkerdVizNamespace = "linkerd-viz"
+	defaultClusterDomain       = "cluster.local"
+	defaultDockerRegistry      = "ghcr.io/linkerd"
 
 	jsonOutput  = "json"
 	tableOutput = "table"
@@ -43,6 +44,7 @@ var (
 	failStatus = color.New(color.FgRed, color.Bold).SprintFunc()("\u00D7")    // ×
 
 	controlPlaneNamespace string
+	linkerdVizNamespace   string
 	cniNamespace          string
 	apiAddr               string // An empty value means "use the Kubernetes configuration"
 	kubeconfigPath        string
@@ -100,6 +102,7 @@ var RootCmd = &cobra.Command{
 func init() {
 	defaultNamespace = getDefaultNamespace()
 	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed ($LINKERD_NAMESPACE)")
+	RootCmd.PersistentFlags().StringVarP(&linkerdVizNamespace, "linkerd-viz-namespace", "", defaultLinkerdVizNamespace, "Namespace in which Linkerd Viz extension is installed")
 	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
