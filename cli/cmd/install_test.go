@@ -307,9 +307,14 @@ func testInstallOptionsHA(ha bool) (*charts.Values, error) {
 }
 
 func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
-	values, err := charts.NewValues(ha)
+	values, err := charts.NewValues()
 	if err != nil {
 		return nil, err
+	}
+	if ha {
+		if err = charts.MergeHAValues(values); err != nil {
+			return nil, err
+		}
 	}
 
 	values.GetGlobal().Proxy.Image.Version = installProxyVersion
@@ -321,7 +326,7 @@ func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
 }
 
 func testInstallValues() (*charts.Values, error) {
-	values, err := charts.NewValues(false)
+	values, err := charts.NewValues()
 	if err != nil {
 		return nil, err
 	}

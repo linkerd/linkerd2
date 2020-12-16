@@ -48,7 +48,7 @@ func runInjectCmd(inputs []io.Reader, errWriter, outWriter io.Writer, transforme
 }
 
 func newCmdInject() *cobra.Command {
-	defaults, err := charts.NewValues(false)
+	defaults, err := charts.NewValues()
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)

@@ -544,7 +544,7 @@ func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
 /* Helpers */
 
 func testUpgradeOptions() ([]flag.Flag, *pflag.FlagSet, error) {
-	defaults, err := charts.NewValues(false)
+	defaults, err := charts.NewValues()
 	if err != nil {
 		return nil, nil, err
 	}
