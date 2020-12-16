@@ -284,7 +284,8 @@ func (e *VerboseSuccess) Error() string {
 	return ""
 }
 
-type checker struct {
+// Checker is a smallest unit performing a single check
+type Checker struct {
 	// description is the short description that's printed to the command line
 	// when the check is executed
 	description string
@@ -321,6 +322,30 @@ type checker struct {
 	checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, error)
 }
 
+// NewChecker returns a new instance of checker type
+func NewChecker(description, hintAnchor string, fatal, warning bool, retryDeadline time.Time, surfaceErrorOnRetry bool) *Checker {
+	return &Checker{
+		description:         description,
+		hintAnchor:          hintAnchor,
+		fatal:               fatal,
+		warning:             warning,
+		retryDeadline:       retryDeadline,
+		surfaceErrorOnRetry: surfaceErrorOnRetry,
+	}
+}
+
+// WithCheck Returns a checker with the provided check func
+func (c *Checker) WithCheck(check func(context.Context) error) *Checker {
+	c.check = check
+	return c
+}
+
+// WithCheckRPC Returns a checker with the provided checkRPC func
+func (c *Checker) WithCheckRPC(checkRPC func(context.Context) (*healthcheckPb.SelfCheckResponse, error)) *Checker {
+	c.checkRPC = checkRPC
+	return c
+}
+
 // CheckResult encapsulates a check's identifying information and output
 // Note there exists an analogous user-facing type, `cmd.check`, for output via
 // `linkerd check -o json`.
@@ -336,10 +361,20 @@ type CheckResult struct {
 // CheckObserver receives the results of each check.
 type CheckObserver func(*CheckResult)
 
-type category struct {
+// Category is a group of checkers, to check a particular component or use-case
+type Category struct {
 	id       CategoryID
-	checkers []checker
+	checkers []Checker
 	enabled  bool
+}
+
+// NewCategory returns an instance of Category with the specified data
+func NewCategory(id CategoryID, checkers []Checker, enabled bool) *Category {
+	return &Category{
+		id:       id,
+		checkers: checkers,
+		enabled:  enabled,
+	}
 }
 
 // Options specifies configuration for a HealthChecker.
@@ -362,7 +397,7 @@ type Options struct {
 // HealthChecker encapsulates all health check checkers, and clients required to
 // perform those checks.
 type HealthChecker struct {
-	categories []category
+	categories []Category
 	*Options
 
 	// these fields are set in the process of running checks
@@ -402,6 +437,12 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 	return hc
 }
 
+// AppendCategories returns a HealthChecker instance appending the provided Categories
+func (hc *HealthChecker) AppendCategories(categories ...Category) *HealthChecker {
+	hc.categories = append(hc.categories, categories...)
+	return hc
+}
+
 // allCategories is the global, ordered list of all checkers, grouped by
 // category. This method is attached to the HealthChecker struct because the
 // checkers directly reference other members of the struct, such as kubeAPI,
@@ -413,11 +454,11 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 // Note that all checks should include a `hintAnchor` with a corresponding section
 // in the linkerd check faq:
 // https://linkerd.io/checks/#
-func (hc *HealthChecker) allCategories() []category {
-	return []category{
+func (hc *HealthChecker) allCategories() []Category {
+	return []Category{
 		{
 			id: KubernetesAPIChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "can initialize the client",
 					hintAnchor:  "k8s-api",
@@ -440,7 +481,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: KubernetesVersionChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "is running the minimum Kubernetes API version",
 					hintAnchor:  "k8s-version",
@@ -459,7 +500,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdPreInstallChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "control plane namespace does not already exist",
 					hintAnchor:  "pre-ns",
@@ -542,7 +583,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdPreInstallCapabilityChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "has NET_ADMIN capability",
 					hintAnchor:  "pre-k8s-cluster-net-admin",
@@ -563,7 +604,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdPreInstallGlobalResourcesChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "no ClusterRoles exist",
 					hintAnchor:  "pre-l5d-existence",
@@ -610,7 +651,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdControlPlaneExistenceChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "'linkerd-config' config map exists",
 					hintAnchor:  "l5d-existence-linkerd-config",
@@ -709,7 +750,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdConfigChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "control plane Namespace exists",
 					hintAnchor:  "l5d-existence-ns",
@@ -778,7 +819,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdCNIPluginChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "cni plugin ConfigMap exists",
 					hintAnchor:  "cni-plugin-cm-exists",
@@ -923,7 +964,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdIdentity,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "certificate config is valid",
 					hintAnchor:  "l5d-identity-cert-config-valid",
@@ -1029,7 +1070,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdWebhooksAndAPISvcTLS,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "tap API server has valid cert",
 					hintAnchor:  "l5d-tap-cert-valid",
@@ -1144,7 +1185,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdIdentityDataPlane,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "data plane proxies certificate match CA",
 					hintAnchor:  "l5d-identity-data-plane-proxies-certs-match-ca",
@@ -1157,7 +1198,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdAPIChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description:         "control plane pods are ready",
 					hintAnchor:          "l5d-api-control-ready",
@@ -1198,7 +1239,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdVersionChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "can determine the latest version",
 					hintAnchor:  "l5d-version-latest",
@@ -1228,7 +1269,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdControlPlaneVersionChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "control plane is up-to-date",
 					hintAnchor:  "l5d-version-control",
@@ -1252,7 +1293,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdDataPlaneChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "data plane namespace exists",
 					hintAnchor:  "l5d-data-plane-exists",
@@ -1348,7 +1389,7 @@ func (hc *HealthChecker) allCategories() []category {
 		},
 		{
 			id: LinkerdHAChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "pod injection disabled on kube-system",
 					hintAnchor:  "l5d-injection-disabled",
@@ -1451,9 +1492,9 @@ func (hc *HealthChecker) checkMinReplicasAvailable(ctx context.Context) error {
 // NewHealthChecker.
 func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintAnchor string, check func(context.Context) error) {
 	hc.addCategory(
-		category{
+		Category{
 			id: categoryID,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: description,
 					check:       check,
@@ -1465,7 +1506,7 @@ func (hc *HealthChecker) Add(categoryID CategoryID, description string, hintAnch
 }
 
 // addCategory is also for testing
-func (hc *HealthChecker) addCategory(c category) {
+func (hc *HealthChecker) addCategory(c Category) {
 	c.enabled = true
 	hc.categories = append(hc.categories, c)
 }
@@ -1509,7 +1550,7 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 	return success
 }
 
-func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer CheckObserver) bool {
+func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancel()
@@ -1556,7 +1597,7 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *checker, observer Ch
 // We keep on retrying the same call until all the responses have an OK status
 // (or until timeout/deadline is reached), sending a message to `observer` for each response,
 // while making sure no duplicate messages are sent.
-func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *checker, observer CheckObserver) bool {
+func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
 	observedResults := []CheckResult{}
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
@@ -1934,10 +1975,15 @@ func (hc *HealthChecker) isHeartbeatDisabled() bool {
 }
 
 func (hc *HealthChecker) checkServiceAccounts(ctx context.Context, saNames []string, ns, labelSelector string) error {
+	return CheckServiceAccounts(ctx, hc.kubeAPI, saNames, ns, labelSelector)
+}
+
+// CheckServiceAccounts check for serivceaccounts
+func CheckServiceAccounts(ctx context.Context, api *k8s.KubernetesAPI, saNames []string, ns, labelSelector string) error {
 	options := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
-	saList, err := hc.kubeAPI.CoreV1().ServiceAccounts(ns).List(ctx, options)
+	saList, err := api.CoreV1().ServiceAccounts(ns).List(ctx, options)
 	if err != nil {
 		return err
 	}

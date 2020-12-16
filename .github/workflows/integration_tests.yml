@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
+        # Keep in sync with release.yaml matrix build
         target: [proxy, controller, web, cni-plugin, debug, cli-bin, grafana, jaeger-webhook]
     name: Docker build (${{ matrix.target }})
     timeout-minutes: 30
