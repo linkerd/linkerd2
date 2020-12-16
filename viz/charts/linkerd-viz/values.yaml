@@ -2,13 +2,24 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# Common variables across extensions
-namespace: linkerd-viz
+# Fields that should be common with the core control plane
+
+# -- control plane version. See Proxy section for proxy version
 linkerdVersion: &linkerd_version linkerdVersionValue
+
+# -- Kubernetes DNS Domain name to use  
 clusterDomain: &cluster_domain cluster.local
+
+# -- Trust domain used for identity 
 identityTrustDomain: *cluster_domain
+
+# -- Namespace of the Linkerd core control-plane install
 linkerdNamespace: linkerd
+
+# -- Log level for all the viz components
 globalLogLevel: &log_level info
+
+# -- UID for all the viz components
 globalUID: &uid 2103
 
 # -- Annotation label for the proxy. Do not edit.

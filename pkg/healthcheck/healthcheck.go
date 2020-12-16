@@ -1125,6 +1125,19 @@ func (hc *HealthChecker) allCategories() []category {
 						return validateControlPlanePods(hc.controlPlanePods)
 					},
 				},
+				{
+					description: "control plane self-check",
+					hintAnchor:  "l5d-api-control-api",
+					// to avoid confusing users with a prometheus readiness error, we only show
+					// "waiting for check to complete" while things converge. If after the timeout
+					// it still hasn't converged, we show the real error (a 503 usually).
+					surfaceErrorOnRetry: false,
+					fatal:               true,
+					retryDeadline:       hc.RetryDeadline,
+					checkRPC: func(ctx context.Context) (*healthcheckPb.SelfCheckResponse, error) {
+						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
+					},
+				},
 			},
 		},
 		{
@@ -2287,7 +2300,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"identity", "sp-validator"}
+	names := []string{"controller", "identity", "sp-validator"}
 	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")

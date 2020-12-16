@@ -71,11 +71,11 @@ var (
 		"templates/_helpers.tpl",
 		"templates/config.yaml",
 		"templates/identity.yaml",
+		"templates/controller.yaml",
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
-		"templates/controller.yaml",
 	}
 
 	ignoreCluster bool

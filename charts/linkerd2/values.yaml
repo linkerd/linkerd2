@@ -165,6 +165,7 @@ global:
   imagePullSecrets: []
   # - name: my-private-docker-registry-login-secret
 
+# -- Namespace of the Linkerd Viz Extension
 linkerdVizNamespace: linkerd-viz
 
 # -- Allow proxies to perform transparent HTTP/2 upgrading  

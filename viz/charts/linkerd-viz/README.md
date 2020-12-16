@@ -17,16 +17,11 @@ the [Linkerd Getting Started Guide][getting-started] for how.
 For more comprehensive documentation, start with the [Linkerd
 docs][linkerd-docs].
 
-## Prerequisite: identity certificates
+## Prerequisite: Linkerd Core Control-Plane
 
-The identity component of Linkerd requires setting up a trust anchor
-certificate, and an issuer certificate with its key. These need to be provided
-to Helm by the user (unlike when using the `linkerd install` CLI which can
-generate these automatically). You can provide your own, or follow [these
-instructions](https://linkerd.io/2/tasks/generate-certificates/) to generate new
-ones.
-
-Note that the provided certificates must be ECDSA certificates.
+Before installing the Linkerd Viz extension, The core control-plane has to
+be installed first by following the [Linkerd Install
+Guide](https://linkerd.io/2/tasks/install/).
 
 ## Adding Linkerd's Helm repository
 
@@ -40,46 +35,10 @@ helm repo add linkerd-edge https://helm.linkerd.io/edge
 The following instructions use the `linkerd` repo. For installing an edge
 release, just replace with `linkerd-edge`.
 
-## Installing the chart
-
-You must provide the certificates and keys described in the preceding section,
-and the same expiration date you used to generate the Issuer certificate.
-
-In this example we set the expiration date to one year ahead:
+## Installing the Viz Extension Chart
 
 ```bash
-helm install \
-  --set-file global.identityTrustAnchorsPEM=ca.crt \
-  --set-file identity.issuer.tls.crtPEM=issuer.crt \
-  --set-file identity.issuer.tls.keyPEM=issuer.key \
-  --set identity.issuer.crtExpiry=$(date -d '+8760 hour' +"%Y-%m-%dT%H:%M:%SZ") \
-  linkerd/linkerd2
-```
-
-## Setting High-Availability
-
-Besides the default `values.yaml` file, the chart provides a `values-ha.yaml`
-file that overrides some default values as to set things up under a
-high-availability scenario, analogous to the `--ha` option in `linkerd install`.
-Values such as higher number of replicas, higher memory/cpu limits and
-affinities are specified in that file.
-
-You can get ahold of `values-ha.yaml` by fetching the chart files:
-
-```bash
-helm fetch --untar linkerd/linkerd2
-```
-
-Then use the `-f` flag to provide the override file, for example:
-
-```bash
-helm install \
-  --set-file global.identityTrustAnchorsPEM=ca.crt \
-  --set-file identity.issuer.tls.crtPEM=issuer.crt \
-  --set-file identity.issuer.tls.keyPEM=issuer.key \
-  --set identity.issuer.crtExpiry=$(date -d '+8760 hour' +"%Y-%m-%dT%H:%M:%SZ") \
-  -f linkerd2/values-ha.yaml
-  linkerd/linkerd2
+helm install linkerd/linkerd-viz
 ```
 
 ## Get involved
@@ -100,18 +59,6 @@ helm install \
 [slack]: http://slack.linkerd.io
 [twitter]: https://twitter.com/linkerd
 
-## Addons for linkerd
-
-For the linkerd application there are some addons that can be configured. The
-documentation for the configurations of the addons can be found in their
-respective readme.md
-
-[Prometheus](https://github.com/linkerd/linkerd2/blob/main/charts/add-ons/prometheus/README.md)
-
-[Grafana](https://github.com/linkerd/linkerd2/blob/main/charts/add-ons/grafana/README.md)
-
-[Tracing](https://github.com/linkerd/linkerd2/blob/main/charts/add-ons/tracing/README.md)
-
 ## Requirements
 
 Kubernetes: `>=1.13.0-0`
@@ -124,7 +71,7 @@ Kubernetes: `>=1.13.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| clusterDomain | string | `"cluster.local"` |  |
+| clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use   |
 | createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy. Do not edit. |
 | dashboard.UID | int | `2103` |  |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
@@ -136,8 +83,8 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.resources.cpu.request | string | `nil` | Amount of CPU units that the web container requests |
 | dashboard.resources.memory.limit | string | `nil` | Maximum amount of memory that web container can use |
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
-| globalLogLevel | string | `"info"` |  |
-| globalUID | int | `2103` |  |
+| globalLogLevel | string | `"info"` | Log level for all the viz components |
+| globalUID | int | `2103` | UID for all the viz components |
 | grafana.enabled | bool | `true` | toggle field to enable or disable grafana |
 | grafana.image.name | string | `"ghcr.io/linkerd/grafana"` | Docker image name for the grafana instance |
 | grafana.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the grafana instance |
@@ -145,10 +92,9 @@ Kubernetes: `>=1.13.0-0`
 | grafana.resources.cpu.request | string | `nil` | Amount of CPU units that the grafana container requests |
 | grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
 | grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
-| identityTrustDomain | string | `"cluster.local"` |  |
-| linkerdNamespace | string | `"linkerd"` |  |
-| linkerdVersion | string | `"linkerdVersionValue"` |  |
-| namespace | string | `"linkerd-viz"` |  |
+| identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity  |
+| linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
+| linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.alertManagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
 | prometheus.alertRelabelConfigs | string | `nil` | Alert relabeling is applied to alerts before they are sent to the Alertmanager. |

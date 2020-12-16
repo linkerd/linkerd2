@@ -85,8 +85,16 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
+  name: linkerd-controller
+  namespace: {{.Values.global.namespace}}
+- kind: ServiceAccount
   name: linkerd-destination
   namespace: {{.Values.global.namespace}}
+{{ if not .Values.disableHeartBeat -}}
+- kind: ServiceAccount
+  name: linkerd-heartbeat
+  namespace: {{.Values.global.namespace}}
+{{ end -}}
 - kind: ServiceAccount
   name: linkerd-identity
   namespace: {{.Values.global.namespace}}
@@ -96,8 +104,3 @@ subjects:
 - kind: ServiceAccount
   name: linkerd-sp-validator
   namespace: {{.Values.global.namespace}}
-{{ if not .Values.disableHeartBeat -}}
-- kind: ServiceAccount
-  name: linkerd-heartbeat
-  namespace: {{.Values.global.namespace}}
-{{ end -}}
