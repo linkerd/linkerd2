@@ -214,7 +214,7 @@ func fetchIdentityValues(ctx context.Context, k kubernetes.Interface, idctx *pb.
 		return fmt.Errorf("could not convert issuance Lifetime protobuf Duration format into golang Duration: %s", err)
 	}
 
-	values.Global.IdentityTrustAnchorsPEM = trustAnchorsPEM
+	values.GetGlobal().IdentityTrustAnchorsPEM = trustAnchorsPEM
 	values.Identity.Issuer.Scheme = idctx.Scheme
 	values.Identity.Issuer.ClockSkewAllowance = clockSkewDuration.String()
 	values.Identity.Issuer.IssuanceLifetime = issuanceLifetimeDuration.String()

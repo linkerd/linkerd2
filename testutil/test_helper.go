@@ -385,6 +385,33 @@ func (h *TestHelper) LinkerdRunStream(arg ...string) (*Stream, error) {
 	return &Stream{cmd: cmd, out: cmdReader}, nil
 }
 
+// KubectlStream initiates a kubectl command appended with the
+// --namespace flag, and returns a Stream that can be used to read the
+// command's output while it is still executing.
+func (h *TestHelper) KubectlStream(arg ...string) (*Stream, error) {
+
+	withContext := append([]string{"--namespace", h.namespace, "--context=" + h.k8sContext}, arg...)
+	cmd := exec.Command("kubectl", withContext...)
+
+	cmdReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	time.Sleep(500 * time.Millisecond)
+
+	if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+		return nil, fmt.Errorf("Process exited: %s", cmd.ProcessState)
+	}
+
+	return &Stream{cmd: cmd, out: cmdReader}, nil
+}
+
 // HelmUpgrade runs the helm upgrade subcommand, with the provided arguments
 func (h *TestHelper) HelmUpgrade(chart string, arg ...string) (string, string, error) {
 	withParams := append([]string{
@@ -646,24 +673,4 @@ func ParseEvents(out string) ([]*corev1.Event, error) {
 	}
 
 	return events, nil
-}
-
-// Run calls `m.Run()`, shows unexpected logs/events,
-// and returns the exit code for the tests
-func Run(m *testing.M, helper *TestHelper) int {
-	code := m.Run()
-	if code != 0 {
-		_, errs1 := FetchAndCheckLogs(helper)
-		for _, err := range errs1 {
-			fmt.Println(err)
-		}
-		errs2 := FetchAndCheckEvents(helper)
-		for _, err := range errs2 {
-			fmt.Println(err)
-		}
-		if len(errs1) == 0 && len(errs2) == 0 {
-			fmt.Println("No unexpected log entries or events found")
-		}
-	}
-	return code
 }

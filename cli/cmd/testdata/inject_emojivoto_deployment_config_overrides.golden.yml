@@ -45,6 +45,8 @@ spec:
         - containerPort: 80
           name: http
       - env:
+        - name: LINKERD2_PROXY_CORES
+          value: "1"
         - name: LINKERD2_PROXY_LOG
           value: warn,linkerd=info
         - name: LINKERD2_PROXY_LOG_FORMAT
@@ -163,7 +165,7 @@ spec:
         - 4190,9998,7777,8888
         - --outbound-ports-to-ignore
         - "9999"
-        image: ghcr.io/linkerd/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

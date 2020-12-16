@@ -820,6 +820,7 @@ data:
       clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
       cniEnabled: false
       controlPlaneTracing: false
+      controlPlaneTracingNamespace: linkerd-jaeger
       controllerComponentLabel: linkerd.io/control-plane-component
       controllerImageVersion: install-control-plane-version
       controllerLogLevel: info
@@ -880,9 +881,6 @@ data:
             limit: ""
             request: ""
         saMountPath: null
-        trace:
-          collectorSvcAccount: default
-          collectorSvcAddr: ""
         uid: 2102
         waitBeforeExitSeconds: 0
       proxyContainerName: linkerd-proxy
@@ -894,7 +892,7 @@ data:
         image:
           name: ghcr.io/linkerd/proxy-init
           pullPolicy: IfNotPresent
-          version: v1.3.6
+          version: v1.3.8
         resources:
           cpu:
             limit: 100m
@@ -1034,8 +1032,6 @@ data:
     tapProxyResources: null
     tapResources: null
     tolerations: null
-    tracing:
-      enabled: false
     webImage: ghcr.io/linkerd/web
     webProxyResources: null
     webResources: null
@@ -1198,7 +1194,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -1278,7 +1274,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1431,7 +1427,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -1511,7 +1507,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1682,7 +1678,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -1762,7 +1758,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -1961,7 +1957,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -2041,7 +2037,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2098,6 +2094,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 906e23f11c1c920abd60ae9cce09ca9f53673544c9c587ef390110c4a4bfe60d
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2172,7 +2169,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -2252,7 +2249,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2353,6 +2350,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 82e78e61c12a83a1c769a6a0b19b1567b0f73e5ebe240277970a23d83de6fe22
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2425,7 +2423,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -2505,7 +2503,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2589,6 +2587,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/config: 51c6f0865aca4a1b4e25e619385ff0d9f95683e27c4d29c3072eac39b3fa7220
         linkerd.io/created-by: linkerd/cli dev-undefined
         linkerd.io/identity-mode: default
         linkerd.io/proxy-version: install-proxy-version
@@ -2665,7 +2664,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -2745,7 +2744,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -2934,6 +2933,7 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
+        resources:
         securityContext:
           runAsUser: 472
         volumeMounts:
@@ -2975,7 +2975,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -3055,7 +3055,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:
@@ -3411,6 +3411,7 @@ spec:
             port: 9090
           initialDelaySeconds: 30
           timeoutSeconds: 30
+        resources:
         securityContext:
           runAsNonRoot: true
           runAsUser: 65534
@@ -3463,7 +3464,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -3543,7 +3544,7 @@ spec:
         - "4190,4191,25,443,587,3306,11211"
         - --outbound-ports-to-ignore
         - "25,443,587,3306,11211"
-        image: ghcr.io/linkerd/proxy-init:v1.3.6
+        image: ghcr.io/linkerd/proxy-init:v1.3.8
         imagePullPolicy: IfNotPresent
         name: linkerd-init
         resources:

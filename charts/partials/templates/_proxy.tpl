@@ -1,5 +1,9 @@
 {{ define "partials.proxy" -}}
 env:
+{{- if .Values.global.proxy.cores }}
+- name: LINKERD2_PROXY_CORES
+  value: {{.Values.global.proxy.cores | quote}}
+{{- end }}
 {{ if .Values.global.proxy.requireIdentityOnInboundPorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_REQUIRE_IDENTITY
   value: {{.Values.global.proxy.requireIdentityOnInboundPorts | quote}}
@@ -43,10 +47,6 @@ env:
   value: 10000ms
 - name: LINKERD2_PROXY_OUTBOUND_CONNECT_KEEPALIVE
   value: 10000ms
-{{ if .Values.global.proxy.trace.collectorSvcAddr -}}
-- name: LINKERD2_PROXY_TRACE_ATTRIBUTES_PATH
-  value: /var/run/linkerd/podinfo/labels
-{{ end -}}
 {{ if .Values.global.proxy.opaquePorts -}}
 - name: LINKERD2_PROXY_INBOUND_PORTS_DISABLE_PROTOCOL_DETECTION
   value: {{.Values.global.proxy.opaquePorts | quote}}
@@ -57,7 +57,7 @@ env:
       fieldPath: metadata.namespace
 - name: _pod_nodeName
   valueFrom:
-     fieldRef:
+    fieldRef:
       fieldPath: spec.nodeName
 - name: LINKERD2_PROXY_DESTINATION_CONTEXT
   value: |
@@ -97,12 +97,6 @@ env:
 - name: LINKERD2_PROXY_TAP_SVC_NAME
   value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
 {{ end -}}
-{{ if .Values.global.proxy.trace.collectorSvcAddr -}}
-- name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_ADDR
-  value: {{ .Values.global.proxy.trace.collectorSvcAddr }}
-- name: LINKERD2_PROXY_TRACE_COLLECTOR_SVC_NAME
-  value: {{ .Values.global.proxy.trace.collectorSvcAccount }}.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
-{{ end -}}
 image: {{.Values.global.proxy.image.name}}:{{.Values.global.proxy.image.version}}
 imagePullPolicy: {{.Values.global.proxy.image.pullPolicy}}
 livenessProbe:
@@ -141,12 +135,8 @@ lifecycle:
         - -c
         - sleep {{.Values.global.proxy.waitBeforeExitSeconds}}
 {{- end }}
-{{- if or (.Values.global.proxy.trace.collectorSvcAddr) (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) }}
+{{- if or (not .Values.global.proxy.disableIdentity) (.Values.global.proxy.saMountPath) }}
 volumeMounts:
-{{- if .Values.global.proxy.trace.collectorSvcAddr }}
-- mountPath: var/run/linkerd/podinfo
-  name: podinfo
-{{- end -}}
 {{- if not .Values.global.proxy.disableIdentity }}
 - mountPath: /var/run/linkerd/identity/end-entity
   name: linkerd-identity-end-entity

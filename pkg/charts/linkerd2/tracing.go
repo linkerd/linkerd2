@@ -1,7 +1,7 @@
 package linkerd2
 
 import (
-	"k8s.io/helm/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"sigs.k8s.io/yaml"
 )
 
@@ -29,15 +29,15 @@ func (t Tracing) Values() []byte {
 }
 
 // ConfigStageTemplates returns the template files that are part of the config stage
-func (t Tracing) ConfigStageTemplates() []*chartutil.BufferedFile {
-	return []*chartutil.BufferedFile{
+func (t Tracing) ConfigStageTemplates() []*loader.BufferedFile {
+	return []*loader.BufferedFile{
 		{Name: "templates/tracing-rbac.yaml"},
 	}
 }
 
 // ControlPlaneStageTemplates returns the template files that are part of the Control Plane Stage.
-func (t Tracing) ControlPlaneStageTemplates() []*chartutil.BufferedFile {
-	return []*chartutil.BufferedFile{
+func (t Tracing) ControlPlaneStageTemplates() []*loader.BufferedFile {
+	return []*loader.BufferedFile{
 		{Name: "templates/tracing.yaml"},
 	}
 }

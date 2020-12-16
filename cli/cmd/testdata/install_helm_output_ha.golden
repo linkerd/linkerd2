@@ -838,7 +838,7 @@ data:
     destinationProxyResources: null
     destinationResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -852,6 +852,7 @@ data:
       clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
       cniEnabled: false
       controlPlaneTracing: false
+      controlPlaneTracingNamespace: linkerd-jaeger
       controllerComponentLabel: linkerd.io/control-plane-component
       controllerImageVersion: linkerd-version
       controllerLogLevel: info
@@ -894,15 +895,12 @@ data:
         requireIdentityOnInboundPorts: ""
         resources:
           cpu:
-            limit: "1"
+            limit: ""
             request: 100m
           memory:
             limit: 250Mi
             request: 20Mi
         saMountPath: null
-        trace:
-          collectorSvcAccount: default
-          collectorSvcAddr: ""
         uid: 2102
         waitBeforeExitSeconds: 0
       proxyContainerName: linkerd-proxy
@@ -938,6 +936,7 @@ data:
         clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         cniEnabled: false
         controlPlaneTracing: false
+        controlPlaneTracingNamespace: linkerd-jaeger
         controllerComponentLabel: linkerd.io/control-plane-component
         controllerImageVersion: linkerd-version
         controllerLogLevel: info
@@ -949,6 +948,7 @@ data:
         identityTrustAnchorsPEM: test-trust-anchor
         identityTrustDomain: test.trust.domain
         imagePullPolicy: IfNotPresent
+        imagePullSecrets: null
         linkerdNamespaceLabel: linkerd.io/is-control-plane
         linkerdVersion: linkerd-version
         namespace: linkerd
@@ -979,15 +979,12 @@ data:
           requireIdentityOnInboundPorts: ""
           resources:
             cpu:
-              limit: "1"
+              limit: ""
               request: 100m
             memory:
               limit: 250Mi
               request: 20Mi
           saMountPath: null
-          trace:
-            collectorSvcAccount: default
-            collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
         proxyContainerName: linkerd-proxy
@@ -1017,6 +1014,7 @@ data:
         workloadNamespaceLabel: linkerd.io/workload-ns
       image:
         name: ghcr.io/linkerd/grafana
+        tag: null
       partials:
         global:
           cliVersion: ""
@@ -1024,6 +1022,7 @@ data:
           clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
           cniEnabled: false
           controlPlaneTracing: false
+          controlPlaneTracingNamespace: linkerd-jaeger
           controllerComponentLabel: linkerd.io/control-plane-component
           controllerImageVersion: linkerd-version
           controllerLogLevel: info
@@ -1035,6 +1034,7 @@ data:
           identityTrustAnchorsPEM: test-trust-anchor
           identityTrustDomain: test.trust.domain
           imagePullPolicy: IfNotPresent
+          imagePullSecrets: null
           linkerdNamespaceLabel: linkerd.io/is-control-plane
           linkerdVersion: linkerd-version
           namespace: linkerd
@@ -1065,15 +1065,12 @@ data:
             requireIdentityOnInboundPorts: ""
             resources:
               cpu:
-                limit: "1"
+                limit: ""
                 request: 100m
               memory:
                 limit: 250Mi
                 request: 20Mi
             saMountPath: null
-            trace:
-              collectorSvcAccount: default
-              collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
           proxyContainerName: linkerd-proxy
@@ -1101,16 +1098,18 @@ data:
           proxyInjectAnnotation: linkerd.io/inject
           proxyInjectDisabled: disabled
           workloadNamespaceLabel: linkerd.io/workload-ns
+      proxy:
+        resources: null
       resources:
         cpu:
-          limit: "1"
+          limit: ""
           request: 100m
         memory:
           limit: 1024Mi
           request: 50Mi
     heartbeatResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1128,7 +1127,7 @@ data:
     identityProxyResources: null
     identityResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1148,6 +1147,8 @@ data:
           values:
           - disabled
     prometheus:
+      alertManagers: null
+      alertRelabelConfigs: null
       args:
         config.file: /etc/prometheus/prometheus.yml
         log.level: info
@@ -1160,6 +1161,7 @@ data:
         clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
         cniEnabled: false
         controlPlaneTracing: false
+        controlPlaneTracingNamespace: linkerd-jaeger
         controllerComponentLabel: linkerd.io/control-plane-component
         controllerImageVersion: linkerd-version
         controllerLogLevel: info
@@ -1171,6 +1173,7 @@ data:
         identityTrustAnchorsPEM: test-trust-anchor
         identityTrustDomain: test.trust.domain
         imagePullPolicy: IfNotPresent
+        imagePullSecrets: null
         linkerdNamespaceLabel: linkerd.io/is-control-plane
         linkerdVersion: linkerd-version
         namespace: linkerd
@@ -1201,15 +1204,12 @@ data:
           requireIdentityOnInboundPorts: ""
           resources:
             cpu:
-              limit: "1"
+              limit: ""
               request: 100m
             memory:
               limit: 250Mi
               request: 20Mi
           saMountPath: null
-          trace:
-            collectorSvcAccount: default
-            collectorSvcAddr: ""
           uid: 2102
           waitBeforeExitSeconds: 0
         proxyContainerName: linkerd-proxy
@@ -1249,6 +1249,7 @@ data:
           clusterNetworks: 10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16
           cniEnabled: false
           controlPlaneTracing: false
+          controlPlaneTracingNamespace: linkerd-jaeger
           controllerComponentLabel: linkerd.io/control-plane-component
           controllerImageVersion: linkerd-version
           controllerLogLevel: info
@@ -1260,6 +1261,7 @@ data:
           identityTrustAnchorsPEM: test-trust-anchor
           identityTrustDomain: test.trust.domain
           imagePullPolicy: IfNotPresent
+          imagePullSecrets: null
           linkerdNamespaceLabel: linkerd.io/is-control-plane
           linkerdVersion: linkerd-version
           namespace: linkerd
@@ -1290,15 +1292,12 @@ data:
             requireIdentityOnInboundPorts: ""
             resources:
               cpu:
-                limit: "1"
+                limit: ""
                 request: 100m
               memory:
                 limit: 250Mi
                 request: 20Mi
             saMountPath: null
-            trace:
-              collectorSvcAccount: default
-              collectorSvcAddr: ""
             uid: 2102
             waitBeforeExitSeconds: 0
           proxyContainerName: linkerd-proxy
@@ -1326,13 +1325,19 @@ data:
           proxyInjectAnnotation: linkerd.io/inject
           proxyInjectDisabled: disabled
           workloadNamespaceLabel: linkerd.io/workload-ns
+      proxy:
+        resources: null
+      remoteWrite: null
       resources:
         cpu:
-          limit: "4"
+          limit: ""
           request: 300m
         memory:
           limit: 8192Mi
           request: 300Mi
+      ruleConfigMapMounts: null
+      scrapeConfigs: null
+      sideCarContainers: null
     proxyInjector:
       caBundle: test-proxy-injector-ca-bundle
       crtPEM: test-proxy-injector-crt-pem
@@ -1346,7 +1351,7 @@ data:
     proxyInjectorProxyResources: null
     proxyInjectorResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1354,7 +1359,7 @@ data:
     publicAPIProxyResources: null
     publicAPIResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1363,7 +1368,7 @@ data:
     spValidatorProxyResources: null
     spValidatorResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1375,19 +1380,17 @@ data:
     tapProxyResources: null
     tapResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
         request: 50Mi
     tolerations: null
-    tracing:
-      enabled: false
     webImage: ghcr.io/linkerd/web
     webProxyResources: null
     webResources:
       cpu:
-        limit: "1"
+        limit: ""
         request: 100m
       memory:
         limit: 250Mi
@@ -1540,7 +1543,6 @@ spec:
             port: 9990
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -1583,7 +1585,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -1633,7 +1635,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -1803,7 +1804,6 @@ spec:
             port: 9995
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -1843,7 +1843,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -1893,7 +1893,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2081,7 +2080,6 @@ spec:
             port: 9996
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2121,7 +2119,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -2171,7 +2169,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2275,7 +2272,6 @@ spec:
             - "-prometheus-url=http://linkerd-prometheus.linkerd.svc.cluster.local:9090"
             resources:
               limits:
-                cpu: "1"
                 memory: "250Mi"
               requests:
                 cpu: "100m"
@@ -2373,7 +2369,6 @@ spec:
             port: 9994
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2413,7 +2408,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -2463,7 +2458,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2606,7 +2600,6 @@ spec:
             port: 9995
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2652,7 +2645,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -2702,7 +2695,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2889,7 +2881,6 @@ spec:
             port: 9997
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -2933,7 +2924,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -2983,7 +2974,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -3157,7 +3147,6 @@ spec:
             port: 9998
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -3201,7 +3190,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -3251,7 +3240,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -3471,7 +3459,6 @@ spec:
             port: 3000
         resources:
           limits:
-            cpu: "1"
             memory: "1024Mi"
           requests:
             cpu: "100m"
@@ -3517,7 +3504,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -3567,7 +3554,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"
@@ -3909,7 +3895,6 @@ spec:
           timeoutSeconds: 30
         resources:
           limits:
-            cpu: "4"
             memory: "8192Mi"
           requests:
             cpu: "300m"
@@ -3958,7 +3943,7 @@ spec:
               fieldPath: metadata.namespace
         - name: _pod_nodeName
           valueFrom:
-             fieldRef:
+            fieldRef:
               fieldPath: spec.nodeName
         - name: LINKERD2_PROXY_DESTINATION_CONTEXT
           value: |
@@ -4008,7 +3993,6 @@ spec:
           initialDelaySeconds: 2
         resources:
           limits:
-            cpu: "1"
             memory: "250Mi"
           requests:
             cpu: "100m"

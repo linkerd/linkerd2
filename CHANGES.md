@@ -1,4 +1,241 @@
+
 # Changes
+
+## edge-20.12.3
+
+This edge release is functionally the same as `edge-20.12.2`. It fixes an issue
+that prevented the release build from occurring.
+
+## edge-20.12.2
+
+* Fixed an issue where the `proxy-injector` and `sp-validator` did not refresh
+  their certs automatically when provided externally—like through cert-manager
+* Added support for overrides flags to the `jaeger install` command to allow
+  setting Helm values when installing the Linkerd-jaeger extension
+* Added missing Helm values to the multicluster chart (thanks @DaspawnW!)
+* Moved tracing functionality to the `linkerd-jaeger` extension
+* Fixed various issues in developer shell scripts (thanks @joakimr-axis!)
+* Fixed an issue where `install --ha` was only partially applying the high
+  availability config
+* Updated RBAC API versions in the CNI chart (thanks @glitchcrab!)
+* Fixed an issue where TLS credentials are changed during upgrades, but the
+  Linkerd webhooks would not restart, leaving them to use older credentials and
+  fail requests
+* Stopped publishing the multicluster link chart as its primary use case is in
+  the `multicluster link` command and not being installed through Helm
+* Added service mirror error logs for when the multicluster gateway's hostname
+  cannot be resolved.
+
+## edge-20.12.1
+
+This edge release continues the work of decoupling non-core Linkerd components
+by moving more tracing related functionality into the Linkerd-jaeger extension.
+
+* Continued work on moving tracing functionality from the main control plane
+  into the `linkerd-jaeger` extension
+* Fixed a potential panic in the proxy when looking up a socket's peer address
+  while under high load
+* Added automatic readme generation for charts (thanks @GMarkfjard!)
+* Fixed zsh completion for the CLI (thanks @jiraguha!)
+* Added support for multicluster gateways of types other than LoadBalancer
+  (thanks @DaspawnW!)
+
+## edge-20.11.5
+
+This edge release improves the proxy's support high-traffic workloads. It also
+contains the first steps towards decoupling non-core Linkerd components, the
+first iteration being a new `linkerd jaeger` sub-command for installing tracing.
+Please note this is still a work in progress.
+
+* Addressed some issues reported around clients seeing max-concurrency errors by
+  increasing the default in-flight request limit to 100K pending requests
+* Have the proxy appropriately set `content-type` when synthesizing gRPC error
+  responses
+* Bumped the `proxy-init` image to `v1.3.8` which is based off of
+  `buster-20201117-slim` to reduce potential security vulnerabilities
+* No longer panic in rare cases when `linkerd-config` doesn't have an entry for
+  `Global` configs (thanks @hodbn!)
+* Work in progress: the `/jaeger` directory now contains the charts and commands
+  for installing the tracing component.
+
+## edge-20.11.4
+
+* Fixed an issue in the destination service where endpoints always included a
+  protocol hint, regardless of the controller label being present or not
+
+## edge-20.11.3
+
+This edge release improves support for CNI by properly handling parameters
+passed to the `nsenter` command, relaxes checks on root and intermediate
+certificates (following X509 best practices), and fixes two issues: one that
+prevented installation of the control plane into a custom namespace and one
+which failed to update endpoint information when a headless service is modified.
+This release also improves linkerd proxy performance by eliminating unnecessary
+endpoint resolutions for TCP traffic and properly tearing down serverside
+connections when errors occur.
+
+* Added HTTP/2 keepalive PING frames
+* Removed logic to avoid redundant TCP endpoint resolution
+* Fixed an issue where serverside connections were not torn down when an error
+  occurs
+* Updated `linkerd check` so that it doesn't attempt to validate the subject
+  alternative name (SAN) on root and intermediate certificates. SANs for leaf
+  certificates will continue to be validated
+* Fixed a CLI issue where the `linkerd-namespace` flag is not honored when
+  passed to the `install` and `upgrade` commands
+* Fixed an issue where the proxy does not receive updated endpoint information
+  when a headless service is modified
+* Updated the control plane Docker images to use `buster-20201117-slim` to
+  reduce potential security vulnerabilities
+* Updated the proxy-init container to `v1.3.7` which fixes CNI issues in certain
+  environments by properly parsing `nsenter` args
+
+## edge-20.11.2
+
+This edge release reduces memory consumption of Linkerd proxies which maintain
+many idle connections (such as Prometheus).  It also removes some obsolete
+commands from the CLI and allows setting custom annotations on multicluster
+gateways.
+
+* Reduced the default idle connection timeout to 5s for outbound clients and
+  20s for inbound clients to reduce the proxy's memory footprint, especially on
+  Prometheus instances
+* Added support for setting annotations on the multicluster gateway in Helm
+  which allows setting the load balancer as internal (thanks @shaikatz!)
+* Removed the `get` and `logs` command from the CLI
+
+## stable-2.9.0
+
+This release extends Linkerd's zero-config mutual TLS (mTLS) support to all TCP
+connections, allowing Linkerd to transparently encrypt and authenticate all TCP
+connections in the cluster the moment it's installed. It also adds ARM support,
+introduces a new multi-core proxy runtime for higher throughput, adds support
+for Kubernetes service topologies, and lots, lots more, as described below:
+
+* Proxy
+  * Performed internal improvements for lower latencies under high concurrency
+  * Reduced performance impact of logging, especially when the `debug` or
+    `trace` log levels are disabled
+  * Improved error handling for DNS errors encountered when discovering control
+    plane addresses; this can be common during installation before all
+    components have been started, allowing linkerd to continue to operate
+    normally in HA during node outages
+
+* Control Plane
+  * Added support for [topology-aware service
+    routing](https://kubernetes.io/docs/concepts/services-networking/service-topology/)
+    to the Destination controller; when providing service discovery updates to
+    proxies the Destination controller will now filter endpoints based on the
+    service's topology preferences
+  * Added support for the new Kubernetes
+    [EndpointSlice](https://kubernetes.io/docs/concepts/services-networking/endpoint-slices/)
+    resource to the Destination controller; Linkerd can be installed with
+    `--enable-endpoint-slices` flag to use this resource rather than the
+    Endpoints API in clusters where this new API is supported
+
+* Dashboard
+  * Added new Spanish translations (please help us translate into your
+    language!)
+  * Added new section for exposing multicluster gateway metrics
+
+* CLI
+  * Renamed the `--addon-config` flag to `--config` to clarify this flag can be
+    used to set any Helm value
+  * Added fish shell completions to the `linkerd` command
+
+* Multicluster
+  * Replaced the single `service-mirror` controller with separate controllers
+    that will be installed per target cluster through `linkerd multicluster
+    link`
+  * Changed the mechanism for mirroring services: instead of relying on
+    annotations on the target services, now the source cluster should specify
+    which services from the target cluster should be exported by using a label
+    selector
+  * Added support for creating multiple service accounts when installing
+    multicluster with Helm to allow more granular revocation
+  * Added a multicluster `unlink` command for removing multicluster links
+
+* Prometheus
+  * Moved Linkerd's bundled Prometheus into an add-on (enabled by default); this
+    makes the Linkerd Prometheus more configurable, gives it a separate upgrade
+    lifecycle from the rest of the control plane, and allows users to
+    disable the bundled Prometheus instance
+  * The long-awaited Bring-Your-Own-Prometheus case has been finally addressed:
+    added `global.prometheusUrl` to the Helm config to have linkerd use an
+    external Prometheus instance instead of the one provided by default
+  * Added an option to persist data to a volume instead of memory, so that
+    historical metrics are available when Prometheus is restarted
+  * The helm chart can now configure persistent storage and limits
+
+* Other
+  * Added a new `linkerd.io/inject: ingress` annotation and accompanying
+    `--ingress` flag to the `inject` command, to configure the proxy to support
+    service profiles and enable per-route metrics and traffic splits for HTTP
+    ingress controllers
+  * Changed the type of the injector and tap API secrets to `kubernetes.io/tls`
+    so they can be provisioned by cert-manager
+  * Changed default docker image repository to `ghcr.io` from `gcr.io`; **Users
+    who pull the images into private repositories should take note of this
+    change**
+  * Introduced support for authenticated docker registries
+  * Simplified the way that Linkerd stores its configuration; configuration is
+    now stored as Helm values in the `linkerd-config` ConfigMap
+  * Added support for Helm configuration of per-component proxy resources
+    requests
+
+This release includes changes from a massive list of contributors. A special
+thank-you to everyone who helped make this release possible: [Abereham G
+Wodajie](https://github.com/Abrishges), [Alexander
+Berger](https://github.com/alex-berger), [Ali
+Ariff](https://github.com/aliariff), [Arthur Silva
+Sens](https://github.com/ArthurSens), [Chris
+Campbell](https://github.com/campbel), [Daniel
+Lang](https://github.com/mavrick), [David Tyler](https://github.com/DaveTCode),
+[Desmond Ho](https://github.com/DesmondH0), [Dominik
+Münch](https://github.com/muenchdo), [George
+Garces](https://github.com/jgarces21), [Herrmann
+Hinz](https://github.com/HerrmannHinz), [Hu Shuai](https://github.com/hs0210),
+[Jeffrey N. Davis](https://github.com/penland365), [Joakim
+Roubert](https://github.com/joakimr-axis), [Josh
+Soref](https://github.com/jsoref), [Lutz Behnke](https://github.com/cypherfox),
+[MaT1g3R](https://github.com/MaT1g3R), [Marcus Vaal](https://github.com/mvaal),
+[Markus](https://github.com/mbettsteller), [Matei
+David](https://github.com/mateiidavid), [Matt
+Miller](https://github.com/mmiller1), [Mayank
+Shah](https://github.com/mayankshah1607),
+[Naseem](https://github.com/naseemkullah), [Nil](https://github.com/c-n-c),
+[OlivierB](https://github.com/olivierboudet), [Olukayode
+Bankole](https://github.com/rbankole), [Paul
+Balogh](https://github.com/javaducky), [Rajat
+Jindal](https://github.com/rajatjindal), [Raphael
+Taylor-Davies](https://github.com/tustvold), [Simon
+Weald](https://github.com/glitchcrab), [Steve
+Gray](https://github.com/steve-gray), [Suraj
+Deshmukh](https://github.com/surajssd), [Tharun
+Rajendran](https://github.com/tharun208), [Wei Lun](https://github.com/WLun001),
+[Zhou Hao](https://github.com/zhouhao3), [ZouYu](https://github.com/Hellcatlk),
+[aimbot31](https://github.com/aimbot31),
+[iohenkies](https://github.com/iohenkies), [memory](https://github.com/memory),
+and [tbsoares](https://github.com/tbsoares)
+
+## edge-20.11.1
+
+This edge supersedes edge-20.10.6 as a release candidate for stable-2.9.0.
+
+* Fixed issue where the `check` command would error when there is no Prometheus
+  configured
+* Fixed recent regression that caused multicluster on EKS to not work properly
+* Changed the `check` command to warn instead of error when webhook certificates
+  are near expiry
+* Added the `--ingress` flag to the `inject` command which adds the recently
+  introduced `linkerd.io/inject: ingress` annotation
+* Fixed issue with upgrades where external certs would be fetched and stored
+  even though this does not happen on fresh installs with externally created
+  certs
+* Fixed issue with upgrades where the issuer cert expiration was being reset
+* Removed the `--registry` flag from the `multicluster install` command
+* Removed default CPU limits for the proxy and control plane components in HA
+  mode
 
 ## edge-20.10.6
 

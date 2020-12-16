@@ -12,6 +12,7 @@ import (
 
 	"github.com/linkerd/linkerd2/cli/flag"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
+	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	consts "github.com/linkerd/linkerd2/pkg/k8s"
@@ -41,35 +42,33 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 	}
 
 	flags := []flag.Flag{
-		flag.NewUintFlag(installUpgradeFlags, "controller-replicas", defaults.ControllerReplicas,
-			"Replicas of the controller to deploy", func(values *l5dcharts.Values, value uint) error {
-				values.ControllerReplicas = value
-				return nil
-			}),
-
-		flag.NewStringFlag(installUpgradeFlags, "controller-log-level", defaults.Global.ControllerLogLevel,
+		flag.NewStringFlag(installUpgradeFlags, "controller-log-level", defaults.GetGlobal().ControllerLogLevel,
 			"Log level for the controller and web components", func(values *l5dcharts.Values, value string) error {
-				values.Global.ControllerLogLevel = value
+				values.GetGlobal().ControllerLogLevel = value
 				return nil
 			}),
 
+		// The HA flag must be processed before flags that set these values individually so that the
+		// individual flags can override the HA defaults.
 		flag.NewBoolFlag(installUpgradeFlags, "ha", false, "Enable HA deployment config for the control plane (default false)",
 			func(values *l5dcharts.Values, value bool) error {
-				values.Global.HighAvailability = value
+				values.GetGlobal().HighAvailability = value
 				if value {
 					haValues, err := l5dcharts.NewValues(true)
 					if err != nil {
 						return err
 					}
-					// The HA flag must be processed before flags that set these values individually so that the
-					// individual flags can override the HA defaults.  This means that the HA flag must appear
-					// before the individual flags in the slice passed to flags.ApplyIfSet.
-					values.ControllerReplicas = haValues.ControllerReplicas
-					values.Global.Proxy.Resources.CPU.Request = haValues.Global.Proxy.Resources.CPU.Request
-					values.Global.Proxy.Resources.Memory.Request = haValues.Global.Proxy.Resources.Memory.Request
-					values.Global.Proxy.Resources.CPU.Limit = haValues.Global.Proxy.Resources.CPU.Limit
-					values.Global.Proxy.Resources.Memory.Limit = haValues.Global.Proxy.Resources.Memory.Limit
+					*values, err = values.Merge(*haValues)
+					if err != nil {
+						return err
+					}
 				}
+				return nil
+			}),
+
+		flag.NewUintFlag(installUpgradeFlags, "controller-replicas", defaults.ControllerReplicas,
+			"Replicas of the controller to deploy", func(values *l5dcharts.Values, value uint) error {
+				values.ControllerReplicas = value
 				return nil
 			}),
 
@@ -113,9 +112,15 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 				return nil
 			}),
 
-		flag.NewBoolFlag(installUpgradeFlags, "control-plane-tracing", defaults.Global.ControlPlaneTracing,
+		flag.NewBoolFlag(installUpgradeFlags, "control-plane-tracing", defaults.GetGlobal().ControlPlaneTracing,
 			"Enables Control Plane Tracing with the defaults", func(values *l5dcharts.Values, value bool) error {
-				defaults.Global.ControlPlaneTracing = value
+				values.GetGlobal().ControlPlaneTracing = value
+				return nil
+			}),
+
+		flag.NewStringFlag(installUpgradeFlags, "control-plane-tracing-namespace", defaults.GetGlobal().ControlPlaneTracingNamespace,
+			"Send control plane traces to Linkerd-Jaeger extension in this namespace", func(values *l5dcharts.Values, value string) error {
+				values.GetGlobal().ControlPlaneTracingNamespace = value
 				return nil
 			}),
 
@@ -153,22 +158,22 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 					if err != nil {
 						return err
 					}
-					values.Global.IdentityTrustAnchorsPEM = string(data)
+					values.GetGlobal().IdentityTrustAnchorsPEM = string(data)
 				}
 				return nil
 			}),
 
-		flag.NewBoolFlag(installUpgradeFlags, "enable-endpoint-slices", defaults.Global.EnableEndpointSlices,
+		flag.NewBoolFlag(installUpgradeFlags, "enable-endpoint-slices", defaults.GetGlobal().EnableEndpointSlices,
 			"Enables the usage of EndpointSlice informers and resources for destination service",
 			func(values *l5dcharts.Values, value bool) error {
-				values.Global.EnableEndpointSlices = value
+				values.GetGlobal().EnableEndpointSlices = value
 				return nil
 			}),
 
-		flag.NewStringFlag(installUpgradeFlags, "control-plane-version", defaults.Global.ControllerImageVersion,
+		flag.NewStringFlag(installUpgradeFlags, "control-plane-version", defaults.GetGlobal().ControllerImageVersion,
 			"Tag to be used for the control plane component images",
 			func(values *l5dcharts.Values, value string) error {
-				values.Global.ControllerImageVersion = value
+				values.GetGlobal().ControllerImageVersion = value
 				return nil
 			}),
 	}
@@ -182,6 +187,7 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 		installUpgradeFlags.MarkHidden("control-plane-version")
 	}
 	installUpgradeFlags.MarkHidden("control-plane-tracing")
+	installUpgradeFlags.MarkHidden("control-plane-tracing-namespace")
 
 	return flags, installUpgradeFlags, nil
 }
@@ -221,10 +227,10 @@ func makeAllStageFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet)
 	allStageFlags := pflag.NewFlagSet("all-stage", pflag.ExitOnError)
 
 	flags := []flag.Flag{
-		flag.NewBoolFlag(allStageFlags, "linkerd-cni-enabled", defaults.Global.CNIEnabled,
+		flag.NewBoolFlag(allStageFlags, "linkerd-cni-enabled", defaults.GetGlobal().CNIEnabled,
 			"Omit the NET_ADMIN capability in the PSP and the proxy-init container when injecting the proxy; requires the linkerd-cni plugin to already be installed",
 			func(values *l5dcharts.Values, value bool) error {
-				values.Global.CNIEnabled = value
+				values.GetGlobal().CNIEnabled = value
 				return nil
 			}),
 
@@ -263,15 +269,15 @@ func makeInstallFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) 
 	installOnlyFlags := pflag.NewFlagSet("install-only", pflag.ExitOnError)
 
 	flags := []flag.Flag{
-		flag.NewStringFlag(installOnlyFlags, "cluster-domain", defaults.Global.ClusterDomain,
+		flag.NewStringFlag(installOnlyFlags, "cluster-domain", defaults.GetGlobal().ClusterDomain,
 			"Set custom cluster domain", func(values *l5dcharts.Values, value string) error {
-				values.Global.ClusterDomain = value
+				values.GetGlobal().ClusterDomain = value
 				return nil
 			}),
 
-		flag.NewStringFlag(installOnlyFlags, "identity-trust-domain", defaults.Global.IdentityTrustDomain,
+		flag.NewStringFlag(installOnlyFlags, "identity-trust-domain", defaults.GetGlobal().IdentityTrustDomain,
 			"Configures the name suffix used for identities.", func(values *l5dcharts.Values, value string) error {
-				values.Global.IdentityTrustDomain = value
+				values.GetGlobal().IdentityTrustDomain = value
 				return nil
 			}),
 
@@ -297,27 +303,27 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 	proxyFlags := pflag.NewFlagSet("proxy", pflag.ExitOnError)
 
 	flags := []flag.Flag{
-		flag.NewStringFlagP(proxyFlags, "proxy-version", "v", defaults.Global.Proxy.Image.Version, "Tag to be used for the Linkerd proxy images",
+		flag.NewStringFlagP(proxyFlags, "proxy-version", "v", defaults.GetGlobal().Proxy.Image.Version, "Tag to be used for the Linkerd proxy images",
 			func(values *l5dcharts.Values, value string) error {
-				values.Global.Proxy.Image.Version = value
+				values.GetGlobal().Proxy.Image.Version = value
 				return nil
 			}),
 
-		flag.NewStringFlag(proxyFlags, "proxy-image", defaults.Global.Proxy.Image.Name, "Linkerd proxy container image name",
+		flag.NewStringFlag(proxyFlags, "proxy-image", defaults.GetGlobal().Proxy.Image.Name, "Linkerd proxy container image name",
 			func(values *l5dcharts.Values, value string) error {
-				values.Global.Proxy.Image.Name = value
+				values.GetGlobal().Proxy.Image.Name = value
 				return nil
 			}),
 
-		flag.NewStringFlag(proxyFlags, "init-image", defaults.Global.ProxyInit.Image.Name, "Linkerd init container image name",
+		flag.NewStringFlag(proxyFlags, "init-image", defaults.GetGlobal().ProxyInit.Image.Name, "Linkerd init container image name",
 			func(values *l5dcharts.Values, value string) error {
-				values.Global.ProxyInit.Image.Name = value
+				values.GetGlobal().ProxyInit.Image.Name = value
 				return nil
 			}),
 
-		flag.NewStringFlag(proxyFlags, "init-image-version", defaults.Global.ProxyInit.Image.Version,
+		flag.NewStringFlag(proxyFlags, "init-image-version", defaults.GetGlobal().ProxyInit.Image.Version,
 			"Linkerd init container image version", func(values *l5dcharts.Values, value string) error {
-				values.Global.ProxyInit.Image.Version = value
+				values.GetGlobal().ProxyInit.Image.Version = value
 				return nil
 			}),
 
@@ -326,109 +332,118 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 				values.WebImage = registryOverride(values.WebImage, value)
 				values.ControllerImage = registryOverride(values.ControllerImage, value)
 				values.DebugContainer.Image.Name = registryOverride(values.DebugContainer.Image.Name, value)
-				values.Global.Proxy.Image.Name = registryOverride(values.Global.Proxy.Image.Name, value)
-				values.Global.ProxyInit.Image.Name = registryOverride(values.Global.ProxyInit.Image.Name, value)
+				values.GetGlobal().Proxy.Image.Name = registryOverride(values.GetGlobal().Proxy.Image.Name, value)
+				values.GetGlobal().ProxyInit.Image.Name = registryOverride(values.GetGlobal().ProxyInit.Image.Name, value)
 				return nil
 			}),
 
-		flag.NewStringFlag(proxyFlags, "image-pull-policy", defaults.Global.ImagePullPolicy,
+		flag.NewStringFlag(proxyFlags, "image-pull-policy", defaults.GetGlobal().ImagePullPolicy,
 			"Docker image pull policy", func(values *l5dcharts.Values, value string) error {
-				values.Global.ImagePullPolicy = value
-				values.Global.Proxy.Image.PullPolicy = value
-				values.Global.ProxyInit.Image.PullPolicy = value
+				values.GetGlobal().ImagePullPolicy = value
+				values.GetGlobal().Proxy.Image.PullPolicy = value
+				values.GetGlobal().ProxyInit.Image.PullPolicy = value
 				values.DebugContainer.Image.PullPolicy = value
 				return nil
 			}),
 
-		flag.NewUintFlag(proxyFlags, "inbound-port", uint(defaults.Global.Proxy.Ports.Inbound),
+		flag.NewUintFlag(proxyFlags, "inbound-port", uint(defaults.GetGlobal().Proxy.Ports.Inbound),
 			"Proxy port to use for inbound traffic", func(values *l5dcharts.Values, value uint) error {
-				values.Global.Proxy.Ports.Inbound = int32(value)
+				values.GetGlobal().Proxy.Ports.Inbound = int32(value)
 				return nil
 			}),
 
-		flag.NewUintFlag(proxyFlags, "outbound-port", uint(defaults.Global.Proxy.Ports.Outbound),
+		flag.NewUintFlag(proxyFlags, "outbound-port", uint(defaults.GetGlobal().Proxy.Ports.Outbound),
 			"Proxy port to use for outbound traffic", func(values *l5dcharts.Values, value uint) error {
-				values.Global.Proxy.Ports.Outbound = int32(value)
+				values.GetGlobal().Proxy.Ports.Outbound = int32(value)
 				return nil
 			}),
 
 		flag.NewStringSliceFlag(proxyFlags, "skip-inbound-ports", nil, "Ports and/or port ranges (inclusive) that should skip the proxy and send directly to the application",
 			func(values *l5dcharts.Values, value []string) error {
-				values.Global.ProxyInit.IgnoreInboundPorts = strings.Join(value, ",")
+				values.GetGlobal().ProxyInit.IgnoreInboundPorts = strings.Join(value, ",")
 				return nil
 			}),
 
 		flag.NewStringSliceFlag(proxyFlags, "skip-outbound-ports", nil, "Outbound ports and/or port ranges (inclusive) that should skip the proxy",
 			func(values *l5dcharts.Values, value []string) error {
-				values.Global.ProxyInit.IgnoreOutboundPorts = strings.Join(value, ",")
+				values.GetGlobal().ProxyInit.IgnoreOutboundPorts = strings.Join(value, ",")
 				return nil
 			}),
 
-		flag.NewInt64Flag(proxyFlags, "proxy-uid", defaults.Global.Proxy.UID, "Run the proxy under this user ID",
+		flag.NewInt64Flag(proxyFlags, "proxy-uid", defaults.GetGlobal().Proxy.UID, "Run the proxy under this user ID",
 			func(values *l5dcharts.Values, value int64) error {
-				values.Global.Proxy.UID = value
+				values.GetGlobal().Proxy.UID = value
 				return nil
 			}),
 
-		flag.NewStringFlag(proxyFlags, "proxy-log-level", defaults.Global.Proxy.LogLevel, "Log level for the proxy",
+		flag.NewStringFlag(proxyFlags, "proxy-log-level", defaults.GetGlobal().Proxy.LogLevel, "Log level for the proxy",
 			func(values *l5dcharts.Values, value string) error {
-				values.Global.Proxy.LogLevel = value
+				values.GetGlobal().Proxy.LogLevel = value
 				return nil
 			}),
 
-		flag.NewUintFlag(proxyFlags, "control-port", uint(defaults.Global.Proxy.Ports.Control), "Proxy port to use for control",
+		flag.NewUintFlag(proxyFlags, "control-port", uint(defaults.GetGlobal().Proxy.Ports.Control), "Proxy port to use for control",
 			func(values *l5dcharts.Values, value uint) error {
-				values.Global.Proxy.Ports.Control = int32(value)
+				values.GetGlobal().Proxy.Ports.Control = int32(value)
 				return nil
 			}),
 
-		flag.NewUintFlag(proxyFlags, "admin-port", uint(defaults.Global.Proxy.Ports.Admin), "Proxy port to serve metrics on",
+		flag.NewUintFlag(proxyFlags, "admin-port", uint(defaults.GetGlobal().Proxy.Ports.Admin), "Proxy port to serve metrics on",
 			func(values *l5dcharts.Values, value uint) error {
-				values.Global.Proxy.Ports.Admin = int32(value)
+				values.GetGlobal().Proxy.Ports.Admin = int32(value)
 				return nil
 			}),
 
-		flag.NewStringFlag(proxyFlags, "proxy-cpu-request", defaults.Global.Proxy.Resources.CPU.Request, "Amount of CPU units that the proxy sidecar requests",
+		flag.NewStringFlag(proxyFlags, "proxy-cpu-request", defaults.GetGlobal().Proxy.Resources.CPU.Request, "Amount of CPU units that the proxy sidecar requests",
 			func(values *l5dcharts.Values, value string) error {
-				values.Global.Proxy.Resources.CPU.Request = value
+				values.GetGlobal().Proxy.Resources.CPU.Request = value
 				return nil
 			}),
 
-		flag.NewStringFlag(proxyFlags, "proxy-memory-request", defaults.Global.Proxy.Resources.Memory.Request, "Amount of Memory that the proxy sidecar requests",
+		flag.NewStringFlag(proxyFlags, "proxy-memory-request", defaults.GetGlobal().Proxy.Resources.Memory.Request, "Amount of Memory that the proxy sidecar requests",
 			func(values *l5dcharts.Values, value string) error {
-				values.Global.Proxy.Resources.Memory.Request = value
+				values.GetGlobal().Proxy.Resources.Memory.Request = value
 				return nil
 			}),
 
-		flag.NewStringFlag(proxyFlags, "proxy-cpu-limit", defaults.Global.Proxy.Resources.CPU.Limit, "Maximum amount of CPU units that the proxy sidecar can use",
+		flag.NewStringFlag(proxyFlags, "proxy-cpu-limit", defaults.GetGlobal().Proxy.Resources.CPU.Limit, "Maximum amount of CPU units that the proxy sidecar can use",
 			func(values *l5dcharts.Values, value string) error {
-				values.Global.Proxy.Resources.CPU.Limit = value
+				q, err := k8sResource.ParseQuantity(value)
+				if err != nil {
+					return err
+				}
+				c, err := inject.ToWholeCPUCores(q)
+				if err != nil {
+					return err
+				}
+				values.GetGlobal().Proxy.Cores = c
+				values.GetGlobal().Proxy.Resources.CPU.Limit = value
 				return nil
 			}),
 
-		flag.NewStringFlag(proxyFlags, "proxy-memory-limit", defaults.Global.Proxy.Resources.Memory.Limit, "Maximum amount of Memory that the proxy sidecar can use",
+		flag.NewStringFlag(proxyFlags, "proxy-memory-limit", defaults.GetGlobal().Proxy.Resources.Memory.Limit, "Maximum amount of Memory that the proxy sidecar can use",
 			func(values *l5dcharts.Values, value string) error {
-				values.Global.Proxy.Resources.Memory.Limit = value
+				values.GetGlobal().Proxy.Resources.Memory.Limit = value
 				return nil
 			}),
 
-		flag.NewBoolFlag(proxyFlags, "enable-external-profiles", defaults.Global.Proxy.EnableExternalProfiles, "Enable service profiles for non-Kubernetes services",
+		flag.NewBoolFlag(proxyFlags, "enable-external-profiles", defaults.GetGlobal().Proxy.EnableExternalProfiles, "Enable service profiles for non-Kubernetes services",
 			func(values *l5dcharts.Values, value bool) error {
-				values.Global.Proxy.EnableExternalProfiles = value
+				values.GetGlobal().Proxy.EnableExternalProfiles = value
 				return nil
 			}),
 
 		// Deprecated flags
 
-		flag.NewStringFlag(proxyFlags, "proxy-memory", defaults.Global.Proxy.Resources.Memory.Request, "Amount of Memory that the proxy sidecar requests",
+		flag.NewStringFlag(proxyFlags, "proxy-memory", defaults.GetGlobal().Proxy.Resources.Memory.Request, "Amount of Memory that the proxy sidecar requests",
 			func(values *l5dcharts.Values, value string) error {
-				values.Global.Proxy.Resources.Memory.Request = value
+				values.GetGlobal().Proxy.Resources.Memory.Request = value
 				return nil
 			}),
 
-		flag.NewStringFlag(proxyFlags, "proxy-cpu", defaults.Global.Proxy.Resources.CPU.Request, "Amount of CPU units that the proxy sidecar requests",
+		flag.NewStringFlag(proxyFlags, "proxy-cpu", defaults.GetGlobal().Proxy.Resources.CPU.Request, "Amount of CPU units that the proxy sidecar requests",
 			func(values *l5dcharts.Values, value string) error {
-				values.Global.Proxy.Resources.CPU.Request = value
+				values.GetGlobal().Proxy.Resources.CPU.Request = value
 				return nil
 			}),
 	}
@@ -461,47 +476,35 @@ func makeInjectFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 	injectFlags := pflag.NewFlagSet("inject", pflag.ExitOnError)
 
 	flags := []flag.Flag{
-		flag.NewInt64Flag(injectFlags, "wait-before-exit-seconds", int64(defaults.Global.Proxy.WaitBeforeExitSeconds),
+		flag.NewInt64Flag(injectFlags, "wait-before-exit-seconds", int64(defaults.GetGlobal().Proxy.WaitBeforeExitSeconds),
 			"The period during which the proxy sidecar must stay alive while its pod is terminating. "+
 				"Must be smaller than terminationGracePeriodSeconds for the pod (default 0)",
 			func(values *l5dcharts.Values, value int64) error {
-				values.Global.Proxy.WaitBeforeExitSeconds = uint64(value)
+				values.GetGlobal().Proxy.WaitBeforeExitSeconds = uint64(value)
 				return nil
 			}),
 
-		flag.NewBoolFlag(injectFlags, "disable-identity", defaults.Global.Proxy.DisableIdentity,
+		flag.NewBoolFlag(injectFlags, "disable-identity", defaults.GetGlobal().Proxy.DisableIdentity,
 			"Disables resources from participating in TLS identity", func(values *l5dcharts.Values, value bool) error {
-				values.Global.Proxy.DisableIdentity = value
+				values.GetGlobal().Proxy.DisableIdentity = value
 				return nil
 			}),
 
-		flag.NewBoolFlag(injectFlags, "disable-tap", defaults.Global.Proxy.DisableTap,
+		flag.NewBoolFlag(injectFlags, "disable-tap", defaults.GetGlobal().Proxy.DisableTap,
 			"Disables resources from being tapped", func(values *l5dcharts.Values, value bool) error {
-				values.Global.Proxy.DisableTap = value
+				values.GetGlobal().Proxy.DisableTap = value
 				return nil
 			}),
 
-		flag.NewStringFlag(injectFlags, "trace-collector", defaults.Global.Proxy.Trace.CollectorSvcAddr,
-			"Collector Service address for the proxies to send Trace Data", func(values *l5dcharts.Values, value string) error {
-				values.Global.Proxy.Trace.CollectorSvcAddr = value
-				return nil
-			}),
-
-		flag.NewStringFlag(injectFlags, "trace-collector-svc-account", defaults.Global.Proxy.Trace.CollectorSvcAccount,
-			"Service account associated with the Trace collector instance", func(values *l5dcharts.Values, value string) error {
-				values.Global.Proxy.Trace.CollectorSvcAccount = value
-				return nil
-			}),
-
-		flag.NewStringSliceFlag(injectFlags, "require-identity-on-inbound-ports", strings.Split(defaults.Global.Proxy.RequireIdentityOnInboundPorts, ","),
+		flag.NewStringSliceFlag(injectFlags, "require-identity-on-inbound-ports", strings.Split(defaults.GetGlobal().Proxy.RequireIdentityOnInboundPorts, ","),
 			"Inbound ports on which the proxy should require identity", func(values *l5dcharts.Values, value []string) error {
-				values.Global.Proxy.RequireIdentityOnInboundPorts = strings.Join(value, ",")
+				values.GetGlobal().Proxy.RequireIdentityOnInboundPorts = strings.Join(value, ",")
 				return nil
 			}),
 
-		flag.NewBoolFlag(injectFlags, "ingress", defaults.Global.Proxy.IsIngress, "Enable ingress mode in the linkerd proxy",
+		flag.NewBoolFlag(injectFlags, "ingress", defaults.GetGlobal().Proxy.IsIngress, "Enable ingress mode in the linkerd proxy",
 			func(values *l5dcharts.Values, value bool) error {
-				values.Global.Proxy.IsIngress = value
+				values.GetGlobal().Proxy.IsIngress = value
 				return nil
 			}),
 	}
@@ -512,19 +515,19 @@ func makeInjectFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 /* Validation */
 
 func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts.Values) error {
-	if !alphaNumDashDot.MatchString(values.Global.ControllerImageVersion) {
-		return fmt.Errorf("%s is not a valid version", values.Global.ControllerImageVersion)
+	if !alphaNumDashDot.MatchString(values.GetGlobal().ControllerImageVersion) {
+		return fmt.Errorf("%s is not a valid version", values.GetGlobal().ControllerImageVersion)
 	}
 
-	if _, err := log.ParseLevel(values.Global.ControllerLogLevel); err != nil {
+	if _, err := log.ParseLevel(values.GetGlobal().ControllerLogLevel); err != nil {
 		return fmt.Errorf("--controller-log-level must be one of: panic, fatal, error, warn, info, debug")
 	}
 
-	if values.Global.Proxy.LogLevel == "" {
+	if values.GetGlobal().Proxy.LogLevel == "" {
 		return errors.New("--proxy-log-level must not be empty")
 	}
 
-	if values.Global.EnableEndpointSlices && k != nil {
+	if values.GetGlobal().EnableEndpointSlices && k != nil {
 		k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 		if err != nil {
 			return err
@@ -536,8 +539,8 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 		}
 	}
 
-	if errs := validation.IsDNS1123Subdomain(values.Global.IdentityTrustDomain); len(errs) > 0 {
-		return fmt.Errorf("invalid trust domain '%s': %s", values.Global.IdentityTrustDomain, errs[0])
+	if errs := validation.IsDNS1123Subdomain(values.GetGlobal().IdentityTrustDomain); len(errs) > 0 {
+		return fmt.Errorf("invalid trust domain '%s': %s", values.GetGlobal().IdentityTrustDomain, errs[0])
 	}
 
 	err := validateProxyValues(values)
@@ -559,7 +562,7 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 		if err != nil {
 			return err
 		}
-		_, err = externalIssuerData.VerifyAndBuildCreds(issuerName(values.Global.IdentityTrustDomain))
+		_, err = externalIssuerData.VerifyAndBuildCreds()
 		if err != nil {
 			return fmt.Errorf("failed to validate issuer credentials: %s", err)
 		}
@@ -569,9 +572,9 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 		issuerData := issuercerts.IssuerCertData{
 			IssuerCrt:    values.Identity.Issuer.TLS.CrtPEM,
 			IssuerKey:    values.Identity.Issuer.TLS.KeyPEM,
-			TrustAnchors: values.Global.IdentityTrustAnchorsPEM,
+			TrustAnchors: values.GetGlobal().IdentityTrustAnchorsPEM,
 		}
-		_, err := issuerData.VerifyAndBuildCreds(issuerName(values.Global.IdentityTrustDomain))
+		_, err := issuerData.VerifyAndBuildCreds()
 		if err != nil {
 			return fmt.Errorf("failed to validate issuer credentials: %s", err)
 		}
@@ -581,76 +584,76 @@ func validateValues(ctx context.Context, k *k8s.KubernetesAPI, values *l5dcharts
 }
 
 func validateProxyValues(values *l5dcharts.Values) error {
-	networks := strings.Split(values.Global.ClusterNetworks, ",")
+	networks := strings.Split(values.GetGlobal().ClusterNetworks, ",")
 	for _, network := range networks {
 		if _, _, err := net.ParseCIDR(network); err != nil {
 			return fmt.Errorf("cannot parse destination get networks: %s", err)
 		}
 	}
 
-	if values.Global.Proxy.DisableIdentity && len(values.Global.Proxy.RequireIdentityOnInboundPorts) > 0 {
+	if values.GetGlobal().Proxy.DisableIdentity && len(values.GetGlobal().Proxy.RequireIdentityOnInboundPorts) > 0 {
 		return errors.New("Identity must be enabled when  --require-identity-on-inbound-ports is specified")
 	}
 
-	if values.Global.Proxy.Image.Version != "" && !alphaNumDashDot.MatchString(values.Global.Proxy.Image.Version) {
-		return fmt.Errorf("%s is not a valid version", values.Global.Proxy.Image.Version)
+	if values.GetGlobal().Proxy.Image.Version != "" && !alphaNumDashDot.MatchString(values.GetGlobal().Proxy.Image.Version) {
+		return fmt.Errorf("%s is not a valid version", values.GetGlobal().Proxy.Image.Version)
 	}
 
-	if !alphaNumDashDot.MatchString(values.Global.ProxyInit.Image.Version) {
-		return fmt.Errorf("%s is not a valid version", values.Global.ProxyInit.Image.Version)
+	if !alphaNumDashDot.MatchString(values.GetGlobal().ProxyInit.Image.Version) {
+		return fmt.Errorf("%s is not a valid version", values.GetGlobal().ProxyInit.Image.Version)
 	}
 
-	if values.Global.ImagePullPolicy != "Always" && values.Global.ImagePullPolicy != "IfNotPresent" && values.Global.ImagePullPolicy != "Never" {
+	if values.GetGlobal().ImagePullPolicy != "Always" && values.GetGlobal().ImagePullPolicy != "IfNotPresent" && values.GetGlobal().ImagePullPolicy != "Never" {
 		return fmt.Errorf("--image-pull-policy must be one of: Always, IfNotPresent, Never")
 	}
 
-	if values.Global.Proxy.Resources.CPU.Request != "" {
-		if _, err := k8sResource.ParseQuantity(values.Global.Proxy.Resources.CPU.Request); err != nil {
-			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu-request flag", values.Global.Proxy.Resources.CPU.Request)
+	if values.GetGlobal().Proxy.Resources.CPU.Request != "" {
+		if _, err := k8sResource.ParseQuantity(values.GetGlobal().Proxy.Resources.CPU.Request); err != nil {
+			return fmt.Errorf("Invalid cpu request '%s' for --proxy-cpu-request flag", values.GetGlobal().Proxy.Resources.CPU.Request)
 		}
 	}
 
-	if values.Global.Proxy.Resources.Memory.Request != "" {
-		if _, err := k8sResource.ParseQuantity(values.Global.Proxy.Resources.Memory.Request); err != nil {
-			return fmt.Errorf("Invalid memory request '%s' for --proxy-memory-request flag", values.Global.Proxy.Resources.Memory.Request)
+	if values.GetGlobal().Proxy.Resources.Memory.Request != "" {
+		if _, err := k8sResource.ParseQuantity(values.GetGlobal().Proxy.Resources.Memory.Request); err != nil {
+			return fmt.Errorf("Invalid memory request '%s' for --proxy-memory-request flag", values.GetGlobal().Proxy.Resources.Memory.Request)
 		}
 	}
 
-	if values.Global.Proxy.Resources.CPU.Limit != "" {
-		cpuLimit, err := k8sResource.ParseQuantity(values.Global.Proxy.Resources.CPU.Limit)
+	if values.GetGlobal().Proxy.Resources.CPU.Limit != "" {
+		cpuLimit, err := k8sResource.ParseQuantity(values.GetGlobal().Proxy.Resources.CPU.Limit)
 		if err != nil {
-			return fmt.Errorf("Invalid cpu limit '%s' for --proxy-cpu-limit flag", values.Global.Proxy.Resources.CPU.Limit)
+			return fmt.Errorf("Invalid cpu limit '%s' for --proxy-cpu-limit flag", values.GetGlobal().Proxy.Resources.CPU.Limit)
 		}
 		// Not checking for error because option proxyCPURequest was already validated
-		if cpuRequest, _ := k8sResource.ParseQuantity(values.Global.Proxy.Resources.CPU.Request); cpuRequest.MilliValue() > cpuLimit.MilliValue() {
-			return fmt.Errorf("The cpu limit '%s' cannot be lower than the cpu request '%s'", values.Global.Proxy.Resources.CPU.Limit, values.Global.Proxy.Resources.CPU.Request)
+		if cpuRequest, _ := k8sResource.ParseQuantity(values.GetGlobal().Proxy.Resources.CPU.Request); cpuRequest.MilliValue() > cpuLimit.MilliValue() {
+			return fmt.Errorf("The cpu limit '%s' cannot be lower than the cpu request '%s'", values.GetGlobal().Proxy.Resources.CPU.Limit, values.GetGlobal().Proxy.Resources.CPU.Request)
 		}
 	}
 
-	if values.Global.Proxy.Resources.Memory.Limit != "" {
-		memoryLimit, err := k8sResource.ParseQuantity(values.Global.Proxy.Resources.Memory.Limit)
+	if values.GetGlobal().Proxy.Resources.Memory.Limit != "" {
+		memoryLimit, err := k8sResource.ParseQuantity(values.GetGlobal().Proxy.Resources.Memory.Limit)
 		if err != nil {
-			return fmt.Errorf("Invalid memory limit '%s' for --proxy-memory-limit flag", values.Global.Proxy.Resources.Memory.Limit)
+			return fmt.Errorf("Invalid memory limit '%s' for --proxy-memory-limit flag", values.GetGlobal().Proxy.Resources.Memory.Limit)
 		}
 		// Not checking for error because option proxyMemoryRequest was already validated
-		if memoryRequest, _ := k8sResource.ParseQuantity(values.Global.Proxy.Resources.Memory.Request); memoryRequest.Value() > memoryLimit.Value() {
-			return fmt.Errorf("The memory limit '%s' cannot be lower than the memory request '%s'", values.Global.Proxy.Resources.Memory.Limit, values.Global.Proxy.Resources.Memory.Request)
+		if memoryRequest, _ := k8sResource.ParseQuantity(values.GetGlobal().Proxy.Resources.Memory.Request); memoryRequest.Value() > memoryLimit.Value() {
+			return fmt.Errorf("The memory limit '%s' cannot be lower than the memory request '%s'", values.GetGlobal().Proxy.Resources.Memory.Limit, values.GetGlobal().Proxy.Resources.Memory.Request)
 		}
 	}
 
-	if !validProxyLogLevel.MatchString(values.Global.Proxy.LogLevel) {
+	if !validProxyLogLevel.MatchString(values.GetGlobal().Proxy.LogLevel) {
 		return fmt.Errorf("\"%s\" is not a valid proxy log level - for allowed syntax check https://docs.rs/env_logger/0.6.0/env_logger/#enabling-logging",
-			values.Global.Proxy.LogLevel)
+			values.GetGlobal().Proxy.LogLevel)
 	}
 
-	if values.Global.ProxyInit.IgnoreInboundPorts != "" {
-		if err := validateRangeSlice(strings.Split(values.Global.ProxyInit.IgnoreInboundPorts, ",")); err != nil {
+	if values.GetGlobal().ProxyInit.IgnoreInboundPorts != "" {
+		if err := validateRangeSlice(strings.Split(values.GetGlobal().ProxyInit.IgnoreInboundPorts, ",")); err != nil {
 			return err
 		}
 	}
 
-	if values.Global.ProxyInit.IgnoreOutboundPorts != "" {
-		if err := validateRangeSlice(strings.Split(values.Global.ProxyInit.IgnoreOutboundPorts, ",")); err != nil {
+	if values.GetGlobal().ProxyInit.IgnoreOutboundPorts != "" {
+		if err := validateRangeSlice(strings.Split(values.GetGlobal().ProxyInit.IgnoreOutboundPorts, ",")); err != nil {
 			return err
 		}
 	}
@@ -673,11 +676,11 @@ func initializeIssuerCredentials(ctx context.Context, k *k8s.KubernetesAPI, valu
 		if err != nil {
 			return err
 		}
-		values.Global.IdentityTrustAnchorsPEM = externalIssuerData.TrustAnchors
-	} else if values.Identity.Issuer.TLS.CrtPEM != "" || values.Identity.Issuer.TLS.KeyPEM != "" || values.Global.IdentityTrustAnchorsPEM != "" {
+		values.GetGlobal().IdentityTrustAnchorsPEM = externalIssuerData.TrustAnchors
+	} else if values.Identity.Issuer.TLS.CrtPEM != "" || values.Identity.Issuer.TLS.KeyPEM != "" || values.GetGlobal().IdentityTrustAnchorsPEM != "" {
 		// If any credentials have already been supplied, check that they are
 		// all present.
-		if values.Global.IdentityTrustAnchorsPEM == "" {
+		if values.GetGlobal().IdentityTrustAnchorsPEM == "" {
 			return errors.New("a trust anchors file must be specified if other credentials are provided")
 		}
 		if values.Identity.Issuer.TLS.CrtPEM == "" {
@@ -688,14 +691,14 @@ func initializeIssuerCredentials(ctx context.Context, k *k8s.KubernetesAPI, valu
 		}
 	} else {
 		// No credentials have been supplied so we will generate them.
-		root, err := tls.GenerateRootCAWithDefaults(issuerName(values.Global.IdentityTrustDomain))
+		root, err := tls.GenerateRootCAWithDefaults(issuerName(values.GetGlobal().IdentityTrustDomain))
 		if err != nil {
 			return fmt.Errorf("failed to generate root certificate for identity: %s", err)
 		}
 		values.Identity.Issuer.CrtExpiry = root.Cred.Crt.Certificate.NotAfter
 		values.Identity.Issuer.TLS.KeyPEM = root.Cred.EncodePrivateKeyPEM()
 		values.Identity.Issuer.TLS.CrtPEM = root.Cred.Crt.EncodeCertificatePEM()
-		values.Global.IdentityTrustAnchorsPEM = root.Cred.Crt.EncodeCertificatePEM()
+		values.GetGlobal().IdentityTrustAnchorsPEM = root.Cred.Crt.EncodeCertificatePEM()
 	}
 	return nil
 }

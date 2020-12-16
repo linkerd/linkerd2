@@ -10,6 +10,7 @@ on:
 jobs:
   go_unit_tests:
     name: Go unit tests
+    timeout-minutes: 30
     runs-on: ubuntu-18.04
     container:
       image: golang:1.14.2
@@ -24,6 +25,7 @@ jobs:
         gotestsum -- -cover -race -v -mod=readonly ./...
   js_unit_tests:
     name: JS unit tests
+    timeout-minutes: 30
     runs-on: ubuntu-18.04
     container:
       image: node:14-stretch

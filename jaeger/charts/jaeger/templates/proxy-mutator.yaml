@@ -1,0 +1,75 @@
+---
+###
+### Proxy Mutator
+###
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: proxy-mutator
+    app.kubernetes.io/part-of: Linkerd
+    component: proxy-mutator
+  name: proxy-mutator
+  namespace: {{.Values.namespace}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: proxy-mutator
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/rbac.yaml") . | sha256sum }}
+      labels:
+        component: proxy-mutator
+    spec:
+      containers:
+      - args:
+        - -collector-svc-addr={{.Values.webhook.collectorSvcAddr}}
+        - -collector-svc-account={{.Values.webhook.collectorSvcAccount}}
+        - -log-level={{.Values.webhook.logLevel}}
+        image: {{.Values.webhook.image.name}}:{{default .Values.webhook.image.version .Values.cliVersion}}
+        imagePullPolicy: {{.Values.webhook.image.pullPolicy}}
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9995
+          initialDelaySeconds: 10
+        name: proxy-mutator
+        ports:
+        - containerPort: 8443
+          name: proxy-mutator
+        - containerPort: 9995
+          name: admin-http
+        readinessProbe:
+          failureThreshold: 7
+          httpGet:
+            path: /ready
+            port: 9995
+        volumeMounts:
+        - mountPath: /var/run/linkerd/tls
+          name: tls
+          readOnly: true
+      serviceAccountName: proxy-mutator
+      volumes:
+      - name: tls
+        secret:
+          secretName: proxy-mutator-k8s-tls
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: proxy-mutator
+  namespace: {{.Values.namespace}}
+  labels:
+    component: proxy-mutator
+spec:
+  type: ClusterIP
+  selector:
+    component: proxy-mutator
+  ports:
+  - name: proxy-mutator
+    port: 443
+    targetPort: proxy-mutator
+

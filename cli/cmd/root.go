@@ -8,13 +8,14 @@ import (
 	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/clientcmd"
-
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/cli/flag"
+	jaeger "github.com/linkerd/linkerd2/jaeger/cmd"
+	multicluster "github.com/linkerd/linkerd2/multicluster/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -97,7 +98,7 @@ var RootCmd = &cobra.Command{
 
 func init() {
 	defaultNamespace = getDefaultNamespace()
-	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed [$LINKERD_NAMESPACE]")
+	RootCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed ($LINKERD_NAMESPACE)")
 	RootCmd.PersistentFlags().StringVarP(&cniNamespace, "cni-namespace", "", defaultCNINamespace, "Namespace in which the Linkerd CNI plugin is installed")
 	RootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
 	RootCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
@@ -113,12 +114,10 @@ func init() {
 	RootCmd.AddCommand(newCmdDoc())
 	RootCmd.AddCommand(newCmdEdges())
 	RootCmd.AddCommand(newCmdEndpoints())
-	RootCmd.AddCommand(newCmdGet())
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
 	RootCmd.AddCommand(newCmdInstallCNIPlugin())
 	RootCmd.AddCommand(newCmdInstallSP())
-	RootCmd.AddCommand(newCmdLogs())
 	RootCmd.AddCommand(newCmdMetrics())
 	RootCmd.AddCommand(newCmdProfile())
 	RootCmd.AddCommand(newCmdRoutes())
@@ -128,8 +127,11 @@ func init() {
 	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
-	RootCmd.AddCommand(newCmdMulticluster())
 	RootCmd.AddCommand(newCmdUninstall())
+
+	// Extension Sub Commands
+	RootCmd.AddCommand(jaeger.NewCmdJaeger())
+	RootCmd.AddCommand(multicluster.NewCmdMulticluster())
 }
 
 type statOptionsBase struct {

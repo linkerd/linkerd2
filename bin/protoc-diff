@@ -2,21 +2,15 @@
 
 set -eu
 
-# Install unzip if not already installed (Linux only)
-system=$(uname -s)
-if [ "$system" = Linux ] && ! [ -x "$(command -v unzip)" ]; then
-  apt-get update
-  apt-get install unzip
-fi
-
-bin/protoc-go.sh
+bindir=$( cd "${0%/*}" && pwd )
+"$bindir"/protoc-go.sh
 
 dir_dirty=$(git diff HEAD)
 if [ -z "$dir_dirty" ]; then
-  echo "Protobuf definitions match generated code"
+  echo 'Protobuf definitions match generated code'
   exit 0
 else
-  echo "Protobuf definitions diverge from generated code:"
-  echo "$(git status)"
+  echo 'Protobuf definitions diverge from generated code:'
+  git status
   exit 64
 fi

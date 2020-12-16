@@ -1,7 +1,7 @@
 package linkerd2
 
 import (
-	"k8s.io/helm/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"sigs.k8s.io/yaml"
 )
 
@@ -28,15 +28,15 @@ func (p Prometheus) Values() []byte {
 }
 
 // ConfigStageTemplates returns the template files that are part of the config stage
-func (p Prometheus) ConfigStageTemplates() []*chartutil.BufferedFile {
-	return []*chartutil.BufferedFile{
+func (p Prometheus) ConfigStageTemplates() []*loader.BufferedFile {
+	return []*loader.BufferedFile{
 		{Name: "templates/prometheus-rbac.yaml"},
 	}
 }
 
 // ControlPlaneStageTemplates returns the template files that are part of the Control Plane Stage.
-func (p Prometheus) ControlPlaneStageTemplates() []*chartutil.BufferedFile {
-	return []*chartutil.BufferedFile{
+func (p Prometheus) ControlPlaneStageTemplates() []*loader.BufferedFile {
+	return []*loader.BufferedFile{
 		{Name: "templates/prometheus.yaml"},
 	}
 }
