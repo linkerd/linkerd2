@@ -206,17 +206,20 @@ Kubernetes: `>=1.13.0-0`
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | omitWebhookSideEffects | bool | `false` | Omit the `sideEffects` flag in the webhook manifests |
 | profileValidator.caBundle | string | `""` | Bundle of CA certificates for service profile validator. If not provided then Helm will use the certificate generated  for `profileValidator.crtPEM`. If `profileValidator.externalSecret` is set to true, this value must be set, as no certificate will be generated.  |
+| profileValidator.configAnnotations | list | `[]` | Annotations to add to the profile validator `ValidatingWebhookConfiguration` resource. This may be used e.g. for configuring cert-manager to automatically inject the CA cert bundle |
 | profileValidator.crtPEM | string | `""` | Certificate for the service profile validator. If not provided then Helm will generate one. |
 | profileValidator.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `profileValidator.caBundle` must be set (see below). |
 | profileValidator.keyPEM | string | `""` | Certificate key for the service profile validator. If not provided then Helm will generate one. |
 | profileValidator.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook |
 | prometheus.enabled | bool | `true` |  |
 | proxyInjector.caBundle | string | `""` | Bundle of CA certificates for proxy injector. If not provided then Helm will use the certificate generated  for `proxyInjector.crtPEM`. If `proxyInjector.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
+| proxyInjector.configAnnotations | list | `[]` | Annotations to add to the proxy injector `MutatingWebhookConfiguration` resource. This may be used e.g. for configuring cert-manager to automatically inject the CA cert bundle |
 | proxyInjector.crtPEM | string | `""` | Certificate for the proxy injector. If not provided then Helm will generate one. |
 | proxyInjector.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below) |
 | proxyInjector.keyPEM | string | `""` | Certificate key for the proxy injector. If not provided then Helm will generate one.  |
 | proxyInjector.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook. If not set defaults to all namespaces without the annotation config.linkerd.io/admission-webhooks=disabled |
 | tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
+| tap.configAnnotations | list | `[]` | Annotations to add to the tap `APIService` resource. This may be used e.g. for configuring cert-manager to automatically inject the CA cert bundle |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
 | tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
 | tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one.  |
