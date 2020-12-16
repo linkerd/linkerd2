@@ -51,22 +51,29 @@ type helm struct {
 
 // DeploySpec is used to hold information about what deploys we should verify during testing
 type DeploySpec struct {
+	Namespace  string
 	Replicas   int
 	Containers []string
+}
+
+// Service is used to hold information about a Service we should verify during testing
+type Service struct {
+	Namespace string
+	Name      string
 }
 
 // LinkerdDeployReplicas is a map containing the number of replicas for each Deployment and the main
 // container name
 var LinkerdDeployReplicas = map[string]DeploySpec{
-	"linkerd-controller":     {1, []string{"public-api"}},
-	"linkerd-destination":    {1, []string{"destination"}},
-	"linkerd-tap":            {1, []string{"tap"}},
-	"linkerd-grafana":        {1, []string{}},
-	"linkerd-identity":       {1, []string{"identity"}},
-	"linkerd-prometheus":     {1, []string{}},
-	"linkerd-sp-validator":   {1, []string{"sp-validator"}},
-	"linkerd-web":            {1, []string{"web"}},
-	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
+	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
+	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
+	"linkerd-tap":            {"linkerd-viz", 1, []string{"tap"}},
+	"linkerd-grafana":        {"linkerd-viz", 1, []string{}},
+	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
+	"linkerd-prometheus":     {"linkerd-viz", 1, []string{}},
+	"linkerd-sp-validator":   {"linkerd", 1, []string{"sp-validator"}},
+	"linkerd-web":            {"linkerd-viz", 1, []string{"web"}},
+	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
 }
 
 // NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
@@ -121,7 +128,7 @@ func NewGenericTestHelper(
 // MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
 // container name for multicluster components
 var MulticlusterDeployReplicas = map[string]DeploySpec{
-	"linkerd-gateway": {1, []string{"nginx"}},
+	"linkerd-gateway": {"linkerd-multicluster", 1, []string{"nginx"}},
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -229,6 +236,12 @@ func (h *TestHelper) GetVersion() string {
 // namespace using the -linkerd-namespace command line flag.
 func (h *TestHelper) GetLinkerdNamespace() string {
 	return h.namespace
+}
+
+// GetVizNamespace returns the namespace where linkerd Viz Extension is installed. Set the
+// namespace using the -linkerd-namespace command line flag.
+func (h *TestHelper) GetVizNamespace() string {
+	return "linkerd-viz"
 }
 
 // GetMulticlusterNamespace returns the namespace where multicluster

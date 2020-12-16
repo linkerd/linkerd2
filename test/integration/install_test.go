@@ -32,30 +32,30 @@ var (
 
 	helmTLSCerts *tls.CA
 
-	linkerdSvcStable = []string{
-		"linkerd-controller-api",
-		"linkerd-dst",
-		"linkerd-grafana",
-		"linkerd-identity",
-		"linkerd-prometheus",
-		"linkerd-web",
-		"linkerd-tap",
+	linkerdSvcStable = []testutil.Service{
+		{Namespace: "linkerd", Name: "linkerd-controller-api"},
+		{Namespace: "linkerd", Name: "linkerd-dst"},
+		{Namespace: "linkerd-viz", Name: "linkerd-grafana"},
+		{Namespace: "linkerd", Name: "linkerd-identity"},
+		{Namespace: "linkerd-viz", Name: "linkerd-prometheus"},
+		{Namespace: "linkerd-viz", Name: "linkerd-web"},
+		{Namespace: "linkerd-viz", Name: "linkerd-tap"},
 	}
 
-	linkerdSvcEdge = []string{
-		"linkerd-controller-api",
-		"linkerd-dst",
-		"linkerd-dst-headless",
-		"linkerd-grafana",
-		"linkerd-identity",
-		"linkerd-identity-headless",
-		"linkerd-prometheus",
-		"linkerd-web",
-		"linkerd-tap",
+	linkerdSvcEdge = []testutil.Service{
+		{Namespace: "linkerd", Name: "linkerd-controller-api"},
+		{Namespace: "linkerd", Name: "linkerd-dst"},
+		{Namespace: "linkerd-viz", Name: "linkerd-grafana"},
+		{Namespace: "linkerd", Name: "linkerd-identity"},
+		{Namespace: "linkerd-viz", Name: "linkerd-prometheus"},
+		{Namespace: "linkerd-viz", Name: "linkerd-web"},
+		{Namespace: "linkerd-viz", Name: "linkerd-tap"},
+		{Namespace: "linkerd", Name: "linkerd-dst-headless"},
+		{Namespace: "linkerd", Name: "linkerd-identity-headless"},
 	}
 
-	multiclusterSvcs = []string{
-		"linkerd-gateway",
+	multiclusterSvcs = []testutil.Service{
+		{Namespace: "linkerd-multicluster", Name: "linkerd-gateway"},
 	}
 
 	injectionCases = []struct {
@@ -261,6 +261,8 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--proxy-version", TestHelper.GetVersion(),
 			"--skip-inbound-ports", skippedInboundPorts,
 		}
+		vizCmd  = []string{"viz", "install"}
+		vizArgs = []string{}
 	)
 
 	if certsPath := TestHelper.CertsPath(); certsPath != "" {
@@ -398,6 +400,27 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
+	// Wait for the proxy injector to be up
+	name := "linkerd-proxy-injector"
+	ns := "linkerd"
+	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
+			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
+	}
+
+	// Install Linkerd Viz Extension
+	exec = append(vizCmd, vizArgs...)
+	out, err = TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
 }
 
 // These need to be updated (if there are changes) once a new stable is released
@@ -934,7 +957,7 @@ func TestCheckProxy(t *testing.T) {
 
 func TestRestarts(t *testing.T) {
 	for deploy, spec := range testutil.LinkerdDeployReplicas {
-		if err := TestHelper.CheckPods(context.Background(), TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+		if err := TestHelper.CheckPods(context.Background(), spec.Namespace, deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
