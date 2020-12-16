@@ -2870,6 +2870,7 @@ data:
 `, base64.StdEncoding.EncodeToString([]byte(issuerCerts.TrustAnchors)), base64.StdEncoding.EncodeToString([]byte(issuerCerts.IssuerCrt)), base64.StdEncoding.EncodeToString([]byte(issuerCerts.IssuerKey)))
 }
 
+//nolint:unparam
 func createIssuerData(dnsName string, notBefore, notAfter time.Time) *issuercerts.IssuerCertData {
 	// Generate a new root key.
 	key, _ := tls.GenerateKey()
