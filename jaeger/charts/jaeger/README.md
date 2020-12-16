@@ -8,7 +8,7 @@ A Helm chart for the jaeger add-on in Linkerd
 
 ## Requirements
 
-Kubernetes: `>=1.13.0-0`
+Kubernetes: `>=1.15.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
