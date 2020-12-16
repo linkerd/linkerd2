@@ -28,11 +28,11 @@ var (
 // addOnCategories contain all the checks w.r.t add-ons. It is strongly advised to
 // have warning as true, to not make the check fail for add-on failures as most of them are
 // not hard requirements unless otherwise.
-func (hc *HealthChecker) addOnCategories() []category {
-	return []category{
+func (hc *HealthChecker) addOnCategories() []Category {
+	return []Category{
 		{
 			id: LinkerdPrometheusAddOnChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "prometheus add-on service account exists",
 					warning:     true,
@@ -92,7 +92,7 @@ func (hc *HealthChecker) addOnCategories() []category {
 		},
 		{
 			id: LinkerdGrafanaAddOnChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				{
 					description: "grafana add-on service account exists",
 					warning:     true,

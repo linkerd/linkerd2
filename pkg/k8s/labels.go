@@ -26,6 +26,10 @@ const (
 	// that contain a Linkerd control plane
 	LinkerdNamespaceLabel = Prefix + "/is-control-plane"
 
+	// LinkerdExtensionLabel is a label that helps identifying the namespace
+	// that contain a Linkerd Extension
+	LinkerdExtensionLabel = Prefix + "/extension"
+
 	// ControllerComponentLabel identifies this object as a component of Linkerd's
 	// control plane (e.g. web, controller).
 	ControllerComponentLabel = Prefix + "/control-plane-component"
