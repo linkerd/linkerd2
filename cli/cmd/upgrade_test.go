@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/spf13/pflag"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -288,13 +286,7 @@ func TestUpgradeWebhookCrtsNameChange(t *testing.T) {
 		CrtPEM:   injectorCerts.crt,
 		KeyPEM:   injectorCerts.key,
 	}
-	tapCerts := generateCerts(t, "linkerd-tap.linkerd.svc", false)
-	defer tapCerts.cleanup()
-	installOpts.Tap.TLS = &linkerd2.TLS{
-		CaBundle: tapCerts.ca,
-		CrtPEM:   tapCerts.crt,
-		KeyPEM:   tapCerts.key,
-	}
+
 	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
 	defer validatorCerts.cleanup()
 	installOpts.ProfileValidator.TLS = &linkerd2.TLS{
@@ -346,13 +338,7 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 		CrtPEM:   injectorCerts.crt,
 		KeyPEM:   injectorCerts.key,
 	}
-	tapCerts := generateCerts(t, "linkerd-tap.linkerd.svc", false)
-	defer tapCerts.cleanup()
-	installOpts.Tap.TLS = &linkerd2.TLS{
-		CaBundle: tapCerts.ca,
-		CrtPEM:   tapCerts.crt,
-		KeyPEM:   tapCerts.key,
-	}
+
 	validatorCerts := generateCerts(t, "linkerd-sp-validator.linkerd.svc", false)
 	defer validatorCerts.cleanup()
 	installOpts.ProfileValidator.TLS = &linkerd2.TLS{
@@ -376,168 +362,6 @@ func TestUpgradeTwoLevelWebhookCrts(t *testing.T) {
 			}
 			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
 		}
-	}
-}
-
-func TestUpgradeWithAddonDisabled(t *testing.T) {
-	installOpts, upgradeOpts, _ := testOptions(t)
-
-	installAddons, err := ioutil.ReadFile(filepath.Join("testdata", "grafana_disabled.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = yaml.Unmarshal(installAddons, installOpts)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	install := renderInstall(t, installOpts)
-	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := replaceVersions(install.String())
-	expectedManifests := parseManifestList(expected)
-	upgradeManifests := parseManifestList(upgrade.String())
-	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
-		for _, diff := range diffs {
-			if ignorableDiff(id, diff) {
-				continue
-			}
-			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
-		}
-	}
-}
-
-func TestUpgradeEnableAddon(t *testing.T) {
-	installOpts, upgradeOpts, flagSet := testOptions(t)
-
-	installAddons, err := ioutil.ReadFile(filepath.Join("testdata", "grafana_disabled.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = yaml.Unmarshal(installAddons, installOpts)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	install := renderInstall(t, installOpts)
-
-	flagSet.Set("config", filepath.Join("testdata", "grafana_enabled.yaml"))
-
-	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := replaceVersions(install.String())
-	expectedManifests := parseManifestList(expected)
-	upgradeManifests := parseManifestList(upgrade.String())
-	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
-	addonManifests := []string{
-		"ServiceAccount/linkerd-grafana", "Deployment/linkerd-grafana", "Service/linkerd-grafana",
-		"ConfigMap/linkerd-grafana-config",
-	}
-	for _, id := range addonManifests {
-		if _, ok := diffMap[id]; ok {
-			delete(diffMap, id)
-		} else {
-			t.Errorf("Expected %s in upgrade output but was absent", id)
-		}
-	}
-	for id, diffs := range diffMap {
-		for _, diff := range diffs {
-			if ignorableDiff(id, diff) {
-				continue
-			}
-			if id == "RoleBinding/linkerd-psp" && pathMatch(diff.path, []string{"subjects"}) {
-				continue
-			}
-			if id == "Deployment/linkerd-web" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "args"}) {
-				continue
-			}
-			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
-		}
-	}
-}
-
-func TestUpgradeRemoveAddonKeys(t *testing.T) {
-	installOpts, upgradeOpts, flagSet := testOptions(t)
-
-	installAddons, err := ioutil.ReadFile(filepath.Join("testdata", "grafana_enabled_resources.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = yaml.Unmarshal(installAddons, installOpts)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	install := renderInstall(t, installOpts)
-
-	flagSet.Set("config", filepath.Join("testdata", "grafana_enabled.yaml"))
-
-	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := replaceVersions(install.String())
-	expectedManifests := parseManifestList(expected)
-	upgradeManifests := parseManifestList(upgrade.String())
-	for id, diffs := range diffManifestLists(expectedManifests, upgradeManifests) {
-		for _, diff := range diffs {
-			if ignorableDiff(id, diff) {
-				continue
-			}
-			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
-		}
-	}
-}
-
-func TestUpgradeOverwriteRemoveAddonKeys(t *testing.T) {
-	installOpts, upgradeOpts, flagSet := testOptions(t)
-
-	installAddons, err := ioutil.ReadFile(filepath.Join("testdata", "grafana_enabled_resources.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = yaml.Unmarshal(installAddons, installOpts)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	install := renderInstall(t, installOpts)
-
-	flagSet.Set("config", filepath.Join("testdata", "grafana_enabled.yaml"))
-	flagSet.Set("addon-overwrite", "true")
-
-	upgrade, err := renderUpgrade(install.String(), upgradeOpts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := replaceVersions(install.String())
-	expectedManifests := parseManifestList(expected)
-	upgradeManifests := parseManifestList(upgrade.String())
-	diffMap := diffManifestLists(expectedManifests, upgradeManifests)
-
-	resourceDiffFound := false
-	for id, diffs := range diffMap {
-		for _, diff := range diffs {
-			if ignorableDiff(id, diff) {
-				continue
-			}
-			if id == "Deployment/linkerd-grafana" && pathMatch(diff.path, []string{"spec", "template", "spec", "containers", "*", "resources"}) {
-				resourceDiffFound = true
-				continue
-			}
-			t.Errorf("Unexpected diff in %s:\n%s", id, diff.String())
-		}
-	}
-	if !resourceDiffFound {
-		t.Error("Expected grafana resources requirements to be removed, but were not")
 	}
 }
 

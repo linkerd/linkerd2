@@ -36,7 +36,6 @@ import (
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
-	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -153,13 +152,6 @@ const (
 	linkerdCNIResourceName       = "linkerd-cni"
 	linkerdCNIConfigMapName      = "linkerd-cni-config"
 
-	// linkerdTapAPIServiceName is the name of the tap api service
-	// This key is passed to checkApiService method to check whether
-	// the api service is available or not
-	linkerdTapAPIServiceName = "v1alpha1.tap.linkerd.io"
-
-	tapOldTLSSecretName           = "linkerd-tap-tls"
-	tapTLSSecretName              = "linkerd-tap-k8s-tls"
 	proxyInjectorOldTLSSecretName = "linkerd-proxy-injector-tls"
 	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
 	spValidatorOldTLSSecretName   = "linkerd-sp-validator-tls"
@@ -383,7 +375,7 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 		Options: options,
 	}
 
-	hc.categories = append(hc.allCategories(), hc.addOnCategories()...)
+	hc.categories = hc.allCategories()
 	hc.categories = append(hc.categories, hc.multiClusterCategory()...)
 
 	checkMap := map[CategoryID]struct{}{}
@@ -1025,6 +1017,84 @@ func (hc *HealthChecker) allCategories() []category {
 			},
 		},
 		{
+			id: LinkerdWebhooksAndAPISvcTLS,
+			checkers: []checker{
+				{
+					description: "proxy-injector webhook has valid cert",
+					hintAnchor:  "l5d-proxy-injector-webhook-cert-valid",
+					fatal:       true,
+					check: func(ctx context.Context) (err error) {
+						anchors, err := hc.fetchProxyInjectorCaBundle(ctx)
+						if err != nil {
+							return err
+						}
+						cert, err := hc.fetchCredsFromSecret(ctx, proxyInjectorTLSSecretName)
+						if kerrors.IsNotFound(err) {
+							cert, err = hc.fetchCredsFromOldSecret(ctx, proxyInjectorOldTLSSecretName)
+						}
+						if err != nil {
+							return err
+						}
+
+						identityName := fmt.Sprintf("linkerd-proxy-injector.%s.svc", hc.ControlPlaneNamespace)
+						return hc.checkCertAndAnchors(cert, anchors, identityName)
+					},
+				},
+				{
+					description: "proxy-injector cert is valid for at least 60 days",
+					warning:     true,
+					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
+					check: func(ctx context.Context) error {
+						cert, err := hc.fetchCredsFromSecret(ctx, proxyInjectorTLSSecretName)
+						if kerrors.IsNotFound(err) {
+							cert, err = hc.fetchCredsFromOldSecret(ctx, proxyInjectorOldTLSSecretName)
+						}
+						if err != nil {
+							return err
+						}
+						return hc.checkCertAndAnchorsExpiringSoon(cert)
+
+					},
+				},
+				{
+					description: "sp-validator webhook has valid cert",
+					hintAnchor:  "l5d-sp-validator-webhook-cert-valid",
+					fatal:       true,
+					check: func(ctx context.Context) (err error) {
+						anchors, err := hc.fetchSpValidatorCaBundle(ctx)
+						if err != nil {
+							return err
+						}
+						cert, err := hc.fetchCredsFromSecret(ctx, spValidatorTLSSecretName)
+						if kerrors.IsNotFound(err) {
+							cert, err = hc.fetchCredsFromOldSecret(ctx, spValidatorOldTLSSecretName)
+						}
+						if err != nil {
+							return err
+						}
+						identityName := fmt.Sprintf("linkerd-sp-validator.%s.svc", hc.ControlPlaneNamespace)
+						return hc.checkCertAndAnchors(cert, anchors, identityName)
+					},
+				},
+				{
+					description: "sp-validator cert is valid for at least 60 days",
+					warning:     true,
+					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
+					check: func(ctx context.Context) error {
+						cert, err := hc.fetchCredsFromSecret(ctx, spValidatorTLSSecretName)
+						if kerrors.IsNotFound(err) {
+							cert, err = hc.fetchCredsFromOldSecret(ctx, spValidatorOldTLSSecretName)
+						}
+						if err != nil {
+							return err
+						}
+						return hc.checkCertAndAnchorsExpiringSoon(cert)
+
+					},
+				},
+			},
+		},
+		{
 			id: LinkerdIdentityDataPlane,
 			checkers: []checker{
 				{
@@ -1138,29 +1208,6 @@ func (hc *HealthChecker) allCategories() []category {
 						}
 
 						return validateDataPlanePods(pods, hc.DataPlaneNamespace)
-					},
-				},
-				{
-					description:   "data plane proxy metrics are present in Prometheus",
-					hintAnchor:    "l5d-data-plane-prom",
-					retryDeadline: hc.RetryDeadline,
-					check: func(ctx context.Context) error {
-						pods, err := hc.getDataPlanePods(ctx)
-						if err != nil {
-							return err
-						}
-
-						// Check if prometheus configured
-						prometheusValues := make(map[string]interface{})
-						err = yaml.Unmarshal(hc.linkerdConfig.Prometheus.Values(), &prometheusValues)
-						if err != nil {
-							return err
-						}
-						if !GetBool(prometheusValues, "enabled") && hc.linkerdConfig.GetGlobal().PrometheusURL == "" {
-							return &SkipError{Reason: "no prometheus instance to connect"}
-						}
-
-						return validateDataPlanePodReporting(pods)
 					},
 				},
 				{
@@ -1589,24 +1636,6 @@ func (hc *HealthChecker) fetchSpValidatorCaBundle(ctx context.Context) ([]*x509.
 	}
 
 	caBundle, err := tls.DecodePEMCertificates(string(vwc.Webhooks[0].ClientConfig.CABundle))
-	if err != nil {
-		return nil, err
-	}
-	return caBundle, nil
-}
-
-func (hc *HealthChecker) fetchTapCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
-	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
-	if err != nil {
-		return nil, err
-	}
-
-	apiService, err := apiServiceClient.APIServices().Get(ctx, linkerdTapAPIServiceName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	caBundle, err := tls.DecodePEMCertificates(string(apiService.Spec.CABundle))
 	if err != nil {
 		return nil, err
 	}
@@ -2127,29 +2156,6 @@ func (hc *HealthChecker) checkCanCreateNonNamespacedResources(ctx context.Contex
 
 func (hc *HealthChecker) checkCanGet(ctx context.Context, namespace, group, version, resource string) error {
 	return hc.checkCanPerformAction(ctx, hc.kubeAPI, "get", namespace, group, version, resource)
-}
-
-func (hc *HealthChecker) checkAPIService(ctx context.Context, serviceName string) error {
-	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
-	if err != nil {
-		return err
-	}
-
-	apiStatus, err := apiServiceClient.APIServices().Get(ctx, serviceName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, condition := range apiStatus.Status.Conditions {
-		if condition.Type == "Available" {
-			if condition.Status == "True" {
-				return nil
-			}
-			return fmt.Errorf("%s: %s", condition.Reason, condition.Message)
-		}
-	}
-
-	return fmt.Errorf("%s service not available", linkerdTapAPIServiceName)
 }
 
 func (hc *HealthChecker) checkCapability(ctx context.Context, cap string) error {

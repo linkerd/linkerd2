@@ -329,7 +329,6 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 		flag.NewStringFlag(proxyFlags, "registry", defaultDockerRegistry, "Docker registry to pull images from",
 			func(values *l5dcharts.Values, value string) error {
-				values.WebImage = registryOverride(values.WebImage, value)
 				values.ControllerImage = registryOverride(values.ControllerImage, value)
 				values.DebugContainer.Image.Name = registryOverride(values.DebugContainer.Image.Name, value)
 				values.GetGlobal().Proxy.Image.Name = registryOverride(values.GetGlobal().Proxy.Image.Name, value)

@@ -29,7 +29,6 @@ func TestNewValues(t *testing.T) {
 
 	expected := &Values{
 		ControllerImage:             "ghcr.io/linkerd/controller",
-		WebImage:                    "ghcr.io/linkerd/web",
 		ControllerReplicas:          1,
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
@@ -40,9 +39,7 @@ func TestNewValues(t *testing.T) {
 		DisableHeartBeat:            false,
 		HeartbeatSchedule:           "0 0 * * *",
 		InstallNamespace:            true,
-		Prometheus: Prometheus{
-			"enabled": true,
-		},
+		LinkerdVizNamespace:         "linkerd-viz",
 		Global: &Global{
 			Namespace:                    "linkerd",
 			ClusterDomain:                "cluster.local",
@@ -133,9 +130,6 @@ func TestNewValues(t *testing.T) {
 		NodeSelector: map[string]string{
 			"beta.kubernetes.io/os": "linux",
 		},
-		Dashboard: &Dashboard{
-			Replicas: 1,
-		},
 		DebugContainer: &DebugContainer{
 			Image: &Image{
 				Name:       "ghcr.io/linkerd/debug",
@@ -146,10 +140,6 @@ func TestNewValues(t *testing.T) {
 
 		ProxyInjector:    &ProxyInjector{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
 		ProfileValidator: &ProfileValidator{TLS: &TLS{}, NamespaceSelector: namespaceSelector},
-		Tap:              &Tap{TLS: &TLS{}},
-		Grafana: Grafana{
-			"enabled": true,
-		},
 	}
 
 	// pin the versions to ensure consistent test result.
@@ -191,23 +181,7 @@ func TestNewValues(t *testing.T) {
 		expected.PublicAPIResources = controllerResources
 		expected.ProxyInjectorResources = controllerResources
 		expected.SPValidatorResources = controllerResources
-		expected.TapResources = controllerResources
-		expected.WebResources = controllerResources
 		expected.HeartbeatResources = controllerResources
-
-		expected.Grafana = Grafana{
-			"enabled": true,
-			"resources": map[string]interface{}{
-				"cpu": map[string]interface{}{
-					"limit":   controllerResources.CPU.Limit,
-					"request": controllerResources.CPU.Request,
-				},
-				"memory": map[string]interface{}{
-					"limit":   "1024Mi",
-					"request": "50Mi",
-				},
-			},
-		}
 
 		expected.IdentityResources = &Resources{
 			CPU: Constraints{
@@ -217,20 +191,6 @@ func TestNewValues(t *testing.T) {
 			Memory: Constraints{
 				Limit:   controllerResources.Memory.Limit,
 				Request: "10Mi",
-			},
-		}
-
-		expected.Prometheus = Prometheus{
-			"enabled": true,
-			"resources": map[string]interface{}{
-				"cpu": map[string]interface{}{
-					"limit":   "",
-					"request": "300m",
-				},
-				"memory": map[string]interface{}{
-					"limit":   "8192Mi",
-					"request": "300Mi",
-				},
 			},
 		}
 

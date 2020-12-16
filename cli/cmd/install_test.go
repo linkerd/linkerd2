@@ -31,7 +31,6 @@ func TestRender(t *testing.T) {
 	// by `render()`.
 	metaValues := &charts.Values{
 		ControllerImage:             "ControllerImage",
-		WebImage:                    "WebImage",
 		ControllerUID:               2103,
 		EnableH2Upgrade:             true,
 		WebhookFailurePolicy:        "WebhookFailurePolicy",
@@ -126,15 +125,6 @@ func TestRender(t *testing.T) {
 		ControllerReplicas: 1,
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
-		Tap:                defaultValues.Tap,
-		Dashboard: &charts.Dashboard{
-			Replicas: 1,
-		},
-		Prometheus: charts.Prometheus{
-			"enabled": true,
-			"image":   "PrometheusImage",
-		},
-		Grafana: defaultValues.Grafana,
 	}
 
 	haValues, err := testInstallOptionsHA(true)
@@ -551,7 +541,4 @@ func addFakeTLSSecrets(values *charts.Values) {
 	values.ProfileValidator.CrtPEM = "profile validator crt"
 	values.ProfileValidator.KeyPEM = "profile validator key"
 	values.ProfileValidator.CaBundle = "profile validator CA bundle"
-	values.Tap.CrtPEM = "tap crt"
-	values.Tap.KeyPEM = "tap key"
-	values.Tap.CaBundle = "tap CA bundle"
 }

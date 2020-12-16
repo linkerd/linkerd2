@@ -24,7 +24,6 @@ type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
 		ControllerImage             string            `json:"controllerImage"`
-		WebImage                    string            `json:"webImage"`
 		ControllerReplicas          uint              `json:"controllerReplicas"`
 		ControllerUID               int64             `json:"controllerUID"`
 		EnableH2Upgrade             bool              `json:"enableH2Upgrade"`
@@ -38,11 +37,9 @@ type (
 		Configs                     ConfigJSONs       `json:"configs"`
 		Global                      *Global           `json:"global"`
 		Identity                    *Identity         `json:"identity"`
-		Dashboard                   *Dashboard        `json:"dashboard"`
 		DebugContainer              *DebugContainer   `json:"debugContainer"`
 		ProxyInjector               *ProxyInjector    `json:"proxyInjector"`
 		ProfileValidator            *ProfileValidator `json:"profileValidator"`
-		Tap                         *Tap              `json:"tap"`
 		NodeSelector                map[string]string `json:"nodeSelector"`
 		Tolerations                 []interface{}     `json:"tolerations"`
 		Stage                       string            `json:"stage"`
@@ -54,20 +51,12 @@ type (
 		ProxyInjectorResources *Resources `json:"proxyInjectorResources"`
 		PublicAPIResources     *Resources `json:"publicAPIResources"`
 		SPValidatorResources   *Resources `json:"spValidatorResources"`
-		TapResources           *Resources `json:"tapResources"`
-		WebResources           *Resources `json:"webResources"`
 
 		DestinationProxyResources   *Resources `json:"destinationProxyResources"`
 		IdentityProxyResources      *Resources `json:"identityProxyResources"`
 		ProxyInjectorProxyResources *Resources `json:"proxyInjectorProxyResources"`
 		PublicAPIProxyResources     *Resources `json:"publicAPIProxyResources"`
 		SPValidatorProxyResources   *Resources `json:"spValidatorProxyResources"`
-		TapProxyResources           *Resources `json:"tapProxyResources"`
-		WebProxyResources           *Resources `json:"webProxyResources"`
-
-		// Addon Structures
-		Grafana    Grafana    `json:"grafana"`
-		Prometheus Prometheus `json:"prometheus"`
 	}
 
 	// Global values common across all charts
@@ -195,11 +184,6 @@ type (
 		Memory Constraints `json:"memory"`
 	}
 
-	// Dashboard has the Helm variables for the web dashboard
-	Dashboard struct {
-		Replicas int32 `json:"replicas"`
-	}
-
 	// Identity contains the fields to set the identity variables in the proxy
 	// sidecar container
 	Identity struct {
@@ -226,11 +210,6 @@ type (
 	ProfileValidator struct {
 		*TLS
 		NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector"`
-	}
-
-	// Tap has all the Tap's Helm variables
-	Tap struct {
-		*TLS
 	}
 
 	// TLS has a pair of PEM-encoded key and certificate variables used in the
@@ -265,7 +244,6 @@ func NewValues(ha bool) (*Values, error) {
 	v.ProfileValidator.TLS = &TLS{}
 	v.ProxyInjector.TLS = &TLS{}
 	v.Global.ProxyContainerName = k8s.ProxyContainerName
-	v.Tap = &Tap{TLS: &TLS{}}
 
 	return v, nil
 }

@@ -24,7 +24,7 @@ global:
   controlPlaneTracingNamespace: linkerd-jaeger
 
   # -- control plane version. See Proxy section for proxy version
-  linkerdVersion: &linkerd_version edge-20.12.1
+  linkerdVersion: &linkerd_version linkerdVersionValue
 
   # -- Control plane namespace
   namespace: linkerd
@@ -194,12 +194,6 @@ controllerUID: 2103
 # injected into destination pod (see `global.proxy.resources` for sub-fields)
 #destinationProxyResources:
 
-
-# web dashboard configuration
-dashboard:
-  # -- Number of replicas of dashboard
-  replicas: 1
-
 # debug configuration
 debugContainer:
   image:
@@ -319,42 +313,6 @@ profileValidator:
 #`global.proxy.resources`
 #publicAPIProxyResources:
 
-# tap configuration
-tap:
-  # -- Do not create a secret resource for the Tap component. If this is set to
-  # `true`, the value `tap.caBundle` must be set (see below).
-  externalSecret: false
-  # -- Certificate for the Tap component. If not provided then Helm will
-  # generate one.
-  crtPEM: |
-
-  # -- Certificate key for Tap component. If not provided then Helm will
-  # generate one. 
-  keyPEM: |
-
-  # -- Bundle of CA certificates for Tap component. If not provided then Helm
-  # will use the certificate generated  for `tap.crtPEM`. If
-  # `tap.externalSecret` is set to true, this value must be set, as no
-  # certificate will be generated.
-  caBundle: |
-
-# -|- CPU and Memory resources required by tap (see `global.proxy.resources` for
-#sub-fields)
-#tapResources:
-# -|- CPU and Memory resources required by proxy injected into tap pod (see
-#`global.proxy.resources` for sub-fields)
-#tapProxyResources:
-
-# -- Docker image for the web container
-webImage: ghcr.io/linkerd/web
-# -<- CPU and Memory resources required by web UI (see `global.proxy.resources`
-#for sub-fields)
-#webResources:
-# -|- CPU and Memory resources required by proxy injected into web UI pod (see
-#`global.proxy.resources` for sub-fields)
-#webProxyResources:
-
-
 # If the namespace is controlled by an external tool or can't be installed with Helm
 # you can disable its installation. In this case:
 # - The namespace created by the external tool must match the namespace value above
@@ -375,6 +333,3 @@ nodeSelector:
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information
 #tolerations:
-
-# Configuration for Add-ons
-# Full configuration fields https://github.com/linkerd/linkerd2/tree/master/charts/linkerd2#add-ons-configuration

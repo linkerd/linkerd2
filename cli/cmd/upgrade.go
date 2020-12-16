@@ -247,13 +247,6 @@ func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage
 		}
 	}
 
-	if addOnOverwrite {
-		err = clearAddonOverrides(values)
-		if err != nil {
-			return bytes.Buffer{}, err
-		}
-	}
-
 	err = flag.ApplySetFlags(values, flags)
 	if err != nil {
 		return bytes.Buffer{}, err
@@ -357,15 +350,5 @@ func ensureIssuerCertWorksWithAllProxies(ctx context.Context, k *k8s.KubernetesA
 		errorMessageFooter := "These pods do not have the current trust bundle and must be restarted.  Use the --force flag to proceed anyway (this will likely prevent those pods from sending or receiving traffic)."
 		return fmt.Errorf("%s\n\t%s\n%s", errorMessageHeader, strings.Join(problematicPods, "\n\t"), errorMessageFooter)
 	}
-	return nil
-}
-
-func clearAddonOverrides(values *l5dcharts.Values) error {
-	defaults, err := l5dcharts.NewValues(false)
-	if err != nil {
-		return err
-	}
-	values.Grafana = defaults.Grafana
-	values.Prometheus = defaults.Prometheus
 	return nil
 }

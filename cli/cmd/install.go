@@ -26,10 +26,6 @@ import (
 )
 
 const (
-
-	// addOnChartsPath is where the linkerd2 add-ons will be present
-	addOnChartsPath = "add-ons"
-
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
 
@@ -308,41 +304,11 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 		{Name: chartutil.ChartfileName},
 	}
 
-	addOns, err := l5dcharts.ParseAddOnValues(values)
-	if err != nil {
-		return err
-	}
-
-	// Initialize add-on sub-charts
-	addOnCharts := make(map[string]*charts.Chart)
-	for _, addOn := range addOns {
-		addOnCharts[addOn.Name()] = &charts.Chart{
-			Name:      addOn.Name(),
-			Dir:       addOnChartsPath + "/" + addOn.Name(),
-			Namespace: controlPlaneNamespace,
-			RawValues: append(addOn.Values(), rawValues...),
-			Files: []*loader.BufferedFile{
-				{
-					Name: chartutil.ChartfileName,
-				},
-				{
-					Name: chartutil.ValuesfileName,
-				},
-			},
-			Fs: static.Templates,
-		}
-	}
-
 	if stage == "" || stage == configStage {
 		for _, template := range templatesConfigStage {
 			files = append(files,
 				&loader.BufferedFile{Name: template},
 			)
-		}
-
-		// Fill add-on's sub-charts with config templates
-		for _, addOn := range addOns {
-			addOnCharts[addOn.Name()].Files = append(addOnCharts[addOn.Name()].Files, addOn.ConfigStageTemplates()...)
 		}
 	}
 
@@ -352,12 +318,6 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 				&loader.BufferedFile{Name: template},
 			)
 		}
-
-		// Fill add-on's sub-charts with control-plane templates
-		for _, addOn := range addOns {
-			addOnCharts[addOn.Name()].Files = append(addOnCharts[addOn.Name()].Files, addOn.ControlPlaneStageTemplates()...)
-		}
-
 	}
 
 	// TODO refactor to use l5dcharts.LoadChart()
@@ -372,17 +332,6 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 	buf, err := chart.Render()
 	if err != nil {
 		return err
-	}
-
-	for _, addon := range addOns {
-		b, err := addOnCharts[addon.Name()].Render()
-		if err != nil {
-			return err
-		}
-
-		if _, err := buf.WriteString(b.String()); err != nil {
-			return err
-		}
 	}
 
 	if stage == "" || stage == controlPlaneStage {

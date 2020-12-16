@@ -220,7 +220,6 @@ spec:
       labels:
         component: prometheus
         namespace: {{.Values.namespace}}
-        {{.Values.workloadNamespaceLabel}}: {{.Values.namespace}}
         {{- with .Values.podLabels }}{{ toYaml . | trim | nindent 8 }}{{- end }}
     spec:
       {{- if .Values.tolerations -}}

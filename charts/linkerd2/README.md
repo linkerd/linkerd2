@@ -127,10 +127,9 @@ Kubernetes: `>=1.13.0-0`
 | controllerImage | string | `"ghcr.io/linkerd/controller"` | Docker image for the controller, tap and identity components |
 | controllerReplicas | int | `1` | Number of replicas for each control plane pod |
 | controllerUID | int | `2103` | User ID for the control plane components |
-| dashboard.replicas | int | `1` | Number of replicas of dashboard |
 | debugContainer.image.name | string | `"ghcr.io/linkerd/debug"` | Docker image for the debug container |
 | debugContainer.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the debug container Docker image |
-| debugContainer.image.version | string | `"edge-20.12.1"` | Tag for the debug container Docker image |
+| debugContainer.image.version | string | `"linkerdVersionValue"` | Tag for the debug container Docker image |
 | disableHeartBeat | bool | `false` | Set to true to not start the heartbeat cronjob  |
 | enableH2Upgrade | bool | `true` | Allow proxies to perform transparent HTTP/2 upgrading   |
 | global.clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use   |
@@ -149,7 +148,7 @@ Kubernetes: `>=1.13.0-0`
 | global.imagePullPolicy | string | `"IfNotPresent"` | Docker image pull policy  |
 | global.imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | global.linkerdNamespaceLabel | string | `"linkerd.io/is-control-plane"` | Control plane label. Do not edit  |
-| global.linkerdVersion | string | `"edge-20.12.1"` | control plane version. See Proxy section for proxy version |
+| global.linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | global.namespace | string | `"linkerd"` | Control plane namespace |
 | global.podAnnotations | object | `{}` | Additional annotations to add to all pods |
 | global.podLabels | object | `{}` | Additional labels to add to all pods |
@@ -158,7 +157,7 @@ Kubernetes: `>=1.13.0-0`
 | global.proxy.enableExternalProfiles | bool | `false` | Enable service profiles for non-Kubernetes services |
 | global.proxy.image.name | string | `"ghcr.io/linkerd/proxy"` | Docker image for the proxy |
 | global.proxy.image.pullPolicy | string | `"IfNotPresent"` | Pull policy for the proxy container Docker image |
-| global.proxy.image.version | string | `"edge-20.12.1"` | Tag for the proxy container Docker image |
+| global.proxy.image.version | string | `"linkerdVersionValue"` | Tag for the proxy container Docker image |
 | global.proxy.inboundConnectTimeout | string | `"100ms"` | Maximum time allowed for the proxy to establish an inbound TCP connection |
 | global.proxy.logFormat | string | `"plain"` | Log format (`plain` or `json`) for the proxy |
 | global.proxy.logLevel | string | `"warn,linkerd=info"` | Log level for the proxy |
@@ -212,11 +211,6 @@ Kubernetes: `>=1.13.0-0`
 | proxyInjector.externalSecret | bool | `false` | Do not create a secret resource for the profileValidator webhook. If this is set to `true`, the value `proxyInjector.caBundle` must be set (see below) |
 | proxyInjector.keyPEM | string | `""` | Certificate key for the proxy injector. If not provided then Helm will generate one.  |
 | proxyInjector.namespaceSelector | object | `{"matchExpressions":[{"key":"config.linkerd.io/admission-webhooks","operator":"NotIn","values":["disabled"]}]}` | Namespace selector used by admission webhook. If not set defaults to all namespaces without the annotation config.linkerd.io/admission-webhooks=disabled |
-| tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
-| tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
-| tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
-| tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one.  |
-| webImage | string | `"ghcr.io/linkerd/web"` |  |
 | webhookFailurePolicy | string | `"Ignore"` | Failure policy for the proxy injector  |
 
 ----------------------------------------------
