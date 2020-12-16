@@ -3043,6 +3043,78 @@ func TestLinkerdIdentityCheckCertConfig(t *testing.T) {
 	}
 }
 
+func TestLinkerdIdentityCheckAnchorsMatch(t *testing.T) {
+	var testCases = []struct {
+		checkDescription            string
+		tlsSecretScheme             string
+		schemeInConfig              string
+		expectedOutput              []string
+		configMapIssuerDataModifier func(issuercerts.IssuerCertData) issuercerts.IssuerCertData
+		tlsSecretIssuerDataModifier func(issuercerts.IssuerCertData) issuercerts.IssuerCertData
+	}{
+		{
+			checkDescription: "works with valid cert and linkerd.io/tls secret for linkder scheme",
+			tlsSecretScheme:  k8s.IdentityIssuerSchemeLinkerd,
+			schemeInConfig:   k8s.IdentityIssuerSchemeLinkerd,
+			expectedOutput:   []string{"linkerd-identity-test-cat CA certificates match"},
+		},
+		{
+			// missmatch is not tested, since this will already fail checkCertificatesConfig above.
+			checkDescription: "works with valid cert and linkerd.io/tls secret for k8s scheme",
+			tlsSecretScheme:  string(corev1.SecretTypeTLS),
+			schemeInConfig:   string(corev1.SecretTypeTLS),
+			expectedOutput:   []string{"linkerd-identity-test-cat CA certificates match"},
+		},
+		{
+			checkDescription: "ca.crt contains root not in config map",
+			tlsSecretScheme:  string(corev1.SecretTypeTLS),
+			schemeInConfig:   string(corev1.SecretTypeTLS),
+			expectedOutput:   []string{"linkerd-identity-test-cat CA certificates match: no path for cert with subject 'CN=identity.linkerd.cluster.local' in field ca.crt of secret linkerd-identity-issuer to trust anchor defined in value 'global.identityTrustAnchorsPEM' of linkerd config"},
+			tlsSecretIssuerDataModifier: func(issuerData issuercerts.IssuerCertData) issuercerts.IssuerCertData {
+				extraRoot := createIssuerData("identity.linkerd.cluster.local", time.Now().AddDate(-2, 2, 0), time.Now().AddDate(0, 2, 0))
+
+				issuerData.TrustAnchors = issuerData.TrustAnchors +
+					extraRoot.TrustAnchors
+				return issuerData
+			}},
+		{
+			checkDescription: "supports multiple CA certs in IdentityContext.TrustAnchorsPEM",
+			tlsSecretScheme:  string(corev1.SecretTypeTLS),
+			schemeInConfig:   string(corev1.SecretTypeTLS),
+			expectedOutput:   []string{"linkerd-identity-test-cat CA certificates match"},
+			configMapIssuerDataModifier: func(issuerData issuercerts.IssuerCertData) issuercerts.IssuerCertData {
+				extraIssuer := createIssuerData("identity.linkerd.cluster.local", time.Now().AddDate(-2, 2, 0), time.Now().AddDate(0, 2, 0))
+
+				issuerData.TrustAnchors = issuerData.TrustAnchors +
+					extraIssuer.TrustAnchors
+				return issuerData
+			},
+		},
+	}
+
+	for id, testCase := range testCases {
+		testCase := testCase // pin for use by goroutine in t.Run
+
+		issuerData := createIssuerData("identity.linkerd.cluster.local", time.Now().AddDate(-1, 0, 0), time.Now().AddDate(1, 0, 0))
+		var fakeConfigMap string
+		if testCase.configMapIssuerDataModifier != nil {
+			modifiedIssuerData := testCase.configMapIssuerDataModifier(*issuerData)
+			fakeConfigMap = getFakeConfigMap(testCase.schemeInConfig, &modifiedIssuerData)
+		} else {
+			fakeConfigMap = getFakeConfigMap(testCase.schemeInConfig, issuerData)
+		}
+
+		var fakeSecret string
+		if testCase.tlsSecretIssuerDataModifier != nil {
+			modifiedIssuerData := testCase.tlsSecretIssuerDataModifier(*issuerData)
+			fakeSecret = getFakeSecret(testCase.tlsSecretScheme, &modifiedIssuerData)
+		} else {
+			fakeSecret = getFakeSecret(testCase.tlsSecretScheme, issuerData)
+		}
+		runIdentityCheckTestCase(context.Background(), t, id, testCase.checkDescription, "CA certificates match", fakeConfigMap, fakeSecret, testCase.expectedOutput)
+	}
+}
+
 func TestLinkerdIdentityCheckCertValidity(t *testing.T) {
 	var testCases = []struct {
 		checkDescription string
