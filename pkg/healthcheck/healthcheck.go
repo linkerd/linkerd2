@@ -934,6 +934,15 @@ func (hc *HealthChecker) allCategories() []category {
 					},
 				},
 				{
+					description: "CA certificates match",
+					hintAnchor:  "l5d-identity-cert-config-valid",
+					fatal:       true,
+					check: func(ctx context.Context) (err error) {
+						err = hc.checkTrustAnchorsMatch(ctx)
+						return
+					},
+				},
+				{
 					description: "trust anchors are using supported crypto algorithm",
 					hintAnchor:  "l5d-identity-trustAnchors-use-supported-crypto",
 					fatal:       true,
@@ -1656,12 +1665,6 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.GetGlobal().IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
-		// ensure trust anchors in config matches what's in the secret
-		if data != nil && strings.TrimSpace(values.GetGlobal().IdentityTrustAnchorsPEM) != strings.TrimSpace(data.TrustAnchors) {
-			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
-			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
-		}
-
 	}
 
 	if err != nil {
@@ -1679,6 +1682,45 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 	}
 
 	return issuerCreds, anchors, nil
+}
+
+// assert that each certificate in the field ca.crt has either an issuer that is within the same
+// field, or is duplicated within the list of root certs in the global configuration.
+func (hc *HealthChecker) checkTrustAnchorsMatch(ctx context.Context) error {
+	_, values, err := FetchCurrentConfiguration(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
+	if err != nil {
+		return err
+	}
+
+	// this only applies to Identity Isser with a defined Scheme different to "linkerd.io/tls"
+	if values.Identity.Issuer.Scheme == "" || values.Identity.Issuer.Scheme == k8s.IdentityIssuerSchemeLinkerd {
+		return nil
+	}
+
+	// load all root certs from global configuration
+	globalAnchorsPool, err := tls.DecodePEMCertPool(values.GetGlobal().IdentityTrustAnchorsPEM)
+	if err != nil {
+		errFormat := "could not parse trust anchors in 'global.identityTrustAnchorsPEM': %s"
+		return fmt.Errorf(errFormat, err.Error())
+	}
+
+	identityAnchorsPool := tls.CertificatesToPool(hc.trustAnchors)
+	verifyOpts := x509.VerifyOptions{
+		Roots:         globalAnchorsPool,
+		Intermediates: identityAnchorsPool,
+		CurrentTime:   time.Now(),
+	}
+	for _, cert := range hc.trustAnchors {
+		_, err := cert.Verify(verifyOpts)
+		if err != nil {
+			errFormat := "no path for cert with subject '%s' in field %s of secret %s to trust anchor defined in value 'global.identityTrustAnchorsPEM' of linkerd config"
+			return fmt.Errorf(errFormat, cert.Subject, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
+
+		}
+	}
+
+	return nil
+
 }
 
 // FetchCurrentConfiguration retrieves the current Linkerd configuration
