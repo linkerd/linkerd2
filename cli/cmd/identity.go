@@ -45,7 +45,7 @@ func newCmdIdentity() *cobra.Command {
 	options := newIdentityOptions()
 
 	cmd := &cobra.Command{
-		Use:   "identity get [name]",
+		Use:   "identity [name]",
 		Short: "Display the certificate(s) of one or more selected pod(s)",
 		Long: `Display the certificate(s) of one or more selected pod(s).
 		
@@ -156,7 +156,56 @@ func getContainersWithPort(pod corev1.Pod, portName string) ([]corev1.Container,
 	return containers, nil
 }
 
-func getProxyContainerEnv(pod corev1.Pod, containerName string) (string, error) {
+func getContainerCertificate(k8sAPI *k8s.KubernetesAPI, pod corev1.Pod, container corev1.Container, portName string, emitLog bool) ([]*x509.Certificate, error) {
+	// fmt.Printf("\nInside getContainerCertificate")
+	portForward, err := k8s.NewContainerMetricsForward(k8sAPI, pod, container, emitLog, portName)
+	if err != nil {
+		return nil, err
+	}
+
+	defer portForward.Stop()
+	if err = portForward.Init(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
+		return nil, err
+	}
+
+	certURL := portForward.URLFor("")
+	return getCertResponse(certURL, pod)
+}
+
+func getCertResponse(url string, pod corev1.Pod) ([]*x509.Certificate, error) {
+	// can we get the container env from pod spec?
+	serverName, err := getServerName(pod, "linkerd-proxy")
+	if err != nil {
+		return nil, err
+	}
+	re := regexp.MustCompile("[0-9]+")
+	res := re.FindString(url)
+	// fmt.Printf("\nPort here: %s", res)
+	connURL := "localhost:" + res
+	// fmt.Printf("\n URL %s", connURL)
+	conn, err := net.Dial("tcp", connURL)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("\nserver name: %s", serverName)
+
+	client := tls.Client(conn, &tls.Config{
+		// get server name from LINKERD2_PROXY_IDENTITY_LOCAL_NAME env var in the proxy container
+		ServerName: serverName,
+	})
+	defer client.Close()
+
+	if err := client.Handshake(); err != nil {
+		return nil, err
+	}
+
+	cert := client.ConnectionState().PeerCertificates
+	return cert, nil
+}
+
+func getServerName(pod corev1.Pod, containerName string) (string, error) {
 	// we need to form the server name using the following env var from the proxy container:
 	// - _pod_sa: this refers to the service account name - (serviceAccountName in the pod spec)
 	// - _pod_ns: (namespace in pod spec)
@@ -187,55 +236,6 @@ func getProxyContainerEnv(pod corev1.Pod, containerName string) (string, error) 
 	serverName := podsa + "." + podns + ".serviceaccount.identity." + l5dns + "." + l5dtrustdomain
 
 	return serverName, nil
-}
-
-func getContainerCertificate(k8sAPI *k8s.KubernetesAPI, pod corev1.Pod, container corev1.Container, portName string, emitLog bool) ([]*x509.Certificate, error) {
-	// fmt.Printf("\nInside getContainerCertificate")
-	portForward, err := k8s.NewContainerMetricsForward(k8sAPI, pod, container, emitLog, portName)
-	if err != nil {
-		return nil, err
-	}
-
-	defer portForward.Stop()
-	if err = portForward.Init(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error running port-forward: %s", err)
-		return nil, err
-	}
-
-	certURL := portForward.URLFor("")
-	return getCertResponse(certURL, pod)
-}
-
-func getCertResponse(url string, pod corev1.Pod) ([]*x509.Certificate, error) {
-	// can we get the container env from pod spec?
-	serverName, err := getProxyContainerEnv(pod, "linkerd-proxy")
-	if err != nil {
-		return nil, err
-	}
-	re := regexp.MustCompile("[0-9]+")
-	res := re.FindString(url)
-	// fmt.Printf("\nPort here: %s", res)
-	connURL := "localhost:" + res
-	// fmt.Printf("\n URL %s", connURL)
-	conn, err := net.Dial("tcp", connURL)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("\nserver name: %s", serverName)
-
-	client := tls.Client(conn, &tls.Config{
-		// get server name from LINKERD2_PROXY_IDENTITY_LOCAL_NAME env var in the proxy container
-		ServerName: serverName,
-	})
-	defer client.Close()
-
-	if err := client.Handshake(); err != nil {
-		return nil, err
-	}
-
-	cert := client.ConnectionState().PeerCertificates
-	return cert, nil
 }
 
 func getPods(ctx context.Context, clientset kubernetes.Interface, namespace string, arg string) ([]corev1.Pod, error) {
