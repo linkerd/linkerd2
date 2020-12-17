@@ -8,6 +8,8 @@ A Helm chart for the jaeger add-on in Linkerd
 
 ## Requirements
 
+Kubernetes: `>=1.15.0-0`
+
 | Repository | Name | Version |
 |------------|------|---------|
 | file://../../../charts/partials | partials | 0.1.0 |
