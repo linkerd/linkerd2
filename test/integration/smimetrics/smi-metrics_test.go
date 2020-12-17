@@ -28,6 +28,8 @@ func TestMain(m *testing.M) {
 
 func TestSMIMetrics(t *testing.T) {
 
+	t.Skip("Skipped, as SMI-Metrics currently hardcodes the prometheusUrl of Linkerd which changed")
+
 	ctx := context.Background()
 
 	if os.Getenv("RUN_ARM_TEST") != "" {

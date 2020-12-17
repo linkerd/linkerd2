@@ -26,6 +26,7 @@ type TestHelper struct {
 	linkerd            string
 	version            string
 	namespace          string
+	vizNamespace       string
 	upgradeFromVersion string
 	clusterDomain      string
 	externalIssuer     bool
@@ -84,6 +85,7 @@ func NewGenericTestHelper(
 	linkerd,
 	version,
 	namespace,
+	vizNamespace,
 	upgradeFromVersion,
 	clusterDomain,
 	helmPath,
@@ -104,6 +106,7 @@ func NewGenericTestHelper(
 		linkerd:            linkerd,
 		version:            version,
 		namespace:          namespace,
+		vizNamespace:       vizNamespace,
 		upgradeFromVersion: upgradeFromVersion,
 		helm: helm{
 			path:                    helmPath,
@@ -142,6 +145,7 @@ func NewTestHelper() *TestHelper {
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
+	vizNamespace := flag.String("viz-namespace", "linkerd-viz", "the namespace where linkerd viz extension is installed")
 	multicluster := flag.Bool("multicluster", false, "when specified the multicluster install functionality is tested")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
@@ -187,6 +191,7 @@ func NewTestHelper() *TestHelper {
 	testHelper := &TestHelper{
 		linkerd:            *linkerd,
 		namespace:          *namespace,
+		vizNamespace:       *vizNamespace,
 		upgradeFromVersion: *upgradeFromVersion,
 		multicluster:       *multicluster,
 		helm: helm{
@@ -241,7 +246,7 @@ func (h *TestHelper) GetLinkerdNamespace() string {
 // GetVizNamespace returns the namespace where linkerd Viz Extension is installed. Set the
 // namespace using the -linkerd-namespace command line flag.
 func (h *TestHelper) GetVizNamespace() string {
-	return "linkerd-viz"
+	return h.vizNamespace
 }
 
 // GetMulticlusterNamespace returns the namespace where multicluster

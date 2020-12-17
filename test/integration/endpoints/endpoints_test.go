@@ -41,7 +41,13 @@ func TestGoodEndpoints(t *testing.T) {
 	}
 
 	tpl := template.Must(template.ParseFiles("testdata/linkerd_endpoints.golden"))
-	vars := struct{ Ns string }{ns}
+	vars := struct {
+		Ns    string
+		VizNs string
+	}{
+		ns,
+		vizNs,
+	}
 	var b bytes.Buffer
 	if err := tpl.Execute(&b, vars); err != nil {
 		testutil.AnnotatedFatalf(t, "failed to parse linkerd_endpoints.golden template", "failed to parse linkerd_endpoints.golden template: %s", err)

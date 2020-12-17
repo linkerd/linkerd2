@@ -262,7 +262,9 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--skip-inbound-ports", skippedInboundPorts,
 		}
 		vizCmd  = []string{"viz", "install"}
-		vizArgs = []string{}
+		vizArgs = []string{
+			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace())
+		}
 	)
 
 	if certsPath := TestHelper.CertsPath(); certsPath != "" {
