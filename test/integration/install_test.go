@@ -263,7 +263,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 		}
 		vizCmd  = []string{"viz", "install"}
 		vizArgs = []string{
-			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace())
+			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
 		}
 	)
 
