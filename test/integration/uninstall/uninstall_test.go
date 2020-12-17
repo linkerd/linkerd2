@@ -38,6 +38,26 @@ func TestInstall(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
+
+	var (
+		vizCmd  = []string{"viz", "install"}
+		vizArgs = []string{
+			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace())}
+	)
+
+	// Install Linkerd Viz Extension
+	exec := append(vizCmd, vizArgs...)
+	out, err = TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+
 }
 
 func TestResourcesPostInstall(t *testing.T) {
