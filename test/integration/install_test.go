@@ -277,6 +277,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	if TestHelper.GetClusterDomain() != "cluster.local" {
 		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())
+		vizArgs = append(vizArgs, "--set", fmt.Sprintf("clusterDomain=%s", TestHelper.GetClusterDomain()))
 	}
 
 	if TestHelper.CNI() {
