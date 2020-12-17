@@ -6,6 +6,8 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: {{ .Values.namespace }}
+  name: {{.Values.namespace}}
+  labels:
+    linkerd.io/extension: linkerd-jaeger
   annotations:
     {{.Values.proxyInjectAnnotation}}: enabled

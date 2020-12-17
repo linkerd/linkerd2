@@ -12,7 +12,10 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
-  name: linkerd-controller
+  name: linkerd-tap
+  namespace: {{.Values.namespace}}
+- kind: ServiceAccount
+  name: linkerd-web
   namespace: {{.Values.namespace}}
 {{ if .Values.grafana.enabled -}}
 - kind: ServiceAccount
@@ -24,9 +27,3 @@ subjects:
   name: linkerd-prometheus
   namespace: {{.Values.namespace}}
 {{ end -}}
-- kind: ServiceAccount
-  name: linkerd-tap
-  namespace: {{.Values.namespace}}
-- kind: ServiceAccount
-  name: linkerd-web
-  namespace: {{.Values.namespace}}
