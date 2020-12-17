@@ -10,7 +10,7 @@ metadata:
   namespace: {{.Values.linkerdNamespace}}
   labels:
     component: web
-    namespace: {{.Values.namespace}}
+    namespace: {{.Values.linkerdNamespace}}
 rules:
 - apiGroups: [""]
   resources: ["configmaps"]
@@ -35,7 +35,7 @@ metadata:
   namespace: {{.Values.linkerdNamespace}}
   labels:
     component: web
-    namespace: {{.Values.namespace}}
+    namespace: {{.Values.linkerdNamespace}}
 roleRef:
   kind: Role
   name: linkerd-web
@@ -52,7 +52,6 @@ metadata:
   name: linkerd-{{.Values.namespace}}-web-check
   labels:
     component: web
-    namespace: {{.Values.namespace}}
 rules:
 - apiGroups: ["rbac.authorization.k8s.io"]
   resources: ["clusterroles", "clusterrolebindings"]
