@@ -21,7 +21,7 @@ import (
 
 var emitLog bool
 
-type Certificates struct {
+type certificate struct {
 	pod         string
 	container   string
 	Certificate []*x509.Certificate
@@ -87,7 +87,7 @@ func newCmdIdentity() *cobra.Command {
 					fmt.Println("Subject: ", result.Certificate[0].Subject)
 					fmt.Println("Issuer:  ", result.Certificate[0].Issuer)
 					fmt.Println("Subject Public Key Info:")
-					fmt.Println("\tPublic Key Alogrithm: ", result.Certificate[0].PublicKeyAlgorithm)
+					fmt.Println("\tPublic Key Algorithm: ", result.Certificate[0].PublicKeyAlgorithm)
 					fmt.Println("Signature: \n", result.Certificate[0].Signature)
 					resultCerticate := tls1.EncodeCertificatesPEM(result.Certificate[0])
 
@@ -106,9 +106,9 @@ func newCmdIdentity() *cobra.Command {
 }
 
 // getCertificate fetches the certificates for all the pods
-func getCertificate(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, portName string, waitingTime time.Duration, emitLog bool) []Certificates {
-	var certificates []Certificates
-	resultChan := make(chan Certificates)
+func getCertificate(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, portName string, waitingTime time.Duration, emitLog bool) []certificate {
+	var certificates []certificate
+	resultChan := make(chan certificate)
 	var activeRoutines int32
 	for _, pod := range pods {
 		atomic.AddInt32(&activeRoutines, 1)
@@ -116,7 +116,7 @@ func getCertificate(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, portName strin
 			defer atomic.AddInt32(&activeRoutines, -1)
 			containers, err := getContainersWithPort(p, portName)
 			if err != nil {
-				resultChan <- Certificates{
+				resultChan <- certificate{
 					pod: p.GetName(),
 					err: err,
 				}
@@ -125,7 +125,7 @@ func getCertificate(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, portName strin
 
 			for _, c := range containers {
 				cert, err := getContainerCertificate(k8sAPI, p, c, portName, emitLog)
-				resultChan <- Certificates{
+				resultChan <- certificate{
 					pod:         p.GetName(),
 					container:   c.Name,
 					Certificate: cert,
