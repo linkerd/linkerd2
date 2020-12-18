@@ -8,8 +8,5 @@ dependencies:
 - name: grafana
   repository: file://../add-ons/grafana
   version: 0.1.0
-- name: tracing
-  repository: file://../add-ons/tracing
-  version: 0.1.0
-digest: sha256:d2428770ae7d5134c5af6521c78a4c5f95da4c75f21bdea0f74fad6ab6e2e044
-generated: "2020-07-23T14:47:05.936935407+02:00"
+digest: sha256:2bbca4bf61028194ae6ee86763f21fa2488c9d141e3529bae642fa72b45fb34c
+generated: "2020-12-18T23:27:44.921336524Z"
