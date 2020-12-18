@@ -2539,7 +2539,7 @@ data:
 }
 
 func TestFetchCurrentConfiguration(t *testing.T) {
-	defaultValues, err := linkerd2.NewValues(false)
+	defaultValues, err := linkerd2.NewValues()
 
 	if err != nil {
 		t.Fatalf("Unexpected error validating options: %v", err)

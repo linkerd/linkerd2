@@ -32,7 +32,7 @@ func loadStoredValuesLegacy(ctx context.Context, k *k8s.KubernetesAPI) (*charts.
 	}
 	repairConfigs(configs)
 
-	values, err := charts.NewValues(false)
+	values, err := charts.NewValues()
 	if err != nil {
 		return nil, err
 	}
