@@ -486,6 +486,25 @@ func TestInstallHelm(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed",
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
+
+	// Wait for the proxy injector to be up
+	name := "linkerd-proxy-injector"
+	ns := "linkerd"
+	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
+			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
+	}
+
+	vizChart := "charts/linkerd-viz"
+	vizArgs := []string{
+		"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
+	}
+	// Install Viz Extension Chart
+	if stdout, stderr, err := TestHelper.HelmInstallPlain(vizChart, "l5d-viz", vizArgs...); err != nil {
+		testutil.AnnotatedFatalf(t, "'helm install' command failed",
+			"'helm install' command failed\n%s\n%s", stdout, stderr)
+	}
 }
 
 func TestControlPlaneResourcesPostInstall(t *testing.T) {

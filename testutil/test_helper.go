@@ -454,6 +454,18 @@ func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, e
 	return combinedOutput("", h.helm.path, withParams...)
 }
 
+// HelmInstallPlain runs the helm install subcommand, with the provided arguments and no defaults
+func (h *TestHelper) HelmInstallPlain(chart string, releaseName string, arg ...string) (string, string, error) {
+	withParams := append([]string{
+		"install",
+		releaseName,
+		chart,
+		"--kube-context", h.k8sContext,
+	}, arg...)
+
+	return combinedOutput("", h.helm.path, withParams...)
+}
+
 // HelmInstallMulticluster runs the helm install subcommand for multicluster, with the provided arguments
 func (h *TestHelper) HelmInstallMulticluster(chart string, arg ...string) (string, string, error) {
 	withParams := append([]string{
