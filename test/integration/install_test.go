@@ -35,11 +35,13 @@ var (
 	linkerdSvcStable = []testutil.Service{
 		{Namespace: "linkerd", Name: "linkerd-controller-api"},
 		{Namespace: "linkerd", Name: "linkerd-dst"},
-		{Namespace: "linkerd-viz", Name: "linkerd-grafana"},
+		{Namespace: "linkerd", Name: "linkerd-grafana"},
 		{Namespace: "linkerd", Name: "linkerd-identity"},
-		{Namespace: "linkerd-viz", Name: "linkerd-prometheus"},
-		{Namespace: "linkerd-viz", Name: "linkerd-web"},
-		{Namespace: "linkerd-viz", Name: "linkerd-tap"},
+		{Namespace: "linkerd", Name: "linkerd-prometheus"},
+		{Namespace: "linkerd", Name: "linkerd-web"},
+		{Namespace: "linkerd", Name: "linkerd-tap"},
+		{Namespace: "linkerd", Name: "linkerd-dst-headless"},
+		{Namespace: "linkerd", Name: "linkerd-identity-headless"},
 	}
 
 	linkerdSvcEdge = []testutil.Service{
@@ -496,27 +498,32 @@ func TestInstallHelm(t *testing.T) {
 			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
 	}
 
-	vizChart := TestHelper.GetLinkerdVizHelmChart()
-	vizArgs := []string{
-		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-		"--set", "namespace=" + TestHelper.GetVizNamespace(),
-		"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
-		"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
-		"--set", "tap.image.tag=" + TestHelper.GetVersion(),
-	}
-	// Install Viz Extension Chart
-	if stdout, stderr, err := TestHelper.HelmInstallPlain(vizChart, "l5d-viz", vizArgs...); err != nil {
-		testutil.AnnotatedFatalf(t, "'helm install' command failed",
-			"'helm install' command failed\n%s\n%s", stdout, stderr)
+	if TestHelper.UpgradeHelmFromVersion() == "" {
+		vizChart := TestHelper.GetLinkerdVizHelmChart()
+		vizArgs := []string{
+			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
+			"--set", "namespace=" + TestHelper.GetVizNamespace(),
+			"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
+			"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
+			"--set", "tap.image.tag=" + TestHelper.GetVersion(),
+		}
+		// Install Viz Extension Chart
+		if stdout, stderr, err := TestHelper.HelmInstallPlain(vizChart, "l5d-viz", vizArgs...); err != nil {
+			testutil.AnnotatedFatalf(t, "'helm install' command failed",
+				"'helm install' command failed\n%s\n%s", stdout, stderr)
+		}
 	}
 }
 
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
 	expectedServices := linkerdSvcEdge
+	expectedDeployments := testutil.LinkerdDeployReplicasEdge
+	// Upgrade Case
 	if TestHelper.UpgradeHelmFromVersion() != "" {
 		expectedServices = linkerdSvcStable
+		expectedDeployments = testutil.LinkerdDeployReplicasStable
 	}
-	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), expectedServices, testutil.LinkerdDeployReplicas, TestHelper, t)
+	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), expectedServices, expectedDeployments, TestHelper, t)
 }
 
 func TestInstallMulticluster(t *testing.T) {
@@ -605,6 +612,22 @@ func TestUpgradeHelm(t *testing.T) {
 	if stdout, stderr, err := TestHelper.HelmUpgrade(TestHelper.GetHelmChart(), args...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
+	}
+
+	// Install Viz Extension, as there was no viz with stable
+	// TOODO: Update this to upgrade once this will be the newer stable/edge
+	vizChart := TestHelper.GetLinkerdVizHelmChart()
+	vizArgs := []string{
+		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
+		"--set", "namespace=" + TestHelper.GetVizNamespace(),
+		"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
+		"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
+		"--set", "tap.image.tag=" + TestHelper.GetVersion(),
+	}
+	// Install Viz Extension Chart
+	if stdout, stderr, err := TestHelper.HelmInstallPlain(vizChart, "l5d-viz", vizArgs...); err != nil {
+		testutil.AnnotatedFatalf(t, "'helm install' command failed",
+			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
 }
 
@@ -982,7 +1005,13 @@ func TestCheckProxy(t *testing.T) {
 }
 
 func TestRestarts(t *testing.T) {
-	for deploy, spec := range testutil.LinkerdDeployReplicas {
+	expectedDeployments := testutil.LinkerdDeployReplicasEdge
+	// Upgrade Case
+	if TestHelper.UpgradeHelmFromVersion() != "" {
+		expectedDeployments = testutil.LinkerdDeployReplicasStable
+	}
+
+	for deploy, spec := range expectedDeployments {
 		if err := TestHelper.CheckPods(context.Background(), spec.Namespace, deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)

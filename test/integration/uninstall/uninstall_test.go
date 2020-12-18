@@ -70,7 +70,13 @@ func TestResourcesPostInstall(t *testing.T) {
 	}
 
 	// Tests Pods and Deployments
-	for deploy, spec := range testutil.LinkerdDeployReplicas {
+
+	expectedDeployments := testutil.LinkerdDeployReplicasEdge
+	// Upgrade Case
+	if TestHelper.UpgradeHelmFromVersion() != "" {
+		expectedDeployments = testutil.LinkerdDeployReplicasStable
+	}
+	for deploy, spec := range expectedDeployments {
 		if err := TestHelper.CheckPods(ctx, spec.Namespace, deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)

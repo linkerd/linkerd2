@@ -64,9 +64,23 @@ type Service struct {
 	Name      string
 }
 
-// LinkerdDeployReplicas is a map containing the number of replicas for each Deployment and the main
+// LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
 // container name
-var LinkerdDeployReplicas = map[string]DeploySpec{
+var LinkerdDeployReplicasStable = map[string]DeploySpec{
+	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
+	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
+	"linkerd-tap":            {"linkerd", 1, []string{"tap"}},
+	"linkerd-grafana":        {"linkerd", 1, []string{}},
+	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
+	"linkerd-prometheus":     {"linkerd", 1, []string{}},
+	"linkerd-sp-validator":   {"linkerd", 1, []string{"sp-validator"}},
+	"linkerd-web":            {"linkerd", 1, []string{"web"}},
+	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
+}
+
+// LinkerdDeployReplicasEdge is a map containing the number of replicas for each Deployment and the main
+// container name, in the current code-base
+var LinkerdDeployReplicasEdge = map[string]DeploySpec{
 	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
 	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
 	"linkerd-tap":            {"linkerd-viz", 1, []string{"tap"}},
