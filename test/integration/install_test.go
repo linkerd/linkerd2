@@ -591,20 +591,12 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "publicAPIProxyResources.memory.request=101Mi",
 		"--set", "destinationProxyResources.cpu.limit=1020m",
 		"--set", "destinationProxyResources.memory.request=102Mi",
-		"--set", "grafana.proxy.resources.cpu.limit=1030m",
-		"--set", "grafana.proxy.resources.memory.request=103Mi",
 		"--set", "identityProxyResources.cpu.limit=1040m",
 		"--set", "identityProxyResources.memory.request=104Mi",
-		"--set", "prometheus.proxy.resources.cpu.limit=1050m",
-		"--set", "prometheus.proxy.resources.memory.request=105Mi",
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
 		"--set", "spValidatorProxyResources.cpu.limit=1080m",
 		"--set", "spValidatorProxyResources.memory.request=108Mi",
-		"--set", "tapProxyResources.cpu.limit=1090m",
-		"--set", "tapProxyResources.memory.request=109Mi",
-		"--set", "webProxyResources.cpu.limit=1100m",
-		"--set", "webProxyResources.memory.request=110Mi",
 		"--atomic",
 		"--wait",
 	}
@@ -671,25 +663,11 @@ var expectedResources = []expectedData{
 		memRequest: "102Mi",
 	},
 	{
-		pod:        "linkerd-grafana",
-		cpuLimit:   "1030m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "103Mi",
-	},
-	{
 		pod:        "linkerd-identity",
 		cpuLimit:   "1040m",
 		cpuRequest: "20m",
 		memLimit:   "200Mi",
 		memRequest: "104Mi",
-	},
-	{
-		pod:        "linkerd-prometheus",
-		cpuLimit:   "1050m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "105Mi",
 	},
 	{
 		pod:        "linkerd-proxy-injector",
@@ -704,20 +682,6 @@ var expectedResources = []expectedData{
 		cpuRequest: "20m",
 		memLimit:   "200Mi",
 		memRequest: "108Mi",
-	},
-	{
-		pod:        "linkerd-tap",
-		cpuLimit:   "1090m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "109Mi",
-	},
-	{
-		pod:        "linkerd-web",
-		cpuLimit:   "1100m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "110Mi",
 	},
 }
 
@@ -1005,13 +969,7 @@ func TestCheckProxy(t *testing.T) {
 }
 
 func TestRestarts(t *testing.T) {
-	expectedDeployments := testutil.LinkerdDeployReplicasEdge
-	// Upgrade Case
-	if TestHelper.UpgradeHelmFromVersion() != "" {
-		expectedDeployments = testutil.LinkerdDeployReplicasStable
-	}
-
-	for deploy, spec := range expectedDeployments {
+	for deploy, spec := range testutil.LinkerdDeployReplicasEdge {
 		if err := TestHelper.CheckPods(context.Background(), spec.Namespace, deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
