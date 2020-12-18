@@ -433,6 +433,9 @@ func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error)
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "linkerd-config-overrides",
 			Namespace: namespace,
+			Labels: map[string]string{
+				k8s.ControllerNSLabel: controlPlaneNamespace,
+			},
 		},
 		Data: map[string][]byte{
 			"linkerd-config-overrides": overridesBytes,
