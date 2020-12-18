@@ -156,12 +156,13 @@ func TestTracing(t *testing.T) {
 
 	t.Run("expect full trace", func(t *testing.T) {
 
-		url, err := TestHelper.URLFor(ctx, tracingNs, "jaeger", 16686)
-		if err != nil {
-			testutil.AnnotatedFatal(t, "error building URL", err)
-		}
 		timeout := 120 * time.Second
 		err = TestHelper.RetryFor(timeout, func() error {
+			url, err := TestHelper.URLFor(ctx, tracingNs, "jaeger", 16686)
+			if err != nil {
+				return err
+			}
+
 			tracesJSON, err := TestHelper.HTTPGetURL(url + "/jaeger/api/traces?lookback=1h&service=nginx")
 			if err != nil {
 				return err
