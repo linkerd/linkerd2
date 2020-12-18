@@ -56,7 +56,10 @@ func newCmdIdentity() *cobra.Command {
 		`,
 		Example: ` 
 		#Get certificate from pod foo-bar in the default namespace.
-		linkerd identity foo-bar
+		linkerd identity pod/foo-bar
+
+		#Get certificates from all pods in emojivoto namespace
+		linkerd identity -n emojivoto
 		
 		#Get certificate from all pods with name=nginx
 		linkerd identity -l name=nginx
@@ -179,10 +182,15 @@ func getContainerCertificate(k8sAPI *k8s.KubernetesAPI, pod corev1.Pod, containe
 }
 
 func getCertResponse(url string, pod corev1.Pod) ([]*x509.Certificate, error) {
-	serverName, rootPEM, err := getServerName(pod, "linkerd-proxy")
+	serverName, err := getServerName(pod, "linkerd-proxy")
 	if err != nil {
 		return nil, err
 	}
+	rootPEM, err := getTrustAnchor(pod, "linkerd-proxy")
+	if err != nil {
+		return nil, err
+	}
+
 	re := regexp.MustCompile("[0-9]+")
 	res := re.FindString(url)
 
@@ -204,15 +212,32 @@ func getCertResponse(url string, pod corev1.Pod) ([]*x509.Certificate, error) {
 	return cert, nil
 }
 
-func getServerName(pod corev1.Pod, containerName string) (string, string, error) {
+func getTrustAnchor(pod corev1.Pod, containerName string) (string, error) {
+	if pod.Status.Phase != corev1.PodRunning {
+		return "", fmt.Errorf("pod not running: %s", pod.GetName())
+	}
+
+	var trustAnchor string
+	for _, c := range pod.Spec.Containers {
+		if c.Name == containerName {
+			for _, env := range c.Env {
+				if env.Name == "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS" {
+					trustAnchor = env.Value
+				}
+			}
+		}
+	}
+	return trustAnchor, nil
+}
+
+func getServerName(pod corev1.Pod, containerName string) (string, error) {
 
 	if pod.Status.Phase != corev1.PodRunning {
-		return "", "", fmt.Errorf("pod not running: %s", pod.GetName())
+		return "", fmt.Errorf("pod not running: %s", pod.GetName())
 	}
 
 	var l5dns string
 	var l5dtrustdomain string
-	var trustAnchor string
 	podsa := pod.Spec.ServiceAccountName
 	podns := pod.ObjectMeta.Namespace
 	for _, c := range pod.Spec.Containers {
@@ -224,16 +249,13 @@ func getServerName(pod corev1.Pod, containerName string) (string, string, error)
 				if env.Name == "_l5d_trustdomain" {
 					l5dtrustdomain = env.Value
 				}
-				if env.Name == "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS" {
-					trustAnchor = env.Value
-				}
 			}
 		}
 	}
 
 	serverName := podsa + "." + podns + ".serviceaccount.identity." + l5dns + "." + l5dtrustdomain
 
-	return serverName, trustAnchor, nil
+	return serverName, nil
 }
 
 func getPods(ctx context.Context, clientset kubernetes.Interface, namespace string, selector string, arg []string) ([]corev1.Pod, error) {
