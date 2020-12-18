@@ -114,7 +114,7 @@ install command. It should be run after "linkerd upgrade config".`,
 }
 
 func newCmdUpgrade() *cobra.Command {
-	values, err := l5dcharts.NewValues(false)
+	values, err := l5dcharts.NewValues()
 	if err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
@@ -283,7 +283,7 @@ func upgrade(ctx context.Context, k *k8s.KubernetesAPI, flags []flag.Flag, stage
 
 func loadStoredValues(ctx context.Context, k *k8s.KubernetesAPI) (*charts.Values, error) {
 	// Load the default values from the chart.
-	values, err := charts.NewValues(false)
+	values, err := charts.NewValues()
 	if err != nil {
 		return nil, err
 	}

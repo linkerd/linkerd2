@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
+	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	logging "github.com/sirupsen/logrus"
@@ -165,18 +166,21 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	}
 	log.Debugf("GetProfile(%+v)", dest)
 
+	path := dest.GetPath()
 	// The host must be fully-qualified or be an IP address.
-	host, port, err := getHostAndPort(dest.GetPath())
+	host, port, err := getHostAndPort(path)
 	if err != nil {
-		log.Debugf("Invalid authority %s", dest.GetPath())
+		log.Debugf("Invalid authority %s", path)
 		return status.Errorf(codes.InvalidArgument, "invalid authority: %s", err)
 	}
 
 	// The stream will subscribe to profile updates for `service`.
 	var service watcher.ServiceID
-	// If `host` is an IP, path must be constructed from the namespace and
+	// `instanceID` is used when subscribing to endpoints of `service`.
+	var instanceID string
+	// If `host` is an IP, `fqn` must be constructed from the namespace and
 	// name of the service that the IP maps to.
-	var path string
+	var fqn string
 
 	if ip := net.ParseIP(host); ip != nil {
 		// Get the service that the IP currently maps to.
@@ -186,14 +190,16 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		}
 		if svcID != nil {
 			service = *svcID
-			path = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
+			fqn = fmt.Sprintf("%s.%s.svc.%s", service.Name, service.Namespace, s.clusterDomain)
 		} else {
 			// If the IP does not map to a service, check if it maps to a pod
 			pod, err := s.ips.GetPod(ip.String())
 			if err != nil {
 				return err
 			}
+
 			var endpoint *pb.WeightedAddr
+			opaquePorts := make(map[uint32]struct{})
 			if pod != nil {
 				// If the IP maps to a pod, we create a single endpoint and
 				// return it in the DestinationProfile response
@@ -203,9 +209,15 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 					Name:      pod.Name,
 				}
 				endpoint, err = toWeightedAddr(podSet.Addresses[podID], s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS)
+				if err != nil {
+					return err
+				}
+
 				// `Get` doesn't include the namespace in the per-endpoint
 				// metadata, so it needs to be special-cased.
 				endpoint.MetricLabels["namespace"] = pod.Namespace
+
+				opaquePorts, err = getOpaquePortsAnnotations(s.k8sAPI, pod)
 				if err != nil {
 					return err
 				}
@@ -214,8 +226,20 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			// When the IP does not map to a service, the default profile is
 			// sent without subscribing for future updates. If the IP mapped
 			// to a pod, then the endpoint will be set in the response.
-			translator := newProfileTranslator(stream, log, nil, "", endpoint)
-			translator.Update(nil)
+			translator := newProfileTranslator(stream, log, "", port, endpoint)
+
+			// If there are opaque ports then update the profile translator
+			// with a service profile that has those values
+			//
+			// TODO: Remove endpoint from profileTranslator and set it here
+			// similar to opaque ports
+			if len(opaquePorts) != 0 {
+				sp := sp.ServiceProfile{}
+				sp.Spec.OpaquePorts = opaquePorts
+				translator.Update(&sp)
+			} else {
+				translator.Update(nil)
+			}
 
 			select {
 			case <-s.shutdown:
@@ -226,22 +250,34 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 			return nil
 		}
 	} else {
-		service, _, err = parseK8sServiceName(host, s.clusterDomain)
+		service, instanceID, err = parseK8sServiceName(host, s.clusterDomain)
 		if err != nil {
-			log.Debugf("Invalid service %s", dest.GetPath())
+			log.Debugf("Invalid service %s", path)
 			return status.Errorf(codes.InvalidArgument, "invalid service: %s", err)
 		}
-		path = dest.GetPath()
+		fqn = host
 	}
 
 	// We build up the pipeline of profile updaters backwards, starting from
 	// the translator which takes profile updates, translates them to protobuf
 	// and pushes them onto the gRPC stream.
-	translator := newProfileTranslator(stream, log, &service, s.clusterDomain, nil)
+	translator := newProfileTranslator(stream, log, fqn, port, nil)
 
-	// The adaptor merges profile updates with traffic split updates and
-	// publishes the result to the translator.
-	tsAdaptor := newTrafficSplitAdaptor(translator, service, port, s.clusterDomain)
+	// The opaque ports adaptor merges traffic split updates with opaque ports
+	// updates and publishes the result to the translator
+	opAdaptor := newOpaquePortsAdaptor(translator, s.k8sAPI, log)
+
+	// Subscribe the adaptor to endpoint updates.
+	// TODO: use a hostname?
+	err = s.endpoints.Subscribe(service, port, instanceID, opAdaptor)
+	if err != nil {
+		log.Warnf("Failed to subscribe to endpoint updates for %s: %s", path, err)
+	}
+	defer s.endpoints.Unsubscribe(service, port, instanceID, opAdaptor)
+
+	// The traffic split adaptor merges profile updates with traffic split
+	// updates and publishes the result to the opaque port adaptor.
+	tsAdaptor := newTrafficSplitAdaptor(opAdaptor, service, port, s.clusterDomain)
 
 	// Subscribe the adaptor to traffic split updates.
 	err = s.trafficSplits.Subscribe(service, tsAdaptor)
@@ -263,7 +299,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 	if dest.GetContextToken() != "" {
 		ctxToken := s.parseContextToken(dest.GetContextToken())
 
-		profile, err := profileID(path, ctxToken, s.clusterDomain)
+		profile, err := profileID(fqn, ctxToken, s.clusterDomain)
 		if err != nil {
 			log.Debugf("Invalid service %s", path)
 			return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)
@@ -277,7 +313,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 		defer s.profiles.Unsubscribe(profile, primary)
 	}
 
-	profile, err := profileID(path, contextToken{}, s.clusterDomain)
+	profile, err := profileID(fqn, contextToken{}, s.clusterDomain)
 	if err != nil {
 		log.Debugf("Invalid service %s", path)
 		return status.Errorf(codes.InvalidArgument, "invalid profile ID: %s", err)

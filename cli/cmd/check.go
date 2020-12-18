@@ -220,7 +220,7 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 }
 
 func renderInstallManifest(ctx context.Context) (string, error) {
-	values, err := charts.NewValues(false)
+	values, err := charts.NewValues()
 	if err != nil {
 		return "", err
 	}

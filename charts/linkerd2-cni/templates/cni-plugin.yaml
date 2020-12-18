@@ -184,6 +184,9 @@ spec:
       annotations:
         {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.cniPluginVersion) .Values.cliVersion}}
     spec:
+      {{- if .Values.tolerations }}
+      {{- include "linkerd.tolerations" . | nindent 6 }}
+      {{- end }}
       nodeSelector:
         beta.kubernetes.io/os: linux
       hostNetwork: true

@@ -28,9 +28,10 @@ type ServiceProfile struct {
 
 // ServiceProfileSpec specifies a ServiceProfile resource.
 type ServiceProfileSpec struct {
-	Routes       []*RouteSpec   `json:"routes"`
-	RetryBudget  *RetryBudget   `json:"retryBudget,omitempty"`
-	DstOverrides []*WeightedDst `json:"dstOverrides,omitempty"`
+	Routes       []*RouteSpec        `json:"routes"`
+	RetryBudget  *RetryBudget        `json:"retryBudget,omitempty"`
+	DstOverrides []*WeightedDst      `json:"dstOverrides,omitempty"`
+	OpaquePorts  map[uint32]struct{} `json:"opaquePorts,omitempty"`
 }
 
 // RouteSpec specifies a Route resource.

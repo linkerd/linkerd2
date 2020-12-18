@@ -275,9 +275,14 @@ func chartPartials(t *testing.T, paths []string) *chart.Chart {
 }
 
 func readTestValues(ha bool, ignoreOutboundPorts string, ignoreInboundPorts string) (*l5dcharts.Values, error) {
-	values, err := l5dcharts.NewValues(ha)
+	values, err := l5dcharts.NewValues()
 	if err != nil {
 		return nil, err
+	}
+	if ha {
+		if err = l5dcharts.MergeHAValues(values); err != nil {
+			return nil, err
+		}
 	}
 	values.GetGlobal().ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
 	values.GetGlobal().ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
