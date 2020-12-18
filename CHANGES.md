@@ -17,6 +17,8 @@ async runtime.
   detection
 * Fixed an issue where `linkerd install --ha` failed to honor flags
 * Fixed an issue where `linkerd upgrade --ha` can override existing configs
+* Added missing label to the `linkerd-config-overrides` secret to avoid breaking
+  upgrades performed with the help of `kubectl apply --prune`
 * Added a missing icon to Jaeger Helm chart
 * Added new `linkerd jaeger check` CLI command to validate that the
   `linkerd-jaeger` extension is working correctly
