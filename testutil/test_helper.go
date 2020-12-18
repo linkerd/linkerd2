@@ -44,6 +44,7 @@ type helm struct {
 	path                    string
 	chart                   string
 	multiclusterChart       string
+	vizChart                string
 	stableChart             string
 	releaseName             string
 	multiclusterReleaseName string
@@ -150,6 +151,7 @@ func NewTestHelper() *TestHelper {
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
 	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd2-multicluster", "path to linkerd2's multicluster Helm chart")
+	vizHelmChart := flag.String("viz-helm-chart", "charts/linkerd-viz", "path to linkerd2's viz extension Helm chart")
 	helmStableChart := flag.String("helm-stable-chart", "linkerd/linkerd2", "path to linkerd2's stable Helm chart")
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
 	multiclusterHelmReleaseName := flag.String("multicluster-helm-release", "", "install linkerd multicluster via Helm using this release name")
@@ -198,6 +200,7 @@ func NewTestHelper() *TestHelper {
 			path:                    *helmPath,
 			chart:                   *helmChart,
 			multiclusterChart:       *multiclusterHelmChart,
+			vizChart:                *vizHelmChart,
 			stableChart:             *helmStableChart,
 			releaseName:             *helmReleaseName,
 			multiclusterReleaseName: *multiclusterHelmReleaseName,
@@ -279,6 +282,11 @@ func (h *TestHelper) GetHelmChart() string {
 // GetMulticlusterHelmChart returns the path to the Linkerd multicluster Helm chart
 func (h *TestHelper) GetMulticlusterHelmChart() string {
 	return h.helm.multiclusterChart
+}
+
+// GetLinkerdVizHelmChart returns the path to the Linkerd viz Helm chart
+func (h *TestHelper) GetLinkerdVizHelmChart() string {
+	return h.helm.vizChart
 }
 
 // GetHelmStableChart returns the path to the Linkerd Helm stable chart

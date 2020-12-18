@@ -440,9 +440,10 @@ run_helm-deep_test() {
   local tests=()
   setup_helm
   helm_multicluster_chart="$( cd "$bindir"/.. && pwd )"/multicluster/charts/linkerd2-multicluster
+  helm_viz_chart="$( cd "$bindir"/.. && pwd )"/viz/charts/linkerd-viz
   run_test "$test_directory/install_test.go" --helm-path="$helm_path" --helm-chart="$helm_chart" \
   --helm-release="$helm_release_name" --multicluster-helm-chart="$helm_multicluster_chart" \
-  --multicluster-helm-release="$helm_multicluster_release_name"
+  --viz-helm-chart="$helm_viz_chart" --multicluster-helm-release="$helm_multicluster_release_name"
   while IFS= read -r line; do tests+=("$line"); done <<< "$(go list "$test_directory"/.../...)"
   for test in "${tests[@]}"; do
     run_test "$test"
