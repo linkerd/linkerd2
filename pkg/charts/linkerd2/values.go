@@ -256,9 +256,8 @@ type (
 )
 
 // NewValues returns a new instance of the Values type.
-func NewValues(ha bool) (*Values, error) {
-	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
-	v, err := readDefaults(chartDir, ha)
+func NewValues() (*Values, error) {
+	v, err := readDefaults(false)
 	if err != nil {
 		return nil, err
 	}
@@ -275,38 +274,34 @@ func NewValues(ha bool) (*Values, error) {
 	return v, nil
 }
 
+// MergeHAValues retrieves the default HA values and merges them into the received values
+func MergeHAValues(values *Values) error {
+	haValues, err := readDefaults(true)
+	if err != nil {
+		return err
+	}
+	*values, err = values.Merge(*haValues)
+	return err
+}
+
 // readDefaults read all the default variables from the values.yaml file.
-// chartDir is the root directory of the Helm chart where values.yaml is.
-func readDefaults(chartDir string, ha bool) (*Values, error) {
-	valuesFiles := []*chartutil.BufferedFile{
-		{Name: chartutil.ValuesfileName},
-	}
-
+func readDefaults(ha bool) (*Values, error) {
+	var valuesFile *chartutil.BufferedFile
 	if ha {
-		valuesFiles = append(valuesFiles, &chartutil.BufferedFile{
-			Name: helmDefaultHAValuesFile,
-		})
+		valuesFile = &chartutil.BufferedFile{Name: helmDefaultHAValuesFile}
+	} else {
+		valuesFile = &chartutil.BufferedFile{Name: chartutil.ValuesfileName}
 	}
 
-	if err := charts.FilesReader(chartDir, valuesFiles); err != nil {
+	chartDir := fmt.Sprintf("%s/", helmDefaultChartDir)
+	if err := charts.ReadFile(chartDir, valuesFile); err != nil {
 		return nil, err
 	}
 
-	values := Values{}
-	for _, valuesFile := range valuesFiles {
-		var v Values
-		if err := yaml.Unmarshal(charts.InsertVersion(valuesFile.Data), &v); err != nil {
-			return nil, err
-		}
+	var values Values
+	err := yaml.Unmarshal(charts.InsertVersion(valuesFile.Data), &values)
 
-		var err error
-		values, err = values.Merge(v)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &values, nil
+	return &values, err
 }
 
 // Merge merges the non-empty properties of src into v.

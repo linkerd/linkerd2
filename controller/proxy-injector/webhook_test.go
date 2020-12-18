@@ -21,7 +21,7 @@ import (
 type unmarshalledPatch []map[string]interface{}
 
 var (
-	values, _ = linkerd2.NewValues(false)
+	values, _ = linkerd2.NewValues()
 )
 
 func confNsEnabled() *inject.ResourceConfig {

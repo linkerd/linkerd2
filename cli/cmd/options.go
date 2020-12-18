@@ -54,12 +54,7 @@ func makeInstallUpgradeFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.Fl
 			func(values *l5dcharts.Values, value bool) error {
 				values.GetGlobal().HighAvailability = value
 				if value {
-					haValues, err := l5dcharts.NewValues(true)
-					if err != nil {
-						return err
-					}
-					*values, err = values.Merge(*haValues)
-					if err != nil {
+					if err := l5dcharts.MergeHAValues(values); err != nil {
 						return err
 					}
 				}

@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewValues(t *testing.T) {
-	actual, err := NewValues(false)
+	actual, err := NewValues()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
 	}
@@ -172,7 +172,7 @@ func TestNewValues(t *testing.T) {
 	}
 
 	t.Run("HA", func(t *testing.T) {
-		actual, err := NewValues(true)
+		err := MergeHAValues(actual)
 
 		if err != nil {
 			t.Fatalf("Unexpected error: %v\n", err)
