@@ -1,6 +1,11 @@
 
 # Changes
 
+## edge-20.12.3
+
+This edge release is functionally the same as `edge-20.12.2`. It fixes an issue
+that prevented the release build from occurring.
+
 ## edge-20.12.2
 
 * Fixed an issue where the `proxy-injector` and `sp-validator` did not refresh

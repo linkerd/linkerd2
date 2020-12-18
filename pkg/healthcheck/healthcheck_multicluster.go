@@ -29,11 +29,11 @@ const (
 	linkerdServiceMirrorRoleName           = "linkerd-service-mirror-read-remote-creds-%s"
 )
 
-func (hc *HealthChecker) multiClusterCategory() []category {
-	return []category{
+func (hc *HealthChecker) multiClusterCategory() []Category {
+	return []Category{
 		{
 			id: LinkerdMulticlusterChecks,
-			checkers: []checker{
+			checkers: []Checker{
 				/* Link checks */
 				{
 					description: "Link CRD exists",
