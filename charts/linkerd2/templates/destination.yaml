@@ -40,6 +40,24 @@ spec:
   - name: grpc
     port: 8086
     targetPort: 8086
+{{- if .Values.enablePodAntiAffinity }}
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1beta1
+metadata:
+  name: linkerd-dst
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: destination
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{.Values.global.controllerComponentLabel}}: destination
+{{- end }}
 ---
 {{- $tree := deepCopy . }}
 {{ $_ := set $tree.Values.global.proxy "workloadKind" "deployment" -}}
