@@ -500,7 +500,7 @@ func TestInstallHelm(t *testing.T) {
 		vizChart := TestHelper.GetLinkerdVizHelmChart()
 		vizArgs := []string{
 			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
-			"--set", "namespace=", TestHelper.GetVizNamespace(),
+			"--set", "namespace=" + TestHelper.GetVizNamespace(),
 			"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
 			"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
 			"--set", "tap.image.tag=" + TestHelper.GetVersion(),
