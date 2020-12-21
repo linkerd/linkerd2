@@ -114,7 +114,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
-		MultiCluster:          false,
 	})
 	hc := newHealthChecker(linkerdHC)
 	category := multiclusterCategory(hc)

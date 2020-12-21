@@ -160,7 +160,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
-		MultiCluster:          false,
 	})
 
 	category, err := jaegerCategory(hc)

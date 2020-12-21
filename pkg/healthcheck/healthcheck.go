@@ -391,7 +391,6 @@ type Options struct {
 	RetryDeadline         time.Time
 	CNIEnabled            bool
 	InstallManifest       string
-	MultiCluster          bool
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
