@@ -1799,5 +1799,7 @@ data:
 kind: Secret
 metadata:
   creationTimestamp: null
+  labels:
+    linkerd.io/control-plane-ns: linkerd
   name: linkerd-config-overrides
   namespace: linkerd
