@@ -123,15 +123,15 @@ code.`,
 		Example: `  # Check that the Jaeger extension is up and running
   linkerd jaeger check`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			// Get jaeger Extension Namespace
-			ns, err := getNamespaceOfExtension(jaegerExtensionName)
+			// Get the Jaeger extension namespace
+			kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+			ns, err := kubeAPI.GetNamespaceWithExtensionLabel(context.Background(), jaegerExtensionName)
 			if err != nil {
+				err = fmt.Errorf("%w; install by running `linkerd jaeger install | kubectl apply -f -`", err)
 				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
 			jaegerNamespace = ns.Name
-
 			return configureAndRunChecks(stdout, stderr, options)
 		},
 	}
@@ -160,7 +160,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 		ImpersonateGroup:      impersonateGroup,
 		APIAddr:               apiAddr,
 		RetryDeadline:         time.Now().Add(options.wait),
-		MultiCluster:          false,
 	})
 
 	category, err := jaegerCategory(hc)
@@ -176,25 +175,6 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 	}
 
 	return nil
-}
-
-func getNamespaceOfExtension(name string) (*corev1.Namespace, error) {
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	namespaces, err := kubeAPI.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{LabelSelector: k8s.LinkerdExtensionLabel})
-	if err != nil {
-		return nil, err
-	}
-
-	for _, ns := range namespaces.Items {
-		if ns.Labels[k8s.LinkerdExtensionLabel] == name {
-			return &ns, err
-		}
-	}
-	return nil, fmt.Errorf("could not find the linkerd-jaeger extension. it can be installed by running `linkerd jaeger install | kubectl apply -f -`")
 }
 
 func checkIfDataPlanePodsExist(pods []corev1.Pod) error {
