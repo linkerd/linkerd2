@@ -692,9 +692,10 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 	var golden string
 	if stage == "proxy" {
 		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=0"}
-		if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
-			golden = "check.multicluster.proxy.golden"
-		} else if TestHelper.CNI() {
+		// if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
+		// golden = "check.multicluster.proxy.golden"
+		// } else if TestHelper.CNI() {
+		if TestHelper.CNI() {
 			golden = "check.cni.proxy.golden"
 		} else {
 			golden = "check.proxy.golden"
@@ -704,9 +705,10 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		golden = "check.config.golden"
 	} else {
 		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=0"}
-		if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
-			golden = "check.multicluster.golden"
-		} else if TestHelper.CNI() {
+		// if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
+		// golden = "check.multicluster.golden"
+		// } else if TestHelper.CNI() {
+		if TestHelper.CNI() {
 			golden = "check.cni.golden"
 		} else {
 			golden = "check.golden"
@@ -941,5 +943,29 @@ func TestRestarts(t *testing.T) {
 				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
 			}
 		}
+	}
+}
+
+func TestCheckMulticluster(t *testing.T) {
+	if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
+		cmd := []string{"multicluster", "check", "--wait=0"}
+		golden := "check.multicluster.golden"
+		timeout := time.Minute
+		err := TestHelper.RetryFor(timeout, func() error {
+			out, err := TestHelper.LinkerdRun(cmd...)
+			if err != nil {
+				return fmt.Errorf("'linkerd multicluster check' command failed\n%s", err)
+			}
+			err = TestHelper.ValidateOutput(out, golden)
+			if err != nil {
+				return fmt.Errorf("received unexpected output\n%s", err.Error())
+			}
+			return nil
+		})
+		if err != nil {
+			testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd multicluster check' command timed-out (%s)", timeout), err)
+		}
+	} else {
+		t.Skip("Skipping for non multicluster test")
 	}
 }
