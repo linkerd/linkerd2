@@ -78,7 +78,6 @@ metadata:
   name: linkerd-{{.Values.namespace}}-web-check
   labels:
     component: web
-    namespace: {{.Values.namespace}}
 roleRef:
   kind: ClusterRole
   name: linkerd-{{.Values.namespace}}-web-check
@@ -94,7 +93,6 @@ metadata:
   name: linkerd-{{.Values.namespace}}-web-admin
   labels:
     component: web
-    namespace: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

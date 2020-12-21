@@ -10,7 +10,6 @@ metadata:
   name: linkerd-{{.Values.namespace}}-prometheus
   labels:
     component: prometheus
-    namespace: {{.Values.namespace}}
 rules:
 - apiGroups: [""]
   resources: ["nodes", "nodes/proxy", "pods"]
@@ -22,7 +21,6 @@ metadata:
   name: linkerd-{{.Values.namespace}}-prometheus
   labels:
     component: prometheus
-    namespace: {{.Values.namespace}}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
