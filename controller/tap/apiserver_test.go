@@ -16,54 +16,6 @@ import (
 	k8sutils "github.com/linkerd/linkerd2/pkg/k8s"
 )
 
-func TestNewAPIServer(t *testing.T) {
-	expectations := []struct {
-		k8sRes []string
-		err    error
-	}{
-		{
-			err: fmt.Errorf("failed to load [%s] config: configmaps %q not found", k8sutils.ExtensionAPIServerAuthenticationConfigMapName, k8sutils.ExtensionAPIServerAuthenticationConfigMapName),
-		},
-		{
-			err: nil,
-			k8sRes: []string{`
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: extension-apiserver-authentication
-  namespace: kube-system
-data:
-  client-ca-file: 'client-ca-file'
-  requestheader-allowed-names: '["name1", "name2"]'
-  requestheader-client-ca-file: 'requestheader-client-ca-file'
-  requestheader-extra-headers-prefix: '["X-Remote-Extra-"]'
-  requestheader-group-headers: '["X-Remote-Group"]'
-  requestheader-username-headers: '["X-Remote-User"]'
-`,
-			},
-		},
-	}
-
-	ctx := context.Background()
-	for i, exp := range expectations {
-		exp := exp // pin
-
-		t.Run(fmt.Sprintf("%d returns a configured API Server", i), func(t *testing.T) {
-			k8sAPI, err := k8s.NewFakeAPI(exp.k8sRes...)
-			if err != nil {
-				t.Fatalf("NewFakeAPI returned an error: %s", err)
-			}
-
-			fakeGrpcServer := newGRPCTapServer(4190, "controller-ns", "cluster.local", k8sAPI)
-
-			_, _, err = NewAPIServer(ctx, "localhost:0", tls.Certificate{}, k8sAPI, fakeGrpcServer, false)
-			if !reflect.DeepEqual(err, exp.err) {
-				t.Errorf("NewAPIServer returned unexpected error: %s, expected: %s", err, exp.err)
-			}
-		})
-	}
-}
-
 func TestAPIServerAuth(t *testing.T) {
 	expectations := []struct {
 		k8sRes         []string
@@ -138,7 +90,7 @@ func TestValidate(t *testing.T) {
 
 	req := http.Request{TLS: &tls}
 
-	server := apiServer{}
+	server := APIServer{}
 	if err := server.validate(&req); err != nil {
 		t.Fatalf("No error expected for %q but encountered %q", cert.Subject.CommonName, err.Error())
 	}
@@ -152,7 +104,7 @@ func TestValidate_ClientAllowed(t *testing.T) {
 
 	req := http.Request{TLS: &tls}
 
-	server := apiServer{allowedNames: []string{"name-trusted"}}
+	server := APIServer{allowedNames: []string{"name-trusted"}}
 	if err := server.validate(&req); err != nil {
 		t.Fatalf("No error expected for %q but encountered %q", cert.Subject.CommonName, err.Error())
 	}
@@ -166,7 +118,7 @@ func TestValidate_ClientAllowedViaSAN(t *testing.T) {
 
 	req := http.Request{TLS: &tls}
 
-	server := apiServer{allowedNames: []string{"linkerd.io"}}
+	server := APIServer{allowedNames: []string{"linkerd.io"}}
 	if err := server.validate(&req); err != nil {
 		t.Fatalf("No error expected for %q but encountered %q", cert.Subject.CommonName, err.Error())
 	}
@@ -180,7 +132,7 @@ func TestValidate_ClientNotAllowed(t *testing.T) {
 
 	req := http.Request{TLS: &tls}
 
-	server := apiServer{allowedNames: []string{"name-trusted"}}
+	server := APIServer{allowedNames: []string{"name-trusted"}}
 	if err := server.validate(&req); err == nil {
 		t.Fatalf("Expected request to be rejected for %q", cert.Subject.CommonName)
 	}

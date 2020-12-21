@@ -93,7 +93,7 @@ func TestUninjectYAML(t *testing.T) {
 		},
 	}
 
-	values, err := charts.NewValues(false)
+	values, err := charts.NewValues()
 	if err != nil {
 		t.Fatal(err)
 	}
