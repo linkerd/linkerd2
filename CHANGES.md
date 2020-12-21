@@ -1,6 +1,43 @@
 
 # Changes
 
+## edge-20.12.4
+
+This edge release adds support for the `config.linkerd.io/opaque-ports`
+annotation on pods and namespaces, to configure ports that should skip the
+proxy's protocol detection. In addition, it adds new CLI commands related to the
+`linkerd-jaeger` extension, fixes bugs in the CLI `install` and `upgrade`
+commands and Helm charts, and fixes a potential false positive in the proxy's
+HTTP protocol detection. Finally, it includes improvements in proxy performance
+and memory usage, including an upgrade for the proxy's dependency on the Tokio
+async runtime.
+
+* Added support for the `config.linkerd.io/opaque-ports` annotation on pods and
+  namespaces, to indicate to the proxy that some ports should skip protocol
+  detection
+* Fixed an issue where `linkerd install --ha` failed to honor flags
+* Fixed an issue where `linkerd upgrade --ha` can override existing configs
+* Added missing label to the `linkerd-config-overrides` secret to avoid breaking
+  upgrades performed with the help of `kubectl apply --prune`
+* Added a missing icon to Jaeger Helm chart
+* Added new `linkerd jaeger check` CLI command to validate that the
+  `linkerd-jaeger` extension is working correctly
+* Added new `linkerd jaeger uninstall` CLI command to print the `linkerd-jaeger`
+  extension's resources so that they can be piped into `kubectl delete`
+* Fixed an issue where the `linkerd-cni` daemgitonset may not be installed on all
+  intended nodes, due to missing tolerations to the `linkerd-cni` Helm chart
+  (thanks @rish-onesignal!)
+* Fixed an issue where the `tap` APIServer would not refresh its certs
+  automatically when provided externally—like through cert-manager
+* Changed the proxy's cache eviction strategy to reduce memory consumption,
+  especially for busy HTTP/1.1 clients
+* Fixed an issue in the proxy's HTTP protocol detection which could cause false
+  positives for non-HTTP traffic
+* Increased the proxy's default dispatch timeout to 5 seconds to accomodate
+  connection pools which might open conenctions without immediately making a
+  request
+* Updated the proxy's Tokio dependency to v0.3
+
 ## edge-20.12.3
 
 This edge release is functionally the same as `edge-20.12.2`. It fixes an issue

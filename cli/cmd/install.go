@@ -211,7 +211,7 @@ control plane. It should be run after "linkerd install config".`,
 }
 
 func newCmdInstall() *cobra.Command {
-	values, err := l5dcharts.NewValues(false)
+	values, err := l5dcharts.NewValues()
 
 	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
 	installOnlyFlags, installOnlyFlagSet := makeInstallFlags(values)
@@ -412,7 +412,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 // resource is not part of the Helm chart and will not be present when installing
 // with Helm.
 func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error) {
-	defaults, err := l5dcharts.NewValues(false)
+	defaults, err := l5dcharts.NewValues()
 	if err != nil {
 		return nil, err
 	}
@@ -433,6 +433,9 @@ func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error)
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "linkerd-config-overrides",
 			Namespace: namespace,
+			Labels: map[string]string{
+				k8s.ControllerNSLabel: controlPlaneNamespace,
+			},
 		},
 		Data: map[string][]byte{
 			"linkerd-config-overrides": overridesBytes,

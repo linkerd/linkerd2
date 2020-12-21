@@ -13,13 +13,12 @@ import (
 	"time"
 
 	jsonfilter "github.com/clarketm/json"
-	"github.com/linkerd/linkerd2-proxy-init/ports"
-	"github.com/linkerd/linkerd2/controller/gen/config"
 	"github.com/linkerd/linkerd2/pkg/charts"
 	"github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
 	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/util"
 	log "github.com/sirupsen/logrus"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -827,39 +826,8 @@ func (conf *ResourceConfig) applyAnnotationOverrides(values *l5dcharts.Values) {
 	}
 
 	if override, ok := annotations[k8s.ProxyOpaquePortsAnnotation]; ok {
-		var portRanges []*config.PortRange
-		split := strings.Split(strings.TrimSuffix(override, ","), ",")
-		portRanges = ToPortRanges(split)
-
-		var str string
-		for _, portRange := range portRanges {
-			pr := portRange.GetPortRange()
-
-			// It is valid for the format of a port name to be the same as a
-			// port range (e.g. `123-456` is a valid name, but also is a valid
-			// range). All port names must be checked before making it a list.
-			named := false
-			for _, c := range conf.pod.spec.Containers {
-				for _, p := range c.Ports {
-					if p.Name == pr {
-						named = true
-						str += strconv.Itoa(int(p.ContainerPort)) + ","
-					}
-				}
-			}
-
-			if !named {
-				pr, err := ports.ParsePortRange(pr)
-				if err != nil {
-					log.Warnf("Invalid port range [%v]: %s", pr, err)
-					continue
-				}
-				for i := pr.LowerBound; i <= pr.UpperBound; i++ {
-					str += strconv.Itoa(i) + ","
-				}
-			}
-		}
-		values.GetGlobal().Proxy.OpaquePorts = strings.TrimSuffix(str, ",")
+		opaquePortsStrs := util.ParseOpaquePorts(override, conf.pod.spec.Containers)
+		values.GetGlobal().Proxy.OpaquePorts = strings.Join(opaquePortsStrs, ",")
 	}
 
 	if override, ok := annotations[k8s.DebugImageAnnotation]; ok {
@@ -934,15 +902,6 @@ func (conf *ResourceConfig) InjectNamespace(annotations map[string]string) ([]by
 //present in workload objects would make it into the marshaled JSON.
 func getFilteredJSON(conf runtime.Object) ([]byte, error) {
 	return jsonfilter.Marshal(&conf)
-}
-
-// ToPortRanges converts a slice of strings into a slice of PortRanges.
-func ToPortRanges(portRanges []string) []*config.PortRange {
-	ports := make([]*config.PortRange, len(portRanges))
-	for i, p := range portRanges {
-		ports[i] = &config.PortRange{PortRange: p}
-	}
-	return ports
 }
 
 // ToWholeCPUCores coerces a k8s resource value to a whole integer value, rounding up.

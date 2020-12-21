@@ -9,4 +9,4 @@ dependencies:
   repository: file://../add-ons/grafana
   version: 0.1.0
 digest: sha256:2bbca4bf61028194ae6ee86763f21fa2488c9d141e3529bae642fa72b45fb34c
-generated: "2020-12-18T20:08:55.006715731Z"
+generated: "2020-12-18T23:27:44.921336524Z"
