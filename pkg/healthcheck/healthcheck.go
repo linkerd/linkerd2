@@ -1900,6 +1900,27 @@ func CheckServiceAccounts(ctx context.Context, api *k8s.KubernetesAPI, saNames [
 	return checkResources("ServiceAccounts", objects, saNames, true)
 }
 
+// CheckIfLinkerdExists checks if Linkerd exists
+func CheckIfLinkerdExists(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) (bool, error) {
+	_, err := kubeAPI.CoreV1().Namespaces().Get(ctx, controlPlaneNamespace, metav1.GetOptions{})
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	_, _, err = FetchCurrentConfiguration(ctx, kubeAPI, controlPlaneNamespace)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (hc *HealthChecker) checkCustomResourceDefinitions(ctx context.Context, shouldExist bool) error {
 	options := metav1.ListOptions{
 		LabelSelector: hc.controlPlaneComponentsSelector(),

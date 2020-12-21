@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -19,12 +18,10 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/engine"
-	kerrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
-	templaesVIz = []string{
+	templatesVIz = []string{
 		"templates/namespace.yaml",
 		"templates/grafana-rbac.yaml",
 		"templates/prometheus-rbac.yaml",
@@ -52,7 +49,12 @@ func newCmdInstall() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
 				// Ensure there is a Linkerd installation.
-				exists, err := checkIfLinkerdExists(cmd.Context())
+				kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+				if err != nil {
+					return err
+				}
+
+				exists, err := healthcheck.CheckIfLinkerdExists(cmd.Context(), kubeAPI, controlPlaneNamespace)
 				if err != nil {
 					return fmt.Errorf("could not check for Linkerd existence: %s", err)
 				}
@@ -96,7 +98,7 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 		{Name: chartutil.ValuesfileName},
 	}
 
-	for _, template := range templaesVIz {
+	for _, template := range templatesVIz {
 		files = append(files,
 			&loader.BufferedFile{Name: template},
 		)
@@ -152,29 +154,4 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 
 	_, err = w.Write(buf.Bytes())
 	return err
-}
-
-func checkIfLinkerdExists(ctx context.Context) (bool, error) {
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-	if err != nil {
-		return false, err
-	}
-
-	_, err = kubeAPI.CoreV1().Namespaces().Get(ctx, controlPlaneNamespace, metav1.GetOptions{})
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			return false, nil
-		}
-		return false, err
-	}
-
-	_, _, err = healthcheck.FetchCurrentConfiguration(ctx, kubeAPI, controlPlaneNamespace)
-	if err != nil {
-		if kerrors.IsNotFound(err) {
-			return false, nil
-		}
-		return false, err
-	}
-
-	return true, nil
 }
