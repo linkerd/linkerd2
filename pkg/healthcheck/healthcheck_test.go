@@ -1680,6 +1680,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
+			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
 		}
 
 		err := validateControlPlanePods(pods)
@@ -1696,6 +1697,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27983", corev1.PodRunning, false),
 			pod("linkerd-identity-6849948664-27984", corev1.PodFailed, false),
+			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 		}
 
@@ -1709,6 +1711,7 @@ func TestValidateControlPlanePods(t *testing.T) {
 		pods := []corev1.Pod{
 			pod("linkerd-controller-6f78cbd47-bc557", corev1.PodRunning, true),
 			pod("linkerd-identity-6849948664-27982", corev1.PodRunning, true),
+			pod("linkerd-proxy-injector-5f79ff4844-", corev1.PodRunning, true),
 			pod("linkerd-sp-validator-24d2879ce6-cddk9", corev1.PodRunning, true),
 			pod("hello-43c25d", corev1.PodRunning, true),
 		}
