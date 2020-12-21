@@ -95,7 +95,7 @@ Kubernetes: `>=1.13.0-0`
 | identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity  |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
-| namespace | string | `"linkerd-viz"` | Namespace in which the Linkerd jaeger extension has to be installed |
+| namespace | string | `"linkerd-viz"` | Namespace in which the Linkerd Viz extension has to be installed |
 | nodeSelector | object | `{"beta.kubernetes.io/os":"linux"}` | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information |
 | prometheus.alertManagers | string | `nil` | Alertmanager instances the Prometheus server sends alerts to configured via the static_configs parameter. |
 | prometheus.alertRelabelConfigs | string | `nil` | Alert relabeling is applied to alerts before they are sent to the Alertmanager. |

@@ -48,7 +48,7 @@ func newCmdInstall() *cobra.Command {
 		Short: "Output Kubernetes resources to install linkerd-viz extension",
 		Long:  `Output Kubernetes resources to install linkerd-viz extension.`,
 		Example: `  # Default install.
-  linkerd jaeger install | kubectl apply -f -`,
+  linkerd viz install | kubectl apply -f -`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
 				// Ensure there is a Linkerd installation.
@@ -109,7 +109,7 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 		)
 	}
 
-	// Load all jaeger chart files into buffer
+	// Load all Viz chart files into buffer
 	if err := charts.FilesReader(static.Templates, "linkerd-viz/", files); err != nil {
 		return err
 	}

@@ -26,7 +26,7 @@ globalUID: &uid 2103
 createdByAnnotation: linkerd.io/created-by
 proxyInjectAnnotation: linkerd.io/inject
 
-# -- Namespace in which the Linkerd jaeger extension has to be installed
+# -- Namespace in which the Linkerd Viz extension has to be installed
 namespace: linkerd-viz
 
 # -- NodeSelector section, See the [K8S

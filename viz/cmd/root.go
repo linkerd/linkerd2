@@ -30,7 +30,7 @@ var (
 
 // NewCmdViz returns a new jeager command
 func NewCmdViz() *cobra.Command {
-	jaegerCmd := &cobra.Command{
+	vizCmd := &cobra.Command{
 		Use:   "viz",
 		Short: "viz manages the linkerd-viz extension of Linkerd service mesh",
 		Long:  `viz manages the linkerd-viz extension of Linkerd service mesh.`,
@@ -50,15 +50,15 @@ func NewCmdViz() *cobra.Command {
 		},
 	}
 
-	jaegerCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed")
-	jaegerCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", defaultVizNamespace, "Namespace in which Jaeger extension is installed")
-	jaegerCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
-	jaegerCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
-	jaegerCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")
-	jaegerCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
-	jaegerCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
-	jaegerCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
-	jaegerCmd.AddCommand(newCmdInstall())
+	vizCmd.PersistentFlags().StringVarP(&controlPlaneNamespace, "linkerd-namespace", "L", defaultLinkerdNamespace, "Namespace in which Linkerd is installed")
+	vizCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", defaultVizNamespace, "Namespace in which viz extension is installed")
+	vizCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "Path to the kubeconfig file to use for CLI requests")
+	vizCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "Name of the kubeconfig context to use")
+	vizCmd.PersistentFlags().StringVar(&impersonate, "as", "", "Username to impersonate for Kubernetes operations")
+	vizCmd.PersistentFlags().StringArrayVar(&impersonateGroup, "as-group", []string{}, "Group to impersonate for Kubernetes operations")
+	vizCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
+	vizCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
+	vizCmd.AddCommand(newCmdInstall())
 
-	return jaegerCmd
+	return vizCmd
 }
