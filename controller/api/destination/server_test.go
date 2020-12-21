@@ -84,7 +84,13 @@ metadata:
   namespace: ns
 status:
   phase: Running
-  podIP: 172.17.0.12`,
+  podIP: 172.17.0.12
+spec:
+  containers:
+    - env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+      name: linkerd-proxy`,
 		`
 apiVersion: v1
 kind: Pod
@@ -476,6 +482,9 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.ProtocolHint == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
+		if first.Endpoint.ProtocolHint.GetOpaqueTransport().InboundPort != 4143 {
+			t.Fatalf("Expected pod to support opaque traffic on port 4143")
+		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
@@ -613,8 +622,8 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.ProtocolHint == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
-		if !first.OpaqueProtocol {
-			t.Fatalf("Expected protocol to be opaque but it was not")
+		if first.Endpoint.ProtocolHint.GetOpaqueTransport().InboundPort != 4143 {
+			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, first.Endpoint.Addr.Port)
