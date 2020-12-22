@@ -22,9 +22,10 @@ globalLogLevel: &log_level info
 # -- UID for all the viz components
 globalUID: &uid 2103
 
-# -- Annotation label for the proxy. Do not edit.
+# -- Annotation labels. Do not edit.
 createdByAnnotation: linkerd.io/created-by
 proxyInjectAnnotation: linkerd.io/inject
+extensionAnnotation: linkerd.io/extension
 
 # -- Namespace in which the Linkerd Viz extension has to be installed
 namespace: linkerd-viz
