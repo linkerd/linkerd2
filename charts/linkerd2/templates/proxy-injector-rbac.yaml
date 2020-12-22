@@ -52,7 +52,9 @@ metadata:
   labels:
     {{.Values.global.controllerComponentLabel}}: proxy-injector
     {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
-{{- include "partials.image-pull-secrets" . }}
+{{- if .Values.global.imagePullSecrets}}
+{{- include "partials.image-pull-secrets" .Values.global.imagePullSecrets }}
+{{- end}}
 ---
 {{- $host := printf "linkerd-proxy-injector.%s.svc" .Values.global.namespace }}
 {{- $ca := genSelfSignedCert $host (list) (list $host) 365 }}

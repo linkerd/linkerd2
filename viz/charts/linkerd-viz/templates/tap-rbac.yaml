@@ -74,6 +74,9 @@ metadata:
     {{.Values.extensionAnnotation}}: linkerd-viz
     component: tap
     namespace: {{.Values.namespace}}
+{{- if .Values.imagePullSecrets}}
+{{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
+{{- end}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

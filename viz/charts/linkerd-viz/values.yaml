@@ -36,6 +36,11 @@ namespace: linkerd-viz
 nodeSelector:
   beta.kubernetes.io/os: linux
 
+# -- For Private docker registries, authentication is needed.
+#  Registry secrets are applied to the respective service accounts
+imagePullSecrets: []
+# - name: my-private-docker-registry-login-secret
+
 # -|- Tolerations section, See the 
 # [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 # for more information

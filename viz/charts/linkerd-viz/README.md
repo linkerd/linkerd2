@@ -94,6 +94,7 @@ Kubernetes: `>=1.13.0-0`
 | grafana.resources.memory.limit | string | `nil` | Maximum amount of memory that grafana container can use |
 | grafana.resources.memory.request | string | `nil` | Amount of memory that the grafana container requests |
 | identityTrustDomain | string | `"cluster.local"` | Trust domain used for identity  |
+| imagePullSecrets | list | `[]` | For Private docker registries, authentication is needed.  Registry secrets are applied to the respective service accounts |
 | linkerdNamespace | string | `"linkerd"` | Namespace of the Linkerd core control-plane install |
 | linkerdVersion | string | `"linkerdVersionValue"` | control plane version. See Proxy section for proxy version |
 | namespace | string | `"linkerd-viz"` | Namespace in which the Linkerd Viz extension has to be installed |
