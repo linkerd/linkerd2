@@ -463,6 +463,8 @@ github.com/linkerd/linkerd2-proxy-api v0.1.15 h1:hy/36GwG+BnKxxh3BAnC5cfUsH/ZAxu
 github.com/linkerd/linkerd2-proxy-api v0.1.15/go.mod h1:yFz+DCCEomC3vpsChFzfCuOuSJtzx7jMNNHBIlbFil0=
 github.com/linkerd/linkerd2-proxy-api v0.1.16-0.20201221204305-2913e990c702 h1:CweHoGEw9PC1uz7GaHH+N276QDcW+Svk9taapkvGqX4=
 github.com/linkerd/linkerd2-proxy-api v0.1.16-0.20201221204305-2913e990c702/go.mod h1:yFz+DCCEomC3vpsChFzfCuOuSJtzx7jMNNHBIlbFil0=
+github.com/linkerd/linkerd2-proxy-api v0.1.16 h1:Qjqbw5Bw3QYUJpUSpYHr4nkJqBRnTlsFUwncCtCdOEs=
+github.com/linkerd/linkerd2-proxy-api v0.1.16/go.mod h1:yFz+DCCEomC3vpsChFzfCuOuSJtzx7jMNNHBIlbFil0=
 github.com/linkerd/linkerd2-proxy-init v1.3.7 h1:S/xBSHArQyd+hPrnkcAr+eOf+SGOoCmxr27n40fI+fo=
 github.com/linkerd/linkerd2-proxy-init v1.3.7/go.mod h1:M6iaaLLi06ofuIV6x74SDknSFi7VS/MFqa5m+CwHgLY=
 github.com/linkerd/linkerd2-proxy-init v1.3.8 h1:fo/LbrIS3FHssAPLkVXi5h8K/3mWP7ncVwOU2oI6Dm8=
