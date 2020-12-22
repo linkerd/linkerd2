@@ -41,7 +41,5 @@ metadata:
     {{.Values.extensionAnnotation}}: linkerd-viz
     component: prometheus
     namespace: {{.Values.namespace}}
-{{- if .Values.imagePullSecrets}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
-{{- end}}
 {{ end -}}

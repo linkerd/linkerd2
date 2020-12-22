@@ -117,6 +117,4 @@ metadata:
     {{.Values.extensionAnnotation}}: linkerd-viz
     component: web
     namespace: {{.Values.namespace}}
-{{- if .Values.imagePullSecrets}}
 {{- include "partials.image-pull-secrets" .Values.imagePullSecrets }}
-{{- end}}
