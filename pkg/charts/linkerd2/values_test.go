@@ -39,7 +39,6 @@ func TestNewValues(t *testing.T) {
 		DisableHeartBeat:            false,
 		HeartbeatSchedule:           "0 0 * * *",
 		InstallNamespace:            true,
-		LinkerdVizNamespace:         "linkerd-viz",
 		Global: &Global{
 			Namespace:                    "linkerd",
 			ClusterDomain:                "cluster.local",

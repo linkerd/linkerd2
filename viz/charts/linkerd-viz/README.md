@@ -72,7 +72,7 @@ Kubernetes: `>=1.13.0-0`
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | clusterDomain | string | `"cluster.local"` | Kubernetes DNS Domain name to use   |
-| createdByAnnotation | string | `"linkerd.io/created-by"` | Annotation label for the proxy. Do not edit. |
+| createdByAnnotation | string | `"linkerd.io/created-by"` |  |
 | dashboard.UID | int | `2103` |  |
 | dashboard.enforcedHostRegexp | string | `""` | Host header validation regex for the dashboard. See the [Linkerd documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more information |
 | dashboard.image.name | string | `"ghcr.io/linkerd/web"` | Docker image name for the web instance |
@@ -83,6 +83,7 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.resources.cpu.request | string | `nil` | Amount of CPU units that the web container requests |
 | dashboard.resources.memory.limit | string | `nil` | Maximum amount of memory that web container can use |
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
+| extensionAnnotation | string | `"linkerd.io/extension"` |  |
 | globalLogLevel | string | `"info"` | Log level for all the viz components |
 | globalUID | int | `2103` | UID for all the viz components |
 | grafana.enabled | bool | `true` | toggle field to enable or disable grafana |

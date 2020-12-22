@@ -49,7 +49,7 @@ spec:
             {{- if .Values.global.prometheusUrl }}
             - "-prometheus-url={{.Values.global.prometheusUrl}}"
             {{- else }}
-            - "-prometheus-url=http://linkerd-prometheus.{{.Values.linkerdVizNamespace}}.svc.{{.Values.global.clusterDomain}}:9090"
+            - "-prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.{{.Values.global.clusterDomain}}:9090"
             {{- end }}
             {{- if .Values.heartbeatResources -}}
             {{- include "partials.resources" .Values.heartbeatResources | nindent 12 }}

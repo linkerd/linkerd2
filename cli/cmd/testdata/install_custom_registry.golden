@@ -684,7 +684,6 @@ data:
     identityProxyResources: null
     identityResources: null
     installNamespace: true
-    linkerdVizNamespace: linkerd-viz
     nodeSelector:
       beta.kubernetes.io/os: linux
     omitWebhookSideEffects: false

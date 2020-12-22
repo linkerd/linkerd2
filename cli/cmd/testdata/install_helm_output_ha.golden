@@ -700,7 +700,6 @@ data:
         limit: 250Mi
         request: 10Mi
     installNamespace: true
-    linkerdVizNamespace: linkerd-viz
     nodeSelector:
       beta.kubernetes.io/os: linux
     omitWebhookSideEffects: false
