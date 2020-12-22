@@ -229,13 +229,6 @@ func makeAllStageFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet)
 				return nil
 			}),
 
-		flag.NewBoolFlag(allStageFlags, "restrict-dashboard-privileges", defaults.RestrictDashboardPrivileges,
-			"Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check",
-			func(values *l5dcharts.Values, value bool) error {
-				values.RestrictDashboardPrivileges = value
-				return nil
-			}),
-
 		flag.NewStringFlag(allStageFlags, "config", "",
 			"A path to a yaml configuration file. The fields in this file will override the values used to install or upgrade Linkerd.",
 			func(values *l5dcharts.Values, value string) error {

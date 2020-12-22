@@ -23,26 +23,25 @@ const (
 type (
 	// Values contains the top-level elements in the Helm charts
 	Values struct {
-		ControllerImage             string            `json:"controllerImage"`
-		ControllerReplicas          uint              `json:"controllerReplicas"`
-		ControllerUID               int64             `json:"controllerUID"`
-		EnableH2Upgrade             bool              `json:"enableH2Upgrade"`
-		EnablePodAntiAffinity       bool              `json:"enablePodAntiAffinity"`
-		WebhookFailurePolicy        string            `json:"webhookFailurePolicy"`
-		OmitWebhookSideEffects      bool              `json:"omitWebhookSideEffects"`
-		RestrictDashboardPrivileges bool              `json:"restrictDashboardPrivileges"`
-		DisableHeartBeat            bool              `json:"disableHeartBeat"`
-		HeartbeatSchedule           string            `json:"heartbeatSchedule"`
-		InstallNamespace            bool              `json:"installNamespace"`
-		Configs                     ConfigJSONs       `json:"configs"`
-		Global                      *Global           `json:"global"`
-		Identity                    *Identity         `json:"identity"`
-		DebugContainer              *DebugContainer   `json:"debugContainer"`
-		ProxyInjector               *ProxyInjector    `json:"proxyInjector"`
-		ProfileValidator            *ProfileValidator `json:"profileValidator"`
-		NodeSelector                map[string]string `json:"nodeSelector"`
-		Tolerations                 []interface{}     `json:"tolerations"`
-		Stage                       string            `json:"stage"`
+		ControllerImage        string            `json:"controllerImage"`
+		ControllerReplicas     uint              `json:"controllerReplicas"`
+		ControllerUID          int64             `json:"controllerUID"`
+		EnableH2Upgrade        bool              `json:"enableH2Upgrade"`
+		EnablePodAntiAffinity  bool              `json:"enablePodAntiAffinity"`
+		WebhookFailurePolicy   string            `json:"webhookFailurePolicy"`
+		OmitWebhookSideEffects bool              `json:"omitWebhookSideEffects"`
+		DisableHeartBeat       bool              `json:"disableHeartBeat"`
+		HeartbeatSchedule      string            `json:"heartbeatSchedule"`
+		InstallNamespace       bool              `json:"installNamespace"`
+		Configs                ConfigJSONs       `json:"configs"`
+		Global                 *Global           `json:"global"`
+		Identity               *Identity         `json:"identity"`
+		DebugContainer         *DebugContainer   `json:"debugContainer"`
+		ProxyInjector          *ProxyInjector    `json:"proxyInjector"`
+		ProfileValidator       *ProfileValidator `json:"profileValidator"`
+		NodeSelector           map[string]string `json:"nodeSelector"`
+		Tolerations            []interface{}     `json:"tolerations"`
+		Stage                  string            `json:"stage"`
 
 		DestinationResources   *Resources `json:"destinationResources"`
 		HeartbeatResources     *Resources `json:"heartbeatResources"`

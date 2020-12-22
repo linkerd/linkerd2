@@ -741,7 +741,6 @@ data:
       memory:
         limit: 250Mi
         request: 50Mi
-    restrictDashboardPrivileges: false
     spValidatorProxyResources: null
     spValidatorResources:
       cpu:

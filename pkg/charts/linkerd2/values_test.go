@@ -28,17 +28,16 @@ func TestNewValues(t *testing.T) {
 	}
 
 	expected := &Values{
-		ControllerImage:             "ghcr.io/linkerd/controller",
-		ControllerReplicas:          1,
-		ControllerUID:               2103,
-		EnableH2Upgrade:             true,
-		EnablePodAntiAffinity:       false,
-		WebhookFailurePolicy:        "Ignore",
-		OmitWebhookSideEffects:      false,
-		RestrictDashboardPrivileges: false,
-		DisableHeartBeat:            false,
-		HeartbeatSchedule:           "0 0 * * *",
-		InstallNamespace:            true,
+		ControllerImage:        "ghcr.io/linkerd/controller",
+		ControllerReplicas:     1,
+		ControllerUID:          2103,
+		EnableH2Upgrade:        true,
+		EnablePodAntiAffinity:  false,
+		WebhookFailurePolicy:   "Ignore",
+		OmitWebhookSideEffects: false,
+		DisableHeartBeat:       false,
+		HeartbeatSchedule:      "0 0 * * *",
+		InstallNamespace:       true,
 		Global: &Global{
 			Namespace:                    "linkerd",
 			ClusterDomain:                "cluster.local",

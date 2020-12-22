@@ -109,6 +109,9 @@ dashboard:
   # UID for the dashboard resource
   UID: *uid
 
+  # -- Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check
+  restrictPrivileges: false
+
   # -- Host header validation regex for the dashboard. See the [Linkerd
   # documentation](https://linkerd.io/2/tasks/exposing-dashboard) for more
   # information

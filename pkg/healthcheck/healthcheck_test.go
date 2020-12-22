@@ -2322,7 +2322,6 @@ data:
     proxyInjectorResources: null
     publicAPIProxyResources: null
     publicAPIResources: null
-    restrictDashboardPrivileges: false
     spValidatorProxyResources: null
     spValidatorResources: null
     stage: ""
@@ -2331,15 +2330,14 @@ data:
 `,
 			},
 			&linkerd2.Values{
-				ControllerImage:             "ControllerImage",
-				ControllerUID:               2103,
-				EnableH2Upgrade:             true,
-				WebhookFailurePolicy:        "WebhookFailurePolicy",
-				OmitWebhookSideEffects:      false,
-				RestrictDashboardPrivileges: false,
-				InstallNamespace:            true,
-				NodeSelector:                defaultValues.NodeSelector,
-				Tolerations:                 defaultValues.Tolerations,
+				ControllerImage:        "ControllerImage",
+				ControllerUID:          2103,
+				EnableH2Upgrade:        true,
+				WebhookFailurePolicy:   "WebhookFailurePolicy",
+				OmitWebhookSideEffects: false,
+				InstallNamespace:       true,
+				NodeSelector:           defaultValues.NodeSelector,
+				Tolerations:            defaultValues.Tolerations,
 				Global: &linkerd2.Global{
 					Namespace:                "Namespace",
 					ClusterDomain:            "cluster.local",

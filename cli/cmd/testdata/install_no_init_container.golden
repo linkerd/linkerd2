@@ -708,7 +708,6 @@ data:
     proxyInjectorResources: null
     publicAPIProxyResources: null
     publicAPIResources: null
-    restrictDashboardPrivileges: false
     spValidatorProxyResources: null
     spValidatorResources: null
     tolerations: null

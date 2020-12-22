@@ -83,6 +83,7 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.resources.cpu.request | string | `nil` | Amount of CPU units that the web container requests |
 | dashboard.resources.memory.limit | string | `nil` | Maximum amount of memory that web container can use |
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
+| dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
 | extensionAnnotation | string | `"linkerd.io/extension"` |  |
 | globalLogLevel | string | `"info"` | Log level for all the viz components |
 | globalUID | int | `2103` | UID for all the viz components |
