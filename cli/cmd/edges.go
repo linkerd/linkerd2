@@ -64,7 +64,7 @@ func newCmdEdges() *cobra.Command {
   * replicasets
   * replicationcontrollers
   * statefulsets`,
-		Example: `  # Get all edges between pods that either originate from or terminate in the demo namespace.
+		Example: `  # Get all edges between pods that either originate from or terminate in the test namespace.
   linkerd edges po -n test
 
   # Get all edges between pods that either originate from or terminate in the default namespace.
