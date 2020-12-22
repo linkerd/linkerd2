@@ -33,26 +33,8 @@ identityResources:
     limit: 250Mi
     request: 10Mi
 
-# grafana configuration
-grafana:
-  resources:
-    cpu: *controller_resources_cpu
-    memory:
-      limit: 1024Mi
-      request: 50Mi
-
 # heartbeat configuration
 heartbeatResources: *controller_resources
-
-# prometheus configuration
-prometheus:
-  resources:
-    cpu:
-      limit: ""
-      request: 300m
-    memory:
-      limit: 8192Mi
-      request: 300Mi
 
 # proxy injector configuration
 proxyInjectorResources: *controller_resources
@@ -60,9 +42,3 @@ webhookFailurePolicy: Fail
 
 # service profile validator configuration
 spValidatorResources: *controller_resources
-
-# tap configuration
-tapResources: *controller_resources
-
-# web configuration
-webResources: *controller_resources
