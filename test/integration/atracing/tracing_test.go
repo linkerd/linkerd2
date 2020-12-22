@@ -154,6 +154,12 @@ func TestTracing(t *testing.T) {
 		}
 	}
 
+	fmt.Println("JAEGER LOGS BEFORE:")
+	out, err := TestHelper.Kubectl("", "logs", "-n", tracingNs, "deploy/jaeger", "jaeger")
+	if err != nil {
+		testutil.AnnotatedError(t, "error fetching logs", err)
+	}
+
 	t.Run("expect full trace", func(t *testing.T) {
 
 		timeout := 120 * time.Second
@@ -184,6 +190,12 @@ func TestTracing(t *testing.T) {
 			testutil.AnnotatedFatal(t, fmt.Sprintf("timed-out checking trace (%s)", timeout), err)
 		}
 	})
+
+	fmt.Println("JAEGER LOGS AFTER:")
+	out, err := TestHelper.Kubectl("", "logs", "-n", tracingNs, "deploy/jaeger", "jaeger")
+	if err != nil {
+		testutil.AnnotatedError(t, "error fetching logs", err)
+	}
 }
 
 func hasTraceWithProcesses(traces *traces, ps []string) bool {
