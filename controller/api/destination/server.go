@@ -208,7 +208,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 					Namespace: pod.Namespace,
 					Name:      pod.Name,
 				}
-				endpoint, err = toWeightedAddr(podSet.Addresses[podID], s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS)
+				endpoint, err = toWeightedAddr(podSet.Addresses[podID], s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
 				if err != nil {
 					return err
 				}

@@ -3,6 +3,8 @@ package destination
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
@@ -15,7 +17,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const defaultWeight uint32 = 10000
+const (
+	defaultWeight uint32 = 10000
+	// inboundListenAddr is the environment variable holding the inbound
+	// listening address for the proxy container.
+	envInboundListenAddr = "LINKERD2_PROXY_INBOUND_LISTEN_ADDR"
+)
 
 // endpointTranslator satisfies EndpointUpdateListener and translates updates
 // into Destination.Get messages.
@@ -209,7 +216,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			wa, err = toWeightedAddr(address, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS)
+			wa, err = toWeightedAddr(address, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -299,18 +306,43 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toWeightedAddr(address watcher.Address, enableH2Upgrade bool, identityTrustDomain string, controllerNS string) (*pb.WeightedAddr, error) {
+func toWeightedAddr(address watcher.Address, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
 	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
 	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
 	labels := k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 
-	// If the pod is controlled by any Linkerd control plane, then it can be hinted
-	// that this destination knows H2 (and handles our orig-proto translation).
+	// If the pod is controlled by any Linkerd control plane, then it can be
+	// hinted that this destination knows H2 (and handles our orig-proto
+	// translation) and supports receiving opaque traffic.
 	var hint *pb.ProtocolHint
 	if enableH2Upgrade && controllerNSLabel != "" {
+		// Get the inbound port from the proxy container's environment
+		// variable so that it can be set in the protocol hint.
+		var inboundPort uint32
+	loop:
+		for _, containerSpec := range address.Pod.Spec.Containers {
+			if containerSpec.Name != k8s.ProxyContainerName {
+				continue
+			}
+			for _, envVar := range containerSpec.Env {
+				if envVar.Name != envInboundListenAddr {
+					continue
+				}
+				addr := strings.Split(envVar.Value, ":")
+				port, err := strconv.ParseUint(addr[1], 10, 32)
+				if err != nil {
+					log.Errorf("failed to parse inbound port for proxy container: %s", err)
+				}
+				inboundPort = uint32(port)
+				break loop
+			}
+		}
 		hint = &pb.ProtocolHint{
 			Protocol: &pb.ProtocolHint_H2_{
 				H2: &pb.ProtocolHint_H2{},
+			},
+			OpaqueTransport: &pb.ProtocolHint_OpaqueTransport{
+				InboundPort: inboundPort,
 			},
 		}
 	}
