@@ -319,6 +319,7 @@ func toWeightedAddr(address watcher.Address, enableH2Upgrade bool, identityTrust
 		// Get the inbound port from the proxy container's environment
 		// variable so that it can be set in the protocol hint.
 		var inboundPort uint32
+	loop:
 		for _, containerSpec := range address.Pod.Spec.Containers {
 			if containerSpec.Name != k8s.ProxyContainerName {
 				continue
@@ -333,6 +334,7 @@ func toWeightedAddr(address watcher.Address, enableH2Upgrade bool, identityTrust
 					log.Errorf("failed to parse inbound port for proxy container: %s", err)
 				}
 				inboundPort = uint32(port)
+				break loop
 			}
 		}
 		hint = &pb.ProtocolHint{
