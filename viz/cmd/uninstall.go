@@ -35,7 +35,7 @@ func uninstallRunE(ctx context.Context) error {
 	}
 
 	resources, err := resource.FetchKubernetesResources(ctx, k8sAPI,
-		metav1.ListOptions{LabelSelector: "linkerd.io/extension=linkerd-viz"},
+		metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", k8s.LinkerdExtensionLabel, "linkerd-viz")},
 	)
 	if err != nil {
 		return err
