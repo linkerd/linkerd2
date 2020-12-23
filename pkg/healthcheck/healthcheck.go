@@ -35,7 +35,6 @@ import (
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
-	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -152,13 +151,6 @@ const (
 	linkerdCNIResourceName       = "linkerd-cni"
 	linkerdCNIConfigMapName      = "linkerd-cni-config"
 
-	// linkerdTapAPIServiceName is the name of the tap api service
-	// This key is passed to checkApiService method to check whether
-	// the api service is available or not
-	linkerdTapAPIServiceName = "v1alpha1.tap.linkerd.io"
-
-	tapOldTLSSecretName           = "linkerd-tap-tls"
-	tapTLSSecretName              = "linkerd-tap-k8s-tls"
 	proxyInjectorOldTLSSecretName = "linkerd-proxy-injector-tls"
 	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
 	spValidatorOldTLSSecretName   = "linkerd-sp-validator-tls"
@@ -188,7 +180,6 @@ var linkerdHAControlPlaneComponents = []string{
 	"linkerd-identity",
 	"linkerd-proxy-injector",
 	"linkerd-sp-validator",
-	"linkerd-tap",
 }
 
 // ExpectedServiceAccountNames is a list of the service accounts that a healthy
@@ -200,8 +191,6 @@ var ExpectedServiceAccountNames = []string{
 	"linkerd-identity",
 	"linkerd-proxy-injector",
 	"linkerd-sp-validator",
-	"linkerd-web",
-	"linkerd-tap",
 }
 
 var (
@@ -419,7 +408,7 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 		Options: options,
 	}
 
-	hc.categories = append(hc.allCategories(), hc.addOnCategories()...)
+	hc.categories = hc.allCategories()
 
 	checkMap := map[CategoryID]struct{}{}
 	for _, category := range categoryIDs {
@@ -1068,43 +1057,6 @@ func (hc *HealthChecker) allCategories() []Category {
 			id: LinkerdWebhooksAndAPISvcTLS,
 			checkers: []Checker{
 				{
-					description: "tap API server has valid cert",
-					hintAnchor:  "l5d-tap-cert-valid",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						anchors, err := hc.fetchTapCaBundle(ctx)
-						if err != nil {
-							return err
-						}
-						cert, err := hc.fetchCredsFromSecret(ctx, tapTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, tapOldTLSSecretName)
-						}
-						if err != nil {
-							return err
-						}
-
-						identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.ControlPlaneNamespace)
-						return hc.checkCertAndAnchors(cert, anchors, identityName)
-					},
-				},
-				{
-					description: "tap API server cert is valid for at least 60 days",
-					warning:     true,
-					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
-					check: func(ctx context.Context) error {
-						cert, err := hc.fetchCredsFromSecret(ctx, tapTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, tapOldTLSSecretName)
-						}
-						if err != nil {
-							return err
-						}
-						return hc.checkCertAndAnchorsExpiringSoon(cert)
-
-					},
-				},
-				{
 					description: "proxy-injector webhook has valid cert",
 					hintAnchor:  "l5d-proxy-injector-webhook-cert-valid",
 					fatal:       true,
@@ -1223,14 +1175,6 @@ func (hc *HealthChecker) allCategories() []Category {
 						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
 					},
 				},
-				{
-					description: "tap api service is running",
-					hintAnchor:  "l5d-tap-api",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkAPIService(ctx, linkerdTapAPIServiceName)
-					},
-				},
 			},
 		},
 		{
@@ -1314,29 +1258,6 @@ func (hc *HealthChecker) allCategories() []Category {
 						}
 
 						return validateDataPlanePods(pods, hc.DataPlaneNamespace)
-					},
-				},
-				{
-					description:   "data plane proxy metrics are present in Prometheus",
-					hintAnchor:    "l5d-data-plane-prom",
-					retryDeadline: hc.RetryDeadline,
-					check: func(ctx context.Context) error {
-						pods, err := hc.getDataPlanePods(ctx)
-						if err != nil {
-							return err
-						}
-
-						// Check if prometheus configured
-						prometheusValues := make(map[string]interface{})
-						err = yaml.Unmarshal(hc.linkerdConfig.Prometheus.Values(), &prometheusValues)
-						if err != nil {
-							return err
-						}
-						if !GetBool(prometheusValues, "enabled") && hc.linkerdConfig.GetGlobal().PrometheusURL == "" {
-							return &SkipError{Reason: "no prometheus instance to connect"}
-						}
-
-						return validateDataPlanePodReporting(pods)
 					},
 				},
 				{
@@ -1782,24 +1703,6 @@ func (hc *HealthChecker) fetchSpValidatorCaBundle(ctx context.Context) ([]*x509.
 	return caBundle, nil
 }
 
-func (hc *HealthChecker) fetchTapCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
-	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
-	if err != nil {
-		return nil, err
-	}
-
-	apiService, err := apiServiceClient.APIServices().Get(ctx, linkerdTapAPIServiceName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	caBundle, err := tls.DecodePEMCertificates(string(apiService.Spec.CABundle))
-	if err != nil {
-		return nil, err
-	}
-	return caBundle, nil
-}
-
 func (hc *HealthChecker) fetchCredsFromSecret(ctx context.Context, secretName string) (*tls.Cred, error) {
 	secret, err := hc.kubeAPI.CoreV1().Secrets(hc.ControlPlaneNamespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
@@ -1893,7 +1796,6 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 		fmt.Sprintf("linkerd-%s-identity", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-proxy-injector", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-sp-validator", hc.ControlPlaneNamespace),
-		fmt.Sprintf("linkerd-%s-tap", hc.ControlPlaneNamespace),
 	}
 }
 
@@ -1975,6 +1877,27 @@ func CheckServiceAccounts(ctx context.Context, api *k8s.KubernetesAPI, saNames [
 	}
 
 	return checkResources("ServiceAccounts", objects, saNames, true)
+}
+
+// CheckIfLinkerdExists checks if Linkerd exists
+func CheckIfLinkerdExists(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) (bool, error) {
+	_, err := kubeAPI.CoreV1().Namespaces().Get(ctx, controlPlaneNamespace, metav1.GetOptions{})
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	_, _, err = FetchCurrentConfiguration(ctx, kubeAPI, controlPlaneNamespace)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (hc *HealthChecker) checkCustomResourceDefinitions(ctx context.Context, shouldExist bool) error {
@@ -2276,29 +2199,6 @@ func (hc *HealthChecker) checkCanGet(ctx context.Context, namespace, group, vers
 	return CheckCanPerformAction(ctx, hc.kubeAPI, "get", namespace, group, version, resource)
 }
 
-func (hc *HealthChecker) checkAPIService(ctx context.Context, serviceName string) error {
-	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
-	if err != nil {
-		return err
-	}
-
-	apiStatus, err := apiServiceClient.APIServices().Get(ctx, serviceName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, condition := range apiStatus.Status.Conditions {
-		if condition.Type == "Available" {
-			if condition.Status == "True" {
-				return nil
-			}
-			return fmt.Errorf("%s: %s", condition.Reason, condition.Message)
-		}
-	}
-
-	return fmt.Errorf("%s service not available", linkerdTapAPIServiceName)
-}
-
 func (hc *HealthChecker) checkCapability(ctx context.Context, cap string) error {
 	if hc.kubeAPI == nil {
 		// we should never get here
@@ -2487,7 +2387,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "identity", "sp-validator", "web", "tap"}
+	names := []string{"controller", "identity", "sp-validator"}
 	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")
