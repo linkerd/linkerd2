@@ -1625,11 +1625,6 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.GetGlobal().IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
-		// ensure trust anchors in config matches what's in the secret
-		if data != nil && strings.TrimSpace(values.GetGlobal().IdentityTrustAnchorsPEM) != strings.TrimSpace(data.TrustAnchors) {
-			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
-			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
-		}
 	}
 
 	if err != nil {
