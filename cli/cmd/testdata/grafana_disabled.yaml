@@ -1,2 +1,0 @@
-grafana:
-  enabled: false

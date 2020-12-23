@@ -16,23 +16,9 @@
   \{
     "namespace": "{{.Ns}}",
     "ip": "\d+\.\d+\.\d+\.\d+",
-    "port": 3000,
-    "pod": "linkerd\-grafana\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-grafana\.{{.Ns}}"
-  \},
-  \{
-    "namespace": "{{.Ns}}",
-    "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8080,
     "pod": "linkerd\-identity\-[a-f0-9]+\-[a-z0-9]+",
     "service": "linkerd\-identity\.{{.Ns}}"
-  \},
-  \{
-    "namespace": "{{.Ns}}",
-    "ip": "\d+\.\d+\.\d+\.\d+",
-    "port": 9090,
-    "pod": "linkerd\-prometheus-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-prometheus\.{{.Ns}}"
   \},
   \{
     "namespace": "{{.Ns}}",
@@ -49,17 +35,31 @@
     "service": "linkerd\-sp\-validator\.{{.Ns}}"
   \},
   \{
-    "namespace": "{{.Ns}}",
+    "namespace": "{{.VizNs}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 3000,
+    "pod": "linkerd\-grafana\-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-grafana\.{{.VizNs}}"
+  \},
+  \{
+    "namespace": "{{.VizNs}}",
+    "ip": "\d+\.\d+\.\d+\.\d+",
+    "port": 9090,
+    "pod": "linkerd\-prometheus-[a-f0-9]+\-[a-z0-9]+",
+    "service": "linkerd\-prometheus\.{{.VizNs}}"
+  \},
+  \{
+    "namespace": "{{.VizNs}}",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8088,
     "pod": "linkerd\-tap\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-tap\.{{.Ns}}"
+    "service": "linkerd\-tap\.{{.VizNs}}"
   \},
   \{
-    "namespace": "{{.Ns}}",
+    "namespace": "{{.VizNs}}",
     "ip": "\d+\.\d+\.\d+\.\d+",
     "port": 8084,
     "pod": "linkerd\-web\-[a-f0-9]+\-[a-z0-9]+",
-    "service": "linkerd\-web\.{{.Ns}}"
+    "service": "linkerd\-web\.{{.VizNs}}"
   \}
 \]

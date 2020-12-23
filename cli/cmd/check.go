@@ -187,7 +187,6 @@ func configureAndRunChecks(ctx context.Context, wout io.Writer, werr io.Writer, 
 			checks = append(checks, healthcheck.LinkerdCNIPluginChecks)
 			checks = append(checks, healthcheck.LinkerdHAChecks)
 
-			checks = append(checks, healthcheck.AddOnCategories...)
 		}
 	}
 
