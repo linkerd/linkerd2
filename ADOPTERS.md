@@ -33,6 +33,7 @@
 - [Novolabs](https://novolabs.com)
 - [Paybase](https://paybase.io/)
 - [PlayStudios Asia](https://www.playstudios.asia)
+- [PlexTrac](https://plextrac.com)
 - [PriceKinetics (GVC Australia)](https://www.pricekinetics.com.au/)
 - [Projector](https://projector.com)
 - [Purdue University Global](https://www.purdueglobal.edu/)
