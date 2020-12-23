@@ -26,6 +26,7 @@ type TestHelper struct {
 	linkerd            string
 	version            string
 	namespace          string
+	vizNamespace       string
 	upgradeFromVersion string
 	clusterDomain      string
 	externalIssuer     bool
@@ -43,6 +44,7 @@ type helm struct {
 	path                    string
 	chart                   string
 	multiclusterChart       string
+	vizChart                string
 	stableChart             string
 	releaseName             string
 	multiclusterReleaseName string
@@ -51,22 +53,43 @@ type helm struct {
 
 // DeploySpec is used to hold information about what deploys we should verify during testing
 type DeploySpec struct {
+	Namespace  string
 	Replicas   int
 	Containers []string
 }
 
-// LinkerdDeployReplicas is a map containing the number of replicas for each Deployment and the main
+// Service is used to hold information about a Service we should verify during testing
+type Service struct {
+	Namespace string
+	Name      string
+}
+
+// LinkerdDeployReplicasStable is a map containing the number of replicas for each Deployment and the main
 // container name
-var LinkerdDeployReplicas = map[string]DeploySpec{
-	"linkerd-controller":     {1, []string{"public-api"}},
-	"linkerd-destination":    {1, []string{"destination"}},
-	"linkerd-tap":            {1, []string{"tap"}},
-	"linkerd-grafana":        {1, []string{}},
-	"linkerd-identity":       {1, []string{"identity"}},
-	"linkerd-prometheus":     {1, []string{}},
-	"linkerd-sp-validator":   {1, []string{"sp-validator"}},
-	"linkerd-web":            {1, []string{"web"}},
-	"linkerd-proxy-injector": {1, []string{"proxy-injector"}},
+var LinkerdDeployReplicasStable = map[string]DeploySpec{
+	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
+	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
+	"linkerd-tap":            {"linkerd", 1, []string{"tap"}},
+	"linkerd-grafana":        {"linkerd", 1, []string{}},
+	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
+	"linkerd-prometheus":     {"linkerd", 1, []string{}},
+	"linkerd-sp-validator":   {"linkerd", 1, []string{"sp-validator"}},
+	"linkerd-web":            {"linkerd", 1, []string{"web"}},
+	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
+}
+
+// LinkerdDeployReplicasEdge is a map containing the number of replicas for each Deployment and the main
+// container name, in the current code-base
+var LinkerdDeployReplicasEdge = map[string]DeploySpec{
+	"linkerd-controller":     {"linkerd", 1, []string{"public-api"}},
+	"linkerd-destination":    {"linkerd", 1, []string{"destination"}},
+	"linkerd-tap":            {"linkerd-viz", 1, []string{"tap"}},
+	"linkerd-grafana":        {"linkerd-viz", 1, []string{}},
+	"linkerd-identity":       {"linkerd", 1, []string{"identity"}},
+	"linkerd-prometheus":     {"linkerd-viz", 1, []string{}},
+	"linkerd-sp-validator":   {"linkerd", 1, []string{"sp-validator"}},
+	"linkerd-web":            {"linkerd-viz", 1, []string{"web"}},
+	"linkerd-proxy-injector": {"linkerd", 1, []string{"proxy-injector"}},
 }
 
 // NewGenericTestHelper returns a new *TestHelper from the options provided as function parameters.
@@ -77,6 +100,7 @@ func NewGenericTestHelper(
 	linkerd,
 	version,
 	namespace,
+	vizNamespace,
 	upgradeFromVersion,
 	clusterDomain,
 	helmPath,
@@ -97,6 +121,7 @@ func NewGenericTestHelper(
 		linkerd:            linkerd,
 		version:            version,
 		namespace:          namespace,
+		vizNamespace:       vizNamespace,
 		upgradeFromVersion: upgradeFromVersion,
 		helm: helm{
 			path:                    helmPath,
@@ -121,7 +146,7 @@ func NewGenericTestHelper(
 // MulticlusterDeployReplicas is a map containing the number of replicas for each Deployment and the main
 // container name for multicluster components
 var MulticlusterDeployReplicas = map[string]DeploySpec{
-	"linkerd-gateway": {1, []string{"nginx"}},
+	"linkerd-gateway": {"linkerd-multicluster", 1, []string{"nginx"}},
 }
 
 // NewTestHelper creates a new instance of TestHelper for the current test run.
@@ -135,10 +160,12 @@ func NewTestHelper() *TestHelper {
 	k8sContext := flag.String("k8s-context", "", "kubernetes context associated with the test cluster")
 	linkerd := flag.String("linkerd", "", "path to the linkerd binary to test")
 	namespace := flag.String("linkerd-namespace", "linkerd", "the namespace where linkerd is installed")
+	vizNamespace := flag.String("viz-namespace", "linkerd-viz", "the namespace where linkerd viz extension is installed")
 	multicluster := flag.Bool("multicluster", false, "when specified the multicluster install functionality is tested")
 	helmPath := flag.String("helm-path", "target/helm", "path of the Helm binary")
 	helmChart := flag.String("helm-chart", "charts/linkerd2", "path to linkerd2's Helm chart")
 	multiclusterHelmChart := flag.String("multicluster-helm-chart", "charts/linkerd2-multicluster", "path to linkerd2's multicluster Helm chart")
+	vizHelmChart := flag.String("viz-helm-chart", "charts/linkerd-viz", "path to linkerd2's viz extension Helm chart")
 	helmStableChart := flag.String("helm-stable-chart", "linkerd/linkerd2", "path to linkerd2's stable Helm chart")
 	helmReleaseName := flag.String("helm-release", "", "install linkerd via Helm using this release name")
 	multiclusterHelmReleaseName := flag.String("multicluster-helm-release", "", "install linkerd multicluster via Helm using this release name")
@@ -180,12 +207,14 @@ func NewTestHelper() *TestHelper {
 	testHelper := &TestHelper{
 		linkerd:            *linkerd,
 		namespace:          *namespace,
+		vizNamespace:       *vizNamespace,
 		upgradeFromVersion: *upgradeFromVersion,
 		multicluster:       *multicluster,
 		helm: helm{
 			path:                    *helmPath,
 			chart:                   *helmChart,
 			multiclusterChart:       *multiclusterHelmChart,
+			vizChart:                *vizHelmChart,
 			stableChart:             *helmStableChart,
 			releaseName:             *helmReleaseName,
 			multiclusterReleaseName: *multiclusterHelmReleaseName,
@@ -231,6 +260,12 @@ func (h *TestHelper) GetLinkerdNamespace() string {
 	return h.namespace
 }
 
+// GetVizNamespace returns the namespace where linkerd Viz Extension is installed. Set the
+// namespace using the -linkerd-namespace command line flag.
+func (h *TestHelper) GetVizNamespace() string {
+	return h.vizNamespace
+}
+
 // GetMulticlusterNamespace returns the namespace where multicluster
 // components are installed.
 func (h *TestHelper) GetMulticlusterNamespace() string {
@@ -261,6 +296,11 @@ func (h *TestHelper) GetHelmChart() string {
 // GetMulticlusterHelmChart returns the path to the Linkerd multicluster Helm chart
 func (h *TestHelper) GetMulticlusterHelmChart() string {
 	return h.helm.multiclusterChart
+}
+
+// GetLinkerdVizHelmChart returns the path to the Linkerd viz Helm chart
+func (h *TestHelper) GetLinkerdVizHelmChart() string {
+	return h.helm.vizChart
 }
 
 // GetHelmStableChart returns the path to the Linkerd Helm stable chart
@@ -433,6 +473,18 @@ func (h *TestHelper) HelmInstall(chart string, arg ...string) (string, string, e
 		"--kube-context", h.k8sContext,
 		"--set", "global.namespace=" + h.namespace,
 	}, arg...)
+	return combinedOutput("", h.helm.path, withParams...)
+}
+
+// HelmInstallPlain runs the helm install subcommand, with the provided arguments and no defaults
+func (h *TestHelper) HelmInstallPlain(chart string, releaseName string, arg ...string) (string, string, error) {
+	withParams := append([]string{
+		"install",
+		releaseName,
+		chart,
+		"--kube-context", h.k8sContext,
+	}, arg...)
+
 	return combinedOutput("", h.helm.path, withParams...)
 }
 

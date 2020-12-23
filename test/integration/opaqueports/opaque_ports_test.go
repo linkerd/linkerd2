@@ -19,7 +19,7 @@ var (
 
 	// With the app's port marked as opaque, we expect to find a single open
 	// TCP connection that is not TLS'd because the port is skipped.
-	tcpMetric = "tcp_open_total{peer=\"src\",direction=\"inbound\",tls=\"no_identity\",no_tls_reason=\"port_skipped\"} 1"
+	tcpMetric = "tcp_open_total{peer=\"src\",direction=\"inbound\",tls=\"no_identity\",no_tls_reason=\"port_skipped\"}"
 )
 
 func TestMain(m *testing.M) {

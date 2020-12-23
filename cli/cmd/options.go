@@ -229,13 +229,6 @@ func makeAllStageFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet)
 				return nil
 			}),
 
-		flag.NewBoolFlag(allStageFlags, "restrict-dashboard-privileges", defaults.RestrictDashboardPrivileges,
-			"Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check",
-			func(values *l5dcharts.Values, value bool) error {
-				values.RestrictDashboardPrivileges = value
-				return nil
-			}),
-
 		flag.NewStringFlag(allStageFlags, "config", "",
 			"A path to a yaml configuration file. The fields in this file will override the values used to install or upgrade Linkerd.",
 			func(values *l5dcharts.Values, value string) error {
@@ -324,7 +317,6 @@ func makeProxyFlags(defaults *l5dcharts.Values) ([]flag.Flag, *pflag.FlagSet) {
 
 		flag.NewStringFlag(proxyFlags, "registry", defaultDockerRegistry, "Docker registry to pull images from",
 			func(values *l5dcharts.Values, value string) error {
-				values.WebImage = registryOverride(values.WebImage, value)
 				values.ControllerImage = registryOverride(values.ControllerImage, value)
 				values.DebugContainer.Image.Name = registryOverride(values.DebugContainer.Image.Name, value)
 				values.GetGlobal().Proxy.Image.Name = registryOverride(values.GetGlobal().Proxy.Image.Name, value)

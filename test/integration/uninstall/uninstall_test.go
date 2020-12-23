@@ -38,6 +38,26 @@ func TestInstall(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
 			"'kubectl apply' command failed\n%s", out)
 	}
+
+	var (
+		vizCmd  = []string{"viz", "install"}
+		vizArgs = []string{
+			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace())}
+	)
+
+	// Install Linkerd Viz Extension
+	exec := append(vizCmd, vizArgs...)
+	out, err = TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
+
 }
 
 func TestResourcesPostInstall(t *testing.T) {
@@ -50,15 +70,21 @@ func TestResourcesPostInstall(t *testing.T) {
 	}
 
 	// Tests Pods and Deployments
-	for deploy, spec := range testutil.LinkerdDeployReplicas {
-		if err := TestHelper.CheckPods(ctx, TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+
+	expectedDeployments := testutil.LinkerdDeployReplicasEdge
+	// Upgrade Case
+	if TestHelper.UpgradeHelmFromVersion() != "" {
+		expectedDeployments = testutil.LinkerdDeployReplicasStable
+	}
+	for deploy, spec := range expectedDeployments {
+		if err := TestHelper.CheckPods(ctx, spec.Namespace, deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
 				testutil.AnnotatedError(t, "CheckPods timed-out", err)
 			}
 		}
-		if err := TestHelper.CheckDeployment(ctx, TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+		if err := TestHelper.CheckDeployment(ctx, spec.Namespace, deploy, spec.Replicas); err != nil {
 			testutil.AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}

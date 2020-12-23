@@ -48,8 +48,8 @@ spec:
             - "-log-level={{.Values.global.controllerLogLevel}}"
             {{- if .Values.global.prometheusUrl }}
             - "-prometheus-url={{.Values.global.prometheusUrl}}"
-            {{- else if .Values.prometheus.enabled }}
-            - "-prometheus-url=http://linkerd-prometheus.{{.Values.global.namespace}}.svc.{{.Values.global.clusterDomain}}:9090"
+            {{- else }}
+            - "-prometheus-url=http://linkerd-prometheus.linkerd-viz.svc.{{.Values.global.clusterDomain}}:9090"
             {{- end }}
             {{- if .Values.heartbeatResources -}}
             {{- include "partials.resources" .Values.heartbeatResources | nindent 12 }}

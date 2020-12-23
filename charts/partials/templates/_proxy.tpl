@@ -95,7 +95,7 @@ env:
   value: "true"
 {{ else if not .Values.global.proxy.disableIdentity -}}
 - name: LINKERD2_PROXY_TAP_SVC_NAME
-  value: linkerd-tap.$(_l5d_ns).serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
+  value: linkerd-tap.linkerd-viz.serviceaccount.identity.$(_l5d_ns).$(_l5d_trustdomain)
 {{ end -}}
 image: {{.Values.global.proxy.image.name}}:{{.Values.global.proxy.image.version}}
 imagePullPolicy: {{.Values.global.proxy.image.pullPolicy}}
