@@ -21,7 +21,7 @@ const (
 	defaultWeight uint32 = 10000
 	// inboundListenAddr is the environment variable holding the inbound
 	// listening address for the proxy container.
-	inboundListenAddr = "LINKERD2_PROXY_INBOUND_LISTEN_ADDR"
+	envInboundListenAddr = "LINKERD2_PROXY_INBOUND_LISTEN_ADDR"
 )
 
 // endpointTranslator satisfies EndpointUpdateListener and translates updates
@@ -324,7 +324,7 @@ func toWeightedAddr(address watcher.Address, enableH2Upgrade bool, identityTrust
 				continue
 			}
 			for _, envVar := range containerSpec.Env {
-				if envVar.Name != inboundListenAddr {
+				if envVar.Name != envInboundListenAddr {
 					continue
 				}
 				addr := strings.Split(envVar.Value, ":")
