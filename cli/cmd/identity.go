@@ -12,6 +12,7 @@ import (
 
 	"github.com/linkerd/linkerd2/controller/api/util"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	tls1 "github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -69,14 +70,25 @@ func newCmdIdentity() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			resources, err := resource.FetchKubernetesResources(cmd.Context(), k8sAPI, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
+			if err != nil {
+				return err
+			}
+			// check if linkerd control plane exists
+			if len(resources) == 0 {
+				return fmt.Errorf("Cannot find Linkerd\nValidate the install with: linkerd check")
+			}
+
 			pods, err := getPods(cmd.Context(), k8sAPI, options.namespace, options.selector, args)
 			if err != nil {
 				return err
 			}
+
 			results := getCertificate(k8sAPI, pods, k8s.ProxyAdminPortName, 30*time.Second, emitLog)
 
 			for i, result := range results {
-				fmt.Printf("\n POD %s (%d of %d)\n\n", result.pod, i+1, len(results))
+				fmt.Printf("\nPOD %s (%d of %d)\n\n", result.pod, i+1, len(results))
 				if result.err == nil {
 					fmt.Println("Version: ", result.Certificate[0].Version)
 					fmt.Println("Serial Number: ", result.Certificate[0].SerialNumber)
