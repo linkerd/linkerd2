@@ -330,7 +330,7 @@ func toWeightedAddr(k8sAPI *k8s.API, address watcher.Address, enableH2Upgrade bo
 			log.Errorf("failed getting opaque ports annotation for pod: %s", err)
 		} else {
 			for opaquePort := range opaquePorts {
-				if uint32(address.Port) == opaquePort {
+				if address.Port == opaquePort {
 					opaquePortMatches = true
 					break
 				}
