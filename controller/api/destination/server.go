@@ -109,7 +109,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		s.enableH2Upgrade,
 		dest.GetPath(),
 		token.NodeName,
-		s.k8sAPI.Client,
+		s.k8sAPI,
 		stream,
 		log,
 	)
@@ -208,7 +208,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 					Namespace: pod.Namespace,
 					Name:      pod.Name,
 				}
-				endpoint, err = toWeightedAddr(podSet.Addresses[podID], s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
+				endpoint, err = toWeightedAddr(s.k8sAPI, podSet.Addresses[podID], s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
 				if err != nil {
 					return err
 				}

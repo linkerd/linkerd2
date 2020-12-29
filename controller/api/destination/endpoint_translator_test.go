@@ -148,7 +148,7 @@ metadata:
 		true,
 		"service-name.service-ns",
 		"test-123",
-		k8sAPI.Client,
+		k8sAPI,
 		mockGetServer,
 		logging.WithField("test", t.Name()),
 	)

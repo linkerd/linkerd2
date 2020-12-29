@@ -91,7 +91,6 @@ func (opa *opaquePortsAdaptor) publish() {
 		merged = *opa.profile
 	}
 	merged.Spec.OpaquePorts = opa.opaquePorts
-	fmt.Printf("publishing SP: %v", merged)
 	opa.listener.Update(&merged)
 }
 
