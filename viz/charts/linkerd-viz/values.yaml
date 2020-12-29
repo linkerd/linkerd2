@@ -59,8 +59,10 @@ tap:
   # -- log level of the tap component
   logLevel: *log_level
   image:
+    # -- Docker registry for the grafana instance
+    registry: ghcr.io/linkerd
     # -- Docker image name for the grafana instance
-    name: ghcr.io/linkerd/controller
+    name: controller
     # -- Docker image tag for the grafana instance
     tag: *linkerd_version
   # -- Do not create a secret resource for the Tap component. If this is set to
@@ -101,8 +103,10 @@ dashboard:
   # -- log level of the dashboard component
   logLevel: *log_level
   image:
+    # -- Docker registry for the web instance
+    registry: ghcr.io/linkerd
     # -- Docker image name for the web instance
-    name: ghcr.io/linkerd/web
+    name: web
     # -- Docker image tag for the web instance
     tag: *linkerd_version
 
@@ -132,8 +136,10 @@ grafana:
   # -- toggle field to enable or disable grafana
   enabled: true
   image:
+    # -- Docker registry for the grafana instance
+    registry: ghcr.io/linkerd
     # -- Docker image name for the grafana instance
-    name: ghcr.io/linkerd/grafana
+    name: grafana
     # -- Docker image tag for the grafana instance
     tag: *linkerd_version
 
@@ -152,9 +158,11 @@ grafana:
 prometheus:
   # -- toggle field to enable or disable prometheus
   enabled: true
-  image: 
+  image:
+    # -- Docker registry for the prometheus instance
+    registry: prom
     # -- Docker image name for the prometheus instance
-    name: prom/prometheus
+    name: prometheus
     # -- Docker image tag for the prometheus instance
     tag: v2.19.3
     # == Pull policy for the prometheus instance
