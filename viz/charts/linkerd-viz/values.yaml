@@ -7,6 +7,9 @@
 # -- control plane version. See Proxy section for proxy version
 linkerdVersion: &linkerd_version linkerdVersionValue
 
+# -- Default Docker Registry
+defaultRegistry: &default_registry ghcr.io/linkerd
+
 # -- Kubernetes DNS Domain name to use  
 clusterDomain: &cluster_domain cluster.local
 
@@ -59,11 +62,11 @@ tap:
   # -- log level of the tap component
   logLevel: *log_level
   image:
-    # -- Docker registry for the grafana instance
-    registry: ghcr.io/linkerd
-    # -- Docker image name for the grafana instance
+    # -- Docker registry for the tap instance
+    registry: *default_registry
+    # -- Docker image name for the tap instance
     name: controller
-    # -- Docker image tag for the grafana instance
+    # -- Docker image tag for the tap instance
     tag: *linkerd_version
   # -- Do not create a secret resource for the Tap component. If this is set to
   # `true`, the value `tap.caBundle` must be set (see below).
@@ -104,7 +107,7 @@ dashboard:
   logLevel: *log_level
   image:
     # -- Docker registry for the web instance
-    registry: ghcr.io/linkerd
+    registry: *default_registry
     # -- Docker image name for the web instance
     name: web
     # -- Docker image tag for the web instance
@@ -137,7 +140,7 @@ grafana:
   enabled: true
   image:
     # -- Docker registry for the grafana instance
-    registry: ghcr.io/linkerd
+    registry: *default_registry
     # -- Docker image name for the grafana instance
     name: grafana
     # -- Docker image tag for the grafana instance

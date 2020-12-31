@@ -85,6 +85,7 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.resources.memory.limit | string | `nil` | Maximum amount of memory that web container can use |
 | dashboard.resources.memory.request | string | `nil` | Amount of memory that the web container requests |
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
+| defaultRegistry | string | `"ghcr.io/linkerd"` | Default Docker Registry |
 | extensionAnnotation | string | `"linkerd.io/extension"` |  |
 | globalLogLevel | string | `"info"` | Log level for all the viz components |
 | globalUID | int | `2103` | UID for all the viz components |
@@ -124,9 +125,9 @@ Kubernetes: `>=1.13.0-0`
 | tap.caBundle | string | `""` | Bundle of CA certificates for Tap component. If not provided then Helm will use the certificate generated  for `tap.crtPEM`. If `tap.externalSecret` is set to true, this value must be set, as no certificate will be generated. |
 | tap.crtPEM | string | `""` | Certificate for the Tap component. If not provided then Helm will generate one. |
 | tap.externalSecret | bool | `false` | Do not create a secret resource for the Tap component. If this is set to `true`, the value `tap.caBundle` must be set (see below). |
-| tap.image.name | string | `"controller"` | Docker image name for the grafana instance |
-| tap.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the grafana instance |
-| tap.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the grafana instance |
+| tap.image.name | string | `"controller"` | Docker image name for the tap instance |
+| tap.image.registry | string | `"ghcr.io/linkerd"` | Docker registry for the tap instance |
+| tap.image.tag | string | `"linkerdVersionValue"` | Docker image tag for the tap instance |
 | tap.keyPEM | string | `""` | Certificate key for Tap component. If not provided then Helm will generate one.  |
 | tap.logLevel | string | `"info"` | log level of the tap component |
 | tap.replicas | int | `1` |  |
