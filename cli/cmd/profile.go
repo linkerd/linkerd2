@@ -20,6 +20,7 @@ type profileOptions struct {
 	openAPI       string
 	proto         string
 	tap           string
+	ignoreCluster bool
 	tapDuration   time.Duration
 	tapRouteLimit uint
 }
@@ -32,6 +33,7 @@ func newProfileOptions() *profileOptions {
 		openAPI:       "",
 		proto:         "",
 		tap:           "",
+		ignoreCluster: false,
 		tapDuration:   5 * time.Second,
 		tapRouteLimit: 20,
 	}
@@ -51,8 +53,11 @@ func (options *profileOptions) validate() error {
 	if options.tap != "" {
 		outputs++
 	}
+	if options.ignoreCluster {
+		outputs++
+	}
 	if outputs != 1 {
-		return errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
+		return errors.New("You must specify exactly one of --template or --open-api or --proto or --tap or --ignore-cluster")
 	}
 
 	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
@@ -76,7 +81,7 @@ func newCmdProfile() *cobra.Command {
 	options := newProfileOptions()
 
 	cmd := &cobra.Command{
-		Use:   "profile [flags] (--template | --open-api file | --proto file | --tap resource) (SERVICE)",
+		Use:   "profile [flags] (--template | --open-api file | --proto file | --tap resource | --ignore-cluster) (SERVICE)",
 		Short: "Output service profile config for Kubernetes",
 		Long:  "Output service profile config for Kubernetes.",
 		Example: `  # Output a basic template to apply after modification.
@@ -90,6 +95,9 @@ func newCmdProfile() *cobra.Command {
 
   # Generate a profile by watching live traffic based off tap data.
   linkerd profile -n emojivoto web-svc --tap deploy/web --tap-duration 10s --tap-route-limit 5
+
+  # Generate a profile without requiring cluster access
+  linkerd profile -n emojivoto --ignore-cluster
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -123,6 +131,9 @@ func newCmdProfile() *cobra.Command {
 				return profiles.RenderTapOutputProfile(cmd.Context(), k8sAPI, options.tap, options.namespace, options.name, clusterDomain, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
 			} else if options.proto != "" {
 				return profiles.RenderProto(options.proto, options.namespace, options.name, clusterDomain, os.Stdout)
+			} else if options.ignoreCluster {
+				// return profilegeneration without checking access to k8s cluster which is running the linkerd
+				return profiles.RenderIgnoreCluster(options.namespace, options.name, clusterDomain, os.Stdout)
 			}
 
 			// we should never get here
