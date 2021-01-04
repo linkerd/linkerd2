@@ -4,9 +4,20 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+
+	charts "github.com/linkerd/linkerd2/pkg/charts"
 )
 
 func TestRender(t *testing.T) {
+
+	// pin values that are changed by render functions on each test run
+	defaultValues := map[string]interface{}{
+		"tap": map[string]interface{}{
+			"keyPEM":   "test-tap-key-pem",
+			"crtPEM":   "test-tap-crt-pem",
+			"caBundle": "test-tap-ca-bundle",
+		},
+	}
 
 	testCases := []struct {
 		values         map[string]interface{}
@@ -29,7 +40,8 @@ func TestRender(t *testing.T) {
 		tc := tc // pin
 		t.Run(fmt.Sprintf("%d: %s", i, tc.goldenFileName), func(t *testing.T) {
 			var buf bytes.Buffer
-			if err := render(&buf, tc.values); err != nil {
+			// Merge overrides with default
+			if err := render(&buf, charts.MergeMaps(defaultValues, tc.values)); err != nil {
 				t.Fatalf("Failed to render templates: %v", err)
 			}
 			diffTestdata(t, tc.goldenFileName, buf.String())

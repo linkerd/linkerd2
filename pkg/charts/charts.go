@@ -175,3 +175,23 @@ func InsertVersionValues(values chartutil.Values) (chartutil.Values, error) {
 	}
 	return chartutil.ReadValues(InsertVersion([]byte(raw)))
 }
+
+// MergeMaps returns the resultant map after merging two maps
+func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(a))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		if v, ok := v.(map[string]interface{}); ok {
+			if bv, ok := out[k]; ok {
+				if bv, ok := bv.(map[string]interface{}); ok {
+					out[k] = MergeMaps(bv, v)
+					continue
+				}
+			}
+		}
+		out[k] = v
+	}
+	return out
+}
