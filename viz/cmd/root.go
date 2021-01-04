@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	vizChartName            = "linkerd-viz"
 	defaultLinkerdNamespace = "linkerd"
 	defaultVizNamespace     = "linkerd-viz"
 )

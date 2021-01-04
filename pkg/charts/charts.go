@@ -175,3 +175,41 @@ func InsertVersionValues(values chartutil.Values) (chartutil.Values, error) {
 	}
 	return chartutil.ReadValues(InsertVersion([]byte(raw)))
 }
+
+// OverrideFromFile overrides the given map with the given file from FS
+func OverrideFromFile(values map[string]interface{}, fs http.FileSystem, chartName, name string) (map[string]interface{}, error) {
+	// Load Values file
+	valuesOverride := loader.BufferedFile{
+		Name: "values-ha.yaml",
+	}
+	if err := ReadFile(fs, chartName+"/", &valuesOverride); err != nil {
+		return nil, err
+	}
+
+	var valuesOverrideMap map[string]interface{}
+	err := yaml.Unmarshal(valuesOverride.Data, &valuesOverrideMap)
+	if err != nil {
+		return nil, err
+	}
+	return MergeMaps(valuesOverrideMap, values), nil
+}
+
+// MergeMaps returns the merge result of two maps
+func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(a))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		if v, ok := v.(map[string]interface{}); ok {
+			if bv, ok := out[k]; ok {
+				if bv, ok := bv.(map[string]interface{}); ok {
+					out[k] = MergeMaps(bv, v)
+					continue
+				}
+			}
+		}
+		out[k] = v
+	}
+	return out
+}
