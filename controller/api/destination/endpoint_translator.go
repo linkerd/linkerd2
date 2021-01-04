@@ -219,9 +219,9 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			opaquePorts, err := getOpaquePortsAnnotations(et.k8sAPI, address.Pod)
-			if err != nil {
-				et.log.Errorf("failed getting opaque ports annotation for pod: %s", err)
+			opaquePorts, getErr := getOpaquePortsAnnotations(et.k8sAPI, address.Pod)
+			if getErr != nil {
+				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
 			}
 			wa, err = toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
