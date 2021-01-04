@@ -19,7 +19,7 @@ var (
 
 	// With the app's port marked as opaque, we expect to find a single open
 	// TCP connection that is not TLS'd because the port is skipped.
-	tcpMetric = "tcp_open_total{peer=\"src\",direction=\"inbound\",tls=\"true\",client_id=\"default.default.serviceaccount.identity.linkerd.cluster.local\"}"
+	tcpMetric = "tcp_open_connections{peer=\"src\",direction=\"inbound\",tls=\"true\",client_id=\"default.linkerd-opaque-ports-test.serviceaccount.identity.linkerd.cluster.local\"}"
 )
 
 func TestMain(m *testing.M) {
