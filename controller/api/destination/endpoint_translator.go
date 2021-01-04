@@ -328,34 +328,13 @@ func toWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, en
 				H2: &pb.ProtocolHint_H2{},
 			},
 		}
-		opaquePortMatches := false
-		for opaquePort := range opaquePorts {
-			if address.Port == opaquePort {
-				opaquePortMatches = true
-				break
-			}
-		}
-		if opaquePortMatches {
-			// Get the inbound port from the proxy container's environment
-			// variable so that it can be set in the protocol hint.
-		loop:
-			for _, containerSpec := range address.Pod.Spec.Containers {
-				if containerSpec.Name != pkgk8s.ProxyContainerName {
-					continue
-				}
-				for _, envVar := range containerSpec.Env {
-					if envVar.Name != envInboundListenAddr {
-						continue
-					}
-					addr := strings.Split(envVar.Value, ":")
-					port, err := strconv.ParseUint(addr[1], 10, 32)
-					if err != nil {
-						log.Errorf("failed to parse inbound port for proxy container: %s", err)
-					}
-					hint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
-						InboundPort: uint32(port),
-					}
-					break loop
+		if _, ok := opaquePorts[address.Port]; ok {
+			port, err := getInboundPort(&address.Pod.Spec)
+			if err != nil {
+				log.Error(err)
+			} else {
+				hint.OpaqueTransport = &pb.ProtocolHint_OpaqueTransport{
+					InboundPort: port,
 				}
 			}
 		}
@@ -419,4 +398,26 @@ func newEmptyAddressSet() watcher.AddressSet {
 		Labels:          make(map[string]string),
 		TopologicalPref: []string{},
 	}
+}
+
+// getInboundPort gets the inbound port from the proxy container's environment
+// variable.
+func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
+	for _, containerSpec := range podSpec.Containers {
+		if containerSpec.Name != pkgk8s.ProxyContainerName {
+			continue
+		}
+		for _, envVar := range containerSpec.Env {
+			if envVar.Name != envInboundListenAddr {
+				continue
+			}
+			addr := strings.Split(envVar.Value, ":")
+			port, err := strconv.ParseUint(addr[1], 10, 32)
+			if err != nil {
+				return 0, fmt.Errorf("failed to parse inbound port for proxy container: %s", err)
+			}
+			return uint32(port), nil
+		}
+	}
+	return 0, fmt.Errorf("failed to find %s environment variable in any container for given pod spec", envInboundListenAddr)
 }
