@@ -208,19 +208,17 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 					Namespace: pod.Namespace,
 					Name:      pod.Name,
 				}
-				endpoint, err = toWeightedAddr(s.k8sAPI, podSet.Addresses[podID], s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
+				opaquePorts, err = getOpaquePortsAnnotations(s.k8sAPI, pod)
+				if err != nil {
+					log.Errorf("failed getting opaque ports annotation for pod: %s", err)
+				}
+				endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
 				if err != nil {
 					return err
 				}
-
 				// `Get` doesn't include the namespace in the per-endpoint
 				// metadata, so it needs to be special-cased.
 				endpoint.MetricLabels["namespace"] = pod.Namespace
-
-				opaquePorts, err = getOpaquePortsAnnotations(s.k8sAPI, pod)
-				if err != nil {
-					return err
-				}
 			}
 
 			// When the IP does not map to a service, the default profile is

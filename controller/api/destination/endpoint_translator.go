@@ -219,7 +219,11 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			wa, err = toWeightedAddr(et.k8sAPI, address, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
+			opaquePorts, err := getOpaquePortsAnnotations(et.k8sAPI, address.Pod)
+			if err != nil {
+				et.log.Errorf("failed getting opaque ports annotation for pod: %s", err)
+			}
+			wa, err = toWeightedAddr(address, opaquePorts, et.enableH2Upgrade, et.identityTrustDomain, et.controllerNS, et.log)
 		} else {
 			var authOverride *pb.AuthorityOverride
 			if address.AuthorityOverride != "" {
@@ -309,7 +313,7 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 	}, nil
 }
 
-func toWeightedAddr(k8sAPI *k8s.API, address watcher.Address, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
+func toWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
 	controllerNSLabel := address.Pod.Labels[pkgk8s.ControllerNSLabel]
 	sa, ns := pkgk8s.GetServiceAccountAndNS(address.Pod)
 	labels := pkgk8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
@@ -325,18 +329,12 @@ func toWeightedAddr(k8sAPI *k8s.API, address watcher.Address, enableH2Upgrade bo
 			},
 		}
 		opaquePortMatches := false
-		opaquePorts, err := getOpaquePortsAnnotations(k8sAPI, address.Pod)
-		if err != nil {
-			log.Errorf("failed getting opaque ports annotation for pod: %s", err)
-		} else {
-			for opaquePort := range opaquePorts {
-				if address.Port == opaquePort {
-					opaquePortMatches = true
-					break
-				}
+		for opaquePort := range opaquePorts {
+			if address.Port == opaquePort {
+				opaquePortMatches = true
+				break
 			}
 		}
-
 		if opaquePortMatches {
 			// Get the inbound port from the proxy container's environment
 			// variable so that it can be set in the protocol hint.

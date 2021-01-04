@@ -19,7 +19,7 @@ var (
 
 	// With the app's port marked as opaque, we expect to find a single open
 	// TCP connection that is not TLS'd because the port is skipped.
-	tcpMetric = "tcp_open_total{peer=\"src\",direction=\"inbound\",tls=\"no_identity\",no_tls_reason=\"port_skipped\"}"
+	tcpMetric = "tcp_open_total{peer=\"src\",direction=\"inbound\",tls=\"true\",client_id=\"default.default.serviceaccount.identity.linkerd.cluster.local\"}"
 )
 
 func TestMain(m *testing.M) {
@@ -64,7 +64,7 @@ func TestOpaquePorts(t *testing.T) {
 		testutil.AnnotatedErrorf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", appName, err)
 	}
 
-	t.Run("expect inbound TCP connection with no TLS for port_skipped reason", func(t *testing.T) {
+	t.Run("expect inbound TCP connection metric with expected TLS identity", func(t *testing.T) {
 		pods, err := TestHelper.GetPods(ctx, opaquePortsNs, map[string]string{"app": appName})
 		if err != nil {
 			testutil.AnnotatedFatalf(t, "error getting opaque ports app pods", "error getting opaque ports app pods\n%s", err)
