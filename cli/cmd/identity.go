@@ -10,8 +10,6 @@ import (
 
 	"github.com/grantae/certinfo"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/k8s/resource"
-	tls1 "github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,14 +64,6 @@ func newCmdIdentity() *cobra.Command {
 				return err
 			}
 
-			resources, err := resource.FetchKubernetesResources(cmd.Context(), k8sAPI, metav1.ListOptions{LabelSelector: k8s.ControllerNSLabel})
-			if err != nil {
-				return err
-			}
-			// check if linkerd control plane exists
-			if len(resources) == 0 {
-				return fmt.Errorf("Cannot find Linkerd\nValidate the install with: linkerd check")
-			}
 			if len(args) == 0 && options.selector == "" {
 				return fmt.Errorf("Provide the pod name argument or use the selector flag")
 			}
@@ -84,7 +74,12 @@ func newCmdIdentity() *cobra.Command {
 			}
 
 			resultCerts := getCertificate(k8sAPI, pods, k8s.ProxyAdminPortName, emitLog)
-			for _, resultCert := range resultCerts {
+			if len(resultCerts) == 0 {
+				fmt.Print("Could not fetch Certificate. Ensure that the pod(s) are meshed by running `linkerd inject`")
+				return nil
+			}
+			for i, resultCert := range resultCerts {
+				fmt.Printf("\nPOD %s (%d of %d)\n\n", resultCert.pod, i+1, len(resultCerts))
 				if resultCert.err != nil {
 					fmt.Printf("\n%s", resultCert.err)
 					return nil
@@ -97,8 +92,6 @@ func newCmdIdentity() *cobra.Command {
 					return nil
 				}
 				fmt.Print(result)
-				fmt.Println("pem: |")
-				fmt.Print(tls1.EncodeCertificatesPEM(cert))
 			}
 			return nil
 		},
