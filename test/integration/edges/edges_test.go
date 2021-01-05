@@ -143,11 +143,11 @@ func TestDirectEdges(t *testing.T) {
 
 			tpl := template.Must(template.ParseFiles("testdata/direct_edges.golden"))
 			vars := struct {
-				Ns        string
-				ControlNs string
+				Ns    string
+				VizNs string
 			}{
 				testNamespace,
-				TestHelper.GetLinkerdNamespace(),
+				TestHelper.GetVizNamespace(),
 			}
 			var buf bytes.Buffer
 			if err := tpl.Execute(&buf, vars); err != nil {

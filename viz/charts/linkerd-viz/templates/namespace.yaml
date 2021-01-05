@@ -1,0 +1,13 @@
+---
+###
+### Linkerd Viz Extension Namespace
+###
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: {{.Values.namespace}}
+  labels:
+    {{.Values.extensionAnnotation}}: linkerd-viz
+  annotations:
+    {{.Values.proxyInjectAnnotation}}: enabled

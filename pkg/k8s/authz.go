@@ -143,25 +143,6 @@ func checkEndpointSlicesExist(ctx context.Context, k8sClient kubernetes.Interfac
 	return errors.New("no EndpointSlice resources exist in the cluster")
 }
 
-// LinkAccess checks whether the Link CRD is installed on the cluster and the
-// client is authorized to access Links.
-func LinkAccess(ctx context.Context, k8sClient kubernetes.Interface) error {
-	res, err := k8sClient.Discovery().ServerResourcesForGroupVersion(LinkAPIGroupVersion)
-	if err != nil {
-		return err
-	}
-
-	if res.GroupVersion == LinkAPIGroupVersion {
-		for _, apiRes := range res.APIResources {
-			if apiRes.Kind == LinkKind {
-				return ResourceAuthz(ctx, k8sClient, "", "list", LinkAPIGroup, LinkAPIVersion, "links", "")
-			}
-		}
-	}
-
-	return errors.New("Link CRD not found")
-}
-
 // ClusterAccess verifies whether k8sClient is authorized to access all pods in
 // all namespaces in the cluster.
 func ClusterAccess(ctx context.Context, k8sClient kubernetes.Interface) error {

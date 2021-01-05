@@ -20,7 +20,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/identity"
 	"github.com/linkerd/linkerd2/pkg/issuercerts"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	"github.com/linkerd/linkerd2/pkg/multicluster"
 	"github.com/linkerd/linkerd2/pkg/tls"
 	"github.com/linkerd/linkerd2/pkg/version"
 	log "github.com/sirupsen/logrus"
@@ -36,7 +35,6 @@ import (
 	yamlDecoder "k8s.io/apimachinery/pkg/util/yaml"
 	k8sVersion "k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
-	apiregistrationv1client "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/typed/apiregistration/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -153,13 +151,6 @@ const (
 	linkerdCNIResourceName       = "linkerd-cni"
 	linkerdCNIConfigMapName      = "linkerd-cni-config"
 
-	// linkerdTapAPIServiceName is the name of the tap api service
-	// This key is passed to checkApiService method to check whether
-	// the api service is available or not
-	linkerdTapAPIServiceName = "v1alpha1.tap.linkerd.io"
-
-	tapOldTLSSecretName           = "linkerd-tap-tls"
-	tapTLSSecretName              = "linkerd-tap-k8s-tls"
 	proxyInjectorOldTLSSecretName = "linkerd-proxy-injector-tls"
 	proxyInjectorTLSSecretName    = "linkerd-proxy-injector-k8s-tls"
 	spValidatorOldTLSSecretName   = "linkerd-sp-validator-tls"
@@ -189,7 +180,6 @@ var linkerdHAControlPlaneComponents = []string{
 	"linkerd-identity",
 	"linkerd-proxy-injector",
 	"linkerd-sp-validator",
-	"linkerd-tap",
 }
 
 // ExpectedServiceAccountNames is a list of the service accounts that a healthy
@@ -201,13 +191,12 @@ var ExpectedServiceAccountNames = []string{
 	"linkerd-identity",
 	"linkerd-proxy-injector",
 	"linkerd-sp-validator",
-	"linkerd-web",
-	"linkerd-tap",
 }
 
 var (
-	retryWindow    = 5 * time.Second
-	requestTimeout = 30 * time.Second
+	retryWindow = 5 * time.Second
+	// RequestTimeout is the time it takes for a request to timeout
+	RequestTimeout = 30 * time.Second
 )
 
 // Resource provides a way to describe a Kubernetes object, kind, and name.
@@ -391,7 +380,6 @@ type Options struct {
 	RetryDeadline         time.Time
 	CNIEnabled            bool
 	InstallManifest       string
-	MultiCluster          bool
 }
 
 // HealthChecker encapsulates all health check checkers, and clients required to
@@ -412,7 +400,6 @@ type HealthChecker struct {
 	issuerCert       *tls.Cred
 	trustAnchors     []*x509.Certificate
 	cniDaemonSet     *appsv1.DaemonSet
-	links            []multicluster.Link
 }
 
 // NewHealthChecker returns an initialized HealthChecker
@@ -421,8 +408,7 @@ func NewHealthChecker(categoryIDs []CategoryID, options *Options) *HealthChecker
 		Options: options,
 	}
 
-	hc.categories = append(hc.allCategories(), hc.addOnCategories()...)
-	hc.categories = append(hc.categories, hc.multiClusterCategory()...)
+	hc.categories = hc.allCategories()
 
 	checkMap := map[CategoryID]struct{}{}
 	for _, category := range categoryIDs {
@@ -464,7 +450,7 @@ func (hc *HealthChecker) allCategories() []Category {
 					hintAnchor:  "k8s-api",
 					fatal:       true,
 					check: func(context.Context) (err error) {
-						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, requestTimeout)
+						hc.kubeAPI, err = k8s.NewAPI(hc.KubeConfig, hc.KubeContext, hc.Impersonate, hc.ImpersonateGroup, RequestTimeout)
 						return
 					},
 				},
@@ -658,7 +644,6 @@ func (hc *HealthChecker) allCategories() []Category {
 					fatal:       true,
 					check: func(ctx context.Context) (err error) {
 						hc.uuid, hc.linkerdConfig, err = hc.checkLinkerdConfigConfigMap(ctx)
-
 						if hc.linkerdConfig != nil {
 							hc.CNIEnabled = hc.linkerdConfig.GetGlobal().CNIEnabled
 						}
@@ -1072,43 +1057,6 @@ func (hc *HealthChecker) allCategories() []Category {
 			id: LinkerdWebhooksAndAPISvcTLS,
 			checkers: []Checker{
 				{
-					description: "tap API server has valid cert",
-					hintAnchor:  "l5d-tap-cert-valid",
-					fatal:       true,
-					check: func(ctx context.Context) (err error) {
-						anchors, err := hc.fetchTapCaBundle(ctx)
-						if err != nil {
-							return err
-						}
-						cert, err := hc.fetchCredsFromSecret(ctx, tapTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, tapOldTLSSecretName)
-						}
-						if err != nil {
-							return err
-						}
-
-						identityName := fmt.Sprintf("linkerd-tap.%s.svc", hc.ControlPlaneNamespace)
-						return hc.checkCertAndAnchors(cert, anchors, identityName)
-					},
-				},
-				{
-					description: "tap API server cert is valid for at least 60 days",
-					warning:     true,
-					hintAnchor:  "l5d-webhook-cert-not-expiring-soon",
-					check: func(ctx context.Context) error {
-						cert, err := hc.fetchCredsFromSecret(ctx, tapTLSSecretName)
-						if kerrors.IsNotFound(err) {
-							cert, err = hc.fetchCredsFromOldSecret(ctx, tapOldTLSSecretName)
-						}
-						if err != nil {
-							return err
-						}
-						return hc.checkCertAndAnchorsExpiringSoon(cert)
-
-					},
-				},
-				{
 					description: "proxy-injector webhook has valid cert",
 					hintAnchor:  "l5d-proxy-injector-webhook-cert-valid",
 					fatal:       true,
@@ -1227,14 +1175,6 @@ func (hc *HealthChecker) allCategories() []Category {
 						return hc.apiClient.SelfCheck(ctx, &healthcheckPb.SelfCheckRequest{})
 					},
 				},
-				{
-					description: "tap api service is running",
-					hintAnchor:  "l5d-tap-api",
-					warning:     true,
-					check: func(ctx context.Context) error {
-						return hc.checkAPIService(ctx, linkerdTapAPIServiceName)
-					},
-				},
 			},
 		},
 		{
@@ -1318,29 +1258,6 @@ func (hc *HealthChecker) allCategories() []Category {
 						}
 
 						return validateDataPlanePods(pods, hc.DataPlaneNamespace)
-					},
-				},
-				{
-					description:   "data plane proxy metrics are present in Prometheus",
-					hintAnchor:    "l5d-data-plane-prom",
-					retryDeadline: hc.RetryDeadline,
-					check: func(ctx context.Context) error {
-						pods, err := hc.getDataPlanePods(ctx)
-						if err != nil {
-							return err
-						}
-
-						// Check if prometheus configured
-						prometheusValues := make(map[string]interface{})
-						err = yaml.Unmarshal(hc.linkerdConfig.Prometheus.Values(), &prometheusValues)
-						if err != nil {
-							return err
-						}
-						if !GetBool(prometheusValues, "enabled") && hc.linkerdConfig.GetGlobal().PrometheusURL == "" {
-							return &SkipError{Reason: "no prometheus instance to connect"}
-						}
-
-						return validateDataPlanePodReporting(pods)
 					},
 				},
 				{
@@ -1550,9 +1467,14 @@ func (hc *HealthChecker) RunChecks(observer CheckObserver) bool {
 	return success
 }
 
+// LinkerdConfigGlobal gets the Linkerd global configuration values.
+func (hc *HealthChecker) LinkerdConfigGlobal() *l5dcharts.Global {
+	return hc.linkerdConfig.GetGlobal()
+}
+
 func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 		defer cancel()
 		err := c.check(ctx)
 		if se, ok := err.(*SkipError); ok {
@@ -1600,7 +1522,7 @@ func (hc *HealthChecker) runCheck(categoryID CategoryID, c *Checker, observer Ch
 func (hc *HealthChecker) runCheckRPC(categoryID CategoryID, c *Checker, observer CheckObserver) bool {
 	observedResults := []CheckResult{}
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 		defer cancel()
 		checkRsp, err := c.checkRPC(ctx)
 		if se, ok := err.(*SkipError); ok {
@@ -1664,6 +1586,12 @@ func (hc *HealthChecker) controlPlaneComponentsSelector() string {
 	return fmt.Sprintf("%s,!%s", k8s.ControllerNSLabel, LinkerdCNIResourceLabel)
 }
 
+// KubeAPIClient returns a fully configured k8s API client. This client is
+// only configured if the KubernetesAPIChecks are configured and run first.
+func (hc *HealthChecker) KubeAPIClient() *k8s.KubernetesAPI {
+	return hc.kubeAPI
+}
+
 // PublicAPIClient returns a fully configured public API client. This client is
 // only configured if the KubernetesAPIChecks and LinkerdAPIChecks are
 // configured and run first.
@@ -1697,11 +1625,6 @@ func (hc *HealthChecker) checkCertificatesConfig(ctx context.Context) (*tls.Cred
 		data, err = issuercerts.FetchIssuerData(ctx, hc.kubeAPI, values.GetGlobal().IdentityTrustAnchorsPEM, hc.ControlPlaneNamespace)
 	} else {
 		data, err = issuercerts.FetchExternalIssuerData(ctx, hc.kubeAPI, hc.ControlPlaneNamespace)
-		// ensure trust anchors in config matches what's in the secret
-		if data != nil && strings.TrimSpace(values.GetGlobal().IdentityTrustAnchorsPEM) != strings.TrimSpace(data.TrustAnchors) {
-			errFormat := "IdentityContext.TrustAnchorsPem does not match %s in %s"
-			err = fmt.Errorf(errFormat, k8s.IdentityIssuerTrustAnchorsNameExternal, k8s.IdentityIssuerSecretName)
-		}
 	}
 
 	if err != nil {
@@ -1769,24 +1692,6 @@ func (hc *HealthChecker) fetchSpValidatorCaBundle(ctx context.Context) ([]*x509.
 	}
 
 	caBundle, err := tls.DecodePEMCertificates(string(vwc.Webhooks[0].ClientConfig.CABundle))
-	if err != nil {
-		return nil, err
-	}
-	return caBundle, nil
-}
-
-func (hc *HealthChecker) fetchTapCaBundle(ctx context.Context) ([]*x509.Certificate, error) {
-	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
-	if err != nil {
-		return nil, err
-	}
-
-	apiService, err := apiServiceClient.APIServices().Get(ctx, linkerdTapAPIServiceName, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	caBundle, err := tls.DecodePEMCertificates(string(apiService.Spec.CABundle))
 	if err != nil {
 		return nil, err
 	}
@@ -1886,53 +1791,19 @@ func (hc *HealthChecker) expectedRBACNames() []string {
 		fmt.Sprintf("linkerd-%s-identity", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-proxy-injector", hc.ControlPlaneNamespace),
 		fmt.Sprintf("linkerd-%s-sp-validator", hc.ControlPlaneNamespace),
-		fmt.Sprintf("linkerd-%s-tap", hc.ControlPlaneNamespace),
 	}
-}
-
-func (hc *HealthChecker) checkRoles(ctx context.Context, shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
-	options := metav1.ListOptions{
-		LabelSelector: labelSelector,
-	}
-	crList, err := hc.kubeAPI.RbacV1().Roles(namespace).List(ctx, options)
-	if err != nil {
-		return err
-	}
-
-	objects := []runtime.Object{}
-
-	for _, item := range crList.Items {
-		item := item // pin
-		objects = append(objects, &item)
-	}
-
-	return checkResources("Roles", objects, expectedNames, shouldExist)
-}
-
-func (hc *HealthChecker) checkRoleBindings(ctx context.Context, shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
-	options := metav1.ListOptions{
-		LabelSelector: labelSelector,
-	}
-	crbList, err := hc.kubeAPI.RbacV1().RoleBindings(namespace).List(ctx, options)
-	if err != nil {
-		return err
-	}
-
-	objects := []runtime.Object{}
-
-	for _, item := range crbList.Items {
-		item := item // pin
-		objects = append(objects, &item)
-	}
-
-	return checkResources("RoleBindings", objects, expectedNames, shouldExist)
 }
 
 func (hc *HealthChecker) checkClusterRoles(ctx context.Context, shouldExist bool, expectedNames []string, labelSelector string) error {
+	return CheckClusterRoles(ctx, hc.kubeAPI, shouldExist, expectedNames, labelSelector)
+}
+
+// CheckClusterRoles checks that the expected ClusterRoles exist.
+func CheckClusterRoles(ctx context.Context, kubeAPI *k8s.KubernetesAPI, shouldExist bool, expectedNames []string, labelSelector string) error {
 	options := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
-	crList, err := hc.kubeAPI.RbacV1().ClusterRoles().List(ctx, options)
+	crList, err := kubeAPI.RbacV1().ClusterRoles().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1948,10 +1819,15 @@ func (hc *HealthChecker) checkClusterRoles(ctx context.Context, shouldExist bool
 }
 
 func (hc *HealthChecker) checkClusterRoleBindings(ctx context.Context, shouldExist bool, expectedNames []string, labelSelector string) error {
+	return CheckClusterRoleBindings(ctx, hc.kubeAPI, shouldExist, expectedNames, labelSelector)
+}
+
+// CheckClusterRoleBindings checks that the expected ClusterRoleBindings exist.
+func CheckClusterRoleBindings(ctx context.Context, kubeAPI *k8s.KubernetesAPI, shouldExist bool, expectedNames []string, labelSelector string) error {
 	options := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
-	crbList, err := hc.kubeAPI.RbacV1().ClusterRoleBindings().List(ctx, options)
+	crbList, err := kubeAPI.RbacV1().ClusterRoleBindings().List(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -1996,6 +1872,27 @@ func CheckServiceAccounts(ctx context.Context, api *k8s.KubernetesAPI, saNames [
 	}
 
 	return checkResources("ServiceAccounts", objects, saNames, true)
+}
+
+// CheckIfLinkerdExists checks if Linkerd exists
+func CheckIfLinkerdExists(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string) (bool, error) {
+	_, err := kubeAPI.CoreV1().Namespaces().Get(ctx, controlPlaneNamespace, metav1.GetOptions{})
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	_, _, err = FetchCurrentConfiguration(ctx, kubeAPI, controlPlaneNamespace)
+	if err != nil {
+		if kerrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (hc *HealthChecker) checkCustomResourceDefinitions(ctx context.Context, shouldExist bool) error {
@@ -2228,24 +2125,6 @@ func (hc *HealthChecker) getDataPlanePods(ctx context.Context) ([]*pb.Pod, error
 	return pods, nil
 }
 
-func (hc *HealthChecker) checkCanPerformAction(ctx context.Context, api *k8s.KubernetesAPI, verb, namespace, group, version, resource string) error {
-	if api == nil {
-		// we should never get here
-		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
-	}
-
-	return k8s.ResourceAuthz(
-		ctx,
-		api,
-		namespace,
-		verb,
-		group,
-		version,
-		resource,
-		"",
-	)
-}
-
 func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context.Context) error {
 	ns, err := hc.kubeAPI.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
 	if err != nil {
@@ -2261,7 +2140,7 @@ func (hc *HealthChecker) checkHAMetadataPresentOnKubeSystemNamespace(ctx context
 }
 
 func (hc *HealthChecker) checkCanCreate(ctx context.Context, namespace, group, version, resource string) error {
-	return hc.checkCanPerformAction(ctx, hc.kubeAPI, "create", namespace, group, version, resource)
+	return CheckCanPerformAction(ctx, hc.kubeAPI, "create", namespace, group, version, resource)
 }
 
 func (hc *HealthChecker) checkCanCreateNonNamespacedResources(ctx context.Context) error {
@@ -2312,30 +2191,7 @@ func (hc *HealthChecker) checkCanCreateNonNamespacedResources(ctx context.Contex
 }
 
 func (hc *HealthChecker) checkCanGet(ctx context.Context, namespace, group, version, resource string) error {
-	return hc.checkCanPerformAction(ctx, hc.kubeAPI, "get", namespace, group, version, resource)
-}
-
-func (hc *HealthChecker) checkAPIService(ctx context.Context, serviceName string) error {
-	apiServiceClient, err := apiregistrationv1client.NewForConfig(hc.kubeAPI.Config)
-	if err != nil {
-		return err
-	}
-
-	apiStatus, err := apiServiceClient.APIServices().Get(ctx, serviceName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	for _, condition := range apiStatus.Status.Conditions {
-		if condition.Type == "Available" {
-			if condition.Status == "True" {
-				return nil
-			}
-			return fmt.Errorf("%s: %s", condition.Reason, condition.Message)
-		}
-	}
-
-	return fmt.Errorf("%s service not available", linkerdTapAPIServiceName)
+	return CheckCanPerformAction(ctx, hc.kubeAPI, "get", namespace, group, version, resource)
 }
 
 func (hc *HealthChecker) checkCapability(ctx context.Context, cap string) error {
@@ -2434,6 +2290,65 @@ func (cr *CheckResult) alreadyObserved(previousResults []CheckResult) bool {
 	return false
 }
 
+// CheckRoles checks that the expected roles exist.
+func CheckRoles(ctx context.Context, kubeAPI *k8s.KubernetesAPI, shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
+	options := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+	crList, err := kubeAPI.RbacV1().Roles(namespace).List(ctx, options)
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+
+	for _, item := range crList.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("Roles", objects, expectedNames, shouldExist)
+}
+
+// CheckRoleBindings checks that the expected RoleBindings exist.
+func CheckRoleBindings(ctx context.Context, kubeAPI *k8s.KubernetesAPI, shouldExist bool, namespace string, expectedNames []string, labelSelector string) error {
+	options := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+	crbList, err := kubeAPI.RbacV1().RoleBindings(namespace).List(ctx, options)
+	if err != nil {
+		return err
+	}
+
+	objects := []runtime.Object{}
+
+	for _, item := range crbList.Items {
+		item := item // pin
+		objects = append(objects, &item)
+	}
+
+	return checkResources("RoleBindings", objects, expectedNames, shouldExist)
+}
+
+// CheckCanPerformAction checks if a given k8s client is authorized to perform a given action.
+func CheckCanPerformAction(ctx context.Context, api *k8s.KubernetesAPI, verb, namespace, group, version, resource string) error {
+	if api == nil {
+		// we should never get here
+		return fmt.Errorf("unexpected error: Kubernetes ClientSet not initialized")
+	}
+
+	return k8s.ResourceAuthz(
+		ctx,
+		api,
+		namespace,
+		verb,
+		group,
+		version,
+		resource,
+		"",
+	)
+}
+
 // getPodStatuses returns a map of all Linkerd container statuses:
 // component =>
 //   pod name =>
@@ -2467,7 +2382,7 @@ const running = "Running"
 func validateControlPlanePods(pods []corev1.Pod) error {
 	statuses := getPodStatuses(pods)
 
-	names := []string{"controller", "identity", "sp-validator", "web", "tap"}
+	names := []string{"controller", "identity", "sp-validator"}
 	// TODO: deprecate this when we drop support for checking pre-default proxy-injector control-planes
 	if _, found := statuses["proxy-injector"]; found {
 		names = append(names, "proxy-injector")

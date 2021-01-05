@@ -10,7 +10,7 @@
   \},
   \{
     "src": "linkerd-prometheus",
-    "src_namespace": "{{.ControlNs}}",
+    "src_namespace": "{{.VizNs}}",
     "dst": "slow-cooker",
     "dst_namespace": "{{.Ns}}",
     "client_id": "",
@@ -19,7 +19,7 @@
   \},
   \{
     "src": "linkerd-prometheus",
-    "src_namespace": "{{.ControlNs}}",
+    "src_namespace": "{{.VizNs}}",
     "dst": "terminus",
     "dst_namespace": "{{.Ns}}",
     "client_id": "",

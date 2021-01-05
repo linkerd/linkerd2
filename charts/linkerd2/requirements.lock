@@ -2,11 +2,5 @@ dependencies:
 - name: partials
   repository: file://../partials
   version: 0.1.0
-- name: prometheus
-  repository: file://../add-ons/prometheus
-  version: 0.1.0
-- name: grafana
-  repository: file://../add-ons/grafana
-  version: 0.1.0
-digest: sha256:2bbca4bf61028194ae6ee86763f21fa2488c9d141e3529bae642fa72b45fb34c
-generated: "2020-12-18T23:27:44.921336524Z"
+digest: sha256:8e42f9c9d4a2dc883f17f94d6044c97518ced19ad0922f47b8760e47135369ba
+generated: "2020-12-21T17:47:25.811707816Z"

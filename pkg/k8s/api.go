@@ -165,6 +165,20 @@ func (kubeAPI *KubernetesAPI) GetReplicaSets(ctx context.Context, namespace stri
 	return replicaSetList.Items, nil
 }
 
+// GetNamespaceWithExtensionLabel gets the namespace with the LinkerdExtensionLabel label value of `value`
+func (kubeAPI *KubernetesAPI) GetNamespaceWithExtensionLabel(ctx context.Context, value string) (*corev1.Namespace, error) {
+	namespaces, err := kubeAPI.CoreV1().Namespaces().List(ctx, metav1.ListOptions{LabelSelector: LinkerdExtensionLabel})
+	if err != nil {
+		return nil, err
+	}
+	for _, ns := range namespaces.Items {
+		if ns.Labels[LinkerdExtensionLabel] == value {
+			return &ns, err
+		}
+	}
+	return nil, fmt.Errorf("could not find the %s extension", value)
+}
+
 // GetPodStatus receives a pod and returns the pod status, based on `kubectl` logic.
 // This logic is imported and adapted from the github.com/kubernetes/kubernetes project:
 // https://github.com/kubernetes/kubernetes/blob/33a3e325f754d179b25558dee116fca1c67d353a/pkg/printers/internalversion/printers.go#L558-L640

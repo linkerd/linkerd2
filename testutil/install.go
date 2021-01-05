@@ -7,7 +7,7 @@ import (
 )
 
 // TestResourcesPostInstall tests resources post control plane installation
-func TestResourcesPostInstall(namespace string, services []string, deploys map[string]DeploySpec, h *TestHelper, t *testing.T) {
+func TestResourcesPostInstall(namespace string, services []Service, deploys map[string]DeploySpec, h *TestHelper, t *testing.T) {
 	ctx := context.Background()
 	// Tests Namespace
 	err := h.CheckIfNamespaceExists(ctx, namespace)
@@ -18,22 +18,22 @@ func TestResourcesPostInstall(namespace string, services []string, deploys map[s
 
 	// Tests Services
 	for _, svc := range services {
-		if err := h.CheckService(ctx, namespace, svc); err != nil {
-			AnnotatedErrorf(t, fmt.Sprintf("error validating service [%s]", svc),
-				"error validating service [%s]:\n%s", svc, err)
+		if err := h.CheckService(ctx, svc.Namespace, svc.Name); err != nil {
+			AnnotatedErrorf(t, fmt.Sprintf("error validating service [%s/%s]", svc.Namespace, svc.Name),
+				"error validating service [%s/%s]:\n%s", svc.Namespace, svc.Name, err)
 		}
 	}
 
 	// Tests Pods and Deployments
 	for deploy, spec := range deploys {
-		if err := h.CheckPods(ctx, namespace, deploy, spec.Replicas); err != nil {
+		if err := h.CheckPods(ctx, spec.Namespace, deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*RestartCountError); ok {
 				AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
 				AnnotatedFatal(t, "CheckPods timed-out", err)
 			}
 		}
-		if err := h.CheckDeployment(ctx, namespace, deploy, spec.Replicas); err != nil {
+		if err := h.CheckDeployment(ctx, spec.Namespace, deploy, spec.Replicas); err != nil {
 			AnnotatedFatalf(t, "CheckDeployment timed-out", "Error validating deployment [%s]:\n%s", deploy, err)
 		}
 	}
