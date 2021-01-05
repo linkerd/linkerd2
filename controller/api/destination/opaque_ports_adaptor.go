@@ -1,7 +1,6 @@
 package destination
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
@@ -11,7 +10,6 @@ import (
 	"github.com/linkerd/linkerd2/pkg/util"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 // opaquePortsAdaptor implements EndpointUpdateListener so that it can watch
@@ -73,7 +71,7 @@ func (opa *opaquePortsAdaptor) getOpaquePorts(set watcher.AddressSet) map[uint32
 	for _, address := range set.Addresses {
 		pod := address.Pod
 		if pod != nil {
-			override, err := getOpaquePortsAnnotations(opa.k8sAPI, pod)
+			override, err := getOpaquePortsAnnotations(pod)
 			if err != nil {
 				opa.log.Errorf("Failed to get opaque ports annotation for pod %s: %s", pod, err)
 			}
@@ -94,32 +92,11 @@ func (opa *opaquePortsAdaptor) publish() {
 	opa.listener.Update(&merged)
 }
 
-func getOpaquePortsAnnotations(k8sAPI *k8s.API, pod *corev1.Pod) (map[uint32]struct{}, error) {
+func getOpaquePortsAnnotations(pod *corev1.Pod) (map[uint32]struct{}, error) {
 	opaquePorts := make(map[uint32]struct{})
-	obj, err := k8sAPI.GetObjects("", pkgk8s.Namespace, pod.Namespace, labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-	if len(obj) > 1 {
-		return nil, fmt.Errorf("Namespace conflict: %v, %v", obj[0], obj[1])
-	}
-	if len(obj) != 1 {
-		return nil, fmt.Errorf("Namespace not found: %v", pod.Namespace)
-	}
-	ns, ok := obj[0].(*corev1.Namespace)
-	if !ok {
-		// This is very unlikely due to how `GetObjects` works
-		return nil, fmt.Errorf("Object with name %s was not a namespace", pod.Namespace)
-	}
-	override := ns.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]
-
-	// Pod annotations override namespace annotations
-	if podOverride, ok := pod.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]; ok {
-		override = podOverride
-	}
-
-	if override != "" {
-		for _, portStr := range util.ParseOpaquePorts(override, pod.Spec.Containers) {
+	annotation := pod.Annotations[pkgk8s.ProxyOpaquePortsAnnotation]
+	if annotation != "" {
+		for _, portStr := range util.ParseOpaquePorts(annotation, pod.Spec.Containers) {
 			port, err := strconv.ParseUint(portStr, 10, 32)
 			if err != nil {
 				return nil, err
@@ -127,6 +104,5 @@ func getOpaquePortsAnnotations(k8sAPI *k8s.API, pod *corev1.Pod) (map[uint32]str
 			opaquePorts[uint32(port)] = struct{}{}
 		}
 	}
-
 	return opaquePorts, nil
 }

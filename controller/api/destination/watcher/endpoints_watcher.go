@@ -772,6 +772,10 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
 	addresses := make(map[ID]Address)
+	nsAnnotation, err := pp.k8sAPI.GetNsAnnotationFor(endpoints.Namespace, consts.ProxyOpaquePortsAnnotation)
+	if err != nil {
+		pp.log.Errorf("failed to get namespace annotation: %s", err)
+	}
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
 		for _, endpoint := range subset.Addresses {
@@ -799,6 +803,8 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
+				merged := MergeAnnotations(nsAnnotation, address.Pod.Annotations[consts.ProxyOpaquePortsAnnotation])
+				SetPodAnnotationFor(address.Pod, consts.ProxyOpaquePortsAnnotation, merged)
 				addresses[id] = address
 			}
 		}
@@ -1080,4 +1086,34 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	}
 
 	return true
+}
+
+// SetPodAnnotationFor sets an annotation to the given value for a Pod.
+func SetPodAnnotationFor(pod *corev1.Pod, annotation string, val string) {
+	if pod.Annotations == nil {
+		pod.Annotations = make(map[string]string)
+	}
+	pod.Annotations[annotation] = val
+}
+
+// MergeAnnotations merges two annotation values
+func MergeAnnotations(nsAnnotation string, podAnnotation string) string {
+	nsSplit := strings.Split(nsAnnotation, ",")
+	podSplit := strings.Split(podAnnotation, ",")
+	merged := nsSplit
+	for _, pV := range podSplit {
+		if !contains(pV, merged) {
+			merged = append(merged, pV)
+		}
+	}
+	return strings.Join(merged, ",")
+}
+
+func contains(val string, vals []string) bool {
+	for _, v := range vals {
+		if v == val {
+			return true
+		}
+	}
+	return false
 }

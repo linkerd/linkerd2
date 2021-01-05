@@ -28,7 +28,6 @@ const (
 // endpointTranslator satisfies EndpointUpdateListener and translates updates
 // into Destination.Get messages.
 type endpointTranslator struct {
-	k8sAPI              *k8s.API
 	controllerNS        string
 	identityTrustDomain string
 	enableH2Upgrade     bool
@@ -65,7 +64,6 @@ func newEndpointTranslator(
 	filteredSnapshot := newEmptyAddressSet()
 
 	return &endpointTranslator{
-		k8sAPI,
 		controllerNS,
 		identityTrustDomain,
 		enableH2Upgrade,
@@ -219,7 +217,7 @@ func (et *endpointTranslator) sendClientAdd(set watcher.AddressSet) {
 			err error
 		)
 		if address.Pod != nil {
-			opaquePorts, getErr := getOpaquePortsAnnotations(et.k8sAPI, address.Pod)
+			opaquePorts, getErr := getOpaquePortsAnnotations(address.Pod)
 			if getErr != nil {
 				et.log.Errorf("failed getting opaque ports annotation for pod: %s", getErr)
 			}
