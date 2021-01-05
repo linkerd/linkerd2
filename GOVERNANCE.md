@@ -12,7 +12,7 @@ Conduct][coc].
 
 All contributions to Linkerd code, documentation, or other components in the
 Linkerd GitHub org must follow the guidelines in [CONTRIBUTING.md][contrib].
-Whether these contributions are merged into the project is the perogative of
+Whether these contributions are merged into the project is the prerogative of
 the maintainers.
 
 ## Maintainer Expectations
