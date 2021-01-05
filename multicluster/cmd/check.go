@@ -183,6 +183,7 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 	checkers = append(checkers,
 		*healthcheck.NewChecker("all mirror services are part of a Link").
 			WithHintAnchor("l5d-multicluster-orphaned-services").
+			Warning().
 			WithCheck(func(ctx context.Context) error {
 				return hc.checkForOrphanedServices(ctx)
 			}))
