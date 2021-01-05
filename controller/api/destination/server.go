@@ -11,7 +11,6 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/controller/k8s"
-	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/prometheus"
 	logging "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -209,14 +208,10 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 					Namespace: pod.Namespace,
 					Name:      pod.Name,
 				}
-				// Merge the opaque ports annotation of both the namespace and
-				// pod.
-				nsAnnotation, err := s.k8sAPI.GetNsAnnotationFor(pod.Namespace, pkgk8s.ProxyOpaquePortsAnnotation)
+				err := watcher.SetPodOpaquePortAnnotation(s.k8sAPI, pod, pod.Namespace)
 				if err != nil {
-					log.Errorf("failed to get namespace annotation: %s", err)
+					log.Errorf("failed to set opaque port annotation on pod: %s", err)
 				}
-				merged := watcher.MergeAnnotations(nsAnnotation, pod.Annotations[pkgk8s.ProxyOpaquePortsAnnotation])
-				watcher.SetPodAnnotationFor(pod, pkgk8s.ProxyOpaquePortsAnnotation, merged)
 				opaquePorts, err = getOpaquePortsAnnotations(pod)
 				if err != nil {
 					log.Errorf("failed getting opaque ports annotation for pod: %s", err)

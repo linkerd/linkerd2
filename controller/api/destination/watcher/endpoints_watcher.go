@@ -772,10 +772,6 @@ func (pp *portPublisher) endpointSliceToAddresses(es *discovery.EndpointSlice) A
 
 func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) AddressSet {
 	addresses := make(map[ID]Address)
-	nsAnnotation, err := pp.k8sAPI.GetNsAnnotationFor(endpoints.Namespace, consts.ProxyOpaquePortsAnnotation)
-	if err != nil {
-		pp.log.Errorf("failed to get namespace annotation: %s", err)
-	}
 	for _, subset := range endpoints.Subsets {
 		resolvedPort := pp.resolveTargetPort(subset)
 		for _, endpoint := range subset.Addresses {
@@ -803,8 +799,10 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
-				merged := MergeAnnotations(nsAnnotation, address.Pod.Annotations[consts.ProxyOpaquePortsAnnotation])
-				SetPodAnnotationFor(address.Pod, consts.ProxyOpaquePortsAnnotation, merged)
+				err = SetPodOpaquePortAnnotation(pp.k8sAPI, address.Pod, endpoints.Namespace)
+				if err != nil {
+					pp.log.Errorf("failed to set opaque port annotation on pod: %s", err)
+				}
 				addresses[id] = address
 			}
 		}
@@ -1088,32 +1086,21 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	return true
 }
 
-// SetPodAnnotationFor sets an annotation to the given value for a Pod.
-func SetPodAnnotationFor(pod *corev1.Pod, annotation string, val string) {
-	if pod.Annotations == nil {
-		pod.Annotations = make(map[string]string)
-	}
-	pod.Annotations[annotation] = val
-}
-
-// MergeAnnotations merges two annotation values
-func MergeAnnotations(nsAnnotation string, podAnnotation string) string {
-	nsSplit := strings.Split(nsAnnotation, ",")
-	podSplit := strings.Split(podAnnotation, ",")
-	merged := nsSplit
-	for _, pV := range podSplit {
-		if !contains(pV, merged) {
-			merged = append(merged, pV)
+// SetPodOpaquePortAnnotation ensures that if there is no opaque port
+// annotation on the pod, then it inherits the annotation from the namespace.
+// If there is also no annotation on the namespace, then it remains unset.
+func SetPodOpaquePortAnnotation(k8sAPI *k8s.API, pod *corev1.Pod, ns string) error {
+	annotation := pod.Annotations[consts.ProxyOpaquePortsAnnotation]
+	if annotation == "" {
+		annotation, err := k8sAPI.GetNsAnnotationFor(ns, consts.ProxyOpaquePortsAnnotation)
+		if err != nil {
+			return fmt.Errorf("failed to get namespace annotation: %s", err)
+		} else if annotation != "" {
+			if pod.Annotations == nil {
+				pod.Annotations = make(map[string]string)
+			}
+			pod.Annotations[annotation] = annotation
 		}
 	}
-	return strings.Join(merged, ",")
-}
-
-func contains(val string, vals []string) bool {
-	for _, v := range vals {
-		if v == val {
-			return true
-		}
-	}
-	return false
+	return nil
 }
