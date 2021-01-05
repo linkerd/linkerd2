@@ -92,9 +92,6 @@ func newCmdProfile() *cobra.Command {
 
   # Generate a profile by watching live traffic based off tap data.
   linkerd profile -n emojivoto web-svc --tap deploy/web --tap-duration 10s --tap-route-limit 5
-
-  # Generate a profile without requiring cluster access
-  linkerd profile -n emojivoto --ignore-cluster
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
