@@ -61,6 +61,7 @@ func (hc *HealthChecker) addCheckAsCategory(
 			for _, ch := range cat.checkers {
 				if ch.description == desc {
 					testCategory.checkers = append(testCategory.checkers, ch)
+					testCategory.enabled = true
 					break
 				}
 			}
@@ -84,6 +85,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	passingCheck2 := Category{
@@ -97,6 +99,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	failingCheck := Category{
@@ -110,6 +113,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	passingRPCClient := public.MockAPIClient{
@@ -136,6 +140,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	failingRPCClient := public.MockAPIClient{
@@ -163,6 +168,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	fatalCheck := Category{
@@ -177,6 +183,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	skippingCheck := Category{
@@ -190,6 +197,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	skippingRPCCheck := Category{
@@ -203,6 +211,7 @@ func TestHealthChecker(t *testing.T) {
 				retryDeadline: time.Time{},
 			},
 		},
+		enabled: true,
 	}
 
 	t.Run("Notifies observer of all results", func(t *testing.T) {
@@ -210,6 +219,7 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
+
 		hc.AppendCategories(passingCheck1)
 		hc.AppendCategories(passingCheck2)
 		hc.AppendCategories(failingCheck)
@@ -323,6 +333,7 @@ func TestHealthChecker(t *testing.T) {
 					},
 				},
 			},
+			enabled: true,
 		}
 
 		hc := NewHealthChecker(
