@@ -214,7 +214,7 @@ func (s *server) GetProfile(dest *pb.GetDestination, stream pb.Destination_GetPr
 				}
 				opaquePorts, err = getOpaquePortsAnnotations(pod)
 				if err != nil {
-					log.Errorf("failed getting opaque ports annotation for pod: %s", err)
+					log.Errorf("failed to get opaque ports annotation for pod: %s", err)
 				}
 				endpoint, err = toWeightedAddr(podSet.Addresses[podID], opaquePorts, s.enableH2Upgrade, s.identityTrustDomain, s.controllerNS, log)
 				if err != nil {
