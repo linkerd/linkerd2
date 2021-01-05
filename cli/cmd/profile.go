@@ -53,11 +53,8 @@ func (options *profileOptions) validate() error {
 	if options.tap != "" {
 		outputs++
 	}
-	if options.ignoreCluster {
-		outputs++
-	}
 	if outputs != 1 {
-		return errors.New("You must specify exactly one of --template or --open-api or --proto or --tap or --ignore-cluster")
+		return errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
 	}
 
 	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
@@ -81,7 +78,7 @@ func newCmdProfile() *cobra.Command {
 	options := newProfileOptions()
 
 	cmd := &cobra.Command{
-		Use:   "profile [flags] (--template | --open-api file | --proto file | --tap resource | --ignore-cluster) (SERVICE)",
+		Use:   "profile [flags] (--template | --open-api file | --proto file | --tap resource) (SERVICE)",
 		Short: "Output service profile config for Kubernetes",
 		Long:  "Output service profile config for Kubernetes.",
 		Example: `  # Output a basic template to apply after modification.
