@@ -325,7 +325,6 @@ class Octopus extends React.Component {
               {this.renderArrowCol(numUpstreams, false)}
             </Grid>
 
-
             <Grid item xs={3}>
               {this.renderResourceCard(resource, 'main')}
             </Grid>
