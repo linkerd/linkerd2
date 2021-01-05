@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/grantae/certinfo"
 	"github.com/linkerd/linkerd2/pkg/k8s"
@@ -84,7 +83,7 @@ func newCmdIdentity() *cobra.Command {
 				return err
 			}
 
-			resultCerts := getCertificate(k8sAPI, pods, k8s.ProxyAdminPortName, 30*time.Second, emitLog)
+			resultCerts := getCertificate(k8sAPI, pods, k8s.ProxyAdminPortName, emitLog)
 			for _, resultCert := range resultCerts {
 				if resultCert.err != nil {
 					fmt.Printf("\n%s", resultCert.err)
@@ -110,7 +109,7 @@ func newCmdIdentity() *cobra.Command {
 	return cmd
 }
 
-func getCertificate(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, portName string, waitingTime time.Duration, emitLog bool) []certificate {
+func getCertificate(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, portName string, emitLog bool) []certificate {
 	var certificates []certificate
 	for _, pod := range pods {
 		containers, err := getContainersWithPort(pod, portName)
