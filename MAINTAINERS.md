@@ -1,6 +1,6 @@
 # Maintainers
 
-The Linkerd2 maintainers are:
+The Linkerd maintainers are:
 
 * Oliver Gould <ver@buoyant.io> @olix0r (super-maintainer)
 * Kevin Lingerfelt <kl@buoyant.io> @klingerf (super-maintainer)
@@ -12,6 +12,12 @@ The Linkerd2 maintainers are:
 * Kevin Leimkuhler <kevinl@buoyant.io> @kleimkuhler
 * Risha Mars <mars@buoyant.io> @rmars
 * Zahari Dichev <zahari@buoyant.io> @zaharidichev
+
+## Emeritus
+
+Former maintainers include:
+
+* ...
 
 <!--
 # Adding a new maintainer

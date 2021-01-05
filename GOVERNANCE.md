@@ -2,46 +2,57 @@
 
 This document defines project governance for Linkerd.
 
-## Roles
+## Contributors
 
-There are two roles that convey decision-making powers: maintainer and
-super-maintainer. MAINTAINERS.md defines the membership of these roles.
+Linkerd is for everyone. Anyone can become a Linkerd contributor simply by
+contributing to the project, whether through code, documentation, blog posts,
+community management, or other means. As with all Linkerd community members,
+contributors are expected to follow the [Linkerd Code of
+Conduct][coc].
 
-## Expectations
+All contributions to Linkerd code, documentation, or other components in the
+Linkerd GitHub org must follow the guidelines in [CONTRIBUTING.md][contrib].
+Whether these contributions are merged into the project is the perogative of
+the maintainers.
 
-Maintainers are responsible for one or more components, and are expected to
-contribute code, field incoming PRs, triage issues, proactively fix bugs, and
-generally perform maintenance tasks for these components.
+## Maintainer Expectations
 
-Super-maintainers are responsible for the project as a whole, and are expected
-to guide general project direction as well as being the final reviewer on PRs.
+Maintainers have the ability to merge code into the project. Anyone can
+become a Linkerd maintainer (see "Becoming a maintainer" below.)
 
-## Decisionmaking
+As such, there are certain expectations for maintainers. Linkerd maintainers
+are expected to:
 
-Ideally, all project decisions are resolved by consensus. If this is not
-possible, maintainers may call a vote. Unless otherwise specified in this
-document, the vote will be decided by a simple majority in which each
-super-maintainer receives two votes and each maintainer receives one vote.
+* Review pull requests, triage issues, and fix bugs in their areas of
+  expertise, ensuring that all changes go through the project's code review
+  and integration processes.
+* Monitor cncf-linkerd-* emails and the Linkerd Slack, and help out when
+  possible.
+* Rapidly respond to any time-sensitive security release processes.
+* Attend meetings with the Linkerd Steering Committee.
 
-## Changes in Maintainership
+If a maintainer is no longer interested in or cannot perform the duties
+listed above, they should move themselves to emeritus status. If necessary,
+this can also occur through the decision-making process outlined below.
 
-New maintainers must be proposed by an existing maintainer and must be elected
-by a 2/3 majority organization vote. Maintainers can be removed by a 2/3
-majority organization vote.
+### Maintainer decision-making
 
-Super-maintainers must be proposed by an existing super-maintainer and must be
-elected by a 2/3 majority organization vote. Super-maintainers can be removed
-by a 2/3 majority organization vote.
+Ideally, all project decisions are resolved by maintainer consensus. If this
+is not possible, maintainers may call a vote. The voting process is a simple
+majority in which each maintainer receives one vote.
 
-## GitHub Project Administration
+### Becoming a maintainer
 
-Maintainers will be added to the linkerd GitHub organization, and be made an
-owner of the GitHub organization.
+Anyone can become a Linkerd maintainer. Maintainers should be extremely
+proficient in Go and/or Rust; have relevant domain expertise; have the time
+and ability to meet the maintainer expectations above; and demonstrate the
+ability to work with the existing maintainers and project processes.
 
-## Approving PRs
+To become a maintainer, start by expressing interest to existing maintainers.
+Existing maintainers will then ask you to demonstrate the qualifications
+above by contributing PRs, doing code reviews, and other such tasks under
+their guidance. After several months of working together, maintainers will
+decide whether to grant maintainer status.
 
-All PRs must receive approval from at least one super maintainer before merge.
-
-## Changes in Governance
-
-All changes in Governance require a 2/3 majority organization vote.
+[coc]: https://github.com/linkerd/linkerd/wiki/Linkerd-code-of-conduct
+[contrib]: https://github.com/linkerd/linkerd2/blob/main/CONTRIBUTING.md
