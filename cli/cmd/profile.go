@@ -102,10 +102,22 @@ func newCmdProfile() *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
+			clusterDomain := defaultClusterDomain
 
 			err := options.validate()
 			if err != nil {
 				return err
+			}
+
+			// --ignore-cluster triggers offline profile generation and clusterDomain here is cluster.local
+			if options.ignoreCluster {
+				if options.template {
+					return profiles.RenderProfileTemplate(options.namespace, options.name, clusterDomain, os.Stdout)
+				} else if options.openAPI != "" {
+					return profiles.RenderOpenAPI(options.openAPI, options.namespace, options.name, clusterDomain, os.Stdout)
+				} else if options.proto != "" {
+					return profiles.RenderProto(options.proto, options.namespace, options.name, clusterDomain, os.Stdout)
+				}
 			}
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
@@ -118,7 +130,7 @@ func newCmdProfile() *cobra.Command {
 				return err
 			}
 
-			clusterDomain := values.GetGlobal().ClusterDomain
+			clusterDomain = values.GetGlobal().ClusterDomain
 			if clusterDomain == "" {
 				clusterDomain = defaultClusterDomain
 			}
@@ -131,9 +143,6 @@ func newCmdProfile() *cobra.Command {
 				return profiles.RenderTapOutputProfile(cmd.Context(), k8sAPI, options.tap, options.namespace, options.name, clusterDomain, options.tapDuration, int(options.tapRouteLimit), os.Stdout)
 			} else if options.proto != "" {
 				return profiles.RenderProto(options.proto, options.namespace, options.name, clusterDomain, os.Stdout)
-			} else if options.ignoreCluster {
-				// return profilegeneration without checking access to k8s cluster which is running the linkerd
-				return profiles.RenderIgnoreCluster(options.namespace, options.name, clusterDomain, os.Stdout)
 			}
 
 			// we should never get here
