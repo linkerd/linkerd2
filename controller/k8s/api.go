@@ -1066,26 +1066,6 @@ func (api *API) GetServiceProfileFor(svc *corev1.Service, clientNs, clusterDomai
 	}
 }
 
-// GetNsAnnotationFor gets the value of an annotation for a namespace.
-func (api *API) GetNsAnnotationFor(name string, annotation string) (string, error) {
-	obj, err := api.GetObjects("", k8s.Namespace, name, labels.Everything())
-	if err != nil {
-		return "", err
-	}
-	if len(obj) > 1 {
-		return "", fmt.Errorf("Namespace conflict: %v, %v", obj[0], obj[1])
-	}
-	if len(obj) != 1 {
-		return "", fmt.Errorf("Namespace not found: %v", name)
-	}
-	ns, ok := obj[0].(*corev1.Namespace)
-	if !ok {
-		// This is very unlikely due to how `GetObjects` works
-		return "", fmt.Errorf("Object with name %s was not a namespace", ns)
-	}
-	return ns.Annotations[annotation], nil
-}
-
 func hasOverlap(as, bs []*corev1.Pod) bool {
 	for _, a := range as {
 		for _, b := range bs {

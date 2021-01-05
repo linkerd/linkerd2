@@ -1090,16 +1090,16 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 // annotation on the pod, then it inherits the annotation from the namespace.
 // If there is also no annotation on the namespace, then it remains unset.
 func SetPodOpaquePortAnnotation(k8sAPI *k8s.API, pod *corev1.Pod, ns string) error {
-	annotation := pod.Annotations[consts.ProxyOpaquePortsAnnotation]
-	if annotation == "" {
-		annotation, err := k8sAPI.GetNsAnnotationFor(ns, consts.ProxyOpaquePortsAnnotation)
+	if _, ok := pod.Annotations[consts.ProxyOpaquePortsAnnotation]; !ok {
+		ns, err := k8sAPI.NS().Lister().Get(ns)
 		if err != nil {
 			return fmt.Errorf("failed to get namespace annotation: %s", err)
-		} else if annotation != "" {
+		}
+		if annotation, ok := ns.Annotations[consts.ProxyOpaquePortsAnnotation]; ok {
 			if pod.Annotations == nil {
 				pod.Annotations = make(map[string]string)
 			}
-			pod.Annotations[annotation] = annotation
+			pod.Annotations[consts.ProxyOpaquePortsAnnotation] = annotation
 		}
 	}
 	return nil
