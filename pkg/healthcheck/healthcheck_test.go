@@ -67,7 +67,7 @@ func (hc *HealthChecker) addCheckAsCategory(
 			break
 		}
 	}
-	hc.addCategory(testCategory)
+	hc.AppendCategories(testCategory)
 }
 
 func TestHealthChecker(t *testing.T) {
@@ -210,11 +210,11 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(passingCheck2)
-		hc.addCategory(failingCheck)
-		hc.addCategory(passingRPCCheck)
-		hc.addCategory(failingRPCCheck)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(passingCheck2)
+		hc.AppendCategories(failingCheck)
+		hc.AppendCategories(passingRPCCheck)
+		hc.AppendCategories(failingRPCCheck)
 
 		expectedResults := []string{
 			"cat1 desc1",
@@ -239,9 +239,9 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(passingCheck2)
-		hc.addCategory(passingRPCCheck)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(passingCheck2)
+		hc.AppendCategories(passingRPCCheck)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -255,9 +255,9 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(failingCheck)
-		hc.addCategory(passingCheck2)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(failingCheck)
+		hc.AppendCategories(passingCheck2)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -271,9 +271,9 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(failingRPCCheck)
-		hc.addCategory(passingCheck2)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(failingRPCCheck)
+		hc.AppendCategories(passingCheck2)
 
 		success := hc.RunChecks(nullObserver)
 
@@ -287,9 +287,9 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(fatalCheck)
-		hc.addCategory(passingCheck2)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(fatalCheck)
+		hc.AppendCategories(passingCheck2)
 
 		expectedResults := []string{
 			"cat1 desc1",
@@ -329,8 +329,8 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(retryCheck)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(retryCheck)
 
 		observedResults := make([]string, 0)
 		observer := func(result *CheckResult) {
@@ -359,9 +359,9 @@ func TestHealthChecker(t *testing.T) {
 			[]CategoryID{},
 			&Options{},
 		)
-		hc.addCategory(passingCheck1)
-		hc.addCategory(skippingCheck)
-		hc.addCategory(skippingRPCCheck)
+		hc.AppendCategories(passingCheck1)
+		hc.AppendCategories(skippingCheck)
+		hc.AppendCategories(skippingRPCCheck)
 
 		expectedResults := []string{
 			"cat1 desc1",

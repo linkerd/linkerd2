@@ -131,16 +131,22 @@ func configureAndRunChecks(wout io.Writer, werr io.Writer, options *checkOptions
 func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 	checkers := []healthcheck.Checker{}
 	checkers = append(checkers,
-		*healthcheck.NewChecker("Link CRD exists", "l5d-multicluster-link-crd-exists", true, false, time.Time{}, false).
+		*healthcheck.NewChecker("Link CRD exists").
+			WithHintAnchor("l5d-multicluster-link-crd-exists").
+			Fatal().
 			WithCheck(func(ctx context.Context) error { return hc.checkLinkCRD(ctx) }))
 	checkers = append(checkers,
-		*healthcheck.NewChecker("Link resources are valid", "l5d-multicluster-links-are-valid", true, false, time.Time{}, false).
+		*healthcheck.NewChecker("Link resources are valid").
+			WithHintAnchor("l5d-multicluster-links-are-valid").
+			Fatal().
 			WithCheck(func(ctx context.Context) error { return hc.checkLinks(ctx) }))
 	checkers = append(checkers,
-		*healthcheck.NewChecker("remote cluster access credentials are valid", "l5d-smc-target-clusters-access", false, false, time.Time{}, false).
+		*healthcheck.NewChecker("remote cluster access credentials are valid").
+			WithHintAnchor("l5d-smc-target-clusters-access").
 			WithCheck(func(ctx context.Context) error { return hc.checkRemoteClusterConnectivity(ctx) }))
 	checkers = append(checkers,
-		*healthcheck.NewChecker("clusters share trust anchors", "l5d-multicluster-clusters-share-anchors", false, false, time.Time{}, false).
+		*healthcheck.NewChecker("clusters share trust anchors").
+			WithHintAnchor("l5d-multicluster-clusters-share-anchors").
 			WithCheck(func(ctx context.Context) error {
 				localAnchors, err := tls.DecodePEMCertificates(hc.linkerdHC.LinkerdConfigGlobal().IdentityTrustAnchorsPEM)
 				if err != nil {
@@ -149,27 +155,34 @@ func multiclusterCategory(hc *healthChecker) *healthcheck.Category {
 				return hc.checkRemoteClusterAnchors(ctx, localAnchors)
 			}))
 	checkers = append(checkers,
-		*healthcheck.NewChecker("service mirror controller has required permissions", "l5d-multicluster-source-rbac-correct", false, false, time.Time{}, false).
+		*healthcheck.NewChecker("service mirror controller has required permissions").
+			WithHintAnchor("l5d-multicluster-source-rbac-correct").
 			WithCheck(func(ctx context.Context) error {
 				return hc.checkServiceMirrorLocalRBAC(ctx)
 			}))
 	checkers = append(checkers,
-		*healthcheck.NewChecker("service mirror controllers are running", "l5d-multicluster-service-mirror-running", false, false, hc.linkerdHC.RetryDeadline, true).
+		*healthcheck.NewChecker("service mirror controllers are running").
+			WithHintAnchor("l5d-multicluster-service-mirror-running").
+			WithRetryDeadline(hc.linkerdHC.RetryDeadline).
+			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
 				return hc.checkServiceMirrorController(ctx)
 			}))
 	checkers = append(checkers,
-		*healthcheck.NewChecker("all gateway mirrors are healthy", "l5d-multicluster-gateways-endpoints", false, false, time.Time{}, false).
+		*healthcheck.NewChecker("all gateway mirrors are healthy").
+			WithHintAnchor("l5d-multicluster-gateways-endpoints").
 			WithCheck(func(ctx context.Context) error {
 				return hc.checkIfGatewayMirrorsHaveEndpoints(ctx)
 			}))
 	checkers = append(checkers,
-		*healthcheck.NewChecker("all mirror services have endpoints", "l5d-multicluster-services-endpoints", false, false, time.Time{}, false).
+		*healthcheck.NewChecker("all mirror services have endpoints").
+			WithHintAnchor("l5d-multicluster-services-endpoints").
 			WithCheck(func(ctx context.Context) error {
 				return hc.checkIfMirrorServicesHaveEndpoints(ctx)
 			}))
 	checkers = append(checkers,
-		*healthcheck.NewChecker("all mirror services are part of a Link", "l5d-multicluster-orphaned-services", false, true, time.Time{}, false).
+		*healthcheck.NewChecker("all mirror services are part of a Link").
+			WithHintAnchor("l5d-multicluster-orphaned-services").
 			WithCheck(func(ctx context.Context) error {
 				return hc.checkForOrphanedServices(ctx)
 			}))
