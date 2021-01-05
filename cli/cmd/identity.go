@@ -6,11 +6,10 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
-	"regexp"
-	"sync/atomic"
+	"strings"
 	"time"
 
-	"github.com/linkerd/linkerd2/controller/api/util"
+	"github.com/grantae/certinfo"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"github.com/linkerd/linkerd2/pkg/k8s/resource"
 	tls1 "github.com/linkerd/linkerd2/pkg/tls"
@@ -57,10 +56,7 @@ func newCmdIdentity() *cobra.Command {
 		`,
 		Example: ` 
 		#Get certificate from pod foo-bar in the default namespace.
-		linkerd identity pod/foo-bar
-
-		#Get certificates from all pods in emojivoto namespace
-		linkerd identity -n emojivoto
+		linkerd identity foo-bar
 		
 		#Get certificate from all pods with name=nginx
 		linkerd identity -l name=nginx
@@ -79,34 +75,31 @@ func newCmdIdentity() *cobra.Command {
 			if len(resources) == 0 {
 				return fmt.Errorf("Cannot find Linkerd\nValidate the install with: linkerd check")
 			}
+			if len(args) == 0 && options.selector == "" {
+				return fmt.Errorf("Provide the pod name argument or use the selector flag")
+			}
 
 			pods, err := getPods(cmd.Context(), k8sAPI, options.namespace, options.selector, args)
 			if err != nil {
 				return err
 			}
 
-			results := getCertificate(k8sAPI, pods, k8s.ProxyAdminPortName, 30*time.Second, emitLog)
-
-			for i, result := range results {
-				fmt.Printf("\nPOD %s (%d of %d)\n\n", result.pod, i+1, len(results))
-				if result.err == nil {
-					fmt.Println("Version: ", result.Certificate[0].Version)
-					fmt.Println("Serial Number: ", result.Certificate[0].SerialNumber)
-					fmt.Println("Signature Algorithm: ", result.Certificate[0].SignatureAlgorithm)
-					fmt.Println("Validity")
-					fmt.Println("\t Not Before: ", result.Certificate[0].NotBefore.Format(time.RFC3339))
-					fmt.Println("\t Not After: ", result.Certificate[0].NotAfter.Format(time.RFC3339))
-					fmt.Println("Subject: ", result.Certificate[0].Subject)
-					fmt.Println("Issuer:  ", result.Certificate[0].Issuer)
-					fmt.Println("Subject Public Key Info:")
-					fmt.Println("\tPublic Key Algorithm: ", result.Certificate[0].PublicKeyAlgorithm)
-					fmt.Println("Signature: \n", result.Certificate[0].Signature)
-					resultCerticate := tls1.EncodeCertificatesPEM(result.Certificate[0])
-
-					fmt.Printf("\n%s", resultCerticate)
-				} else {
-					fmt.Printf("\n%s\n", result.err)
+			resultCerts := getCertificate(k8sAPI, pods, k8s.ProxyAdminPortName, 30*time.Second, emitLog)
+			for _, resultCert := range resultCerts {
+				if resultCert.err != nil {
+					fmt.Printf("\n%s", resultCert.err)
+					return nil
 				}
+				certChain := resultCert.Certificate
+				cert := certChain[len(certChain)-1]
+				result, err := certinfo.CertificateText(cert)
+				if err != nil {
+					fmt.Printf("\n%s", err)
+					return nil
+				}
+				fmt.Print(result)
+				fmt.Println("pem: |")
+				fmt.Print(tls1.EncodeCertificatesPEM(cert))
 			}
 			return nil
 		},
@@ -117,45 +110,26 @@ func newCmdIdentity() *cobra.Command {
 	return cmd
 }
 
-// getCertificate fetches the certificates for all the pods
 func getCertificate(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, portName string, waitingTime time.Duration, emitLog bool) []certificate {
 	var certificates []certificate
-	resultChan := make(chan certificate)
-	var activeRoutines int32
 	for _, pod := range pods {
-		atomic.AddInt32(&activeRoutines, 1)
-		go func(p corev1.Pod) {
-			defer atomic.AddInt32(&activeRoutines, -1)
-			containers, err := getContainersWithPort(p, portName)
-			if err != nil {
-				resultChan <- certificate{
-					pod: p.GetName(),
-					err: err,
-				}
-				return
-			}
-
-			for _, c := range containers {
-				cert, err := getContainerCertificate(k8sAPI, p, c, portName, emitLog)
-				resultChan <- certificate{
-					pod:         p.GetName(),
-					container:   c.Name,
-					Certificate: cert,
-					err:         err,
-				}
-			}
-		}(pod)
-	}
-
-	for {
-		select {
-		case cert := <-resultChan:
-			certificates = append(certificates, cert)
-		case <-time.After(waitingTime):
-			break
+		containers, err := getContainersWithPort(pod, portName)
+		if err != nil {
+			certificates = append(certificates, certificate{
+				pod: pod.GetName(),
+				err: err,
+			})
+			return certificates
 		}
-		if atomic.LoadInt32(&activeRoutines) == 0 {
-			break
+
+		for _, c := range containers {
+			cert, err := getContainerCertificate(k8sAPI, pod, c, portName, emitLog)
+			certificates = append(certificates, certificate{
+				pod:         pod.GetName(),
+				container:   c.Name,
+				Certificate: cert,
+				err:         err,
+			})
 		}
 	}
 	return certificates
@@ -198,22 +172,10 @@ func getCertResponse(url string, pod corev1.Pod) ([]*x509.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	rootPEM, err := getTrustAnchor(pod, "linkerd-proxy")
-	if err != nil {
-		return nil, err
-	}
-
-	re := regexp.MustCompile("[0-9]+")
-	res := re.FindString(url)
-
-	connURL := "localhost:" + res
-
-	roots := x509.NewCertPool()
-	roots.AppendCertsFromPEM([]byte(rootPEM))
-
+	connURL := strings.Trim(url, "http://")
 	conn, err := tls.Dial("tcp", connURL, &tls.Config{
-		RootCAs:    roots,
-		ServerName: serverName,
+		InsecureSkipVerify: true,
+		ServerName:         serverName,
 	})
 
 	if err != nil {
@@ -224,26 +186,7 @@ func getCertResponse(url string, pod corev1.Pod) ([]*x509.Certificate, error) {
 	return cert, nil
 }
 
-func getTrustAnchor(pod corev1.Pod, containerName string) (string, error) {
-	if pod.Status.Phase != corev1.PodRunning {
-		return "", fmt.Errorf("pod not running: %s", pod.GetName())
-	}
-
-	var trustAnchor string
-	for _, c := range pod.Spec.Containers {
-		if c.Name == containerName {
-			for _, env := range c.Env {
-				if env.Name == "LINKERD2_PROXY_IDENTITY_TRUST_ANCHORS" {
-					trustAnchor = env.Value
-				}
-			}
-		}
-	}
-	return trustAnchor, nil
-}
-
 func getServerName(pod corev1.Pod, containerName string) (string, error) {
-
 	if pod.Status.Phase != corev1.PodRunning {
 		return "", fmt.Errorf("pod not running: %s", pod.GetName())
 	}
@@ -266,18 +209,12 @@ func getServerName(pod corev1.Pod, containerName string) (string, error) {
 	}
 
 	serverName := podsa + "." + podns + ".serviceaccount.identity." + l5dns + "." + l5dtrustdomain
-
 	return serverName, nil
 }
 
 func getPods(ctx context.Context, clientset kubernetes.Interface, namespace string, selector string, arg []string) ([]corev1.Pod, error) {
-
 	if len(arg) > 0 {
-		res, err := util.BuildResource(namespace, arg[0])
-		if err != nil {
-			return nil, err
-		}
-		pod, err := clientset.CoreV1().Pods(namespace).Get(ctx, res.GetName(), metav1.GetOptions{})
+		pod, err := clientset.CoreV1().Pods(namespace).Get(ctx, arg[0], metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
