@@ -23,6 +23,7 @@
 - [Kairos](https://kairos.com)
 - [Kurio](https://kurio.id)
 - [LeadIQ](https://leadiq.com)
+- [Lendico](https://www.lendico.de/)
 - [M1 Finance](https://www.m1finance.com/)
 - [MattePaint](https://www.mattepaint.com/)
 - [MercedesBenz.io](https://www.mercedes-benz.io/)
