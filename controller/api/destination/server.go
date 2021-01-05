@@ -110,7 +110,7 @@ func (s *server) Get(dest *pb.GetDestination, stream pb.Destination_GetServer) e
 		s.enableH2Upgrade,
 		dest.GetPath(),
 		token.NodeName,
-		s.k8sAPI,
+		s.k8sAPI.Client,
 		stream,
 		log,
 	)

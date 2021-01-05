@@ -9,9 +9,8 @@ import (
 	pb "github.com/linkerd/linkerd2-proxy-api/go/destination"
 	"github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/destination/watcher"
-	"github.com/linkerd/linkerd2/controller/k8s"
 	"github.com/linkerd/linkerd2/pkg/addr"
-	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
+	"github.com/linkerd/linkerd2/pkg/k8s"
 	logging "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,7 +45,7 @@ func newEndpointTranslator(
 	enableH2Upgrade bool,
 	service string,
 	srcNodeName string,
-	k8sAPI *k8s.API,
+	k8sClient kubernetes.Interface,
 	stream pb.Destination_GetServer,
 	log *logging.Entry,
 ) *endpointTranslator {
@@ -55,7 +54,7 @@ func newEndpointTranslator(
 		"service":   service,
 	})
 
-	nodeTopologyLabels, err := getK8sNodeTopology(ctx, k8sAPI.Client, srcNodeName)
+	nodeTopologyLabels, err := getK8sNodeTopology(ctx, k8sClient, srcNodeName)
 	if err != nil {
 		log.Errorf("Failed to get node topology for node %s: %s", srcNodeName, err)
 	}
@@ -312,9 +311,9 @@ func toAddr(address watcher.Address) (*net.TcpAddress, error) {
 }
 
 func toWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, enableH2Upgrade bool, identityTrustDomain string, controllerNS string, log *logging.Entry) (*pb.WeightedAddr, error) {
-	controllerNSLabel := address.Pod.Labels[pkgk8s.ControllerNSLabel]
-	sa, ns := pkgk8s.GetServiceAccountAndNS(address.Pod)
-	labels := pkgk8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
+	controllerNSLabel := address.Pod.Labels[k8s.ControllerNSLabel]
+	sa, ns := k8s.GetServiceAccountAndNS(address.Pod)
+	labels := k8s.GetPodLabels(address.OwnerKind, address.OwnerName, address.Pod)
 
 	// If the pod is controlled by any Linkerd control plane, then it can be
 	// hinted that this destination knows H2 (and handles our orig-proto
@@ -346,7 +345,7 @@ func toWeightedAddr(address watcher.Address, opaquePorts map[uint32]struct{}, en
 	var identity *pb.TlsIdentity
 	if identityTrustDomain != "" &&
 		controllerNSLabel == controllerNS &&
-		address.Pod.Annotations[pkgk8s.IdentityModeAnnotation] == pkgk8s.IdentityModeDefault {
+		address.Pod.Annotations[k8s.IdentityModeAnnotation] == k8s.IdentityModeDefault {
 
 		id := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", sa, ns, controllerNSLabel, identityTrustDomain)
 		identity = &pb.TlsIdentity{
@@ -402,7 +401,7 @@ func newEmptyAddressSet() watcher.AddressSet {
 // variable.
 func getInboundPort(podSpec *corev1.PodSpec) (uint32, error) {
 	for _, containerSpec := range podSpec.Containers {
-		if containerSpec.Name != pkgk8s.ProxyContainerName {
+		if containerSpec.Name != k8s.ProxyContainerName {
 			continue
 		}
 		for _, envVar := range containerSpec.Env {
