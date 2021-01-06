@@ -171,12 +171,8 @@ func newLinkCommand() *cobra.Command {
 				}
 				gatewayAddresses = append(gatewayAddresses, addr)
 			}
-			if len(gatewayAddresses) == 0 {
-				if len(gateway.Spec.ExternalIPs) > 0 {
-					gatewayAddresses = append(gatewayAddresses, gateway.Spec.ExternalIPs...)
-				} else if gateway.Spec.ExternalName != "" {
-					gatewayAddresses = append(gatewayAddresses, gateway.Spec.ExternalName)
-				}
+			if len(gatewayAddresses) == 0 && gateway.Spec.ExternalName != "" {
+				gatewayAddresses = append(gatewayAddresses, gateway.Spec.ExternalName)
 			}
 			if len(gatewayAddresses) == 0 {
 				return fmt.Errorf("Gateway %s.%s has no ingress addresses", gateway.Name, gateway.Namespace)
