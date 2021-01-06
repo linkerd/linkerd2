@@ -87,6 +87,7 @@ Kubernetes: `>=1.13.0-0`
 | dashboard.restrictPrivileges | bool | `false` | Restrict the Linkerd Dashboard's default privileges to disallow Tap and Check |
 | defaultRegistry | string | `"ghcr.io/linkerd"` | Default Docker Registry |
 | extensionAnnotation | string | `"linkerd.io/extension"` |  |
+| globalDeploymentAnnotations | object | `{}` | Annotations for all the viz deployments |
 | globalLogLevel | string | `"info"` | Log level for all the viz components |
 | globalUID | int | `2103` | UID for all the viz components |
 | grafana.enabled | bool | `true` | toggle field to enable or disable grafana |

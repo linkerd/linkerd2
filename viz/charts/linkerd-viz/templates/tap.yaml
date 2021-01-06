@@ -32,6 +32,9 @@ apiVersion: apps/v1
 metadata:
   annotations:
     {{.Values.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.linkerdVersion) .Values.cliVersion}}
+    {{- if .Values.globalDeploymentAnnotations }}
+    {{- toYaml .Values.globalDeploymentAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     {{.Values.extensionAnnotation}}: linkerd-viz
     app.kubernetes.io/name: tap

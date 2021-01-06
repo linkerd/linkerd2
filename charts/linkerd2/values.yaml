@@ -50,6 +50,9 @@ global:
   # -- url of external grafana instance with reverse proxy configured.
   grafanaUrl: ""
 
+  # -- Additional annotations to add to all deployments
+  deploymentAnnotations: {}
+
   # -- Additional annotations to add to all pods
   podAnnotations: {}
 

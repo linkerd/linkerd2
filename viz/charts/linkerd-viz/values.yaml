@@ -25,6 +25,9 @@ globalLogLevel: &log_level info
 # -- UID for all the viz components
 globalUID: &uid 2103
 
+# -- Annotations for all the viz deployments
+globalDeploymentAnnotations: {}
+
 #  Annotation labels. Do not edit.
 createdByAnnotation: linkerd.io/created-by
 proxyInjectAnnotation: linkerd.io/inject

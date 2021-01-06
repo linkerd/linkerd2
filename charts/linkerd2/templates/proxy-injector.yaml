@@ -12,6 +12,9 @@ kind: Deployment
 metadata:
   annotations:
     {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+    {{- if .Values.global.deploymentAnnotations }}
+    {{- toYaml .Values.global.deploymentAnnotations | nindent 4 }}
+    {{- end }}
   labels:
     app.kubernetes.io/name: proxy-injector
     app.kubernetes.io/part-of: Linkerd
