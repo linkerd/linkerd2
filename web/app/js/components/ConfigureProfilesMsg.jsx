@@ -137,7 +137,6 @@ class ConfigureProfilesMsg extends React.Component {
       );
     }
 
-
     const disableDownloadButton = _isEmpty(query.service) || _isEmpty(query.namespace) ||
       error.service || error.namespace;
     const downloadButton = (

@@ -175,7 +175,6 @@ const responseEndSection = d => _isEmpty(d.responseEnd) ? null : (
   </React.Fragment>
 );
 
-
 // hide verbose information
 const expandedRowRender = (d, expandedWrapStyle) => {
   return (

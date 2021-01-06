@@ -191,7 +191,6 @@ class ErrorModal extends React.Component {
             }
             {this.renderPodErrors(errorData.byPodAndContainer)}
 
-
           </DialogContent>
 
           <DialogActions>

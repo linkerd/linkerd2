@@ -455,7 +455,6 @@ class NavigationBase extends React.Component {
           </Typography>
           { this.menuItem('/namespaces', <Trans>menuItemNamespaces</Trans>, namespaceIcon) }
 
-
           { this.menuItem('/controlplane', <Trans>menuItemControlPlane</Trans>,
             <FontAwesomeIcon icon={faCloud} className={classes.shrinkCloudIcon} />) }
 

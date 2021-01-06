@@ -15,7 +15,7 @@ rootdir=$( cd "$bindir"/.. && pwd )
 # shellcheck source=_tag.sh
 . "$bindir"/_tag.sh
 
-dockerfile=$rootdir/jaeger/proxy-mutator/Dockerfile
+dockerfile=$rootdir/jaeger/injector/Dockerfile
 tag=$(head_root_tag)
 docker_build jaeger-webhook "$tag" "$dockerfile" --build-arg LINKERD_VERSION="$tag"
 
