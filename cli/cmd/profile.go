@@ -105,7 +105,8 @@ func newCmdProfile() *cobra.Command {
 			}
 			// performs an online profile generation and access-check to k8s cluster to extract
 			// clusterDomain from linkerd configuration
-			if !options.ignoreCluster {
+			// profile generation based on tap data requires access to k8s cluster
+			if !options.ignoreCluster || options.tap != "" {
 				k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 				if err != nil {
 					return err
