@@ -26,10 +26,6 @@ import (
 )
 
 const (
-
-	// addOnChartsPath is where the linkerd2 add-ons will be present
-	addOnChartsPath = "add-ons"
-
 	configStage       = "config"
 	controlPlaneStage = "control-plane"
 
@@ -64,12 +60,10 @@ var (
 		"templates/controller-rbac.yaml",
 		"templates/destination-rbac.yaml",
 		"templates/heartbeat-rbac.yaml",
-		"templates/web-rbac.yaml",
 		"templates/serviceprofile-crd.yaml",
 		"templates/trafficsplit-crd.yaml",
 		"templates/proxy-injector-rbac.yaml",
 		"templates/sp-validator-rbac.yaml",
-		"templates/tap-rbac.yaml",
 		"templates/psp.yaml",
 	}
 
@@ -80,10 +74,8 @@ var (
 		"templates/controller.yaml",
 		"templates/destination.yaml",
 		"templates/heartbeat.yaml",
-		"templates/web.yaml",
 		"templates/proxy-injector.yaml",
 		"templates/sp-validator.yaml",
-		"templates/tap.yaml",
 	}
 
 	ignoreCluster bool
@@ -211,7 +203,7 @@ control plane. It should be run after "linkerd install config".`,
 }
 
 func newCmdInstall() *cobra.Command {
-	values, err := l5dcharts.NewValues(false)
+	values, err := l5dcharts.NewValues()
 
 	allStageFlags, allStageFlagSet := makeAllStageFlags(values)
 	installOnlyFlags, installOnlyFlagSet := makeInstallFlags(values)
@@ -300,6 +292,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 
 	// Set any global flags if present, common with install and upgrade
 	values.GetGlobal().Namespace = controlPlaneNamespace
+	values.Stage = stage
 
 	// Render raw values and create chart config
 	rawValues, err := yaml.Marshal(values)
@@ -311,41 +304,11 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 		{Name: chartutil.ChartfileName},
 	}
 
-	addOns, err := l5dcharts.ParseAddOnValues(values)
-	if err != nil {
-		return err
-	}
-
-	// Initialize add-on sub-charts
-	addOnCharts := make(map[string]*charts.Chart)
-	for _, addOn := range addOns {
-		addOnCharts[addOn.Name()] = &charts.Chart{
-			Name:      addOn.Name(),
-			Dir:       addOnChartsPath + "/" + addOn.Name(),
-			Namespace: controlPlaneNamespace,
-			RawValues: append(addOn.Values(), rawValues...),
-			Files: []*loader.BufferedFile{
-				{
-					Name: chartutil.ChartfileName,
-				},
-				{
-					Name: chartutil.ValuesfileName,
-				},
-			},
-			Fs: static.Templates,
-		}
-	}
-
 	if stage == "" || stage == configStage {
 		for _, template := range templatesConfigStage {
 			files = append(files,
 				&loader.BufferedFile{Name: template},
 			)
-		}
-
-		// Fill add-on's sub-charts with config templates
-		for _, addOn := range addOns {
-			addOnCharts[addOn.Name()].Files = append(addOnCharts[addOn.Name()].Files, addOn.ConfigStageTemplates()...)
 		}
 	}
 
@@ -355,12 +318,6 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 				&loader.BufferedFile{Name: template},
 			)
 		}
-
-		// Fill add-on's sub-charts with control-plane templates
-		for _, addOn := range addOns {
-			addOnCharts[addOn.Name()].Files = append(addOnCharts[addOn.Name()].Files, addOn.ControlPlaneStageTemplates()...)
-		}
-
 	}
 
 	// TODO refactor to use l5dcharts.LoadChart()
@@ -375,17 +332,6 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 	buf, err := chart.Render()
 	if err != nil {
 		return err
-	}
-
-	for _, addon := range addOns {
-		b, err := addOnCharts[addon.Name()].Render()
-		if err != nil {
-			return err
-		}
-
-		if _, err := buf.WriteString(b.String()); err != nil {
-			return err
-		}
 	}
 
 	if stage == "" || stage == controlPlaneStage {
@@ -411,7 +357,7 @@ func render(w io.Writer, values *l5dcharts.Values, stage string) error {
 // resource is not part of the Helm chart and will not be present when installing
 // with Helm.
 func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error) {
-	defaults, err := l5dcharts.NewValues(false)
+	defaults, err := l5dcharts.NewValues()
 	if err != nil {
 		return nil, err
 	}
@@ -432,6 +378,9 @@ func renderOverrides(values *l5dcharts.Values, namespace string) ([]byte, error)
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "linkerd-config-overrides",
 			Namespace: namespace,
+			Labels: map[string]string{
+				k8s.ControllerNSLabel: controlPlaneNamespace,
+			},
 		},
 		Data: map[string][]byte{
 			"linkerd-config-overrides": overridesBytes,

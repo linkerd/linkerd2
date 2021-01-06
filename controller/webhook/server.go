@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sync/atomic"
@@ -12,6 +11,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/k8s"
 	pkgk8s "github.com/linkerd/linkerd2/pkg/k8s"
 	pkgTls "github.com/linkerd/linkerd2/pkg/tls"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/core/v1"
@@ -36,7 +36,7 @@ type Server struct {
 	*http.Server
 	api       *k8s.API
 	handler   Handler
-	certValue atomic.Value
+	certValue *atomic.Value
 	recorder  record.EventRecorder
 }
 
@@ -50,7 +50,8 @@ func NewServer(
 ) (*Server, error) {
 	updateEvent := make(chan struct{})
 	errEvent := make(chan error)
-	watcher := pkgTls.NewFsCredsWatcher(certPath, updateEvent, errEvent)
+	watcher := pkgTls.NewFsCredsWatcher(certPath, updateEvent, errEvent).
+		WithFilePaths(pkgk8s.MountPathTLSCrtPEM, pkgk8s.MountPathTLSKeyPEM)
 	go func() {
 		if err := watcher.StartWatching(ctx); err != nil {
 			log.Fatalf("Failed to start creds watcher: %s", err)
@@ -71,13 +72,16 @@ func NewServer(
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: component})
 
 	s := getConfiguredServer(server, api, handler, recorder)
-	if err := s.updateCert(); err != nil {
+	if err := watcher.UpdateCert(s.certValue); err != nil {
 		log.Fatalf("Failed to initialized certificate: %s", err)
 	}
 
-	go func() {
-		s.run(updateEvent, errEvent)
-	}()
+	log := logrus.WithFields(logrus.Fields{
+		"component": "proxy-injector",
+		"addr":      addr,
+	})
+
+	go watcher.ProcessEvents(log, s.certValue, updateEvent, errEvent)
 
 	return s, nil
 }
@@ -89,30 +93,10 @@ func getConfiguredServer(
 	recorder record.EventRecorder,
 ) *Server {
 	var emptyCert atomic.Value
-	s := &Server{httpServer, api, handler, emptyCert, recorder}
+	s := &Server{httpServer, api, handler, &emptyCert, recorder}
 	s.Handler = http.HandlerFunc(s.serve)
 	httpServer.TLSConfig.GetCertificate = s.getCertificate
 	return s
-}
-
-func (s *Server) updateCert() error {
-	creds, err := pkgTls.ReadPEMCreds(
-		pkgk8s.MountPathTLSKeyPEM,
-		pkgk8s.MountPathTLSCrtPEM,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to read cert from disk: %s", err)
-	}
-
-	certPEM := creds.EncodePEM()
-	keyPEM := creds.EncodePrivateKeyPEM()
-	cert, err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM))
-	if err != nil {
-		return err
-	}
-	s.certValue.Store(&cert)
-	log.Debug("Certificate has been updated")
-	return nil
 }
 
 // Start starts the https server
@@ -129,22 +113,6 @@ func (s *Server) Start() {
 // getCertificate provides the TLS server with the current cert
 func (s *Server) getCertificate(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	return s.certValue.Load().(*tls.Certificate), nil
-}
-
-// run reads from the update and error channels and reloads the certs when necessary
-func (s *Server) run(updateEvent <-chan struct{}, errEvent <-chan error) {
-	for {
-		select {
-		case <-updateEvent:
-			if err := s.updateCert(); err != nil {
-				log.Warnf("Skipping update as cert could not be read from disk: %s", err)
-			} else {
-				log.Infof("Updated certificate")
-			}
-		case err := <-errEvent:
-			log.Warnf("Received error from fs watcher: %s", err)
-		}
-	}
 }
 
 func (s *Server) serve(res http.ResponseWriter, req *http.Request) {

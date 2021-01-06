@@ -21,17 +21,18 @@ func TestMain(m *testing.M) {
 
 func TestGoodEndpoints(t *testing.T) {
 	ns := TestHelper.GetLinkerdNamespace()
+	vizNs := TestHelper.GetVizNamespace()
 	cmd := []string{
 		"endpoints",
 		fmt.Sprintf("linkerd-controller-api.%s.svc.cluster.local:8085", ns),
 		fmt.Sprintf("linkerd-dst.%s.svc.cluster.local:8086", ns),
-		fmt.Sprintf("linkerd-grafana.%s.svc.cluster.local:3000", ns),
+		fmt.Sprintf("linkerd-grafana.%s.svc.cluster.local:3000", vizNs),
 		fmt.Sprintf("linkerd-identity.%s.svc.cluster.local:8080", ns),
-		fmt.Sprintf("linkerd-prometheus.%s.svc.cluster.local:9090", ns),
+		fmt.Sprintf("linkerd-prometheus.%s.svc.cluster.local:9090", vizNs),
 		fmt.Sprintf("linkerd-proxy-injector.%s.svc.cluster.local:443", ns),
 		fmt.Sprintf("linkerd-sp-validator.%s.svc.cluster.local:443", ns),
-		fmt.Sprintf("linkerd-tap.%s.svc.cluster.local:8088", ns),
-		fmt.Sprintf("linkerd-web.%s.svc.cluster.local:8084", ns),
+		fmt.Sprintf("linkerd-tap.%s.svc.cluster.local:8088", vizNs),
+		fmt.Sprintf("linkerd-web.%s.svc.cluster.local:8084", vizNs),
 		"-ojson",
 	}
 	out, err := TestHelper.LinkerdRun(cmd...)
@@ -40,7 +41,13 @@ func TestGoodEndpoints(t *testing.T) {
 	}
 
 	tpl := template.Must(template.ParseFiles("testdata/linkerd_endpoints.golden"))
-	vars := struct{ Ns string }{ns}
+	vars := struct {
+		Ns    string
+		VizNs string
+	}{
+		ns,
+		vizNs,
+	}
 	var b bytes.Buffer
 	if err := tpl.Execute(&b, vars); err != nil {
 		testutil.AnnotatedFatalf(t, "failed to parse linkerd_endpoints.golden template", "failed to parse linkerd_endpoints.golden template: %s", err)

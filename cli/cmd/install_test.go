@@ -30,17 +30,15 @@ func TestRender(t *testing.T) {
 	// A configuration that shows that all config setting strings are honored
 	// by `render()`.
 	metaValues := &charts.Values{
-		ControllerImage:             "ControllerImage",
-		WebImage:                    "WebImage",
-		ControllerUID:               2103,
-		EnableH2Upgrade:             true,
-		WebhookFailurePolicy:        "WebhookFailurePolicy",
-		OmitWebhookSideEffects:      false,
-		RestrictDashboardPrivileges: false,
-		InstallNamespace:            true,
-		Identity:                    defaultValues.Identity,
-		NodeSelector:                defaultValues.NodeSelector,
-		Tolerations:                 defaultValues.Tolerations,
+		ControllerImage:        "ControllerImage",
+		ControllerUID:          2103,
+		EnableH2Upgrade:        true,
+		WebhookFailurePolicy:   "WebhookFailurePolicy",
+		OmitWebhookSideEffects: false,
+		InstallNamespace:       true,
+		Identity:               defaultValues.Identity,
+		NodeSelector:           defaultValues.NodeSelector,
+		Tolerations:            defaultValues.Tolerations,
 		Global: &charts.Global{
 			Namespace:                "Namespace",
 			ClusterDomain:            "cluster.local",
@@ -126,15 +124,6 @@ func TestRender(t *testing.T) {
 		ControllerReplicas: 1,
 		ProxyInjector:      defaultValues.ProxyInjector,
 		ProfileValidator:   defaultValues.ProfileValidator,
-		Tap:                defaultValues.Tap,
-		Dashboard: &charts.Dashboard{
-			Replicas: 1,
-		},
-		Prometheus: charts.Prometheus{
-			"enabled": true,
-			"image":   "PrometheusImage",
-		},
-		Grafana: defaultValues.Grafana,
 	}
 
 	haValues, err := testInstallOptionsHA(true)
@@ -177,13 +166,6 @@ func TestRender(t *testing.T) {
 	withHeartBeatDisabledValues.DisableHeartBeat = true
 	addFakeTLSSecrets(withHeartBeatDisabledValues)
 
-	withRestrictedDashboardPrivilegesValues, err := testInstallOptions()
-	if err != nil {
-		t.Fatalf("Unexpected error: %v\n", err)
-	}
-	withRestrictedDashboardPrivilegesValues.RestrictDashboardPrivileges = true
-	addFakeTLSSecrets(withRestrictedDashboardPrivilegesValues)
-
 	withControlPlaneTracingValues, err := testInstallOptions()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v\n", err)
@@ -225,7 +207,6 @@ func TestRender(t *testing.T) {
 		{cniEnabledValues, "install_no_init_container.golden"},
 		{withProxyIgnoresValues, "install_proxy_ignores.golden"},
 		{withHeartBeatDisabledValues, "install_heartbeat_disabled_output.golden"},
-		{withRestrictedDashboardPrivilegesValues, "install_restricted_dashboard.golden"},
 		{withControlPlaneTracingValues, "install_controlplane_tracing_output.golden"},
 		{withCustomRegistryValues, "install_custom_registry.golden"},
 		{withCustomDestinationGetNetsValues, "install_default_override_dst_get_nets.golden"},
@@ -307,9 +288,14 @@ func testInstallOptionsHA(ha bool) (*charts.Values, error) {
 }
 
 func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
-	values, err := charts.NewValues(ha)
+	values, err := charts.NewValues()
 	if err != nil {
 		return nil, err
+	}
+	if ha {
+		if err = charts.MergeHAValues(values); err != nil {
+			return nil, err
+		}
 	}
 
 	values.GetGlobal().Proxy.Image.Version = installProxyVersion
@@ -321,7 +307,7 @@ func testInstallOptionsNoCerts(ha bool) (*charts.Values, error) {
 }
 
 func testInstallValues() (*charts.Values, error) {
-	values, err := charts.NewValues(false)
+	values, err := charts.NewValues()
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +537,4 @@ func addFakeTLSSecrets(values *charts.Values) {
 	values.ProfileValidator.CrtPEM = "profile validator crt"
 	values.ProfileValidator.KeyPEM = "profile validator key"
 	values.ProfileValidator.CaBundle = "profile validator CA bundle"
-	values.Tap.CrtPEM = "tap crt"
-	values.Tap.KeyPEM = "tap key"
-	values.Tap.CaBundle = "tap CA bundle"
 }

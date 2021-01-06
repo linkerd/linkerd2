@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -32,30 +31,32 @@ var (
 
 	helmTLSCerts *tls.CA
 
-	linkerdSvcStable = []string{
-		"linkerd-controller-api",
-		"linkerd-dst",
-		"linkerd-grafana",
-		"linkerd-identity",
-		"linkerd-prometheus",
-		"linkerd-web",
-		"linkerd-tap",
+	linkerdSvcStable = []testutil.Service{
+		{Namespace: "linkerd", Name: "linkerd-controller-api"},
+		{Namespace: "linkerd", Name: "linkerd-dst"},
+		{Namespace: "linkerd", Name: "linkerd-grafana"},
+		{Namespace: "linkerd", Name: "linkerd-identity"},
+		{Namespace: "linkerd", Name: "linkerd-prometheus"},
+		{Namespace: "linkerd", Name: "linkerd-web"},
+		{Namespace: "linkerd", Name: "linkerd-tap"},
+		{Namespace: "linkerd", Name: "linkerd-dst-headless"},
+		{Namespace: "linkerd", Name: "linkerd-identity-headless"},
 	}
 
-	linkerdSvcEdge = []string{
-		"linkerd-controller-api",
-		"linkerd-dst",
-		"linkerd-dst-headless",
-		"linkerd-grafana",
-		"linkerd-identity",
-		"linkerd-identity-headless",
-		"linkerd-prometheus",
-		"linkerd-web",
-		"linkerd-tap",
+	linkerdSvcEdge = []testutil.Service{
+		{Namespace: "linkerd", Name: "linkerd-controller-api"},
+		{Namespace: "linkerd", Name: "linkerd-dst"},
+		{Namespace: "linkerd-viz", Name: "linkerd-grafana"},
+		{Namespace: "linkerd", Name: "linkerd-identity"},
+		{Namespace: "linkerd-viz", Name: "linkerd-prometheus"},
+		{Namespace: "linkerd-viz", Name: "linkerd-web"},
+		{Namespace: "linkerd-viz", Name: "linkerd-tap"},
+		{Namespace: "linkerd", Name: "linkerd-dst-headless"},
+		{Namespace: "linkerd", Name: "linkerd-identity-headless"},
 	}
 
-	multiclusterSvcs = []string{
-		"linkerd-gateway",
+	multiclusterSvcs = []testutil.Service{
+		{Namespace: "linkerd-multicluster", Name: "linkerd-gateway"},
 	}
 
 	injectionCases = []struct {
@@ -261,6 +262,10 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"--proxy-version", TestHelper.GetVersion(),
 			"--skip-inbound-ports", skippedInboundPorts,
 		}
+		vizCmd  = []string{"viz", "install"}
+		vizArgs = []string{
+			"--set", fmt.Sprintf("namespace=%s", TestHelper.GetVizNamespace()),
+		}
 	)
 
 	if certsPath := TestHelper.CertsPath(); certsPath != "" {
@@ -273,6 +278,7 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 
 	if TestHelper.GetClusterDomain() != "cluster.local" {
 		args = append(args, "--cluster-domain", TestHelper.GetClusterDomain())
+		vizArgs = append(vizArgs, "--set", fmt.Sprintf("clusterDomain=%s", TestHelper.GetClusterDomain()))
 	}
 
 	if TestHelper.CNI() {
@@ -398,6 +404,27 @@ func TestInstallOrUpgradeCli(t *testing.T) {
 			"'kubectl apply' command failed\n%s", out)
 	}
 
+	// Wait for the proxy injector to be up
+	name := "linkerd-proxy-injector"
+	ns := "linkerd"
+	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
+			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
+	}
+
+	// Install Linkerd Viz Extension
+	exec = append(vizCmd, vizArgs...)
+	out, err = TestHelper.LinkerdRun(exec...)
+	if err != nil {
+		testutil.AnnotatedFatal(t, "'linkerd viz install' command failed", err)
+	}
+
+	out, err = TestHelper.KubectlApply(out, "")
+	if err != nil {
+		testutil.AnnotatedFatalf(t, "'kubectl apply' command failed",
+			"'kubectl apply' command failed\n%s", out)
+	}
 }
 
 // These need to be updated (if there are changes) once a new stable is released
@@ -460,14 +487,42 @@ func TestInstallHelm(t *testing.T) {
 		testutil.AnnotatedFatalf(t, "'helm install' command failed",
 			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
+
+	// Wait for the proxy injector to be up
+	name := "linkerd-proxy-injector"
+	ns := "linkerd"
+	o, err := TestHelper.Kubectl("", "--namespace="+ns, "wait", "--for=condition=available", "--timeout=120s", "deploy/"+name)
+	if err != nil {
+		testutil.AnnotatedFatalf(t, fmt.Sprintf("failed to wait for condition=available for deploy/%s in namespace %s", name, ns),
+			"failed to wait for condition=available for deploy/%s in namespace %s: %s: %s", name, ns, err, o)
+	}
+
+	if TestHelper.UpgradeHelmFromVersion() == "" {
+		vizChart := TestHelper.GetLinkerdVizHelmChart()
+		vizArgs := []string{
+			"--set", "linkerdVersion=" + TestHelper.GetVersion(),
+			"--set", "namespace=" + TestHelper.GetVizNamespace(),
+			"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
+			"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
+			"--set", "tap.image.tag=" + TestHelper.GetVersion(),
+		}
+		// Install Viz Extension Chart
+		if stdout, stderr, err := TestHelper.HelmInstallPlain(vizChart, "l5d-viz", vizArgs...); err != nil {
+			testutil.AnnotatedFatalf(t, "'helm install' command failed",
+				"'helm install' command failed\n%s\n%s", stdout, stderr)
+		}
+	}
 }
 
 func TestControlPlaneResourcesPostInstall(t *testing.T) {
 	expectedServices := linkerdSvcEdge
+	expectedDeployments := testutil.LinkerdDeployReplicasEdge
+	// Upgrade Case
 	if TestHelper.UpgradeHelmFromVersion() != "" {
 		expectedServices = linkerdSvcStable
+		expectedDeployments = testutil.LinkerdDeployReplicasStable
 	}
-	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), expectedServices, testutil.LinkerdDeployReplicas, TestHelper, t)
+	testutil.TestResourcesPostInstall(TestHelper.GetLinkerdNamespace(), expectedServices, expectedDeployments, TestHelper, t)
 }
 
 func TestInstallMulticluster(t *testing.T) {
@@ -535,20 +590,12 @@ func TestUpgradeHelm(t *testing.T) {
 		"--set", "publicAPIProxyResources.memory.request=101Mi",
 		"--set", "destinationProxyResources.cpu.limit=1020m",
 		"--set", "destinationProxyResources.memory.request=102Mi",
-		"--set", "grafana.proxy.resources.cpu.limit=1030m",
-		"--set", "grafana.proxy.resources.memory.request=103Mi",
 		"--set", "identityProxyResources.cpu.limit=1040m",
 		"--set", "identityProxyResources.memory.request=104Mi",
-		"--set", "prometheus.proxy.resources.cpu.limit=1050m",
-		"--set", "prometheus.proxy.resources.memory.request=105Mi",
 		"--set", "proxyInjectorProxyResources.cpu.limit=1060m",
 		"--set", "proxyInjectorProxyResources.memory.request=106Mi",
 		"--set", "spValidatorProxyResources.cpu.limit=1080m",
 		"--set", "spValidatorProxyResources.memory.request=108Mi",
-		"--set", "tapProxyResources.cpu.limit=1090m",
-		"--set", "tapProxyResources.memory.request=109Mi",
-		"--set", "webProxyResources.cpu.limit=1100m",
-		"--set", "webProxyResources.memory.request=110Mi",
 		"--atomic",
 		"--wait",
 	}
@@ -556,6 +603,22 @@ func TestUpgradeHelm(t *testing.T) {
 	if stdout, stderr, err := TestHelper.HelmUpgrade(TestHelper.GetHelmChart(), args...); err != nil {
 		testutil.AnnotatedFatalf(t, "'helm upgrade' command failed",
 			"'helm upgrade' command failed\n%s\n%s", stdout, stderr)
+	}
+
+	// Install Viz Extension, as there was no viz with stable
+	// TOODO: Update this to upgrade once this will be the newer stable/edge
+	vizChart := TestHelper.GetLinkerdVizHelmChart()
+	vizArgs := []string{
+		"--set", "linkerdVersion=" + TestHelper.GetVersion(),
+		"--set", "namespace=" + TestHelper.GetVizNamespace(),
+		"--set", "dashboard.image.tag=" + TestHelper.GetVersion(),
+		"--set", "grafana.image.tag=" + TestHelper.GetVersion(),
+		"--set", "tap.image.tag=" + TestHelper.GetVersion(),
+	}
+	// Install Viz Extension Chart
+	if stdout, stderr, err := TestHelper.HelmInstallPlain(vizChart, "l5d-viz", vizArgs...); err != nil {
+		testutil.AnnotatedFatalf(t, "'helm install' command failed",
+			"'helm install' command failed\n%s\n%s", stdout, stderr)
 	}
 }
 
@@ -599,25 +662,11 @@ var expectedResources = []expectedData{
 		memRequest: "102Mi",
 	},
 	{
-		pod:        "linkerd-grafana",
-		cpuLimit:   "1030m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "103Mi",
-	},
-	{
 		pod:        "linkerd-identity",
 		cpuLimit:   "1040m",
 		cpuRequest: "20m",
 		memLimit:   "200Mi",
 		memRequest: "104Mi",
-	},
-	{
-		pod:        "linkerd-prometheus",
-		cpuLimit:   "1050m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "105Mi",
 	},
 	{
 		pod:        "linkerd-proxy-injector",
@@ -632,20 +681,6 @@ var expectedResources = []expectedData{
 		cpuRequest: "20m",
 		memLimit:   "200Mi",
 		memRequest: "108Mi",
-	},
-	{
-		pod:        "linkerd-tap",
-		cpuLimit:   "1090m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "109Mi",
-	},
-	{
-		pod:        "linkerd-web",
-		cpuLimit:   "1100m",
-		cpuRequest: "20m",
-		memLimit:   "200Mi",
-		memRequest: "110Mi",
 	},
 }
 
@@ -692,9 +727,10 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 	var golden string
 	if stage == "proxy" {
 		cmd = []string{"check", "--proxy", "--expected-version", expectedVersion, "--namespace", namespace, "--wait=0"}
-		if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
-			golden = "check.multicluster.proxy.golden"
-		} else if TestHelper.CNI() {
+		// if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
+		// golden = "check.multicluster.proxy.golden"
+		// } else if TestHelper.CNI() {
+		if TestHelper.CNI() {
 			golden = "check.cni.proxy.golden"
 		} else {
 			golden = "check.proxy.golden"
@@ -704,9 +740,10 @@ func testCheckCommand(t *testing.T, stage string, expectedVersion string, namesp
 		golden = "check.config.golden"
 	} else {
 		cmd = []string{"check", "--expected-version", expectedVersion, "--wait=0"}
-		if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
-			golden = "check.multicluster.golden"
-		} else if TestHelper.CNI() {
+		// if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
+		// golden = "check.multicluster.golden"
+		// } else if TestHelper.CNI() {
+		if TestHelper.CNI() {
 			golden = "check.cni.golden"
 		} else {
 			golden = "check.golden"
@@ -777,6 +814,10 @@ func TestInstallSP(t *testing.T) {
 	}
 }
 
+// This test fails because no web component is installed during this phase of
+// the extension split. It should be renabled after the issue below is closed.
+// Issue: https://github.com/linkerd/linkerd2/issues/5478
+/*
 func TestDashboard(t *testing.T) {
 	dashboardPort := 52237
 	dashboardURL := fmt.Sprintf("http://localhost:%d", dashboardPort)
@@ -813,6 +854,7 @@ func TestDashboard(t *testing.T) {
 			resp, TestHelper.GetVersion())
 	}
 }
+*/
 
 func TestInject(t *testing.T) {
 	resources, err := testutil.ReadFile("testdata/smoke_test.yaml")
@@ -933,13 +975,37 @@ func TestCheckProxy(t *testing.T) {
 }
 
 func TestRestarts(t *testing.T) {
-	for deploy, spec := range testutil.LinkerdDeployReplicas {
-		if err := TestHelper.CheckPods(context.Background(), TestHelper.GetLinkerdNamespace(), deploy, spec.Replicas); err != nil {
+	for deploy, spec := range testutil.LinkerdDeployReplicasEdge {
+		if err := TestHelper.CheckPods(context.Background(), spec.Namespace, deploy, spec.Replicas); err != nil {
 			if rce, ok := err.(*testutil.RestartCountError); ok {
 				testutil.AnnotatedWarn(t, "CheckPods timed-out", rce)
 			} else {
 				testutil.AnnotatedFatal(t, "CheckPods timed-out", err)
 			}
 		}
+	}
+}
+
+func TestCheckMulticluster(t *testing.T) {
+	if TestHelper.GetMulticlusterHelmReleaseName() != "" || TestHelper.Multicluster() {
+		cmd := []string{"multicluster", "check", "--wait=0"}
+		golden := "check.multicluster.golden"
+		timeout := time.Minute
+		err := TestHelper.RetryFor(timeout, func() error {
+			out, err := TestHelper.LinkerdRun(cmd...)
+			if err != nil {
+				return fmt.Errorf("'linkerd multicluster check' command failed\n%s", err)
+			}
+			err = TestHelper.ValidateOutput(out, golden)
+			if err != nil {
+				return fmt.Errorf("received unexpected output\n%s", err.Error())
+			}
+			return nil
+		})
+		if err != nil {
+			testutil.AnnotatedFatal(t, fmt.Sprintf("'linkerd multicluster check' command timed-out (%s)", timeout), err)
+		}
+	} else {
+		t.Skip("Skipping for non multicluster test")
 	}
 }

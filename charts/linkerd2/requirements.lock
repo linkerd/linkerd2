@@ -2,14 +2,5 @@ dependencies:
 - name: partials
   repository: file://../partials
   version: 0.1.0
-- name: prometheus
-  repository: file://../add-ons/prometheus
-  version: 0.1.0
-- name: grafana
-  repository: file://../add-ons/grafana
-  version: 0.1.0
-- name: tracing
-  repository: file://../add-ons/tracing
-  version: 0.1.0
-digest: sha256:d2428770ae7d5134c5af6521c78a4c5f95da4c75f21bdea0f74fad6ab6e2e044
-generated: "2020-07-23T14:47:05.936935407+02:00"
+digest: sha256:8e42f9c9d4a2dc883f17f94d6044c97518ced19ad0922f47b8760e47135369ba
+generated: "2020-12-21T17:47:25.811707816Z"

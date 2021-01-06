@@ -8,6 +8,8 @@ A Helm chart for the jaeger add-on in Linkerd
 
 ## Requirements
 
+Kubernetes: `>=1.15.0-0`
+
 | Repository | Name | Version |
 |------------|------|---------|
 | file://../../../charts/partials | partials | 0.1.0 |
@@ -19,14 +21,14 @@ A Helm chart for the jaeger add-on in Linkerd
 | collector.image.name | string | `"omnition/opencensus-collector"` |  |
 | collector.image.pullPolicy | string | `"Always"` |  |
 | collector.image.version | string | `"0.1.11"` |  |
-| collectorSvcAccount | string | `"collector"` |  |
-| collectorSvcAddr | string | `"collector.linkerd-jaeger:55678"` |  |
 | jaeger.image.name | string | `"jaegertracing/all-in-one"` |  |
 | jaeger.image.pullPolicy | string | `"Always"` |  |
 | jaeger.image.version | string | `"1.19.2"` |  |
 | linkerdVersion | string | `"linkerdVersionValue"` |  |
 | namespace | string | `"linkerd-jaeger"` |  |
 | webhook.caBundle | string | `""` | if empty, Helm will auto-generate this field, unless externalSecret is set to true. |
+| webhook.collectorSvcAccount | string | `"collector"` | service account associated with the collector instance |
+| webhook.collectorSvcAddr | string | `"collector.linkerd-jaeger:55678"` | collector service address for the proxies to send trace data. Points by default to the the linkerd-jaeger collector |
 | webhook.crtPEM | string | `""` | if empty, Helm will auto-generate these fields |
 | webhook.externalSecret | bool | `false` |  |
 | webhook.failurePolicy | string | `"Ignore"` |  |

@@ -23,7 +23,7 @@ func TestGetOverriddenValues(t *testing.T) {
 		pullPolicy           = "Always"
 	)
 
-	testConfig, err := l5dcharts.NewValues(false)
+	testConfig, err := l5dcharts.NewValues()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
+				values, _ := l5dcharts.NewValues()
 
 				values.GetGlobal().Proxy.Cores = 2
 				values.GetGlobal().Proxy.DisableIdentity = true
@@ -116,7 +116,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
+				values, _ := l5dcharts.NewValues()
 				return values
 			},
 		},
@@ -152,7 +152,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
+				values, _ := l5dcharts.NewValues()
 
 				values.GetGlobal().Proxy.Cores = 2
 				values.GetGlobal().Proxy.DisableIdentity = true
@@ -200,7 +200,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
+				values, _ := l5dcharts.NewValues()
 				return values
 			},
 		},
@@ -217,7 +217,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
+				values, _ := l5dcharts.NewValues()
 				values.GetGlobal().Proxy.OutboundConnectTimeout = "6005ms"
 				values.GetGlobal().Proxy.InboundConnectTimeout = "2005ms"
 				return values
@@ -247,7 +247,7 @@ func TestGetOverriddenValues(t *testing.T) {
 				},
 			},
 			expected: func() *l5dcharts.Values {
-				values, _ := l5dcharts.NewValues(false)
+				values, _ := l5dcharts.NewValues()
 				values.GetGlobal().Proxy.OpaquePorts = "3306"
 				return values
 			},

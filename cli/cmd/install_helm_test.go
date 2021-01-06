@@ -6,12 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/linkerd/linkerd2/pkg/charts"
 	l5dcharts "github.com/linkerd/linkerd2/pkg/charts/linkerd2"
-	"github.com/linkerd/linkerd2/pkg/charts/static"
 	"github.com/linkerd/linkerd2/pkg/k8s"
 	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/engine"
 	"sigs.k8s.io/yaml"
@@ -34,16 +31,6 @@ func TestRenderHelm(t *testing.T) {
 		ha := true
 		chartControlPlane := chartControlPlane(t, ha, "", "111", "222")
 		testRenderHelm(t, chartControlPlane, "install_helm_output_ha.golden")
-	})
-
-	t.Run("Non-HA with add-ons mode", func(t *testing.T) {
-		ha := false
-		additionalConfig := `
-tracing:
-  enabled: true
-`
-		chartControlPlane := chartControlPlane(t, ha, additionalConfig, "111", "222")
-		testRenderHelm(t, chartControlPlane, "install_helm_output_addons.golden")
 	})
 
 	t.Run("HA mode with podLabels and podAnnotations", func(t *testing.T) {
@@ -248,15 +235,6 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 
 	linkerd2Chart.AddDependency(chartPartials)
 
-	addons, err := l5dcharts.ParseAddOnValues(values)
-	if err != nil {
-		t.Fatal("Unexpected error", err)
-	}
-
-	for _, addon := range addons {
-		linkerd2Chart.AddDependency(buildAddOnChart(t, addon, chartPartials))
-	}
-
 	for _, filepath := range append(templatesConfigStage, templatesControlPlaneStage...) {
 		linkerd2Chart.Templates = append(linkerd2Chart.Templates, &chart.File{
 			Name: filepath,
@@ -269,41 +247,6 @@ func chartControlPlane(t *testing.T, ha bool, additionalConfig string, ignoreOut
 	}
 
 	return linkerd2Chart
-}
-
-func buildAddOnChart(t *testing.T, addon l5dcharts.AddOn, chartPartials *chart.Chart) *chart.Chart {
-	rawValues := readValuesFile(t, filepath.Join("add-ons", addon.Name()))
-
-	var values chartutil.Values
-	err := yaml.Unmarshal(rawValues, &values)
-	if err != nil {
-		t.Fatal("Unexpected error", err)
-	}
-
-	addOnChart := chart.Chart{
-		Metadata: &chart.Metadata{
-			Name: addon.Name(),
-			Sources: []string{
-				filepath.Join("..", "..", "..", "charts", "add-ons", addon.Name()),
-			},
-		},
-		Values: values,
-	}
-
-	addOnChart.AddDependency(chartPartials)
-
-	for _, filepath := range append(addon.ConfigStageTemplates(), addon.ControlPlaneStageTemplates()...) {
-		addOnChart.Templates = append(addOnChart.Templates, &chart.File{
-			Name: filepath.Name,
-		})
-	}
-
-	for _, template := range addOnChart.Templates {
-		filepath := filepath.Join(addOnChart.Metadata.Sources[0], template.Name)
-		template.Data = []byte(readTestdata(t, filepath))
-	}
-
-	return &addOnChart
 }
 
 func chartPartials(t *testing.T, paths []string) *chart.Chart {
@@ -332,26 +275,17 @@ func chartPartials(t *testing.T, paths []string) *chart.Chart {
 }
 
 func readTestValues(ha bool, ignoreOutboundPorts string, ignoreInboundPorts string) (*l5dcharts.Values, error) {
-	values, err := l5dcharts.NewValues(ha)
+	values, err := l5dcharts.NewValues()
 	if err != nil {
 		return nil, err
+	}
+	if ha {
+		if err = l5dcharts.MergeHAValues(values); err != nil {
+			return nil, err
+		}
 	}
 	values.GetGlobal().ProxyInit.IgnoreOutboundPorts = ignoreOutboundPorts
 	values.GetGlobal().ProxyInit.IgnoreInboundPorts = ignoreInboundPorts
 
 	return values, nil
-}
-
-// readValues reads values.yaml file from the given path
-func readValuesFile(t *testing.T, path string) []byte {
-
-	valuesFiles := []*loader.BufferedFile{
-		{Name: chartutil.ValuesfileName},
-	}
-
-	if err := charts.FilesReader(static.Templates, path+"/", valuesFiles); err != nil {
-		t.Fatal("Unexpected error", err)
-	}
-
-	return valuesFiles[0].Data
 }

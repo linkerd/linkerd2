@@ -1,6 +1,6 @@
-{{- define "partials.image-pull-secrets" -}}
-{{- if .Values.global.imagePullSecrets }}
+{{- define "partials.image-pull-secrets"}}
+{{- if . }}
 imagePullSecrets:
-{{ toYaml .Values.global.imagePullSecrets | indent 2 }}
+{{ toYaml . | indent 2 }}
 {{- end }}
 {{- end -}}

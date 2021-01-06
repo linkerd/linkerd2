@@ -45,11 +45,11 @@ type podReport struct {
 }
 
 const (
-	podQuery                   = "max(process_start_time_seconds{%s}) by (pod, namespace)"
-	k8sClientSubsystemName     = "kubernetes"
-	k8sClientCheckDescription  = "control plane can talk to Kubernetes"
-	promClientSubsystemName    = "prometheus"
-	promClientCheckDescription = "control plane can talk to Prometheus"
+	podQuery                  = "max(process_start_time_seconds{%s}) by (pod, namespace)"
+	k8sClientSubsystemName    = "kubernetes"
+	k8sClientCheckDescription = "control plane can talk to Kubernetes"
+	// promClientSubsystemName    = "prometheus"
+	// promClientCheckDescription = "control plane can talk to Prometheus"
 )
 
 func newGrpcServer(
@@ -206,20 +206,23 @@ func (s *grpcServer) SelfCheck(ctx context.Context, in *healthcheckPb.SelfCheckR
 		},
 	}
 
-	if s.prometheusAPI != nil {
-		promClientCheck := &healthcheckPb.CheckResult{
-			SubsystemName:    promClientSubsystemName,
-			CheckDescription: promClientCheckDescription,
-			Status:           healthcheckPb.CheckStatus_OK,
-		}
-		_, err = s.queryProm(ctx, fmt.Sprintf(podQuery, ""))
-		if err != nil {
-			promClientCheck.Status = healthcheckPb.CheckStatus_ERROR
-			promClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling Prometheus from the control plane: %s", err)
-		}
+	// TODO: viz: Enable this check once controller moves to viz
+	/*
+		if s.prometheusAPI != nil {
+			promClientCheck := &healthcheckPb.CheckResult{
+				SubsystemName:    promClientSubsystemName,
+				CheckDescription: promClientCheckDescription,
+				Status:           healthcheckPb.CheckStatus_OK,
+			}
+			_, err = s.queryProm(ctx, fmt.Sprintf(podQuery, ""))
+			if err != nil {
+				promClientCheck.Status = healthcheckPb.CheckStatus_ERROR
+				promClientCheck.FriendlyMessageToUser = fmt.Sprintf("Error calling Prometheus from the control plane: %s", err)
+			}
 
-		response.Results = append(response.Results, promClientCheck)
-	}
+			response.Results = append(response.Results, promClientCheck)
+		}
+	*/
 
 	return response, nil
 }

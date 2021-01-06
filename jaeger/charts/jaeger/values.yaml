@@ -9,9 +9,6 @@ collector:
     pullPolicy: Always
   # resources:
 
-collectorSvcAddr: collector.linkerd-jaeger:55678
-collectorSvcAccount: collector
-
 jaeger:
   image: 
     name: jaegertracing/all-in-one
@@ -29,6 +26,12 @@ webhook:
 
   # -- if empty, Helm will auto-generate this field, unless externalSecret is set to true.
   caBundle: |
+
+  # -- collector service address for the proxies to send trace data.
+  # Points by default to the the linkerd-jaeger collector
+  collectorSvcAddr: collector.linkerd-jaeger:55678
+  # -- service account associated with the collector instance
+  collectorSvcAccount: collector
 
   failurePolicy: Ignore
   image: 

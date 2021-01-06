@@ -43,19 +43,12 @@ func TestRoutes(t *testing.T) {
 		{"linkerd-destination", 1},
 		{"linkerd-dst", 6},
 		{"linkerd-dst-headless", 3},
-		{"linkerd-grafana", 13},
 		{"linkerd-identity", 3},
 		{"linkerd-identity-headless", 1},
-		{"linkerd-prometheus", 5},
-		{"linkerd-web", 2},
 
 		{"POST /api/v1/ListPods", 1},
-		{"POST /api/v1/", 7},
+		{"POST /api/v1/", 6},
 		{"POST /io.linkerd.proxy.destination.Destination/Get", 4},
-		{"GET /api/annotations", 1},
-		{"GET /api/", 9},
-		{"GET /public/", 3},
-		{"GET /api/v1/", 2},
 	}
 
 	for _, r := range routeStrings {

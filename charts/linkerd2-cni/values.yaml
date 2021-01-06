@@ -41,6 +41,11 @@ priorityClassName: ""
 proxyInjectAnnotation: linkerd.io/inject
 proxyInjectDisabled: disabled
 
+# -|- Tolerations section, See the 
+# [K8S documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+# for more information
+#tolerations:
+
 #
 ## For Private docker registries, authentication is needed.
 # If the control plane service images are pulled from a
