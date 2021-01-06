@@ -14,9 +14,12 @@ import (
 )
 
 const fullyQualifiedName = "name1.ns.svc.mycluster.local"
+const fullyQualifiedNameOpaque = "name3.ns.svc.mycluster.local"
 const clusterIP = "172.17.12.0"
+const clusterIPOpaque = "172.17.12.1"
 const podIP1 = "172.17.0.12"
 const podIP2 = "172.17.0.13"
+const podIPOpaque = "172.17.0.14"
 const port uint32 = 8989
 const opaquePort uint32 = 4242
 
@@ -41,7 +44,7 @@ func (m *mockDestinationGetProfileServer) Send(profile *pb.DestinationProfile) e
 }
 
 func makeServer(t *testing.T) *server {
-	k8sAPI, err := k8s.NewFakeAPI(`
+	meshedPodResources := []string{`
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -78,22 +81,17 @@ kind: Pod
 metadata:
   labels:
     linkerd.io/control-plane-ns: linkerd
-  annotations:
-    config.linkerd.io/opaque-ports: "4242"
   name: name1-1
   namespace: ns
 status:
   phase: Running
-  podIP: 172.17.0.12`,
-		`
-apiVersion: v1
-kind: Pod
-metadata:
-  name: name2-1
-  namespace: ns
-status:
-  phase: Running
-  podIP: 172.17.0.13`,
+  podIP: 172.17.0.12
+spec:
+  containers:
+    - env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+      name: linkerd-proxy`,
 		`
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
@@ -106,6 +104,9 @@ spec:
     isRetryable: false
     condition:
       pathRegex: "/a/b/c"`,
+	}
+
+	clientSP := []string{
 		`
 apiVersion: linkerd.io/v1alpha2
 kind: ServiceProfile
@@ -118,7 +119,69 @@ spec:
     isRetryable: true
     condition:
       pathRegex: "/x/y/z"`,
-	)
+	}
+
+	unmeshedPod := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: name2
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.13`
+
+	meshedOpaquePodResources := []string{
+		`
+apiVersion: v1
+kind: Service
+metadata:
+  name: name3
+  namespace: ns
+spec:
+  type: LoadBalancer
+  clusterIP: 172.17.12.1
+  ports:
+  - port: 4242`,
+		`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: name3
+  namespace: ns
+subsets:
+- addresses:
+  - ip: 172.17.0.14
+    targetRef:
+      kind: Pod
+      name: name3
+      namespace: ns
+  ports:
+  - port: 4242`,
+		`
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    linkerd.io/control-plane-ns: linkerd
+  annotations:
+    config.linkerd.io/opaque-ports: "4242"
+  name: name3
+  namespace: ns
+status:
+  phase: Running
+  podIP: 172.17.0.14
+spec:
+  containers:
+    - env:
+      - name: LINKERD2_PROXY_INBOUND_LISTEN_ADDR
+        value: 0.0.0.0:4143
+      name: linkerd-proxy`,
+	}
+	res := append(meshedPodResources, clientSP...)
+	res = append(res, unmeshedPod)
+	res = append(res, meshedOpaquePodResources...)
+	k8sAPI, err := k8s.NewFakeAPI(res...)
 	if err != nil {
 		t.Fatalf("NewFakeAPI returned an error: %s", err)
 	}
@@ -476,6 +539,9 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.ProtocolHint == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
+		if first.Endpoint.ProtocolHint.GetOpaqueTransport() != nil {
+			t.Fatalf("Expected pod to not support opaque traffic on port %d", port)
+		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP to be %s, but it was %s", epAddr.Ip, first.Endpoint.Addr.Ip)
 		}
@@ -547,7 +613,7 @@ func TestGetProfiles(t *testing.T) {
 		stream.Cancel()
 		err := server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", clusterIP, opaquePort),
+			Path:   fmt.Sprintf("%s:%d", clusterIPOpaque, opaquePort),
 		}, stream)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
@@ -560,15 +626,11 @@ func TestGetProfiles(t *testing.T) {
 		}
 
 		last := stream.updates[len(stream.updates)-1]
-		if last.FullyQualifiedName != fullyQualifiedName {
-			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedName, last.FullyQualifiedName)
+		if last.FullyQualifiedName != fullyQualifiedNameOpaque {
+			t.Fatalf("Expected fully qualified name '%s', but got '%s'", fullyQualifiedNameOpaque, last.FullyQualifiedName)
 		}
 		if !last.OpaqueProtocol {
 			t.Fatalf("Expected port %d to be an opaque protocol, but it was not", opaquePort)
-		}
-		routes := last.GetRoutes()
-		if len(routes) != 1 {
-			t.Fatalf("Expected 1 route but got %d: %v", len(routes), routes)
 		}
 	})
 
@@ -580,14 +642,14 @@ func TestGetProfiles(t *testing.T) {
 		}
 		stream.Cancel()
 
-		epAddr, err := toAddress(podIP1, opaquePort)
+		epAddr, err := toAddress(podIPOpaque, opaquePort)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
 		}
 
 		err = server.GetProfile(&pb.GetDestination{
 			Scheme: "k8s",
-			Path:   fmt.Sprintf("%s:%d", podIP1, opaquePort),
+			Path:   fmt.Sprintf("%s:%d", podIPOpaque, opaquePort),
 		}, stream)
 		if err != nil {
 			t.Fatalf("Got error: %s", err)
@@ -613,8 +675,8 @@ func TestGetProfiles(t *testing.T) {
 		if first.Endpoint.ProtocolHint == nil {
 			t.Fatalf("Expected protocol hint but found none")
 		}
-		if !first.OpaqueProtocol {
-			t.Fatalf("Expected protocol to be opaque but it was not")
+		if first.Endpoint.ProtocolHint.GetOpaqueTransport().InboundPort != 4143 {
+			t.Fatalf("Expected pod to support opaque traffic on port 4143")
 		}
 		if first.Endpoint.Addr.String() != epAddr.String() {
 			t.Fatalf("Expected endpoint IP port to be %d, but it was %d", epAddr.Port, first.Endpoint.Addr.Port)
