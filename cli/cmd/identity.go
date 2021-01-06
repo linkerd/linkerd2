@@ -48,15 +48,14 @@ func newCmdIdentity() *cobra.Command {
 		Short: "Display the certificate(s) of one or more selected pod(s)",
 		Long: `Display the certificate(s) of one or more selected pod(s).
 		
-		This command initiates a port-forward to a given pod or a set of pods and
-		fetches the tls certificate.
+This command initiates a port-forward to a given pod or a set of pods and fetches the TLS certificate.
 		`,
 		Example: ` 
-		#Get certificate from pod foo-bar in the default namespace.
-		linkerd identity foo-bar
+ # Get certificate from pod foo-bar in the default namespace.
+ linkerd identity foo-bar
 		
-		#Get certificate from all pods with name=nginx
-		linkerd identity -l name=nginx
+ # Get certificate from all pods with the label name=nginx
+ linkerd identity -l name=nginx
 		`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
@@ -65,7 +64,7 @@ func newCmdIdentity() *cobra.Command {
 			}
 
 			if len(args) == 0 && options.selector == "" {
-				return fmt.Errorf("Provide the pod name argument or use the selector flag")
+				return fmt.Errorf("Provide the pod name argument or use the selector flag\n")
 			}
 
 			pods, err := getPods(cmd.Context(), k8sAPI, options.namespace, options.selector, args)
@@ -75,7 +74,7 @@ func newCmdIdentity() *cobra.Command {
 
 			resultCerts := getCertificate(k8sAPI, pods, k8s.ProxyAdminPortName, emitLog)
 			if len(resultCerts) == 0 {
-				fmt.Print("Could not fetch Certificate. Ensure that the pod(s) are meshed by running `linkerd inject`")
+				fmt.Print("Could not fetch Certificate. Ensure that the pod(s) are meshed by running `linkerd inject`\n")
 				return nil
 			}
 			for i, resultCert := range resultCerts {
@@ -105,7 +104,7 @@ func newCmdIdentity() *cobra.Command {
 func getCertificate(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, portName string, emitLog bool) []certificate {
 	var certificates []certificate
 	for _, pod := range pods {
-		containers, err := getContainersWithPort(pod, portName)
+		container, err := getContainerWithPort(pod, portName)
 		if err != nil {
 			certificates = append(certificates, certificate{
 				pod: pod.GetName(),
@@ -113,34 +112,34 @@ func getCertificate(k8sAPI *k8s.KubernetesAPI, pods []corev1.Pod, portName strin
 			})
 			return certificates
 		}
-
-		for _, c := range containers {
-			cert, err := getContainerCertificate(k8sAPI, pod, c, portName, emitLog)
-			certificates = append(certificates, certificate{
-				pod:         pod.GetName(),
-				container:   c.Name,
-				Certificate: cert,
-				err:         err,
-			})
-		}
+		cert, err := getContainerCertificate(k8sAPI, pod, container, portName, emitLog)
+		certificates = append(certificates, certificate{
+			pod:         pod.GetName(),
+			container:   container.Name,
+			Certificate: cert,
+			err:         err,
+		})
 	}
 	return certificates
 }
 
-func getContainersWithPort(pod corev1.Pod, portName string) ([]corev1.Container, error) {
+func getContainerWithPort(pod corev1.Pod, portName string) (corev1.Container, error) {
+	var container corev1.Container
 	if pod.Status.Phase != corev1.PodRunning {
-		return nil, fmt.Errorf("pod not running: %s", pod.GetName())
+		return container, fmt.Errorf("pod not running: %s", pod.GetName())
 	}
-	var containers []corev1.Container
 
 	for _, c := range pod.Spec.Containers {
+		if c.Name != k8s.ProxyContainerName {
+			continue
+		}
 		for _, p := range c.Ports {
 			if p.Name == portName {
-				containers = append(containers, c)
+				return c, nil
 			}
 		}
 	}
-	return containers, nil
+	return container, fmt.Errorf("failed to find %s port in %s container for given pod spec\n", portName, k8s.ProxyContainerName)
 }
 
 func getContainerCertificate(k8sAPI *k8s.KubernetesAPI, pod corev1.Pod, container corev1.Container, portName string, emitLog bool) ([]*x509.Certificate, error) {
@@ -160,7 +159,7 @@ func getContainerCertificate(k8sAPI *k8s.KubernetesAPI, pod corev1.Pod, containe
 }
 
 func getCertResponse(url string, pod corev1.Pod) ([]*x509.Certificate, error) {
-	serverName, err := getServerName(pod, "linkerd-proxy")
+	serverName, err := getServerName(pod, k8s.ProxyContainerName)
 	if err != nil {
 		return nil, err
 	}
@@ -200,17 +199,21 @@ func getServerName(pod corev1.Pod, containerName string) (string, error) {
 		}
 	}
 
-	serverName := podsa + "." + podns + ".serviceaccount.identity." + l5dns + "." + l5dtrustdomain
+	serverName := fmt.Sprintf("%s.%s.serviceaccount.identity.%s.%s", podsa, podns, l5dns, l5dtrustdomain)
 	return serverName, nil
 }
 
-func getPods(ctx context.Context, clientset kubernetes.Interface, namespace string, selector string, arg []string) ([]corev1.Pod, error) {
-	if len(arg) > 0 {
-		pod, err := clientset.CoreV1().Pods(namespace).Get(ctx, arg[0], metav1.GetOptions{})
-		if err != nil {
-			return nil, err
+func getPods(ctx context.Context, clientset kubernetes.Interface, namespace string, selector string, args []string) ([]corev1.Pod, error) {
+	if len(args) > 0 {
+		var pods []corev1.Pod
+		for _, arg := range args {
+			pod, err := clientset.CoreV1().Pods(namespace).Get(ctx, arg, metav1.GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			pods = append(pods, *pod)
 		}
-		return []corev1.Pod{*pod}, nil
+		return pods, nil
 	}
 
 	podList, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
