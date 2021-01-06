@@ -202,7 +202,6 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     },
   };
 
-
   const jaegerColumn = {
     title: <Trans>columnTitleJaeger</Trans>,
     key: 'JaegerDashboard',
@@ -285,7 +284,6 @@ const columnDefinitions = (resource, showNamespaceColumn, showNameColumn, Prefix
     return nsColumn.concat(columns);
   }
 };
-
 
 const preprocessMetrics = metrics => {
   const tableData = _cloneDeep(metrics);

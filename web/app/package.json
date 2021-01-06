@@ -55,7 +55,7 @@
     "babel-plugin-transform-react-remove-prop-types": "0.4.24",
     "chai": "4.2.0",
     "chai-webdriverio": "1.0.0",
-    "chromedriver": "81.0.0",
+    "chromedriver": "87.0.5",
     "clean-webpack-plugin": "3.0.0",
     "css-loader": "3.5.2",
     "enzyme": "3.11.0",
