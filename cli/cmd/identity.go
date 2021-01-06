@@ -64,7 +64,7 @@ This command initiates a port-forward to a given pod or a set of pods and fetche
 			}
 
 			if len(args) == 0 && options.selector == "" {
-				return fmt.Errorf("Provide the pod name argument or use the selector flag\n")
+				return fmt.Errorf("Provide the pod name argument or use the selector flag")
 			}
 
 			pods, err := getPods(cmd.Context(), k8sAPI, options.namespace, options.selector, args)
@@ -139,7 +139,7 @@ func getContainerWithPort(pod corev1.Pod, portName string) (corev1.Container, er
 			}
 		}
 	}
-	return container, fmt.Errorf("failed to find %s port in %s container for given pod spec\n", portName, k8s.ProxyContainerName)
+	return container, fmt.Errorf("failed to find %s port in %s container for given pod spec", portName, k8s.ProxyContainerName)
 }
 
 func getContainerCertificate(k8sAPI *k8s.KubernetesAPI, pod corev1.Pod, container corev1.Container, portName string, emitLog bool) ([]*x509.Certificate, error) {
