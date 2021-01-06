@@ -57,6 +57,10 @@ func (options *profileOptions) validate() error {
 		return errors.New("You must specify exactly one of --template or --open-api or --proto or --tap")
 	}
 
+	// service profile generation based on tap data requires access to k8s cluster
+	if options.ignoreCluster && options.tap != "" {
+		return errors.New("Service profile generation based on tap data require access check to k8s cluster. You can not use --ignore-cluster here")
+	}
 	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
 	// start with an alphabetic character, and end with an alphanumeric character
 	if errs := validation.IsDNS1035Label(options.name); len(errs) != 0 {
@@ -106,9 +110,9 @@ func newCmdProfile() *cobra.Command {
 			// performs an online profile generation and access-check to k8s cluster to extract
 			// clusterDomain from linkerd configuration
 			// profile generation based on tap data requires access to k8s cluster
-			if !options.ignoreCluster || options.tap != "" {
-				localk8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-				k8sAPI = localk8sAPI
+			if !options.ignoreCluster {
+				var err error
+				k8sAPI, err = k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 
 				if err != nil {
 					return err
