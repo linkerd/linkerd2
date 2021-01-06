@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -814,10 +815,6 @@ func TestInstallSP(t *testing.T) {
 	}
 }
 
-// This test fails because no web component is installed during this phase of
-// the extension split. It should be renabled after the issue below is closed.
-// Issue: https://github.com/linkerd/linkerd2/issues/5478
-/*
 func TestDashboard(t *testing.T) {
 	dashboardPort := 52237
 	dashboardURL := fmt.Sprintf("http://localhost:%d", dashboardPort)
@@ -854,7 +851,6 @@ func TestDashboard(t *testing.T) {
 			resp, TestHelper.GetVersion())
 	}
 }
-*/
 
 func TestInject(t *testing.T) {
 	resources, err := testutil.ReadFile("testdata/smoke_test.yaml")
