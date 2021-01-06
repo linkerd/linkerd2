@@ -41,14 +41,19 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 
 	checkers := []healthcheck.Checker{}
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector and jaeger service account exists", "l5d-jaeger-sc-exists", true, true, time.Time{}, false).
+		*healthcheck.NewChecker("collector and jaeger service account exists").
+			WithHintAnchor("l5d-jaeger-sc-exists").
+			Fatal().
+			Warning().
 			WithCheck(func(ctx context.Context) error {
 				// Check for Collector Service Account
 				return healthcheck.CheckServiceAccounts(ctx, kubeAPI, []string{"collector", "jaeger"}, jaegerNamespace, "")
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector config map exists", "l5d-jaeger-oc-cm-exists", false, true, time.Time{}, false).
+		*healthcheck.NewChecker("collector config map exists").
+			WithHintAnchor("l5d-jaeger-oc-cm-exists").
+			Warning().
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger Service Account
 				_, err = kubeAPI.CoreV1().ConfigMaps(jaegerNamespace).Get(ctx, "collector-config", metav1.GetOptions{})
@@ -59,7 +64,11 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("collector pod is running", "l5d-jaeger-collector-running", false, true, hc.RetryDeadline, true).
+		*healthcheck.NewChecker("collector pod is running").
+			WithHintAnchor("l5d-jaeger-collector-running").
+			Warning().
+			WithRetryDeadline(hc.RetryDeadline).
+			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
 				// Check for Collector pod
 				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=collector"})
@@ -70,7 +79,11 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger pod is running", "l5d-jaeger-jaeger-running", false, true, hc.RetryDeadline, true).
+		*healthcheck.NewChecker("jaeger pod is running").
+			WithHintAnchor("l5d-jaeger-jaeger-running").
+			Warning().
+			WithRetryDeadline(hc.RetryDeadline).
+			SurfaceErrorOnRetry().
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger pod
 				podList, err := kubeAPI.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: "component=jaeger"})
@@ -81,7 +94,9 @@ func jaegerCategory(hc *healthcheck.HealthChecker) (*healthcheck.Category, error
 			}))
 
 	checkers = append(checkers,
-		*healthcheck.NewChecker("jaeger extension pods are injected", "l5d-jaeger-pods-injection", false, true, time.Time{}, false).
+		*healthcheck.NewChecker("jaeger extension pods are injected").
+			WithHintAnchor("l5d-jaeger-pods-injection").
+			Warning().
 			WithCheck(func(ctx context.Context) error {
 				// Check for Jaeger pod
 				pods, err := kubeAPI.GetPodsByNamespace(ctx, jaegerNamespace)
