@@ -67,11 +67,10 @@ func loadVerifier(pem string) (verify x509.VerifyOptions, err error) {
 // checkEndEntityDir checks that the provided directory path exists and is
 // suitable to write key material to, returning the key and CSR paths.
 //
-// If the directory does not exist, we assume that the wrong directory was
-// specified incorrectly instead of trying to create or repair the directory.
-// In practice this directory should be tmpfs so that credentials are not
-// written to disk, so we want to be extra sensitive to an incorrectly
-// specified path.
+// If the directory does not exist, we assume that the directory was specified
+// incorrectly and return an error. In practice this directory should be tmpfs
+// so that credentials are not written to disk, so we do not want to create new
+// directories here.
 //
 // If the key and/or CSR paths refer to existing files, it will be logged and
 // the credentials will be recreated.
@@ -112,7 +111,10 @@ func checkNotExists(p string) (err error) {
 }
 
 func generateAndStoreKey(p string) (key *ecdsa.PrivateKey, err error) {
-	// Generate a private key and store it read-only (i.e. mostly for debugging). Because the file is read-only
+	// Generate a private key and store it read-only. This is written to the
+	// file-system so that the proxy may read this key at startup. The
+	// destination path should generally be tmpfs so that the key material is
+	// not written to disk.
 	key, err = tls.GenerateKey()
 	if err != nil {
 		return
