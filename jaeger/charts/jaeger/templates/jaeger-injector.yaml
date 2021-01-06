@@ -1,28 +1,28 @@
 ---
 ###
-### Proxy Mutator
+### Jaeger Injector
 ###
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/name: proxy-mutator
+    app.kubernetes.io/name: jaeger-injector
     app.kubernetes.io/part-of: Linkerd
-    component: proxy-mutator
-  name: proxy-mutator
+    component: jaeger-injector
+  name: jaeger-injector
   namespace: {{.Values.namespace}}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      component: proxy-mutator
+      component: jaeger-injector
   template:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/rbac.yaml") . | sha256sum }}
       labels:
-        component: proxy-mutator
+        component: jaeger-injector
     spec:
       containers:
       - args:
@@ -36,10 +36,10 @@ spec:
             path: /ping
             port: 9995
           initialDelaySeconds: 10
-        name: proxy-mutator
+        name: jaeger-injector
         ports:
         - containerPort: 8443
-          name: proxy-mutator
+          name: jaeger-injector
         - containerPort: 9995
           name: admin-http
         readinessProbe:
@@ -51,25 +51,25 @@ spec:
         - mountPath: /var/run/linkerd/tls
           name: tls
           readOnly: true
-      serviceAccountName: proxy-mutator
+      serviceAccountName: jaeger-injector
       volumes:
       - name: tls
         secret:
-          secretName: proxy-mutator-k8s-tls
+          secretName: jaeger-injector-k8s-tls
 ---
 kind: Service
 apiVersion: v1
 metadata:
-  name: proxy-mutator
+  name: jaeger-injector
   namespace: {{.Values.namespace}}
   labels:
-    component: proxy-mutator
+    component: jaeger-injector
 spec:
   type: ClusterIP
   selector:
-    component: proxy-mutator
+    component: jaeger-injector
   ports:
-  - name: proxy-mutator
+  - name: jaeger-injector
     port: 443
-    targetPort: proxy-mutator
+    targetPort: jaeger-injector
 
