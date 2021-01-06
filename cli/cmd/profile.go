@@ -20,6 +20,7 @@ type profileOptions struct {
 	openAPI       string
 	proto         string
 	tap           string
+	ignoreCluster bool
 	tapDuration   time.Duration
 	tapRouteLimit uint
 }
@@ -32,6 +33,7 @@ func newProfileOptions() *profileOptions {
 		openAPI:       "",
 		proto:         "",
 		tap:           "",
+		ignoreCluster: false,
 		tapDuration:   5 * time.Second,
 		tapRouteLimit: 20,
 	}
@@ -94,25 +96,31 @@ func newCmdProfile() *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options.name = args[0]
+			clusterDomain := defaultClusterDomain
+			var k8sAPI *k8s.KubernetesAPI
 
 			err := options.validate()
 			if err != nil {
 				return err
 			}
+			// performs an online profile generation and access-check to k8s cluster to extract
+			// clusterDomain from linkerd configuration
+			// profile generation based on tap data requires access to k8s cluster
+			if !options.ignoreCluster || options.tap != "" {
+				k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
+				if err != nil {
+					return err
+				}
 
-			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-			if err != nil {
-				return err
-			}
+				_, values, err := healthcheck.FetchCurrentConfiguration(cmd.Context(), k8sAPI, controlPlaneNamespace)
+				if err != nil {
+					return err
+				}
 
-			_, values, err := healthcheck.FetchCurrentConfiguration(cmd.Context(), k8sAPI, controlPlaneNamespace)
-			if err != nil {
-				return err
-			}
-
-			clusterDomain := values.GetGlobal().ClusterDomain
-			if clusterDomain == "" {
-				clusterDomain = defaultClusterDomain
+				clusterDomain = values.GetGlobal().ClusterDomain
+				if clusterDomain == "" {
+					clusterDomain = defaultClusterDomain
+				}
 			}
 
 			if options.template {
@@ -137,6 +145,7 @@ func newCmdProfile() *cobra.Command {
 	cmd.PersistentFlags().UintVar(&options.tapRouteLimit, "tap-route-limit", options.tapRouteLimit, "Max number of routes to add to the profile")
 	cmd.PersistentFlags().StringVarP(&options.namespace, "namespace", "n", options.namespace, "Namespace of the service")
 	cmd.PersistentFlags().StringVar(&options.proto, "proto", options.proto, "Output a service profile based on the given Protobuf spec file")
+	cmd.PersistentFlags().BoolVar(&options.ignoreCluster, "ignore-cluster", options.ignoreCluster, "Output a service profile through offline generation")
 
 	return cmd
 }
