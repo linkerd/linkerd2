@@ -1,8 +1,4 @@
-package cmd
-
-// TODO: this file should probably move out of `./cli/cmd` into something like
-// `./cli/publicapi` or `./cli/pkg`:
-// https://github.com/linkerd/linkerd2/issues/2735
+package publicapi
 
 import (
 	"context"
@@ -16,15 +12,10 @@ import (
 	"github.com/linkerd/linkerd2/pkg/k8s"
 )
 
-// rawPublicAPIClient creates a raw public API client with no validation.
-func rawPublicAPIClient(ctx context.Context) (pb.ApiClient, error) {
+// RawPublicAPIClient creates a raw public API client with no validation.
+func RawPublicAPIClient(ctx context.Context, kubeAPI *k8s.KubernetesAPI, controlPlaneNamespace string, apiAddr string) (pb.ApiClient, error) {
 	if apiAddr != "" {
 		return public.NewInternalClient(controlPlaneNamespace, apiAddr)
-	}
-
-	kubeAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
-	if err != nil {
-		return nil, err
 	}
 
 	return public.NewExternalClient(ctx, controlPlaneNamespace, kubeAPI)
@@ -35,14 +26,14 @@ func rawPublicAPIClient(ctx context.Context) (pb.ApiClient, error) {
 // checks fail, then CLI will print an error and exit.
 func CheckPublicAPIClientOrExit(hcOptions healthcheck.Options) public.APIClient {
 	hcOptions.RetryDeadline = time.Time{}
-	return checkPublicAPIClientOrRetryOrExit(hcOptions, false)
+	return CheckPublicAPIClientOrRetryOrExit(hcOptions, false)
 }
 
-// checkPublicAPIClientWithDeadlineOrExit builds a new public API client and executes status
+// CheckPublicAPIClientOrRetryOrExit builds a new public API client and executes status
 // checks to determine if the client can successfully connect to the API. If the
 // checks fail, then CLI will print an error and exit. If the retryDeadline
 // param is specified, then the CLI will print a message to stderr and retry.
-func checkPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) public.APIClient {
+func CheckPublicAPIClientOrRetryOrExit(hcOptions healthcheck.Options, apiChecks bool) public.APIClient {
 	checks := []healthcheck.CategoryID{
 		healthcheck.KubernetesAPIChecks,
 		healthcheck.LinkerdControlPlaneExistenceChecks,
@@ -77,9 +68,6 @@ func exitOnError(result *healthcheck.CheckResult) {
 		fmt.Fprintf(os.Stderr, "%s: %s\n", msg, result.Err)
 
 		checkCmd := "linkerd check"
-		if controlPlaneNamespace != defaultLinkerdNamespace {
-			checkCmd += fmt.Sprintf(" --linkerd-namespace %s", controlPlaneNamespace)
-		}
 		fmt.Fprintf(os.Stderr, "Validate the install with: %s\n", checkCmd)
 
 		os.Exit(1)

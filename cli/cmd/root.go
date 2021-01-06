@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/cli/flag"
@@ -20,17 +18,13 @@ import (
 )
 
 const (
-	defaultLinkerdNamespace    = "linkerd"
-	defaultCNINamespace        = "linkerd-cni"
-	defaultLinkerdVizNamespace = "linkerd-viz"
-	defaultClusterDomain       = "cluster.local"
-	defaultDockerRegistry      = "ghcr.io/linkerd"
+	defaultLinkerdNamespace = "linkerd"
+	defaultCNINamespace     = "linkerd-cni"
+	defaultClusterDomain    = "cluster.local"
+	defaultDockerRegistry   = "ghcr.io/linkerd"
 
 	jsonOutput  = "json"
 	tableOutput = "table"
-	wideOutput  = "wide"
-
-	maxRps = 100.0
 )
 
 var (
@@ -111,10 +105,8 @@ func init() {
 	RootCmd.AddCommand(newCmdAlpha())
 	RootCmd.AddCommand(newCmdCheck())
 	RootCmd.AddCommand(newCmdCompletion())
-	RootCmd.AddCommand(newCmdDashboard())
 	RootCmd.AddCommand(newCmdDiagnostics())
 	RootCmd.AddCommand(newCmdDoc())
-	RootCmd.AddCommand(newCmdEdges())
 	RootCmd.AddCommand(newCmdEndpoints())
 	RootCmd.AddCommand(newCmdInject())
 	RootCmd.AddCommand(newCmdInstall())
@@ -122,10 +114,6 @@ func init() {
 	RootCmd.AddCommand(newCmdInstallSP())
 	RootCmd.AddCommand(newCmdMetrics())
 	RootCmd.AddCommand(newCmdProfile())
-	RootCmd.AddCommand(newCmdRoutes())
-	RootCmd.AddCommand(newCmdStat())
-	RootCmd.AddCommand(newCmdTap())
-	RootCmd.AddCommand(newCmdTop())
 	RootCmd.AddCommand(newCmdUninject())
 	RootCmd.AddCommand(newCmdUpgrade())
 	RootCmd.AddCommand(newCmdVersion())
@@ -135,64 +123,6 @@ func init() {
 	RootCmd.AddCommand(jaeger.NewCmdJaeger())
 	RootCmd.AddCommand(multicluster.NewCmdMulticluster())
 	RootCmd.AddCommand(viz.NewCmdViz())
-}
-
-type statOptionsBase struct {
-	namespace    string
-	timeWindow   string
-	outputFormat string
-}
-
-func newStatOptionsBase() *statOptionsBase {
-	return &statOptionsBase{
-		namespace:    defaultNamespace,
-		timeWindow:   "1m",
-		outputFormat: tableOutput,
-	}
-}
-
-func (o *statOptionsBase) validateOutputFormat() error {
-	switch o.outputFormat {
-	case tableOutput, jsonOutput, wideOutput:
-		return nil
-	default:
-		return fmt.Errorf("--output currently only supports %s, %s and %s", tableOutput, jsonOutput, wideOutput)
-	}
-}
-
-func renderStats(buffer bytes.Buffer, options *statOptionsBase) string {
-	var out string
-	switch options.outputFormat {
-	case jsonOutput:
-		out = buffer.String()
-	default:
-		// strip left padding on the first column
-		b := buffer.Bytes()
-		if len(b) > padding {
-			out = string(b[padding:])
-		}
-		out = strings.Replace(out, "\n"+strings.Repeat(" ", padding), "\n", -1)
-	}
-
-	return out
-}
-
-// getRequestRate calculates request rate from Public API BasicStats.
-func getRequestRate(success, failure uint64, timeWindow string) float64 {
-	windowLength, err := time.ParseDuration(timeWindow)
-	if err != nil {
-		log.Error(err.Error())
-		return 0.0
-	}
-	return float64(success+failure) / windowLength.Seconds()
-}
-
-// getSuccessRate calculates success rate from Public API BasicStats.
-func getSuccessRate(success, failure uint64) float64 {
-	if success+failure == 0 {
-		return 0.0
-	}
-	return float64(success) / float64(success+failure)
 }
 
 // getDefaultNamespace fetches the default namespace

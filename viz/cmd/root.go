@@ -11,6 +11,11 @@ import (
 const (
 	defaultLinkerdNamespace = "linkerd"
 	defaultVizNamespace     = "linkerd-viz"
+	maxRps                  = 100.0
+
+	jsonOutput  = "json"
+	tableOutput = "table"
+	wideOutput  = "wide"
 )
 
 var (
@@ -59,6 +64,12 @@ func NewCmdViz() *cobra.Command {
 	vizCmd.PersistentFlags().StringVar(&apiAddr, "api-addr", "", "Override kubeconfig and communicate directly with the control plane at host:port (mostly for testing)")
 	vizCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Turn on debug logging")
 	vizCmd.AddCommand(newCmdInstall())
+	vizCmd.AddCommand(newCmdRoutes())
+	vizCmd.AddCommand(newCmdStat())
+	vizCmd.AddCommand(newCmdTap())
+	vizCmd.AddCommand(newCmdTop())
+	vizCmd.AddCommand(newCmdEdges())
+	vizCmd.AddCommand(newCmdDashboard())
 
 	return vizCmd
 }

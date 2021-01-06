@@ -18,6 +18,7 @@ import (
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/inject"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	publicAPI "github.com/linkerd/linkerd2/pkg/publicapi"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
@@ -333,7 +334,15 @@ func (resourceTransformerInject) generateReport(reports []inject.Report, output 
 
 func fetchConfigs(ctx context.Context) (*linkerd2.Values, error) {
 
-	checkPublicAPIClientOrExit()
+	publicAPI.CheckPublicAPIClientOrExit(healthcheck.Options{
+		ControlPlaneNamespace: controlPlaneNamespace,
+		KubeConfig:            kubeconfigPath,
+		Impersonate:           impersonate,
+		ImpersonateGroup:      impersonateGroup,
+		KubeContext:           kubeContext,
+		APIAddr:               apiAddr,
+	})
+
 	api, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 	if err != nil {
 		return nil, err

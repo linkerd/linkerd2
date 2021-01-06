@@ -6,7 +6,9 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
+	publicAPI "github.com/linkerd/linkerd2/pkg/publicapi"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -80,7 +82,15 @@ func newCmdDashboard() *cobra.Command {
 			}
 
 			// ensure we can connect to the public API before starting the proxy
-			checkPublicAPIClientOrRetryOrExit(time.Now().Add(options.wait), true)
+			publicAPI.CheckPublicAPIClientOrRetryOrExit(healthcheck.Options{
+				ControlPlaneNamespace: controlPlaneNamespace,
+				KubeConfig:            kubeconfigPath,
+				Impersonate:           impersonate,
+				ImpersonateGroup:      impersonateGroup,
+				KubeContext:           kubeContext,
+				APIAddr:               apiAddr,
+				RetryDeadline:         time.Now().Add(options.wait),
+			}, true)
 
 			k8sAPI, err := k8s.NewAPI(kubeconfigPath, kubeContext, impersonate, impersonateGroup, 0)
 			if err != nil {
@@ -94,7 +104,7 @@ func newCmdDashboard() *cobra.Command {
 			portforward, err := k8s.NewPortForward(
 				cmd.Context(),
 				k8sAPI,
-				defaultLinkerdVizNamespace,
+				defaultVizNamespace,
 				webDeployment,
 				options.host,
 				options.port,

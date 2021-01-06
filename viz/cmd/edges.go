@@ -10,9 +10,17 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/fatih/color"
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
+	"github.com/linkerd/linkerd2/pkg/healthcheck"
+	publicAPI "github.com/linkerd/linkerd2/pkg/publicapi"
 	"github.com/spf13/cobra"
+)
+
+var (
+	okStatus = color.New(color.FgGreen, color.Bold).SprintFunc()("\u221A") // √
+
 )
 
 type edgesOptions struct {
@@ -23,7 +31,7 @@ type edgesOptions struct {
 
 func newEdgesOptions() *edgesOptions {
 	return &edgesOptions{
-		namespace:     defaultNamespace,
+		namespace:     defaultLinkerdNamespace,
 		outputFormat:  tableOutput,
 		allNamespaces: false,
 	}
@@ -82,7 +90,14 @@ func newCmdEdges() *cobra.Command {
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
-			client := checkPublicAPIClientOrExit()
+			client := publicAPI.CheckPublicAPIClientOrExit(healthcheck.Options{
+				ControlPlaneNamespace: controlPlaneNamespace,
+				KubeConfig:            kubeconfigPath,
+				Impersonate:           impersonate,
+				ImpersonateGroup:      impersonateGroup,
+				KubeContext:           kubeContext,
+				APIAddr:               apiAddr,
+			})
 			c := make(chan indexedEdgeResults, len(reqs))
 			for num, req := range reqs {
 				go func(num int, req *pb.EdgesRequest) {
