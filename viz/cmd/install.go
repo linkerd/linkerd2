@@ -45,7 +45,10 @@ func newCmdInstall() *cobra.Command {
 		Short: "Output Kubernetes resources to install linkerd-viz extension",
 		Long:  `Output Kubernetes resources to install linkerd-viz extension.`,
 		Example: `  # Default install.
-  linkerd viz install | kubectl apply -f -`,
+  linkerd viz install | kubectl apply -f -
+ 
+ Configurable fields can be found at https://www.github.com/linkerd/linkerd2/tree/main/viz/charts/linkerd-viz
+  `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
 				// Ensure there is a Linkerd installation.
