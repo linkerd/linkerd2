@@ -127,3 +127,21 @@ spec:
   - name: proxy-injector
     port: 443
     targetPort: proxy-injector
+{{- if .Values.enablePodAntiAffinity }}
+---
+kind: PodDisruptionBudget
+apiVersion: policy/v1beta1
+metadata:
+  name: linkerd-proxy-injector
+  namespace: {{.Values.global.namespace}}
+  labels:
+    {{.Values.global.controllerComponentLabel}}: proxy-injector
+    {{.Values.global.controllerNamespaceLabel}}: {{.Values.global.namespace}}
+  annotations:
+    {{.Values.global.createdByAnnotation}}: {{default (printf "linkerd/helm %s" .Values.global.linkerdVersion) .Values.global.cliVersion}}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{.Values.global.controllerComponentLabel}}: proxy-injector
+{{- end }}
