@@ -799,6 +799,10 @@ func (pp *portPublisher) endpointsToAddresses(endpoints *corev1.Endpoints) Addre
 					pp.log.Errorf("Unable to create new address:%v", err)
 					continue
 				}
+				err = SetPodOpaquePortAnnotation(pp.k8sAPI, address.Pod, endpoints.Namespace)
+				if err != nil {
+					pp.log.Errorf("failed to set opaque port annotation on pod: %s", err)
+				}
 				addresses[id] = address
 			}
 		}
@@ -1080,4 +1084,23 @@ func isValidSlice(es *discovery.EndpointSlice) bool {
 	}
 
 	return true
+}
+
+// SetPodOpaquePortAnnotation ensures that if there is no opaque port
+// annotation on the pod, then it inherits the annotation from the namespace.
+// If there is also no annotation on the namespace, then it remains unset.
+func SetPodOpaquePortAnnotation(k8sAPI *k8s.API, pod *corev1.Pod, ns string) error {
+	if _, ok := pod.Annotations[consts.ProxyOpaquePortsAnnotation]; !ok {
+		ns, err := k8sAPI.NS().Lister().Get(ns)
+		if err != nil {
+			return fmt.Errorf("failed to get namespace annotation: %s", err)
+		}
+		if annotation, ok := ns.Annotations[consts.ProxyOpaquePortsAnnotation]; ok {
+			if pod.Annotations == nil {
+				pod.Annotations = make(map[string]string)
+			}
+			pod.Annotations[consts.ProxyOpaquePortsAnnotation] = annotation
+		}
+	}
+	return nil
 }
