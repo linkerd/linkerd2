@@ -2610,36 +2610,6 @@ func TestLinkerdIdentityCheckCertConfig(t *testing.T) {
 			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid: key ca.crt containing the trust anchors needs to exist in secret linkerd-identity-issuer if --identity-external-issuer=true"},
 		},
 		{
-			checkDescription: "does not get influenced by newline differences between trust anchors (missing newline in configMap)",
-			tlsSecretScheme:  string(corev1.SecretTypeTLS),
-			schemeInConfig:   string(corev1.SecretTypeTLS),
-			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid"},
-			configMapIssuerDataModifier: func(issuerData issuercerts.IssuerCertData) issuercerts.IssuerCertData {
-				issuerData.TrustAnchors = strings.TrimSpace(issuerData.TrustAnchors)
-				return issuerData
-			},
-		},
-		{
-			checkDescription: "does not get influenced by newline differences between trust anchors (extra newline in configMap)",
-			tlsSecretScheme:  string(corev1.SecretTypeTLS),
-			schemeInConfig:   string(corev1.SecretTypeTLS),
-			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid"},
-			configMapIssuerDataModifier: func(issuerData issuercerts.IssuerCertData) issuercerts.IssuerCertData {
-				issuerData.TrustAnchors = issuerData.TrustAnchors + "\n"
-				return issuerData
-			},
-		},
-		{
-			checkDescription: "does not get influenced by newline differences between trust anchors (missing newline in secret)",
-			tlsSecretScheme:  string(corev1.SecretTypeTLS),
-			schemeInConfig:   string(corev1.SecretTypeTLS),
-			expectedOutput:   []string{"linkerd-identity-test-cat certificate config is valid"},
-			tlsSecretIssuerDataModifier: func(issuerData issuercerts.IssuerCertData) issuercerts.IssuerCertData {
-				issuerData.TrustAnchors = strings.TrimSpace(issuerData.TrustAnchors)
-				return issuerData
-			},
-		},
-		{
 			checkDescription: "fails when trying to parse trust anchors from secret (extra newline in secret)",
 			tlsSecretScheme:  string(corev1.SecretTypeTLS),
 			schemeInConfig:   string(corev1.SecretTypeTLS),
