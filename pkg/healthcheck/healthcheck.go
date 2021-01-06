@@ -1733,12 +1733,12 @@ func (hc *HealthChecker) fetchCredsFromOldSecret(ctx context.Context, secretName
 
 	crt, ok := secret.Data[certOldKeyName]
 	if !ok {
-		return nil, fmt.Errorf("key %s needs to exist in secret %s", certKeyName, secretName)
+		return nil, fmt.Errorf("key %s needs to exist in secret %s", certOldKeyName, secretName)
 	}
 
 	key, ok := secret.Data[keyOldKeyName]
 	if !ok {
-		return nil, fmt.Errorf("key %s needs to exist in secret %s", keyKeyName, secretName)
+		return nil, fmt.Errorf("key %s needs to exist in secret %s", keyOldKeyName, secretName)
 	}
 
 	cred, err := tls.ValidateAndCreateCreds(string(crt), string(key))
