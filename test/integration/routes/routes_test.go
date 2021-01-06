@@ -61,7 +61,7 @@ func TestRoutes(t *testing.T) {
 
 	// smoke test / bb routes
 	prefixedNs := TestHelper.GetTestNamespace("smoke-test")
-	cmd = []string{"routes", "--namespace", prefixedNs, "deploy"}
+	cmd = []string{"viz", "routes", "--namespace", prefixedNs, "deploy"}
 	golden := "routes.smoke.golden"
 
 	out, err = TestHelper.LinkerdRun(cmd...)

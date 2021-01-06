@@ -64,7 +64,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 		status       string
 	}{
 		{
-			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace()},
+			args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
 				"linkerd-controller":     "1/1",
 				"linkerd-destination":    "1/1",
@@ -74,7 +74,7 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			},
 		},
 		{
-			args: []string{"stat", "deploy", "-n", TestHelper.GetVizNamespace()},
+			args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetVizNamespace()},
 			expectedRows: map[string]string{
 				"linkerd-grafana":    "1/1",
 				"linkerd-prometheus": "1/1",
@@ -83,51 +83,51 @@ func TestCliStatForLinkerdNamespace(t *testing.T) {
 			},
 		},
 		{
-			args: []string{"stat", fmt.Sprintf("po/%s", prometheusPod), "-n", TestHelper.GetVizNamespace(), "--from", fmt.Sprintf("po/%s", controllerPod), "--from-namespace", TestHelper.GetLinkerdNamespace()},
+			args: []string{"viz", "stat", fmt.Sprintf("po/%s", prometheusPod), "-n", TestHelper.GetVizNamespace(), "--from", fmt.Sprintf("po/%s", controllerPod), "--from-namespace", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
 				prometheusPod: "1/1",
 			},
 			status: "Running",
 		},
 		{
-			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod), "--to-namespace", TestHelper.GetVizNamespace()},
+			args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod), "--to-namespace", TestHelper.GetVizNamespace()},
 			expectedRows: map[string]string{
 				"linkerd-controller": "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "svc", "linkerd-prometheus", "-n", TestHelper.GetVizNamespace(), "--from", "deploy/linkerd-controller", "--from-namespace", TestHelper.GetLinkerdNamespace()},
+			args: []string{"viz", "stat", "svc", "linkerd-prometheus", "-n", TestHelper.GetVizNamespace(), "--from", "deploy/linkerd-controller", "--from-namespace", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
 				"linkerd-prometheus": "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", "svc/linkerd-prometheus", "--to-namespace", TestHelper.GetVizNamespace()},
+			args: []string{"viz", "stat", "deploy", "-n", TestHelper.GetLinkerdNamespace(), "--to", "svc/linkerd-prometheus", "--to-namespace", TestHelper.GetVizNamespace()},
 			expectedRows: map[string]string{
 				"linkerd-controller": "1/1",
 			},
 		},
 		{
-			args: []string{"stat", "ns", TestHelper.GetLinkerdNamespace()},
+			args: []string{"viz", "stat", "ns", TestHelper.GetLinkerdNamespace()},
 			expectedRows: map[string]string{
 				TestHelper.GetLinkerdNamespace(): "5/5",
 			},
 		},
 		{
-			args: []string{"stat", "ns", TestHelper.GetVizNamespace()},
+			args: []string{"viz", "stat", "ns", TestHelper.GetVizNamespace()},
 			expectedRows: map[string]string{
 				TestHelper.GetVizNamespace(): "4/4",
 			},
 		},
 		{
-			args: []string{"stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("au/%s", prometheusAuthority), "--to-namespace", TestHelper.GetVizNamespace()},
+			args: []string{"viz", "stat", "po", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("au/%s", prometheusAuthority), "--to-namespace", TestHelper.GetVizNamespace()},
 			expectedRows: map[string]string{
 				controllerPod: "1/1",
 			},
 			status: "Running",
 		},
 		{
-			args: []string{"stat", "au", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod), "--to-namespace", TestHelper.GetVizNamespace()},
+			args: []string{"viz", "stat", "au", "-n", TestHelper.GetLinkerdNamespace(), "--to", fmt.Sprintf("po/%s", prometheusPod), "--to-namespace", TestHelper.GetVizNamespace()},
 			expectedRows: map[string]string{
 				prometheusAuthority: "-",
 			},

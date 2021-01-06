@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	cmd2 "github.com/linkerd/linkerd2/cli/cmd"
 	sp "github.com/linkerd/linkerd2/controller/gen/apis/serviceprofile/v1alpha2"
 	"github.com/linkerd/linkerd2/testutil"
+	cmd2 "github.com/linkerd/linkerd2/viz/cmd"
 	"sigs.k8s.io/yaml"
 )
 
