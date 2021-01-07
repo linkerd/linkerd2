@@ -59,7 +59,7 @@ func (options *profileOptions) validate() error {
 
 	// service profile generation based on tap data requires access to k8s cluster
 	if options.ignoreCluster && options.tap != "" {
-		return errors.New("Service profile generation based on tap data require access check to k8s cluster. You can not use --ignore-cluster here")
+		return errors.New("--ignore-cluster and --tap flags are mutually exclusive; SP generation based on tap data requires access-check to k8s cluster")
 	}
 	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
 	// start with an alphabetic character, and end with an alphanumeric character
@@ -123,9 +123,8 @@ func newCmdProfile() *cobra.Command {
 					return err
 				}
 
-				clusterDomain = values.GetGlobal().ClusterDomain
-				if clusterDomain == "" {
-					clusterDomain = defaultClusterDomain
+				if cd := values.GetGlobal().ClusterDomain; cd != "" {
+					clusterDomain = cd
 				}
 			}
 
