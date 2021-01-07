@@ -43,7 +43,8 @@ func newCmdInstall() *cobra.Command {
   # Install Jaeger extension into a non-default namespace.
   linkerd jaeger install --namespace custom | kubectl apply -f -
   
-Configurable fields can be found at https://www.github.com/linkerd/linkerd2/tree/main/jaeger/charts/jaeger
+The installation can be configured by using the --set, --values, --set-string and --set-file flags.
+A full list of configurable values can be found at https://www.github.com/linkerd/linkerd2/tree/main/jaeger/charts/jaeger
   `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !skipChecks {
