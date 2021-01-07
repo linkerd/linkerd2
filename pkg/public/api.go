@@ -1,4 +1,4 @@
-package publicapi
+package public
 
 import (
 	"context"

@@ -15,7 +15,7 @@ import (
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
 	"github.com/linkerd/linkerd2/pkg/k8s"
-	publicAPI "github.com/linkerd/linkerd2/pkg/publicapi"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -67,7 +67,7 @@ This command will only display traffic which is sent to a service that has a Ser
 			}
 
 			output, err := requestRouteStatsFromAPI(
-				publicAPI.CheckPublicAPIClientOrExit(healthcheck.Options{
+				api.CheckPublicAPIClientOrExit(healthcheck.Options{
 					ControlPlaneNamespace: controlPlaneNamespace,
 					KubeConfig:            kubeconfigPath,
 					Impersonate:           impersonate,

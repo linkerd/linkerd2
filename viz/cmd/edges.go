@@ -14,7 +14,7 @@ import (
 	"github.com/linkerd/linkerd2/controller/api/util"
 	pb "github.com/linkerd/linkerd2/controller/gen/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	publicAPI "github.com/linkerd/linkerd2/pkg/publicapi"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	"github.com/spf13/cobra"
 )
 
@@ -90,7 +90,7 @@ func newCmdEdges() *cobra.Command {
 
 			// The gRPC client is concurrency-safe, so we can reuse it in all the following goroutines
 			// https://github.com/grpc/grpc-go/issues/682
-			client := publicAPI.CheckPublicAPIClientOrExit(healthcheck.Options{
+			client := api.CheckPublicAPIClientOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,

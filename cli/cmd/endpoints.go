@@ -17,7 +17,7 @@ import (
 	netPb "github.com/linkerd/linkerd2-proxy-api/go/net"
 	"github.com/linkerd/linkerd2/controller/api/public"
 	"github.com/linkerd/linkerd2/pkg/healthcheck"
-	publicAPI "github.com/linkerd/linkerd2/pkg/publicapi"
+	api "github.com/linkerd/linkerd2/pkg/public"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -89,7 +89,7 @@ destination.`,
 				return err
 			}
 
-			endpoints, err := requestEndpointsFromAPI(publicAPI.CheckPublicAPIClientOrExit(healthcheck.Options{
+			endpoints, err := requestEndpointsFromAPI(api.CheckPublicAPIClientOrExit(healthcheck.Options{
 				ControlPlaneNamespace: controlPlaneNamespace,
 				KubeConfig:            kubeconfigPath,
 				Impersonate:           impersonate,
