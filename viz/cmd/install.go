@@ -38,6 +38,7 @@ var (
 
 func newCmdInstall() *cobra.Command {
 	var skipChecks bool
+	var ha bool
 	var wait time.Duration
 	var options values.Options
 
@@ -69,7 +70,7 @@ func newCmdInstall() *cobra.Command {
 				checkInjectorRunningOrRetryOrExit(wait)
 			}
 
-			return install(os.Stdout, options)
+			return install(os.Stdout, options, ha)
 		},
 	}
 
@@ -78,6 +79,10 @@ func newCmdInstall() *cobra.Command {
 		`Skip checks for namespace existence`,
 	)
 
+	cmd.Flags().BoolVar(
+		&ha, "ha", false,
+		`Install Viz Extension in High Availability mode.`,
+	)
 	cmd.Flags().DurationVar(
 		&wait, "wait", 300*time.Second,
 		"Wait for core control-plane components to be available")
@@ -87,12 +92,19 @@ func newCmdInstall() *cobra.Command {
 	return cmd
 }
 
-func install(w io.Writer, options values.Options) error {
+func install(w io.Writer, options values.Options, ha bool) error {
 
 	// Create values override
 	valuesOverrides, err := options.MergeValues(nil)
 	if err != nil {
 		return err
+	}
+
+	if ha {
+		valuesOverrides, err = charts.OverrideFromFile(valuesOverrides, static.Templates, vizChartName, "values-ha.yaml")
+		if err != nil {
+			return err
+		}
 	}
 
 	// TODO: Add any validation logic here
@@ -121,7 +133,7 @@ func render(w io.Writer, valuesOverrides map[string]interface{}) error {
 	}
 
 	// Load all Viz chart files into buffer
-	if err := charts.FilesReader(static.Templates, "linkerd-viz/", files); err != nil {
+	if err := charts.FilesReader(static.Templates, vizChartName+"/", files); err != nil {
 		return err
 	}
 
