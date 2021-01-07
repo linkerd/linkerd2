@@ -51,11 +51,8 @@ this.
   for injected pods (thanks @jimil749)
 * Fixed an issue with the CNI plugin where it was incorrectly terminating and
   emitting error events
-* Added a new `linkerd viz uninstall` command for uninstalling components of the
-  `linkerd-viz` extension
 * Re-added support for non-LoadBalancer service types in the
   `linkerd-multicluster` extension
-* Added an HA option to the `linkerd viz install` command
 
 ## edge-20.12.4
 
